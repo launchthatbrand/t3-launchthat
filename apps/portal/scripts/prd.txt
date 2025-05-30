@@ -1,0 +1,138 @@
+# Product Requirements Document: WSA - Learning Management & E-commerce Platform (Custom Admin)
+
+## 1. Introduction
+
+This document outlines the requirements for the WSA application, a web platform designed for selling and delivering online educational content (courses, lessons, etc.). The application will feature a user-facing frontend and a custom administrative interface, both built within a single Next.js application (`apps/wsa`). Convex will serve as the primary real-time database and backend logic engine. The platform will include an integrated e-commerce checkout flow using Authorize.Net.
+
+## 2. Goals
+
+-   Create an online platform for users to purchase and consume educational courses.
+-   Implement a secure and functional checkout process using Authorize.Net.
+-   Develop a custom, integrated administrative interface within the Next.js application for managing content, products, users, and orders.
+-   Utilize Convex as the sole backend for data storage, real-time updates, business logic (queries, mutations, actions), and necessary API endpoints (via Convex HTTP).
+-   Leverage Shadcn UI components for a consistent and modern user experience in both the user-facing frontend and the custom admin UI.
+-   Follow Next.js best practices for building both the frontend and the admin interface.
+
+## 3. Core Features (LMS)
+
+### 3.1. Content Structure (Managed via Admin UI)
+
+-   **Courses:** Top-level educational offerings. Contain metadata (title, description, associated product). Composed of Lessons.
+-   **Lessons:** Sequential modules within a Course. Contain metadata (title, description). Composed of Topics.
+-   **Topics:** Individual content units within a Lesson (e.g., text, video embed, quiz).
+-   **Quizzes:** Simple assessments associated with Topics or Lessons (e.g., multiple-choice questions).
+
+### 3.2. Content Consumption (User Frontend)
+
+-   Registered users who have purchased a course should be able to access its content.
+-   A user-facing interface to navigate course structure (lessons, topics).
+-   Display topic content (text, video).
+-   Interface for taking quizzes and viewing results (basic pass/fail initially).
+
+## 4. E-commerce & Checkout (User Frontend)
+
+### 4.1. Products (Managed via Admin UI)
+
+-   Products defined with attributes like name, description, and price.
+-   Linkable to one or more Courses.
+
+### 4.2. Dynamic Checkout Page
+
+-   Implement dynamic checkout pages (e.g., `/checkout/[productId]`).
+-   Display details of the specific product being purchased.
+-   Integrate the existing Authorize.Net `PaymentForm` component, dynamically passing the correct product price/amount.
+
+### 4.3. Payment Processing
+
+-   Utilize Authorize.Net as the sole payment provider.
+-   Leverage the existing client-side tokenization (`react-authorize-net`) and Convex backend action (`internalCreateAuthNetTransaction`) flow.
+-   Ensure the correct transaction amount and line item details (derived from the product) are passed to the Convex action.
+
+### 4.4. Order/Transaction Management
+
+-   Successfully processed payments result in a record in the `transactions` table in Convex.
+-   The transaction record links to the user and the purchased product/order details.
+
+### 4.5. User Handling during Checkout
+
+-   Identify if the user is logged in (using Convex auth).
+-   If not logged in, collect necessary information (e.g., email).
+-   Create a new user record in Convex or associate the transaction with an existing user.
+-   Grant access rights to the purchased course(s) upon successful payment (likely via Convex mutation).
+
+### 4.6. Post-Payment Flow
+
+-   Upon confirmation of successful payment processing (via real-time status update from Convex), redirect the user to a dedicated Order Confirmation page.
+-   Provide pathways from the confirmation page or user account area to access purchased course content.
+
+## 5. User Account Area (User Frontend)
+
+-   User authentication (login/signup) using Convex built-in authentication.
+-   A user dashboard displaying purchased courses.
+-   Links to the course consumption interface.
+
+## 6. Custom Admin Interface (Integrated within `apps/wsa`)
+
+### 6.1. Architecture
+
+-   Built as part of the Next.js application (e.g., under an `/admin` route group).
+-   Utilizes Next.js App Router, Server Components, and Client Components as appropriate.
+-   Fetches data and performs mutations directly via the Convex React client (`useQuery`, `useMutation`).
+-   Protected by authentication/authorization checks (ensuring only admin users can access).
+
+### 6.2. UI/Layout
+
+-   Utilize Shadcn UI components extensively for forms, tables, data display, etc.
+-   Implement primary navigation using the Shadcn Sidebar component pattern within the `/admin` section.
+
+### 6.3. Content Management (LMS)
+
+-   Admin CRUD interfaces (forms, lists/tables) for Courses.
+-   Admin CRUD interfaces for Lessons (managed within a Course context).
+-   Admin CRUD interfaces for Topics (managed within a Lesson context).
+-   Admin CRUD interfaces for Quizzes and Questions (managed within a Topic/Lesson context).
+-   Interface for managing relationships (Course -> Lessons -> Topics -> Quiz).
+
+### 6.4. E-commerce Management
+
+-   Admin CRUD interface for Products.
+-   Interface for linking Products to Courses.
+-   Interface for defining product price.
+
+### 6.5. User Management
+
+-   Admin view for listing registered users (fetching directly from Convex).
+-   (Future) View user details, enrolled courses, manage roles.
+
+### 6.6. Order Management
+
+-   Admin view for listing transactions/orders (fetching directly from the `transactions` table in Convex).
+-   Display transaction status, amount, associated user, items purchased.
+
+### 6.7. Settings Management
+
+-   A dedicated settings page/section within the Admin UI.
+-   Interface for managing Authorize.Net credentials.
+    -   *Implementation Note:* Saving these credentials securely requires a dedicated Convex action callable only by admins, which updates Convex environment variables. Displaying current keys should be masked or omitted.
+
+## 7. Technical Requirements
+
+-   **Application Framework:** Next.js (`apps/wsa`), React, TypeScript (App Router preferred).
+-   **Backend:** Convex (`apps/wsa/convex`) for database, functions (queries, mutations, actions), real-time, auth, HTTP endpoints.
+-   **Database:** Convex.
+-   **Schema Definition:** `convex/schema.ts` is the single source of truth for data structure.
+-   **Admin UI:** Custom build within Next.js using Shadcn UI components.
+-   **Styling:** Tailwind CSS, Shadcn UI.
+-   **Payment Gateway:** Authorize.Net (Accept.js for client, Node SDK for Convex action).
+-   **Development Workflow:** Standard Next.js development concurrent with `pnpm convex dev`.
+-   **Deployment Workflow:** Standard Next.js deployment + `pnpm convex push` for schema updates.
+
+## 8. Future Considerations (Out of Scope - Initial Build)
+
+-   Detailed user progress tracking.
+-   More complex quiz types.
+-   User profile management.
+-   Coupon/discount code functionality.
+-   Subscription models.
+-   Community features.
+-   Advanced reporting. 

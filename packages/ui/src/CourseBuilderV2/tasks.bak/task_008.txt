@@ -1,0 +1,18 @@
+# Task ID: 8
+# Title: Set up @dnd-kit integration
+# Status: done
+# Dependencies: 5
+# Priority: high
+# Description: Configure @dnd-kit for drag-and-drop functionality in the component
+# Details:
+Set up @dnd-kit by:
+- Adding DndContext provider to the component
+- Configuring sensors (pointer, keyboard)
+- Setting up collision detection
+- Creating basic drag overlay
+- Implementing drag start/end handlers
+- Creating utility functions for drag-and-drop operations
+- Setting up the foundation for draggable and droppable elements
+
+# Test Strategy:
+Verify @dnd-kit is properly integrated by testing basic drag events. Ensure drag start and end events fire correctly.

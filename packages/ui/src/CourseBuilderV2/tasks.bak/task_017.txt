@@ -1,0 +1,45 @@
+# Task ID: 17
+# Title: Implement Sidebar Accordion UI with Draggable Items
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Refactor the CourseBuilderV2 sidebar to use Shadcn Accordion components that display Lessons, Topics, and Quizzes in collapsible sections with drag-and-drop functionality.
+# Details:
+This task involves replacing the current sidebar implementation with Shadcn Accordion components to create a more organized and interactive UI. The implementation should:
+
+1. Create three separate accordion sections for Lessons, Topics, and Quizzes
+2. Fetch available items from the API for each section
+3. Display items with appropriate icons and metadata
+4. Implement collapsible behavior for each section
+5. Make all items draggable using a library like react-dnd or @dnd-kit/core
+6. Ensure proper styling that matches the application's design system
+7. Add hover states and visual feedback for draggable items
+8. Implement proper loading states while fetching data
+9. Handle empty states appropriately when no items are available
+10. Ensure the sidebar is responsive and maintains usability on smaller screens
+
+The accordion should maintain its state (which sections are expanded/collapsed) during the user's session. When items are dragged, they should have a visual indicator showing they're being dragged and where they can be dropped.
+
+# Test Strategy:
+Testing should verify both the UI functionality and the drag-and-drop behavior:
+
+1. Unit tests:
+   - Test that accordion sections render correctly with the expected items
+   - Verify that sections expand and collapse as expected
+   - Test loading and empty states
+
+2. Integration tests:
+   - Verify that data is correctly fetched and displayed
+   - Test that dragging an item works and generates the correct events
+
+3. Manual testing:
+   - Verify accordion sections expand/collapse smoothly
+   - Confirm all items are displayed with correct styling and icons
+   - Test dragging items from each section to valid drop targets
+   - Verify visual feedback during drag operations
+   - Test on different screen sizes to ensure responsive behavior
+   - Check keyboard accessibility for accordion functionality
+   - Verify that screen readers can interpret the accordion structure
+
+4. Browser compatibility:
+   - Test on Chrome, Firefox, Safari, and Edge to ensure consistent behavior

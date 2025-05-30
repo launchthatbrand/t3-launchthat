@@ -1,0 +1,102 @@
+# Task ID: 13
+# Title: Implement Default Board Configuration
+# Status: pending
+# Dependencies: 6, 9, 10, 12
+# Priority: medium
+# Description: Ensure new Boards are created with default Groups, Items, and Columns as specified in the PRD
+# Details:
+Implement the default configuration for new Boards:
+
+1. Default Columns:
+   - "Owner" (user type)
+   - "Status" (dropdown type with options: "To Do", "In Progress", "Done", "Blocked")
+   - "Due Date" (date type)
+
+2. Default Groups:
+   - "Group 1"
+   - "Group 2"
+
+3. Default Items:
+   - Three items per group: "Item 1", "Item 2", "Item 3"
+
+Implement this in the Convex mutation for creating a new board:
+
+```typescript
+// convex/boards.ts
+import { mutation } from './_generated/server';
+import { v } from 'convex/values';
+
+export const create = mutation({
+  args: {
+    name: v.string(),
+    folderId: v.optional(v.string()),
+    defaultColumns: v.optional(v.boolean()),
+    defaultGroups: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    // Create the board
+    const boardId = await ctx.db.insert('boards', {
+      name: args.name,
+      folderId: args.folderId,
+      columns: args.defaultColumns ? [
+        {
+          id: crypto.randomUUID(),
+          name: 'Owner',
+          type: 'user',
+        },
+        {
+          id: crypto.randomUUID(),
+          name: 'Status',
+          type: 'dropdown',
+          options: ['To Do', 'In Progress', 'Done', 'Blocked'],
+        },
+        {
+          id: crypto.randomUUID(),
+          name: 'Due Date',
+          type: 'date',
+        },
+      ] : [],
+    });
+    
+    // If defaultGroups is true, create default groups and items
+    if (args.defaultGroups) {
+      // Create Group 1
+      const group1Id = await ctx.db.insert('groups', {
+        name: 'Group 1',
+        boardId,
+        colorAccent: '#6366F1', // Default color
+      });
+      
+      // Create Group 2
+      const group2Id = await ctx.db.insert('groups', {
+        name: 'Group 2',
+        boardId,
+        colorAccent: '#8B5CF6', // Different default color
+      });
+      
+      // Create default items for Group 1
+      for (let i = 1; i <= 3; i++) {
+        await ctx.db.insert('items', {
+          name: `Item ${i}`,
+          groupId: group1Id,
+          data: {},
+        });
+      }
+      
+      // Create default items for Group 2
+      for (let i = 1; i <= 3; i++) {
+        await ctx.db.insert('items', {
+          name: `Item ${i}`,
+          groupId: group2Id,
+          data: {},
+        });
+      }
+    }
+    
+    return boardId;
+  },
+});
+```
+
+# Test Strategy:
+Test creating a new board and verify it has the default columns, groups, and items as specified. Verify that the default columns have the correct types and options. Test that the default items are created in each default group.

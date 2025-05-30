@@ -1,0 +1,213 @@
+{
+  "meta": {
+    "generatedAt": "2025-05-25T00:26:55.882Z",
+    "tasksAnalyzed": 1,
+    "totalTasks": 25,
+    "analysisCount": 25,
+    "thresholdScore": 5,
+    "projectName": "Taskmaster",
+    "usedResearch": false
+  },
+  "complexityAnalysis": [
+    {
+      "taskId": 1,
+      "taskTitle": "Extend Database Schema for New Features",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down the database schema extension task into subtasks for each major system (groups, notifications, downloads, e-commerce, contacts/CRM, calendar/events), including schema definition, index creation, and testing for each.",
+      "reasoning": "This task involves designing and implementing database schemas for 6 different systems with complex relationships. Each system requires careful consideration of data structures, indexes, and constraints. The task requires deep understanding of Convex and database design principles."
+    },
+    {
+      "taskId": 2,
+      "taskTitle": "Implement Core UI Components",
+      "complexityScore": 8,
+      "recommendedSubtasks": 8,
+      "expansionPrompt": "Break down the UI components implementation task into subtasks for each component category (cards, lists/grids, forms, modals, notifications, calendar views, avatars, permission-based elements), including design, implementation, testing, and documentation for each.",
+      "reasoning": "Creating a comprehensive UI component library is highly complex, requiring expertise in React, design systems, accessibility, and state management. The components need to be reusable, customizable, and work across multiple features while maintaining consistency with Shadcn UI."
+    },
+    {
+      "taskId": 3,
+      "taskTitle": "Implement Groups System - Core Functionality",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the groups system core functionality implementation into subtasks covering group creation, profiles, roles/permissions, discovery features, and API endpoints, with detailed implementation steps for each.",
+      "reasoning": "This task involves implementing a complex social feature with multiple user roles, privacy settings, and permissions. It requires both backend API development and frontend components, with careful consideration of access control and user experience."
+    },
+    {
+      "taskId": 4,
+      "taskTitle": "Implement Groups System - Discussion and Content Sharing",
+      "complexityScore": 6,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the group discussion and content sharing implementation into subtasks covering threaded conversations, post creation with attachments, comment functionality, and content moderation tools, with detailed implementation steps for each.",
+      "reasoning": "This task builds on the core groups system, adding social interaction features like posts, comments, and content moderation. It involves real-time updates, file handling, and moderation workflows, but is somewhat less complex than the core system."
+    },
+    {
+      "taskId": 5,
+      "taskTitle": "Implement Groups System - Invitations and Membership Management",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down the group invitation and membership management implementation into subtasks covering invitation mechanisms, join requests, approval workflows, and member management interfaces, with detailed implementation steps for each.",
+      "reasoning": "This task focuses on specific workflows within the groups system. While it requires careful implementation of invitation and approval processes, it's more focused in scope than the core groups functionality."
+    },
+    {
+      "taskId": 6,
+      "taskTitle": "Implement Notification System - Core Functionality",
+      "complexityScore": 7,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the notification system implementation into subtasks covering the notification center, notification types, preferences management, and real-time delivery, with detailed implementation steps for each.",
+      "reasoning": "Building a notification system requires real-time capabilities, complex state management, and integration with multiple features across the platform. It needs to handle different notification types and user preferences while ensuring timely delivery."
+    },
+    {
+      "taskId": 7,
+      "taskTitle": "Implement Notification System - Email Integration",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down the email notification integration into subtasks covering email service setup, template creation, delivery logic based on preferences, and tracking/management, with detailed implementation steps for each.",
+      "reasoning": "This task involves integrating with external email services and creating templates, but is more straightforward than the core notification system. The main challenges are in template design, delivery logic, and ensuring deliverability."
+    },
+    {
+      "taskId": 8,
+      "taskTitle": "Implement Downloads Management - Core Functionality",
+      "complexityScore": 7,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the downloads management implementation into subtasks covering file upload/storage integration, downloads library with metadata, access control, and version control, with detailed implementation steps for each.",
+      "reasoning": "This task involves complex file handling, storage integration, and access control mechanisms. It requires secure file storage, metadata management, and permission-based access, making it moderately complex."
+    },
+    {
+      "taskId": 11,
+      "taskTitle": "Enhance E-commerce - Shopping Cart Implementation",
+      "complexityScore": 6,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the shopping cart implementation into subtasks covering persistent cart storage, real-time updates, product variation support, and cart summary calculations, with detailed implementation steps for each.",
+      "reasoning": "Implementing a shopping cart involves session management, real-time updates, and complex state management. It needs to handle product variations and calculate totals accurately while providing a smooth user experience."
+    },
+    {
+      "taskId": 12,
+      "taskTitle": "Enhance E-commerce - Checkout Process",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the checkout process implementation into subtasks covering multi-step flow, address handling, payment gateway integration, order creation, and guest checkout, with detailed implementation steps for each.",
+      "reasoning": "The checkout process is one of the most complex parts of e-commerce, involving multiple steps, form validation, payment processing, and order creation. It requires integration with payment gateways and careful error handling to ensure a smooth user experience."
+    },
+    {
+      "taskId": 13,
+      "taskTitle": "Enhance E-commerce - Order Management",
+      "complexityScore": 6,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the order management implementation into subtasks covering order history/details, status tracking, digital fulfillment, shipping integration, and order notifications, with detailed implementation steps for each.",
+      "reasoning": "Order management involves tracking order status, handling fulfillment for both digital and physical products, and integrating with shipping providers. It's moderately complex but builds on existing e-commerce functionality."
+    },
+    {
+      "taskId": 14,
+      "taskTitle": "Implement Contacts/CRM System - Core Functionality",
+      "complexityScore": 6,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the contacts/CRM system implementation into subtasks covering contact profiles with custom fields, grouping/tagging, search/filtering, and import/export functionality, with detailed implementation steps for each.",
+      "reasoning": "Building a CRM system requires flexible data structures for contact information, custom fields, and tagging. The complexity comes from designing a system that can handle varied contact data and provide effective search and organization tools."
+    },
+    {
+      "taskId": 15,
+      "taskTitle": "Implement Contacts/CRM System - Interaction Tracking",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down the contact interaction tracking implementation into subtasks covering interaction logging, activity timeline, task management, and integration with other system components, with detailed implementation steps for each.",
+      "reasoning": "This task builds on the core CRM functionality, adding interaction tracking and task management. It's moderately complex but more focused than the core CRM implementation, with the main challenge being integration with other features."
+    },
+    {
+      "taskId": 16,
+      "taskTitle": "Implement Calendar & Events System - Core Functionality",
+      "complexityScore": 7,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the calendar system implementation into subtasks covering multiple calendar views, support for multiple calendars per user, calendar categories, and public/private options, with detailed implementation steps for each.",
+      "reasoning": "Calendar systems are inherently complex due to date/time handling, different view modes, and recurring event patterns. The core functionality requires careful implementation of UI components and data structures to handle various calendar operations."
+    },
+    {
+      "taskId": 17,
+      "taskTitle": "Implement Calendar & Events System - Event Management",
+      "complexityScore": 8,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the event management implementation into subtasks covering event creation, recurring event support, event editing/deletion, and virtual event integration, with detailed implementation steps for each.",
+      "reasoning": "Event management, especially with recurring events, is highly complex. Handling recurrence patterns, exceptions, and timezone issues requires sophisticated algorithms. Virtual event integration adds another layer of complexity."
+    },
+    {
+      "taskId": 18,
+      "taskTitle": "Implement Calendar & Events System - Event Attendance",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down the event attendance implementation into subtasks covering RSVP functionality, attendee management, event reminders, and notification integration, with detailed implementation steps for each.",
+      "reasoning": "This task builds on the core calendar system, adding attendance tracking and reminders. While it requires integration with the notification system, it's more focused in scope than the core calendar functionality."
+    },
+    {
+      "taskId": 19,
+      "taskTitle": "Implement Cross-Feature Integration - Navigation and Context",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the cross-feature integration implementation into subtasks covering unified navigation, contextual relationships, breadcrumb navigation, feature-specific sub-navigation, and global search, with detailed implementation steps for each.",
+      "reasoning": "Creating a cohesive experience across multiple features is highly complex. It requires deep understanding of all system components and careful design of navigation patterns and contextual relationships to ensure a seamless user experience."
+    },
+    {
+      "taskId": 20,
+      "taskTitle": "Implement Role-Based Access Control System",
+      "complexityScore": 9,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the role-based access control implementation into subtasks covering permission types, role definitions, permission checking in APIs, conditional UI rendering, and role management interfaces, with detailed implementation steps for each.",
+      "reasoning": "RBAC systems are inherently complex, requiring careful design of permission structures and enforcement throughout the application. This system affects every feature and must be implemented consistently across backend and frontend components."
+    },
+    {
+      "taskId": 21,
+      "taskTitle": "Implement File Storage and Security",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the file storage and security implementation into subtasks covering cloud storage integration, secure URL generation, file validation, permission-based access, and image processing, with detailed implementation steps for each.",
+      "reasoning": "Secure file handling involves multiple security considerations, integration with cloud services, and proper access control. The complexity comes from ensuring security while maintaining good performance and user experience."
+    },
+    {
+      "taskId": 22,
+      "taskTitle": "Implement Payment Gateway Integration",
+      "complexityScore": 9,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the payment gateway integration into subtasks covering multiple gateway support, unified payment interface, secure payment handling, multiple payment methods, and subscription support, with detailed implementation steps for each.",
+      "reasoning": "Payment processing is one of the most complex and critical parts of the system, requiring secure handling of sensitive data, integration with multiple external services, and robust error handling. It must be extremely reliable and secure."
+    },
+    {
+      "taskId": 23,
+      "taskTitle": "Implement Real-time Updates and Synchronization",
+      "complexityScore": 8,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the real-time updates implementation into subtasks covering live queries, real-time notifications, collaborative features, optimistic UI updates, and offline support, with detailed implementation steps for each.",
+      "reasoning": "Implementing real-time features across the application is complex, requiring careful state management and synchronization. It involves handling concurrent updates, conflict resolution, and providing a responsive experience even with network issues."
+    },
+    {
+      "taskId": 24,
+      "taskTitle": "Implement Accessibility Compliance",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down the accessibility implementation into subtasks covering semantic HTML structure, ARIA attributes, keyboard navigation, color contrast, screen reader support, and focus management, with detailed implementation steps for each.",
+      "reasoning": "Ensuring accessibility across a complex application requires attention to detail and expertise in WCAG standards. It affects every UI component and interaction, requiring both technical implementation and thorough testing."
+    },
+    {
+      "taskId": 25,
+      "taskTitle": "Implement Comprehensive Testing and Documentation",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down the testing and documentation implementation into subtasks covering unit tests, integration tests, end-to-end tests, performance testing, API documentation, and user documentation, with detailed implementation steps for each.",
+      "reasoning": "Creating comprehensive testing and documentation for a large system is time-consuming and requires multiple testing approaches. It involves setting up testing frameworks, writing tests for all features, and creating detailed documentation for different audiences."
+    },
+    {
+      "taskId": 9,
+      "taskTitle": "Implement Downloads Management - Search and Preview",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the implementation of Downloads Management - Search and Preview into subtasks, focusing on search functionality, file preview, download recommendations, bulk downloads, and UI components.",
+      "reasoning": "This task involves complex search algorithms, file handling for various formats, recommendation systems, and multiple UI components. It requires integration with existing systems and consideration for performance and security. The diverse set of features and API endpoints contribute to its high complexity."
+    },
+    {
+      "taskId": 10,
+      "taskTitle": "Enhance E-commerce - Product Catalog and Categories",
+      "complexityScore": 8,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down the 'Enhance E-commerce - Product Catalog and Categories' task into subtasks, focusing on: 1) Category system implementation, 2) Product variations and attributes, 3) Product listing and filtering API, 4) Product detail API enhancements, 5) UI components for catalog browsing, and 6) UI components for product details and variations. For each subtask, include specific deliverables, technical considerations, and testing requirements.",
+      "reasoning": "This task has high complexity (8/10) due to multiple interconnected features including hierarchical categories, product variations, filtering, and UI components. It requires both backend API development (7 endpoints) and frontend implementation (7 components). The task involves data modeling complexity for categories and variations, search/filter logic, and integration with existing systems. The comprehensive test strategy indicates significant business logic that needs verification. Breaking this into 6 subtasks allows logical separation of concerns while maintaining cohesive development units."
+    }
+  ]
+}

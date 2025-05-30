@@ -1,0 +1,11 @@
+# Task ID: 21
+# Title: Add support for array fields
+# Status: pending
+# Dependencies: 10, 11
+# Priority: medium
+# Description: Implement support for array fields in the admin panel
+# Details:
+Enhance the schema analysis to identify array fields. Update the EditView component generator to render appropriate UI for array fields, allowing users to add, edit, and remove items. Implement the necessary form handling logic for array fields.
+
+# Test Strategy:
+Test creating and editing records with array fields. Verify that items can be added, edited, and removed, and that the arrays are properly saved.

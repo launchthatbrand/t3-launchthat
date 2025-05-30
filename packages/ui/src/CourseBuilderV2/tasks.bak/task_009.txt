@@ -1,0 +1,18 @@
+# Task ID: 9
+# Title: Implement lesson drag-and-drop
+# Status: done
+# Dependencies: 8
+# Priority: high
+# Description: Add drag-and-drop functionality for reordering lessons
+# Details:
+Implement lesson drag-and-drop that:
+- Makes lessons draggable using @dnd-kit
+- Adds drag handles to lessons
+- Provides visual feedback during dragging (drag overlay)
+- Shows drop indicators between lessons
+- Handles optimistic UI updates during drag
+- Calls onReorderItems when a lesson is dropped in a new position
+- Prevents invalid drop operations
+
+# Test Strategy:
+Test dragging lessons up and down in the list. Verify visual feedback appears correctly. Confirm onReorderItems is called with correct parameters when a lesson is reordered.

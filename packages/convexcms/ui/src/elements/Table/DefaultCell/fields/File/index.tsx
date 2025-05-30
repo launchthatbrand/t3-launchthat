@@ -1,0 +1,66 @@
+"use client";
+
+import "./index.scss";
+
+import type {
+  ClientCollectionConfig,
+  DefaultCellComponentProps,
+  TextFieldClient,
+  UploadFieldClient,
+} from "@convexcms/core";
+import React from "react";
+import { isImage } from "@convexcms/core/shared";
+
+import { getBestFitFromSizes } from "../../../../../utilities/getBestFitFromSizes.js";
+import { Thumbnail } from "../../../../Thumbnail/index.js";
+
+const baseClass = "file";
+
+export interface FileCellProps
+  extends DefaultCellComponentProps<TextFieldClient | UploadFieldClient> {
+  readonly collectionConfig: ClientCollectionConfig;
+}
+
+export const FileCell: React.FC<FileCellProps> = ({
+  cellData: filename,
+  collectionConfig,
+  field,
+  rowData,
+}) => {
+  const fieldPreviewAllowed =
+    "displayPreview" in field ? field.displayPreview : undefined;
+  const previewAllowed =
+    fieldPreviewAllowed ?? collectionConfig.upload?.displayPreview ?? true;
+
+  if (previewAllowed) {
+    let fileSrc: string | undefined = rowData?.thumbnailURL ?? rowData?.url;
+
+    if (isImage(rowData?.mimeType)) {
+      fileSrc = getBestFitFromSizes({
+        sizes: rowData?.sizes,
+        thumbnailURL: rowData?.thumbnailURL,
+        url: rowData?.url,
+        width: rowData?.width,
+      });
+    }
+
+    return (
+      <div className={baseClass}>
+        <Thumbnail
+          className={`${baseClass}__thumbnail`}
+          collectionSlug={collectionConfig?.slug}
+          doc={{
+            ...rowData,
+            filename,
+          }}
+          fileSrc={fileSrc}
+          size="small"
+          uploadConfig={collectionConfig?.upload}
+        />
+        <span className={`${baseClass}__filename`}>{String(filename)}</span>
+      </div>
+    );
+  } else {
+    return <>{String(filename)}</>;
+  }
+};

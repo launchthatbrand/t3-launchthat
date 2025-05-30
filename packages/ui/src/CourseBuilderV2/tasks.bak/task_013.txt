@@ -1,0 +1,17 @@
+# Task ID: 13
+# Title: Implement remove functionality for lessons, topics, and quizzes
+# Status: done
+# Dependencies: 5
+# Priority: medium
+# Description: Add functionality to remove existing lessons, topics, and quizzes
+# Details:
+Implement remove functionality that:
+- Adds remove buttons to lessons, topics, and quizzes
+- Shows confirmation dialog before removal
+- Calls onRemoveItem with appropriate parameters (itemType, itemId)
+- Provides visual feedback during removal
+- Handles loading states while waiting for Promise resolution
+- Updates UI optimistically or waits for parent to provide updated data
+
+# Test Strategy:
+Test removing lessons, topics, and quizzes. Verify onRemoveItem is called with correct parameters. Test confirmation dialog and loading states.

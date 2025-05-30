@@ -1,0 +1,11 @@
+# Task ID: 10
+# Title: Implement Topic Management in Admin
+# Status: pending
+# Dependencies: 9
+# Priority: high
+# Description: Create the admin interface for managing topics within lessons, including different content types.
+# Details:
+Develop a topics listing page within the lesson context. Create forms for adding and editing topics with support for different content types (text, video embed). Implement topic ordering functionality. Create Convex queries and mutations for topic management. Ensure proper relationship with parent lessons is maintained.
+
+# Test Strategy:
+Test the complete CRUD flow for topics. Verify that topics are correctly associated with lessons. Test topic ordering functionality. Ensure different content types can be created and edited correctly.

@@ -1,0 +1,11 @@
+# Task ID: 11
+# Title: Implement ConvexListQueryProvider component
+# Status: pending
+# Dependencies: 10
+# Priority: high
+# Description: Create a custom React context provider for the real-time list query hook.
+# Details:
+Create a React context provider component that uses the useConvexRealtimeListQuery hook. Implement the same interface as Payload's default ListQueryProvider. Provide context values for list state, data, and update handlers. Handle collection-specific configurations. Ensure compatibility with Payload's ListView component.
+
+# Test Strategy:
+Create a test component that uses the provider and verify that it correctly provides context values to child components. Test integration with Payload's ListView component.

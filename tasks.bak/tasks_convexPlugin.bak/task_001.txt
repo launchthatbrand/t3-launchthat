@@ -1,0 +1,14 @@
+# Task ID: 1
+# Title: Set up project structure and dependencies
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Create the initial project structure for the Payload CMS + Convex integration, including the plugin and database adapter packages.
+# Details:
+Create the following directory structure:
+- packages/payloadplugins/convexPlugin/
+- packages/payloadplugins/convexDbAdapter/
+Initialize package.json files for both packages with appropriate dependencies including payload, convex, and necessary type definitions. Set up TypeScript configuration. Create README files with basic descriptions of each package's purpose.
+
+# Test Strategy:
+Verify that the project structure is correctly set up and all dependencies can be installed without errors. Ensure TypeScript compilation works without errors.

@@ -1,0 +1,17 @@
+# Task ID: 13
+# Title: Refactor Notifications Module
+# Status: done
+# Dependencies: 4, 5, 6
+# Priority: medium
+# Description: Reorganize and refactor notification related functions into the new structure
+# Details:
+1. Create notifications/ directory with notifications.ts and notifications.schema.ts.
+2. Move relevant queries, mutations, and actions to notifications.ts.
+3. Update internal references (api.*, internal.*) to reflect new file locations.
+4. Extract common notification logic into shared helper functions in notifications/lib/.
+5. Ensure consistent use of TypeScript types and Convex validators.
+6. Implement proper error handling with specific, informative error messages.
+7. Consider implementing a pub/sub pattern for real-time notifications using Convex's real-time features.
+
+# Test Strategy:
+Develop tests for notification creation, delivery, and read status updates. Verify real-time delivery and proper handling of notification preferences.

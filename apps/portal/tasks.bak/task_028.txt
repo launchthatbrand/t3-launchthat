@@ -1,0 +1,11 @@
+# Task ID: 28
+# Title: Implement Application-Wide Search
+# Status: pending
+# Dependencies: 17, 19
+# Priority: low
+# Description: Create a search functionality that works across courses, lessons, and topics.
+# Details:
+Develop a search component that can be used throughout the application. Implement Convex queries for searching across different entities. Create a search results page showing categorized results. Ensure search is performant and user-friendly.
+
+# Test Strategy:
+Test searching with various queries. Verify that results are correctly categorized and displayed. Test search performance with larger datasets. Ensure the search UI is intuitive and responsive.

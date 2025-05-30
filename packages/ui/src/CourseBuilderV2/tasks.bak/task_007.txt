@@ -1,0 +1,18 @@
+# Task ID: 7
+# Title: Implement in-place title editing
+# Status: done
+# Dependencies: 5
+# Priority: medium
+# Description: Add functionality to edit lesson, topic, and quiz titles in place
+# Details:
+Implement title editing that:
+- Converts titles to input fields when clicked
+- Saves changes on blur or Enter key press
+- Cancels changes on Escape key press
+- Calls onTitleChange with appropriate parameters (itemType, itemId, newTitle)
+- Provides visual feedback during editing
+- Prevents empty titles
+- Works for lessons, topics, and quizzes
+
+# Test Strategy:
+Test editing titles for lessons, topics, and quizzes. Verify onTitleChange is called with correct parameters. Test validation and cancellation functionality.

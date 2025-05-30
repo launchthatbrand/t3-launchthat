@@ -1,0 +1,20 @@
+# Task ID: 1
+# Title: Set up environment variables and dependencies
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Configure the necessary environment variables and install required dependencies for the Authorize.Net integration.
+# Details:
+1. Add the required environment variables to the `.env` file in `apps/nextjs`:
+   - `NEXT_PUBLIC_AUTHORIZENET_LOGINID`
+   - `NEXT_PUBLIC_AUTHORIZENET_CLIENTKEY`
+2. Install the `react-authorize-net` library using npm or yarn:
+   ```bash
+   cd apps/nextjs
+   npm install react-authorize-net
+   ```
+3. Verify the environment variables are properly loaded in the Next.js application.
+4. Determine if `local-ssl-proxy` is needed for local development and install if necessary.
+
+# Test Strategy:
+Verify environment variables are accessible in the Next.js application by creating a temporary test component that logs them (ensuring they're properly prefixed with NEXT_PUBLIC).

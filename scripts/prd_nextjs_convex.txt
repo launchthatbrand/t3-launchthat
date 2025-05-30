@@ -1,0 +1,242 @@
+# CRM NextJS + Convex Application PRD
+
+## Overview
+
+This document outlines the requirements for developing a modern CRM (Customer Relationship Management) application using the @portal package for the frontend (Next.js) and the @portalconvex package for the backend (Convex). The application will replace the existing React app while maintaining all its features and UI elements, replacing the ASP.NET backend with Convex for a more real-time and streamlined development experience.
+
+## Tech Stack
+
+- Frontend: @portal package (Next.js 14+ with App Router)
+- Backend: @portalconvex package (Convex)
+- UI Component Library: Shadcn/UI components from @ui package (based on Tailwind CSS and Radix UI)
+- Styling: Tailwind CSS
+- Form Handling: React Hook Form with Zod validation
+- Authentication: Clerk with JWT integration for Convex
+- State Management: React Context API and Convex's real-time data sync
+- Deployment: Vercel (frontend) and Convex Cloud (backend)
+
+## Features and Requirements
+
+### Authentication
+
+- User authentication using Clerk with email/password and social login options (Google, Microsoft, GitHub)
+- JWT integration between Clerk and Convex for secure authentication
+- User registration with email verification
+- User profile management
+- Password reset functionality
+- Role-based access control (Admin, Standard User)
+- Session management with secure token handling
+- Protected routes based on authentication state
+- OAuth provider integration for social logins
+- Environment-specific Clerk configuration for development and production
+
+### Contact Management
+
+- Create, view, edit, and delete contacts
+- Contact list with filtering, sorting, and search capabilities
+- Detailed contact view with all information
+- Contact history tracking
+- Tags for categorizing contacts
+- Custom fields for contacts
+- Bulk actions (delete, tag, export)
+- Import contacts from CSV/Excel
+- Contact merging to eliminate duplicates
+
+### Group Management
+
+- Create, view, edit, and delete groups
+- Add/remove contacts to/from groups
+- Group details view
+- Group member management
+- Group permissions
+- Group statistics
+- Group activities/events
+- Group messaging
+
+### Calendar and Events
+
+- Calendar view (day, week, month)
+- Create, edit, and delete events
+- Event categories and color-coding
+- Event notifications and reminders
+- Event details view
+- Calendar sharing
+- Recurring events
+- Calendar settings
+
+### E-commerce
+
+- Product catalog with categories
+- Product filtering and search
+- Product details view
+- Shopping cart functionality
+- Checkout process
+- Order history
+- Order status tracking
+- Product variants
+- Discount codes
+
+### Downloads
+
+- File upload and management
+- File preview
+- Download tracking
+- File categories
+- File permissions and sharing
+- Version control for files
+
+### Notifications
+
+- Real-time notifications
+- Notification preferences
+- Notification history
+- Notification categories
+- Mark as read/unread functionality
+
+### Custom Fields
+
+- Create custom fields for contacts
+- Different field types (text, number, date, dropdown, etc.)
+- Field validation
+- Custom field categories
+- Required vs. optional fields
+
+### Tags
+
+- Create, edit, and delete tags
+- Assign tags to contacts
+- Filter contacts by tags
+- Tag categories
+- Tag color-coding
+
+## Technical Requirements
+
+### Performance
+
+- Fast page loads (< 2s initial load, < 500ms for subsequent navigations)
+- Efficient data fetching with React Query
+- Proper caching strategies
+- Code splitting and lazy loading
+- Image optimization
+
+### Responsiveness
+
+- Mobile-first design approach
+- Support for all screen sizes (mobile, tablet, desktop)
+- Responsive UI components from the @ui package
+- Touch-friendly interface for mobile users
+
+### Accessibility
+
+- WCAG 2.1 AA compliance
+- Proper semantic HTML
+- ARIA attributes where necessary
+- Keyboard navigation
+- Screen reader compatibility
+- Color contrast compliance
+
+### Security
+
+- Secure authentication with Clerk
+- CSRF protection
+- XSS prevention
+- Input validation
+- Secure API endpoints
+- Rate limiting
+- Data encryption where necessary
+
+### SEO
+
+- Server-side rendering for critical pages
+- Proper meta tags
+- Structured data
+- Semantic HTML
+- Sitemap generation
+- Robots.txt configuration
+
+## Development Guidelines
+
+- Follow the monorepo structure with proper package organization
+- Use TypeScript for all code
+- Implement comprehensive error handling
+- Write unit tests for critical functionality
+- Document all components and functions
+- Follow a consistent code style (enforced by ESLint and Prettier)
+- Implement proper logging for debugging
+- Use feature branches and pull requests for development
+- Regular code reviews
+
+## UI/UX Requirements
+
+- Responsive design for all screen sizes
+- Consistent design language across all components
+- Accessible UI components following WCAG guidelines
+- Dark/light mode toggle
+- Clear navigation structure
+- Loading states for asynchronous operations
+- Error handling with user-friendly messages
+- Toast notifications for user actions
+- Confirmation dialogs for destructive actions
+
+## Migration Strategy
+- Develop the @portal + @portalconvex app alongside the existing app
+- Create data migration scripts for transferring data from ASP.NET to Convex
+- Test all features thoroughly before switching
+- Implement feature parity before going live
+- Provide documentation for team members on the new architecture
+
+## Performance Requirements
+- Page load times under 2 seconds
+- Optimized bundle sizes with code splitting
+- Server-side rendering for SEO and initial load performance
+- Database query optimization
+- Caching strategy for frequently accessed data
+- Image optimization
+
+## Accessibility Requirements
+- WCAG 2.1 AA compliance
+- Keyboard navigation support
+- Screen reader compatibility
+- Sufficient color contrast
+- Proper ARIA attributes
+- Focus management
+
+## Testing Requirements
+- Unit tests for components and functions
+- Integration tests for feature workflows
+- End-to-end tests for critical paths
+- Accessibility testing
+- Performance testing
+- Cross-browser compatibility testing
+
+## Deployment and DevOps
+- CI/CD pipeline with GitHub Actions
+- Automated testing before deployment
+- Staged deployments (dev, staging, production)
+- Environment configuration management
+- Monitoring and error tracking
+- Database backup and recovery plan
+
+## Post-Launch
+- Analytics implementation
+- User feedback collection
+- Performance monitoring
+- Iterative improvements based on usage data
+- Regular security audits
+
+## Timeline
+- Phase 1: Setup and Authentication (2 weeks)
+- Phase 2: Contact Management (2 weeks)
+- Phase 3: Groups and Calendar (3 weeks)
+- Phase 4: E-commerce and Downloads (3 weeks)
+- Phase 5: Notifications and Custom Fields (2 weeks)
+- Phase 6: Testing and Refinement (2 weeks)
+- Phase 7: Migration and Deployment (1 week)
+
+## Success Criteria
+- 100% feature parity with the existing React app
+- Improved performance metrics
+- Positive user feedback on the new interface
+- Successful data migration with no loss
+- Reduced backend maintenance overhead
+- Improved development velocity 

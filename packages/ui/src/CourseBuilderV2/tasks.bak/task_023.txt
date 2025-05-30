@@ -1,0 +1,70 @@
+# Task ID: 23
+# Title: Implement Admin Page for Creating New Unattached Topics
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Create a new admin page at /admin/courses/topics/new with a form that allows administrators to add new topics that are not yet attached to any course.
+# Details:
+Implement a new admin page accessible at the route /admin/courses/topics/new. The page should include:
+
+1. A form with the following fields:
+   - Topic title (required, text field)
+   - Topic description (optional, text area)
+   - Topic order/priority (optional, number field)
+   - Topic status (dropdown: active, inactive, draft)
+   - Any relevant metadata fields
+
+2. Form validation:
+   - Client-side validation for required fields
+   - Server-side validation to prevent duplicates
+   - Error messages displayed next to relevant fields
+
+3. Submit button that:
+   - Sends a POST request to the appropriate API endpoint
+   - Shows loading state during submission
+   - Handles success/error responses appropriately
+
+4. After successful submission:
+   - Display a success message
+   - Either clear the form for another entry or redirect to a topic list page
+
+5. Navigation:
+   - Include breadcrumbs for navigation hierarchy
+   - Add a cancel button that returns to the topics list
+
+6. Backend requirements:
+   - Create necessary API endpoint to handle the form submission
+   - Implement data validation and sanitization
+   - Store the new topic in the database with 'unattached' status
+
+Ensure the page follows the existing admin UI design patterns and is responsive for different screen sizes.
+
+# Test Strategy:
+1. Unit Tests:
+   - Test form validation logic for required fields
+   - Test API endpoint with valid and invalid data
+   - Test database operations for creating new topics
+
+2. Integration Tests:
+   - Verify the form submission process end-to-end
+   - Test that validation errors are properly displayed
+   - Confirm successful submissions create database entries
+
+3. UI/UX Testing:
+   - Verify form layout matches design specifications
+   - Test responsive behavior on different screen sizes
+   - Ensure error states are clearly visible
+   - Verify success messages are displayed appropriately
+
+4. Functional Testing:
+   - Submit a new topic and verify it appears in the topics list
+   - Verify the topic is marked as 'unattached'
+   - Test the cancel button returns to the expected page
+   - Verify breadcrumb navigation works correctly
+   - Test with various input combinations (all fields, minimal fields)
+
+5. Edge Cases:
+   - Test with very long text inputs
+   - Test with special characters in fields
+   - Test concurrent submissions
+   - Test with network interruptions during submission

@@ -1,0 +1,11 @@
+# Task ID: 25
+# Title: Implement Post-Payment Access Rights
+# Status: pending
+# Dependencies: 23
+# Priority: high
+# Description: Set up the system for granting access to purchased courses after successful payment.
+# Details:
+Create a Convex mutation for granting course access rights to users. Implement the logic to associate users with purchased courses. Ensure this process is triggered automatically after successful payment. Handle edge cases such as failed payments or retries.
+
+# Test Strategy:
+Test that users gain access to courses after successful payment. Verify that access rights are correctly recorded in the database. Test edge cases such as payment failures or retries.

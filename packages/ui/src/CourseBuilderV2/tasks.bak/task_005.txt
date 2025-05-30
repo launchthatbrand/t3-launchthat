@@ -1,0 +1,16 @@
+# Task ID: 5
+# Title: Implement basic quiz rendering within topics
+# Status: done
+# Dependencies: 4
+# Priority: high
+# Description: Create the UI for rendering quizzes nested within their parent topics
+# Details:
+Implement quiz rendering that:
+- Maps through quizzes within each topic
+- Shows quiz titles
+- Includes a placeholder for the drag handle
+- Styles quizzes with appropriate indentation and visual hierarchy
+- Only renders quizzes when parent topic is expanded
+
+# Test Strategy:
+Render the component with sample lesson, topic, and quiz data. Verify quizzes appear correctly nested under topics and only show when parent topic is expanded.

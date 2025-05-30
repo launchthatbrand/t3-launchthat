@@ -1,0 +1,94 @@
+# Task ID: 14
+# Title: Implement State Management
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Set up a state management solution for the application
+# Details:
+Implement a state management solution using Zustand to manage application state:
+
+1. Create a store for managing UI state (selected board/folder, sidebar collapse state, etc.)
+2. Create stores or hooks for managing modal states
+
+```typescript
+// store/uiStore.ts
+import { create } from 'zustand';
+
+type SelectedItem = {
+  type: 'board' | 'folder';
+  id: string;
+} | null;
+
+interface UIState {
+  sidebarCollapsed: boolean;
+  selectedItem: SelectedItem;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  setSelectedItem: (item: SelectedItem) => void;
+}
+
+export const useUIStore = create<UIState>((set) => ({
+  sidebarCollapsed: false,
+  selectedItem: null,
+  setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+  setSelectedItem: (item) => set({ selectedItem: item }),
+}));
+```
+
+```typescript
+// store/modalStore.ts
+import { create } from 'zustand';
+
+interface ModalState {
+  createBoardModal: {
+    isOpen: boolean;
+    folderId?: string;
+  };
+  createFolderModal: {
+    isOpen: boolean;
+  };
+  addColumnModal: {
+    isOpen: boolean;
+    boardId: string;
+  };
+  openCreateBoardModal: (folderId?: string) => void;
+  closeCreateBoardModal: () => void;
+  openCreateFolderModal: () => void;
+  closeCreateFolderModal: () => void;
+  openAddColumnModal: (boardId: string) => void;
+  closeAddColumnModal: () => void;
+}
+
+export const useModalStore = create<ModalState>((set) => ({
+  createBoardModal: {
+    isOpen: false,
+  },
+  createFolderModal: {
+    isOpen: false,
+  },
+  addColumnModal: {
+    isOpen: false,
+    boardId: '',
+  },
+  openCreateBoardModal: (folderId) => set({
+    createBoardModal: { isOpen: true, folderId },
+  }),
+  closeCreateBoardModal: () => set({
+    createBoardModal: { isOpen: false },
+  }),
+  openCreateFolderModal: () => set({
+    createFolderModal: { isOpen: true },
+  }),
+  closeCreateFolderModal: () => set({
+    createFolderModal: { isOpen: false },
+  }),
+  openAddColumnModal: (boardId) => set({
+    addColumnModal: { isOpen: true, boardId },
+  }),
+  closeAddColumnModal: () => set({
+    addColumnModal: { isOpen: false, boardId: '' },
+  }),
+}));
+```
+
+# Test Strategy:
+Test the state management by verifying that UI components correctly respond to state changes. Test that the sidebar collapse state works correctly. Test that selecting a board or folder updates the UI appropriately. Test that modal open/close functions work correctly.

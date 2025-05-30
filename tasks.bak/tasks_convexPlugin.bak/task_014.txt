@@ -1,0 +1,11 @@
+# Task ID: 14
+# Title: Implement production deployment workflow
+# Status: pending
+# Dependencies: 13
+# Priority: medium
+# Description: Set up the production deployment workflow for schema synchronization.
+# Details:
+Create build scripts that ensure the final schema file is generated. Implement a deployment script that runs 'convex push' before starting the application server. Set up environment-specific configuration for development and production. Create documentation for the production deployment workflow.
+
+# Test Strategy:
+Test the production deployment workflow by simulating a production build and deployment. Verify that the schema is correctly pushed to Convex before the application starts.

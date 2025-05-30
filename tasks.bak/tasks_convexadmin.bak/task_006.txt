@@ -1,0 +1,11 @@
+# Task ID: 6
+# Title: Implement admin panel bootstrapping
+# Status: pending
+# Dependencies: 3, 4, 5
+# Priority: high
+# Description: Create the core structure for the admin panel based on the analyzed schema
+# Details:
+Modify @convexcms/next to load the analyzed Convex schema structure. Create a root layout for the admin panel that includes the navigation sidebar. The sidebar should list the discovered Convex tables as 'Collections'. Implement basic styling using Tailwind CSS and existing UI components.
+
+# Test Strategy:
+Verify that the admin panel loads correctly and displays the collections from the Convex schema.

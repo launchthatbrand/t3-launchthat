@@ -1,0 +1,20 @@
+# Task ID: 5
+# Title: Create Convex client integration for Next.js
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Refactor the PayloadProvider in packages/convexcms/ui/src/providers to ConvexCmsProvider, implement schema parsing to generate convexadmin.config.ts and convexadmin.importMap.ts in the target app's .generated directory, and integrate these generated files into the provider.
+# Details:
+Refactor the PayloadProvider in packages/convexcms/ui/src/providers to create ConvexCmsProvider with the following changes:
+1. Rename PayloadProvider to ConvexCmsProvider for the root layout level integration
+2. Implement schema parsing functionality to automatically generate convexadmin.config.ts and convexadmin.importMap.ts in the target application's .generated directory
+3. Modify the provider to properly initialize and use these generated configuration files
+4. Ensure that Convex queries and mutations can be used throughout the application
+5. Configure proper error handling for Convex operations
+
+# Test Strategy:
+1. Verify that the renamed ConvexCmsProvider works correctly at the root layout level
+2. Test the schema parsing functionality to ensure it correctly generates convexadmin.config.ts and convexadmin.importMap.ts in the .generated directory
+3. Confirm that the generated files are properly integrated with the provider
+4. Test basic Convex operations (query, mutation) to verify that the integration is working correctly
+5. Verify error handling for various Convex operation scenarios

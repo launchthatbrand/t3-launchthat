@@ -1,0 +1,49 @@
+# Task ID: 4
+# Title: Implement Core Layout Components
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Create the main layout components including Header, Sidebar, and Main Content Area
+# Details:
+Create the following components:
+
+1. Header component (`components/layout/Header.tsx`):
+```tsx
+import { FC } from 'react';
+import { Button } from '@ui/components/ui/button';
+
+const Header: FC = () => {
+  return (
+    <header className="h-14 border-b flex items-center justify-between px-4">
+      <div className="font-bold text-xl">MonClone</div>
+      <div className="flex items-center gap-4">
+        <div className="w-64">
+          {/* Placeholder for search */}
+          <input 
+            type="text" 
+            placeholder="Search..." 
+            className="w-full px-3 py-1 border rounded-md"
+          />
+        </div>
+        <Button variant="ghost" size="sm">
+          {/* Placeholder for user profile */}
+          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+            U
+          </div>
+        </Button>
+      </div>
+    </header>
+  );
+};
+
+export default Header;
+```
+
+2. Sidebar component (`components/layout/Sidebar.tsx`) with collapsible functionality
+3. Main Content Area component (`components/layout/MainContent.tsx`)
+4. Root Layout component (`app/layout.tsx`) that combines these components
+
+Ensure the sidebar is collapsible and the main content area adjusts accordingly. Use Shadcn UI components where appropriate.
+
+# Test Strategy:
+Test the layout components in various viewport sizes to ensure responsive behavior. Verify that the sidebar collapses and expands correctly. Check that the header displays correctly with placeholders for search and user profile.

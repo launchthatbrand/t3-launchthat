@@ -1,0 +1,15 @@
+# Task ID: 6
+# Title: Refactor User Authentication and Authorization
+# Status: done
+# Dependencies: 5
+# Priority: high
+# Description: Standardize user authentication and permission checking across the backend
+# Details:
+1. Implement or update hasPermission and requirePermission utilities in permissions/lib/.
+2. Ensure all functions requiring authentication use the getAuthenticatedUserId helper.
+3. Replace direct calls to ctx.auth.getUserIdentity() with the standardized helper.
+4. Update all permission checks to use hasPermission or requirePermission utilities.
+5. Implement role-based access control using Convex's access control features if not already in place.
+
+# Test Strategy:
+Create a comprehensive test suite for authentication and authorization, covering various user roles and permission scenarios.

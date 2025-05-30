@@ -1,0 +1,42 @@
+# Task ID: 20
+# Title: Implement Backend Topic Attachment Mutation
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Create a Convex mutation function that allows attaching an existing Topic to a Lesson and adds it to the lesson's topic order array.
+# Details:
+Implement a new Convex mutation called `attachTopicToLesson` that will:  
+
+1. Accept two parameters: `lessonId` (ID of the lesson) and `topicId` (ID of the topic to attach)
+2. Validate that both the lesson and topic exist in the database
+3. Check if the topic is already attached to the lesson to prevent duplicates
+4. Update the lesson document by adding the topicId to the lesson's `topicOrder` array
+5. The function should handle the following edge cases:
+   - If the lesson doesn't exist, throw a descriptive error
+   - If the topic doesn't exist, throw a descriptive error
+   - If the topic is already in the lesson's topicOrder, either return early or update its position
+6. Implement proper access control to ensure only authorized users can attach topics
+7. Return the updated lesson object after successful attachment
+8. Add appropriate TypeScript types for parameters and return values
+9. Include error handling with clear error messages for debugging
+
+The mutation should be placed in the appropriate Convex schema file, likely in the lessons or topics module.
+
+# Test Strategy:
+1. Unit test the `attachTopicToLesson` mutation with the following scenarios:
+   - Test successful attachment of a topic to a lesson
+   - Test attempting to attach a non-existent topic (should throw an error)
+   - Test attempting to attach to a non-existent lesson (should throw an error)
+   - Test attempting to attach a topic that's already in the lesson's topicOrder
+   - Test permissions by attempting to call the mutation with different user roles
+
+2. Integration test:
+   - Create a test lesson and topic in the database
+   - Call the mutation to attach them
+   - Verify the lesson document is updated correctly with the topic in its topicOrder
+   - Verify the UI correctly displays the attached topic in the lesson view
+
+3. Manual testing:
+   - Use the Convex dashboard to directly call the mutation with valid parameters
+   - Verify the database records are updated as expected
+   - Test the full flow in the application UI to ensure topics can be attached to lessons properly

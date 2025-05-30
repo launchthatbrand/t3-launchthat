@@ -1,0 +1,15 @@
+# Task ID: 6
+# Title: Create user feedback components
+# Status: done
+# Dependencies: 5
+# Priority: medium
+# Description: Implement components to display success and error messages to the user after payment submission.
+# Details:
+1. Create a `PaymentSuccess` component that displays a confirmation message
+2. Create a `PaymentError` component that displays error details and provides a retry option
+3. Conditionally render these components in the PaymentForm based on the payment status
+4. Include a loading state indicator during payment processing
+5. Add a "Try Again" button in the error component that resets the form
+
+# Test Strategy:
+Test each feedback component in isolation with various messages. Verify they render correctly and that the retry functionality works as expected.

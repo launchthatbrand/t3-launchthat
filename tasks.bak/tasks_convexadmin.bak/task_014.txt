@@ -1,0 +1,11 @@
+# Task ID: 14
+# Title: Create basic dashboard page
+# Status: pending
+# Dependencies: 6
+# Priority: low
+# Description: Implement a simple dashboard as the admin panel home page
+# Details:
+Create a basic dashboard page that serves as the home page for the admin panel (/admin). Include summary information about the collections, such as the number of records in each collection. Add quick links to create new records in each collection.
+
+# Test Strategy:
+Verify that the dashboard displays correctly and that the summary information and links work as expected.

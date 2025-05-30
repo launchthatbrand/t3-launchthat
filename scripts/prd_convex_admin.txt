@@ -1,0 +1,131 @@
+# Product Requirements Document: ConvexAdmin - Refactoring Payload for Convex
+
+## 1. Introduction
+
+This document outlines the requirements for refactoring the existing Payload CMS codebase (cloned into `packages/convexcms/*` within the `t3-launchthat` monorepo) to integrate deeply with the Convex backend platform. The primary goal is to create "ConvexAdmin", a system where a functional admin panel is automatically generated based on the configuration and schema defined within a Convex project (located in `apps/wsa`). This refactor leverages the existing Payload UI components and Next.js integration while replacing the core data persistence, fetching, and backend logic with Convex equivalents. The v1 prototype (`docs/repomix-output-launchthatbrand-convex.xml`) serves as an initial conceptual reference.
+
+## 2. Goals
+
+- Adapt the cloned Payload CMS packages (`@convexcms/core`, `@convexcms/ui`, `@convexcms/next`) to run within a Next.js application powered by a Convex backend.
+- Develop a mechanism to dynamically generate admin panel interfaces (List View, Edit View) for each table defined in the Convex `schema.ts`.
+- Prioritize getting a core, auto-generated admin panel operational, initially commenting out or mocking non-essential Payload features.
+- Maintain the existing monorepo and package structure (`packages/convexcms/*`).
+- Keep the same type structure for core logic where possible. If we need to create a new type, comment out the existing type to keep it for documentation vs modifying directly.
+- Reuse existing UI components from `@convexcms/ui` and potentially `@acme/ui` where applicable.
+- Structure the work in distinct phases: Core Admin Generation, Frontend Generation, and Feature Reintegration.
+
+## 3. Phases
+
+### 3.1. Phase 1: Core Admin Generation & Bootstrapping
+
+**Goal:** Get the `@convexcms/next` application running, displaying a basic, functional admin panel automatically generated from the Convex schema (`apps/wsa/convex/schema.ts`).
+
+**Focus:** Stability, core data display/editing, minimal feature set. Aggressively comment out/mock non-essential original Payload functionality.
+
+### 3.2. Phase 2: Frontend Generation
+
+**Goal:** Implement a mechanism to auto-generate basic frontend views or components based on the Convex schema/config, leveraging a dynamic routing structure within the Next.js app.
+
+**Focus:** Dynamic routing (`app/(frontend)/admin/[[...segments]]/page.tsx`), rendering basic content based on config.
+
+### 3.3. Phase 3: Feature Reintegration & Refinement
+
+**Goal:** Systematically restore previously commented-out Payload features, refactoring their implementations to use Convex functions (queries, mutations, actions) and data structures.
+
+**Focus:** Re-implementing features like complex field types, versioning, drafts, access control, GraphQL, etc., using Convex paradigms.
+
+## 4. Functional Requirements (by Phase)
+
+### 4.1. Phase 1 Requirements
+
+-   **Convex Schema Analysis:**
+    -   Implement logic (likely within `@convexcms/core` or initially directly in `@convexcms/next`) to parse and interpret the `apps/wsa/convex/schema.ts` file.
+    -   This mechanism must identify table names and their field definitions (basic types like string, number, boolean initially).
+    -   *Consideration:* Explore if runtime introspection of the Convex client/schema is possible as a more robust alternative to file parsing. Start with file parsing if simpler.
+-   **Admin Panel Bootstrapping:**
+    -   Modify `@convexcms/next` (specifically its initialization and root layout/page components) to load the analyzed Convex schema structure.
+    -   Render a basic admin navigation sidebar listing the discovered Convex tables as "Collections".
+-   **Dynamic Collection Routing:**
+    -   Implement routing within the admin panel (e.g., `/admin/[collectionSlug]`, `/admin/[collectionSlug]/[documentId]`) based on the tables identified from the Convex schema.
+-   **Auto-Generated ListView:**
+    -   For each route `/admin/[collectionSlug]`, automatically generate a list view component.
+    -   This component should use Convex `useQuery` to fetch and display records from the corresponding Convex table.
+    -   Display data in a simple table format using `@convexcms/ui` or `@acme/ui` components.
+    -   Include links to the EditView for each record.
+    -   Defer complex features like filtering, advanced sorting, and bulk actions.
+-   **Auto-Generated EditView:**
+    -   For each route `/admin/[collectionSlug]/[documentId]` (editing) and potentially `/admin/[collectionSlug]/create` (creating), automatically generate a form view.
+    *   For editing, use `useQuery` to fetch the specific document based on `documentId`.
+    *   Render form fields corresponding to the basic types identified in the Convex schema (string -> text input, number -> number input, boolean -> checkbox/switch).
+    *   Use `@convexcms/ui` or `@acme/ui` form components.
+    *   On submit, use Convex `useMutation` to create or update the record in the corresponding Convex table.
+    *   Defer complex field types (relationships, arrays, objects, rich text, custom components).
+-   **Code Commenting & Mocking:**
+    -   Systematically review the `@convexcms/*` packages.
+    -   Identify and comment out code related to non-core features using a consistent marker (e.g., `// TODO: CONVEX_REFACTOR_PHASE_3`). This includes:
+        -   Payload-specific authentication and access control logic (replace with basic Convex auth check if needed for initial loading).
+        -   GraphQL API generation and resolvers (`@convexcms/graphql`).
+        -   Payload hooks (beforeChange, afterChange, etc., beyond basic CRUD triggers if any exist).
+        -   Versioning, drafts, publishing workflows.
+        -   Internationalization (i18n).
+        -   Complex field types in UI and core logic.
+        -   Payload config file (`payload.config.ts`) sections unrelated to basic UI or schema definition (e.g., `endpoints`, `collections` definitions if they conflict with Convex source-of-truth).
+    -   Provide minimal mocks (e.g., empty functions, functions returning `null` or `Promise.resolve()`) for commented-out code where necessary to allow the application to compile and run.
+
+### 4.2. Phase 2 Requirements
+
+-   **Frontend Dynamic Routing:**
+    -   Implement the server component route structure `app/(frontend)/admin/[[...segments]]/page.tsx` as specified.
+    -   Handle the resolution of `params.segments`.
+-   **Frontend Rendering Component:**
+    -   Create a client component (`FrontendRootPage`) that accepts the analyzed Convex config/schema structure and `segments`.
+    -   Implement basic logic to render content dynamically based on the segments, potentially fetching data from Convex using `useQuery`. (Detailed rendering logic TBD).
+
+### 4.3. Phase 3 Requirements
+
+-   **Feature Reintegration:**
+    -   Iteratively uncomment features disabled in Phase 1.
+-   **Core Logic Refactoring:**
+    -   Replace Payload's internal data handling APIs with direct Convex function calls (`ctx.db`, `ctx.runQuery`, `ctx.runMutation`, `ctx.runAction`).
+    -   Refactor Payload hooks logic into Convex functions or appropriate client-side logic interacting with Convex.
+    -   Implement robust authentication and access control using Convex `auth` and function modifiers.
+-   **Complex Field Type Support:**
+    -   Implement UI components and backend logic (in Convex functions) to handle relationships (mapping to Convex `Id` types), arrays/blocks (mapping to Convex arrays/objects), rich text, etc.
+-   **GraphQL API:**
+    -   Refactor or rebuild the GraphQL layer (`@convexcms/graphql`) to resolve queries and mutations using the Convex backend.
+-   **Versioning/Drafts:**
+    -   Implement versioning or draft/publish workflows using appropriate patterns within Convex (e.g., separate tables, status fields, history tracking).
+
+## 5. Non-Functional Requirements
+
+-   **Code Reusability:** Leverage existing code from the cloned Payload packages (`@convexcms/*`) wherever feasible, modifying only as needed for Convex integration.
+-   **Maintainability:** Keep code organized within the existing package structure. Use clear comments for refactored sections and commented-out code.
+-   **Consistency:** Utilize UI components from `@convexcms/ui` and `@acme/ui` to maintain visual consistency.
+-   **Incremental Development:** Focus on achieving the goals of each phase before moving to the next. Prioritize a working, stable (though minimal) system in Phase 1.
+
+## 6. Technical Approach & Details
+
+-   **Target Platform:** Convex Backend (`apps/wsa`)
+-   **Frontend Framework:** Next.js (`@convexcms/next`)
+-   **Core Logic:** `@convexcms/core` (adapted for Convex)
+-   **UI Components:** `@convexcms/ui`, `@acme/ui`
+-   **Styling:** Tailwind CSS
+-   **Primary Data Source & API:** Convex (`apps/wsa/convex/schema.ts`, `apps/wsa/convex/**/*.ts`)
+-   **Schema Source of Truth:** `apps/wsa/convex/schema.ts`. The system must derive its structure from this file.
+-   **Schema Analysis Method:** Initial focus on file parsing (e.g., using AST parsers like `ts-morph` or simpler regex if sufficient), with potential future integration with Convex's internal mechanisms if feasible.
+-   **Configuration:** Minimize reliance on a separate Payload-style config (`payload.config.ts`). Configuration needed for the admin UI (e.g., custom components, view options) might need a new structure or be derived alongside schema analysis.
+
+## 7. Assumptions
+
+-   The Convex backend in `apps/wsa` is functional and contains a defined `schema.ts`.
+-   The cloned Payload code in `packages/convexcms/*` represents a functional version of Payload CMS (prior to refactoring).
+-   Developer has familiarity with both Payload CMS architecture and Convex concepts.
+-   Necessary environment variables for Convex (`CONVEX_URL`, `CONVEX_DEPLOYMENT`) are configured for the `@convexcms/next` application.
+
+## 8. Out of Scope (Initially)
+
+-   Deployment strategies for the refactored application.
+-   Direct database migrations from a Payload database to Convex.
+-   Highly complex custom field types or intricate access control logic (defer to Phase 3).
+-   Performance optimization (address baseline functionality first).
+-   Detailed UI/UX design beyond basic functional views. 

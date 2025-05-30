@@ -1,0 +1,40 @@
+# Task ID: 11
+# Title: Enhance E-commerce - Shopping Cart Implementation
+# Status: done
+# Dependencies: 10
+# Priority: high
+# Description: Develop a comprehensive shopping cart system with persistent storage and real-time updates.
+# Details:
+Implement the following features for the shopping cart:
+1. Persistent cart across sessions
+2. Real-time updates using Convex
+3. Support for product variations
+4. Cart summary with subtotal, tax, and shipping estimates
+5. Save for later functionality
+
+API endpoints to implement:
+- `getCart(userId)`
+- `addToCart(userId, productId, quantity, variationId)`
+- `updateCartItem(userId, itemIndex, updates)`
+- `removeFromCart(userId, itemIndex)`
+- `clearCart(userId)`
+- `moveToSavedForLater(userId, itemIndex)`
+- `moveToCart(userId, savedItemIndex)`
+
+UI components to implement:
+- CartIcon (with item count)
+- CartDropdown
+- CartPage
+- CartItemCard
+- CartSummary
+- SavedItemsList
+- AddToCartButton
+
+# Test Strategy:
+1. Unit tests for all API endpoints
+2. Test cart persistence across page refreshes and sessions
+3. Verify real-time updates when items are added or removed
+4. Test cart with various product types (physical, digital, variations)
+5. Validate cart calculations (subtotal, tax, shipping)
+6. Test save for later functionality
+7. Verify inventory checks when adding to cart

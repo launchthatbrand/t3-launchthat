@@ -1,0 +1,16 @@
+# Task ID: 7
+# Title: Refactor E-commerce Module
+# Status: done
+# Dependencies: 4, 5, 6
+# Priority: medium
+# Description: Reorganize and refactor e-commerce related functions into the new structure
+# Details:
+1. Create ecommerce/ directory with subdirectories for cart, checkout, orders, products, and variations.
+2. Move relevant queries, mutations, and actions to appropriate files.
+3. Update internal references (api.*, internal.*) to reflect new file locations.
+4. Extract common e-commerce logic into shared helper functions in ecommerce/lib/.
+5. Ensure consistent use of TypeScript types and Convex validators.
+6. Implement proper error handling with specific, informative error messages.
+
+# Test Strategy:
+Develop a set of integration tests covering key e-commerce flows (add to cart, checkout, order placement). Ensure all existing functionality remains intact.

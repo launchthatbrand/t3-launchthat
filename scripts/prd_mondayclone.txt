@@ -1,0 +1,140 @@
+Project: Monday.com Clone (MonClone)
+
+Version: 0.1.0
+
+Author: AI Assistant
+
+Date: {{YYYY-MM-DD}} (Taskmaster will fill this)
+
+**1. Overview**
+
+This document outlines the requirements for MonClone, a simplified web application inspired by Monday.com. The primary goal is to create a highly visual and intuitive platform for project and task management, allowing users to organize work into boards, groups, and items with customizable columns. The application will be built using Next.js and leverage Shadcn UI components from the local `@ui` monorepo package.
+
+**2. Goals**
+
+*   Develop a functional proof-of-concept of a Monday.com-like application.
+*   Implement core features: boards, folders, groups, items, and customizable columns.
+*   Utilize Shadcn UI components for a modern and consistent user interface.
+*   Ensure a responsive design suitable for desktop usage.
+*   Lay a foundation for future expansion with more advanced features.
+
+**3. Target Audience**
+
+*   Individuals and small teams looking for a visual way to manage projects and tasks.
+*   Users familiar with spreadsheet-like interfaces for task tracking.
+
+**4. Key Features**
+
+**4.1. Core Layout**
+
+*   **Header:**
+    *   Displays the application title/logo (e.g., "MonClone").
+    *   Placeholder for user profile/settings access.
+    *   Placeholder for global search functionality.
+*   **Sidebar:**
+    *   Collapsible to maximize content viewing area.
+    *   "Add New" section prominently displayed at the top, featuring a "+" icon.
+        *   Provides options to add a new "Board".
+        *   Provides options to add a new "Folder".
+    *   Hierarchical tree-like display of Boards and Folders:
+        *   Folders can be expanded/collapsed to show/hide contained Boards.
+        *   Boards can exist as top-level entities or be nested within Folders.
+    *   Visual indication (e.g., highlighting) of the currently active/selected Board or Folder.
+*   **Main Content Area:**
+    *   Dynamically renders the content of the selected Board.
+    *   Provides contextual actions and views based on the current selection (Board, Group, Item).
+
+**4.2. Board Management**
+
+*   **Creation:** Users can create new Boards via the sidebar "Add New" functionality.
+*   **Structure:** Boards are the primary organizational units, visually resembling a table or spreadsheet.
+*   **Default New Board:**
+    *   Automatically populated with two default "Groups" (e.g., "Group 1", "Group 2").
+    *   Each default Group contains three default "Items" (e.g., "Item 1", "Item 2", "Item 3").
+*   **Naming:** Users can rename Boards.
+*   **Deletion:** Users can delete Boards (with a confirmation prompt). Deleting a board also deletes all its groups and items.
+
+**4.3. Folder Management**
+
+*   **Creation:** Users can create new Folders via the sidebar "Add New" functionality.
+*   **Organization:** Folders serve as containers for Boards, allowing for higher-level organization.
+*   **Naming:** Users can rename Folders.
+*   **Deletion:** Users can delete Folders (with a confirmation prompt). Deleting a folder also deletes all boards and their contents within it.
+*   **Display:** Folders appear in the sidebar and can be expanded to show their boards.
+
+**4.4. Group Management (within a Board)**
+
+*   **Purpose:** Groups segment Items within a Board, providing logical sections.
+*   **Creation:** Users can add new Groups to an existing Board.
+*   **Naming:** Users can rename Groups.
+*   **Reordering:** (Future Consideration) Ability to drag and drop Groups to reorder them within a Board.
+*   **Deletion:** Users can delete Groups (with a confirmation prompt). Deleting a group also deletes all its items.
+*   **Visuals:** Each Group can have a distinct color accent, user-selectable from a predefined palette.
+
+**4.5. Item Management (Rows/Records within a Group)**
+
+*   **Purpose:** Items represent individual tasks, records, or entities within a Group.
+*   **Creation:** Users can add new Items to a Group.
+*   **Primary Identifier:** Each Item has a default primary "Name" column (text type).
+*   **Editing:** Item data can be edited inline directly within the board's table/grid view.
+*   **Deletion:** Users can delete Items.
+*   **Reordering:** (Future Consideration) Ability to drag and drop Items to reorder them within a Group.
+
+**4.6. Column Management (Fields for Items)**
+
+*   **Customization:** Boards feature a customizable set of columns that define the data structure for all Items within that Board.
+*   **Default Columns (for a new Board, in addition to Item Name):**
+    *   "Owner": Placeholder for user assignment (e.g., dropdown of users).
+    *   "Status": Dropdown with configurable options per board (e.g., "To Do", "In Progress", "Done", "Blocked").
+    *   "Due Date": Date picker.
+*   **Adding New Columns:** Users can add new columns to a Board.
+    *   When adding, the user must select a column type from a predefined list.
+*   **Supported Column Types:**
+    *   Text (single-line, for brief text input)
+    *   Long Text (multi-line, for descriptions or notes)
+    *   Number (for numerical values)
+    *   Email (validates for email format)
+    *   Phone (for phone numbers)
+    *   Date (date picker input)
+    *   Dropdown (user defines a list of selectable options)
+    *   User (allows assigning a user from a list; placeholder for user system integration)
+    *   Checkbox (boolean true/false)
+    *   Link (for URLs)
+*   **Naming:** Users can rename columns.
+*   **Reordering:** (Future Consideration) Ability to drag and drop columns to change their order in the Board view.
+*   **Deletion:** Users can delete columns (with a confirmation prompt, warning that data in that column for all items will be lost).
+
+**5. Data Persistence**
+
+*   All user-created data, including Boards, Folders, Groups, Items, their respective data, and column configurations, must be durably persisted.
+*   (The specific database technology will be determined during the technical design phase. Convex is a potential candidate for backend services if applicable).
+
+**6. Technical Stack & Considerations**
+
+*   **Monorepo:** The project resides within a `pnpm` monorepo.
+*   **Frontend Application:** `apps/mondayclone`
+*   **Framework:** Next.js (using the App Router).
+*   **UI Components:** Shadcn UI components, sourced from the local `packages/ui` package.
+*   **Styling:** Tailwind CSS.
+*   **State Management:** To be determined (e.g., React Context, Zustand, Jotai).
+*   **API Layer:** To be determined (e.g., tRPC, Next.js API Routes). If backend tasks are generated, Convex is a preferred technology as per user rules.
+
+**7. Non-Functional Requirements**
+
+*   **Usability:** The application should be intuitive and easy to navigate.
+*   **Responsiveness:** The primary target is desktop browsers, but the layout should be reasonably adaptable.
+*   **Performance:** Boards with a moderate number of items and columns should load and interact smoothly.
+*   **Consistency:** UI elements and interactions should be consistent throughout the application.
+
+**8. Future Considerations (Out of Scope for v0.1.0)**
+
+*   Real-time collaboration.
+*   Advanced filtering and sorting of items.
+*   User authentication and authorization.
+*   Drag-and-drop reordering for groups, items, and columns.
+*   File attachments to items.
+*   Activity logs and notifications.
+*   Board templates.
+*   Integrations with other services.
+*   Dashboard views and reporting.
+*   Mobile responsiveness. 

@@ -1,0 +1,11 @@
+# Task ID: 10
+# Title: Create useConvexRealtimeListQuery hook
+# Status: pending
+# Dependencies: 8
+# Priority: high
+# Description: Develop a custom React hook for real-time data subscription in list views.
+# Details:
+Create a React hook that manages list view state (filters, sorting, pagination). Implement state synchronization with URL query parameters. Use Convex's useQuery hook for real-time data subscription. Transform Convex query results to the structure expected by Payload's ListView. Provide state update handlers (setSort, setPage, setWhere, etc.). Handle loading and error states.
+
+# Test Strategy:
+Create a test component that uses the hook and verify that it correctly fetches and updates data in real-time. Test state updates and verify that they correctly trigger query updates.

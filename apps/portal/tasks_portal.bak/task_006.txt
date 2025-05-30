@@ -1,0 +1,36 @@
+# Task ID: 6
+# Title: Implement Notification System - Core Functionality
+# Status: done
+# Dependencies: 1, 2
+# Priority: high
+# Description: Develop the core notification system to keep users informed of relevant activities across the platform.
+# Details:
+Implement the following features for the notification system:
+1. In-app notification center with read/unread states
+2. Support for different notification types (activity, group, system, e-commerce, event)
+3. Notification preferences management
+4. Real-time notification delivery using Convex
+
+API endpoints to implement:
+- `createNotification(userId, type, title, content, sourceId, sourceType, actionUrl)`
+- `markNotificationAsRead(notificationId)`
+- `markAllNotificationsAsRead(userId)`
+- `getNotifications(userId, filters, pagination)`
+- `updateNotificationPreferences(userId, preferences)`
+- `getNotificationPreferences(userId)`
+
+UI components to implement:
+- NotificationIcon (with unread count)
+- NotificationDropdown
+- NotificationsList
+- NotificationCard
+- NotificationPreferencesForm
+
+# Test Strategy:
+1. Unit tests for all API endpoints
+2. Test notification creation for different types of activities
+3. Verify read/unread state management
+4. Test notification preferences and filtering
+5. Validate real-time delivery of notifications
+6. Test notification grouping and bundling
+7. Verify that notifications link correctly to their source content

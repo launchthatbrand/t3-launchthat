@@ -1,0 +1,970 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+The content has been processed where security check has been disabled.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: packages/db-postgres
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Security check has been disabled - content may contain sensitive information
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+<additional_info>
+
+</additional_info>
+
+</file_summary>
+
+<directory_structure>
+packages/
+  db-postgres/
+    scripts/
+      renamePredefinedMigrations.ts
+    src/
+      drizzle-proxy/
+        index.ts
+        node-postgres.ts
+        pg-core.ts
+        relations.ts
+      exports/
+        migration-utils.ts
+        types-deprecated.ts
+      predefinedMigrations/
+        relationships-v2-v3.ts
+      connect.ts
+      index.ts
+      types.ts
+    .gitignore
+    .prettierignore
+    .swcrc
+    bundle.js
+    eslint.config.js
+    LICENSE.md
+    package.json
+    README.md
+    relationships-v2-v3.mjs
+    tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="packages/db-postgres/scripts/renamePredefinedMigrations.ts">
+import fs from 'fs'
+import path from 'path'
+
+/**
+ * Changes built .js files to .mjs to for ESM imports
+ */
+const rename = () => {
+  fs.readdirSync(path.resolve('./dist/predefinedMigrations'))
+    .filter((f) => {
+      return f.endsWith('.js')
+    })
+    .forEach((file) => {
+      const newPath = path.join('./dist/predefinedMigrations', file)
+      fs.renameSync(newPath, newPath.replace('.js', '.mjs'))
+    })
+  console.log('done')
+}
+
+rename()
+</file>
+
+<file path="packages/db-postgres/src/drizzle-proxy/index.ts">
+export * from 'drizzle-orm'
+</file>
+
+<file path="packages/db-postgres/src/drizzle-proxy/node-postgres.ts">
+export * from 'drizzle-orm/node-postgres'
+</file>
+
+<file path="packages/db-postgres/src/drizzle-proxy/pg-core.ts">
+export * from 'drizzle-orm/pg-core'
+</file>
+
+<file path="packages/db-postgres/src/drizzle-proxy/relations.ts">
+export * from 'drizzle-orm/relations'
+</file>
+
+<file path="packages/db-postgres/src/exports/migration-utils.ts">
+export { migratePostgresV2toV3 } from '@payloadcms/drizzle/postgres'
+</file>
+
+<file path="packages/db-postgres/src/exports/types-deprecated.ts">
+import type {
+  Args as _Args,
+  GeneratedDatabaseSchema as _GeneratedDatabaseSchema,
+  PostgresAdapter as _PostgresAdapter,
+} from '../types.js'
+
+/**
+ * @deprecated - import from `@payloadcms/db-postgres` instead
+ */
+export type Args = _Args
+
+/**
+ * @deprecated - import from `@payloadcms/db-postgres` instead
+ */
+export type GeneratedDatabaseSchema = _GeneratedDatabaseSchema
+
+/**
+ * @deprecated - import from `@payloadcms/db-postgres` instead
+ */
+export type PostgresAdapter = _PostgresAdapter
+</file>
+
+<file path="packages/db-postgres/src/predefinedMigrations/relationships-v2-v3.ts">
+const imports = `import { migratePostgresV2toV3 } from '@payloadcms/db-postgres/migration-utils'`
+const upSQL = `   await migratePostgresV2toV3({
+        // enables logging of changes that will be made to the database
+        debug: false,
+        payload,
+        req,
+        })
+`
+
+export { imports, upSQL }
+</file>
+
+<file path="packages/db-postgres/src/connect.ts">
+import type { DrizzleAdapter } from '@payloadcms/drizzle/types'
+import type { Connect, Migration, Payload } from 'payload'
+
+import { pushDevSchema } from '@payloadcms/drizzle'
+import { drizzle } from 'drizzle-orm/node-postgres'
+
+import type { PostgresAdapter } from './types.js'
+
+const connectWithReconnect = async function ({
+  adapter,
+  payload,
+  reconnect = false,
+}: {
+  adapter: PostgresAdapter
+  payload: Payload
+  reconnect?: boolean
+}) {
+  let result
+
+  if (!reconnect) {
+    result = await adapter.pool.connect()
+  } else {
+    try {
+      result = await adapter.pool.connect()
+    } catch (ignore) {
+      setTimeout(() => {
+        payload.logger.info('Reconnecting to postgres')
+        void connectWithReconnect({ adapter, payload, reconnect: true })
+      }, 1000)
+    }
+  }
+  if (!result) {
+    return
+  }
+  result.prependListener('error', (err) => {
+    try {
+      if (err.code === 'ECONNRESET') {
+        void connectWithReconnect({ adapter, payload, reconnect: true })
+      }
+    } catch (ignore) {
+      // swallow error
+    }
+  })
+}
+
+export const connect: Connect = async function connect(
+  this: PostgresAdapter,
+  options = {
+    hotReload: false,
+  },
+) {
+  const { hotReload } = options
+
+  this.schema = {
+    pgSchema: this.pgSchema,
+    ...this.tables,
+    ...this.relations,
+    ...this.enums,
+  }
+
+  try {
+    if (!this.pool) {
+      this.pool = new this.pg.Pool(this.poolOptions)
+      await connectWithReconnect({ adapter: this, payload: this.payload })
+    }
+
+    const logger = this.logger || false
+    this.drizzle = drizzle({ client: this.pool, logger, schema: this.schema })
+
+    if (!hotReload) {
+      if (process.env.PAYLOAD_DROP_DATABASE === 'true') {
+        this.payload.logger.info(`---- DROPPING TABLES SCHEMA(${this.schemaName || 'public'}) ----`)
+        await this.dropDatabase({ adapter: this })
+        this.payload.logger.info('---- DROPPED TABLES ----')
+      }
+    }
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error))
+    if (err.message?.match(/database .* does not exist/i) && !this.disableCreateDatabase) {
+      // capitalize first char of the err msg
+      this.payload.logger.info(
+        `${err.message.charAt(0).toUpperCase() + err.message.slice(1)}, creating...`,
+      )
+      const isCreated = await this.createDatabase()
+
+      if (isCreated && this.connect) {
+        await this.connect(options)
+        return
+      }
+    } else {
+      this.payload.logger.error({
+        err,
+        msg: `Error: cannot connect to Postgres. Details: ${err.message}`,
+      })
+    }
+
+    if (typeof this.rejectInitializing === 'function') {
+      this.rejectInitializing()
+    }
+    process.exit(1)
+  }
+
+  await this.createExtensions()
+
+  // Only push schema if not in production
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.PAYLOAD_MIGRATING !== 'true' &&
+    this.push !== false
+  ) {
+    await pushDevSchema(this as unknown as DrizzleAdapter)
+  }
+
+  if (typeof this.resolveInitializing === 'function') {
+    this.resolveInitializing()
+  }
+
+  if (process.env.NODE_ENV === 'production' && this.prodMigrations) {
+    await this.migrate({ migrations: this.prodMigrations as unknown as Migration[] })
+  }
+}
+</file>
+
+<file path="packages/db-postgres/src/index.ts">
+import type { DatabaseAdapterObj, Payload } from 'payload'
+
+import {
+  beginTransaction,
+  buildCreateMigration,
+  commitTransaction,
+  count,
+  countGlobalVersions,
+  countVersions,
+  create,
+  createGlobal,
+  createGlobalVersion,
+  createSchemaGenerator,
+  createVersion,
+  deleteMany,
+  deleteOne,
+  deleteVersions,
+  destroy,
+  find,
+  findGlobal,
+  findGlobalVersions,
+  findMigrationDir,
+  findOne,
+  findVersions,
+  migrate,
+  migrateDown,
+  migrateFresh,
+  migrateRefresh,
+  migrateReset,
+  migrateStatus,
+  operatorMap,
+  queryDrafts,
+  rollbackTransaction,
+  updateGlobal,
+  updateGlobalVersion,
+  updateJobs,
+  updateMany,
+  updateOne,
+  updateVersion,
+} from '@payloadcms/drizzle'
+import {
+  columnToCodeConverter,
+  countDistinct,
+  createDatabase,
+  createExtensions,
+  createJSONQuery,
+  defaultDrizzleSnapshot,
+  deleteWhere,
+  dropDatabase,
+  execute,
+  init,
+  insert,
+  requireDrizzleKit,
+} from '@payloadcms/drizzle/postgres'
+import { pgEnum, pgSchema, pgTable } from 'drizzle-orm/pg-core'
+import { createDatabaseAdapter, defaultBeginTransaction } from 'payload'
+import pgDependency from 'pg'
+import { fileURLToPath } from 'url'
+
+import type { Args, PostgresAdapter } from './types.js'
+
+import { connect } from './connect.js'
+
+const filename = fileURLToPath(import.meta.url)
+
+export function postgresAdapter(args: Args): DatabaseAdapterObj<PostgresAdapter> {
+  const postgresIDType = args.idType || 'serial'
+  const payloadIDType = postgresIDType === 'serial' ? 'number' : 'text'
+  const allowIDOnCreate = args.allowIDOnCreate ?? false
+
+  function adapter({ payload }: { payload: Payload }) {
+    const migrationDir = findMigrationDir(args.migrationDir)
+    let resolveInitializing
+    let rejectInitializing
+    let adapterSchema: PostgresAdapter['pgSchema']
+
+    const initializing = new Promise<void>((res, rej) => {
+      resolveInitializing = res
+      rejectInitializing = rej
+    })
+
+    if (args.schemaName) {
+      adapterSchema = pgSchema(args.schemaName)
+    } else {
+      // @ts-expect-error - vestiges of when tsconfig was not strict. Feel free to improve
+      adapterSchema = { enum: pgEnum, table: pgTable }
+    }
+
+    const extensions = (args.extensions ?? []).reduce(
+      (acc, name) => {
+        acc[name] = true
+        return acc
+      },
+      {} as Record<string, boolean>,
+    )
+
+    return createDatabaseAdapter<PostgresAdapter>({
+      name: 'postgres',
+      afterSchemaInit: args.afterSchemaInit ?? [],
+      allowIDOnCreate,
+      beforeSchemaInit: args.beforeSchemaInit ?? [],
+      createDatabase,
+      createExtensions,
+      createMigration: buildCreateMigration({
+        executeMethod: 'execute',
+        filename,
+        sanitizeStatements({ sqlExecute, statements }) {
+          return `${sqlExecute}\n ${statements.join('\n')}\`)`
+        },
+      }),
+      defaultDrizzleSnapshot,
+      disableCreateDatabase: args.disableCreateDatabase ?? false,
+      // @ts-expect-error - vestiges of when tsconfig was not strict. Feel free to improve
+      drizzle: undefined,
+      enums: {},
+      extensions,
+      features: {
+        json: true,
+      },
+      fieldConstraints: {},
+      generateSchema: createSchemaGenerator({
+        columnToCodeConverter,
+        corePackageSuffix: 'pg-core',
+        defaultOutputFile: args.generateSchemaOutputFile,
+        enumImport: 'pgEnum',
+        schemaImport: 'pgSchema',
+        tableImport: 'pgTable',
+      }),
+      idType: postgresIDType,
+      initializing,
+      localesSuffix: args.localesSuffix || '_locales',
+      logger: args.logger,
+      operators: operatorMap,
+      pg: args.pg || pgDependency,
+      pgSchema: adapterSchema,
+      // @ts-expect-error - vestiges of when tsconfig was not strict. Feel free to improve
+      pool: undefined,
+      poolOptions: args.pool,
+      prodMigrations: args.prodMigrations,
+      // @ts-expect-error - vestiges of when tsconfig was not strict. Feel free to improve
+      push: args.push,
+      relations: {},
+      relationshipsSuffix: args.relationshipsSuffix || '_rels',
+      schema: {},
+      schemaName: args.schemaName,
+      sessions: {},
+      tableNameMap: new Map<string, string>(),
+      tables: {},
+      tablesFilter: args.tablesFilter,
+      transactionOptions: args.transactionOptions || undefined,
+      versionsSuffix: args.versionsSuffix || '_v',
+
+      // DatabaseAdapter
+      beginTransaction:
+        args.transactionOptions === false ? defaultBeginTransaction() : beginTransaction,
+      commitTransaction,
+      connect,
+      count,
+      countDistinct,
+      countGlobalVersions,
+      countVersions,
+      create,
+      createGlobal,
+      createGlobalVersion,
+      createJSONQuery,
+      createVersion,
+      defaultIDType: payloadIDType,
+      deleteMany,
+      deleteOne,
+      deleteVersions,
+      deleteWhere,
+      destroy,
+      dropDatabase,
+      execute,
+      find,
+      findGlobal,
+      findGlobalVersions,
+      updateJobs,
+      // @ts-expect-error - vestiges of when tsconfig was not strict. Feel free to improve
+      findOne,
+      findVersions,
+      indexes: new Set<string>(),
+      init,
+      insert,
+      migrate,
+      migrateDown,
+      migrateFresh,
+      migrateRefresh,
+      migrateReset,
+      migrateStatus,
+      migrationDir,
+      packageName: '@payloadcms/db-postgres',
+      payload,
+      queryDrafts,
+      rawRelations: {},
+      rawTables: {},
+      // @ts-expect-error - vestiges of when tsconfig was not strict. Feel free to improve
+      rejectInitializing,
+      requireDrizzleKit,
+      // @ts-expect-error - vestiges of when tsconfig was not strict. Feel free to improve
+      resolveInitializing,
+      rollbackTransaction,
+      updateGlobal,
+      updateGlobalVersion,
+      updateMany,
+      updateOne,
+      updateVersion,
+      upsert: updateOne,
+    })
+  }
+
+  return {
+    name: 'postgres',
+    allowIDOnCreate,
+    defaultIDType: payloadIDType,
+    init: adapter,
+  }
+}
+
+export type {
+  Args as PostgresAdapterArgs,
+  GeneratedDatabaseSchema,
+  PostgresAdapter,
+} from './types.js'
+export type { MigrateDownArgs, MigrateUpArgs } from '@payloadcms/drizzle/postgres'
+export { geometryColumn } from '@payloadcms/drizzle/postgres'
+export { sql } from 'drizzle-orm'
+</file>
+
+<file path="packages/db-postgres/src/types.ts">
+import type {
+  BasePostgresAdapter,
+  GenericEnum,
+  MigrateDownArgs,
+  MigrateUpArgs,
+  PostgresDB,
+  PostgresSchemaHook,
+} from '@payloadcms/drizzle/postgres'
+import type { DrizzleAdapter } from '@payloadcms/drizzle/types'
+import type { DrizzleConfig } from 'drizzle-orm'
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
+import type { PgSchema, PgTableFn, PgTransactionConfig } from 'drizzle-orm/pg-core'
+import type { Pool, PoolConfig } from 'pg'
+
+type PgDependency = typeof import('pg')
+
+export type Args = {
+  /**
+   * Transform the schema after it's built.
+   * You can use it to customize the schema with features that aren't supported by Payload.
+   * Examples may include: composite indices, generated columns, vectors
+   */
+  afterSchemaInit?: PostgresSchemaHook[]
+  /**
+   * Enable this flag if you want to thread your own ID to create operation data, for example:
+   * ```ts
+   * // doc created with id 1
+   * const doc = await payload.create({ collection: 'posts', data: {id: 1, title: "my title"}})
+   * ```
+   */
+  allowIDOnCreate?: boolean
+  /**
+   * Transform the schema before it's built.
+   * You can use it to preserve an existing database schema and if there are any collissions Payload will override them.
+   * To generate Drizzle schema from the database, see [Drizzle Kit introspection](https://orm.drizzle.team/kit-docs/commands#introspect--pull)
+   */
+  beforeSchemaInit?: PostgresSchemaHook[]
+  /**
+   * Pass `true` to disale auto database creation if it doesn't exist.
+   * @default false
+   */
+  disableCreateDatabase?: boolean
+  extensions?: string[]
+  /** Generated schema from payload generate:db-schema file path */
+  generateSchemaOutputFile?: string
+  idType?: 'serial' | 'uuid'
+  localesSuffix?: string
+  logger?: DrizzleConfig['logger']
+  migrationDir?: string
+  pg?: PgDependency
+  pool: PoolConfig
+  prodMigrations?: {
+    down: (args: MigrateDownArgs) => Promise<void>
+    name: string
+    up: (args: MigrateUpArgs) => Promise<void>
+  }[]
+  push?: boolean
+  relationshipsSuffix?: string
+  /**
+   * The schema name to use for the database
+   * @experimental This only works when there are not other tables or enums of the same name in the database under a different schema. Awaiting fix from Drizzle.
+   */
+  schemaName?: string
+  tablesFilter?: string[]
+  transactionOptions?: false | PgTransactionConfig
+  versionsSuffix?: string
+}
+
+export interface GeneratedDatabaseSchema {
+  schemaUntyped: Record<string, unknown>
+}
+
+type ResolveSchemaType<T> = 'schema' extends keyof T
+  ? T['schema']
+  : GeneratedDatabaseSchema['schemaUntyped']
+
+type Drizzle = NodePgDatabase<ResolveSchemaType<GeneratedDatabaseSchema>>
+export type PostgresAdapter = {
+  drizzle: Drizzle
+  pg: PgDependency
+  pool: Pool
+  poolOptions: PoolConfig
+} & BasePostgresAdapter
+
+declare module 'payload' {
+  export interface DatabaseAdapter
+    extends Omit<Args, 'idType' | 'logger' | 'migrationDir' | 'pool'>,
+      DrizzleAdapter {
+    afterSchemaInit: PostgresSchemaHook[]
+
+    beforeSchemaInit: PostgresSchemaHook[]
+    beginTransaction: (options?: PgTransactionConfig) => Promise<null | number | string>
+    drizzle: Drizzle
+    enums: Record<string, GenericEnum>
+    extensions: Record<string, boolean>
+    /**
+     * An object keyed on each table, with a key value pair where the constraint name is the key, followed by the dot-notation field name
+     * Used for returning properly formed errors from unique fields
+     */
+    fieldConstraints: Record<string, Record<string, string>>
+    idType: Args['idType']
+    initializing: Promise<void>
+    localesSuffix?: string
+    logger: DrizzleConfig['logger']
+    /** Optionally inject your own node-postgres. This is required if you wish to instrument the driver with @payloadcms/plugin-sentry. */
+    pg?: PgDependency
+    pgSchema?: { table: PgTableFn } | PgSchema
+    pool: Pool
+    poolOptions: Args['pool']
+    prodMigrations?: {
+      down: (args: MigrateDownArgs) => Promise<void>
+      name: string
+      up: (args: MigrateUpArgs) => Promise<void>
+    }[]
+    push: boolean
+    rejectInitializing: () => void
+    relationshipsSuffix?: string
+    resolveInitializing: () => void
+    schema: Record<string, unknown>
+    schemaName?: Args['schemaName']
+    tableNameMap: Map<string, string>
+    tablesFilter?: string[]
+    versionsSuffix?: string
+  }
+}
+</file>
+
+<file path="packages/db-postgres/.gitignore">
+/migrations
+</file>
+
+<file path="packages/db-postgres/.prettierignore">
+.tmp
+**/.git
+**/.hg
+**/.pnp.*
+**/.svn
+**/.yarn/**
+**/build
+**/dist/**
+**/node_modules
+**/temp
+</file>
+
+<file path="packages/db-postgres/.swcrc">
+{
+  "$schema": "https://json.schemastore.org/swcrc",
+  "sourceMaps": true,
+  "jsc": {
+    "target": "esnext",
+    "parser": {
+      "syntax": "typescript",
+      "tsx": true,
+      "dts": true
+    }
+  },
+  "module": {
+    "type": "es6"
+  }
+}
+</file>
+
+<file path="packages/db-postgres/bundle.js">
+import * as esbuild from 'esbuild'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+const filename = fileURLToPath(import.meta.url)
+const dirname = path.dirname(filename)
+import { commonjs } from '@hyrious/esbuild-plugin-commonjs'
+throw new Error('asfdadsf')
+async function build() {
+  const resultServer = await esbuild.build({
+    entryPoints: ['src/index.ts'],
+    bundle: true,
+    platform: 'node',
+    format: 'esm',
+    outfile: 'dist/index.js',
+    splitting: false,
+    external: [
+      '*.scss',
+      '*.css',
+      'drizzle-kit',
+      'pg',
+      '@payloadcms/translations',
+      '@payloadcms/drizzle',
+      'payload',
+      'payload/*',
+    ],
+    minify: true,
+    metafile: true,
+    tsconfig: path.resolve(dirname, './tsconfig.json'),
+    plugins: [commonjs()],
+    sourcemap: true,
+  })
+  console.log('db-postgres bundled successfully')
+
+  fs.writeFileSync('meta_server.json', JSON.stringify(resultServer.metafile))
+}
+await build()
+</file>
+
+<file path="packages/db-postgres/eslint.config.js">
+import { rootEslintConfig, rootParserOptions } from '../../eslint.config.js'
+
+/** @typedef {import('eslint').Linter.Config} Config */
+
+/** @type {Config[]} */
+export const index = [
+  ...rootEslintConfig,
+  {
+    languageOptions: {
+      parserOptions: {
+        ...rootParserOptions,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+]
+
+export default index
+</file>
+
+<file path="packages/db-postgres/LICENSE.md">
+MIT License
+
+Copyright (c) 2018-2025 Payload CMS, Inc. <info@payloadcms.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+</file>
+
+<file path="packages/db-postgres/package.json">
+{
+  "name": "@payloadcms/db-postgres",
+  "version": "3.35.1",
+  "description": "The officially supported Postgres database adapter for Payload",
+  "homepage": "https://payloadcms.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/payloadcms/payload.git",
+    "directory": "packages/db-postgres"
+  },
+  "license": "MIT",
+  "author": "Payload <dev@payloadcms.com> (https://payloadcms.com)",
+  "maintainers": [
+    {
+      "name": "Payload",
+      "email": "info@payloadcms.com",
+      "url": "https://payloadcms.com"
+    }
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./types": {
+      "import": "./src/exports/types-deprecated.ts",
+      "types": "./src/exports/types-deprecated.ts",
+      "default": "./src/exports/types-deprecated.ts"
+    },
+    "./migration-utils": {
+      "import": "./src/exports/migration-utils.ts",
+      "types": "./src/exports/migration-utils.ts",
+      "default": "./src/exports/migration-utils.ts"
+    },
+    "./drizzle": {
+      "import": "./src/drizzle-proxy/index.ts",
+      "types": "./src/drizzle-proxy/index.ts",
+      "default": "./src/drizzle-proxy/index.ts"
+    },
+    "./drizzle/pg-core": {
+      "import": "./src/drizzle-proxy/pg-core.ts",
+      "types": "./src/drizzle-proxy/pg-core.ts",
+      "default": "./src/drizzle-proxy/pg-core.ts"
+    },
+    "./drizzle/node-postgres": {
+      "import": "./src/drizzle-proxy/node-postgres.ts",
+      "types": "./src/drizzle-proxy/node-postgres.ts",
+      "default": "./src/drizzle-proxy/node-postgres.ts"
+    },
+    "./drizzle/relations": {
+      "import": "./src/drizzle-proxy/relations.ts",
+      "types": "./src/drizzle-proxy/relations.ts",
+      "default": "./src/drizzle-proxy/relations.ts"
+    }
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "dist",
+    "mock.js"
+  ],
+  "scripts": {
+    "build": "rimraf .dist && rimraf tsconfig.tsbuildinfo  && pnpm build:types && pnpm build:swc && pnpm build:esbuild && pnpm renamePredefinedMigrations",
+    "build:esbuild": "echo skipping esbuild",
+    "build:swc": "swc ./src -d ./dist --config-file .swcrc --strip-leading-paths",
+    "build:types": "tsc --emitDeclarationOnly --outDir dist",
+    "clean": "rimraf -g {dist,*.tsbuildinfo}",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepack": "pnpm clean && pnpm turbo build",
+    "prepublishOnly": "pnpm clean && pnpm turbo build --filter=./",
+    "renamePredefinedMigrations": "node --no-deprecation --import @swc-node/register/esm-register ./scripts/renamePredefinedMigrations.ts"
+  },
+  "dependencies": {
+    "@payloadcms/drizzle": "workspace:*",
+    "@types/pg": "8.10.2",
+    "console-table-printer": "2.12.1",
+    "drizzle-kit": "0.28.0",
+    "drizzle-orm": "0.36.1",
+    "pg": "8.11.3",
+    "prompts": "2.4.2",
+    "to-snake-case": "1.0.0",
+    "uuid": "10.0.0"
+  },
+  "devDependencies": {
+    "@hyrious/esbuild-plugin-commonjs": "^0.2.4",
+    "@payloadcms/eslint-config": "workspace:*",
+    "@types/to-snake-case": "1.0.0",
+    "esbuild": "0.24.2",
+    "payload": "workspace:*"
+  },
+  "peerDependencies": {
+    "payload": "workspace:*"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "import": "./dist/index.js",
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./types": {
+        "import": "./dist/exports/types-deprecated.js",
+        "types": "./dist/exports/types-deprecated.d.ts",
+        "default": "./dist/exports/types-deprecated.js"
+      },
+      "./migration-utils": {
+        "import": "./dist/exports/migration-utils.js",
+        "types": "./dist/exports/migration-utils.d.ts",
+        "default": "./dist/exports/migration-utils.js"
+      },
+      "./drizzle": {
+        "import": "./dist/drizzle-proxy/index.js",
+        "types": "./dist/drizzle-proxy/index.d.ts",
+        "default": "./dist/drizzle-proxy/index.js"
+      },
+      "./drizzle/pg-core": {
+        "import": "./dist/drizzle-proxy/pg-core.js",
+        "types": "./dist/drizzle-proxy/pg-core.d.ts",
+        "default": "./dist/drizzle-proxy/pg-core.js"
+      },
+      "./drizzle/node-postgres": {
+        "import": "./dist/drizzle-proxy/node-postgres.js",
+        "types": "./dist/drizzle-proxy/node-postgres.d.ts",
+        "default": "./dist/drizzle-proxy/node-postgres.js"
+      },
+      "./drizzle/relations": {
+        "import": "./dist/drizzle-proxy/relations.js",
+        "types": "./dist/drizzle-proxy/relations.d.ts",
+        "default": "./dist/drizzle-proxy/relations.js"
+      }
+    },
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts"
+  }
+}
+</file>
+
+<file path="packages/db-postgres/README.md">
+# Payload Postgres Adapter
+
+Official Postgres adapter for [Payload](https://payloadcms.com).
+
+- [Main Repository](https://github.com/payloadcms/payload)
+- [Payload Docs](https://payloadcms.com/docs)
+
+## Installation
+
+```bash
+npm install @payloadcms/db-postgres
+```
+
+## Usage
+
+```ts
+import { buildConfig } from 'payload'
+import { postgresAdapter } from '@payloadcms/db-postgres'
+
+export default buildConfig({
+  db: postgresAdapter({
+    pool: {
+      connectionString: process.env.DATABASE_URI,
+    },
+  }),
+  // ...rest of config
+})
+```
+
+More detailed usage can be found in the [Payload Docs](https://payloadcms.com/docs/configuration/overview).
+</file>
+
+<file path="packages/db-postgres/relationships-v2-v3.mjs">
+const imports = `import { migratePostgresV2toV3 } from '@payloadcms/migratePostgresV2toV3'`
+const up = `   await migratePostgresV2toV3({
+        // enables logging of changes that will be made to the database
+        debug: false,
+        // skips calls that modify schema or data
+        dryRun: false,
+        payload,
+        req,
+        })
+`
+export { imports, up }
+
+//# sourceMappingURL=relationships-v2-v3.js.map
+</file>
+
+<file path="packages/db-postgres/tsconfig.json">
+{
+  "extends": "../../tsconfig.base.json",
+  "references": [
+    {
+      "path": "../payload"
+    },
+    {
+      "path": "../translations"
+    },
+    {
+      "path": "../drizzle"
+    }
+  ]
+}
+</file>
+
+</files>

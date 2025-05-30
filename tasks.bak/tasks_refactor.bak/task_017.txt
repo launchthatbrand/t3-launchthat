@@ -1,0 +1,16 @@
+# Task ID: 17
+# Title: Implement Consistent Use of TypeScript and Convex Validators
+# Status: done
+# Dependencies: 7, 8, 9, 10, 11, 12, 13, 14
+# Priority: high
+# Description: Ensure consistent and correct use of TypeScript types and Convex validators across all functions
+# Details:
+1. Review and update all function signatures to use proper TypeScript types.
+2. Ensure consistent use of Convex types (e.g., Doc, Id) from @convex-dev/server.
+3. Implement or update args and returns validators for all Convex functions.
+4. Use v.union() for fields that can have multiple types.
+5. Implement custom validators for complex data structures if needed.
+6. Ensure null checks are properly handled, using v.optional() where appropriate.
+
+# Test Strategy:
+Use TypeScript compiler in strict mode to catch type errors. Develop unit tests that pass various valid and invalid inputs to each function to verify proper validation.

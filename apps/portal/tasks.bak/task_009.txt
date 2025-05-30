@@ -1,0 +1,78 @@
+# Task ID: 9
+# Title: Implement Lesson Management in Admin
+# Status: pending
+# Dependencies: 8
+# Priority: high
+# Description: Develop a modern, reusable React component for building course structures (lessons, topics) using drag-and-drop functionality.
+# Details:
+Create a reusable CourseBuilder component that enables management of course structure. Utilize @dnd-kit/core and @dnd-kit/sortable for drag-and-drop interactions. Fetch course structure data (lessons, topics) from Convex using useQuery. Implement mutations for adding, deleting, reordering, and renaming lessons and topics. Ensure the component manages its own state for structure and drag operations. Reference existing @acme/ui/CourseBuilder components, adapting them away from Payload CMS specifics. Build the UI using Shadcn components. Maintain proper relationships between courses, lessons, and topics.
+
+# Test Strategy:
+Test drag-and-drop reordering of lessons and topics. Test adding and deleting lessons/topics. Test renaming items. Verify changes are persisted correctly via Convex. Ensure component is reusable and renders correctly with different course data. Test the complete CRUD flow for lessons and topics. Verify real-time updates work when course structure is modified.
+
+# Subtasks:
+## 1. Set up CourseBuilder component structure and state management [pending]
+### Dependencies: None
+### Description: Create the base CourseBuilder component with initial state management for course structure data
+### Details:
+1. Create a new CourseBuilder.tsx component in the appropriate directory
+2. Define TypeScript interfaces for course structure data (Course, Lesson, Topic)
+3. Set up React state hooks to manage the course structure
+4. Implement a basic layout structure using Shadcn components
+5. Create placeholder sections for lessons and topics
+6. Add empty handler functions for future CRUD operations
+7. Test the component renders correctly with mock data
+
+## 2. Implement Convex data fetching and basic display [pending]
+### Dependencies: 9.1
+### Description: Connect the CourseBuilder to Convex backend for fetching course structure data
+### Details:
+1. Create Convex query functions to fetch course, lesson, and topic data
+2. Implement useQuery hooks in the CourseBuilder to fetch real data
+3. Update the component state with fetched data
+4. Display the course structure (lessons and topics) in the UI
+5. Add loading states and error handling
+6. Implement basic navigation between lessons and topics
+7. Test that data is correctly fetched and displayed
+
+## 3. Integrate drag-and-drop functionality with dnd-kit [pending]
+### Dependencies: 9.1, 9.2
+### Description: Add drag-and-drop capabilities for reordering lessons and topics
+### Details:
+1. Install @dnd-kit/core and @dnd-kit/sortable packages
+2. Set up DndContext and SortableContext providers
+3. Create SortableItem components for lessons and topics
+4. Implement drag handlers for reordering items
+5. Update local state when items are reordered
+6. Add visual feedback during drag operations (highlighting, shadows)
+7. Test drag-and-drop functionality works correctly for both lessons and topics
+
+## 4. Implement Convex mutations for CRUD operations [pending]
+### Dependencies: 9.2, 9.3
+### Description: Create and connect mutation functions for adding, updating, deleting, and reordering course items
+### Details:
+1. Create Convex mutation functions for:
+   - Adding new lessons and topics
+   - Updating lesson and topic names
+   - Deleting lessons and topics
+   - Reordering lessons and topics
+2. Connect UI actions to these mutations
+3. Implement optimistic updates for better UX
+4. Add confirmation dialogs for destructive actions
+5. Ensure proper error handling and recovery
+6. Update the UI to reflect changes immediately
+7. Test all CRUD operations work correctly and maintain data integrity
+
+## 5. Refine UI and implement advanced features [pending]
+### Dependencies: 9.3, 9.4
+### Description: Polish the UI and add advanced features like nested drag-and-drop and validation
+### Details:
+1. Refine the UI using Shadcn components for a modern look
+2. Implement nested drag-and-drop (moving topics between lessons)
+3. Add form validation for lesson and topic names
+4. Implement keyboard accessibility for drag-and-drop operations
+5. Add animations for smoother transitions
+6. Create a responsive design that works on different screen sizes
+7. Add comprehensive error states and empty states
+8. Perform final testing of all features and edge cases
+

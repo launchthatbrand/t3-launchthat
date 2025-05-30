@@ -1,0 +1,44 @@
+# Task ID: 12
+# Title: Implement useMutation in PaymentForm to Connect with Convex Backend
+# Status: done
+# Dependencies: 11
+# Priority: high
+# Description: Integrate the frontend PaymentForm component with the Convex backend by implementing useMutation to send payment data to the server.
+# Details:
+The PaymentForm component needs to be updated to use Convex's useMutation hook to call the backend mutation function with the payment's opaqueData. Steps include:
+
+1. Import the useMutation hook from the Convex client library: `import { useMutation } from "convex/react"`
+2. Define the mutation at the component level: `const createPayment = useMutation("payments.create")` (adjust the mutation path to match your actual Convex schema)
+3. Create a submit handler function that:
+   - Prevents default form submission behavior
+   - Collects the opaqueData from the payment form
+   - Calls the mutation with the appropriate payload: `createPayment({ opaqueData, ...otherRequiredFields })`
+   - Handles success and error states appropriately
+4. Add loading state management during the mutation call
+5. Implement proper error handling to display validation or server errors to the user
+6. Add success feedback when the payment is processed successfully
+
+Ensure the mutation is only triggered when the form is valid and all required payment information has been collected.
+
+# Test Strategy:
+Testing should verify both the integration with Convex and proper user experience:
+
+1. Unit tests:
+   - Mock the useMutation hook to verify it's called with the correct mutation path
+   - Test that the submit handler correctly prevents default form behavior
+   - Verify the mutation is called with the expected payload structure
+   - Test loading state management during form submission
+   - Test error handling for various error scenarios
+
+2. Integration tests:
+   - Create a test that submits the form with valid test payment data
+   - Verify the mutation is called and resolves successfully
+   - Check that success feedback is displayed to the user
+   - Test with invalid data to ensure proper error messages appear
+
+3. Manual testing:
+   - Submit the form with valid test payment credentials
+   - Verify in the Convex dashboard that the payment data is received correctly
+   - Test network failure scenarios by temporarily disabling connectivity
+   - Verify loading indicators appear during submission
+   - Confirm proper success/error messages are displayed

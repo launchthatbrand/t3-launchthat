@@ -1,0 +1,11 @@
+# Task ID: 9
+# Title: Implement Convex data fetching for ListView
+# Status: pending
+# Dependencies: 8
+# Priority: high
+# Description: Add Convex query integration to fetch data for list views
+# Details:
+Implement data fetching using Convex useQuery in the ListView component. Create a generic query function that can fetch records from any Convex table based on the collection name. Handle loading states, errors, and empty results. Implement basic pagination if possible.
+
+# Test Strategy:
+Test data fetching with various collections. Verify that the data is displayed correctly and that loading states and errors are handled properly.

@@ -1,0 +1,11 @@
+# Task ID: 22
+# Title: Create documentation for ConvexAdmin
+# Status: pending
+# Dependencies: 14, 17, 19, 20, 21
+# Priority: low
+# Description: Document the ConvexAdmin system and its usage
+# Details:
+Create comprehensive documentation for the ConvexAdmin system. Include information on setup, configuration, usage, and customization. Document the schema analysis mechanism, the admin panel generation, and the frontend rendering. Provide examples and best practices.
+
+# Test Strategy:
+Review the documentation for completeness and accuracy. Verify that the examples work as described.

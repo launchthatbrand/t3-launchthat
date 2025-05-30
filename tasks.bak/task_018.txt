@@ -1,0 +1,91 @@
+# Task ID: 18
+# Title: Implement Main Page and Routing
+# Status: pending
+# Dependencies: 4, 5, 8
+# Priority: high
+# Description: Set up the main page and routing for the application
+# Details:
+Implement the main page and routing for the application using Next.js App Router:
+
+1. Create the root layout with the Header, Sidebar, and Main Content Area
+2. Set up routing for boards and folders
+3. Implement a default landing page
+
+```tsx
+// app/layout.tsx
+import { FC, ReactNode } from 'react';
+import { Inter } from 'next/font/google';
+import Header from '../components/layout/Header';
+import Sidebar from '../components/layout/Sidebar';
+import ToastProvider from '../components/providers/ToastProvider';
+import '../styles/globals.css';
+
+const inter = Inter({ subsets: ['latin'] });
+
+interface RootLayoutProps {
+  children: ReactNode;
+}
+
+const RootLayout: FC<RootLayoutProps> = ({ children }) => {
+  return (
+    <html lang="en">
+      <body className={inter.className}>
+        <ToastProvider>
+          <div className="flex flex-col h-screen">
+            <Header />
+            <div className="flex flex-1 overflow-hidden">
+              <Sidebar />
+              <main className="flex-1 overflow-auto p-4">
+                {children}
+              </main>
+            </div>
+          </div>
+        </ToastProvider>
+      </body>
+    </html>
+  );
+};
+
+export default RootLayout;
+```
+
+```tsx
+// app/page.tsx
+import { FC } from 'react';
+
+const HomePage: FC = () => {
+  return (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-center">
+        <h1 className="text-3xl font-bold mb-4">Welcome to MonClone</h1>
+        <p className="text-gray-500 mb-8">
+          Select a board from the sidebar or create a new one to get started.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default HomePage;
+```
+
+```tsx
+// app/board/[id]/page.tsx
+import { FC } from 'react';
+import BoardView from '../../../components/boards/BoardView';
+
+interface BoardPageProps {
+  params: {
+    id: string;
+  };
+}
+
+const BoardPage: FC<BoardPageProps> = ({ params }) => {
+  return <BoardView boardId={params.id} />;
+};
+
+export default BoardPage;
+```
+
+# Test Strategy:
+Test the routing by navigating between different boards and the home page. Verify that the correct content is displayed for each route. Test that the sidebar highlights the currently selected board or folder.

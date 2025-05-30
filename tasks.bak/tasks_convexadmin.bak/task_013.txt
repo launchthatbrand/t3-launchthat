@@ -1,0 +1,11 @@
+# Task ID: 13
+# Title: Implement record deletion
+# Status: pending
+# Dependencies: 9
+# Priority: medium
+# Description: Add functionality to delete records from collections
+# Details:
+Add delete buttons to the ListView and/or EditView. Implement a Convex mutation to delete records from any table. Add confirmation dialogs before deletion. Handle success and error states. Update the UI after successful deletion.
+
+# Test Strategy:
+Test deleting records from various collections. Verify that the confirmation dialog works, that records are actually deleted, and that the UI updates correctly.

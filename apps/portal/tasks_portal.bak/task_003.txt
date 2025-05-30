@@ -1,0 +1,36 @@
+# Task ID: 3
+# Title: Implement Groups System - Core Functionality
+# Status: done
+# Dependencies: 1, 2
+# Priority: high
+# Description: Develop the core functionality for the groups system including group creation, profiles, roles, and discovery features.
+# Details:
+Implement the following features for the groups system:
+1. Group creation flow with settings for public, private, or hidden visibility
+2. Group profile pages with description, member listing, and activity feed
+3. Group roles system (admin, moderator, member) with appropriate permissions
+4. Groups directory with search and filter functionality
+
+API endpoints to implement:
+- `createGroup(name, description, privacy, settings)`
+- `updateGroup(groupId, updates)`
+- `getGroup(groupId)`
+- `listGroups(filters, search, pagination)`
+- `addGroupMember(groupId, userId, role)`
+- `updateGroupMemberRole(groupId, userId, newRole)`
+- `removeGroupMember(groupId, userId)`
+
+UI components to implement:
+- GroupCreationForm
+- GroupProfile
+- GroupMembersList
+- GroupDirectory
+- GroupSettings
+
+# Test Strategy:
+1. Unit tests for all API endpoints
+2. Integration tests for group creation and management flows
+3. Test group privacy settings to ensure proper access control
+4. Verify role-based permissions work correctly
+5. Test search and filter functionality in the groups directory
+6. Validate that UI components render correctly with different data states

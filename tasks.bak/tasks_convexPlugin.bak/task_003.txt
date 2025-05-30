@@ -1,0 +1,11 @@
+# Task ID: 3
+# Title: Implement basic convexDbAdapter architecture
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Create the foundation for the Convex database adapter that implements Payload's DatabaseAdapter interface.
+# Details:
+Create the main adapter file that implements Payload's DatabaseAdapter interface. Set up the adapter to accept a Convex client instance. Implement skeleton methods for all required interface methods (find, findOne, create, update, delete, etc.) with basic logging but no actual functionality yet. Create utility functions for data transformation between Payload and Convex formats.
+
+# Test Strategy:
+Create a simple Payload config that uses the adapter and verify that it initializes without errors. Test that the adapter methods are called when performing basic operations through Payload's API.

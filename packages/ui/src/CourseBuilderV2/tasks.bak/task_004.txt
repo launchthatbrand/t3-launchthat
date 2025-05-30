@@ -1,0 +1,18 @@
+# Task ID: 4
+# Title: Implement basic topic rendering within lessons
+# Status: done
+# Dependencies: 3
+# Priority: high
+# Description: Create the UI for rendering topics nested within their parent lessons
+# Details:
+Implement topic rendering that:
+- Maps through topics within each lesson
+- Shows topic titles
+- Includes a placeholder for the drag handle
+- Styles topics with appropriate indentation and visual hierarchy
+- Includes collapse/expand functionality for topics
+- Adds a '+ New Quiz' button within each topic
+- Only renders topics when parent lesson is expanded
+
+# Test Strategy:
+Render the component with sample lesson and topic data. Verify topics appear correctly nested under lessons and only show when parent lesson is expanded.

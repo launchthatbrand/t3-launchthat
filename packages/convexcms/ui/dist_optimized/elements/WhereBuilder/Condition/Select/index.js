@@ -1,0 +1,73 @@
+"use client";
+
+import { jsx as _jsx } from "react/jsx-runtime";
+import React from "react";
+import { getTranslation } from "@convexcms/translations";
+import { useTranslation } from "../../../../providers/Translation/index.js";
+import { ReactSelect } from "../../../ReactSelect/index.js";
+import { formatOptions } from "./formatOptions.js";
+export const Select = ({
+  disabled,
+  isClearable,
+  onChange,
+  operator,
+  options: optionsFromProps,
+  value
+}) => {
+  const {
+    i18n
+  } = useTranslation();
+  const [options, setOptions] = React.useState(formatOptions(optionsFromProps));
+  const isMulti = ["in", "not_in"].includes(operator);
+  let valueToRender;
+  if (isMulti && Array.isArray(value)) {
+    valueToRender = value.map(val => {
+      const matchingOption = options.find(option => option.value === val);
+      return {
+        label: matchingOption ? getTranslation(matchingOption.label, i18n) : val,
+        value: matchingOption?.value ?? val
+      };
+    });
+  } else if (value) {
+    const matchingOption = options.find(option => option.value === value);
+    valueToRender = {
+      label: matchingOption ? getTranslation(matchingOption.label, i18n) : value,
+      value: matchingOption?.value ?? value
+    };
+  }
+  const onSelect = React.useCallback(selectedOption => {
+    let newValue;
+    if (!selectedOption) {
+      newValue = null;
+    } else if (isMulti) {
+      if (Array.isArray(selectedOption)) {
+        newValue = selectedOption.map(option => option.value);
+      } else {
+        newValue = [];
+      }
+    } else {
+      newValue = selectedOption.value;
+    }
+    onChange(newValue);
+  }, [isMulti, onChange]);
+  React.useEffect(() => {
+    setOptions(formatOptions(optionsFromProps));
+  }, [optionsFromProps]);
+  React.useEffect(() => {
+    if (!isMulti && Array.isArray(value)) {
+      onChange(value[0]);
+    }
+  }, [isMulti, onChange, value]);
+  return /*#__PURE__*/_jsx(ReactSelect, {
+    disabled: disabled,
+    isClearable: isClearable,
+    isMulti: isMulti,
+    onChange: onSelect,
+    options: options.map(option => ({
+      ...option,
+      label: getTranslation(option.label, i18n)
+    })),
+    value: valueToRender
+  });
+};
+//# sourceMappingURL=index.js.map

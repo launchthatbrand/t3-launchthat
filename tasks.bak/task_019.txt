@@ -1,0 +1,80 @@
+# Task ID: 19
+# Title: Implement Responsive Design
+# Status: pending
+# Dependencies: 4, 5, 8
+# Priority: low
+# Description: Ensure the application is responsive for desktop usage
+# Details:
+Implement responsive design for desktop usage:
+
+1. Use responsive utility classes from Tailwind CSS
+2. Ensure the sidebar can be collapsed to maximize content viewing area
+3. Make the board view horizontally scrollable for many columns
+4. Ensure text and UI elements are appropriately sized for different screen sizes
+
+```tsx
+// components/layout/Sidebar.tsx (updated with responsive design)
+import { FC } from 'react';
+import { useUIStore } from '../../store/uiStore';
+import { Button } from '@ui/components/ui/button';
+import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+
+const Sidebar: FC = () => {
+  const { sidebarCollapsed, setSidebarCollapsed } = useUIStore();
+  
+  return (
+    <aside 
+      className={`
+        border-r bg-gray-50 flex flex-col transition-all duration-300
+        ${sidebarCollapsed ? 'w-14' : 'w-64 md:w-72'}
+      `}
+    >
+      <div className="flex justify-end p-2">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {sidebarCollapsed ? <ChevronRightIcon size={16} /> : <ChevronLeftIcon size={16} />}
+        </Button>
+      </div>
+      
+      {/* Sidebar content */}
+    </aside>
+  );
+};
+```
+
+```tsx
+// components/boards/BoardView.tsx (updated with responsive design)
+import { FC } from 'react';
+
+const BoardView: FC = ({ boardId }) => {
+  // ...
+  
+  return (
+    <div className="flex flex-col h-full">
+      <BoardHeader board={board} />
+      
+      <div className="flex-1 overflow-auto">
+        <div className="min-w-[800px]"> {/* Ensure minimum width for horizontal scrolling */}
+          {groups.map(group => (
+            <GroupComponent 
+              key={group.id} 
+              group={group} 
+              columns={board.columns} 
+              boardId={boardId} 
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+Add responsive styles to other components as needed to ensure they work well on different desktop screen sizes.
+
+# Test Strategy:
+Test the application at various desktop screen sizes (1920x1080, 1366x768, etc.) to ensure it remains usable and visually appealing. Test the sidebar collapse functionality and verify that it works correctly. Test horizontal scrolling in the board view with many columns.

@@ -1,0 +1,9 @@
+/**
+ * @deprecated Use ecommerce subdirectories instead
+ *
+ * This file is maintained for backward compatibility during the refactoring.
+ * All e-commerce functionality has been moved to the ecommerce/ directory.
+ */
+
+// Re-export functions from the new location
+export * from "./ecommerce";

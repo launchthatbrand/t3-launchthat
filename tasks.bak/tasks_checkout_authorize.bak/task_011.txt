@@ -1,0 +1,57 @@
+# Task ID: 11
+# Title: Implement Authorize.Net Payment Processing Mutation in Convex
+# Status: done
+# Dependencies: 10
+# Priority: high
+# Description: Create a mutation in convex/payments.ts that processes payments through Authorize.Net by accepting opaqueData and using the SDK to create transaction requests.
+# Details:
+Implement a new mutation function in `convex/payments.ts` that:  
+
+1. Accepts `opaqueData` (containing dataValue and dataDescriptor from Authorize.Net Accept.js) and transaction details (amount, description, etc.) as parameters
+2. Uses the Authorize.Net Node.js SDK to process the payment
+3. Configures the SDK with environment variables:
+   - `AUTHORIZE_NET_LOGIN_ID`: Merchant's login ID
+   - `AUTHORIZE_NET_TRANSACTION_KEY`: Transaction key for API authentication
+4. Implements proper error handling for API failures
+5. Returns a structured response with:
+   - `success`: boolean indicating if transaction was successful
+   - `transactionId`: ID of the completed transaction (if successful)
+   - `error`: Error message (if unsuccessful)
+   - `responseCode`: The response code from Authorize.Net
+
+The implementation should:
+- Use the `createTransactionRequest` method from the SDK
+- Configure the transaction as a payment transaction
+- Include proper validation of input parameters
+- Handle and log any errors that occur during processing
+- Implement appropriate security measures to protect sensitive payment data
+- Use Convex's environment variables system to securely store API credentials
+
+Ensure the mutation is properly exported and follows Convex's mutation patterns.
+
+# Test Strategy:
+Testing should be comprehensive to ensure payment processing works correctly:
+
+1. **Unit Tests**:
+   - Create mock tests that simulate successful and failed API responses
+   - Test input validation by providing invalid parameters
+   - Verify error handling works as expected
+
+2. **Integration Tests**:
+   - Set up a test environment with Authorize.Net sandbox credentials
+   - Create test transactions with various amounts and payment methods
+   - Verify successful transactions are properly recorded
+   - Test error scenarios (insufficient funds, invalid card, etc.)
+
+3. **Manual Testing**:
+   - Use Authorize.Net's Accept.js to generate test opaqueData
+   - Submit test transactions through the frontend
+   - Verify transactions appear in the Authorize.Net sandbox portal
+   - Test the complete payment flow from UI to backend
+
+4. **Security Testing**:
+   - Verify credentials are not exposed in client-side code
+   - Ensure sensitive data is not logged
+   - Confirm proper error messages don't leak implementation details
+
+Document all test cases and expected results for future reference.

@@ -1,0 +1,11 @@
+# Task ID: 24
+# Title: Add support for rich text fields
+# Status: pending
+# Dependencies: 10, 11
+# Priority: low
+# Description: Implement rich text editing capabilities in the admin panel
+# Details:
+Add support for rich text fields in the admin panel. Integrate a rich text editor component (reusing existing components if available). Implement the necessary form handling logic for rich text fields. Ensure that the rich text data is properly saved and retrieved from Convex.
+
+# Test Strategy:
+Test creating and editing rich text content. Verify that formatting is preserved and that the content is properly saved and displayed.

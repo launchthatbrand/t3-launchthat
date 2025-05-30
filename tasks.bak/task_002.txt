@@ -1,0 +1,60 @@
+# Task ID: 2
+# Title: Data Model Design
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Define the core data structures for Boards, Folders, Groups, Items, and Columns
+# Details:
+Create TypeScript interfaces for the core data structures:
+
+```typescript
+// types/index.ts
+
+export type ColumnType = 
+  | 'text' 
+  | 'longText' 
+  | 'number' 
+  | 'email' 
+  | 'phone' 
+  | 'date' 
+  | 'dropdown' 
+  | 'user' 
+  | 'checkbox' 
+  | 'link';
+
+export interface Column {
+  id: string;
+  name: string;
+  type: ColumnType;
+  options?: string[]; // For dropdown type
+}
+
+export interface Item {
+  id: string;
+  name: string;
+  [key: string]: any; // Dynamic fields based on columns
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  colorAccent?: string;
+  items: Item[];
+}
+
+export interface Board {
+  id: string;
+  name: string;
+  columns: Column[];
+  groups: Group[];
+}
+
+export interface Folder {
+  id: string;
+  name: string;
+  boards: string[]; // Board IDs contained in this folder
+}
+```
+
+# Test Strategy:
+Review the data model with team members to ensure it captures all requirements. Create sample instances of each type to verify the structure works for the intended use cases.

@@ -1,0 +1,11 @@
+# Task ID: 7
+# Title: Implement core CRUD operations in convexDbAdapter
+# Status: pending
+# Dependencies: 3, 6
+# Priority: high
+# Description: Implement the basic CRUD operations in the Convex database adapter.
+# Details:
+Implement the create, findOne, find, update, and delete methods in the database adapter. Use the Convex client to perform the corresponding operations. Transform data between Payload and Convex formats using the mapping system. Handle IDs correctly (Payload uses 'id', Convex uses '_id'). Implement proper error handling and return appropriate responses.
+
+# Test Strategy:
+Create test cases for each CRUD operation and verify that they correctly interact with the Convex database. Test error cases like trying to find a non-existent document or creating a document with invalid data.

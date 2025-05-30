@@ -1,0 +1,11 @@
+# Task ID: 20
+# Title: Support for basic relationship fields
+# Status: pending
+# Dependencies: 10, 11
+# Priority: medium
+# Description: Add support for simple relationship fields in the admin panel
+# Details:
+Enhance the schema analysis to identify relationship fields (references to other tables). Update the EditView component generator to render appropriate UI for relationship fields (e.g., select dropdowns populated with options from the related table). Implement the necessary Convex queries to fetch related data.
+
+# Test Strategy:
+Test creating and editing records with relationship fields. Verify that the relationship options are correctly loaded and that the relationships are properly saved.

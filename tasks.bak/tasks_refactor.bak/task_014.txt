@@ -1,0 +1,17 @@
+# Task ID: 14
+# Title: Refactor Content Management System (CMS) Module
+# Status: done
+# Dependencies: 4, 5, 6
+# Priority: medium
+# Description: Reorganize and refactor CMS related functions into the new structure
+# Details:
+1. Create cms/ directory with files for posts and potentially other content types.
+2. Move relevant queries, mutations, and actions to appropriate files.
+3. Update internal references (api.*, internal.*) to reflect new file locations.
+4. Extract common CMS logic into shared helper functions in cms/lib/.
+5. Ensure consistent use of TypeScript types and Convex validators.
+6. Implement proper error handling with specific, informative error messages.
+7. Use Convex's search capabilities for content discovery if applicable.
+
+# Test Strategy:
+Develop integration tests for content creation, editing, publishing, and retrieval. Verify proper handling of different content types and search functionality.

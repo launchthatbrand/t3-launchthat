@@ -1,0 +1,125 @@
+# Task ID: 10
+# Title: Implement Item Management within Groups
+# Status: pending
+# Dependencies: 8, 9
+# Priority: medium
+# Description: Develop functionality to add, edit, and delete Items within a Group
+# Details:
+Implement the following features:
+
+1. Add a "New Item" button at the bottom of each Group
+2. Implement inline editing for Item data
+3. Implement Item deletion
+
+```tsx
+// components/items/AddItemButton.tsx
+import { FC } from 'react';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { Button } from '@ui/components/ui/button';
+import { PlusIcon } from 'lucide-react';
+
+interface AddItemButtonProps {
+  groupId: string;
+}
+
+const AddItemButton: FC<AddItemButtonProps> = ({ groupId }) => {
+  const createItem = useMutation(api.items.create);
+  
+  const handleAddItem = async () => {
+    await createItem({
+      name: 'New Item',
+      groupId,
+      data: {}, // Empty data object to be filled with default values based on columns
+    });
+  };
+  
+  return (
+    <Button 
+      variant="ghost" 
+      className="flex items-center gap-2 text-gray-500 hover:text-gray-700 w-full justify-start pl-8 py-1"
+      onClick={handleAddItem}
+    >
+      <PlusIcon size={14} />
+      <span>Add Item</span>
+    </Button>
+  );
+};
+
+export default AddItemButton;
+```
+
+Implement item row component with inline editing:
+
+```tsx
+// components/items/ItemRow.tsx
+import { FC } from 'react';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { Item, Column } from '../../types';
+import { Button } from '@ui/components/ui/button';
+import { Trash2Icon } from 'lucide-react';
+import ItemCell from './ItemCell';
+
+interface ItemRowProps {
+  item: Item;
+  columns: Column[];
+  groupId: string;
+}
+
+const ItemRow: FC<ItemRowProps> = ({ item, columns, groupId }) => {
+  const deleteItem = useMutation(api.items.delete);
+  const updateItem = useMutation(api.items.update);
+  
+  const handleDelete = async () => {
+    await deleteItem({ id: item.id });
+  };
+  
+  const handleCellChange = async (columnId: string, value: any) => {
+    await updateItem({
+      id: item.id,
+      data: {
+        ...item.data,
+        [columnId]: value
+      }
+    });
+  };
+  
+  return (
+    <div className="flex items-center border-b hover:bg-gray-50">
+      {/* Item name cell */}
+      <div className="flex-1 p-2 min-w-[200px]">
+        <ItemCell 
+          type="text"
+          value={item.name}
+          onChange={(value) => updateItem({ id: item.id, name: value })}
+        />
+      </div>
+      
+      {/* Dynamic cells based on columns */}
+      {columns.map(column => (
+        <div key={column.id} className="flex-1 p-2 min-w-[150px]">
+          <ItemCell 
+            type={column.type}
+            value={item.data[column.id]}
+            options={column.options}
+            onChange={(value) => handleCellChange(column.id, value)}
+          />
+        </div>
+      ))}
+      
+      {/* Delete button */}
+      <Button variant="ghost" size="sm" onClick={handleDelete} className="mx-2">
+        <Trash2Icon size={14} />
+      </Button>
+    </div>
+  );
+};
+
+export default ItemRow;
+```
+
+Implement the `ItemCell` component that renders different input types based on the column type.
+
+# Test Strategy:
+Test adding a new item to a group and verify it appears correctly. Test editing item data for each column type and verify changes persist. Test deleting an item and verify it is removed from the group. Test with various column types to ensure proper rendering and data handling.

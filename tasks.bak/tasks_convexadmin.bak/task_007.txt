@@ -1,0 +1,11 @@
+# Task ID: 7
+# Title: Develop dynamic collection routing
+# Status: pending
+# Dependencies: 6
+# Priority: high
+# Description: Implement routing within the admin panel based on the Convex schema
+# Details:
+Create dynamic routes for collections (/admin/[collectionSlug]) and documents (/admin/[collectionSlug]/[documentId]). Implement route handlers that load the appropriate components based on the URL parameters. Ensure that the routes are properly typed and validated against the schema.
+
+# Test Strategy:
+Test navigation between different collections and documents. Verify that the correct components are loaded for each route.

@@ -1,0 +1,34 @@
+# Task ID: 9
+# Title: Set up Convex Backend for WSA App
+# Status: done
+# Dependencies: 8
+# Priority: high
+# Description: Install and configure Convex as the backend service for the WSA application, including schema definition and provider integration.
+# Details:
+This task involves setting up Convex as the backend service for the WSA application:
+
+1. Install the Convex CLI globally: `npm install -g convex`
+2. Add Convex as a dependency to the WSA app: `cd apps/wsa && npm install convex`
+3. Initialize Convex in the project: `npx convex dev` (this will create a `.env.local` file with your Convex credentials)
+4. Create a basic schema in the generated `convex/schema.ts` file, defining initial data models needed for the application
+5. Set up the Convex client in a new file at `apps/wsa/lib/convex.ts`
+6. Integrate the ConvexProvider in the app's layout component (`apps/wsa/app/layout.tsx`) to make Convex available throughout the application
+7. Create initial Convex functions in the `convex/` directory for basic CRUD operations
+8. Update the `.env.example` file to include Convex environment variables
+9. Document the Convex setup in the project README
+
+Ensure that the Convex deployment URL is properly configured in environment variables and that the provider is correctly wrapping the application to provide Convex context to all components.
+
+# Test Strategy:
+To verify correct implementation:
+
+1. Check that all Convex dependencies are correctly installed by reviewing package.json
+2. Verify the existence of the Convex configuration files (convex.json, convex/schema.ts)
+3. Confirm that the ConvexProvider is properly integrated in the app layout
+4. Test the connection to Convex by creating a simple test component that queries data
+5. Run a basic write operation to ensure data can be stored in Convex
+6. Verify that the Convex dashboard shows the project is properly connected
+7. Test the application in both development and production environments to ensure environment variables are correctly set up
+8. Check that the Convex dev server can be started with `npx convex dev`
+9. Verify that other developers can clone the project and set it up by following the updated README instructions
+10. Ensure that the schema can be deployed without errors using `npx convex deploy`

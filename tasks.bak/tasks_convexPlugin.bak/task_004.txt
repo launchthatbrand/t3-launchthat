@@ -1,0 +1,11 @@
+# Task ID: 4
+# Title: Implement Payload config parsing in convexPlugin
+# Status: done
+# Dependencies: 2
+# Priority: high
+# Description: Develop the functionality to parse Payload's configuration to extract collection and field definitions.
+# Details:
+Implement a function that extracts collection definitions from the Payload config. Create parsers for different field types to map them to appropriate Convex types. Handle nested fields and arrays. Create a data structure to represent the parsed configuration that will be used for schema generation. Implement validation to ensure the parsed configuration is valid for Convex schema generation.
+
+# Test Strategy:
+Create test Payload configs with various collection and field types. Verify that the parsing function correctly extracts all collections and fields with their properties.

@@ -1,0 +1,82 @@
+# Task ID: 16
+# Title: Implement Calendar & Events System - Core Functionality
+# Status: done
+# Dependencies: 1, 2
+# Priority: medium
+# Description: Develop the core calendar system with multiple views and event management capabilities.
+# Details:
+Implement the following features for the calendar system:
+1. Multiple calendar views (month, week, day, agenda)
+2. Support for multiple calendars per user
+3. Calendar categories with color coding
+4. Public and private calendar options
+
+API endpoints to implement:
+- `createCalendar(userId, name, color, isDefault, isPublic, groupId)`
+- `updateCalendar(calendarId, updates)`
+- `deleteCalendar(calendarId)`
+- `getCalendars(userId)`
+- `getPublicCalendars()`
+- `getGroupCalendars(groupId)`
+- `getCalendarEvents(calendarId, startDate, endDate)`
+- `getAllEvents(userId, startDate, endDate)` // Across all calendars
+
+UI components to implement:
+- CalendarMonthView
+- CalendarWeekView
+- CalendarDayView
+- CalendarAgendaView
+- CalendarSidebar
+- CalendarList
+- CalendarSettingsForm
+
+# Test Strategy:
+1. Unit tests for all API endpoints
+2. Test calendar rendering in different views
+3. Verify date calculations and timezone handling
+4. Test calendar permissions (public, private, group)
+5. Validate color coding and visual indicators
+6. Test navigation between different time periods
+7. Verify that events display correctly in all views
+
+# Subtasks:
+## 1. Implement multiple calendar views [done]
+### Dependencies: None
+### Description: Create different calendar view modes including daily, weekly, monthly, and yearly views
+### Details:
+1. Design UI components for each view type
+2. Implement date/time handling logic
+3. Create navigation between different views
+4. Ensure proper event rendering in each view
+5. Optimize performance for large datasets
+
+## 2. Develop multiple calendars per user support [done]
+### Dependencies: 16.1
+### Description: Allow users to create and manage multiple calendars within their account
+### Details:
+1. Design database schema for multiple calendars
+2. Implement CRUD operations for calendars
+3. Create UI for calendar management
+4. Develop color-coding system for different calendars
+5. Implement calendar switching and overlay views
+
+## 3. Implement calendar categories [done]
+### Dependencies: 16.2
+### Description: Create a system for categorizing events and calendars
+### Details:
+1. Design category data structure
+2. Implement category CRUD operations
+3. Create UI for category management
+4. Develop filtering and sorting based on categories
+5. Implement category-based event coloring
+
+## 4. Develop public/private calendar options [done]
+### Dependencies: 16.2, 16.3
+### Description: Implement functionality for users to set calendars as public or private
+### Details:
+1. Add privacy settings to calendar data structure
+2. Implement access control logic
+3. Create UI for managing calendar privacy
+4. Develop sharing mechanism for public calendars
+5. Implement privacy-aware event rendering and notifications
+

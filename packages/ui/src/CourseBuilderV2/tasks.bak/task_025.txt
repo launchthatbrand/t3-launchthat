@@ -1,0 +1,58 @@
+# Task ID: 25
+# Title: Implement Admin Quiz Creation Page
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Create an admin page at /admin/courses/quizzes/new with a form that allows administrators to create new quizzes that are not yet attached to any course.
+# Details:
+Develop a new admin page accessible at the route /admin/courses/quizzes/new that includes a form for creating unattached quizzes. The form should include the following fields:
+
+1. Quiz title (required text field)
+2. Quiz description (text area)
+3. Time limit in minutes (number input)
+4. Passing score percentage (number input, 0-100)
+5. Instructions for students (rich text editor)
+6. Randomize questions option (checkbox)
+7. Show feedback option (checkbox with options for 'immediate', 'after submission', or 'after quiz closes')
+8. Submit button
+
+The page should:
+- Include proper validation for all fields
+- Display appropriate error messages for invalid inputs
+- Successfully save the quiz to the database when submitted
+- Redirect to the quiz management page after successful creation
+- Include a cancel button that returns to the quiz listing page without saving
+
+The created quiz should be stored in the database with a status of 'draft' and not be associated with any course initially. This will allow administrators to create quiz content before assigning it to specific courses.
+
+Ensure the page follows the existing admin UI design patterns and is responsive for different screen sizes.
+
+# Test Strategy:
+Testing should verify both the UI functionality and the backend operations:
+
+1. Unit Tests:
+   - Validate form field validation logic
+   - Test the quiz creation service/controller methods
+   - Verify proper state management for the form
+
+2. Integration Tests:
+   - Test the complete form submission flow
+   - Verify the quiz is correctly saved to the database
+   - Confirm proper handling of validation errors
+
+3. UI/Acceptance Tests:
+   - Verify the form renders correctly with all required fields
+   - Test form submission with valid data
+   - Test form submission with invalid data and verify error messages
+   - Verify cancel functionality works correctly
+   - Test accessibility compliance using automated tools
+
+4. Specific Test Cases:
+   - Create a quiz with minimum required fields
+   - Create a quiz with all fields populated
+   - Attempt to submit with missing required fields
+   - Verify the created quiz appears in the quiz management interface
+   - Confirm the quiz is created with 'draft' status
+   - Verify the quiz is not attached to any course
+
+All tests should be automated where possible and included in the CI/CD pipeline.

@@ -1,0 +1,19 @@
+# Task ID: 4
+# Title: Integrate react-authorize-net library
+# Status: done
+# Dependencies: 3
+# Priority: high
+# Description: Integrate the FormContainer and FormComponent from react-authorize-net into the PaymentForm component.
+# Details:
+1. Import `FormContainer` and `FormComponent` from `react-authorize-net`
+2. Configure the FormContainer with the required props:
+   - apiLoginId (from environment variables)
+   - clientKey (from environment variables)
+   - environment (set to 'sandbox')
+   - onError handler function
+   - onSuccess handler function
+3. Implement the FormComponent within the FormContainer
+4. Add necessary TypeScript interfaces/types for props and state
+
+# Test Strategy:
+Verify the FormContainer and FormComponent render correctly without errors. Check the React DevTools to ensure the components are properly nested and receiving the correct props.

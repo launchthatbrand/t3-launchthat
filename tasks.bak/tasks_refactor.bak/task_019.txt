@@ -1,0 +1,16 @@
+# Task ID: 19
+# Title: Update Frontend References
+# Status: done
+# Dependencies: 7, 8, 9, 10, 11, 12, 13, 14, 16
+# Priority: high
+# Description: Update frontend code to reflect changes in Convex function paths and names
+# Details:
+1. Identify all places in the frontend code (apps/portal/src/) where Convex functions are called.
+2. Update import statements to reflect the new directory structure.
+3. Update function names in useQuery, useMutation, and useAction hooks.
+4. Ensure all TypeScript types used in the frontend are updated to match backend changes.
+5. Update any hardcoded strings referring to Convex function paths.
+6. Verify that all Convex client interactions are using the latest patterns and best practices.
+
+# Test Strategy:
+Run the frontend build process to catch any TypeScript errors. Manually test all major frontend flows to ensure proper communication with the refactored backend.

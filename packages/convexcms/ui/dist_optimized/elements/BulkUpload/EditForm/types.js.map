@@ -1,0 +1,1 @@
+{"version":3,"file":"types.js","names":[],"sources":["../../../../src/elements/BulkUpload/EditForm/types.ts"],"sourcesContent":["export type EditFormProps = {\n  readonly submitted?: boolean\n}\n"],"mappings":"AAAA","ignoreList":[]}

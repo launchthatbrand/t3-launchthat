@@ -1,0 +1,103 @@
+# Task ID: 2
+# Title: Create schema analysis utility
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Develop a utility to parse Convex schema definitions and generate corresponding Payload CMS CollectionConfig definitions
+# Details:
+Create a utility in @convexcms/core that can parse the apps/wsa/convex/schema.ts file using AST parsers (like ts-morph) or regex. The utility should extract table names, field definitions, and indexes from the Convex schema, then generate corresponding Payload CMS CollectionConfig definitions. The parser should handle various validator types (v.*) and reused validator definitions. The output should be structured Payload CMS collection configurations that can be used directly in the admin panel generation logic.
+
+# Test Strategy:
+Test with sample schema files containing various field types, structures, and reused validator definitions. Verify that the utility correctly identifies all tables, fields, and indexes, and generates valid Payload CMS CollectionConfig definitions that match the original Convex schema semantics.
+
+# Subtasks:
+## 1. Handle Reused Validator Definitions (e.g., lineItemSchema) [pending]
+### Dependencies: None
+### Description: 
+### Details:
+
+
+## 2. Setup ts-morph and Load Schema File [pending]
+### Dependencies: None
+### Description: 
+### Details:
+
+
+## 3. Locate defineSchema and Extract Table Definitions [pending]
+### Dependencies: None
+### Description: 
+### Details:
+
+
+## 4. Parse defineTable Calls and Extract Indexes [pending]
+### Dependencies: None
+### Description: 
+### Details:
+
+
+## 5. Parse Field Definitions within defineTable [pending]
+### Dependencies: None
+### Description: 
+### Details:
+
+
+## 6. Implement Parsing Logic for v.* Validators [done]
+### Dependencies: None
+### Description: 
+### Details:
+
+
+## 7. Define and Populate Output Data Structure [pending]
+### Dependencies: None
+### Description: 
+### Details:
+
+
+## 8. Refine Parser and Handle Edge Cases [pending]
+### Dependencies: None
+### Description: 
+### Details:
+
+
+## 9. Implement Final Output Generation [pending]
+### Dependencies: 2.9
+### Description: Implement the final step in the generator to output Payload CollectionConfig definitions (e.g., as .ts files or structured objects).
+### Details:
+Create functions to serialize the generated Payload CollectionConfig objects into TypeScript code or structured JSON that can be directly used by the admin panel. Include proper formatting and type annotations.
+
+## 10. Implement Reused Validator Identifier Parsing [pending]
+### Dependencies: 2.6
+### Description: Enhance the parseValidatorNode function in the schema parser to correctly handle identifiers referencing other validator definitions (e.g., variables storing v.object({...})). Prevent infinite recursion for circular references.
+### Details:
+Implement a reference resolution system that can track and resolve validator identifiers to their definitions. Add safeguards to detect and handle circular references to prevent stack overflows during parsing.
+
+## 11. Create Payload Collection Generator Module [pending]
+### Dependencies: 2.6, 2.15
+### Description: Create a new module/function responsible for generating Payload CollectionConfig definitions from the parsed schema output (ParsedTable[]).
+### Details:
+Design and implement a module that takes the parsed Convex schema structure and transforms it into Payload CMS collection configurations. Include proper typing for the input and output structures.
+
+## 12. Implement Validator-to-Payload Field Mapping [pending]
+### Dependencies: 2.8
+### Description: Within the generator module, implement the mapping logic to translate ParsedValidatorResult types (string, number, id, array, object, union, etc.) into corresponding Payload CMS field configurations (text, number, relationship, array, group, select, etc.).
+### Details:
+Create a comprehensive mapping system that handles all Convex validator types and converts them to appropriate Payload field types with proper configuration options. Handle nested structures and complex validators appropriately.
+
+## 13. Implement Index Mapping [pending]
+### Dependencies: 2.8
+### Description: Implement logic in the generator module to convert parsed Convex indexes (ParsedIndex[]) into the format required by Payload's CollectionConfig 'indexes' property.
+### Details:
+Create functions to transform Convex index definitions into Payload's index format, handling both single-field and compound indexes correctly. Ensure proper typing and validation of the generated index configurations.
+
+## 14. Implement Default CollectionConfig Generation [pending]
+### Dependencies: 2.8
+### Description: Add logic to the generator to include sensible default Payload CollectionConfig properties (like slug, admin.useAsTitle, access controls, timestamps, auth for users).
+### Details:
+Implement intelligent defaults for Payload collection configurations based on the table structure and field types. Add special handling for common patterns like user tables, content tables, and relationship tables.
+
+## 15. Implement Intermediate JSON Output for Parser [pending]
+### Dependencies: 2.7
+### Description: Implement logic within the main parser function (or a wrapper) to serialize the final ParsedTable[] array into a JSON file (e.g., `parsed-convex-schema.json`). Handle potential serialization issues with complex objects like ts-morph Nodes.
+### Details:
+
+

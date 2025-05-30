@@ -1,0 +1,54 @@
+# Task ID: 3
+# Title: Setup Data Persistence Layer
+# Status: pending
+# Dependencies: 2
+# Priority: high
+# Description: Implement a data persistence solution to store and retrieve application data
+# Details:
+Implement a data persistence layer using Convex as specified in the PRD:
+
+1. Set up Convex in the project:
+```bash
+npm install convex
+npx convex dev
+```
+
+2. Define Convex schema for the data models:
+```typescript
+// convex/schema.ts
+import { defineSchema, defineTable } from 'convex/schema';
+import { v } from 'convex/values';
+
+export default defineSchema({
+  folders: defineTable({
+    name: v.string(),
+    boards: v.array(v.string()),
+  }),
+  boards: defineTable({
+    name: v.string(),
+    columns: v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      type: v.string(),
+      options: v.optional(v.array(v.string())),
+    })),
+    folderId: v.optional(v.string()),
+  }),
+  groups: defineTable({
+    name: v.string(),
+    boardId: v.string(),
+    colorAccent: v.optional(v.string()),
+  }),
+  items: defineTable({
+    name: v.string(),
+    groupId: v.string(),
+    data: v.object({}), // Flexible object to store column values
+  }),
+});
+```
+
+3. Create Convex mutation and query functions for CRUD operations on each entity type
+4. Implement a React hook wrapper for data access in the frontend
+
+# Test Strategy:
+Write tests for each CRUD operation to ensure data is correctly persisted and retrieved. Test edge cases like creating items with various column types and verifying data integrity.

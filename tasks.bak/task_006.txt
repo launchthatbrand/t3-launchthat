@@ -1,0 +1,74 @@
+# Task ID: 6
+# Title: Implement Board Creation and Management
+# Status: pending
+# Dependencies: 3, 5
+# Priority: medium
+# Description: Develop functionality to create, rename, and delete Boards
+# Details:
+Implement the following features:
+
+1. Create a modal for new Board creation
+2. Implement Board renaming functionality
+3. Implement Board deletion with confirmation
+4. Ensure new Boards are created with default Groups and Items as specified in the PRD
+
+```tsx
+// components/boards/CreateBoardModal.tsx
+import { FC, useState } from 'react';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@ui/components/ui/dialog';
+import { Button } from '@ui/components/ui/button';
+import { Input } from '@ui/components/ui/input';
+
+interface CreateBoardModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  folderId?: string; // Optional, if creating within a folder
+}
+
+const CreateBoardModal: FC<CreateBoardModalProps> = ({ isOpen, onClose, folderId }) => {
+  const [boardName, setBoardName] = useState('New Board');
+  const createBoard = useMutation(api.boards.create);
+  
+  const handleCreate = async () => {
+    // Create board with default columns, groups, and items
+    await createBoard({
+      name: boardName,
+      folderId,
+      defaultColumns: true, // This will trigger creation of default columns in the mutation
+      defaultGroups: true, // This will trigger creation of default groups and items
+    });
+    onClose();
+  };
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create New Board</DialogTitle>
+        </DialogHeader>
+        <div className="py-4">
+          <Input 
+            value={boardName} 
+            onChange={(e) => setBoardName(e.target.value)} 
+            placeholder="Board Name"
+            autoFocus
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleCreate}>Create Board</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default CreateBoardModal;
+```
+
+Implement the corresponding Convex mutations for board operations.
+
+# Test Strategy:
+Test board creation to ensure default groups and items are created correctly. Test renaming a board and verify the change persists. Test deleting a board and verify that all associated groups and items are also deleted. Test creating boards both at the top level and within folders.

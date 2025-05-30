@@ -1,0 +1,27 @@
+# Task ID: 1
+# Title: Project Setup and Configuration
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Initialize the Next.js application within the monorepo structure and configure essential dependencies
+# Details:
+1. Create the Next.js application in the `apps/mondayclone` directory
+2. Configure Tailwind CSS
+3. Set up the connection to Shadcn UI components from the local `packages/ui` package
+4. Configure ESLint and Prettier
+5. Set up the basic project structure with directories for components, hooks, utils, and types
+6. Initialize a state management solution (recommend Zustand for its simplicity and effectiveness with this type of application)
+
+```bash
+# Navigate to the apps directory
+cd apps
+
+# Create Next.js app with App Router
+npx create-next-app@latest mondayclone --typescript --tailwind --eslint --app
+
+# Configure package.json to use the local UI package
+# Add to dependencies: "@ui": "workspace:*"
+```
+
+# Test Strategy:
+Verify that the application builds without errors and the development server starts correctly. Confirm that Shadcn UI components can be imported and rendered properly from the local package.

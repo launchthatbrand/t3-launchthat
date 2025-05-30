@@ -1,0 +1,83 @@
+# Task ID: 17
+# Title: Implement Loading States
+# Status: pending
+# Dependencies: 1
+# Priority: low
+# Description: Add loading indicators for asynchronous operations
+# Details:
+Implement loading indicators for asynchronous operations:
+
+1. Create a reusable loading spinner component
+2. Add loading states to buttons during mutations
+3. Add loading states to data fetching operations
+
+```tsx
+// components/common/LoadingSpinner.tsx
+import { FC } from 'react';
+import { Loader2 } from 'lucide-react';
+
+interface LoadingSpinnerProps {
+  size?: number;
+  className?: string;
+}
+
+const LoadingSpinner: FC<LoadingSpinnerProps> = ({ size = 24, className = '' }) => {
+  return (
+    <Loader2 size={size} className={`animate-spin ${className}`} />
+  );
+};
+
+export default LoadingSpinner;
+```
+
+Implement loading states in buttons:
+
+```tsx
+// Example usage in a component
+const MyComponent = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const createBoard = useMutation(api.boards.create);
+  
+  const handleCreateBoard = async () => {
+    setIsLoading(true);
+    try {
+      await createBoard({ name: 'New Board' });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  return (
+    <Button onClick={handleCreateBoard} disabled={isLoading}>
+      {isLoading ? <LoadingSpinner size={16} className="mr-2" /> : null}
+      Create Board
+    </Button>
+  );
+};
+```
+
+Implement loading states for data fetching:
+
+```tsx
+// Example usage in a component
+const BoardView = ({ boardId }) => {
+  const board = useQuery(api.boards.getById, { id: boardId });
+  const groups = useQuery(api.groups.getByBoardId, { boardId });
+  
+  if (!board || !groups) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <LoadingSpinner size={32} />
+        <span className="ml-2">Loading board...</span>
+      </div>
+    );
+  }
+  
+  // Render board content
+};
+```
+
+# Test Strategy:
+Test loading states by simulating slow network responses. Verify that loading indicators appear during asynchronous operations. Test that buttons are disabled during loading states to prevent duplicate submissions.

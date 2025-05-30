@@ -1,0 +1,62 @@
+import { v } from "convex/values";
+
+import type { Id } from "./_generated/dataModel";
+import { mutation, query } from "./_generated/server";
+
+/**
+ * Get all posts from the database.
+ */
+export const getAll = query({
+  args: {},
+  handler: async (ctx) => {
+    // Fetch all documents from the "posts" table
+    // Consider adding pagination or limits for production applications
+    return await ctx.db.query("posts").collect();
+  },
+});
+
+/**
+ * Create a new post.
+ *
+ * Note: This is currently public. Add authentication checks as needed.
+ * Example: const identity = await ctx.auth.getUserIdentity();
+ *          if (!identity) { throw new Error("Not authenticated"); }
+ */
+export const create = mutation({
+  args: {
+    title: v.string(),
+    content: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Insert the new post document
+    const postId = await ctx.db.insert("posts", {
+      title: args.title,
+      content: args.content,
+      // Optionally add authorId or other relevant fields here
+      // authorId: identity.subject,
+    });
+    return postId;
+  },
+});
+
+/**
+ * Delete a post by its ID.
+ *
+ * Note: This is currently public. Add authentication/authorization checks.
+ * Example: const identity = await ctx.auth.getUserIdentity();
+ *          if (!identity) { throw new Error("Not authenticated"); }
+ *          const post = await ctx.db.get(args.id);
+ *          if (!post) { throw new Error("Post not found"); }
+ *          if (post.authorId !== identity.subject) { throw new Error("Not authorized"); }
+ */
+export const deletePost = mutation({
+  // Rename argument from 'delete' to 'deletePost' as 'delete' is a reserved keyword
+  args: {
+    id: v.id("posts"), // Expect the document ID for the "posts" table
+  },
+  handler: async (ctx, args) => {
+    // Delete the specified post document
+    await ctx.db.delete(args.id);
+    // Return void or a success indicator if needed
+  },
+});

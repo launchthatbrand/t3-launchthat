@@ -1,0 +1,50 @@
+# Task ID: 16
+# Title: Implement Convex Queries for Unlinked Topics and Quizzes
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Create two Convex queries to fetch topics and quizzes that are not currently linked to any lesson or topic, respectively.
+# Details:
+Implement two Convex query functions in the appropriate query file:
+
+1. `getAvailableTopics`: This query should retrieve all topics that are not currently linked to any lesson. The implementation should:
+   - Query the topics table
+   - Check for topics that don't have a reference in the lessons table (or have a null/undefined lessonId field)
+   - Return a list of these unlinked topics with their IDs and names
+   - Include proper pagination support for large result sets
+   - Add appropriate access control to ensure only authorized users can access this data
+
+2. `getAvailableQuizzes`: This query should retrieve all quizzes that are not currently linked to any topic. The implementation should:
+   - Query the quizzes table
+   - Check for quizzes that don't have a reference in the topics table (or have a null/undefined topicId field)
+   - Return a list of these unlinked quizzes with their IDs and titles
+   - Include proper pagination support for large result sets
+   - Add appropriate access control to ensure only authorized users can access this data
+
+Both queries should be optimized for performance, especially if the database contains a large number of topics or quizzes. Consider adding appropriate indexes to support these queries efficiently.
+
+# Test Strategy:
+Testing should verify both queries return the correct data under various conditions:
+
+1. Unit Tests:
+   - Test `getAvailableTopics` with a database containing:
+     - Topics linked to lessons
+     - Topics not linked to any lesson
+     - Empty topics table
+   - Test `getAvailableQuizzes` with a database containing:
+     - Quizzes linked to topics
+     - Quizzes not linked to any topic
+     - Empty quizzes table
+
+2. Integration Tests:
+   - Create a test environment with sample data
+   - Verify the queries correctly identify unlinked items when the database state changes
+   - Test pagination works correctly with large datasets
+   - Verify access control works as expected (unauthorized users cannot access the data)
+
+3. Manual Testing:
+   - Use the Convex dashboard to execute the queries with different parameters
+   - Verify the returned data matches expectations
+   - Check performance metrics for large datasets
+
+All tests should confirm that only truly unlinked items are returned and that all unlinked items are included in the results.

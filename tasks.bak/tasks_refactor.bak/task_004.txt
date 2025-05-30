@@ -1,0 +1,15 @@
+# Task ID: 4
+# Title: Refactor Schema Definitions
+# Status: done
+# Dependencies: 3
+# Priority: high
+# Description: Move and reorganize schema definitions into feature-specific directories
+# Details:
+1. Identify all schema definitions in the current structure.
+2. Move schema definitions to their respective feature directories (e.g., ecommerce/schema/, users/users.schema.ts).
+3. Update the main schema.ts to import and aggregate schemas from feature-specific files.
+4. Ensure all schema definitions follow Convex best practices, including appropriate indexing.
+5. Use the latest Convex SDK version (currently @convex-dev/server@0.3.0) for schema definitions.
+
+# Test Strategy:
+Run Convex schema validation commands. Ensure all existing queries and mutations still work with the new schema structure.

@@ -1,0 +1,78 @@
+# Product Requirements Document: CourseBuilderV2 Component
+
+## 1. Introduction
+
+This document outlines the requirements for the `CourseBuilderV2` React component, located within the `@acme/ui` package. The goal is to create a universal, reusable, and backend-agnostic UI component for building and organizing course structures (lessons, topics, quizzes). This component will replace or supersede `CourseBuilderV1`, incorporating lessons learned and potentially improved architecture using `@dnd-kit`.
+
+## 2. Goals
+
+-   Develop a modular React component (`CourseBuilderV2`) for displaying and managing course content hierarchy.
+-   Enable drag-and-drop reordering of lessons, topics, and potentially quizzes within the structure.
+-   Allow adding, removing, and editing the titles of lessons, topics, and quizzes.
+-   Ensure the component is backend-agnostic, receiving data and handling updates via props and callback functions.
+-   Render an intuitive empty state when a course has no content, matching the provided reference image.
+-   Utilize `@dnd-kit` for drag-and-drop functionality.
+-   Style using Tailwind CSS, consistent with the `@acme/ui` package standards.
+
+## 3. Functional Requirements
+
+### 3.1. Component Interface (Props)
+
+The `CourseBuilderV2` component must accept the following props:
+
+-   `courseId`: Identifier for the current course (e.g., `Id<"courses">`).
+-   `initialLessons`: An array representing the initial, ordered structure of the course. Each lesson object should contain its data and potentially a nested array of its ordered topics. Each topic object should contain its data and potentially a nested array of its ordered quizzes. (Type definition similar to `LessonWithTopics` explored in V2 development).
+-   `onAddLesson`: Callback function `(courseId, order) => Promise<void>` triggered to add a new lesson.
+-   `onAddTopic`: Callback function `(lessonId, order) => Promise<void>` triggered to add a new topic to a lesson.
+-   `onAddQuiz`: Callback function `(topicId, order) => Promise<void>` triggered to add a new quiz to a topic.
+-   `onRemoveItem`: Callback function `(itemType: 'lesson' | 'topic' | 'quiz', itemId) => Promise<void>` triggered to remove an item.
+-   `onTitleChange`: Callback function `(itemType: 'lesson' | 'topic' | 'quiz', itemId, newTitle) => Promise<void>` triggered when an item's title is edited and saved.
+-   `onReorderItems`: Callback function `(activeId: string, overId: string, parentId?: Id<any>) => Promise<void>` triggered after a drag-and-drop operation completes, providing necessary information for the parent to update the backend order.
+
+### 3.2. UI Elements & Display
+
+-   **Lessons:** Display lessons vertically, showing title (editable) and drag handle. Allow collapsing/expanding lessons to show/hide topics.
+-   **Topics:** Display topics nested under their parent lesson, showing title (editable) and drag handle. Allow collapsing/expanding topics to show/hide quizzes.
+-   **Quizzes:** Display quizzes nested under their parent topic, showing title (editable) and drag handle.
+-   **Add Buttons:** Provide "+ New Lesson", "+ New Topic" (within lessons), and "+ New Quiz" (within topics or a dedicated "Final Quizzes" area) buttons that trigger the respective `onAdd*` callbacks.
+-   **Section Headings:** (Consider re-introducing from V1 if required) Allow adding visual section breaks within the lesson list.
+-   **Empty State:** When `initialLessons` is empty or null, display a centered message "Course has no content yet. Add a new Lesson or add an existing one from the sidebar." within the main content area, matching the reference image.
+-   **Final Quizzes Area:** Display a distinct area at the bottom labeled "FINAL QUIZZES" with a drop zone and a "+ New Quiz" button, as shown in the reference image.
+
+### 3.3. Drag & Drop Functionality (`@dnd-kit`)
+
+-   Implement drag-and-drop for lessons within the main list.
+-   Implement drag-and-drop for topics within their parent lesson *and* potentially between lessons.
+-   Implement drag-and-drop for quizzes within their parent topic *and* potentially between topics or into the "Final Quizzes" area.
+-   Provide clear visual feedback during drag operations (e.g., drag overlay, drop indicators).
+-   Utilize the `onReorderItems` callback to inform the parent component of the desired reordering. The component itself should ideally handle optimistic updates locally or rely purely on the parent providing updated `initialLessons`.
+
+### 3.4. Title Editing
+
+-   Lesson, topic, and quiz titles should be editable in place (e.g., clicking the title turns it into an input field).
+-   Saving the edited title (e.g., on blur or Enter key) should trigger the `onTitleChange` callback.
+
+## 4. Non-Functional Requirements
+
+-   **Universality:** The component must not contain any backend-specific logic (e.g., direct Convex calls, Payload API fetches). All data interaction must occur through the props/callbacks.
+-   **Reusability:** Designed for use in different contexts within the application or potentially other applications.
+-   **Styling:** Adhere to Tailwind CSS and any existing design system conventions within `@acme/ui`.
+
+## 5. Technical Details
+
+-   **Framework/Library:** React, TypeScript
+-   **Drag & Drop:** `@dnd-kit`
+-   **Styling:** Tailwind CSS
+
+## 6. Comparison with CourseBuilderV1
+
+-   `CourseBuilderV2` leverages `@dnd-kit` directly for potentially more robust and flexible drag-and-drop compared to V1's implementation.
+-   V2 consolidates logic potentially into the main `index.tsx` rather than separate `LessonList`, `TopicList` components seen in V1, aiming for better state management during drag operations.
+-   V2 explicitly defines the backend-agnostic prop interface, reinforcing the universality goal.
+-   Re-evaluate the need for the `SectionHeading` component from V1.
+
+## 7. Out of Scope
+
+-   The implementation of the backend logic (Convex mutations/queries, PayloadCMS API endpoints).
+-   The parent component responsible for fetching data and providing the callbacks.
+-   Specific UI implementation of the sidebar mentioned in the empty state text. 

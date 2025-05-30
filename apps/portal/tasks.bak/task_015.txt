@@ -1,0 +1,11 @@
+# Task ID: 15
+# Title: Implement Settings Management in Admin
+# Status: pending
+# Dependencies: 7
+# Priority: medium
+# Description: Create the admin interface for managing application settings, including Authorize.Net credentials.
+# Details:
+Develop a settings page with sections for different configuration options. Create a form for managing Authorize.Net credentials. Implement a secure Convex action for updating environment variables that can only be called by admins. Ensure sensitive information is masked when displayed.
+
+# Test Strategy:
+Test saving and updating settings. Verify that only admin users can access and modify settings. Ensure sensitive information is properly masked in the UI. Test the secure Convex action for updating environment variables.

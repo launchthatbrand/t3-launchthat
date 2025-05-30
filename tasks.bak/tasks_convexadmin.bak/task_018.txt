@@ -1,0 +1,11 @@
+# Task ID: 18
+# Title: Add basic sorting and filtering to ListView
+# Status: pending
+# Dependencies: 9
+# Priority: low
+# Description: Enhance list views with basic sorting and filtering capabilities
+# Details:
+Add basic sorting functionality to the ListView component, allowing users to sort by clicking on column headers. Implement simple filtering controls for basic field types. Update the Convex queries to support sorting and filtering parameters.
+
+# Test Strategy:
+Test sorting and filtering with various collections and field types. Verify that the data is correctly sorted and filtered according to user selections.

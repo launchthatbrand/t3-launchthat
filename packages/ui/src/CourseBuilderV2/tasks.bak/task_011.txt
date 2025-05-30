@@ -1,0 +1,23 @@
+# Task ID: 11
+# Title: Implement quiz drag-and-drop
+# Status: done
+# Dependencies: 10, 6
+# Priority: high
+# Description: Implement drag-and-drop for reordering quizzes within topics, attaching available quizzes from the sidebar (into Topics, Lessons, or Final Quiz Area), and moving existing quizzes between these valid containers.
+# Details:
+Implement quiz drag-and-drop that:
+- Makes quizzes draggable using @dnd-kit
+- Adds drag handles to quizzes
+- Allows reordering quizzes within the same topic
+- Allows moving quizzes between different topics
+- Allows moving quizzes to/from the Final Quizzes area
+- Allows attaching available quizzes from the sidebar into Topics
+- Allows attaching available quizzes from the sidebar into Lessons
+- Allows attaching available quizzes from the sidebar into Final Quiz Area
+- Provides visual feedback during dragging
+- Shows drop indicators between quizzes
+- Calls onReorderItems with appropriate parameters
+- Handles parent-child relationships correctly
+
+# Test Strategy:
+Test dragging quizzes within a topic, between topics, and to/from the Final Quizzes area. Test attaching available quizzes from the sidebar into Topics, Lessons, and Final Quiz Area. Verify visual feedback and drop indicators. Confirm onReorderItems is called with correct parameters.

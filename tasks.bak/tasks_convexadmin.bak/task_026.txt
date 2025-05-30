@@ -1,0 +1,45 @@
+# Task ID: 26
+# Title: Implement Real-time ListView with Convex Integration
+# Status: pending
+# Dependencies: 6
+# Priority: high
+# Description: Override Payload's ListQueryProvider to use a custom hook that fetches data directly from Convex, enabling real-time updates in the native ListView component.
+# Details:
+Create a custom hook called `useConvexRealtimeListQuery` that will replace Payload's default data fetching mechanism for ListViews. The implementation should:
+
+1. Create a wrapper component that overrides Payload's `ListQueryProvider` to inject our custom hook
+2. Develop the `useConvexRealtimeListQuery` hook that:
+   - Manages filter, sort, and pagination state (syncing with URL parameters)
+   - Translates this state into appropriate Convex query arguments
+   - Uses Convex's `useQuery` hook to fetch data with real-time updates
+   - Transforms the Convex query results to match Payload's expected data structure: `{ docs: [], totalDocs: number, page: number, totalPages: number, hasPrevPage: boolean, hasNextPage: boolean }`
+   - Provides handlers for updating state (changing page, sort, filters, etc.)
+
+3. Ensure the hook properly handles loading states and errors
+4. Implement URL synchronization so that filter/sort/pagination state is reflected in the URL and can be bookmarked/shared
+5. Add appropriate TypeScript types for all components and hooks
+6. Register the component override in the Payload config to replace the default ListView provider
+
+The implementation should be non-intrusive to Payload's core components, only overriding the data fetching layer while preserving all existing ListView functionality and appearance.
+
+# Test Strategy:
+1. Unit test the `useConvexRealtimeListQuery` hook:
+   - Test that it correctly translates filter/sort/pagination state to Convex query arguments
+   - Test that it properly transforms Convex results to match Payload's expected structure
+   - Test URL synchronization functionality
+   - Mock Convex's `useQuery` to simulate different response scenarios
+
+2. Integration testing:
+   - Create a test collection in Payload with the custom provider enabled
+   - Verify that the ListView renders correctly with initial data
+   - Test real-time updates by modifying data in Convex and confirming the UI updates without refresh
+   - Test all filtering, sorting, and pagination controls work as expected
+   - Verify URL parameters update correctly when changing filters/sort/page
+   - Test that navigating directly to a URL with filter/sort/page parameters loads the correct data
+
+3. Performance testing:
+   - Compare rendering performance with the standard ListView
+   - Test with large datasets to ensure pagination works efficiently
+   - Verify that real-time updates don't cause unnecessary re-renders
+
+4. Cross-browser testing to ensure compatibility

@@ -1,0 +1,11 @@
+# Task ID: 15
+# Title: Create comprehensive documentation and examples
+# Status: pending
+# Dependencies: 14
+# Priority: low
+# Description: Develop detailed documentation and example projects for the Payload CMS + Convex integration.
+# Details:
+Create comprehensive documentation covering the architecture, setup, development workflow, and deployment process. Document any limitations or known issues. Create example projects demonstrating different use cases. Include troubleshooting guides and FAQs. Create API reference documentation for the plugin and adapter.
+
+# Test Strategy:
+Review the documentation for completeness and accuracy. Test the example projects to ensure they work as expected. Have other developers review and provide feedback on the documentation.

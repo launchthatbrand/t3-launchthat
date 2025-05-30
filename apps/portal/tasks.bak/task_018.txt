@@ -1,0 +1,11 @@
+# Task ID: 18
+# Title: Implement User Dashboard
+# Status: pending
+# Dependencies: 5, 16
+# Priority: high
+# Description: Create a dashboard for users to view their purchased courses and access course content.
+# Details:
+Develop a user dashboard showing purchased courses. Create a clean and intuitive interface for accessing course content. Implement Convex queries for fetching user-specific data, linking via Clerk user ID stored in Convex. Ensure the dashboard is only accessible to authenticated users, verified using Clerk's hooks (useAuth) or middleware.
+
+# Test Strategy:
+Test that the dashboard correctly displays purchased courses. Verify that course access links work correctly. Ensure unauthenticated users are redirected appropriately using Clerk authentication. Test that user-specific data is correctly fetched based on the Clerk user ID.

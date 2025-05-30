@@ -1,0 +1,69 @@
+# Task ID: 7
+# Title: Implement Folder Creation and Management
+# Status: pending
+# Dependencies: 3, 5
+# Priority: medium
+# Description: Develop functionality to create, rename, and delete Folders
+# Details:
+Implement the following features:
+
+1. Create a modal for new Folder creation
+2. Implement Folder renaming functionality
+3. Implement Folder deletion with confirmation (warning that all contained boards will be deleted)
+4. Ensure proper relationship between Folders and Boards
+
+```tsx
+// components/folders/CreateFolderModal.tsx
+import { FC, useState } from 'react';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@ui/components/ui/dialog';
+import { Button } from '@ui/components/ui/button';
+import { Input } from '@ui/components/ui/input';
+
+interface CreateFolderModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const CreateFolderModal: FC<CreateFolderModalProps> = ({ isOpen, onClose }) => {
+  const [folderName, setFolderName] = useState('New Folder');
+  const createFolder = useMutation(api.folders.create);
+  
+  const handleCreate = async () => {
+    await createFolder({
+      name: folderName,
+    });
+    onClose();
+  };
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create New Folder</DialogTitle>
+        </DialogHeader>
+        <div className="py-4">
+          <Input 
+            value={folderName} 
+            onChange={(e) => setFolderName(e.target.value)} 
+            placeholder="Folder Name"
+            autoFocus
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleCreate}>Create Folder</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default CreateFolderModal;
+```
+
+Implement the corresponding Convex mutations for folder operations, including cascading deletion of boards when a folder is deleted.
+
+# Test Strategy:
+Test folder creation and verify it appears in the sidebar. Test renaming a folder and verify the change persists. Test deleting a folder with boards inside and verify that all contained boards are also deleted. Test the expand/collapse functionality of folders in the sidebar.

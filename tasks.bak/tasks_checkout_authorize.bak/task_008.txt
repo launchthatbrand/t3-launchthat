@@ -1,0 +1,21 @@
+# Task ID: 8
+# Title: Connect PaymentForm to checkout page
+# Status: done
+# Dependencies: 2, 5, 7
+# Priority: medium
+# Description: Integrate the completed PaymentForm component into the checkout page with proper props and configuration.
+# Details:
+1. Import the PaymentForm component into the checkout page
+2. Pass the environment variables as props to the PaymentForm:
+   ```tsx
+   <PaymentForm
+     apiLoginId={process.env.NEXT_PUBLIC_AUTHORIZENET_LOGINID || ''}
+     clientKey={process.env.NEXT_PUBLIC_AUTHORIZENET_CLIENTKEY || ''}
+   />
+   ```
+3. Add appropriate page title and context information
+4. Consider adding a simple order summary section (placeholder for future integration)
+5. Implement any page-level state management if needed
+
+# Test Strategy:
+Load the checkout page and verify the PaymentForm renders correctly with all its subcomponents. Check that environment variables are properly passed to the component.

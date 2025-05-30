@@ -1,0 +1,11 @@
+# Task ID: 10
+# Title: Create EditView component generator
+# Status: pending
+# Dependencies: 7
+# Priority: high
+# Description: Develop a mechanism to generate edit forms for each collection
+# Details:
+Create a component that generates an edit form for a given collection based on the schema. The component should include form fields for each field in the schema, mapping schema types to appropriate input components (string -> text input, number -> number input, boolean -> checkbox/switch). Use existing form components from @convexcms/ui or @acme/ui. Support both editing existing records and creating new ones.
+
+# Test Strategy:
+Test the generated edit forms with different collection schemas. Verify that the forms display correctly and that all field types are properly represented.

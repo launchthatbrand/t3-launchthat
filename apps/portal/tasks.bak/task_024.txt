@@ -1,0 +1,11 @@
+# Task ID: 24
+# Title: Create Order Confirmation Page
+# Status: pending
+# Dependencies: 23
+# Priority: medium
+# Description: Develop the order confirmation page displayed after successful payment processing.
+# Details:
+Create an order confirmation page showing transaction details and purchased items. Implement real-time status updates using Convex's real-time capabilities. Provide links to access purchased content. Create a clean and user-friendly design using Shadcn UI components.
+
+# Test Strategy:
+Test the order confirmation page with various transaction scenarios. Verify that real-time updates work correctly. Ensure links to purchased content are correct and functional.

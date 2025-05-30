@@ -1,0 +1,11 @@
+# Task ID: 12
+# Title: Add basic field validation
+# Status: pending
+# Dependencies: 11
+# Priority: medium
+# Description: Implement validation for form fields based on schema types
+# Details:
+Add validation logic to the EditView forms based on the schema types and constraints. Implement required field validation, type validation (string, number, boolean), and basic format validation where applicable. Display validation errors next to the relevant fields.
+
+# Test Strategy:
+Test form submission with valid and invalid data. Verify that validation errors are displayed correctly and that valid data is saved.

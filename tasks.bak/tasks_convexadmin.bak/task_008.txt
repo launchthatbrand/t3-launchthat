@@ -1,0 +1,11 @@
+# Task ID: 8
+# Title: Create ListView component generator
+# Status: pending
+# Dependencies: 7
+# Priority: high
+# Description: Develop a mechanism to generate list views for each collection
+# Details:
+Create a component that generates a list view for a given collection based on the schema. The component should include a table with columns for each field in the schema. Use existing UI components from @convexcms/ui or @acme/ui. Include links to the EditView for each record. Focus on basic functionality without complex features like filtering or sorting.
+
+# Test Strategy:
+Test the generated list views with different collection schemas. Verify that the table displays correctly and that links to edit views work.

@@ -1,0 +1,258 @@
+"use client";
+
+import "./mockData"; // mockAvailableLessons, // No longer needed here
+
+import React from "react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  pointerWithin,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+
+// Restore ContentItemRenderer for props
+import type {
+  ContentItemRenderer,
+  SidebarItemRenderer,
+} from "./types/callbacks";
+// Import types needed for props and mapping
+// Remove unused store types (Lesson, Quiz, Topic)
+import type { LessonItem, QuizItem, TopicItem } from "./types/content";
+import type { SidebarItem } from "./types/navigation";
+// Restore CourseStructure for props
+import type { CourseStructure } from "./types/structure";
+import type {
+  AccessibilityConfig,
+  I18nConfig,
+  SidebarConfig,
+  ThemeConfig,
+} from "./types/theme";
+import DragOverlayContent from "./components/DragOverlayContent";
+import MainContent from "./components/MainContent";
+import Sidebar from "./components/Sidebar";
+// Import the new layout components
+import TopBar from "./components/TopBar";
+// Import the new DND hook
+import { useCourseBuilderDnd } from "./hooks/useCourseBuilderDnd";
+// Import the main store hook
+import { useCourseBuilderStore } from "./store/useCourseBuilderStore";
+
+// Remove unused component imports
+// import DraggableItem from "./components/DraggableItem";
+// import Dropzone from "./components/Dropzone";
+// import SortableLessonItem from "./components/SortableLessonItem";
+// import SortableQuizItem from "./components/SortableQuizItem";
+
+// mockAvailableQuizzes, // No longer needed here
+// mockAvailableTopics, // No longer needed here
+
+/**
+ * Props for the CourseBuilderV3 component.
+ */
+export interface CourseBuilderProps {
+  // Restore core structure and action callbacks
+  courseStructure?: CourseStructure; // Might be used for initial state
+  onAddLesson?: () => Promise<void>;
+  onAddTopic?: (lessonId: string, order: number) => Promise<void>;
+  onAddQuiz?: (
+    context:
+      | { topicId: string; order: number }
+      | { isFinalQuiz: true; courseId: string; order: number },
+  ) => Promise<void>;
+  onRemoveLesson?: (lessonId: string) => Promise<void>;
+  onRemoveTopic?: (topicId: string) => Promise<void>;
+  onRemoveQuiz?: (quizId: string) => Promise<void>;
+  onTitleChangeLesson?: (lessonId: string, newTitle: string) => Promise<void>;
+  onTitleChangeTopic?: (topicId: string, newTitle: string) => Promise<void>;
+  onTitleChangeQuiz?: (quizId: string, newTitle: string) => Promise<void>;
+  onReorderItems?: (
+    activeId: string,
+    overId: string | null,
+    parentId?: string,
+  ) => Promise<void>;
+  onAttachLesson?: (
+    lessonId: string,
+    courseId: string,
+    order: number,
+  ) => Promise<void>;
+  onAttachTopic?: (
+    topicId: string,
+    lessonId: string,
+    order: number,
+  ) => Promise<void>;
+  onAttachQuizToTopic?: (
+    quizId: string,
+    topicId: string,
+    order: number,
+  ) => Promise<void>;
+  onAttachQuizToFinal?: (
+    quizId: string,
+    courseId: string,
+    order: number,
+  ) => Promise<void>;
+
+  // Restore optional renderer props
+  renderLessonItem?: ContentItemRenderer<LessonItem>;
+  renderTopicItem?: ContentItemRenderer<TopicItem>;
+  renderQuizItem?: ContentItemRenderer<QuizItem>;
+
+  // Keep other props
+  renderSidebarItem?: SidebarItemRenderer<SidebarItem>;
+  themeConfig?: ThemeConfig;
+  sidebarConfig?: SidebarConfig;
+  accessibilityConfig?: AccessibilityConfig;
+  i18nConfig?: I18nConfig;
+}
+
+// Default no-op async function for callbacks
+const noopAsync = async (): Promise<void> => {
+  /* do nothing */
+};
+const noopAsyncWithArgs = async (..._args: unknown[]): Promise<void> => {
+  /* do nothing */
+};
+
+/**
+ * Main CourseBuilderV3 component. Pure UI, prop-driven, data-source-agnostic.
+ *
+ * Note: Not all callbacks are used in the minimal layout. They will be used as the component is built out.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const CourseBuilder: React.FC<CourseBuilderProps> = ({
+  // Destructure the restored props (even if not used directly below)
+  courseStructure: _courseStructure,
+  onAddLesson: _onAddLesson = noopAsync,
+  onAddTopic: _onAddTopic = noopAsyncWithArgs,
+  onAddQuiz: _onAddQuiz = noopAsyncWithArgs,
+  onRemoveLesson: _onRemoveLesson = noopAsyncWithArgs,
+  onRemoveTopic: _onRemoveTopic = noopAsyncWithArgs,
+  onRemoveQuiz: _onRemoveQuiz = noopAsyncWithArgs,
+  onTitleChangeLesson: _onTitleChangeLesson = noopAsyncWithArgs,
+  onTitleChangeTopic: _onTitleChangeTopic = noopAsyncWithArgs,
+  onTitleChangeQuiz: _onTitleChangeQuiz = noopAsyncWithArgs,
+  onReorderItems: _onReorderItems = noopAsyncWithArgs,
+  onAttachLesson: _onAttachLesson = noopAsyncWithArgs,
+  onAttachTopic: _onAttachTopic = noopAsyncWithArgs,
+  onAttachQuizToTopic: _onAttachQuizToTopic = noopAsyncWithArgs,
+  onAttachQuizToFinal: _onAttachQuizToFinal = noopAsyncWithArgs,
+  renderLessonItem: _renderLessonItem,
+  renderTopicItem: _renderTopicItem,
+  renderQuizItem: _renderQuizItem,
+  // Keep existing props
+  renderSidebarItem,
+  // themeConfig,
+  // sidebarConfig,
+  // accessibilityConfig,
+  // i18nConfig,
+}) => {
+  // 1. Get state and actions from the store
+  const store = useCourseBuilderStore();
+  const {
+    // Get the unified items array
+    mainContentItems,
+    // Remove unused 'lessons' destructuring
+    // lessons,
+    availableLessons: storeAvailableLessons,
+    availableTopics: storeAvailableTopics,
+    availableQuizzes: storeAvailableQuizzes,
+    // Keep nested actions
+    addTopicToLesson,
+    addQuizToTopic,
+    addQuizToLesson,
+    reorderTopicsInLesson,
+    reorderQuizzesInLesson,
+    reorderQuizzesInTopic,
+    // Get unified actions
+    addMainContentItem,
+    reorderMainContentItems,
+  } = store;
+
+  // 1.1 Map store available data
+  const availableLessons: LessonItem[] = storeAvailableLessons.map((l) => ({
+    ...l,
+    type: "lesson",
+  }));
+  const availableTopics: TopicItem[] = storeAvailableTopics.map((t) => ({
+    ...t,
+    type: "topic",
+  }));
+  const availableQuizzes: QuizItem[] = storeAvailableQuizzes.map((q) => ({
+    ...q,
+    type: "quiz",
+  }));
+
+  // 2. Initialize the DND hook with correct actions
+  const { activeItem, handleDragStart, handleDragEnd, handleDragCancel } =
+    useCourseBuilderDnd({
+      // Pass nested actions
+      addTopicToLesson,
+      addQuizToTopic,
+      addQuizToLesson,
+      reorderTopicsInLesson,
+      reorderQuizzesInLesson,
+      reorderQuizzesInTopic,
+      // Pass unified actions
+      addMainContentItem,
+      reorderMainContentItems,
+      // Pass available items
+      availableLessons,
+      availableTopics,
+      availableQuizzes,
+    });
+
+  // 3. Set up sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  // 4. Define callback for TopBar log button
+  const handleLogStructure = () => {
+    // Log the unified structure
+    console.log("Current Structure:", { mainContentItems });
+  };
+
+  // 5. Render the component structure
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={pointerWithin}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      <div className="flex h-full w-full flex-col">
+        <TopBar onLogStructure={handleLogStructure} />
+
+        <div className="flex flex-grow flex-row overflow-hidden">
+          <Sidebar
+            availableLessons={availableLessons}
+            availableTopics={availableTopics}
+            availableQuizzes={availableQuizzes}
+            renderSidebarItem={renderSidebarItem}
+          />
+          <MainContent
+            // Pass the unified items array
+            mainContentItems={mainContentItems}
+            activeItem={activeItem}
+          />
+        </div>
+      </div>
+
+      <DragOverlay dropAnimation={null}>
+        <DragOverlayContent
+          activeItem={activeItem}
+          // Pass data needed by DragOverlayContent
+          // It likely needs mainContentItems now instead of lessons/finalQuizzes
+          mainContentItems={mainContentItems}
+          availableLessons={availableLessons}
+          availableTopics={availableTopics}
+          availableQuizzes={availableQuizzes}
+        />
+      </DragOverlay>
+    </DndContext>
+  );
+};
+
+export default CourseBuilder;

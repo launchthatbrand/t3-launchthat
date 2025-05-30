@@ -1,0 +1,16 @@
+# Task ID: 5
+# Title: Implement Shared Utility Functions
+# Status: done
+# Dependencies: 3
+# Priority: high
+# Description: Create a shared utilities directory and implement common helper functions
+# Details:
+1. Create a shared/ or utils/ directory at the root of convex/.
+2. Implement utility functions for common operations (e.g., pagination, validation helpers).
+3. Create a constants.ts file for shared constants across features.
+4. Implement getAuthenticatedUserId helper to standardize user authentication.
+5. Use TypeScript for strong typing and consider using utility types from @convex-dev/server.
+6. Export utilities through an index.ts file for easy importing.
+
+# Test Strategy:
+Write unit tests for each utility function using a testing framework compatible with Convex (e.g., Jest with appropriate mocking of Convex context).

@@ -1,0 +1,18 @@
+# Task ID: 12
+# Title: Implement add functionality for lessons, topics, and quizzes
+# Status: done
+# Dependencies: 5
+# Priority: medium
+# Description: Add functionality to create new lessons, topics, and quizzes
+# Details:
+Implement add functionality that:
+- Calls onAddLesson when '+ New Lesson' button is clicked
+- Calls onAddTopic when '+ New Topic' button is clicked within a lesson
+- Calls onAddQuiz when '+ New Quiz' button is clicked within a topic
+- Calls onAddQuiz when '+ New Quiz' button is clicked in the Final Quizzes area
+- Passes correct parameters (IDs and order values)
+- Provides visual feedback during the add operation
+- Handles loading states while waiting for Promise resolution
+
+# Test Strategy:
+Test adding new lessons, topics, and quizzes. Verify correct callback functions are called with appropriate parameters. Test loading states during Promise resolution.

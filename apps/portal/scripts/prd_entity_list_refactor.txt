@@ -1,0 +1,113 @@
+# Product Requirements Document: Universal EntityList Component Refactor
+
+## 1. Introduction
+
+This document outlines the requirements for refactoring the t3-launchthat portal application to introduce a universal `EntityList` component. The goal is to promote code reusability, maintainability, and consistency across various sections of the application that display lists or grids of data entities (e.g., downloads, orders, products, users, courses).
+
+## 2. Goals
+
+-   Reduce code duplication by replacing bespoke list/grid implementations with a single, configurable `EntityList` component.
+-   Improve developer experience by providing a standardized way to display and interact with entity collections.
+-   Ensure consistent UI/UX for data presentation across both frontend and admin sections.
+-   Leverage Shadcn UI components from the shared `@ui` package for core building blocks.
+-   Provide robust features like search, filtering, pagination, and switchable list/grid views.
+
+## 3. Target Areas for Refactoring
+
+The new `EntityList` component should be integrated into, but not limited to, the following areas:
+
+**Frontend (`apps/portal/src/app/(frontend)`):**
+-   Downloads (`downloads/DownloadsPage.tsx`)
+-   Store/Products (`store/page.tsx`, `store/ProductFilters.tsx`)
+-   Courses (if a list view exists)
+-   Orders (if a list view exists for user order history)
+-   Any other views displaying collections of data.
+
+**Admin Panel (`apps/portal/src/app/(admin)/admin`):**
+-   Users (`users/`)
+-   Roles (`roles/`)
+-   Calendar/Events (`calendar/`)
+-   Contacts (`contacts/`)
+-   Orders (`orders/`)
+-   Products (`products/`)
+-   Store related listings (`store/`)
+-   Downloads (`downloads/`)
+-   Courses (`courses/`)
+-   Any other administrative views displaying collections of data.
+
+## 4. Functional Requirements for `EntityList` Component
+
+The `EntityList` component should be highly configurable and support the following features:
+
+### 4.1. Data Handling
+-   Accept a generic data array of any entity type.
+-   Allow dynamic configuration of columns/fields to display for each entity.
+-   Support custom render functions for individual cells/fields to allow for complex data presentation (e.g., badges, avatars, action buttons).
+-   Integrate with existing data fetching mechanisms (likely tRPC queries).
+
+### 4.2. Display Modes
+-   **List View:** A traditional table-like or dense list layout.
+    -   Configurable columns.
+    -   Sortable columns.
+-   **Grid View:** A card-based layout.
+    -   Configurable card content and layout.
+-   Ability to switch between List and Grid views.
+
+### 4.3. Search & Filtering
+-   **Global Search:** A search input to filter entities based on one or more configurable fields.
+-   **Advanced Filtering:**
+    -   Support for adding multiple filter criteria (e.g., "status is 'active'", "category is 'electronics'").
+    -   Filters should be configurable based on the entity type and available fields.
+    -   Allow for different filter input types (text, select, date range, etc.), leveraging Shadcn components.
+    -   A clear way to apply and reset filters.
+
+### 4.4. Pagination
+-   Efficiently handle large datasets with paginated results.
+-   Configurable items per page.
+-   Clear pagination controls (next, previous, page numbers).
+
+### 4.5. Actions
+-   **Row/Item Actions:** Support for a configurable set of actions per entity (e.g., "Edit", "Delete", "View Details"). These could be in a dropdown menu or directly visible buttons.
+-   **Bulk Actions:** (Optional, based on complexity) Support for selecting multiple items and performing actions on them (e.g., "Delete Selected").
+-   **Global Actions:** Support for actions that apply to the list as a whole (e.g., "Add New Entity").
+
+### 4.6. Styling and Theming
+-   Utilize Shadcn UI components from `@launch εποχ/ui` for all UI elements (tables, cards, buttons, inputs, dropdowns, etc.).
+-   Ensure responsiveness and adaptability to different screen sizes.
+-   Adhere to the existing application's styling and theming.
+
+### 4.7. Customization & Extensibility
+-   The component should be designed with props that allow for extensive customization of its behavior and appearance.
+-   Clear separation of concerns to allow for easy extension if new features are needed in the future.
+
+## 5. Non-Functional Requirements
+
+-   **Performance:** The component should be performant, even with large datasets. Efficient data rendering and filtering are crucial.
+-   **Accessibility:** Adhere to WCAG AA accessibility standards.
+-   **Maintainability:** Code should be well-structured, documented, and easy to understand and modify.
+-   **Testability:** The component should be designed in a way that facilitates unit and integration testing.
+-   **Type Safety:** Full TypeScript support with well-defined props and generic types.
+
+## 6. Technical Considerations
+
+-   **Component Location:** The new `EntityList` component should likely reside in a shared location, possibly within `apps/portal/src/components/ui` or a new `apps/portal/src/components/shared` directory, if it's specific to the portal, or potentially in the `@ui` package if it's generic enough for wider use across the monorepo (though initial scope suggests portal-specific first).
+-   **State Management:** Local component state should be sufficient for most features. Filters and search terms might need to be managed in a way that they can be persisted in URL query parameters for shareability.
+-   **Data Fetching Integration:** The component should be designed to work with the existing data fetching patterns (e.g., taking `data`, `isLoading`, `error` props from a React Query hook powered by tRPC). It should not be responsible for fetching data itself but rather for displaying and interacting with the data provided to it.
+
+## 7. Acceptance Criteria
+
+-   Existing views in "Target Areas for Refactoring" are successfully refactored to use the new `EntityList` component.
+-   Code duplication related to list/grid display, search, and filtering is significantly reduced in the target areas.
+-   The `EntityList` component implements all specified functional requirements.
+-   The application remains stable and performant after the refactoring.
+-   The UI/UX for displaying entity lists is consistent across the refactored sections.
+-   The component is well-documented with usage examples.
+
+## 8. Future Considerations (Out of Scope for Initial MVP)
+
+-   Real-time updates (e.g., via Convex subscriptions).
+-   Advanced customizable sorting options (multi-column sort).
+-   Saving user preferences for view mode, filters, or column visibility.
+-   Drag-and-drop reordering of items (if applicable to specific entities).
+
+This PRD will serve as the basis for generating tasks in Taskmaster to implement the universal `EntityList` component and refactor the application accordingly. 

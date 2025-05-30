@@ -1,0 +1,38 @@
+{
+  "name": "@acme/plugin-convex",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "dev": "tsc",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "lint": "eslint",
+    "parse:schema": "tsx ./scripts/parse-schema.ts",
+    "generate:collections": "tsx ./scripts/generate-collections.ts",
+    "typecheck": "tsc --noEmit --emitDeclarationOnly false"
+  },
+  "devDependencies": {
+    "@acme/eslint-config": "workspace:*",
+    "@acme/prettier-config": "workspace:*",
+    "@acme/tsconfig": "workspace:*",
+    "@types/node": "^22.13.11",
+    "commander": "^12.1.0",
+    "eslint": "catalog:",
+    "payload": "3.29.0",
+    "prettier": "catalog:",
+    "ts-morph": "^25.0.1",
+    "ts-node": "^10.9.2",
+    "tsx": "4.19.2",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "payload": "^3.0.0-beta.35"
+  },
+  "prettier": "@acme/prettier-config"
+}

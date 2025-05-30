@@ -1,0 +1,11 @@
+# Task ID: 19
+# Title: Implement Course Consumption Interface
+# Status: pending
+# Dependencies: 18
+# Priority: high
+# Description: Create the interface for users to consume course content, including lessons and topics.
+# Details:
+Develop a course consumption interface with navigation between lessons and topics. Create components for displaying different types of topic content (text, video). Implement progress tracking functionality. Create Convex queries for fetching course content and mutations for updating progress.
+
+# Test Strategy:
+Test navigation between lessons and topics. Verify that different content types display correctly. Test that only purchased courses are accessible. Ensure progress is correctly tracked and persisted.

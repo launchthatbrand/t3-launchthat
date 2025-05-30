@@ -1,0 +1,11 @@
+# Task ID: 3
+# Title: Define core types for ConvexAdmin
+# Status: done
+# Dependencies: 2
+# Priority: high
+# Description: Create or adapt type definitions for the core ConvexAdmin functionality
+# Details:
+Define TypeScript interfaces for the parsed schema structure, admin panel configuration, and other core types needed for ConvexAdmin. Keep the same type structure as the original Payload where possible, but comment out existing types rather than modifying them directly when changes are needed. Create new types for Convex-specific concepts.
+
+# Test Strategy:
+Verify type compatibility with both the existing Payload components and the Convex backend. Ensure type safety throughout the application.

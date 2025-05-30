@@ -1,0 +1,11 @@
+# Task ID: 2
+# Title: Implement basic convexPlugin architecture
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Create the foundation for the Convex plugin with the onInit hook structure that will be responsible for schema generation.
+# Details:
+Create the main plugin file that exports a function returning a Payload plugin object. Implement the plugin interface with an onInit hook that will be triggered when Payload initializes. Set up the plugin to accept configuration options. Create placeholder functions for schema generation and UI component overrides that will be implemented in later tasks.
+
+# Test Strategy:
+Create a simple Payload config that includes the plugin and verify that the onInit hook is called during Payload initialization. Log the plugin initialization to confirm it's working correctly.

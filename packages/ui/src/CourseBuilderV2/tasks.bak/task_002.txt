@@ -1,0 +1,16 @@
+# Task ID: 2
+# Title: Implement basic component skeleton with empty state
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Create the basic structure of the CourseBuilderV2 component with empty state rendering
+# Details:
+Create the main component structure that:
+- Accepts all required props as defined in the PRD
+- Renders the empty state when initialLessons is empty or null
+- Includes the message "Course has no content yet. Add a new Lesson or add an existing one from the sidebar."
+- Styles the empty state according to the reference image using Tailwind CSS
+- Includes a '+ New Lesson' button that calls onAddLesson when clicked
+
+# Test Strategy:
+Render the component with empty initialLessons and verify the empty state appears correctly. Test that clicking the '+ New Lesson' button calls the onAddLesson callback.

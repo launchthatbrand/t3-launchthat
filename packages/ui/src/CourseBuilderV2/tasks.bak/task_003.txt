@@ -1,0 +1,18 @@
+# Task ID: 3
+# Title: Implement basic lesson rendering
+# Status: done
+# Dependencies: 2
+# Priority: high
+# Description: Create the UI for rendering lessons without drag-and-drop functionality
+# Details:
+Implement lesson rendering that:
+- Maps through initialLessons to display each lesson
+- Shows lesson titles
+- Includes a placeholder for the drag handle (to be implemented later)
+- Adds a '+ New Lesson' button at the bottom of the list
+- Styles lessons according to the design using Tailwind CSS
+- Includes collapse/expand functionality for lessons
+- Adds a '+ New Topic' button within each lesson
+
+# Test Strategy:
+Render the component with sample lesson data and verify lessons display correctly. Test collapse/expand functionality and verify the '+ New Topic' button appears within each lesson.

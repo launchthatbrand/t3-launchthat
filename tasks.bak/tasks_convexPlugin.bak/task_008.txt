@@ -1,0 +1,11 @@
+# Task ID: 8
+# Title: Implement query translation for Payload where clauses
+# Status: pending
+# Dependencies: 7
+# Priority: high
+# Description: Develop a system to translate Payload's query syntax to Convex query parameters.
+# Details:
+Create a query translator that converts Payload's where clauses to Convex query parameters. Handle operators like equals, in, not_in, like, contains, etc. Support nested conditions and logical operators (and, or). Create utility functions for building Convex queries based on translated parameters. Handle pagination, sorting, and limiting of results.
+
+# Test Strategy:
+Create test cases with various query combinations and verify that they are correctly translated to Convex queries. Test complex queries with nested conditions and multiple operators.

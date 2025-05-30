@@ -1,0 +1,109 @@
+# Task ID: 16
+# Title: Implement Consistent Naming Conventions
+# Status: done
+# Dependencies: 7, 8, 9, 10, 11, 12, 13, 14
+# Priority: medium
+# Description: Apply consistent naming conventions across all Convex functions and files
+# Details:
+1. Establish naming conventions for queries (e.g., getResource, listResources, searchResources), mutations (e.g., createResource, updateResource, deleteResource), and actions (e.g., processPaymentAction).
+2. Update all function names to adhere to the established conventions.
+3. Ensure file names reflect their contents and follow a consistent pattern (queries.ts, mutations.ts, schema/types.ts, lib/helpers.ts).
+4. Update all internal references (api.*, internal.*) to reflect any name changes.
+5. Document the naming conventions in a central location for future reference.
+6. Create appropriate schema/types.ts files for each module to ensure proper TypeScript typing.
+7. Add backward compatibility exports where necessary to maintain existing functionality.
+
+# Test Strategy:
+Conduct a thorough code review to ensure all names adhere to the new conventions. Use a linting tool if possible to automate some of the checks. Test functionality after each module update to ensure name changes don't break existing features. Verify that TypeScript typing is correctly implemented across all modules. Ensure backward compatibility exports work correctly for existing code.
+
+# Subtasks:
+## 16.1. Create NAMING_CONVENTIONS.md documentation [done]
+### Dependencies: None
+### Description: Document standardized naming conventions for Convex functions and files in a central location
+### Details:
+
+
+## 16.2. Update notifications module [done]
+### Dependencies: None
+### Description: Rename query functions to use appropriate prefixes (list*, get*, count*), rename mutation functions to use appropriate prefixes (create*, update*, mark*, delete*), add types/interfaces, and fix component references
+### Details:
+
+
+## 16.3. Update downloads module [done]
+### Dependencies: None
+### Description: Add new query functions with appropriate naming (listDownloads, listDownloadsByCategory, searchDownloads, getDownload)
+### Details:
+
+
+## 16.4. Fix TypeScript/linter errors in downloads module [done]
+### Dependencies: None
+### Description: Resolve any TypeScript or linter errors that resulted from renaming functions in the downloads module, particularly around database schema typing
+### Details:
+
+
+## 16.5. Update users module [done]
+### Dependencies: None
+### Description: Apply naming conventions to all functions in the users module, create proper file structure (queries.ts, mutations.ts, schema/types.ts, lib/helpers.ts), and update references
+### Details:
+
+
+## 16.6. Update groups module [done]
+### Dependencies: None
+### Description: Apply naming conventions to all functions in the groups module, create proper file structure (queries.ts, mutations.ts, schema/types.ts, lib/helpers.ts), and update references
+### Details:
+
+
+## 16.7. Update remaining modules [done]
+### Dependencies: None
+### Description: Apply naming conventions to any other modules not explicitly mentioned, ensuring proper file structure and TypeScript typing
+### Details:
+
+
+## 16.8. Verify internal references [done]
+### Dependencies: None
+### Description: Ensure all internal references (api.*, internal.*) correctly reflect the name changes
+### Details:
+
+
+## 16.9. Test functionality [done]
+### Dependencies: None
+### Description: Perform comprehensive testing to ensure the name changes haven't broken any existing functionality
+### Details:
+
+
+## 17.9. Restructured downloads module [done]
+### Dependencies: None
+### Description: Reorganized downloads module with proper file structure, renamed functions, and added TypeScript interfaces
+### Details:
+
+
+## 16.11. Document implementation progress [done]
+### Dependencies: None
+### Description: Update project documentation to reflect the progress made on implementing naming conventions across modules
+### Details:
+
+
+## 18.9. Refactored users module [done]
+### Dependencies: None
+### Description: Reorganized users module with proper file structure, renamed functions, and added TypeScript interfaces
+### Details:
+
+
+## 19.9. Refactored groups module [done]
+### Dependencies: None
+### Description: Reorganized groups module with proper file structure, renamed functions, and added TypeScript interfaces
+### Details:
+
+
+## 16.12. Verify backward compatibility exports [done]
+### Dependencies: None
+### Description: Ensure that backward compatibility exports in the users and groups modules are working correctly
+### Details:
+
+
+## 16.13. Update NAMING_CONVENTIONS.md with examples [done]
+### Dependencies: None
+### Description: Add concrete examples from the completed modules to the naming conventions documentation
+### Details:
+
+

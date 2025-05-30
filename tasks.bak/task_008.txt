@@ -1,0 +1,62 @@
+# Task ID: 8
+# Title: Implement Board View Component
+# Status: pending
+# Dependencies: 2, 3, 4
+# Priority: high
+# Description: Create the main Board view component that displays Groups, Items, and Columns
+# Details:
+Implement the Board view component that displays the selected Board's content in a table-like format:
+
+1. Create a component to render the Board header with column names
+2. Create components for rendering Groups and their Items
+3. Implement inline editing for Item data
+4. Ensure proper rendering of different column types
+
+```tsx
+// components/boards/BoardView.tsx
+import { FC } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { Board, Group, Item, Column } from '../../types';
+import GroupComponent from './GroupComponent';
+import BoardHeader from './BoardHeader';
+
+interface BoardViewProps {
+  boardId: string;
+}
+
+const BoardView: FC<BoardViewProps> = ({ boardId }) => {
+  const board = useQuery(api.boards.getById, { id: boardId });
+  const groups = useQuery(api.groups.getByBoardId, { boardId }) || [];
+  
+  if (!board) return <div>Loading board...</div>;
+  
+  return (
+    <div className="flex flex-col h-full">
+      <BoardHeader board={board} />
+      
+      <div className="flex-1 overflow-auto">
+        {groups.map(group => (
+          <GroupComponent 
+            key={group.id} 
+            group={group} 
+            columns={board.columns} 
+            boardId={boardId} 
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default BoardView;
+```
+
+Implement the supporting components:
+- `BoardHeader.tsx` for displaying and managing columns
+- `GroupComponent.tsx` for rendering a group and its items
+- `ItemRow.tsx` for rendering an individual item as a row
+- Cell components for different column types (text, date, dropdown, etc.)
+
+# Test Strategy:
+Test the Board view with various combinations of groups, items, and column types. Verify that all column types render correctly. Test inline editing of item data and verify changes persist. Test with a large number of items to ensure performance remains acceptable.

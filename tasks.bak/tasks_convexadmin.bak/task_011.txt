@@ -1,0 +1,11 @@
+# Task ID: 11
+# Title: Implement Convex data fetching and saving for EditView
+# Status: pending
+# Dependencies: 10
+# Priority: high
+# Description: Add Convex query and mutation integration for edit forms
+# Details:
+Implement data fetching using useQuery to load a specific document for editing. Create generic mutation functions for creating and updating records in any Convex table. Handle form submission, validation, loading states, and errors. Implement proper redirection after successful submission.
+
+# Test Strategy:
+Test creating and editing records in various collections. Verify that the data is saved correctly and that validation, loading states, and errors are handled properly.

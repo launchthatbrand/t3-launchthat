@@ -1,0 +1,16 @@
+# Task ID: 3
+# Title: Create PaymentForm component structure
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Implement the basic structure of the PaymentForm component that will host the Authorize.Net form.
+# Details:
+1. Create a new file `PaymentForm.tsx` in `apps/nextjs/src/components/`
+2. Import necessary React hooks (useState, useEffect)
+3. Define the PaymentForm component with props for apiLoginId and clientKey
+4. Create state variables for tracking payment status (loading, success, error)
+5. Add placeholder for the Authorize.Net form integration
+6. Export the component for use in the checkout page
+
+# Test Strategy:
+Import the component into the checkout page and verify it renders without errors. Check that props are properly typed and the component structure follows best practices.

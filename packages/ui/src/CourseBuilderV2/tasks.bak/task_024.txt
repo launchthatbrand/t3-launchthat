@@ -1,0 +1,65 @@
+# Task ID: 24
+# Title: Implement Admin Page for Creating New Unattached Topics
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Create a new admin page at /admin/courses/topics/new that provides a form interface for administrators to add new topics that are not yet attached to any courses.
+# Details:
+Implement a new admin page with the following specifications:
+
+1. Create a route at `/admin/courses/topics/new` that is only accessible to users with admin privileges
+2. Design a form with the following fields:
+   - Topic title (required, text field)
+   - Topic description (optional, text area)
+   - Topic order/priority (optional, number field)
+   - Topic status (dropdown: active/inactive)
+   - Any relevant metadata fields for topics
+
+3. Implement form validation:
+   - Ensure required fields are completed
+   - Validate that topic titles are unique in the system
+   - Provide clear error messages for validation failures
+
+4. On successful submission:
+   - Create a new topic record in the database
+   - Set the topic's status to 'unattached' or equivalent
+   - Redirect to the topics list page with a success message
+
+5. Include a cancel button that returns to the topics list without creating a record
+
+6. Ensure the page follows the existing admin UI design patterns and styling
+
+7. Add appropriate breadcrumb navigation (Admin > Courses > Topics > New)
+
+8. Implement proper CSRF protection for the form submission
+
+# Test Strategy:
+Testing should verify both the functionality and security of the new admin page:
+
+1. **Access Control Tests**:
+   - Verify that non-admin users cannot access the page
+   - Verify that admin users can access the page
+
+2. **Form Validation Tests**:
+   - Test submission with empty required fields
+   - Test submission with duplicate topic titles
+   - Test submission with valid data
+
+3. **Functionality Tests**:
+   - Verify a new topic is correctly created in the database
+   - Verify the topic is marked as unattached
+   - Verify redirect to topics list after successful creation
+   - Verify cancel button returns to topics list without creating a record
+
+4. **UI Tests**:
+   - Verify form layout matches admin design patterns
+   - Verify error messages display correctly
+   - Verify breadcrumb navigation is correct
+
+5. **Security Tests**:
+   - Verify CSRF protection is working
+   - Test for XSS vulnerabilities with special characters in input fields
+
+6. **Integration Tests**:
+   - Verify newly created topics appear in the topics list
+   - Verify newly created topics can be attached to courses later

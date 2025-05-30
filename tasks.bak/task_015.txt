@@ -1,0 +1,113 @@
+# Task ID: 15
+# Title: Implement Confirmation Dialogs
+# Status: pending
+# Dependencies: 1
+# Priority: low
+# Description: Create reusable confirmation dialog components for destructive actions
+# Details:
+Implement a reusable confirmation dialog component for destructive actions like deleting boards, folders, groups, items, and columns:
+
+```tsx
+// components/common/ConfirmationDialog.tsx
+import { FC } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@ui/components/ui/dialog';
+import { Button } from '@ui/components/ui/button';
+
+interface ConfirmationDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  description: string;
+  confirmText?: string;
+  cancelText?: string;
+  destructive?: boolean;
+}
+
+const ConfirmationDialog: FC<ConfirmationDialogProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  description,
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+  destructive = true,
+}) => {
+  const handleConfirm = () => {
+    onConfirm();
+    onClose();
+  };
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>{cancelText}</Button>
+          <Button 
+            variant={destructive ? 'destructive' : 'default'} 
+            onClick={handleConfirm}
+          >
+            {confirmText}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default ConfirmationDialog;
+```
+
+Create a store to manage confirmation dialog state:
+
+```typescript
+// store/confirmationStore.ts
+import { create } from 'zustand';
+
+interface ConfirmationState {
+  isOpen: boolean;
+  title: string;
+  description: string;
+  confirmText: string;
+  cancelText: string;
+  onConfirm: () => void;
+  destructive: boolean;
+  openConfirmation: (props: {
+    title: string;
+    description: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    cancelText?: string;
+    destructive?: boolean;
+  }) => void;
+  closeConfirmation: () => void;
+}
+
+export const useConfirmationStore = create<ConfirmationState>((set) => ({
+  isOpen: false,
+  title: '',
+  description: '',
+  confirmText: 'Confirm',
+  cancelText: 'Cancel',
+  onConfirm: () => {},
+  destructive: true,
+  openConfirmation: (props) => set({
+    isOpen: true,
+    title: props.title,
+    description: props.description,
+    onConfirm: props.onConfirm,
+    confirmText: props.confirmText || 'Confirm',
+    cancelText: props.cancelText || 'Cancel',
+    destructive: props.destructive !== undefined ? props.destructive : true,
+  }),
+  closeConfirmation: () => set({ isOpen: false }),
+}));
+```
+
+# Test Strategy:
+Test the confirmation dialog with various destructive actions like deleting a board, folder, group, item, and column. Verify that the dialog appears with the correct title and description. Test that confirming the dialog triggers the expected action and canceling the dialog does not.

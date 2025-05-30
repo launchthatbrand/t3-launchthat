@@ -1,0 +1,11 @@
+# Task ID: 1
+# Title: Set up development environment for ConvexAdmin
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Configure the development environment to work with the existing Payload CMS packages and Convex backend
+# Details:
+Set up the necessary environment variables (CONVEX_URL, CONVEX_DEPLOYMENT) for the @convexcms/next application. Ensure the monorepo structure is properly configured to recognize the packages/convexcms/* packages. Verify that the Convex backend in apps/wsa is accessible and contains a defined schema.ts file.
+
+# Test Strategy:
+Verify that the application can start without errors and that basic connectivity to the Convex backend is established.

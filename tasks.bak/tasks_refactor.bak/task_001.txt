@@ -1,0 +1,69 @@
+# Task ID: 1
+# Title: Analyze Existing Convex Backend Structure
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Perform a comprehensive analysis of the current Convex backend structure in apps/portal/convex/
+# Details:
+1. Analyze codebase size and composition through either:
+   a. Install and use a code analysis tool like 'cloc' or 'tokei', OR
+   b. Perform manual analysis if tool installation is not feasible.
+2. Create a detailed map of the current file structure and dependencies.
+3. Identify common patterns, redundancies, and potential areas for improvement.
+4. Document findings in a structured report, including recommendations for the new directory structure.
+
+# Test Strategy:
+Peer review of the analysis report by senior developers to ensure completeness and accuracy.
+
+# Subtasks:
+## 1.1. Resolve code analysis tool issue [completed]
+### Dependencies: None
+### Description: Decide on approach for codebase size and composition analysis
+### Details:
+Options:
+1. Install 'cloc' or 'tokei' tools for automated analysis
+2. Skip automated analysis and rely on manual review if tool installation is not practical
+3. Document decision and reasoning
+
+## 2.1. Decision on Code Analysis Tool Usage [completed]
+### Dependencies: None
+### Description: Document the decision regarding the use of automated code analysis tools like cloc or tokei for Task 1.
+### Details:
+Initial attempt to run cloc failed as the command was not found. Sub-step 1 of Task 1 requires codebase size and composition analysis. Decision needed: install tool or rely on manual analysis.
+
+## 1.2. Map Current File Structure and Dependencies [completed]
+### Dependencies: None
+### Description: Document the current file structure and dependencies in the apps/portal/convex/ directory
+### Details:
+Identified approximately 40-50 files including:
+- Schema files (schema.ts, usersSchema.ts, permissionsSchema.ts, etc.)
+- Logic files (permissions.ts, users.ts, products.ts, etc.)
+- Specialized directories (calendar/, contacts/, cms/, actions/, lib/)
+- Configuration files (auth.config.ts, convex.json, http.ts, env.ts)
+- Dependencies between these files have been mapped
+
+## 1.3. Identify Patterns, Redundancies, and Improvement Areas [completed]
+### Dependencies: None
+### Description: Document common patterns, redundancies, and potential areas for improvement in the codebase
+### Details:
+Identified:
+- Patterns: Modular schema definitions, use of 'v' for validators, auth/authz patterns
+- Redundancies: Flat structure for core features making navigation difficult
+- Improvement areas: Need for more shared utility functions, consistent args/returns validators, standardized error handling, consistent naming conventions
+
+## 1.4. Compile Analysis Report [completed]
+### Dependencies: None
+### Description: Compile findings into a structured report with recommendations for the new directory structure
+### Details:
+The apps/portal/scripts/convex_refactor_prd.md document serves as the primary structured report for this analysis, including detailed requirements and a proposed new directory structure based on the findings.
+
+## 1.5. Review Analysis Completion [done]
+### Dependencies: None
+### Description: Review the completed analysis to ensure all requirements of Task 1 have been met
+### Details:
+Verify that all four components of the analysis have been completed:
+1. Codebase size/composition analysis (decision to use manual analysis documented)
+2. Detailed map of file structure and dependencies
+3. Identification of patterns, redundancies, and improvement areas
+4. Documentation of findings in structured report
+

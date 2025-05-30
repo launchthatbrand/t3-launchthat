@@ -1,0 +1,11 @@
+# Task ID: 6
+# Title: Implement field type mapping between Payload and Convex
+# Status: pending
+# Dependencies: 5
+# Priority: medium
+# Description: Create a comprehensive mapping system between Payload field types and Convex field types.
+# Details:
+Create a mapping system for all standard Payload field types to appropriate Convex v.* types. Handle special cases like arrays, nested objects, and relationships. Implement bidirectional conversion functions to transform data between Payload and Convex formats. Create utility functions for type checking and validation. Document the mapping system for future reference.
+
+# Test Strategy:
+Create test cases for each field type and verify that the conversion functions correctly transform data in both directions. Test edge cases like null values, empty arrays, and deeply nested objects.

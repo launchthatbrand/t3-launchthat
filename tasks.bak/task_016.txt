@@ -1,0 +1,89 @@
+# Task ID: 16
+# Title: Implement Error Handling
+# Status: pending
+# Dependencies: 1
+# Priority: low
+# Description: Create a system for handling and displaying errors to users
+# Details:
+Implement an error handling system using a toast notification component from Shadcn UI:
+
+1. Set up a toast provider in the root layout
+2. Create utility functions for displaying error messages
+3. Implement error handling in API calls and mutations
+
+```tsx
+// components/providers/ToastProvider.tsx
+import { FC, ReactNode } from 'react';
+import { Toaster } from '@ui/components/ui/toaster';
+import { ToastProvider as ShadcnToastProvider } from '@ui/components/ui/toast';
+
+interface ToastProviderProps {
+  children: ReactNode;
+}
+
+const ToastProvider: FC<ToastProviderProps> = ({ children }) => {
+  return (
+    <ShadcnToastProvider>
+      {children}
+      <Toaster />
+    </ShadcnToastProvider>
+  );
+};
+
+export default ToastProvider;
+```
+
+```tsx
+// utils/toast.ts
+import { useToast } from '@ui/components/ui/use-toast';
+
+export const useErrorToast = () => {
+  const { toast } = useToast();
+  
+  return (error: Error | string) => {
+    const message = typeof error === 'string' ? error : error.message;
+    
+    toast({
+      title: 'Error',
+      description: message,
+      variant: 'destructive',
+    });
+  };
+};
+
+export const useSuccessToast = () => {
+  const { toast } = useToast();
+  
+  return (message: string) => {
+    toast({
+      title: 'Success',
+      description: message,
+    });
+  };
+};
+```
+
+Wrap API calls with error handling:
+
+```tsx
+// Example usage in a component
+const MyComponent = () => {
+  const showError = useErrorToast();
+  const showSuccess = useSuccessToast();
+  const createBoard = useMutation(api.boards.create);
+  
+  const handleCreateBoard = async () => {
+    try {
+      await createBoard({ name: 'New Board' });
+      showSuccess('Board created successfully');
+    } catch (error) {
+      showError(error instanceof Error ? error : 'Failed to create board');
+    }
+  };
+  
+  // ...
+};
+```
+
+# Test Strategy:
+Test error handling by triggering errors in various operations like creating, updating, and deleting entities. Verify that appropriate error messages are displayed to the user. Test success messages for successful operations.

@@ -1,0 +1,149 @@
+# Task ID: 12
+# Title: Implement Column Management
+# Status: pending
+# Dependencies: 8
+# Priority: medium
+# Description: Develop functionality to add, rename, and delete Columns in a Board
+# Details:
+Implement the following features:
+
+1. Create a "Add Column" button in the Board header
+2. Implement a modal for adding new columns with type selection
+3. Implement column renaming functionality
+4. Implement column deletion with confirmation
+
+```tsx
+// components/columns/AddColumnModal.tsx
+import { FC, useState } from 'react';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@ui/components/ui/dialog';
+import { Button } from '@ui/components/ui/button';
+import { Input } from '@ui/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@ui/components/ui/select';
+import { ColumnType } from '../../types';
+
+interface AddColumnModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  boardId: string;
+}
+
+const columnTypes: {label: string, value: ColumnType}[] = [
+  { label: 'Text', value: 'text' },
+  { label: 'Long Text', value: 'longText' },
+  { label: 'Number', value: 'number' },
+  { label: 'Email', value: 'email' },
+  { label: 'Phone', value: 'phone' },
+  { label: 'Date', value: 'date' },
+  { label: 'Dropdown', value: 'dropdown' },
+  { label: 'User', value: 'user' },
+  { label: 'Checkbox', value: 'checkbox' },
+  { label: 'Link', value: 'link' },
+];
+
+const AddColumnModal: FC<AddColumnModalProps> = ({ isOpen, onClose, boardId }) => {
+  const [columnName, setColumnName] = useState('New Column');
+  const [columnType, setColumnType] = useState<ColumnType>('text');
+  const [options, setOptions] = useState<string[]>([]);
+  
+  const addColumn = useMutation(api.boards.addColumn);
+  
+  const handleAddColumn = async () => {
+    await addColumn({
+      boardId,
+      column: {
+        id: crypto.randomUUID(),
+        name: columnName,
+        type: columnType,
+        options: columnType === 'dropdown' ? options : undefined,
+      }
+    });
+    onClose();
+  };
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add New Column</DialogTitle>
+        </DialogHeader>
+        <div className="py-4 space-y-4">
+          <div>
+            <label className="text-sm font-medium">Column Name</label>
+            <Input 
+              value={columnName} 
+              onChange={(e) => setColumnName(e.target.value)} 
+              placeholder="Column Name"
+              className="mt-1"
+            />
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium">Column Type</label>
+            <Select value={columnType} onValueChange={(value) => setColumnType(value as ColumnType)}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select column type" />
+              </SelectTrigger>
+              <SelectContent>
+                {columnTypes.map(type => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* Add UI for dropdown options if columnType is 'dropdown' */}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleAddColumn}>Add Column</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default AddColumnModal;
+```
+
+Implement column header component with rename and delete functionality:
+
+```tsx
+// components/columns/ColumnHeader.tsx
+import { FC, useState } from 'react';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { Column } from '../../types';
+import { Button } from '@ui/components/ui/button';
+import { Input } from '@ui/components/ui/input';
+import { Trash2Icon } from 'lucide-react';
+
+interface ColumnHeaderProps {
+  column: Column;
+  boardId: string;
+}
+
+const ColumnHeader: FC<ColumnHeaderProps> = ({ column, boardId }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState(column.name);
+  
+  const updateColumn = useMutation(api.boards.updateColumn);
+  const deleteColumn = useMutation(api.boards.deleteColumn);
+  
+  // Implement rename and delete handlers
+  
+  return (
+    <div className="flex items-center justify-between p-2">
+      {/* Column header content */}
+    </div>
+  );
+};
+
+export default ColumnHeader;
+```
+
+# Test Strategy:
+Test adding a new column of each type and verify it appears correctly in the board view. Test renaming a column and verify the change persists. Test deleting a column and verify the confirmation dialog appears and the column is removed when confirmed. For dropdown columns, test adding and removing options.

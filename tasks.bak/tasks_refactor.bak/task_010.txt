@@ -1,0 +1,17 @@
+# Task ID: 10
+# Title: Refactor Groups and Posts Module
+# Status: done
+# Dependencies: 4, 5, 6
+# Priority: medium
+# Description: Reorganize and refactor group and post related functions into the new structure
+# Details:
+1. Create groups/ directory with files for groups and posts.
+2. Move relevant queries, mutations, and actions to appropriate files.
+3. Update internal references (api.*, internal.*) to reflect new file locations.
+4. Extract common group and post logic into shared helper functions in groups/lib/.
+5. Ensure consistent use of TypeScript types and Convex validators.
+6. Implement proper error handling with specific, informative error messages.
+7. Use Convex's pagination helpers for efficient list queries.
+
+# Test Strategy:
+Develop integration tests covering group creation, joining, posting, and retrieval operations. Ensure proper handling of permissions and pagination.

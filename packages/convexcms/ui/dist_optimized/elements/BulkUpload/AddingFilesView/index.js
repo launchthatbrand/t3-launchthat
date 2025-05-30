@@ -1,0 +1,79 @@
+"use client";
+
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import "./index.scss";
+import React from "react";
+import { reduceFieldsToValues } from "@convexcms/core/shared";
+import { getTranslation } from "@convexcms/translations";
+import { useModal } from "@faceless-ui/modal";
+import { useAuth } from "../../../providers/Auth/index.js";
+import { useConfig } from "../../../providers/Config/index.js";
+import { DocumentInfoProvider } from "../../../providers/DocumentInfo/index.js";
+import { useTranslation } from "../../../providers/Translation/index.js";
+import { ActionsBar } from "../ActionsBar/index.js";
+import { discardBulkUploadModalSlug, DiscardWithoutSaving } from "../DiscardWithoutSaving/index.js";
+import { EditForm } from "../EditForm/index.js";
+import { FileSidebar } from "../FileSidebar/index.js";
+import { useFormsManager } from "../FormsManager/index.js";
+import { DrawerHeader } from "../Header/index.js";
+const baseClass = "bulk-upload--file-manager";
+export function AddingFilesView() {
+  const {
+    activeIndex,
+    collectionSlug,
+    docPermissions,
+    documentSlots,
+    forms,
+    hasPublishPermission,
+    hasSavePermission,
+    hasSubmitted
+  } = useFormsManager();
+  const activeForm = forms[activeIndex];
+  const {
+    getEntityConfig
+  } = useConfig();
+  const {
+    i18n
+  } = useTranslation();
+  const {
+    user
+  } = useAuth();
+  const {
+    openModal
+  } = useModal();
+  const collectionConfig = getEntityConfig({
+    collectionSlug
+  });
+  return /*#__PURE__*/_jsxs("div", {
+    className: baseClass,
+    children: [/*#__PURE__*/_jsx(FileSidebar, {}), /*#__PURE__*/_jsxs("div", {
+      className: `${baseClass}__editView`,
+      children: [/*#__PURE__*/_jsx(DrawerHeader, {
+        onClose: () => openModal(discardBulkUploadModalSlug),
+        title: getTranslation(collectionConfig.labels.singular, i18n)
+      }), activeForm ? /*#__PURE__*/_jsxs(DocumentInfoProvider, {
+        collectionSlug: collectionSlug,
+        currentEditor: user,
+        docPermissions: docPermissions,
+        hasPublishedDoc: false,
+        hasPublishPermission: hasPublishPermission,
+        hasSavePermission: hasSavePermission,
+        id: null,
+        initialData: reduceFieldsToValues(activeForm.formState, true),
+        initialState: activeForm.formState,
+        isLocked: false,
+        lastUpdateTime: 0,
+        mostRecentVersionIsAutosaved: false,
+        unpublishedVersionCount: 0,
+        Upload: documentSlots.Upload,
+        versionCount: 0,
+        children: [/*#__PURE__*/_jsx(ActionsBar, {
+          collectionConfig: collectionConfig
+        }), /*#__PURE__*/_jsx(EditForm, {
+          submitted: hasSubmitted
+        })]
+      }, `${activeIndex}-${forms.length}`) : null]
+    }), /*#__PURE__*/_jsx(DiscardWithoutSaving, {})]
+  });
+}
+//# sourceMappingURL=index.js.map

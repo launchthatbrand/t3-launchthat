@@ -1,0 +1,328 @@
+# Portal Expansion: Groups, Calendar, Resources, and Helpdesk
+
+## Overview
+This project aims to expand the Portal application with social and organizational features, similar to Buddypress Groups, along with a Calendar/Events system, Resources/Downloads section, and a Helpdesk. The application will maintain its integration with Convex for the database and Clerk for authentication.
+
+## Target Platforms
+- Web application using Next.js frontend
+- Responsive design for mobile and desktop
+
+## User Authentication and Authorization
+- Continue using Clerk for user authentication
+- Implement role-based permissions for group management:
+  - Group Admins: Full control over group settings, content, and members
+  - Group Moderators: Ability to manage content and members
+  - Group Members: Participation in group activities
+  - Non-members: Read-only access to public groups
+
+## Core Features
+
+### 1. Groups System (Buddypress-style)
+- **Group Creation and Management**
+  - Users can create and join groups
+  - Public and private group options
+  - Group membership approval workflows
+  - Group roles and permissions
+
+- **Group Profile and Customization**
+  - Customizable group header with image carousel
+  - Group avatar/logo upload
+  - Group description and details editing
+  - Custom tabs under the group header for navigation
+  - Configurable sidebar widgets
+
+- **Group Activity**
+  - Activity feed for group updates
+  - Member interaction through comments and reactions
+  - Post types: text, images, links, files
+  - Activity filtering and sorting options
+
+- **Group Navigation Tabs**
+  - Dashboard/Home tab
+  - Members tab with directory
+  - Events tab connected to calendar
+  - Resources tab for files and links
+  - Custom tabs option for group admins
+
+- **Group Membership Management**
+  - Member invitation system
+  - Join requests approval/denial
+  - Member role assignment
+  - Member removal and blocking capabilities
+
+### 2. Calendar and Events System
+- **Calendar Interface**
+  - Implementation using React Big Calendar and/or shadcn components
+  - Month, week, day, and agenda views
+  - Responsive design for all screen sizes
+  - Visual indicators for event types and categories
+
+- **Event Management**
+  - Event creation with title, description, location (physical/virtual)
+  - Date and time selection with timezone support
+  - Recurring event options
+  - Event categories and tags
+  - RSVP functionality with attendance tracking
+
+- **Calendar Integration**
+  - Group-specific calendars
+  - Organizational/global calendar
+  - Calendar subscription options (iCal, Google Calendar)
+  - Calendar import/export functionality
+
+- **Event Notifications**
+  - Upcoming event reminders
+  - Event changes notifications
+  - RSVP confirmation emails
+  - Custom notification preferences
+
+### 3. Resources/Downloads System
+- **Resource Library**
+  - Centralized repository for documents, files, and links
+  - Hierarchical categorization system
+  - Advanced search and filtering
+  - Featured/pinned resources
+
+- **File Management**
+  - File uploads with drag-and-drop support
+  - Version control for documents
+  - Previews for common file types
+  - Download tracking and statistics
+
+- **Resource Sharing**
+  - Sharing controls (public, organization, group, individual)
+  - Embed options for resources
+  - Link generation for external sharing
+  - Social media integration
+
+- **Resource Metadata**
+  - Customizable metadata fields
+  - Tags and categories
+  - Author and creation information
+  - Usage analytics
+
+### 4. Helpdesk System
+- **Ticket Management**
+  - Ticket creation and submission
+  - Ticket categories and priority levels
+  - Status tracking and updates
+  - Assignment to support personnel
+
+- **Knowledge Base**
+  - Searchable articles and guides
+  - Categorized help topics
+  - FAQ sections
+  - Video tutorials integration
+
+- **Support Communication**
+  - In-app messaging for support requests
+  - Email notification integration
+  - Response templates
+  - Satisfaction surveys
+
+- **Self-Service Options**
+  - Guided troubleshooting wizards
+  - Common issue resolution flows
+  - User feedback mechanisms
+  - Feature request submission
+
+## Technical Requirements
+
+### Frontend
+- Next.js App Router for routing and server components
+- React components for UI elements
+- TailwindCSS for styling
+- shadcn/ui components for consistent design
+- React Big Calendar for calendar implementation
+- React Hook Form for form handling
+- tRPC for type-safe API calls
+
+### Backend
+- Convex for database and realtime features
+- Database schema extensions for new features
+- Convex mutations for data manipulation
+- Convex queries for data retrieval
+- Clerk for authentication and user management
+
+### Data Models
+
+**Group Model**
+```
+Group {
+  id: string
+  name: string
+  slug: string
+  description: string
+  avatar: string
+  headerImages: string[]
+  visibility: 'public' | 'private'
+  createdAt: Date
+  updatedAt: Date
+  createdBy: UserId
+  settings: {
+    allowJoinRequests: boolean
+    requireApproval: boolean
+    enableDiscussions: boolean
+    customTabs: Tab[]
+  }
+}
+
+GroupMember {
+  id: string
+  groupId: string
+  userId: string
+  role: 'admin' | 'moderator' | 'member'
+  joinedAt: Date
+  status: 'active' | 'inactive' | 'banned'
+}
+
+Tab {
+  id: string
+  title: string
+  slug: string
+  type: 'built-in' | 'custom'
+  content: string | null
+  order: number
+  visible: boolean
+}
+```
+
+**Event Model**
+```
+Event {
+  id: string
+  title: string
+  description: string
+  location: string
+  start: Date
+  end: Date
+  timezone: string
+  allDay: boolean
+  recurringRule: string | null
+  organizerId: UserId
+  groupId: string | null
+  category: string
+  tags: string[]
+  capacity: number | null
+  requiresRSVP: boolean
+  createdAt: Date
+  updatedAt: Date
+  visibility: 'public' | 'private' | 'group'
+}
+
+EventAttendee {
+  id: string
+  eventId: string
+  userId: string
+  status: 'going' | 'not_going' | 'maybe'
+  responseDate: Date
+  notes: string | null
+}
+```
+
+**Resource Model**
+```
+Resource {
+  id: string
+  title: string
+  description: string
+  type: 'file' | 'link' | 'embed'
+  category: string
+  tags: string[]
+  url: string | null
+  fileId: string | null
+  fileVersion: number
+  fileSize: number | null
+  fileMimeType: string | null
+  createdAt: Date
+  updatedAt: Date
+  createdBy: UserId
+  groupId: string | null
+  visibility: 'public' | 'private' | 'group'
+  featured: boolean
+}
+
+ResourceAccess {
+  id: string
+  resourceId: string
+  userId: string | null
+  groupId: string | null
+  accessType: 'view' | 'download' | 'edit'
+  expiresAt: Date | null
+}
+```
+
+**Helpdesk Model**
+```
+Ticket {
+  id: string
+  subject: string
+  description: string
+  category: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  status: 'open' | 'in_progress' | 'waiting' | 'resolved' | 'closed'
+  createdAt: Date
+  updatedAt: Date
+  createdBy: UserId
+  assignedTo: UserId | null
+  relatedGroupId: string | null
+}
+
+TicketMessage {
+  id: string
+  ticketId: string
+  message: string
+  attachments: string[]
+  createdAt: Date
+  authorId: UserId
+  isInternal: boolean
+}
+
+KnowledgeArticle {
+  id: string
+  title: string
+  content: string
+  category: string
+  tags: string[]
+  createdAt: Date
+  updatedAt: Date
+  author: UserId
+  status: 'draft' | 'published' | 'archived'
+  viewCount: number
+  helpfulRating: number
+}
+```
+
+## Integration Requirements
+- Seamless integration with existing portal components
+- Consistent design language across all features
+- Unified navigation and information architecture
+- Cross-feature search capability
+
+## Performance Requirements
+- Fast load times (< 2s initial load)
+- Optimized for mobile data usage
+- Efficient handling of file uploads/downloads
+- Minimal Cumulative Layout Shift
+- Progressive enhancement for slower connections
+
+## Security Requirements
+- Data encryption for sensitive information
+- Role-based access control for all features
+- Input validation and sanitization
+- CSRF protection
+- Regular security audits
+
+## Accessibility Requirements
+- WCAG 2.1 AA compliance
+- Keyboard navigation support
+- Screen reader compatibility
+- Color contrast compliance
+- Responsive design for all screen sizes
+
+## Future Considerations
+- Mobile app versions
+- API for third-party integrations
+- Advanced analytics dashboard
+- AI-powered helpdesk automation
+- Video conferencing integration 

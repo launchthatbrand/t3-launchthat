@@ -1,0 +1,58 @@
+# Task ID: 22
+# Title: Refactor Data Model for Topic/Quiz Reusability Across Courses
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Redesign the data model and backend logic to allow Topics and Quizzes to be reused across different courses while maintaining proper parent-child relationships within each course.
+# Details:
+The current implementation needs to be modified to support reusability of Topics and Quizzes across multiple courses while ensuring they maintain proper hierarchical relationships within each individual course. This task involves:
+
+1. **Schema Analysis and Refactoring**:
+   - Analyze the current schema for Topics and Quizzes
+   - Create linking tables (e.g., `CourseTopics`, `CourseLessonTopics`, `TopicQuizzes`) to manage the many-to-many relationships
+   - Ensure each linking table includes appropriate foreign keys and constraints
+   - Add metadata fields to linking tables if needed (e.g., order/sequence within parent)
+
+2. **Backend Logic Refactoring**:
+   - Modify `onAttachTopic` to work with the new linking table structure
+   - Update `onAttachQuiz` to handle multiple parent types (Lesson, Topic, Course) while preventing multiple attachments within the same course
+   - Ensure that when a Topic/Quiz is attached to a new course, it creates appropriate entries in linking tables without duplicating content
+
+3. **Data Integrity Rules**:
+   - Implement validation to ensure a Topic can only be attached to one Lesson within a single course
+   - Implement validation to ensure a Quiz can only be attached to one parent (Lesson, Topic, or Course) within a single course
+   - Create database constraints or application logic to enforce these rules
+
+4. **Migration Strategy**:
+   - Design a migration script to transition existing data to the new schema
+   - Ensure no data loss during migration
+
+5. **API Updates**:
+   - Update GraphQL/REST mutations and queries to work with the new schema
+   - Maintain backward compatibility where possible
+
+# Test Strategy:
+1. **Unit Tests**:
+   - Test `onAttachTopic` with various scenarios: attaching to new course, attaching to course where topic already exists, etc.
+   - Test `onAttachQuiz` with all possible parent types (Lesson, Topic, Course)
+   - Verify validation logic prevents duplicate attachments within the same course
+
+2. **Integration Tests**:
+   - Create test cases that attempt to reuse the same Topic across multiple courses
+   - Test attaching a Quiz to different parent types across different courses
+   - Verify that attempting to attach a Topic/Quiz to multiple parents within the same course fails appropriately
+
+3. **Data Integrity Tests**:
+   - Run queries to verify no Topic is attached to multiple Lessons within the same course
+   - Verify no Quiz is attached to multiple parents within the same course
+   - Test cascade operations (e.g., what happens when a parent is deleted)
+
+4. **Migration Tests**:
+   - Test the migration script on a copy of production data
+   - Verify all relationships are preserved after migration
+   - Compare course structure before and after migration
+
+5. **Performance Tests**:
+   - Measure query performance with the new schema
+   - Test with large numbers of courses sharing the same Topics/Quizzes
+   - Ensure the new structure doesn't introduce significant performance degradation

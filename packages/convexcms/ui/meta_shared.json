@@ -1,0 +1,493 @@
+{
+  "inputs": {
+    "src/elements/Translation/index.tsx": {
+      "bytes": 1536,
+      "imports": [
+        { "path": "react", "kind": "import-statement", "external": true }
+      ],
+      "format": "esm"
+    },
+    "src/elements/withMergedProps/index.tsx": {
+      "bytes": 2176,
+      "imports": [
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        },
+        { "path": "react", "kind": "import-statement", "external": true }
+      ],
+      "format": "esm"
+    },
+    "src/elements/WithServerSideProps/index.tsx": {
+      "bytes": 637,
+      "imports": [
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        },
+        { "path": "react", "kind": "import-statement", "external": true }
+      ],
+      "format": "esm"
+    },
+    "src/fields/mergeFieldStyles.ts": {
+      "bytes": 490,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/forms/Form/reduceToSerializableFields.ts": {
+      "bytes": 854,
+      "imports": [
+        {
+          "path": "@convexcms/core",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/graphics/Icon/index.tsx": {
+      "bytes": 1682,
+      "imports": [
+        { "path": "react", "kind": "import-statement", "external": true }
+      ],
+      "format": "esm"
+    },
+    "src/graphics/Logo/index.tsx": {
+      "bytes": 3202,
+      "imports": [
+        { "path": "react", "kind": "import-statement", "external": true }
+      ],
+      "format": "esm"
+    },
+    "src/providers/TableColumns/filterFields.tsx": {
+      "bytes": 1091,
+      "imports": [
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/providers/TableColumns/getInitialColumns.ts": {
+      "bytes": 1918,
+      "imports": [
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/utilities/abortAndIgnore.ts": {
+      "bytes": 1077,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/utilities/api.ts": {
+      "bytes": 1948,
+      "imports": [
+        { "path": "qs-esm", "kind": "import-statement", "external": true }
+      ],
+      "format": "esm"
+    },
+    "src/utilities/findLocaleFromCode.ts": {
+      "bytes": 433,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/utilities/formatAdminURL.ts": {
+      "bytes": 134,
+      "imports": [
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "../../node_modules/.pnpm/@date-fns+tz@1.2.0/node_modules/@date-fns/tz/tzOffset/index.js": {
+      "bytes": 1523,
+      "imports": [],
+      "format": "esm"
+    },
+    "../../node_modules/.pnpm/@date-fns+tz@1.2.0/node_modules/@date-fns/tz/date/mini.js": {
+      "bytes": 6887,
+      "imports": [
+        {
+          "path": "../../node_modules/.pnpm/@date-fns+tz@1.2.0/node_modules/@date-fns/tz/tzOffset/index.js",
+          "kind": "import-statement",
+          "original": "../tzOffset/index.js"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/utilities/formatDocTitle/formatDateTitle.ts": {
+      "bytes": 1465,
+      "imports": [
+        {
+          "path": "../../node_modules/.pnpm/@date-fns+tz@1.2.0/node_modules/@date-fns/tz/date/mini.js",
+          "kind": "import-statement",
+          "original": "@date-fns/tz/date/mini"
+        },
+        { "path": "date-fns", "kind": "import-statement", "external": true }
+      ],
+      "format": "esm"
+    },
+    "src/utilities/formatDocTitle/formatLexicalDocTitle.ts": {
+      "bytes": 821,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/utilities/formatDocTitle/index.ts": {
+      "bytes": 1954,
+      "imports": [
+        {
+          "path": "@payloadcms/translations",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/utilities/formatDocTitle/formatDateTitle.ts",
+          "kind": "import-statement",
+          "original": "./formatDateTitle.js"
+        },
+        {
+          "path": "src/utilities/formatDocTitle/formatLexicalDocTitle.ts",
+          "kind": "import-statement",
+          "original": "./formatLexicalDocTitle.js"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/utilities/groupNavItems.ts": {
+      "bytes": 2710,
+      "imports": [
+        {
+          "path": "@payloadcms/translations",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/utilities/handleBackToDashboard.tsx": {
+      "bytes": 428,
+      "imports": [
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/utilities/handleGoBack.tsx": {
+      "bytes": 494,
+      "imports": [
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/utilities/handleTakeOver.tsx": {
+      "bytes": 1564,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/utilities/hasSavePermission.ts": {
+      "bytes": 789,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/utilities/isClientUserObject.ts": {
+      "bytes": 153,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/utilities/isEditing.ts": {
+      "bytes": 205,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/utilities/sanitizeID.ts": {
+      "bytes": 197,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/exports/shared/index.ts": {
+      "bytes": 2043,
+      "imports": [
+        {
+          "path": "src/elements/Translation/index.tsx",
+          "kind": "import-statement",
+          "original": "../../elements/Translation/index.js"
+        },
+        {
+          "path": "src/elements/withMergedProps/index.tsx",
+          "kind": "import-statement",
+          "original": "../../elements/withMergedProps/index.js"
+        },
+        {
+          "path": "src/elements/WithServerSideProps/index.tsx",
+          "kind": "import-statement",
+          "original": "../../elements/WithServerSideProps/index.js"
+        },
+        {
+          "path": "src/fields/mergeFieldStyles.ts",
+          "kind": "import-statement",
+          "original": "../../fields/mergeFieldStyles.js"
+        },
+        {
+          "path": "src/forms/Form/reduceToSerializableFields.ts",
+          "kind": "import-statement",
+          "original": "../../forms/Form/reduceToSerializableFields.js"
+        },
+        {
+          "path": "src/graphics/Icon/index.tsx",
+          "kind": "import-statement",
+          "original": "../../graphics/Icon/index.js"
+        },
+        {
+          "path": "src/graphics/Logo/index.tsx",
+          "kind": "import-statement",
+          "original": "../../graphics/Logo/index.js"
+        },
+        {
+          "path": "src/providers/TableColumns/filterFields.tsx",
+          "kind": "import-statement",
+          "original": "../../providers/TableColumns/filterFields.js"
+        },
+        {
+          "path": "src/providers/TableColumns/getInitialColumns.ts",
+          "kind": "import-statement",
+          "original": "../../providers/TableColumns/getInitialColumns.js"
+        },
+        {
+          "path": "src/utilities/abortAndIgnore.ts",
+          "kind": "import-statement",
+          "original": "../../utilities/abortAndIgnore.js"
+        },
+        {
+          "path": "src/utilities/api.ts",
+          "kind": "import-statement",
+          "original": "../../utilities/api.js"
+        },
+        {
+          "path": "src/utilities/findLocaleFromCode.ts",
+          "kind": "import-statement",
+          "original": "../../utilities/findLocaleFromCode.js"
+        },
+        {
+          "path": "src/utilities/formatAdminURL.ts",
+          "kind": "import-statement",
+          "original": "../../utilities/formatAdminURL.js"
+        },
+        {
+          "path": "src/utilities/formatDocTitle/formatDateTitle.ts",
+          "kind": "import-statement",
+          "original": "../../utilities/formatDocTitle/formatDateTitle.js"
+        },
+        {
+          "path": "src/utilities/formatDocTitle/index.ts",
+          "kind": "import-statement",
+          "original": "../../utilities/formatDocTitle/index.js"
+        },
+        {
+          "path": "src/utilities/groupNavItems.ts",
+          "kind": "import-statement",
+          "original": "../../utilities/groupNavItems.js"
+        },
+        {
+          "path": "src/utilities/handleBackToDashboard.tsx",
+          "kind": "import-statement",
+          "original": "../../utilities/handleBackToDashboard.js"
+        },
+        {
+          "path": "src/utilities/handleGoBack.tsx",
+          "kind": "import-statement",
+          "original": "../../utilities/handleGoBack.js"
+        },
+        {
+          "path": "src/utilities/handleTakeOver.tsx",
+          "kind": "import-statement",
+          "original": "../../utilities/handleTakeOver.js"
+        },
+        {
+          "path": "src/utilities/hasSavePermission.ts",
+          "kind": "import-statement",
+          "original": "../../utilities/hasSavePermission.js"
+        },
+        {
+          "path": "src/utilities/isClientUserObject.ts",
+          "kind": "import-statement",
+          "original": "../../utilities/isClientUserObject.js"
+        },
+        {
+          "path": "src/utilities/isEditing.ts",
+          "kind": "import-statement",
+          "original": "../../utilities/isEditing.js"
+        },
+        {
+          "path": "src/utilities/sanitizeID.ts",
+          "kind": "import-statement",
+          "original": "../../utilities/sanitizeID.js"
+        },
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    }
+  },
+  "outputs": {
+    "dist/exports/shared/index.js.map": {
+      "imports": [],
+      "exports": [],
+      "inputs": {},
+      "bytes": 57285
+    },
+    "dist/exports/shared/index.js": {
+      "imports": [
+        { "path": "react", "kind": "import-statement", "external": true },
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        },
+        { "path": "react", "kind": "import-statement", "external": true },
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        },
+        { "path": "react", "kind": "import-statement", "external": true },
+        { "path": "react", "kind": "import-statement", "external": true },
+        { "path": "react", "kind": "import-statement", "external": true },
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        },
+        { "path": "qs-esm", "kind": "import-statement", "external": true },
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        },
+        { "path": "date-fns", "kind": "import-statement", "external": true },
+        {
+          "path": "@payloadcms/translations",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "@payloadcms/translations",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "payload/shared",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "exports": [
+        "EntityType",
+        "PayloadIcon",
+        "PayloadLogo",
+        "Translation",
+        "WithServerSideProps",
+        "abortAndIgnore",
+        "filterFields",
+        "findLocaleFromCode",
+        "formatAdminURL",
+        "formatDate",
+        "formatDocTitle",
+        "getInitialColumns",
+        "groupNavItems",
+        "handleAbortRef",
+        "handleBackToDashboard",
+        "handleGoBack",
+        "handleTakeOver",
+        "hasSavePermission",
+        "isClientUserObject",
+        "isEditing",
+        "mergeFieldStyles",
+        "mergeListSearchAndWhere",
+        "reduceToSerializableFields",
+        "requests",
+        "sanitizeID",
+        "withMergedProps"
+      ],
+      "entryPoint": "src/exports/shared/index.ts",
+      "inputs": {
+        "src/elements/Translation/index.tsx": { "bytesInOutput": 508 },
+        "src/exports/shared/index.ts": { "bytesInOutput": 58 },
+        "src/elements/withMergedProps/index.tsx": { "bytesInOutput": 320 },
+        "src/elements/WithServerSideProps/index.tsx": { "bytesInOutput": 213 },
+        "src/fields/mergeFieldStyles.ts": { "bytesInOutput": 159 },
+        "src/forms/Form/reduceToSerializableFields.ts": {
+          "bytesInOutput": 147
+        },
+        "src/graphics/Icon/index.tsx": { "bytesInOutput": 1510 },
+        "src/graphics/Logo/index.tsx": { "bytesInOutput": 3234 },
+        "src/providers/TableColumns/filterFields.tsx": { "bytesInOutput": 324 },
+        "src/providers/TableColumns/getInitialColumns.ts": {
+          "bytesInOutput": 430
+        },
+        "src/utilities/abortAndIgnore.ts": { "bytesInOutput": 146 },
+        "src/utilities/api.ts": { "bytesInOutput": 756 },
+        "src/utilities/findLocaleFromCode.ts": { "bytesInOutput": 84 },
+        "src/utilities/formatAdminURL.ts": { "bytesInOutput": 49 },
+        "../../node_modules/.pnpm/@date-fns+tz@1.2.0/node_modules/@date-fns/tz/tzOffset/index.js": {
+          "bytesInOutput": 382
+        },
+        "../../node_modules/.pnpm/@date-fns+tz@1.2.0/node_modules/@date-fns/tz/date/mini.js": {
+          "bytesInOutput": 2270
+        },
+        "src/utilities/formatDocTitle/formatDateTitle.ts": {
+          "bytesInOutput": 347
+        },
+        "src/utilities/formatDocTitle/index.ts": { "bytesInOutput": 573 },
+        "src/utilities/formatDocTitle/formatLexicalDocTitle.ts": {
+          "bytesInOutput": 205
+        },
+        "src/utilities/groupNavItems.ts": { "bytesInOutput": 803 },
+        "src/utilities/handleBackToDashboard.tsx": { "bytesInOutput": 129 },
+        "src/utilities/handleGoBack.tsx": { "bytesInOutput": 168 },
+        "src/utilities/handleTakeOver.tsx": { "bytesInOutput": 251 },
+        "src/utilities/hasSavePermission.ts": { "bytesInOutput": 136 },
+        "src/utilities/isClientUserObject.ts": { "bytesInOutput": 32 },
+        "src/utilities/isEditing.ts": { "bytesInOutput": 59 },
+        "src/utilities/sanitizeID.ts": { "bytesInOutput": 77 }
+      },
+      "bytes": 13962
+    }
+  }
+}

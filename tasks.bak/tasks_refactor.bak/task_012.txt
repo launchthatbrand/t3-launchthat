@@ -1,0 +1,17 @@
+# Task ID: 12
+# Title: Refactor Calendar Module
+# Status: done
+# Dependencies: 4, 5, 6
+# Priority: medium
+# Description: Reorganize and refactor calendar and event related functions into the new structure
+# Details:
+1. Create calendar/ directory with files for calendar and events.
+2. Move relevant queries, mutations, and actions to appropriate files.
+3. Update internal references (api.*, internal.*) to reflect new file locations.
+4. Extract common calendar logic into shared helper functions in calendar/lib/.
+5. Ensure consistent use of TypeScript types and Convex validators.
+6. Implement proper error handling with specific, informative error messages.
+7. Use efficient querying techniques for date-based data retrieval.
+
+# Test Strategy:
+Develop integration tests for event creation, retrieval, and calendar views. Ensure proper handling of time zones and recurring events if applicable.

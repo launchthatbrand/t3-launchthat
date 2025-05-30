@@ -1,0 +1,63 @@
+# Product Requirements Document: Authorize.Net Checkout Integration
+
+## 1. Introduction
+
+This document outlines the requirements for integrating an Authorize.Net payment gateway into the Next.js application (`apps/nextjs`) within the T3 Turbo monorepo (`t3-launchthat`). The goal is to create a functional checkout page allowing users to submit payments securely. This is the initial phase focused on the payment form integration. Future development will involve the `@wsa` package and Convex integration, which are out of scope for this initial task set.
+
+## 2. Goals
+
+- Implement a checkout page within the `apps/nextjs` application.
+- Integrate the `react-authorize-net` library ([https://github.com/j-em/react-authorize-net-nextjs](https://github.com/j-em/react-authorize-net-nextjs)) to handle payment form rendering and submission.
+- Allow users to securely enter and submit credit card information for payment processing via Authorize.Net.
+- Provide clear success and error feedback to the user after payment submission.
+- Utilize existing shared UI components from the `@acme/ui` package where applicable, styled with Tailwind CSS.
+
+## 3. Functional Requirements
+
+### 3.1. Checkout Page
+
+- Create a new route/page within `apps/nextjs/src/app/` dedicated to the checkout process (e.g., `/checkout`).
+- This page should display the Authorize.Net payment form.
+
+### 3.2. Payment Form (`PaymentForm` Component)
+
+- Integrate a React component (similar to `PaymentForm.js` in the example `docs/repomix-output-j-em-react-authorize-net-nextjs.xml`) to host the Authorize.Net form.
+- The component should utilize the `FormContainer` and `FormComponent` from `react-authorize-net`.
+- It must accept the `apiLoginId` and `clientKey` as props, sourced securely from environment variables.
+- The form should include standard credit card input fields (Card Number, Expiration Date, CVV).
+- Include a "Submit Payment" button.
+
+### 3.3. Payment Processing
+
+- On submission, the `react-authorize-net` library should handle the communication with the Authorize.Net API (using the provided client key).
+- The integration should use the Authorize.Net "sandbox" environment for development and testing.
+
+### 3.4. User Feedback
+
+- **On Success:** Display a clear confirmation message indicating the payment was successful (similar to the example's `onSuccessHandler`).
+- **On Error:** Display specific error messages returned from the Authorize.Net API to the user (similar to the example's `onErrorHandler`). Provide a way for the user to retry the payment.
+
+## 4. Technical Details
+
+- **Target Application:** `apps/nextjs`
+- **Primary Library:** `react-authorize-net`
+- **Environment Variables:**
+    - `NEXT_PUBLIC_AUTHORIZENET_LOGINID`: API Login ID for Authorize.Net.
+    - `NEXT_PUBLIC_AUTHORIZENET_CLIENTKEY`: Public Client Key for Authorize.Net Accept.js.
+    - Ensure these are added to the `.env` file in `apps/nextjs`.
+- **Component Structure:** Create a reusable payment form component (e.g., `src/components/PaymentForm.tsx`) within `apps/nextjs`, adapting the structure from the example `PaymentForm.js`.
+- **Styling:** Use Tailwind CSS and leverage components from the shared `@acme/ui` package for form elements and layout where appropriate to maintain consistency.
+- **Security:** Rely on `react-authorize-net`'s handling of Accept.js for client-side tokenization. No sensitive card data should be sent directly to the application's backend at this stage. The example uses an SSL proxy (`local-ssl-proxy`); determine if this is necessary for local development based on the library's requirements or if environment variables suffice.
+- **State Management:** Use React's `useState` for managing local component state (e.g., payment success/error status), similar to the example.
+
+## 5. Future Considerations (Out of Scope for Initial Tasks)
+
+- Integration with actual order data or user accounts.
+- Saving transaction results to a database (potentially using Convex via the `@wsa` package later).
+- Implementing backend verification steps if required beyond the client-side flow.
+- Developing the `@wsa` package using Convex.
+
+## 6. Assumptions
+
+- Valid Authorize.Net sandbox credentials (API Login ID, Public Client Key) are available.
+- The basic T3 Turbo monorepo structure is set up correctly. 

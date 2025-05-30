@@ -1,0 +1,46 @@
+# Task ID: 21
+# Title: Implement Backend Quiz Attachment Mutations
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Create Convex mutations to link existing quizzes to topics or to a course's final quiz section.
+# Details:
+Develop two Convex mutations:
+
+1. `attachQuizToTopic`: 
+   - This mutation should accept a quiz ID and a topic ID as parameters
+   - Verify both IDs exist in the database before proceeding
+   - Update the quiz document to reference the topic as its parent
+   - Update the topic document to include the quiz ID in its list of associated quizzes
+   - Handle error cases (e.g., quiz already attached elsewhere, invalid IDs)
+   - Return the updated quiz object
+
+2. `addQuizToFinal`:
+   - This mutation should accept a quiz ID and a course ID as parameters
+   - Verify both IDs exist in the database
+   - Update the quiz document to mark it as a final quiz for the specified course
+   - Update the course document to reference this quiz as its final quiz
+   - Ensure a course can only have one final quiz (replace existing if necessary)
+   - Handle error cases appropriately
+   - Return the updated quiz and course objects
+
+Both mutations should include proper validation, error handling, and database transaction management to ensure data consistency. Update any relevant schema definitions if needed.
+
+# Test Strategy:
+Testing should cover the following scenarios:
+
+1. For `attachQuizToTopic`:
+   - Successfully attach a quiz to a topic and verify both documents are updated correctly
+   - Attempt to attach a non-existent quiz (should fail with appropriate error)
+   - Attempt to attach to a non-existent topic (should fail with appropriate error)
+   - Attempt to attach a quiz that's already attached elsewhere (test the behavior)
+   - Verify permissions (only authorized users can perform this operation)
+
+2. For `addQuizToFinal`:
+   - Successfully add a quiz as a course final and verify both documents are updated
+   - Test replacing an existing final quiz with a new one
+   - Attempt to add a non-existent quiz (should fail appropriately)
+   - Attempt to add to a non-existent course (should fail appropriately)
+   - Verify permissions (only course creators/admins can set final quizzes)
+
+Implement unit tests using the Convex testing framework to simulate these scenarios. Additionally, create integration tests that use the mutations from the frontend to ensure they work as expected in the application context.

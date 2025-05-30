@@ -1,0 +1,11 @@
+# Task ID: 4
+# Title: Identify and comment out non-essential Payload features
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Systematically review and comment out non-core features in the Payload codebase
+# Details:
+Review the @convexcms/* packages and identify code related to non-core features. Comment out this code using a consistent marker (e.g., // TODO: CONVEX_REFACTOR_PHASE_3). Focus on authentication, access control, GraphQL, hooks, versioning, drafts, internationalization, and complex field types. Provide minimal mocks (empty functions or functions returning null/Promise.resolve()) where necessary for the application to compile and run.
+
+# Test Strategy:
+Ensure the application still compiles after commenting out code. Verify that basic functionality remains intact.

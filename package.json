@@ -1,0 +1,40 @@
+{
+  "name": "create-t3-turbo",
+  "private": true,
+  "engines": {
+    "node": ">=22.14.0",
+    "pnpm": ">=9.6.0"
+  },
+  "packageManager": "pnpm@10.6.3",
+  "scripts": {
+    "dev:portal": "turbo watch dev -F @acme/portal...",
+    "dev:payload": "turbo watch dev -F @acme/payload...",
+    "build": "turbo run build",
+    "clean": "git clean -xdf node_modules",
+    "clean:workspaces": "turbo run clean",
+    "db:push": "turbo -F @acme/db push",
+    "db:studio": "turbo -F @acme/db studio",
+    "dev": "turbo watch dev --continue",
+    "dev:next": "turbo watch dev -F @acme/nextjs...",
+    "format": "turbo run format --continue -- --cache --cache-location .cache/.prettiercache",
+    "format:fix": "turbo run format --continue -- --write --cache --cache-location .cache/.prettiercache",
+    "lint": "turbo run lint --continue -- --cache --cache-location .cache/.eslintcache",
+    "lint:fix": "turbo run lint --continue -- --fix --cache --cache-location .cache/.eslintcache",
+    "lint:ws": "pnpm dlx sherif@latest -f",
+    "postinstall": "pnpm lint:ws",
+    "typecheck": "turbo run typecheck",
+    "ui-add": "turbo run ui-add",
+    "tcopy": "turbo gen workspace --copy"
+  },
+  "devDependencies": {
+    "@acme/prettier-config": "workspace:*",
+    "@swc-node/register": "1.10.9",
+    "@swc/cli": "0.6.0",
+    "@swc/jest": "0.2.37",
+    "@turbo/gen": "^2.4.4",
+    "prettier": "catalog:",
+    "turbo": "^2.4.4",
+    "typescript": "catalog:"
+  },
+  "prettier": "@acme/prettier-config"
+}

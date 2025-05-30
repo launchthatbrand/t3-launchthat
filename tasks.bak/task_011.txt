@@ -1,0 +1,92 @@
+# Task ID: 11
+# Title: Implement Column Type Components
+# Status: pending
+# Dependencies: 8
+# Priority: medium
+# Description: Create components for rendering and editing different column types
+# Details:
+Implement components for each column type specified in the PRD:
+
+1. Text (single-line)
+2. Long Text (multi-line)
+3. Number
+4. Email
+5. Phone
+6. Date
+7. Dropdown
+8. User
+9. Checkbox
+10. Link
+
+Create a factory component that renders the appropriate input based on column type:
+
+```tsx
+// components/columns/ItemCell.tsx
+import { FC, useState } from 'react';
+import { Input } from '@ui/components/ui/input';
+import { Textarea } from '@ui/components/ui/textarea';
+import { Checkbox } from '@ui/components/ui/checkbox';
+import { Calendar } from '@ui/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@ui/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@ui/components/ui/popover';
+import { Button } from '@ui/components/ui/button';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { ColumnType } from '../../types';
+
+interface ItemCellProps {
+  type: ColumnType;
+  value: any;
+  onChange: (value: any) => void;
+  options?: string[]; // For dropdown type
+}
+
+const ItemCell: FC<ItemCellProps> = ({ type, value, onChange, options = [] }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // Helper to handle blur events
+  const handleBlur = () => setIsEditing(false);
+  
+  switch (type) {
+    case 'text':
+      return isEditing ? (
+        <Input 
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={handleBlur}
+          autoFocus
+        />
+      ) : (
+        <div onClick={() => setIsEditing(true)} className="cursor-text min-h-[24px]">
+          {value || ''}
+        </div>
+      );
+      
+    case 'longText':
+      return isEditing ? (
+        <Textarea 
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={handleBlur}
+          autoFocus
+        />
+      ) : (
+        <div onClick={() => setIsEditing(true)} className="cursor-text min-h-[24px]">
+          {value || ''}
+        </div>
+      );
+    
+    // Implement other column types similarly
+    
+    default:
+      return <div>Unsupported column type: {type}</div>;
+  }
+};
+
+export default ItemCell;
+```
+
+Implement the remaining column type components following the same pattern, using appropriate Shadcn UI components for each type.
+
+# Test Strategy:
+Test each column type component individually to ensure it renders correctly and handles user input properly. Test edge cases like empty values, invalid inputs, and format validation. Verify that changes to cell values are correctly persisted.

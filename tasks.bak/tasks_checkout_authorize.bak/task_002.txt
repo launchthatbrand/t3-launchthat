@@ -1,0 +1,15 @@
+# Task ID: 2
+# Title: Create checkout page route
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Create a new route/page for the checkout process within the Next.js application.
+# Details:
+1. Create a new directory `checkout` in `apps/nextjs/src/app/`
+2. Add a `page.tsx` file in this directory to define the checkout page
+3. Implement a basic page structure with a title and container for the payment form
+4. Export the page component as the default export
+5. Ensure the page is accessible via the `/checkout` route
+
+# Test Strategy:
+Navigate to the `/checkout` route in the browser to verify the page loads correctly without errors.

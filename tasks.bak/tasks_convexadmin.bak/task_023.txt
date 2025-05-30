@@ -1,0 +1,11 @@
+# Task ID: 23
+# Title: Implement basic media field support
+# Status: pending
+# Dependencies: 10, 11
+# Priority: low
+# Description: Add support for file/image uploads in the admin panel
+# Details:
+Implement basic support for media fields (file/image uploads). Create UI components for file selection and preview. Implement the necessary Convex functions to handle file uploads and storage. This may require using Convex's file storage capabilities or integrating with a third-party storage service.
+
+# Test Strategy:
+Test uploading, viewing, and replacing files. Verify that the files are properly stored and that the URLs are correctly saved in the database.

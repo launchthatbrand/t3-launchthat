@@ -1,0 +1,19 @@
+# Task ID: 6
+# Title: Create Final Quizzes area
+# Status: done
+# Dependencies: 5
+# Priority: medium
+# Description: Implement the dedicated Final Quizzes section, including rendering quizzes and handling quizzes dropped from topics or the sidebar.
+# Details:
+Implement the Final Quizzes area that:
+- Appears at the bottom of the component
+- Has a distinct visual style with a "FINAL QUIZZES" label
+- Includes a drop zone for quizzes
+- Provides a '+ New Quiz' button that calls onAddQuiz with appropriate parameters
+- Renders any quizzes assigned to this section
+- Handles quizzes dropped from topics or the sidebar
+- Properly updates the data model when quizzes are moved to this section
+- Uses Tailwind CSS for styling according to the reference image
+
+# Test Strategy:
+Verify the Final Quizzes section renders correctly. Test that the '+ New Quiz' button calls the onAddQuiz callback with appropriate parameters. Test drag and drop functionality by verifying quizzes can be moved from topics or the sidebar to the Final Quizzes section. Ensure the data model is correctly updated when quizzes are moved.

@@ -1,0 +1,20 @@
+# Task ID: 10
+# Title: Implement topic drag-and-drop
+# Status: done
+# Dependencies: 9
+# Priority: high
+# Description: Implement drag-and-drop for reordering topics within lessons and attaching available topics from the sidebar into lessons. Ensure topics cannot be dropped elsewhere.
+# Details:
+Implement topic drag-and-drop that:
+- Makes topics draggable using @dnd-kit
+- Adds drag handles to topics
+- Allows reordering topics within the same lesson
+- Allows attaching available topics from the sidebar into lessons
+- Prevents dropping topics in invalid locations
+- Provides visual feedback during dragging
+- Shows drop indicators between topics
+- Calls onReorderItems with appropriate parameters
+- Handles parent-child relationships correctly
+
+# Test Strategy:
+Test dragging topics within a lesson and attaching topics from the sidebar into lessons. Verify visual feedback and drop indicators. Confirm topics cannot be dropped in invalid locations. Ensure onReorderItems is called with correct parameters including parentId.

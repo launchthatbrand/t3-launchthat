@@ -1,0 +1,22 @@
+# Task ID: 1
+# Title: Set up component file structure and TypeScript interfaces
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Create the initial file structure for CourseBuilderV2 and define TypeScript interfaces for props and data models
+# Details:
+Create the following files:
+- index.tsx (main component)
+- types.ts (type definitions)
+- utils.ts (helper functions)
+
+Define interfaces for:
+- Component props (CourseBuilderProps)
+- Data models (Lesson, Topic, Quiz)
+- Callback function signatures
+- DnD-related types
+
+Ensure the interfaces are comprehensive and properly typed with TypeScript.
+
+# Test Strategy:
+Verify TypeScript compilation succeeds with no errors. Review interfaces for completeness against PRD requirements.

@@ -1,0 +1,11 @@
+# Task ID: 12
+# Title: Implement UI component overrides in convexPlugin
+# Status: pending
+# Dependencies: 2, 11
+# Priority: medium
+# Description: Configure the Convex plugin to override Payload's default list query provider.
+# Details:
+Modify the convexPlugin to use admin.components.providers.ListQuery to replace the default provider with ConvexListQueryProvider. Ensure the override is applied to all collections. Handle collection-specific configurations. Implement proper error handling for the override process.
+
+# Test Strategy:
+Configure a test Payload instance with the plugin and verify that the ListView component uses the custom provider. Test that real-time updates are correctly displayed in the UI.

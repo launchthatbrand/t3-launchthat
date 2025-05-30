@@ -1,0 +1,54 @@
+"use client";
+
+import React from "react";
+import { formatAdminURL } from "@convexcms/core/shared";
+import { Link, useConfig, useTranslation } from "@convexcms/ui";
+import { formatDate } from "@convexcms/ui/shared";
+
+type CreatedAtCellProps = {
+  collectionSlug?: string;
+  docID?: number | string;
+  globalSlug?: string;
+  rowData?: {
+    id: number | string;
+    updatedAt: Date | number | string;
+  };
+};
+
+export const CreatedAtCell: React.FC<CreatedAtCellProps> = ({
+  collectionSlug,
+  docID,
+  globalSlug,
+  rowData: { id, updatedAt } = {},
+}) => {
+  const {
+    config: {
+      admin: { dateFormat },
+      routes: { admin: adminRoute },
+    },
+  } = useConfig();
+
+  const { i18n } = useTranslation();
+
+  let to: string;
+
+  if (collectionSlug) {
+    to = formatAdminURL({
+      adminRoute,
+      path: `/collections/${collectionSlug}/${docID}/versions/${id}`,
+    });
+  }
+
+  if (globalSlug) {
+    to = formatAdminURL({
+      adminRoute,
+      path: `/globals/${globalSlug}/versions/${id}`,
+    });
+  }
+
+  return (
+    <Link href={to} prefetch={false}>
+      {formatDate({ date: updatedAt, i18n, pattern: dateFormat })}
+    </Link>
+  );
+};
