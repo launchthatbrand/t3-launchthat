@@ -19,16 +19,18 @@ import {
 } from "@acme/ui/card";
 
 import EventForm, { EventFormValues } from "../../../_components/EventForm";
-import { LoadingSpinner } from "../../../components/LoadingSpinner";
+import { LoadingSpinner } from "../../../_components/LoadingSpinner";
+
+// Define valid day types
+type DayOfWeek = "MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU";
 
 export default function EditEventPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const { user } = useUser();
 
-  // Unwrap params with React.use()
-  const unwrappedParams = React.use(params);
-  const eventId = unwrappedParams.id as unknown as Id<"events">;
+  // Extract id directly from params
+  const eventId = params.id as Id<"events">;
 
   // Get user ID
   const userId = user?.id;
@@ -88,22 +90,39 @@ export default function EditEventPage() {
     const startTime = format(startDate, "HH:mm");
     const endTime = format(endDate, "HH:mm");
 
+    // Determine recurrence end type safely
+    let endType: "never" | "after" | "on" = "never";
+    if (event.recurrence) {
+      if (event.recurrence.count) {
+        endType = "after";
+      } else if (event.recurrence.until) {
+        endType = "on";
+      }
+    }
+
+    // Validate byDay values to ensure they're all valid day codes
+    const validateByDay = (days: string[] | undefined): DayOfWeek[] => {
+      const validDays: DayOfWeek[] = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
+
+      if (!days) return ["MO"];
+
+      return days.filter((day): day is DayOfWeek =>
+        validDays.includes(day as DayOfWeek),
+      );
+    };
+
     // Parse recurrence if it exists
     const recurrence = event.recurrence
       ? {
           enabled: true,
           frequency: event.recurrence.frequency,
           interval: event.recurrence.interval ?? 1,
-          endType: event.recurrence.count
-            ? "after"
-            : event.recurrence.until
-              ? "on"
-              : "never",
+          endType,
           count: event.recurrence.count ?? 10,
           until: event.recurrence.until
             ? new Date(event.recurrence.until)
             : undefined,
-          byDay: event.recurrence.byDay ?? ["MO"],
+          byDay: validateByDay(event.recurrence.byDay),
         }
       : undefined;
 

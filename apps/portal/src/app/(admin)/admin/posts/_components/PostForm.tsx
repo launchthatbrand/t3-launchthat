@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import { MultiSelect } from "@acme/ui/components/multi-select";
 import {
   Form,
   FormControl,
@@ -45,14 +46,13 @@ export interface PostFormValues {
   slug: string;
   excerpt: string;
   content: string;
-  tags: string;
-  featuredImage?: string; // URL or identifier
+  selectedTags: string[]; // Changed from string to string[]
+  featuredImageUrl?: string;
   readTime: string;
   // Dummy fields for form context
   _status?: string;
   _category?: string;
   _featured?: boolean;
-  // category, status, featured will be handled by local state within the form
 }
 
 interface PostFormProps {
@@ -61,7 +61,7 @@ interface PostFormProps {
   isSubmitting: boolean;
   categories: { value: string; label: string }[];
   submitButtonText?: string;
-  formInstance?: UseFormReturn<PostFormValues>; // Optional: allow parent to control form
+  formInstance?: UseFormReturn<PostFormValues>;
 }
 
 const PostFormComponent: React.FC<PostFormProps> = ({
@@ -70,30 +70,30 @@ const PostFormComponent: React.FC<PostFormProps> = ({
   isSubmitting,
   categories,
   submitButtonText = "Save Post",
-  // formInstance, // Not using this for now to keep it simpler
 }) => {
   const [activeTab, setActiveTab] = useState("content");
   const [currentStatus, setCurrentStatus] = useState<PostStatus>("draft");
   const [currentCategory, setCurrentCategory] = useState<string>("");
   const [currentFeatured, setCurrentFeatured] = useState<boolean>(false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  const [availableTags, setAvailableTags] = useState<
+    { value: string; label: string }[]
+  >([]);
 
-  const internalForm = useForm<PostFormValues>({
+  const form = useForm<PostFormValues>({
     defaultValues: {
       title: "",
       slug: "",
       excerpt: "",
       content: "",
-      tags: "",
-      featuredImage: "",
+      selectedTags: [],
+      featuredImageUrl: "",
       readTime: "",
-      _status: "",
+      _status: "draft",
       _category: "",
       _featured: false,
     },
   });
-
-  const form = internalForm; // Use internal form instance
 
   useEffect(() => {
     if (initialData && !initialDataLoaded) {
@@ -101,28 +101,31 @@ const PostFormComponent: React.FC<PostFormProps> = ({
       form.setValue("slug", initialData.slug);
       form.setValue("excerpt", initialData.excerpt ?? "");
       form.setValue("content", initialData.content);
-      form.setValue("tags", initialData.tags?.join(", ") ?? "");
-      form.setValue("featuredImage", initialData.featuredImageUrl ?? "");
+      form.setValue("selectedTags", initialData.tags ?? []);
+      form.setValue("featuredImageUrl", initialData.featuredImageUrl ?? "");
       form.setValue("readTime", initialData.readTime ?? "");
-      // Set the dummy fields to match the state variables
       form.setValue("_status", initialData.status);
-      form.setValue("_category", initialData.category || "");
-      form.setValue("_featured", initialData.featured || false);
+      form.setValue("_category", initialData.category ?? "");
+      form.setValue("_featured", initialData.featured ?? false);
 
       setCurrentStatus(initialData.status);
-      setCurrentCategory(initialData.category || "");
-      setCurrentFeatured(initialData.featured || false);
+      setCurrentCategory(initialData.category ?? "");
+      setCurrentFeatured(initialData.featured ?? false);
+
+      // Create options from existing tags
+      if (initialData.tags && initialData.tags.length > 0) {
+        setAvailableTags(
+          initialData.tags.map((tag) => ({ value: tag, label: tag })),
+        );
+      }
+
       setInitialDataLoaded(true);
     } else if (!initialData && !initialDataLoaded) {
       // If it's a new post form, make sure category is set if categories exist
-      if (
-        Array.isArray(categories) &&
-        categories.length > 0 &&
-        !currentCategory
-      ) {
-        setCurrentCategory(categories[0]?.value ?? ""); // Default to first category
+      if (categories.length > 0 && !currentCategory) {
+        setCurrentCategory(categories[0]?.value ?? "");
       }
-      setInitialDataLoaded(true); // Mark as loaded even for new form to prevent re-running this
+      setInitialDataLoaded(true);
     }
   }, [initialData, form, categories, initialDataLoaded, currentCategory]);
 
@@ -134,7 +137,7 @@ const PostFormComponent: React.FC<PostFormProps> = ({
     }
   };
 
-  const internalHandleSubmit = async (values: PostFormValues) => {
+  const handleSubmit = async (values: PostFormValues) => {
     const postData: PostFormData = {
       title: values.title,
       content: values.content,
@@ -142,27 +145,23 @@ const PostFormComponent: React.FC<PostFormProps> = ({
       slug: values.slug || generateSlugFromTitle(values.title),
       status: currentStatus,
       category: currentCategory,
-      tags: parseTags(values.tags),
+      tags: values.selectedTags,
       featured: currentFeatured,
-      featuredImageUrl: values.featuredImage || undefined,
-      readTime: values.readTime || undefined,
-      // authorId will be handled by the backend or parent component if needed
+      featuredImageUrl: values.featuredImageUrl ?? undefined,
+      readTime: values.readTime ?? undefined,
     };
     await onSubmit(postData);
   };
 
-  const statusOptions = React.useMemo(
-    () => [
-      { value: "draft" as PostStatus, label: "Draft" },
-      { value: "published" as PostStatus, label: "Published" },
-      { value: "archived" as PostStatus, label: "Archived" },
-    ],
-    [],
-  );
+  const statusOptions = [
+    { value: "draft" as PostStatus, label: "Draft" },
+    { value: "published" as PostStatus, label: "Published" },
+    { value: "archived" as PostStatus, label: "Archived" },
+  ];
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(internalHandleSubmit)}>
+      <form onSubmit={form.handleSubmit(handleSubmit)}>
         <div className="grid gap-6 md:grid-cols-6">
           {/* Main content area */}
           <div className="md:col-span-4">
@@ -281,7 +280,7 @@ const PostFormComponent: React.FC<PostFormProps> = ({
                     <div className="grid gap-6">
                       <FormField
                         control={form.control}
-                        name="featuredImage" // Assuming this holds a URL or path
+                        name="featuredImageUrl"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Featured Image URL</FormLabel>
@@ -290,6 +289,7 @@ const PostFormComponent: React.FC<PostFormProps> = ({
                                 <Input
                                   placeholder="Enter image URL or path"
                                   {...field}
+                                  value={field.value || ""}
                                 />
                                 <Button
                                   type="button"
@@ -297,8 +297,6 @@ const PostFormComponent: React.FC<PostFormProps> = ({
                                   size="icon"
                                   disabled
                                 >
-                                  {" "}
-                                  {/* Placeholder for upload */}
                                   <ImagePlus className="h-4 w-4" />
                                 </Button>
                               </div>
@@ -330,14 +328,14 @@ const PostFormComponent: React.FC<PostFormProps> = ({
               <CardContent className="grid gap-6">
                 <FormField
                   control={form.control}
-                  name="_status" // Using a dummy field name for the form context
+                  name="_status"
                   render={({ field: { onChange, ...rest } }) => (
                     <FormItem className="space-y-2">
                       <FormLabel>Status</FormLabel>
                       <Select
                         onValueChange={(value) => {
                           setCurrentStatus(value as PostStatus);
-                          onChange(value); // Keep the form context happy
+                          onChange(value);
                         }}
                         {...rest}
                       >
@@ -360,7 +358,7 @@ const PostFormComponent: React.FC<PostFormProps> = ({
 
                 <FormField
                   control={form.control}
-                  name="_featured" // Using a dummy field name for the form context
+                  name="_featured"
                   render={({ field: { value, onChange, ...restField } }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                       <div className="space-y-0.5">
@@ -374,7 +372,7 @@ const PostFormComponent: React.FC<PostFormProps> = ({
                           checked={currentFeatured}
                           onCheckedChange={(checked) => {
                             setCurrentFeatured(checked);
-                            onChange(checked); // Keep the form context happy
+                            onChange(checked);
                           }}
                           {...restField}
                         />
@@ -392,7 +390,6 @@ const PostFormComponent: React.FC<PostFormProps> = ({
                   <Save className="mr-2 h-4 w-4" />
                   {isSubmitting ? "Saving..." : submitButtonText}
                 </Button>
-                {/* Delete button can be conditionally rendered by parent */}
               </CardFooter>
             </Card>
 
@@ -404,14 +401,14 @@ const PostFormComponent: React.FC<PostFormProps> = ({
               <CardContent className="grid gap-6">
                 <FormField
                   control={form.control}
-                  name="_category" // Using a dummy field name for the form context
+                  name="_category"
                   render={({ field: { onChange, ...rest } }) => (
                     <FormItem className="space-y-2">
                       <FormLabel>Category</FormLabel>
                       <Select
                         onValueChange={(value) => {
                           setCurrentCategory(value);
-                          onChange(value); // Keep the form context happy
+                          onChange(value);
                         }}
                         disabled={categories.length === 0}
                         {...rest}
@@ -441,20 +438,45 @@ const PostFormComponent: React.FC<PostFormProps> = ({
 
                 <FormField
                   control={form.control}
-                  name="tags"
+                  name="selectedTags"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tags</FormLabel>
                       <FormControl>
-                        <Input placeholder="Tag1, Tag2, Tag3" {...field} />
+                        <MultiSelect
+                          placeholder="Select or enter tags"
+                          options={availableTags.map((tag) => ({
+                            label: tag.label,
+                            value: tag.value,
+                          }))}
+                          onValueChange={(values) => {
+                            field.onChange(values);
+
+                            // Update available tags with any new ones
+                            const newTags = values
+                              .filter(
+                                (tag) =>
+                                  !availableTags.some(
+                                    (existing) => existing.value === tag,
+                                  ),
+                              )
+                              .map((tag) => ({ label: tag, value: tag }));
+
+                            if (newTags.length > 0) {
+                              setAvailableTags((prev) => [...prev, ...newTags]);
+                            }
+                          }}
+                          defaultValue={field.value}
+                        />
                       </FormControl>
                       <FormDescription>
-                        Comma-separated list of tags
+                        Select existing tags or type to create new ones
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
                 <FormField
                   control={form.control}
                   name="readTime"

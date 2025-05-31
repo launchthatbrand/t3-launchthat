@@ -33,7 +33,7 @@ import {
 import { Separator } from "@acme/ui/separator";
 
 // Import local loading spinner component
-import { LoadingSpinner } from "../../components/LoadingSpinner";
+import { LoadingSpinner } from "../../_components/LoadingSpinner";
 
 export default function EventDetailsPage() {
   const router = useRouter();
@@ -42,9 +42,8 @@ export default function EventDetailsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Convert params.id to Id<"events"> safely
-  const unwrappedParams = React.use(params as Promise<{ id: string }>);
-  const eventId = unwrappedParams.id as unknown as Id<"events">;
+  // Extract the ID directly from params
+  const eventId = params.id as string as Id<"events">;
 
   // Get event details
   const event = useQuery(api.calendar.queries.getEventById, {

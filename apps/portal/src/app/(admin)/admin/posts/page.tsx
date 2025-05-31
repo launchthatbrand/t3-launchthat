@@ -93,7 +93,9 @@ function PostsAdminPage() {
 
   // Map raw posts to Post type
   const posts = postsData?.posts
-    ? postsData.posts.map((rawPost: RawPost): Post => {
+    ? postsData.posts.map((rawPost: any): Post => {
+        if (!rawPost) return {} as Post; // Handle null case
+
         // Determine status - if missing or invalid, use "draft" as default
         let status: PostStatus = "draft";
         if (
@@ -304,7 +306,15 @@ function PostsAdminPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Posts</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>All Posts</CardTitle>
+            <div className="flex space-x-2">
+              <Button variant="outline" asChild>
+                <Link href="/admin/posts/category">Manage Categories</Link>
+              </Button>
+              {headerActions}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <EntityList
@@ -313,7 +323,6 @@ function PostsAdminPage() {
             filters={filters}
             isLoading={isPostsLoading}
             title="Posts"
-            actions={headerActions}
             initialFilters={activeFilters}
             onFiltersChange={setActiveFilters}
             emptyState={

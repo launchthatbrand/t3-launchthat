@@ -77,7 +77,7 @@ export function EntityList<T extends object>({
 
   // Sync with external filter changes
   useEffect(() => {
-    if (initialFilters && Object.keys(initialFilters).length > 0) {
+    if (Object.keys(initialFilters).length > 0) {
       setActiveFilters(initialFilters);
     }
   }, [initialFilters]);

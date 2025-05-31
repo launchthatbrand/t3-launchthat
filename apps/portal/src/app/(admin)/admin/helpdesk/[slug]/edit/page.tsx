@@ -149,7 +149,7 @@ export default function EditHelpdeskArticlePage() {
         .toLowerCase()
         .replace(/[^\w\s]/g, "")
         .replace(/\s+/g, "-");
-      router.push(`/admin/helpdesk/article/${newSlug}`);
+      router.push(`/helpdesk/${newSlug}`);
     } catch (error) {
       console.error("Error updating article:", error);
       toast.error("Error", {
@@ -203,7 +203,7 @@ export default function EditHelpdeskArticlePage() {
           The article you're trying to edit doesn't exist or has been moved.
         </p>
         <Button asChild className="mt-6">
-          <Link href="/admin/helpdesk">Back to Helpdesk</Link>
+          <Link href="//helpdesk">Back to Helpdesk</Link>
         </Button>
       </div>
     );
@@ -214,7 +214,7 @@ export default function EditHelpdeskArticlePage() {
       <div className="flex items-center justify-between">
         <div>
           <Button variant="ghost" size="sm" asChild>
-            <Link href={`/admin/helpdesk/article/${slug}`}>
+            <Link href={`/helpdesk/${slug}`}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Article
             </Link>

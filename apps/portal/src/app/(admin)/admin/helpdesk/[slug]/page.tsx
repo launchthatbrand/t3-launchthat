@@ -76,7 +76,7 @@ export default function ArticlePage() {
         description: "The article has been permanently deleted.",
       });
 
-      router.push("/admin/helpdesk");
+      router.push("//helpdesk");
     } catch (error) {
       console.error("Error deleting article:", error);
       toast.error("Error", {
@@ -88,7 +88,7 @@ export default function ArticlePage() {
   // Loading state
   if (article === undefined) {
     return (
-      <div className="container mx-auto max-w-5xl space-y-6 pb-16">
+      <div className="mx-auto space-y-6 pb-16">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <Skeleton className="h-10 w-32" />
           <div className="flex items-center gap-2">
@@ -145,7 +145,7 @@ export default function ArticlePage() {
           The article you're looking for doesn't exist or has been moved.
         </p>
         <Button asChild className="mt-6">
-          <Link href="/admin/helpdesk">Back to Helpdesk</Link>
+          <Link href="//helpdesk">Back to Helpdesk</Link>
         </Button>
       </div>
     );
@@ -161,11 +161,11 @@ export default function ArticlePage() {
   };
 
   return (
-    <div className="container mx-auto max-w-5xl space-y-6 pb-16">
+    <div className="container mx-auto space-y-6 p-5 pb-16">
       {/* Article header with search */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/admin/helpdesk">
+          <Link href="//helpdesk">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Helpdesk
           </Link>
@@ -181,7 +181,7 @@ export default function ArticlePage() {
             <Share2 className="h-4 w-4" />
           </Button>
           <Button variant="outline" size="icon" asChild title="Edit Article">
-            <Link href={`/admin/helpdesk/article/${slug}/edit`}>
+            <Link href={`/helpdesk/${slug}/edit`}>
               <Edit className="h-4 w-4" />
             </Link>
           </Button>
@@ -259,7 +259,7 @@ export default function ArticlePage() {
                 article.relatedArticles.map((related) => (
                   <Link
                     key={related._id}
-                    href={`/admin/helpdesk/article/${related.slug}`}
+                    href={`/helpdesk/${related.slug}`}
                     className="flex items-center justify-between rounded-md p-2 hover:bg-accent"
                   >
                     <span className="line-clamp-1 text-sm">
@@ -272,7 +272,7 @@ export default function ArticlePage() {
             </CardContent>
             <CardFooter>
               <Button variant="outline" asChild className="w-full">
-                <Link href="/admin/helpdesk">View All Articles</Link>
+                <Link href="//helpdesk">View All Articles</Link>
               </Button>
             </CardFooter>
           </Card>

@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import type { Id } from "../_generated/dataModel";
-import { mutation } from "../_generated/server";
+import { mutation, query } from "../_generated/server";
 import { generateUniqueSlug, sanitizeSlug } from "../lib/slugs";
 
 /**
@@ -546,5 +546,227 @@ export const deleteEvent = mutation({
     }
 
     return { success: false };
+  },
+});
+
+/**
+ * Get all event types (categories)
+ */
+export const getEventTypes = query({
+  args: {
+    includePrivate: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    // Find event types (categories) in the database
+    // Use the pre-defined event types from the schema if no custom categories exist
+    let query = ctx.db.query("eventCategories");
+
+    // Filter by public status if not explicitly including private ones
+    if (!args.includePrivate) {
+      query = query.filter((q) => q.eq(q.field("isPublic"), true));
+    }
+
+    const categories = await query.collect();
+
+    // If no custom categories exist, return the default event types from the schema
+    if (categories.length === 0) {
+      // These default types correspond to the event types in the events table schema
+      return [
+        {
+          _id: "system:meeting" as Id<"eventCategories">,
+          name: "Meeting",
+          description: "One-on-one or group discussions",
+          isPublic: true,
+          color: "#4287f5", // blue
+          _creationTime: Date.now(),
+          createdAt: Date.now(),
+        },
+        {
+          _id: "system:webinar" as Id<"eventCategories">,
+          name: "Webinar",
+          description: "Online presentations or workshops",
+          isPublic: true,
+          color: "#42b883", // green
+          _creationTime: Date.now(),
+          createdAt: Date.now(),
+        },
+        {
+          _id: "system:workshop" as Id<"eventCategories">,
+          name: "Workshop",
+          description: "Interactive learning sessions",
+          isPublic: true,
+          color: "#9c42f5", // purple
+          _creationTime: Date.now(),
+          createdAt: Date.now(),
+        },
+        {
+          _id: "system:class" as Id<"eventCategories">,
+          name: "Class",
+          description: "Educational sessions",
+          isPublic: true,
+          color: "#f54263", // red
+          _creationTime: Date.now(),
+          createdAt: Date.now(),
+        },
+        {
+          _id: "system:conference" as Id<"eventCategories">,
+          name: "Conference",
+          description: "Large-scale professional gatherings",
+          isPublic: true,
+          color: "#f5a742", // orange
+          _creationTime: Date.now(),
+          createdAt: Date.now(),
+        },
+        {
+          _id: "system:social" as Id<"eventCategories">,
+          name: "Social",
+          description: "Casual gatherings and celebrations",
+          isPublic: true,
+          color: "#42d9f5", // light blue
+          _creationTime: Date.now(),
+          createdAt: Date.now(),
+        },
+        {
+          _id: "system:deadline" as Id<"eventCategories">,
+          name: "Deadline",
+          description: "Important due dates",
+          isPublic: true,
+          color: "#f54242", // bright red
+          _creationTime: Date.now(),
+          createdAt: Date.now(),
+        },
+        {
+          _id: "system:reminder" as Id<"eventCategories">,
+          name: "Reminder",
+          description: "Personal or team reminders",
+          isPublic: true,
+          color: "#42f5e3", // cyan
+          _creationTime: Date.now(),
+          createdAt: Date.now(),
+        },
+        {
+          _id: "system:other" as Id<"eventCategories">,
+          name: "Other",
+          description: "Miscellaneous events",
+          isPublic: true,
+          color: "#a6a6a6", // gray
+          _creationTime: Date.now(),
+          createdAt: Date.now(),
+        },
+      ];
+    }
+
+    return categories;
+  },
+});
+
+/**
+ * Create a new event type (category)
+ */
+export const createEventType = mutation({
+  args: {
+    name: v.string(),
+    description: v.optional(v.string()),
+    isPublic: v.optional(v.boolean()),
+    color: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Validate input
+    if (!args.name.trim()) {
+      throw new Error("Category name is required");
+    }
+
+    // Check if a category with this name already exists
+    const existingCategory = await ctx.db
+      .query("eventCategories")
+      .filter((q) => q.eq(q.field("name"), args.name))
+      .unique();
+
+    if (existingCategory) {
+      throw new Error(`A category named "${args.name}" already exists`);
+    }
+
+    // Create the new category
+    const categoryId = await ctx.db.insert("eventCategories", {
+      name: args.name,
+      description: args.description,
+      isPublic: args.isPublic ?? true,
+      color: args.color,
+      createdAt: Date.now(),
+    });
+
+    return categoryId;
+  },
+});
+
+/**
+ * Update an existing event type (category)
+ */
+export const updateEventType = mutation({
+  args: {
+    id: v.id("eventCategories"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    isPublic: v.optional(v.boolean()),
+    color: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Check if the category exists
+    const category = await ctx.db.get(args.id);
+    if (!category) {
+      throw new Error("Category not found");
+    }
+
+    // Validate the name if provided
+    if (args.name !== undefined && !args.name.trim()) {
+      throw new Error("Category name cannot be empty");
+    }
+
+    // If name is changing, check for duplicates
+    if (args.name && args.name !== category.name) {
+      const existingCategory = await ctx.db
+        .query("eventCategories")
+        .filter((q) => q.eq(q.field("name"), args.name))
+        .unique();
+
+      if (existingCategory && existingCategory._id !== args.id) {
+        throw new Error(`A category named "${args.name}" already exists`);
+      }
+    }
+
+    // Update the category
+    await ctx.db.patch(args.id, {
+      ...(args.name !== undefined && { name: args.name }),
+      ...(args.description !== undefined && { description: args.description }),
+      ...(args.isPublic !== undefined && { isPublic: args.isPublic }),
+      ...(args.color !== undefined && { color: args.color }),
+      updatedAt: Date.now(),
+    });
+
+    return args.id;
+  },
+});
+
+/**
+ * Delete an event type (category)
+ */
+export const deleteEventType = mutation({
+  args: {
+    id: v.id("eventCategories"),
+  },
+  handler: async (ctx, args) => {
+    // Check if the category exists
+    const category = await ctx.db.get(args.id);
+    if (!category) {
+      throw new Error("Category not found");
+    }
+
+    // Check if any events are using this category
+    // In a real implementation, you might want to update those events or prevent deletion
+
+    // Delete the category
+    await ctx.db.delete(args.id);
+
+    return true;
   },
 });

@@ -225,6 +225,18 @@ export const calendarPermissionsTable = defineTable({
   .index("by_user", ["userId"])
   .index("by_calendar_user", ["calendarId", "userId"]);
 
+// Define event categories/types
+export const eventCategoriesTable = defineTable({
+  name: v.string(),
+  description: v.optional(v.string()),
+  isPublic: v.boolean(),
+  color: v.optional(v.string()), // HEX color code
+  createdAt: v.number(),
+  updatedAt: v.optional(v.number()),
+})
+  .index("by_name", ["name"])
+  .index("by_visibility", ["isPublic"]);
+
 // Combine all Calendar related tables
 export const calendarSchema = {
   events: eventsTable,
@@ -232,4 +244,5 @@ export const calendarSchema = {
   calendars: calendarsTable,
   calendarEvents: calendarEventsTable,
   calendarPermissions: calendarPermissionsTable,
+  eventCategories: eventCategoriesTable,
 };

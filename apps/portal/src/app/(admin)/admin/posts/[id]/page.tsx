@@ -71,8 +71,7 @@ function EditPostPage() {
   const params = useParams();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const unwrappedParams = React.use(params);
-  const postId = unwrappedParams.id as Id<"posts">;
+  const postId = params.id as Id<"posts">;
   const { data: apiPost, isLoading: isPostLoading } = usePost(postId);
   const updatePost = useUpdatePost();
   const post = apiPostToPost(apiPost as ApiPost | null);

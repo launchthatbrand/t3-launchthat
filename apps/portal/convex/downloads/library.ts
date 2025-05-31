@@ -147,44 +147,53 @@ export const getDownloadCategories = query({
   ),
   handler: async (ctx, args) => {
     const identity = await getOptionalAuthenticatedUserIdentity(ctx);
-
     let categoriesQuery = ctx.db.query("downloadCategories");
 
+    // If not requesting private categories, just return public ones
     if (!args.includePrivate) {
       categoriesQuery = categoriesQuery.filter((q) =>
         q.eq(q.field("isPublic"), true),
       );
     } else {
+      // If requesting private categories, check authentication
       if (!identity) {
-        throw new ConvexError(
-          "Unauthorized: Cannot fetch private categories without authentication.",
+        // Instead of throwing an error immediately, just return public categories
+        // with a console warning
+        console.warn(
+          "Unauthorized: User requested private categories without authentication. Returning public categories only.",
         );
-      }
-      const user = await ctx.db
-        .query("users")
-        .withIndex("by_token", (q) =>
-          q.eq("tokenIdentifier", identity.tokenIdentifier),
-        )
-        .first();
-
-      if (!user || user.role !== "admin") {
         categoriesQuery = categoriesQuery.filter((q) =>
           q.eq(q.field("isPublic"), true),
         );
+      } else {
+        // Check if user is admin
+        const user = await ctx.db
+          .query("users")
+          .withIndex("by_token", (q) =>
+            q.eq("tokenIdentifier", identity.tokenIdentifier),
+          )
+          .first();
+
+        if (!user || user.role !== "admin") {
+          // Not an admin, filter to show only public categories
+          categoriesQuery = categoriesQuery.filter((q) =>
+            q.eq(q.field("isPublic"), true),
+          );
+        }
+        // If admin, no additional filter, all categories are fetched by default query
       }
-      // If admin, no additional filter, all categories are fetched by default query
     }
 
     const categories = await categoriesQuery.collect();
 
-    // Map and cast the results to match the expected return type
+    // Map the results to match the expected return type
     return categories.map((category) => ({
-      _id: category._id as Id<"downloadCategories">,
-      name: category.name as string,
-      description: category.description as string | undefined,
-      isPublic: category.isPublic as boolean,
+      _id: category._id,
+      name: category.name,
+      description: category.description,
+      isPublic: category.isPublic,
       _creationTime: category._creationTime,
-      createdAt: category.createdAt as number,
+      createdAt: category.createdAt,
     }));
   },
 });

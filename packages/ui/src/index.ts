@@ -52,6 +52,7 @@ export * from "./toggle";
 export * from "./toggle-group";
 export * from "./tooltip";
 export * from "./site-header";
+export * from "./components/multi-select";
 export type { NavItem } from "./components/sidebar-layout/app-sidebar";
 // export * from "./sidebar"; // Assuming sidebar.tsx might be app-specific or a larger layout component
 // export * from "./theme"; // Assuming theme.tsx has side effects or is not a direct component export

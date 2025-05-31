@@ -1,11 +1,12 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
-import { Id } from "../_generated/dataModel";
+// import type { Doc, Id } from "../_generated/dataModel"; // Not explicitly used in this file
+import type { MutationCtx } from "../_generated/server";
 import { mutation } from "../_generated/server";
+import { getAuthenticatedUserDocIdByToken } from "../core/lib/permissions";
 import { validFileTypes } from "../lib/fileTypes";
 import {
   throwForbidden,
-  throwInternal,
   throwInvalidInput,
   throwNotFound,
 } from "../shared/errors";
@@ -13,40 +14,30 @@ import {
   getFileExtension,
   getFileTypeFromExtension,
 } from "./lib/fileTypeUtils";
-import {
-  checkDownloadAccess,
-  getAuthenticatedUser,
-  prepareSearchText,
-} from "./lib/helpers";
+import { checkDownloadAccess, prepareSearchText } from "./lib/helpers";
 
 /**
  * Generate a URL for uploading a file
  */
 export const generateUploadUrl = mutation({
   args: {
-    filename: v.optional(v.string()), // filename (args.filename) is used by Convex internally if provided
+    filename: v.optional(v.string()),
   },
-  returns: v.object({
-    uploadUrl: v.string(),
-    fileId: v.id("_storage"),
-  }),
-  handler: async (ctx, _args) => {
-    // Check authentication
-    await getAuthenticatedUser(ctx);
-
-    // Generate the upload URL
-    const fileId = await ctx.storage.generateUploadUrl();
-    const uploadUrl = await ctx.storage.getUrl(fileId);
-
-    if (!uploadUrl) {
-      throwInternal("Failed to generate upload URL");
+  returns: v.string(),
+  handler: async (ctx: MutationCtx, _args) => {
+    await getAuthenticatedUserDocIdByToken(ctx);
+    try {
+      const postUrl = await ctx.storage.generateUploadUrl();
+      if (!postUrl || typeof postUrl !== "string") {
+        throw new ConvexError("Failed to generate valid upload URL");
+      }
+      return postUrl;
+    } catch (error) {
+      console.error("Error in generateUploadUrl:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new ConvexError(`Failed to generate upload URL: ${errorMessage}`);
     }
-
-    // Cast fileId to match the expected return type
-    return {
-      uploadUrl,
-      fileId: fileId as Id<"_storage">,
-    };
   },
 });
 
@@ -66,36 +57,25 @@ export const createFileDownload = mutation({
     accessibleUserIds: v.optional(v.array(v.id("users"))),
   },
   returns: v.id("downloads"),
-  handler: async (ctx, args) => {
-    // Check authentication
-    const user = await getAuthenticatedUser(ctx);
-
-    // Get file metadata
+  handler: async (ctx: MutationCtx, args) => {
+    const userDocId = await getAuthenticatedUserDocIdByToken(ctx);
     const file = await ctx.db.system.get(args.storageId);
     if (!file) {
-      throwNotFound("File", args.storageId);
+      throwNotFound("File", args.storageId as string);
     }
-
-    // Get file details
     const fileName = args.title;
     const fileExtension = getFileExtension(file.contentType ?? "");
     const fileType = getFileTypeFromExtension(fileExtension);
-
-    // Validate file type
     if (!validFileTypes.includes(fileType)) {
       throwInvalidInput(`Unsupported file type: ${fileType}`);
     }
-
-    // Prepare searchText content
     const searchText = prepareSearchText(
       args.title,
       args.description,
       fileName,
       args.tags,
     );
-
-    // Create download record
-    const downloadId = await ctx.db.insert("downloads", {
+    return ctx.db.insert("downloads", {
       title: args.title,
       description: args.description,
       fileName,
@@ -111,12 +91,10 @@ export const createFileDownload = mutation({
       requiredProductId: args.requiredProductId,
       requiredCourseId: args.requiredCourseId,
       accessibleUserIds: args.accessibleUserIds,
-      uploadedBy: user._id,
+      uploadedBy: userDocId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
-
-    return downloadId;
   },
 });
 
@@ -128,40 +106,32 @@ export const generateDownloadUrl = mutation({
     downloadId: v.id("downloads"),
   },
   returns: v.string(),
-  handler: async (ctx, args) => {
-    // Check authentication
-    const user = await getAuthenticatedUser(ctx);
-
-    // Get download from database
+  handler: async (ctx: MutationCtx, args) => {
+    const userDocId = await getAuthenticatedUserDocIdByToken(ctx);
     const download = await ctx.db.get(args.downloadId);
     if (!download) {
-      throwNotFound("Download", args.downloadId);
+      throwNotFound("Download", args.downloadId as string);
     }
-
-    // Check if user has access to this download
-    const hasAccess = await checkDownloadAccess(ctx, user._id, args.downloadId);
+    const hasAccess = await checkDownloadAccess(
+      ctx,
+      userDocId,
+      args.downloadId,
+    );
     if (!hasAccess) {
       throwForbidden("You don't have access to this download");
     }
-
-    // Get file URL
     const url = await ctx.storage.getUrl(download.storageId);
     if (!url) {
-      throwNotFound("File", download.storageId);
+      throwNotFound("File", download.storageId as string);
     }
-
-    // Log this download
     await ctx.db.insert("userDownloads", {
-      userId: user._id,
+      userId: userDocId,
       downloadId: args.downloadId,
       downloadedAt: Date.now(),
     });
-
-    // Update download count
     await ctx.db.patch(args.downloadId, {
       downloadCount: download.downloadCount + 1,
     });
-
     return url;
   },
 });
@@ -181,70 +151,42 @@ export const generateMultipleDownloadUrls = mutation({
       error: v.optional(v.string()),
     }),
   ),
-  handler: async (ctx, args) => {
-    // Check authentication
-    const user = await getAuthenticatedUser(ctx);
-
-    // Process each download and collect results
+  handler: async (ctx: MutationCtx, args) => {
+    const userDocId = await getAuthenticatedUserDocIdByToken(ctx);
     const results = [];
-
     for (const downloadId of args.downloadIds) {
       try {
-        // Get download from database
         const download = await ctx.db.get(downloadId);
         if (!download) {
-          results.push({
-            downloadId,
-            error: "Download not found",
-          });
+          results.push({ downloadId, error: "Download not found" });
           continue;
         }
-
-        // Check if user has access to this download
-        const hasAccess = await checkDownloadAccess(ctx, user._id, downloadId);
+        const hasAccess = await checkDownloadAccess(ctx, userDocId, downloadId);
         if (!hasAccess) {
-          results.push({
-            downloadId,
-            error: "Access denied",
-          });
+          results.push({ downloadId, error: "Forbidden" });
           continue;
         }
-
-        // Get file URL
         const url = await ctx.storage.getUrl(download.storageId);
         if (!url) {
-          results.push({
-            downloadId,
-            error: "File not found",
-          });
+          results.push({ downloadId, error: "File not found in storage" });
           continue;
         }
-
-        // Log this download
         await ctx.db.insert("userDownloads", {
-          userId: user._id,
+          userId: userDocId,
           downloadId,
           downloadedAt: Date.now(),
         });
-
-        // Update download count
         await ctx.db.patch(downloadId, {
           downloadCount: download.downloadCount + 1,
         });
-
+        results.push({ downloadId, url, fileName: download.fileName });
+      } catch (e) {
         results.push({
           downloadId,
-          url,
-          fileName: download.fileName,
-        });
-      } catch (error) {
-        results.push({
-          downloadId,
-          error: error instanceof Error ? error.message : "Unknown error",
+          error: e instanceof Error ? e.message : String(e),
         });
       }
     }
-
     return results;
   },
 });
@@ -260,53 +202,30 @@ export const updateDownload = mutation({
     categoryId: v.optional(v.id("downloadCategories")),
     tags: v.optional(v.array(v.string())),
     isPublic: v.optional(v.boolean()),
-    accessibleUserIds: v.optional(v.array(v.id("users"))),
   },
-  returns: v.id("downloads"),
-  handler: async (ctx, args) => {
-    // Check authentication
-    const user = await getAuthenticatedUser(ctx);
-
-    // Get download from database
-    const download = await ctx.db.get(args.downloadId);
-    if (!download) {
-      throwNotFound("Download", args.downloadId);
+  returns: v.null(),
+  handler: async (ctx: MutationCtx, args) => {
+    const userDocId = await getAuthenticatedUserDocIdByToken(ctx);
+    const currentDownload = await ctx.db.get(args.downloadId);
+    if (!currentDownload) {
+      throwNotFound("Download", args.downloadId as string);
     }
-
-    // Only the uploader or an admin can update a download
-    if (download.uploadedBy !== user._id) {
-      // In a real app, we'd check if the user is an admin here
+    if (currentDownload.uploadedBy !== userDocId) {
       throwForbidden("You don't have permission to update this download");
     }
-
-    // Prepare update object
-    const update: Record<string, any> = {
+    const { downloadId: idToUpdate, ...updateFields } = args;
+    const newSearchText = prepareSearchText(
+      updateFields.title ?? currentDownload.title,
+      updateFields.description ?? currentDownload.description,
+      currentDownload.fileName,
+      updateFields.tags ?? currentDownload.tags,
+    );
+    await ctx.db.patch(idToUpdate, {
+      ...updateFields,
+      searchText: newSearchText,
       updatedAt: Date.now(),
-    };
-
-    // Add fields to update if provided
-    if (args.title !== undefined) update.title = args.title;
-    if (args.description !== undefined) update.description = args.description;
-    if (args.categoryId !== undefined) update.categoryId = args.categoryId;
-    if (args.tags !== undefined) update.tags = args.tags;
-    if (args.isPublic !== undefined) update.isPublic = args.isPublic;
-    if (args.accessibleUserIds !== undefined)
-      update.accessibleUserIds = args.accessibleUserIds;
-
-    // Update searchText if title or description changed
-    if (args.title !== undefined || args.description !== undefined) {
-      update.searchText = prepareSearchText(
-        args.title ?? download.title,
-        args.description ?? download.description,
-        download.fileName,
-        args.tags ?? download.tags,
-      );
-    }
-
-    // Update the download
-    await ctx.db.patch(args.downloadId, update);
-
-    return args.downloadId;
+    });
+    return null;
   },
 });
 
@@ -317,36 +236,17 @@ export const deleteDownload = mutation({
   args: {
     downloadId: v.id("downloads"),
   },
-  returns: v.boolean(),
-  handler: async (ctx, args) => {
-    // Check authentication
-    const user = await getAuthenticatedUser(ctx);
-
-    // Get download from database
+  returns: v.null(),
+  handler: async (ctx: MutationCtx, args) => {
+    const userDocId = await getAuthenticatedUserDocIdByToken(ctx);
     const download = await ctx.db.get(args.downloadId);
     if (!download) {
-      throwNotFound("Download", args.downloadId);
+      throwNotFound("Download", args.downloadId as string);
     }
-
-    // Only the uploader or an admin can delete a download
-    if (download.uploadedBy !== user._id) {
-      // In a real app, we'd check if the user is an admin here
+    if (download.uploadedBy !== userDocId) {
       throwForbidden("You don't have permission to delete this download");
     }
-
-    // Delete the download
     await ctx.db.delete(args.downloadId);
-
-    // Delete the file from storage
-    // Note: In a real app, we might want to keep the file for a certain period
-    // in case of accidental deletion
-    try {
-      await ctx.storage.delete(download.storageId);
-    } catch (error) {
-      // Log error but don't fail the operation
-      console.error("Failed to delete file from storage:", error);
-    }
-
-    return true;
+    return null;
   },
 });

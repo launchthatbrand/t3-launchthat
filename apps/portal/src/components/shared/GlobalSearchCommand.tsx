@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import {
   CalendarDays,
   Download,
   FileText,
+  Image as ImageIcon,
   Search,
   ShoppingBag,
 } from "lucide-react";
@@ -54,17 +56,17 @@ interface SearchResult {
 const getIconForType = (type: string) => {
   switch (type) {
     case "post":
-      return <FileText className="mr-2 h-4 w-4" />;
+      return <FileText className="h-5 w-5" />;
     case "event":
-      return <CalendarDays className="mr-2 h-4 w-4" />;
+      return <CalendarDays className="h-5 w-5" />;
     case "download":
-      return <Download className="mr-2 h-4 w-4" />;
+      return <Download className="h-5 w-5" />;
     case "product":
-      return <ShoppingBag className="mr-2 h-4 w-4" />;
+      return <ShoppingBag className="h-5 w-5" />;
     case "helpdesk":
-      return <FileText className="mr-2 h-4 w-4" />;
+      return <FileText className="h-5 w-5" />;
     default:
-      return <FileText className="mr-2 h-4 w-4" />;
+      return <FileText className="h-5 w-5" />;
   }
 };
 
@@ -85,16 +87,10 @@ export function GlobalSearchCommand({
   const [shouldNavigate, setShouldNavigate] = useState(false);
   const [navigationUrl, setNavigationUrl] = useState("");
 
-  // Safely check if search API exists
-  const searchApi =
-    api.search && "globalSearch" in api.search
-      ? api.search.globalSearch
-      : undefined;
-
-  // Call useQuery unconditionally to follow React hooks rules
+  // Always call useQuery to follow React hooks rules, but use skip conditionally
   const convexResults = useQuery(
-    searchApi || "skip",
-    debouncedInputValue && searchApi
+    api.search?.globalSearch ?? "skip",
+    debouncedInputValue && api.search?.globalSearch
       ? {
           searchText: debouncedInputValue,
           limit: 10,
@@ -132,7 +128,7 @@ export function GlobalSearchCommand({
       setDebouncedInputValue(inputValue);
 
       // Generate mock results if search API is not available
-      if (!searchApi && inputValue) {
+      if (!api.search?.globalSearch && inputValue) {
         const allMockData: SearchResult[] = [
           {
             _id: "mock1",
@@ -141,6 +137,9 @@ export function GlobalSearchCommand({
             description:
               "This is a mock result since the search API is not yet available.",
             url: "/social/post/mock1",
+            imageUrl: "https://picsum.photos/seed/post1/200/200",
+            creatorName: "John Doe",
+            createdAt: Date.now() - 24 * 60 * 60 * 1000,
           },
           {
             _id: "mock2",
@@ -149,6 +148,9 @@ export function GlobalSearchCommand({
             description:
               "This is a mock result since the search API is not yet available.",
             url: "/calendar/event/mock2",
+            imageUrl: "https://picsum.photos/seed/event2/200/200",
+            creatorName: "Jane Smith",
+            createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
           },
           {
             _id: "mock3",
@@ -157,6 +159,9 @@ export function GlobalSearchCommand({
             description:
               "This is a mock result since the search API is not yet available.",
             url: "/downloads/mock3",
+            imageUrl: "https://picsum.photos/seed/download3/200/200",
+            creatorName: "Mike Johnson",
+            createdAt: Date.now() - 5 * 24 * 60 * 60 * 1000,
           },
           {
             _id: "mock4",
@@ -165,6 +170,9 @@ export function GlobalSearchCommand({
             description:
               "This is a mock result since the search API is not yet available.",
             url: "/store/product/mock4",
+            imageUrl: "https://picsum.photos/seed/product4/200/200",
+            creatorName: "Sarah Williams",
+            createdAt: Date.now() - 10 * 24 * 60 * 60 * 1000,
           },
           {
             _id: "mock5",
@@ -172,7 +180,10 @@ export function GlobalSearchCommand({
             title: `Mock helpdesk article: "${inputValue}" guide`,
             description:
               "This is a mock helpdesk article since the search API is not yet available.",
-            url: "/helpdesk/article/mock5",
+            url: "/helpdesk/mock5",
+            imageUrl: "https://picsum.photos/seed/helpdesk5/200/200",
+            creatorName: "Support Team",
+            createdAt: Date.now() - 15 * 24 * 60 * 60 * 1000,
           },
         ];
 
@@ -188,7 +199,7 @@ export function GlobalSearchCommand({
     return () => {
       clearTimeout(handler);
     };
-  }, [inputValue, searchApi, typeFilters]);
+  }, [inputValue, typeFilters]);
 
   // Use either real results or mock results
   const results = searchResults ?? mockResults;
@@ -238,6 +249,18 @@ export function GlobalSearchCommand({
     return `Search ${typeNames.join(", ")}...`;
   };
 
+  // Format timestamp to readable date
+  const formatDate = (timestamp?: number) => {
+    if (!timestamp) return "";
+
+    const date = new Date(timestamp);
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(date);
+  };
+
   const renderCommandContent = () => (
     <Command
       className={cn(
@@ -250,28 +273,70 @@ export function GlobalSearchCommand({
         value={inputValue}
         onValueChange={setInputValue}
       />
-      <CommandList>
+      <CommandList className="max-h-[70vh]">
         <CommandEmpty>
           {debouncedInputValue ? "No results found." : "Type to search..."}
         </CommandEmpty>
-        {results?.length > 0 && (
+        {results && results.length > 0 && (
           <CommandGroup
-            heading={searchApi ? "Results" : "Mock Results (API not available)"}
+            heading={
+              api.search?.globalSearch
+                ? "Results"
+                : "Mock Results (API not available)"
+            }
           >
             {results.map((result) => (
               <CommandItem
                 key={`${result.type}-${result._id}`}
                 value={`${result.title} ${result.description ?? ""} ${result.type}`}
                 onSelect={() => handleSelectResult(result)}
-                className="cursor-pointer"
+                className="flex cursor-pointer flex-col items-start py-4"
               >
-                {getIconForType(result.type)}
-                <span>{result.title}</span>
-                {result.description && (
-                  <span className="ml-2 truncate text-xs text-muted-foreground">
-                    {result.description}
-                  </span>
-                )}
+                <div className="flex w-full gap-4">
+                  {/* Image or Icon Container */}
+                  <div className="relative h-20 w-24 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+                    {result.imageUrl ? (
+                      <Image
+                        src={result.imageUrl}
+                        alt={result.title}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-secondary/20">
+                        {getIconForType(result.type)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Content Container */}
+                  <div className="flex flex-col gap-1 overflow-hidden">
+                    <div className="flex items-center gap-2">
+                      <div className="rounded-md bg-primary/10 px-2 py-1 text-xs text-primary">
+                        {result.type}
+                      </div>
+                      {result.createdAt && (
+                        <span className="text-xs text-muted-foreground">
+                          {formatDate(result.createdAt)}
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="truncate font-medium">{result.title}</h3>
+
+                    {result.description && (
+                      <p className="line-clamp-2 text-sm text-muted-foreground">
+                        {result.description}
+                      </p>
+                    )}
+
+                    {result.creatorName && (
+                      <span className="mt-1 text-xs text-muted-foreground">
+                        By {result.creatorName}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </CommandItem>
             ))}
           </CommandGroup>

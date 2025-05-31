@@ -162,6 +162,17 @@ const MainHeader = () => {
             </NavigationMenuItem>
 
             <NavigationMenuItem>
+              <NavigationMenuLink
+                asChild
+                className={navigationMenuTriggerStyle() + " text-white"}
+              >
+                <Link href="/category">
+                  <span className="mr-1">📝</span> Blog
+                </Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+
+            <NavigationMenuItem>
               <NavigationMenuTrigger className="text-white">
                 <span className="mr-1">👥</span> Target Zero Team
               </NavigationMenuTrigger>

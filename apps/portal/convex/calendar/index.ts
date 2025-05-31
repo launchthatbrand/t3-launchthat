@@ -1,3 +1,11 @@
+// Export the event type/category functions directly from crud
+import {
+  createEventType,
+  deleteEventType,
+  getEventTypes,
+  updateEventType,
+} from "./crud";
+
 // Re-export all calendar functions in an organized way
 
 // Core calendar functionality
@@ -21,6 +29,8 @@ export * as schemaModules from "./schema";
 
 // Access to sub-schemas for more detailed schema operations
 export * as schemaComponents from "./schema";
+
+export { getEventTypes, createEventType, updateEventType, deleteEventType };
 
 // This organization makes it clear how to access functions:
 // - api.calendar.events.getEventCount() - for event count

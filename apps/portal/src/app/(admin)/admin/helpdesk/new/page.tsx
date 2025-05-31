@@ -123,7 +123,7 @@ export default function CreateHelpdeskArticlePage() {
         .replace(/[^\w\s]/g, "")
         .replace(/\s+/g, "-");
 
-      router.push(`/admin/helpdesk/article/${slug}`);
+      router.push(`/helpdesk/${slug}`);
     } catch (error) {
       console.error("Error creating article:", error);
       toast.error("Error", {
@@ -139,7 +139,7 @@ export default function CreateHelpdeskArticlePage() {
       <div className="flex items-center justify-between">
         <div>
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/admin/helpdesk">
+            <Link href="//helpdesk">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Helpdesk
             </Link>

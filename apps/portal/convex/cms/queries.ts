@@ -272,15 +272,14 @@ export const getPostCategories = query({
     // Extract all categories from posts and count their usage
     const categoryCounts: Record<string, number> = {};
     posts.forEach((post) => {
-      if (post.category) {
-        categoryCounts[post.category] =
-          (categoryCounts[post.category] || 0) + 1;
-      }
+      // Use empty string as fallback for proper counting
+      const category = post.category || "Uncategorized";
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
     });
 
     // Return categories with counts
     return Object.entries(categoryCounts).map(([name, count]) => ({
-      name,
+      name: name || "Uncategorized", // Default to "Uncategorized" for empty keys
       count,
     }));
   },

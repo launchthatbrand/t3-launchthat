@@ -42,6 +42,7 @@ import type * as cms__generated_collections_Posts from "../cms/_generated/collec
 import type * as cms__generated_collections_Transactions from "../cms/_generated/collections/Transactions.js";
 import type * as cms__generated_collections_index from "../cms/_generated/collections/index.js";
 import type * as cms__generated_index from "../cms/_generated/index.js";
+import type * as cms_categories from "../cms/categories.js";
 import type * as cms_index from "../cms/index.js";
 import type * as cms_mutations from "../cms/mutations.js";
 import type * as cms_queries from "../cms/queries.js";
@@ -224,6 +225,7 @@ declare const fullApi: ApiFromModules<{
   "cms/_generated/collections/Transactions": typeof cms__generated_collections_Transactions;
   "cms/_generated/collections/index": typeof cms__generated_collections_index;
   "cms/_generated/index": typeof cms__generated_index;
+  "cms/categories": typeof cms_categories;
   "cms/index": typeof cms_index;
   "cms/mutations": typeof cms_mutations;
   "cms/queries": typeof cms_queries;

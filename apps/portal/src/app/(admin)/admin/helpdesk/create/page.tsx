@@ -116,7 +116,7 @@ export default function NewHelpdeskArticlePage() {
 
       // Redirect to the article page
       router.push(
-        `/admin/helpdesk/article/${form
+        `/helpdesk/${form
           .getValues()
           .title.toLowerCase()
           .replace(/[^\w\s]/g, "")
@@ -139,7 +139,7 @@ export default function NewHelpdeskArticlePage() {
       <div className="flex items-center justify-between">
         <div>
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/admin/helpdesk">
+            <Link href="//helpdesk">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Helpdesk
             </Link>

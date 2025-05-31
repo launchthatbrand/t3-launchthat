@@ -118,7 +118,7 @@ export default function HelpdeskPage() {
             className="w-full md:w-64"
           />
           <Button asChild>
-            <Link href="/admin/helpdesk/new">
+            <Link href="/helpdesk/new">
               <PlusCircle className="mr-2 h-4 w-4" />
               New Article
             </Link>
@@ -154,7 +154,7 @@ export default function HelpdeskPage() {
                   : `No articles in the "${activeCategory}" category.`}
               </p>
               <Button asChild className="mt-4">
-                <Link href="/admin/helpdesk/new">
+                <Link href="/helpdesk/new">
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Create Article
                 </Link>
@@ -185,7 +185,7 @@ export default function HelpdeskPage() {
                       asChild
                       className="ml-auto"
                     >
-                      <Link href={`/admin/helpdesk/article/${article.slug}`}>
+                      <Link href={`/helpdesk/${article.slug}`}>
                         <span>View Article</span>
                         <ChevronRight className="ml-1 h-4 w-4" />
                       </Link>

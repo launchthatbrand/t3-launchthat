@@ -1,5 +1,6 @@
+import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { Doc, Id } from "@/convex/_generated/dataModel";
+import { Doc } from "@/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 
 export type PostStatus = "draft" | "published" | "archived";
@@ -138,8 +139,9 @@ export function usePostCategories() {
   const result = useQuery(api.cms.queries.getPostCategories, {});
 
   return {
-    data: result,
+    data: result || [],
     isLoading: result === undefined,
+    mutate: () => {},
   };
 }
 

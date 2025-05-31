@@ -259,7 +259,7 @@ export const globalSearch = query({
             imageUrl = item.images?.[0]?.url;
             break;
           case "helpdesk":
-            itemUrl = `/helpdesk/article/${item.slug ?? item._id}`;
+            itemUrl = `/helpdesk/${item.slug ?? item._id}`;
             description = item.summary ?? description;
             break;
           default:
