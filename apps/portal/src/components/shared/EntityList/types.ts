@@ -57,8 +57,8 @@ export interface EntityAction<T> {
   /** Unique identifier for the action */
   id: string;
 
-  /** Display label for the action */
-  label: string;
+  /** Display label for the action (string or function that returns a string) */
+  label: string | ((item: T) => string);
 
   /** Icon to display with the action (optional) */
   icon?: ReactNode;

@@ -231,7 +231,9 @@ export function ListView<T extends object>({
                             {action.icon && (
                               <span className="mr-1">{action.icon}</span>
                             )}
-                            {action.label}
+                            {typeof action.label === "function"
+                              ? action.label(row)
+                              : action.label}
                           </Button>
                         );
                       })}

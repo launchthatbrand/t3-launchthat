@@ -1,10 +1,17 @@
 @import "tw-animate-css";
+/* @import "react-big-calendar/lib/css/react-big-calendar.css";
+@import "../styles/react-big-calendar-dark.css"; */
 
 @custom-variant dark (&:is(.dark *));
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
 
 @layer base {
   :root {

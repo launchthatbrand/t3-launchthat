@@ -235,19 +235,23 @@ export default function DefaultSidebar() {
       items: [
         {
           title: "General",
-          url: "#",
+          url: "/admin/settings/site",
         },
         {
-          title: "Team",
-          url: "#",
+          title: "Content types",
+          url: "/admin/settings/content-types",
         },
         {
-          title: "Billing",
-          url: "#",
+          title: "Custom fields",
+          url: "/admin/settings/custom-fields",
         },
         {
-          title: "Limits",
-          url: "#",
+          title: "Menus",
+          url: "/admin/settings/menus",
+        },
+        {
+          title: "Seo",
+          url: "/admin/settings/roles",
         },
       ],
     },

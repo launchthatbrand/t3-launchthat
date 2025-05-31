@@ -193,7 +193,9 @@ export function GridView<T extends object>({
                         {action.icon && (
                           <span className="mr-1">{action.icon}</span>
                         )}
-                        {action.label}
+                        {typeof action.label === "function"
+                          ? action.label(item)
+                          : action.label}
                       </Button>
                     );
                   })}

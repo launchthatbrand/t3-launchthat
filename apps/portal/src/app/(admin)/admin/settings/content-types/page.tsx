@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, Edit, Plus, Trash } from "lucide-react";
+import { Id } from "@/convex/_generated/dataModel";
+import { ChevronLeft, Edit, Loader2, Plus, Trash } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
@@ -42,6 +44,13 @@ import {
 } from "@acme/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { Textarea } from "@acme/ui/textarea";
+
+import {
+  useContentTypes,
+  useCreateContentType,
+  useInitCmsSystem,
+  useUpdateEntryCounts,
+} from "./_api/contentTypes";
 
 // Mock data for content types
 const contentTypes = [
@@ -159,9 +168,131 @@ const sampleFields = [
   },
 ];
 
+interface ContentType {
+  _id: Id<"contentTypes">;
+  _creationTime: number;
+  name: string;
+  slug: string;
+  description?: string;
+  fieldCount?: number;
+  entryCount?: number;
+  isBuiltIn: boolean;
+  isPublic: boolean;
+  createdAt: number;
+  updatedAt?: number;
+}
+
 export default function ContentTypesSettingsPage() {
   const [activeTab, setActiveTab] = useState("types");
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newContentType, setNewContentType] = useState({
+    name: "",
+    slug: "",
+    description: "",
+    isPublic: true,
+    includeTimestamps: true,
+    enableApi: true,
+  });
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const contentTypesQuery = useContentTypes();
+  const createContentType = useCreateContentType();
+  const initCmsSystem = useInitCmsSystem();
+  const updateEntryCounts = useUpdateEntryCounts();
+
+  const handleCreateContentType = async () => {
+    try {
+      setIsCreating(true);
+
+      // Validate inputs
+      if (!newContentType.name || !newContentType.slug) {
+        toast("Name and slug are required fields", {
+          description: "Validation Error failed",
+        });
+        return;
+      }
+
+      // Create the content type
+      if (createContentType) {
+        await createContentType({
+          name: newContentType.name,
+          slug: newContentType.slug,
+          description: newContentType.description,
+          isPublic: newContentType.isPublic,
+          includeTimestamps: newContentType.includeTimestamps,
+          enableApi: newContentType.enableApi,
+        });
+
+        // Reset form and close dialog
+        setNewContentType({
+          name: "",
+          slug: "",
+          description: "",
+          isPublic: true,
+          includeTimestamps: true,
+          enableApi: true,
+        });
+        setIsCreating(false);
+
+        toast(`${newContentType.name} has been created successfully`);
+      }
+    } catch (error) {
+      console.error("Failed to create content type:", error);
+      toast("Creation Failed", {
+        description:
+          error instanceof Error ? error.message : "An unknown error occurred",
+      });
+      setIsCreating(false);
+    }
+  };
+
+  const handleInitializeCms = async () => {
+    try {
+      setIsInitializing(true);
+      if (initCmsSystem) {
+        await initCmsSystem();
+        toast("Built-in content types have been created successfully");
+      }
+    } catch (error) {
+      console.error("Failed to initialize CMS:", error);
+      toast("Initialization Failed", {
+        description:
+          error instanceof Error ? error.message : "An unknown error occurred",
+      });
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+
+  const handleRefreshCounts = async () => {
+    try {
+      setIsRefreshing(true);
+      const result = await updateEntryCounts();
+      toast(`Updated entry counts for ${result.length} content types`);
+    } catch (error) {
+      console.error("Failed to refresh counts:", error);
+      toast("Failed to refresh entry counts", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleSlugChange = (value: string) => {
+    // Generate slug from name (lowercase, replace spaces with hyphens)
+    const slug = value
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+
+    setNewContentType({
+      ...newContentType,
+      slug,
+    });
+  };
 
   return (
     <div className="container py-6">
@@ -189,113 +320,243 @@ export default function ContentTypesSettingsPage() {
         <TabsContent value="types">
           <div className="mb-4 flex justify-between">
             <h2 className="text-xl font-semibold">All Content Types</h2>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Content Type
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[550px]">
-                <DialogHeader>
-                  <DialogTitle>Create New Content Type</DialogTitle>
-                  <DialogDescription>
-                    Define a new content type for your site
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="name">Name</Label>
-                    <Input id="name" placeholder="e.g., Blog Post" />
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleRefreshCounts}
+                disabled={isRefreshing}
+              >
+                {isRefreshing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Refreshing...
+                  </>
+                ) : (
+                  <>Refresh Counts</>
+                )}
+              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Content Type
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[550px]">
+                  <DialogHeader>
+                    <DialogTitle>Create New Content Type</DialogTitle>
+                    <DialogDescription>
+                      Define a new content type for your site
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="name">Name</Label>
+                      <Input
+                        id="name"
+                        placeholder="e.g., Blog Post"
+                        value={newContentType.name}
+                        onChange={(e) => {
+                          setNewContentType({
+                            ...newContentType,
+                            name: e.target.value,
+                          });
+                          if (!newContentType.slug) {
+                            handleSlugChange(e.target.value);
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="slug">Slug</Label>
+                      <Input
+                        id="slug"
+                        placeholder="e.g., blog-posts"
+                        value={newContentType.slug}
+                        onChange={(e) =>
+                          setNewContentType({
+                            ...newContentType,
+                            slug: e.target.value,
+                          })
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Used in URLs and API endpoints. Use only lowercase
+                        letters, numbers, and hyphens.
+                      </p>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        placeholder="What kind of content will this type contain?"
+                        value={newContentType.description}
+                        onChange={(e) =>
+                          setNewContentType({
+                            ...newContentType,
+                            description: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="api-enabled"
+                        checked={newContentType.enableApi}
+                        onCheckedChange={(checked) =>
+                          setNewContentType({
+                            ...newContentType,
+                            enableApi: checked,
+                          })
+                        }
+                      />
+                      <Label htmlFor="api-enabled">Enable API Access</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="create-timestamps"
+                        checked={newContentType.includeTimestamps}
+                        onCheckedChange={(checked) =>
+                          setNewContentType({
+                            ...newContentType,
+                            includeTimestamps: checked,
+                          })
+                        }
+                      />
+                      <Label htmlFor="create-timestamps">
+                        Include Timestamps
+                      </Label>
+                    </div>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="slug">Slug</Label>
-                    <Input id="slug" placeholder="e.g., blog-posts" />
-                    <p className="text-xs text-muted-foreground">
-                      Used in URLs and API endpoints. Use only lowercase
-                      letters, numbers, and hyphens.
-                    </p>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      placeholder="What kind of content will this type contain?"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch id="api-enabled" defaultChecked />
-                    <Label htmlFor="api-enabled">Enable API Access</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch id="create-timestamps" defaultChecked />
-                    <Label htmlFor="create-timestamps">
-                      Include Timestamps
-                    </Label>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="submit">Create Content Type</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                  <DialogFooter>
+                    <Button
+                      type="submit"
+                      onClick={handleCreateContentType}
+                      disabled={isCreating}
+                    >
+                      {isCreating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>Create Content Type</>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
 
           <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Slug</TableHead>
-                    <TableHead>Fields</TableHead>
-                    <TableHead>Entries</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contentTypes.map((type) => (
-                    <TableRow key={type.id}>
-                      <TableCell className="font-medium">{type.name}</TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {type.slug}
-                      </TableCell>
-                      <TableCell>{type.fieldCount}</TableCell>
-                      <TableCell>{type.entryCount}</TableCell>
-                      <TableCell>
-                        {type.isBuiltIn ? (
-                          <Badge variant="secondary">Built-in</Badge>
+            <CardContent className="p-6">
+              {contentTypesQuery === undefined ? (
+                <div className="flex h-40 w-full items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <>
+                  {Array.isArray(contentTypesQuery) &&
+                  contentTypesQuery.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Slug</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead className="text-center">Fields</TableHead>
+                          <TableHead className="text-center">Entries</TableHead>
+                          <TableHead className="text-center">Type</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {contentTypesQuery.map((type: ContentType) => (
+                          <TableRow key={type._id}>
+                            <TableCell className="font-medium">
+                              {type.name}
+                            </TableCell>
+                            <TableCell>{type.slug}</TableCell>
+                            <TableCell className="max-w-[250px] truncate">
+                              {type.description ?? "—"}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {type.fieldCount ?? 0}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {type.entryCount ?? 0}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {type.isBuiltIn ? (
+                                <Badge variant="secondary">Built-in</Badge>
+                              ) : (
+                                <Badge>Custom</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button variant="ghost" size="icon" asChild>
+                                  <Link
+                                    href={`/admin/settings/content-types/${type._id}`}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Link>
+                                </Button>
+                                {!type.isBuiltIn && (
+                                  <Button variant="ghost" size="icon">
+                                    <Trash className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : Array.isArray(contentTypesQuery) &&
+                    contentTypesQuery.length === 0 ? (
+                    <div className="flex h-40 w-full flex-col items-center justify-center gap-2">
+                      <p className="text-muted-foreground">
+                        No content types found
+                      </p>
+                      <Button
+                        onClick={() => handleInitializeCms()}
+                        disabled={isInitializing}
+                      >
+                        {isInitializing ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Initializing...
+                          </>
                         ) : (
-                          <Badge variant="outline">Custom</Badge>
+                          <>Initialize CMS</>
                         )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedType(type.id);
-                              setActiveTab("fields");
-                            }}
-                          >
-                            Manage Fields
-                          </Button>
-                          <Button variant="ghost" size="icon">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          {!type.isBuiltIn && (
-                            <Button variant="ghost" size="icon">
-                              <Trash className="h-4 w-4 text-destructive" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex h-40 w-full flex-col items-center justify-center gap-2">
+                      <p className="text-destructive">
+                        Error loading content types
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleInitializeCms()}
+                        disabled={isInitializing}
+                      >
+                        {isInitializing ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Initializing...
+                          </>
+                        ) : (
+                          <>Initialize CMS</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -318,7 +579,7 @@ export default function ContentTypesSettingsPage() {
             <div className="flex gap-2">
               {!selectedType && (
                 <Select
-                  value={selectedType || ""}
+                  value={selectedType ?? ""}
                   onValueChange={setSelectedType}
                 >
                   <SelectTrigger className="w-[200px]">
@@ -482,7 +743,7 @@ export default function ContentTypesSettingsPage() {
                   Select a content type to manage its fields
                 </p>
                 <Select
-                  value={selectedType || ""}
+                  value={selectedType ?? ""}
                   onValueChange={setSelectedType}
                 >
                   <SelectTrigger className="w-[200px]">

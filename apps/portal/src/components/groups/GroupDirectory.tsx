@@ -1,6 +1,16 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useQuery } from "convex/react";
+import { Eye, Filter, PlusCircle, UserPlus } from "lucide-react";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@acme/ui/avatar";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
+
+import type { Id } from "../../../convex/_generated/dataModel";
 // Import the new EntityList components
 import type {
   ColumnDefinition,
@@ -8,18 +18,9 @@ import type {
   FilterConfig,
   FilterValue,
 } from "~/components/shared/EntityList/types";
-import { Eye, Filter, PlusCircle, UserPlus } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { DetachableFilters } from "~/components/shared/EntityList/DetachableFilters";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
-import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
-import { useQuery } from "convex/react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 
 // Interface for a group from the API
 interface GroupData {
@@ -201,7 +202,18 @@ export function GroupDirectory() {
     },
     {
       id: "join",
-      label: "Join/View",
+      label: (group) => {
+        if (!group.userMembership) {
+          return "Join Group";
+        }
+        if (
+          group.userMembership.role === "admin" ||
+          group.userMembership.role === "moderator"
+        ) {
+          return "Manage Group";
+        }
+        return "Leave Group";
+      },
       onClick: (group) => {
         if (group.userMembership) {
           router.push(`/groups/${group._id}`);
