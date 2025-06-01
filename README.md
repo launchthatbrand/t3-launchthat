@@ -268,3 +268,72 @@ Deploying your Expo application works slightly differently compared to Next.js o
 The stack originates from [create-t3-app](https://github.com/t3-oss/create-t3-app).
 
 A [blog post](https://jumr.dev/blog/t3-turbo) where I wrote how to migrate a T3 app into this.
+
+# Email Parser with Gmail Integration
+
+This application allows users to parse emails, highlight text sections, create structured fields from those selections, and generate JSON templates. It supports both mock emails for testing and real Gmail emails through the Gmail API.
+
+## Features
+
+- OAuth2 authentication with Google
+- Gmail API integration for fetching real emails
+- Highlight important text in emails
+- Create structured fields from highlighted text
+- Generate JSON templates from parsed emails
+- Responsive UI for desktop and mobile
+- Dark mode support
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 16+
+- npm or yarn
+- Google Cloud Platform account
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+3. Create a `.env.local` file with the following variables:
+   ```
+   NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
+   GOOGLE_CLIENT_SECRET=your-google-client-secret
+   NEXT_PUBLIC_REDIRECT_URI=http://localhost:3001/api/auth/google/callback
+   ```
+
+### Setting up Google OAuth
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project
+3. Navigate to "APIs & Services" > "Library"
+4. Enable the Gmail API
+5. Go to "APIs & Services" > "Credentials"
+6. Create OAuth client ID credentials
+   - Application type: Web application
+   - Authorized JavaScript origins: `http://localhost:3001`
+   - Authorized redirect URIs: `http://localhost:3001/api/auth/google/callback`
+7. Copy the Client ID and Client Secret to your `.env.local` file
+
+### Running the application
+
+```bash
+pnpm dev
+```
+
+The application will be available at http://localhost:3001
+
+## Usage
+
+1. Connect to Gmail using the "Connect to Gmail" button
+2. Select an email from the sidebar
+3. Highlight important text in the email
+4. Create structured fields from the highlighted text
+5. Generate a JSON template from the fields
+
+## License
+
+[MIT](LICENSE)

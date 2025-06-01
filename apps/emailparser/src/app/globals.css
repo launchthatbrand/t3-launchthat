@@ -48,3 +48,84 @@
     --ring: 240 4.9% 83.9%;
   }
 }
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-start-rgb));
+}
+
+/* Email highlighting styles */
+.highlight-current {
+  background-color: rgba(255, 255, 0, 0.4);
+  cursor: pointer;
+}
+
+.highlight-saved {
+  background-color: rgba(0, 255, 0, 0.3);
+  cursor: pointer;
+}
+
+/* Mobile Navigation Styles */
+@media (max-width: 767px) {
+  .mobile-section {
+    display: none;
+    height: calc(100vh - 4rem - 4rem);
+    overflow-y: auto;
+  }
+
+  .mobile-section.active {
+    display: block;
+  }
+
+  /* Padding at bottom to account for mobile nav */
+  main {
+    padding-bottom: 4rem;
+  }
+
+  /* Default state: all sections hidden on mobile, content visible */
+  [data-section="content"] {
+    display: block;
+  }
+
+  /* Show/hide sections based on active tab data attribute */
+  body[data-active-tab="emails"] [data-section="emails"] {
+    display: block;
+  }
+
+  body[data-active-tab="emails"] [data-section="content"],
+  body[data-active-tab="emails"] [data-section="fields"] {
+    display: none;
+  }
+
+  body[data-active-tab="content"] [data-section="content"] {
+    display: block;
+  }
+
+  body[data-active-tab="content"] [data-section="emails"],
+  body[data-active-tab="content"] [data-section="fields"] {
+    display: none;
+  }
+
+  body[data-active-tab="fields"] [data-section="fields"] {
+    display: block;
+  }
+
+  body[data-active-tab="fields"] [data-section="emails"],
+  body[data-active-tab="fields"] [data-section="content"] {
+    display: none;
+  }
+}
