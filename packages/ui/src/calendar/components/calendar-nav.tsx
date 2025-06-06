@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ChevronsUpDown,
   GalleryVertical,
+  List,
   Table,
   Tally3,
 } from "lucide-react";
@@ -227,20 +228,22 @@ export default function CalendarNav({
               ? "This Week"
               : currentView === "dayGridMonth"
                 ? "This Month"
-                : null}
+                : currentView === "listWeek"
+                  ? "Today"
+                  : null}
         </Button>
 
         {/* Change view with tabs */}
 
         <Tabs defaultValue="timeGridWeek">
-          <TabsList className="flex w-44 md:w-64">
+          <TabsList className="flex w-56 md:w-80">
             <TabsTrigger
               value="timeGridDay"
               onClick={() =>
                 setView(calendarRef, "timeGridDay", setCurrentView)
               }
               className={`space-x-1 ${
-                currentView === "timeGridDay" ? "w-1/2" : "w-1/4"
+                currentView === "timeGridDay" ? "w-1/2" : "w-1/5"
               }`}
             >
               <GalleryVertical className="h-5 w-5" />
@@ -254,7 +257,7 @@ export default function CalendarNav({
                 setView(calendarRef, "timeGridWeek", setCurrentView)
               }
               className={`space-x-1 ${
-                currentView === "timeGridWeek" ? "w-1/2" : "w-1/4"
+                currentView === "timeGridWeek" ? "w-1/2" : "w-1/5"
               }`}
             >
               <Tally3 className="h-5 w-5" />
@@ -268,12 +271,24 @@ export default function CalendarNav({
                 setView(calendarRef, "dayGridMonth", setCurrentView)
               }
               className={`space-x-1 ${
-                currentView === "dayGridMonth" ? "w-1/2" : "w-1/4"
+                currentView === "dayGridMonth" ? "w-1/2" : "w-1/5"
               }`}
             >
               <Table className="h-5 w-5 rotate-90" />
               {currentView === "dayGridMonth" && (
                 <p className="text-xs md:text-sm">Month</p>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="listWeek"
+              onClick={() => setView(calendarRef, "listWeek", setCurrentView)}
+              className={`space-x-1 ${
+                currentView === "listWeek" ? "w-1/2" : "w-1/5"
+              }`}
+            >
+              <List className="h-5 w-5" />
+              {currentView === "listWeek" && (
+                <p className="text-xs md:text-sm">Agenda</p>
               )}
             </TabsTrigger>
           </TabsList>

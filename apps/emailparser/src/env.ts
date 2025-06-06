@@ -34,6 +34,7 @@ export const env = createEnv({
     DISCORD_CLIENT_SECRET: z.string().optional(),
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),
+    CLERK_SECRET_KEY: z.string().optional(),
   },
 
   /**

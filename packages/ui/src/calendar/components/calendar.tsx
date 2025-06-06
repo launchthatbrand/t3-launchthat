@@ -65,7 +65,7 @@ export interface CalendarProps {
   /**
    * Default view for the calendar
    */
-  defaultView?: "timeGridDay" | "timeGridWeek" | "dayGridMonth";
+  defaultView?: "timeGridDay" | "timeGridWeek" | "dayGridMonth" | "listWeek";
 
   /**
    * Whether to show the add event button in the CalendarNav component

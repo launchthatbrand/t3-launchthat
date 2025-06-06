@@ -1,5 +1,5 @@
-import createJiti from "jiti";
 import { fileURLToPath } from "url";
+import createJiti from "jiti";
 
 // Import env files to validate at build time. Use jiti so we can load .ts files in here.
 createJiti(fileURLToPath(import.meta.url))("./src/env");
@@ -25,6 +25,25 @@ const config = {
         hostname: "*",
       },
     ],
+  },
+
+  // Add headers configuration to allow iframe embedding
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'self' *;",
+          },
+          {
+            key: "X-Frame-Options",
+            value: "ALLOWALL",
+          },
+        ],
+      },
+    ];
   },
 };
 

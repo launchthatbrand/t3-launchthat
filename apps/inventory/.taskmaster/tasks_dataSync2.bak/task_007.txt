@@ -1,0 +1,454 @@
+# Task ID: 7
+# Title: Implement Rule Execution Engine
+# Status: done
+# Dependencies: 1, 2, 3
+# Priority: high
+# Description: Create the core rule execution engine that processes rules based on triggers, evaluates conditions, and executes actions across different integration types.
+# Details:
+1. Implement the core rule execution engine:
+
+```typescript
+class RuleExecutionEngine {
+  constructor(
+    private registry: RuleEngineRegistry,
+    private db: ConvexClient,
+    private logger: Logger
+  ) {}
+  
+  async processTrigger(integrationId: string, triggerType: string, triggerData: any): Promise<void> {
+    // Find all rules that match this trigger type and integration
+    const rules = await this.db.query('rules')
+      .withIndex('by_integration', q => q.eq('integrationId', integrationId))
+      .filter(q => q.eq(q.field('triggerType'), triggerType) && q.eq(q.field('enabled'), true))
+      .collect();
+    
+    this.logger.info(`Processing ${rules.length} rules for trigger ${triggerType} in integration ${integrationId}`);
+    
+    // Process each matching rule
+    for (const rule of rules) {
+      await this.executeRule(rule, triggerData);
+    }
+  }
+  
+  async executeRule(rule: Rule, triggerData: any): Promise<RuleExecutionResult> {
+    const executionId = await this.db.insert('ruleExecutions', {
+      ruleId: rule.id,
+      integrationId: rule.integrationId,
+      triggered: false, // Will update this later
+      conditionsMet: false, // Will update this later
+      successful: false, // Will update this later
+      startTime: Date.now(),
+      endTime: 0, // Will update this later
+      triggerData,
+    });
+    
+    const logger = new RuleExecutionLogger(executionId, this.db);
+    
+    try {
+      // Create execution context
+      const context = await this.createExecutionContext(rule, triggerData, logger);
+      
+      // Evaluate trigger
+      logger.info('Evaluating trigger', { triggerType: rule.triggerType });
+      const triggerFactory = this.registry.getTrigger(rule.integrationId, rule.triggerType);
+      if (!triggerFactory) {
+        throw new Error(`Trigger type ${rule.triggerType} not found for integration ${rule.integrationId}`);
+      }
+      
+      const trigger = triggerFactory(rule.triggerConfig);
+      const triggered = await trigger.evaluate(context);
+      
+      await this.db.patch(executionId, { triggered });
+      
+      if (!triggered) {
+        logger.info('Trigger conditions not met, skipping rule execution');
+        await this.db.patch(executionId, { 
+          endTime: Date.now(),
+        });
+        return { success: true, triggered: false };
+      }
+      
+      // Evaluate conditions
+      logger.info('Evaluating conditions', { conditionCount: rule.conditions.length });
+      let conditionsMet = true;
+      
+      for (const condition of rule.conditions) {
+        const conditionFactory = this.registry.getCondition(rule.integrationId, condition.type);
+        if (!conditionFactory) {
+          throw new Error(`Condition type ${condition.type} not found for integration ${rule.integrationId}`);
+        }
+        
+        const conditionInstance = conditionFactory(condition.config);
+        const result = await conditionInstance.evaluate(context);
+        
+        logger.info('Condition evaluation result', { 
+          conditionType: condition.type, 
+          result 
+        });
+        
+        if (!result) {
+          conditionsMet = false;
+          break;
+        }
+      }
+      
+      await this.db.patch(executionId, { conditionsMet });
+      
+      if (!conditionsMet) {
+        logger.info('Conditions not met, skipping actions');
+        await this.db.patch(executionId, { 
+          endTime: Date.now(),
+        });
+        return { success: true, triggered: true, conditionsMet: false };
+      }
+      
+      // Execute actions
+      logger.info('Executing actions', { actionCount: rule.actions.length });
+      const actionResults = [];
+      let allActionsSuccessful = true;
+      
+      for (const action of rule.actions) {
+        const actionFactory = this.registry.getAction(rule.integrationId, action.type);
+        if (!actionFactory) {
+          throw new Error(`Action type ${action.type} not found for integration ${rule.integrationId}`);
+        }
+        
+        const actionInstance = actionFactory(action.config);
+        
+        try {
+          logger.info('Executing action', { actionType: action.type });
+          const result = await actionInstance.execute(context);
+          actionResults.push(result);
+          
+          if (!result.success) {
+            allActionsSuccessful = false;
+            logger.error('Action execution failed', { 
+              actionType: action.type, 
+              error: result.message 
+            });
+          }
+        } catch (error) {
+          allActionsSuccessful = false;
+          logger.error('Action execution threw an exception', { 
+            actionType: action.type, 
+            error: error.message 
+          });
+          actionResults.push({
+            success: false,
+            message: error.message,
+          });
+        }
+      }
+      
+      // Update execution record
+      await this.db.patch(executionId, {
+        successful: allActionsSuccessful,
+        endTime: Date.now(),
+        resultData: { actionResults },
+      });
+      
+      return {
+        success: true,
+        triggered: true,
+        conditionsMet: true,
+        actionsExecuted: true,
+        allActionsSuccessful,
+        actionResults,
+      };
+    } catch (error) {
+      logger.error('Rule execution failed', { error: error.message });
+      
+      // Update execution record with error
+      await this.db.patch(executionId, {
+        successful: false,
+        endTime: Date.now(),
+        error: error.message,
+      });
+      
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+  
+  private async createExecutionContext(rule: Rule, triggerData: any, logger: RuleExecutionLogger): Promise<RuleExecutionContext> {
+    // Get integration-specific data needed for rule execution
+    const integrationData = await this.getIntegrationData(rule.integrationId);
+    
+    return {
+      rule,
+      triggerData,
+      integrationData,
+      timestamp: new Date(),
+      logger,
+    };
+  }
+  
+  private async getIntegrationData(integrationId: string): Promise<any> {
+    // Fetch integration-specific configuration and clients
+    const integration = await this.db.query('integrations')
+      .filter(q => q.eq(q.field('id'), integrationId))
+      .first();
+    
+    if (!integration) {
+      throw new Error(`Integration ${integrationId} not found`);
+    }
+    
+    // Create integration-specific clients and data
+    switch (integrationId) {
+      case 'monday':
+        return {
+          // Monday-specific data and clients
+        };
+      // Other integration types
+      default:
+        return {};
+    }
+  }
+}
+```
+
+2. Create a rule execution logger:
+
+```typescript
+class RuleExecutionLogger implements RuleLogger {
+  private timers: Map<string, number> = new Map();
+  
+  constructor(
+    private executionId: string,
+    private db: ConvexClient
+  ) {}
+  
+  async info(message: string, data?: any): Promise<void> {
+    await this.log('info', message, data);
+  }
+  
+  async warn(message: string, data?: any): Promise<void> {
+    await this.log('warn', message, data);
+  }
+  
+  async error(message: string, error: Error | string, data?: any): Promise<void> {
+    const errorMessage = typeof error === 'string' ? error : error.message;
+    const errorStack = typeof error === 'string' ? undefined : error.stack;
+    
+    await this.log('error', message, {
+      ...data,
+      error: errorMessage,
+      stack: errorStack,
+    });
+  }
+  
+  startTimer(label: string): void {
+    this.timers.set(label, Date.now());
+  }
+  
+  endTimer(label: string): number {
+    const startTime = this.timers.get(label);
+    if (!startTime) {
+      return 0;
+    }
+    
+    const duration = Date.now() - startTime;
+    this.timers.delete(label);
+    return duration;
+  }
+  
+  private async log(level: string, message: string, data?: any): Promise<void> {
+    await this.db.insert('ruleExecutionLogs', {
+      executionId: this.executionId,
+      timestamp: Date.now(),
+      level,
+      message,
+      data,
+      component: data?.component || 'engine',
+      componentId: data?.componentId,
+    });
+  }
+}
+```
+
+3. Create Convex API endpoints for rule execution:
+
+```typescript
+// Convex function to process a trigger event
+export const processTrigger = mutation({
+  args: {
+    integrationId: v.string(),
+    triggerType: v.string(),
+    triggerData: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const { integrationId, triggerType, triggerData } = args;
+    
+    // Create rule engine instance
+    const registry = await getRuleEngineRegistry(ctx);
+    const engine = new RuleExecutionEngine(registry, ctx.db, ctx.logger);
+    
+    // Process the trigger
+    await engine.processTrigger(integrationId, triggerType, triggerData);
+    
+    return { success: true };
+  },
+});
+
+// Convex function to manually execute a rule
+export const executeRule = mutation({
+  args: {
+    ruleId: v.string(),
+    triggerData: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const { ruleId, triggerData = {} } = args;
+    
+    // Get the rule
+    const rule = await ctx.db.get(ruleId);
+    if (!rule) {
+      throw new Error(`Rule ${ruleId} not found`);
+    }
+    
+    // Create rule engine instance
+    const registry = await getRuleEngineRegistry(ctx);
+    const engine = new RuleExecutionEngine(registry, ctx.db, ctx.logger);
+    
+    // Execute the rule
+    return await engine.executeRule(rule, triggerData);
+  },
+});
+
+// Helper function to get the rule engine registry
+async function getRuleEngineRegistry(ctx: any): Promise<RuleEngineRegistry> {
+  // Create and initialize the registry
+  const registry = new RuleEngineRegistry();
+  
+  // Get all registered integrations
+  const integrations = await ctx.db.query('integrations')
+    .filter(q => q.eq(q.field('enabled'), true))
+    .collect();
+  
+  // Register each integration's components
+  for (const integration of integrations) {
+    await registerIntegrationComponents(registry, integration);
+  }
+  
+  return registry;
+}
+
+// Helper function to register an integration's components
+async function registerIntegrationComponents(registry: RuleEngineRegistry, integration: any): Promise<void> {
+  registry.registerIntegration(integration.id);
+  
+  // Register integration-specific components based on integration type
+  switch (integration.id) {
+    case 'monday':
+      registerMondayComponents(registry);
+      break;
+    // Other integration types
+  }
+}
+```
+
+4. Create a webhook handler for receiving integration events:
+
+```typescript
+// Convex HTTP action to handle webhooks
+export const handleWebhook = httpAction(async (ctx, request) => {
+  const url = new URL(request.url);
+  const integrationId = url.pathname.split('/').pop(); // Extract integration ID from URL
+  
+  if (!integrationId) {
+    return new Response('Missing integration ID', { status: 400 });
+  }
+  
+  try {
+    // Parse webhook payload
+    const payload = await request.json();
+    
+    // Determine trigger type based on integration and payload
+    const triggerType = determineTriggerType(integrationId, payload);
+    if (!triggerType) {
+      return new Response('Unknown event type', { status: 400 });
+    }
+    
+    // Process the trigger asynchronously
+    await ctx.runMutation(api.rules.processTrigger, {
+      integrationId,
+      triggerType,
+      triggerData: payload,
+    });
+    
+    return new Response('Webhook processed successfully', { status: 200 });
+  } catch (error) {
+    ctx.logger.error('Error processing webhook', { error, integrationId });
+    return new Response(`Error: ${error.message}`, { status: 500 });
+  }
+});
+
+// Helper function to determine trigger type from webhook payload
+function determineTriggerType(integrationId: string, payload: any): string | null {
+  switch (integrationId) {
+    case 'monday':
+      return determineMondayTriggerType(payload);
+    // Other integration types
+    default:
+      return null;
+  }
+}
+
+// Helper function for Monday-specific trigger type determination
+function determineMondayTriggerType(payload: any): string | null {
+  const event = payload.event;
+  const type = payload.type;
+  
+  if (type === 'create_item') {
+    return 'item_created';
+  } else if (type === 'change_column_value' && payload.columnId === 'status') {
+    return 'status_changed';
+  } else if (type === 'change_column_value') {
+    return 'column_changed';
+  }
+  
+  return null;
+}
+```
+
+5. Create a scheduled job for rule cleanup and maintenance:
+
+```typescript
+// Convex scheduled function to clean up old rule execution logs
+export const cleanupExecutionLogs = internalAction({
+  handler: async (ctx) => {
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    
+    // Find old execution logs
+    const oldLogs = await ctx.runQuery(api.internal.getOldExecutionLogs, {
+      olderThan: thirtyDaysAgo,
+      limit: 1000, // Process in batches
+    });
+    
+    if (oldLogs.length === 0) {
+      return { deleted: 0 };
+    }
+    
+    // Delete old logs
+    for (const log of oldLogs) {
+      await ctx.runMutation(api.internal.deleteExecutionLog, {
+        id: log._id,
+      });
+    }
+    
+    return { deleted: oldLogs.length };
+  },
+  schedule: 'daily',
+});
+```
+
+# Test Strategy:
+1. Create unit tests for the rule execution engine
+2. Test rule evaluation with various trigger, condition, and action combinations
+3. Test error handling during rule execution
+4. Create integration tests for webhook handling
+5. Test logging and monitoring functionality
+6. Verify performance under load with concurrent rule executions
+7. Test scheduled maintenance jobs
+8. Create end-to-end tests that simulate real integration events

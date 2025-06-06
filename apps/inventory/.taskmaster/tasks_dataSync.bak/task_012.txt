@@ -1,0 +1,22 @@
+# Task ID: 12
+# Title: Implement Event-Based Synchronization Rules
+# Status: done
+# Dependencies: 6, 7, 8
+# Priority: medium
+# Description: Develop a system for configuring and executing synchronization rules based on specific events in the inventory system.
+# Details:
+Implement event-based synchronization rules with these features:
+1. Rule configuration storage in Convex
+2. Event listeners for trigger conditions
+3. Rule execution engine
+4. Conditional logic for column values
+
+The system should support rules like:
+- "When a new order is created in Convex, create a parent item in Monday.com"
+- "When a product is checked out, update stock quantity in Monday.com"
+- "When status changes to X, set column Y to value Z"
+
+Implement a rule configuration interface that allows admins to define these rules without coding. Use Convex's real-time capabilities to trigger rules when relevant events occur.
+
+# Test Strategy:
+Write unit tests for the rule engine. Test rule configuration storage and retrieval. Verify event listeners trigger correctly. Test rule execution with various scenarios. Verify conditional logic works correctly for different rule types.

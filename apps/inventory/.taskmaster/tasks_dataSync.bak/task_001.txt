@@ -1,0 +1,22 @@
+# Task ID: 1
+# Title: Extend Convex Schema for Monday.com Integration
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Create necessary tables and fields in Convex schema to support Monday.com integration configuration and synchronization metadata.
+# Details:
+Create the following tables in Convex:
+1. `mondayIntegration` - Stores API key, workspace ID, connection status, and last sync timestamp
+2. `mondayBoardMappings` - Maps Convex tables to Monday.com boards with sync direction settings
+3. `mondayColumnMappings` - Maps Convex fields to Monday.com columns with transformation rules
+4. `mondaySyncLogs` - Records sync operations, affected records, and errors
+
+Add fields to existing tables:
+- Add `mondayItemId` to relevant tables (products, orders, etc.)
+- Add `lastSyncedAt` timestamp field
+- Add `syncStatus` field (enum: synced, pending, error)
+
+Implement appropriate indexes for efficient querying.
+
+# Test Strategy:
+Validate schema creation with Convex CLI. Write unit tests to ensure tables have correct fields and relationships. Test indexes with sample queries to verify performance.

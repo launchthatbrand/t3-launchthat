@@ -1,0 +1,17 @@
+import React from "react";
+import { auth, currentUser } from "@clerk/nextjs/server";
+
+async function page() {
+  const user = await currentUser();
+
+  if (!user) return <div>Not signed in</div>;
+  console.log(user.externalAccounts);
+
+  const acc = user.externalAccounts.find(
+    (acc) => acc.provider === "oauth_google",
+  );
+
+  console.log(acc);
+}
+
+export default page;

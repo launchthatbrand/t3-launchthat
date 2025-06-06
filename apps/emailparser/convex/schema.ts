@@ -9,10 +9,23 @@ const emailsTable = defineTable({
   content: v.string(),
   userId: v.optional(v.string()),
   labels: v.optional(v.array(v.string())),
+  // Gmail specific fields
+  gmailId: v.optional(v.string()),
+  threadId: v.optional(v.string()),
+  // Fields for tracking sync status
+  lastSynced: v.optional(v.number()),
 })
   .index("by_userId", ["userId"])
   .index("by_receivedAt", ["receivedAt"])
   .searchIndex("search_subject", { searchField: "subject" });
+
+// Table for storing Gmail sync preferences
+const gmailSyncPreferencesTable = defineTable({
+  userId: v.string(),
+  selectedLabelIds: v.array(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+}).index("by_userId", ["userId"]);
 
 const templatesTable = defineTable({
   name: v.string(),
@@ -83,6 +96,26 @@ const highlightsTable = defineTable({
   .index("by_emailId", ["emailId"])
   .index("by_userId", ["userId"]);
 
+// Add fieldsStore and highlightsStore tables based on their usage
+const fieldsStoreTable = defineTable({
+  name: v.string(),
+  userId: v.string(),
+  highlightId: v.id("highlightsStore"),
+  order: v.number(),
+})
+  .index("by_userId", ["userId"])
+  .index("by_userId_name", ["userId", "name"]);
+
+const highlightsStoreTable = defineTable({
+  emailId: v.id("emails"),
+  text: v.string(),
+  start: v.number(),
+  end: v.number(),
+  userId: v.string(),
+  fieldId: v.optional(v.id("fieldsStore")),
+  className: v.optional(v.string()),
+}).index("by_emailId", ["emailId"]);
+
 const sharedResourcesTable = defineTable({
   resourceId: v.union(v.id("emails"), v.id("templates")),
   resourceType: v.string(),
@@ -114,6 +147,9 @@ export default defineSchema({
   templateVersions: templateVersionsTable,
   fields: fieldsTable,
   highlights: highlightsTable,
+  fieldsStore: fieldsStoreTable,
+  highlightsStore: highlightsStoreTable,
   sharedResources: sharedResourcesTable,
   users: usersTable,
+  gmailSyncPreferences: gmailSyncPreferencesTable,
 });

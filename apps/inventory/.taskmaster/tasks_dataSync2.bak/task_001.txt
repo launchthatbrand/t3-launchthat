@@ -1,0 +1,140 @@
+# Task ID: 1
+# Title: Design Core Rules Engine Framework
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Create the abstract rules engine framework that defines the core interfaces, types, and utilities for a generic rules system independent of integration type.
+# Details:
+Implement the following components:
+
+1. Define TypeScript interfaces for core concepts:
+```typescript
+interface Rule {
+  id: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  triggerType: string;
+  triggerConfig: Record<string, any>;
+  conditions: Condition[];
+  actions: Action[];
+  integrationId: string;
+  metadata?: Record<string, any>;
+}
+
+interface Trigger {
+  type: string;
+  evaluate(context: RuleExecutionContext): Promise<boolean>;
+}
+
+interface Condition {
+  type: string;
+  config: Record<string, any>;
+  evaluate(context: RuleExecutionContext): Promise<boolean>;
+}
+
+interface Action {
+  type: string;
+  config: Record<string, any>;
+  execute(context: RuleExecutionContext): Promise<ActionResult>;
+}
+
+interface RuleExecutionContext {
+  rule: Rule;
+  triggerData: any;
+  integrationData: any;
+  timestamp: Date;
+  logger: RuleLogger;
+}
+
+interface ActionResult {
+  success: boolean;
+  message?: string;
+  data?: any;
+}
+```
+
+2. Create a provider pattern for registering integration-specific implementations:
+```typescript
+class RuleEngineRegistry {
+  private triggers: Map<string, Map<string, TriggerFactory>>;
+  private conditions: Map<string, Map<string, ConditionFactory>>;
+  private actions: Map<string, Map<string, ActionFactory>>;
+
+  registerIntegration(integrationId: string): void;
+  registerTrigger(integrationId: string, type: string, factory: TriggerFactory): void;
+  registerCondition(integrationId: string, type: string, factory: ConditionFactory): void;
+  registerAction(integrationId: string, type: string, factory: ActionFactory): void;
+  
+  getTrigger(integrationId: string, type: string): TriggerFactory | undefined;
+  getCondition(integrationId: string, type: string): ConditionFactory | undefined;
+  getAction(integrationId: string, type: string): ActionFactory | undefined;
+}
+```
+
+3. Implement the core rule execution engine:
+```typescript
+class RuleEngine {
+  constructor(private registry: RuleEngineRegistry) {}
+
+  async evaluateRule(rule: Rule, triggerData: any, integrationData: any): Promise<RuleEvaluationResult>;
+  async executeRule(rule: Rule, triggerData: any, integrationData: any): Promise<RuleExecutionResult>;
+}
+```
+
+4. Create a logging and monitoring system:
+```typescript
+interface RuleLogger {
+  info(message: string, data?: any): void;
+  warn(message: string, data?: any): void;
+  error(message: string, error: Error, data?: any): void;
+  startTimer(label: string): void;
+  endTimer(label: string): number;
+}
+
+class RuleExecutionLogger implements RuleLogger {
+  // Implementation details
+}
+```
+
+5. Set up Convex schema for storing rules in a generic format that supports multiple integration types.
+
+# Test Strategy:
+1. Write unit tests for each core interface implementation
+2. Create mock implementations of triggers, conditions, and actions for testing
+3. Test the rule engine with various rule configurations
+4. Verify the provider pattern works correctly with different integration types
+5. Test logging and monitoring functionality
+6. Ensure type safety throughout the system
+
+# Subtasks:
+## 1. Implement Core TypeScript Interfaces [done]
+### Dependencies: None
+### Description: Define and implement the core TypeScript interfaces for the rules engine framework
+### Details:
+Create TypeScript interfaces for Rule, Trigger, Condition, Action, RuleExecutionContext, and ActionResult. Ensure all properties and methods are correctly typed and documented.
+
+## 2. Develop RuleEngineRegistry Class [done]
+### Dependencies: 1.1
+### Description: Create the RuleEngineRegistry class to manage integration-specific implementations
+### Details:
+Implement the RuleEngineRegistry class with methods for registering and retrieving triggers, conditions, and actions for different integrations. Use Maps for efficient storage and retrieval.
+
+## 3. Implement Core RuleEngine Class [done]
+### Dependencies: 1.1, 1.2
+### Description: Develop the main RuleEngine class for rule evaluation and execution
+### Details:
+Create the RuleEngine class with methods for evaluating and executing rules. Implement logic to use the RuleEngineRegistry for retrieving integration-specific components.
+
+## 4. Create Logging and Monitoring System [done]
+### Dependencies: 1.1
+### Description: Implement the RuleLogger interface and RuleExecutionLogger class
+### Details:
+Develop the RuleLogger interface and RuleExecutionLogger class with methods for logging different levels of information and timing rule execution. Ensure compatibility with various logging backends.
+
+## 5. Design Convex Schema for Rule Storage [done]
+### Dependencies: 1.1
+### Description: Create a Convex schema for storing rules in a format supporting multiple integration types
+### Details:
+Design and implement a Convex schema that can store rules with their associated triggers, conditions, and actions. Ensure the schema is flexible enough to accommodate different integration types and future extensions.
+

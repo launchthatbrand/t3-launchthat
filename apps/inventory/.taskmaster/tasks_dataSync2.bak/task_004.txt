@@ -1,0 +1,201 @@
+# Task ID: 4
+# Title: Refactor Monday Rules Engine
+# Status: done
+# Dependencies: 1, 2, 3
+# Priority: high
+# Description: Adapt the existing Monday-specific rules engine to use the new abstract framework while preserving all existing functionality.
+# Details:
+1. Create a Monday integration plugin that implements the IntegrationPlugin interface:
+
+```typescript
+class MondayIntegrationPlugin implements IntegrationPlugin {
+  getDefinition(): IntegrationDefinition {
+    return {
+      id: 'monday',
+      name: 'Monday.com',
+      description: 'Integration with Monday.com boards and items',
+      version: '1.0.0',
+      triggers: this.getTriggerDefinitions(),
+      conditions: this.getConditionDefinitions(),
+      actions: this.getActionDefinitions(),
+    };
+  }
+  
+  private getTriggerDefinitions(): TriggerDefinition[] {
+    return [
+      {
+        type: 'item_created',
+        name: 'Item Created',
+        description: 'Triggered when a new item is created in a board',
+        configSchema: {
+          type: 'object',
+          properties: {
+            boardId: { type: 'string', title: 'Board ID' },
+          },
+          required: ['boardId'],
+        },
+        factory: (config) => new MondayItemCreatedTrigger(config),
+      },
+      // Define other Monday triggers (item_updated, status_changed, etc.)
+    ];
+  }
+  
+  // Similar methods for conditions and actions
+  
+  async initialize(): Promise<void> {
+    // Set up any necessary Monday API connections or listeners
+  }
+}
+```
+
+2. Implement Monday-specific triggers that extend the abstract framework:
+
+```typescript
+class MondayItemCreatedTrigger implements Trigger {
+  type = 'item_created';
+  
+  constructor(private config: { boardId: string }) {}
+  
+  async evaluate(context: RuleExecutionContext): Promise<boolean> {
+    const { triggerData } = context;
+    
+    // Check if the event is for the configured board
+    if (triggerData.boardId !== this.config.boardId) {
+      return false;
+    }
+    
+    // Verify this is an item creation event
+    return triggerData.event === 'create_item';
+  }
+}
+
+// Implement other Monday triggers similarly
+```
+
+3. Implement Monday-specific conditions:
+
+```typescript
+class MondayColumnValueCondition implements Condition {
+  type = 'column_value';
+  
+  constructor(private config: { 
+    columnId: string;
+    operator: 'equals' | 'contains' | 'greater_than' | 'less_than';
+    value: any;
+  }) {}
+  
+  async evaluate(context: RuleExecutionContext): Promise<boolean> {
+    const { triggerData } = context;
+    const itemId = triggerData.itemId;
+    const columnValue = await getMondayColumnValue(itemId, this.config.columnId);
+    
+    switch (this.config.operator) {
+      case 'equals':
+        return columnValue === this.config.value;
+      case 'contains':
+        return String(columnValue).includes(String(this.config.value));
+      // Other operators
+    }
+  }
+}
+```
+
+4. Implement Monday-specific actions:
+
+```typescript
+class MondayUpdateColumnAction implements Action {
+  type = 'update_column';
+  
+  constructor(private config: {
+    columnId: string;
+    value: any;
+  }) {}
+  
+  async execute(context: RuleExecutionContext): Promise<ActionResult> {
+    try {
+      const { triggerData } = context;
+      const itemId = triggerData.itemId;
+      
+      await updateMondayColumnValue(itemId, this.config.columnId, this.config.value);
+      
+      return {
+        success: true,
+        message: `Updated column ${this.config.columnId} to ${this.config.value}`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to update column: ${error.message}`,
+      };
+    }
+  }
+}
+```
+
+5. Create a migration function to convert existing Monday rules to the new format:
+
+```typescript
+async function migrateMondayRule(oldRule: OldMondayRule): Promise<Rule> {
+  // Map old trigger to new format
+  const triggerType = mapOldTriggerType(oldRule.triggerType);
+  const triggerConfig = mapOldTriggerConfig(oldRule.triggerConfig);
+  
+  // Map old conditions to new format
+  const conditions = oldRule.conditions.map(oldCondition => ({
+    type: mapOldConditionType(oldCondition.type),
+    config: mapOldConditionConfig(oldCondition),
+  }));
+  
+  // Map old actions to new format
+  const actions = oldRule.actions.map(oldAction => ({
+    type: mapOldActionType(oldAction.type),
+    config: mapOldActionConfig(oldAction),
+  }));
+  
+  return {
+    id: oldRule.id,
+    name: oldRule.name,
+    description: oldRule.description,
+    enabled: oldRule.enabled,
+    integrationId: 'monday',
+    triggerType,
+    triggerConfig,
+    conditions,
+    actions,
+    metadata: {
+      originalMondayRuleId: oldRule.id,
+      // Any other Monday-specific metadata
+    },
+  };
+}
+```
+
+6. Implement a Monday-specific rule execution context factory:
+
+```typescript
+class MondayRuleContextFactory {
+  createContext(rule: Rule, triggerData: any): RuleExecutionContext {
+    // Fetch any additional Monday-specific data needed for rule execution
+    const mondayIntegrationData = {
+      // Monday API client, authentication, etc.
+    };
+    
+    return {
+      rule,
+      triggerData,
+      integrationData: mondayIntegrationData,
+      timestamp: new Date(),
+      logger: new RuleExecutionLogger(rule.id),
+    };
+  }
+}
+```
+
+# Test Strategy:
+1. Create unit tests for each Monday-specific trigger, condition, and action
+2. Test the migration function with various existing rule configurations
+3. Verify that refactored rules produce the same results as the original rules
+4. Create integration tests that simulate Monday webhooks and verify rule execution
+5. Test error handling and edge cases specific to Monday integration
+6. Verify performance is maintained or improved compared to the original implementation
+7. Create regression tests to ensure no functionality is lost during refactoring

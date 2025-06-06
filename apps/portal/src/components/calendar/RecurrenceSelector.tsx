@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@acme/ui/select";
 
-import type { EventFormValues } from "../../app/(admin)/admin/calendar/_components/EventForm";
+import type { EventFormValues } from "../../app/(root)/(admin)/admin/calendar/_components/EventForm";
 
 interface RecurrenceSelectorProps {
   form: UseFormReturn<EventFormValues>;

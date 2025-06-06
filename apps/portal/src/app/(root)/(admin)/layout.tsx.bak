@@ -1,0 +1,148 @@
+"use client";
+
+// Required for hooks like useRoleCheck and potentially useRouter
+import React from "react";
+import { usePathname } from "next/navigation";
+// No longer need useRouter for redirect
+// import { useRouter } from "next/navigation";
+import { useRoleCheck } from "@/hooks/useRoleCheck"; // Adjust import path if needed
+import {
+  BookOpen,
+  Calendar,
+  ChevronDown,
+  Contact,
+  CreditCard,
+  Download,
+  ExternalLink,
+  LayoutDashboard,
+  Settings,
+  Shield,
+  ShoppingCart,
+  Store,
+  UserCog,
+  Users,
+} from "lucide-react";
+
+// Adjusted SidebarItem type to include optional subItems
+interface SidebarNavItem {
+  title: string;
+  href: string;
+  icon: React.ReactNode;
+  extraIcon?: React.ReactNode;
+  subItems?: SidebarNavItem[]; // For nested items
+  exactMatch?: boolean; // To control active state for parent items
+}
+
+// Define the new navigation structure
+const adminNavItems: SidebarNavItem[] = [
+  {
+    title: "Dashboard",
+    href: "/admin",
+    icon: <LayoutDashboard className="h-4 w-4" />,
+    exactMatch: true,
+  },
+  {
+    title: "Courses",
+    href: "/admin/courses",
+    icon: <BookOpen className="h-4 w-4" />,
+  },
+  // Assuming Lessons/Topics are nested under Courses, not top-level nav
+  // { title: "Lessons", href: "/admin/lessons", icon: <FileText className="h-4 w-4" /> },
+  // { title: "Topics", href: "/admin/topics", icon: <FileText className="h-4 w-4" /> },
+  // { title: "Quizzes", href: "/admin/quizzes", icon: <ListChecks className="h-4 w-4" /> },
+  {
+    title: "Products",
+    href: "/admin/products",
+    icon: <ShoppingCart className="h-4 w-4" />,
+  },
+  {
+    title: "Users",
+    href: "/admin/users",
+    icon: <Users className="h-4 w-4" />,
+    subItems: [
+      {
+        title: "User Management",
+        href: "/admin/users",
+        icon: <Users className="h-4 w-4" />,
+        exactMatch: true,
+      },
+      {
+        title: "Roles",
+        href: "/admin/roles",
+        icon: <UserCog className="h-4 w-4" />,
+        exactMatch: true,
+      },
+      {
+        title: "Admin Upgrade",
+        href: "/admin-upgrade",
+        icon: <Shield className="h-4 w-4" />,
+        exactMatch: true,
+      },
+    ],
+  },
+  {
+    title: "Contacts",
+    href: "/admin/contacts",
+    icon: <Contact className="h-4 w-4" />,
+  },
+  {
+    title: "Orders",
+    href: "/admin/orders",
+    icon: <CreditCard className="h-4 w-4" />,
+  },
+  {
+    title: "Downloads",
+    href: "/admin/downloads",
+    icon: <Download className="h-4 w-4" />,
+  },
+  {
+    title: "Settings",
+    href: "/admin/settings",
+    icon: <Settings className="h-4 w-4" />,
+  },
+  {
+    title: "Calendar",
+    href: "/admin/calendar",
+    icon: <Calendar className="h-4 w-4" />,
+  },
+  {
+    title: "View Store",
+    href: "/store",
+    icon: <Store className="h-4 w-4" />,
+    extraIcon: <ExternalLink className="ml-1 h-3 w-3" />,
+  },
+];
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { isLoaded, hasRole } = useRoleCheck();
+  const pathname = usePathname();
+
+  // Show loading state while checking auth/role
+  if (!isLoaded) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        Loading admin area...
+      </div>
+    );
+  }
+
+  // If the middleware allowed access, and Clerk has loaded, render the layout.
+  // We can still add an *alternative* check here if needed, e.g., show an error message
+  // if hasRole('admin') is somehow false *after* loading, but redirection should be middleware's job.
+  if (!hasRole("admin")) {
+    // This case *shouldn't* be reached if middleware is correct,
+    // but as a fallback, show an error or minimal UI instead of redirecting again.
+    return (
+      <div className="flex h-screen items-center justify-center text-red-500">
+        Error: Access Denied. You should have been redirected.
+      </div>
+    );
+  }
+
+  // User is loaded and middleware confirmed admin access
+  return <>{children}</>;
+}

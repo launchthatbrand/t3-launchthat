@@ -1,0 +1,24 @@
+# Task ID: 8
+# Title: Develop Parent-Child Relationship Handling
+# Status: done
+# Dependencies: 6, 7
+# Priority: medium
+# Description: Implement logic for handling order (parent) and line item (child) relationships during synchronization with Monday.com.
+# Details:
+Implement specialized logic for parent-child relationships with these features:
+1. Order creation as parent items in Monday.com
+2. Line item creation as subitems under the parent
+3. Relationship maintenance during synchronization
+4. Status propagation between parent and children
+
+The implementation should:
+- Create parent items for orders in Monday.com
+- Create subitems for each line item in the order
+- Maintain relationship integrity during updates
+- Handle status changes appropriately
+- Support bidirectional synchronization of the relationship
+
+Extend the existing pull and push synchronization logic to handle these relationships.
+
+# Test Strategy:
+Write unit tests for parent-child relationship handling. Test order creation with line items. Verify relationship integrity during updates. Test status propagation between parent and children. Verify bidirectional synchronization works correctly for complex order structures.

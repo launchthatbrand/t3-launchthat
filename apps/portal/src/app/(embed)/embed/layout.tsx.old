@@ -1,0 +1,32 @@
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
+
+import { cn } from "@acme/ui";
+
+import { Providers } from "../../providers";
+
+// Remove the auth requirement for this route
+export const dynamic = "force-dynamic";
+
+export default function EmbedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={cn(
+          "min-h-screen bg-background font-sans text-foreground antialiased",
+          GeistSans.variable,
+          GeistMono.variable,
+        )}
+      >
+        <div className="flex min-h-screen flex-col">
+          {/* Embedded content with no app chrome */}
+          <main className="flex-1">{children}</main>
+        </div>
+      </body>
+    </html>
+  );
+}

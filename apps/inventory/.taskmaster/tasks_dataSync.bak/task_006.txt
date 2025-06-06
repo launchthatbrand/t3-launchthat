@@ -1,0 +1,27 @@
+# Task ID: 6
+# Title: Implement Pull Synchronization Logic
+# Status: done
+# Dependencies: 1, 2, 4, 5
+# Priority: high
+# Description: Develop the core logic for importing data from Monday.com to Convex, including change detection and data transformation.
+# Details:
+Implement the pull synchronization logic with these components:
+1. Function to fetch items from Monday.com boards based on mapping configuration
+2. Change detection algorithm to identify new or updated items
+3. Data transformation based on column mappings
+4. Convex mutation to create or update records
+5. Sync status and timestamp tracking
+
+The pull operation should:
+- Fetch items from Monday.com using pagination
+- Compare with existing Convex records to detect changes
+- Transform data according to column mappings
+- Create new records or update existing ones in Convex
+- Store Monday.com IDs with Convex records
+- Update sync status and timestamp
+- Log the operation details
+
+Implement error handling for API failures and data transformation issues.
+
+# Test Strategy:
+Write unit tests for the pull synchronization logic. Test change detection with various scenarios. Verify data transformation works correctly for different data types. Test error handling with simulated API failures. Verify sync status and timestamp updates.

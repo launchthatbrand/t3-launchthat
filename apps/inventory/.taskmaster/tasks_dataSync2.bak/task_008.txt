@@ -1,0 +1,526 @@
+# Task ID: 8
+# Title: Create Proof of Concept for Additional Integration
+# Status: done
+# Dependencies: 1, 2, 3, 7
+# Priority: low
+# Description: Implement a simple WordPress integration as a proof of concept to demonstrate the modularity and extensibility of the new rules engine framework.
+# Details:
+1. Create a WordPress integration plugin:
+
+```typescript
+class WordPressIntegrationPlugin implements IntegrationPlugin {
+  getDefinition(): IntegrationDefinition {
+    return {
+      id: 'wordpress',
+      name: 'WordPress',
+      description: 'Integration with WordPress sites for post and user management',
+      version: '1.0.0',
+      triggers: this.getTriggerDefinitions(),
+      conditions: this.getConditionDefinitions(),
+      actions: this.getActionDefinitions(),
+    };
+  }
+  
+  private getTriggerDefinitions(): TriggerDefinition[] {
+    return [
+      {
+        type: 'post_published',
+        name: 'Post Published',
+        description: 'Triggered when a new post is published',
+        configSchema: {
+          type: 'object',
+          properties: {
+            postType: { 
+              type: 'string', 
+              title: 'Post Type',
+              enum: ['post', 'page', 'product', 'any'],
+              default: 'any'
+            },
+          },
+        },
+        factory: (config) => new WordPressPostPublishedTrigger(config),
+      },
+      {
+        type: 'user_registered',
+        name: 'User Registered',
+        description: 'Triggered when a new user registers on the site',
+        configSchema: {
+          type: 'object',
+          properties: {
+            role: { 
+              type: 'string', 
+              title: 'User Role',
+              enum: ['subscriber', 'contributor', 'author', 'editor', 'administrator', 'any'],
+              default: 'any'
+            },
+          },
+        },
+        factory: (config) => new WordPressUserRegisteredTrigger(config),
+      },
+    ];
+  }
+  
+  private getConditionDefinitions(): ConditionDefinition[] {
+    return [
+      {
+        type: 'post_category',
+        name: 'Post Category',
+        description: 'Check if the post belongs to a specific category',
+        configSchema: {
+          type: 'object',
+          properties: {
+            categoryId: { type: 'string', title: 'Category ID' },
+          },
+          required: ['categoryId'],
+        },
+        factory: (config) => new WordPressPostCategoryCondition(config),
+      },
+      {
+        type: 'post_has_tag',
+        name: 'Post Has Tag',
+        description: 'Check if the post has a specific tag',
+        configSchema: {
+          type: 'object',
+          properties: {
+            tagId: { type: 'string', title: 'Tag ID' },
+          },
+          required: ['tagId'],
+        },
+        factory: (config) => new WordPressPostHasTagCondition(config),
+      },
+    ];
+  }
+  
+  private getActionDefinitions(): ActionDefinition[] {
+    return [
+      {
+        type: 'create_post',
+        name: 'Create Post',
+        description: 'Create a new post in WordPress',
+        configSchema: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', title: 'Post Title' },
+            content: { type: 'string', title: 'Post Content' },
+            postType: { 
+              type: 'string', 
+              title: 'Post Type',
+              enum: ['post', 'page', 'product'],
+              default: 'post'
+            },
+            status: { 
+              type: 'string', 
+              title: 'Post Status',
+              enum: ['publish', 'draft', 'pending'],
+              default: 'publish'
+            },
+          },
+          required: ['title', 'content'],
+        },
+        factory: (config) => new WordPressCreatePostAction(config),
+      },
+      {
+        type: 'send_email',
+        name: 'Send Email',
+        description: 'Send an email to specified recipients',
+        configSchema: {
+          type: 'object',
+          properties: {
+            to: { type: 'string', title: 'Recipient Email' },
+            subject: { type: 'string', title: 'Email Subject' },
+            body: { type: 'string', title: 'Email Body' },
+          },
+          required: ['to', 'subject', 'body'],
+        },
+        factory: (config) => new WordPressSendEmailAction(config),
+      },
+    ];
+  }
+  
+  async initialize(): Promise<void> {
+    // Set up WordPress API client and authentication
+  }
+}
+```
+
+2. Implement WordPress-specific triggers:
+
+```typescript
+class WordPressPostPublishedTrigger implements Trigger {
+  type = 'post_published';
+  
+  constructor(private config: { postType: string }) {}
+  
+  async evaluate(context: RuleExecutionContext): Promise<boolean> {
+    const { triggerData } = context;
+    
+    // Check if this is a post publish event
+    if (triggerData.action !== 'publish_post' && triggerData.action !== 'publish_page') {
+      return false;
+    }
+    
+    // If a specific post type is configured, check if it matches
+    if (this.config.postType !== 'any' && triggerData.post_type !== this.config.postType) {
+      return false;
+    }
+    
+    return true;
+  }
+}
+
+class WordPressUserRegisteredTrigger implements Trigger {
+  type = 'user_registered';
+  
+  constructor(private config: { role: string }) {}
+  
+  async evaluate(context: RuleExecutionContext): Promise<boolean> {
+    const { triggerData } = context;
+    
+    // Check if this is a user registration event
+    if (triggerData.action !== 'user_register') {
+      return false;
+    }
+    
+    // If a specific role is configured, check if it matches
+    if (this.config.role !== 'any' && triggerData.user_role !== this.config.role) {
+      return false;
+    }
+    
+    return true;
+  }
+}
+```
+
+3. Implement WordPress-specific conditions:
+
+```typescript
+class WordPressPostCategoryCondition implements Condition {
+  type = 'post_category';
+  
+  constructor(private config: { categoryId: string }) {}
+  
+  async evaluate(context: RuleExecutionContext): Promise<boolean> {
+    const { triggerData, integrationData } = context;
+    const postId = triggerData.post_id;
+    
+    // Get post categories using WordPress API
+    const wpClient = integrationData.wpClient;
+    const categories = await wpClient.getPostCategories(postId);
+    
+    // Check if the specified category is in the list
+    return categories.includes(this.config.categoryId);
+  }
+}
+
+class WordPressPostHasTagCondition implements Condition {
+  type = 'post_has_tag';
+  
+  constructor(private config: { tagId: string }) {}
+  
+  async evaluate(context: RuleExecutionContext): Promise<boolean> {
+    const { triggerData, integrationData } = context;
+    const postId = triggerData.post_id;
+    
+    // Get post tags using WordPress API
+    const wpClient = integrationData.wpClient;
+    const tags = await wpClient.getPostTags(postId);
+    
+    // Check if the specified tag is in the list
+    return tags.includes(this.config.tagId);
+  }
+}
+```
+
+4. Implement WordPress-specific actions:
+
+```typescript
+class WordPressCreatePostAction implements Action {
+  type = 'create_post';
+  
+  constructor(private config: {
+    title: string;
+    content: string;
+    postType: string;
+    status: string;
+  }) {}
+  
+  async execute(context: RuleExecutionContext): Promise<ActionResult> {
+    try {
+      const { integrationData } = context;
+      const wpClient = integrationData.wpClient;
+      
+      // Create post using WordPress API
+      const postData = {
+        title: this.config.title,
+        content: this.config.content,
+        status: this.config.status,
+        type: this.config.postType,
+      };
+      
+      const result = await wpClient.createPost(postData);
+      
+      return {
+        success: true,
+        message: `Created ${this.config.postType} with ID ${result.id}`,
+        data: { postId: result.id },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to create post: ${error.message}`,
+      };
+    }
+  }
+}
+
+class WordPressSendEmailAction implements Action {
+  type = 'send_email';
+  
+  constructor(private config: {
+    to: string;
+    subject: string;
+    body: string;
+  }) {}
+  
+  async execute(context: RuleExecutionContext): Promise<ActionResult> {
+    try {
+      const { integrationData } = context;
+      const wpClient = integrationData.wpClient;
+      
+      // Send email using WordPress API
+      await wpClient.sendEmail({
+        to: this.config.to,
+        subject: this.config.subject,
+        body: this.config.body,
+      });
+      
+      return {
+        success: true,
+        message: `Sent email to ${this.config.to}`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to send email: ${error.message}`,
+      };
+    }
+  }
+}
+```
+
+5. Create a WordPress API client:
+
+```typescript
+class WordPressApiClient {
+  constructor(private config: {
+    siteUrl: string;
+    username: string;
+    password: string;
+  }) {}
+  
+  async getPostCategories(postId: string): Promise<string[]> {
+    // Implementation using WordPress REST API
+    const response = await fetch(`${this.config.siteUrl}/wp-json/wp/v2/posts/${postId}?_embed`);
+    const post = await response.json();
+    return post.categories.map(category => category.toString());
+  }
+  
+  async getPostTags(postId: string): Promise<string[]> {
+    // Implementation using WordPress REST API
+    const response = await fetch(`${this.config.siteUrl}/wp-json/wp/v2/posts/${postId}?_embed`);
+    const post = await response.json();
+    return post.tags.map(tag => tag.toString());
+  }
+  
+  async createPost(postData: {
+    title: string;
+    content: string;
+    status: string;
+    type: string;
+  }): Promise<{ id: string }> {
+    // Implementation using WordPress REST API
+    const response = await fetch(`${this.config.siteUrl}/wp-json/wp/v2/posts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + btoa(`${this.config.username}:${this.config.password}`),
+      },
+      body: JSON.stringify({
+        title: postData.title,
+        content: postData.content,
+        status: postData.status,
+      }),
+    });
+    
+    const result = await response.json();
+    return { id: result.id.toString() };
+  }
+  
+  async sendEmail(emailData: {
+    to: string;
+    subject: string;
+    body: string;
+  }): Promise<void> {
+    // Implementation using WordPress API or a plugin like WP Mail SMTP
+    const response = await fetch(`${this.config.siteUrl}/wp-json/custom/v1/send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + btoa(`${this.config.username}:${this.config.password}`),
+      },
+      body: JSON.stringify(emailData),
+    });
+    
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.message);
+    }
+  }
+}
+```
+
+6. Create a WordPress webhook handler:
+
+```typescript
+// Convex HTTP action to handle WordPress webhooks
+export const handleWordPressWebhook = httpAction(async (ctx, request) => {
+  try {
+    // Parse webhook payload
+    const payload = await request.json();
+    
+    // Verify webhook signature if available
+    // ...
+    
+    // Determine trigger type based on WordPress event
+    let triggerType = null;
+    if (payload.action === 'publish_post' || payload.action === 'publish_page') {
+      triggerType = 'post_published';
+    } else if (payload.action === 'user_register') {
+      triggerType = 'user_registered';
+    }
+    
+    if (!triggerType) {
+      return new Response('Unknown event type', { status: 400 });
+    }
+    
+    // Process the trigger
+    await ctx.runMutation(api.rules.processTrigger, {
+      integrationId: 'wordpress',
+      triggerType,
+      triggerData: payload,
+    });
+    
+    return new Response('Webhook processed successfully', { status: 200 });
+  } catch (error) {
+    ctx.logger.error('Error processing WordPress webhook', { error });
+    return new Response(`Error: ${error.message}`, { status: 500 });
+  }
+});
+```
+
+7. Create a WordPress integration configuration UI:
+
+```tsx
+const WordPressConfigForm: React.FC<{
+  config: any;
+  onSave: (config: any) => Promise<void>;
+}> = ({ config, onSave }) => {
+  const [siteUrl, setSiteUrl] = useState(config?.siteUrl || '');
+  const [username, setUsername] = useState(config?.username || '');
+  const [password, setPassword] = useState('');
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  
+  const handleTestConnection = async () => {
+    try {
+      const result = await testWordPressConnection({
+        siteUrl,
+        username,
+        password,
+      });
+      
+      setTestResult({
+        success: true,
+        message: 'Connection successful!',
+      });
+    } catch (error) {
+      setTestResult({
+        success: false,
+        message: `Connection failed: ${error.message}`,
+      });
+    }
+  };
+  
+  const handleSave = async () => {
+    await onSave({
+      siteUrl,
+      username,
+      password: password ? password : undefined, // Only update password if changed
+    });
+  };
+  
+  return (
+    <div className="wordpress-config-form">
+      <h2>WordPress Configuration</h2>
+      
+      <div className="form-group">
+        <label>Site URL</label>
+        <input 
+          type="url" 
+          value={siteUrl} 
+          onChange={(e) => setSiteUrl(e.target.value)} 
+          placeholder="https://example.com"
+          required 
+        />
+      </div>
+      
+      <div className="form-group">
+        <label>Username</label>
+        <input 
+          type="text" 
+          value={username} 
+          onChange={(e) => setUsername(e.target.value)} 
+          required 
+        />
+      </div>
+      
+      <div className="form-group">
+        <label>Password</label>
+        <input 
+          type="password" 
+          value={password} 
+          onChange={(e) => setPassword(e.target.value)} 
+          placeholder="Leave blank to keep current password"
+        />
+      </div>
+      
+      <div className="button-group">
+        <button onClick={handleTestConnection}>Test Connection</button>
+        <button onClick={handleSave} disabled={!siteUrl || !username}>Save Configuration</button>
+      </div>
+      
+      {testResult && (
+        <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+          {testResult.message}
+        </div>
+      )}
+      
+      <div className="webhook-info">
+        <h3>Webhook Setup</h3>
+        <p>To enable WordPress triggers, add the following webhook URL to your WordPress site:</p>
+        <code>{`${window.location.origin}/api/wordpress/webhook`}</code>
+        <p>You can use a plugin like WP Webhooks to configure these webhooks in WordPress.</p>
+      </div>
+    </div>
+  );
+};
+```
+
+# Test Strategy:
+1. Create unit tests for WordPress-specific triggers, conditions, and actions
+2. Test the WordPress API client with mock responses
+3. Create integration tests with a test WordPress instance
+4. Test webhook handling with sample WordPress events
+5. Verify that WordPress rules can be created and executed through the UI
+6. Test error handling for WordPress API failures
+7. Verify that WordPress integration can coexist with the Monday integration
+8. Create end-to-end tests that simulate WordPress events and verify rule execution

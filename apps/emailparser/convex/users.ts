@@ -7,7 +7,6 @@ import { mutation } from "./_generated/server";
 export const createOrGetUser = mutation({
   args: {},
   handler: async (ctx) => {
-    console.log("--- createOrGetUser CALLED ---");
     const identity = await ctx.auth.getUserIdentity();
 
     if (!identity) {

@@ -1,0 +1,285 @@
+# Task ID: 5
+# Title: Create Generic Rule Management UI Components
+# Status: done
+# Dependencies: 1, 2, 3
+# Priority: medium
+# Description: Develop reusable React components for rule management that can work with any integration type, providing a consistent user experience.
+# Details:
+1. Create a generic rule editor component:
+
+```tsx
+interface RuleEditorProps {
+  rule?: Rule; // Existing rule for editing, undefined for new rule
+  integrationId: string;
+  onSave: (rule: Rule) => Promise<void>;
+  onCancel: () => void;
+}
+
+const RuleEditor: React.FC<RuleEditorProps> = ({ rule, integrationId, onSave, onCancel }) => {
+  const [name, setName] = useState(rule?.name || '');
+  const [description, setDescription] = useState(rule?.description || '');
+  const [triggerType, setTriggerType] = useState(rule?.triggerType || '');
+  const [triggerConfig, setTriggerConfig] = useState(rule?.triggerConfig || {});
+  const [conditions, setConditions] = useState(rule?.conditions || []);
+  const [actions, setActions] = useState(rule?.actions || []);
+  
+  // Fetch available triggers, conditions, and actions for the integration
+  const { data: availableTriggers } = useQuery(api.rules.getAvailableTriggers, { integrationId });
+  const { data: availableConditions } = useQuery(api.rules.getAvailableConditions, { integrationId });
+  const { data: availableActions } = useQuery(api.rules.getAvailableActions, { integrationId });
+  
+  const handleSave = async () => {
+    const newRule: Rule = {
+      id: rule?.id || '', // ID will be assigned by the backend for new rules
+      name,
+      description,
+      enabled: rule?.enabled ?? true,
+      integrationId,
+      triggerType,
+      triggerConfig,
+      conditions,
+      actions,
+      metadata: rule?.metadata || {},
+    };
+    
+    await onSave(newRule);
+  };
+  
+  return (
+    <div className="rule-editor">
+      <h2>{rule ? 'Edit Rule' : 'Create Rule'}</h2>
+      
+      <div className="form-group">
+        <label>Name</label>
+        <input 
+          type="text" 
+          value={name} 
+          onChange={(e) => setName(e.target.value)} 
+          required 
+        />
+      </div>
+      
+      <div className="form-group">
+        <label>Description</label>
+        <textarea 
+          value={description} 
+          onChange={(e) => setDescription(e.target.value)} 
+        />
+      </div>
+      
+      <TriggerSelector 
+        availableTriggers={availableTriggers || []} 
+        selectedType={triggerType}
+        config={triggerConfig}
+        onSelectTrigger={setTriggerType}
+        onConfigChange={setTriggerConfig}
+      />
+      
+      <ConditionBuilder 
+        availableConditions={availableConditions || []} 
+        conditions={conditions}
+        onChange={setConditions}
+      />
+      
+      <ActionBuilder 
+        availableActions={availableActions || []} 
+        actions={actions}
+        onChange={setActions}
+      />
+      
+      <div className="button-group">
+        <button onClick={onCancel}>Cancel</button>
+        <button onClick={handleSave} disabled={!name || !triggerType || actions.length === 0}>
+          Save Rule
+        </button>
+      </div>
+    </div>
+  );
+};
+```
+
+2. Create a dynamic configuration form component that adapts to different schemas:
+
+```tsx
+interface ConfigFormProps {
+  schema: JSONSchema7; // JSON Schema for the configuration
+  value: any;
+  onChange: (value: any) => void;
+}
+
+const ConfigForm: React.FC<ConfigFormProps> = ({ schema, value, onChange }) => {
+  // Use a library like @rjsf/core for dynamic form generation based on JSON Schema
+  return (
+    <Form
+      schema={schema}
+      formData={value}
+      onChange={({ formData }) => onChange(formData)}
+      uiSchema={{
+        // Custom UI configuration
+      }}
+    />
+  );
+};
+```
+
+3. Create a rule list component:
+
+```tsx
+interface RuleListProps {
+  integrationId: string;
+  onEditRule: (rule: Rule) => void;
+  onDeleteRule: (ruleId: string) => Promise<void>;
+  onToggleRule: (ruleId: string, enabled: boolean) => Promise<void>;
+}
+
+const RuleList: React.FC<RuleListProps> = ({ 
+  integrationId, 
+  onEditRule, 
+  onDeleteRule, 
+  onToggleRule 
+}) => {
+  const { data: rules, isLoading } = useQuery(api.rules.getRulesByIntegration, { integrationId });
+  
+  if (isLoading) {
+    return <div>Loading rules...</div>;
+  }
+  
+  return (
+    <div className="rule-list">
+      {rules?.map(rule => (
+        <div key={rule.id} className="rule-item">
+          <div className="rule-header">
+            <h3>{rule.name}</h3>
+            <div className="rule-controls">
+              <Switch 
+                checked={rule.enabled} 
+                onChange={(checked) => onToggleRule(rule.id, checked)} 
+              />
+              <button onClick={() => onEditRule(rule)}>Edit</button>
+              <button 
+                onClick={() => onDeleteRule(rule.id)}
+                className="delete-button"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+          <p>{rule.description}</p>
+          <div className="rule-summary">
+            <div className="trigger-summary">
+              <strong>When:</strong> {getTriggerSummary(rule.triggerType, rule.triggerConfig)}
+            </div>
+            {rule.conditions.length > 0 && (
+              <div className="conditions-summary">
+                <strong>If:</strong> {getConditionsSummary(rule.conditions)}
+              </div>
+            )}
+            <div className="actions-summary">
+              <strong>Then:</strong> {getActionsSummary(rule.actions)}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+```
+
+4. Create an integration selector component:
+
+```tsx
+interface IntegrationSelectorProps {
+  onSelectIntegration: (integrationId: string) => void;
+  selectedIntegrationId?: string;
+}
+
+const IntegrationSelector: React.FC<IntegrationSelectorProps> = ({ 
+  onSelectIntegration, 
+  selectedIntegrationId 
+}) => {
+  const { data: integrations, isLoading } = useQuery(api.integrations.getAllIntegrations);
+  
+  if (isLoading) {
+    return <div>Loading integrations...</div>;
+  }
+  
+  return (
+    <div className="integration-selector">
+      <h2>Select Integration</h2>
+      <div className="integration-list">
+        {integrations?.map(integration => (
+          <div 
+            key={integration.id} 
+            className={`integration-item ${selectedIntegrationId === integration.id ? 'selected' : ''}`}
+            onClick={() => onSelectIntegration(integration.id)}
+          >
+            <h3>{integration.name}</h3>
+            <p>{integration.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+```
+
+5. Create a rule execution history component:
+
+```tsx
+interface RuleExecutionHistoryProps {
+  ruleId: string;
+}
+
+const RuleExecutionHistory: React.FC<RuleExecutionHistoryProps> = ({ ruleId }) => {
+  const { data: executions, isLoading } = useQuery(api.rules.getRuleExecutions, { 
+    ruleId, 
+    limit: 10 
+  });
+  
+  if (isLoading) {
+    return <div>Loading execution history...</div>;
+  }
+  
+  return (
+    <div className="execution-history">
+      <h3>Recent Executions</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Triggered</th>
+            <th>Conditions Met</th>
+            <th>Actions Successful</th>
+            <th>Duration</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {executions?.map(execution => (
+            <tr key={execution._id}>
+              <td>{new Date(execution.startTime).toLocaleString()}</td>
+              <td>{execution.triggered ? '✅' : '❌'}</td>
+              <td>{execution.conditionsMet ? '✅' : '❌'}</td>
+              <td>{execution.successful ? '✅' : '❌'}</td>
+              <td>{((execution.endTime - execution.startTime) / 1000).toFixed(2)}s</td>
+              <td>
+                <button onClick={() => /* Show details modal */}>View Details</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+```
+
+# Test Strategy:
+1. Create unit tests for each UI component using React Testing Library
+2. Test form validation for rule configuration
+3. Test dynamic rendering of different integration-specific forms
+4. Create mock API responses for testing UI components
+5. Test UI state management and user interactions
+6. Verify accessibility compliance
+7. Test responsive design for different screen sizes
+8. Create integration tests for the complete rule management flow

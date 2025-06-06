@@ -1,0 +1,24 @@
+# Task ID: 4
+# Title: Implement Board Mapping Interface
+# Status: done
+# Dependencies: 1, 2, 3
+# Priority: medium
+# Description: Create the UI for mapping Convex tables to Monday.com boards, including sync direction controls and board metadata display.
+# Details:
+Develop a React component for the board mapping interface with these features:
+1. List of available Convex tables with Monday.com board selectors
+2. Enable/disable toggles for each mapping
+3. Sync direction controls (pull/push checkboxes)
+4. Board metadata display (columns, item count)
+5. 'Configure Columns' button for each mapping
+
+The interface should allow admins to:
+- Select which Convex tables to sync with Monday.com
+- Choose a specific Monday.com board for each table
+- Configure whether each mapping supports pull, push, or both
+- View basic information about the selected board
+
+Store mapping configurations in the `mondayBoardMappings` table.
+
+# Test Strategy:
+Write component tests for the mapping interface. Test the selection and storage of board mappings. Verify that enable/disable toggles work correctly. Test sync direction controls update the configuration properly. Verify board metadata is displayed correctly.
