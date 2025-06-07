@@ -12,6 +12,7 @@ import { coreSchema } from "./core/schema"; // This should be the result of defi
 import { downloadsSchema } from "./downloads/schema";
 import ecommerceSchema from "./ecommerce/schema";
 import { groupsSchema } from "./groups/schema";
+import integrationsSchema from "./integrations/schema";
 import { lmsSchema } from "./lms/schema";
 import { notificationsSchema } from "./notifications/schema";
 import socialFeedSchema from "./socialfeed/schema";
@@ -71,6 +72,9 @@ export default defineSchema({
 
   // Groups tables
   ...groupsSchema.tables,
+
+  // Integrations tables
+  ...integrationsSchema.tables,
 
   // LMS tables
   ...lmsSchema.tables,

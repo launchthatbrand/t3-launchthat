@@ -2,16 +2,17 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { notFound } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { getConvex } from "@/lib/convex";
-import { CalendarRange } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { EventsContent } from "../components/EventsContent";
 
 interface EventsPageProps {
   params: { id: string };
 }
 
 export async function generateMetadata({ params }: EventsPageProps) {
-  const id = params.id;
+  // Await params before accessing its properties
+  const resolvedParams = await params;
+  const id = resolvedParams.id;
 
   try {
     const convex = getConvex();
@@ -29,7 +30,7 @@ export async function generateMetadata({ params }: EventsPageProps) {
       title: `${group.name} Events | WSA App`,
       description: `Calendar and events for the ${group.name} group`,
     };
-  } catch (error) {
+  } catch {
     return {
       title: "Group Events | WSA App",
     };
@@ -37,35 +38,28 @@ export async function generateMetadata({ params }: EventsPageProps) {
 }
 
 export default async function EventsPage({ params }: EventsPageProps) {
-  const id = params.id;
+  // Await params before accessing its properties
+  const resolvedParams = await params;
+  const id = resolvedParams.id;
 
+  // Just do a basic check that the group exists
   const convex = getConvex();
-  const group = await convex.query(api.groups.queries.getGroupById, {
-    groupId: id as Id<"groups">,
-  });
+  try {
+    const group = await convex.query(api.groups.queries.getGroupById, {
+      groupId: id as Id<"groups">,
+    });
 
-  if (!group) {
-    notFound();
-  }
+    if (!group) {
+      notFound();
+    }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Events Calendar</h2>
+    return <EventsContent groupId={id} />;
+  } catch (error) {
+    console.error("Error fetching group:", error);
+    return (
+      <div className="py-8 text-center text-muted-foreground">
+        Unable to load events calendar
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Upcoming Events</CardTitle>
-        </CardHeader>
-        <CardContent className="flex min-h-[300px] flex-col items-center justify-center">
-          <CalendarRange className="mb-4 h-16 w-16 text-muted-foreground" />
-          <p className="text-lg font-medium">No upcoming events</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Group events will appear here when scheduled
-          </p>
-        </CardContent>
-      </Card>
-    </div>
-  );
+    );
+  }
 }

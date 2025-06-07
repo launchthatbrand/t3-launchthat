@@ -1,17 +1,18 @@
-import type { Id } from "@/convex/_generated/dataModel";
+import type { Id } from "@convex-config/_generated/dataModel";
 import { notFound } from "next/navigation";
-import { GroupMembersDisplay } from "@/components/groups/GroupMembersDisplay";
-import { api } from "@/convex/_generated/api";
 import { getConvex } from "@/lib/convex";
+import { api } from "@convex-config/_generated/api";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { MembersContent } from "../components/MembersContent";
 
 interface MembersPageProps {
   params: { id: string };
 }
 
 export async function generateMetadata({ params }: MembersPageProps) {
-  const id = params.id;
+  // Await params before accessing its properties
+  const resolvedParams = await params;
+  const id = resolvedParams.id;
 
   try {
     const convex = getConvex();
@@ -29,7 +30,7 @@ export async function generateMetadata({ params }: MembersPageProps) {
       title: `${group.name} Members | WSA App`,
       description: `Members of the ${group.name} group`,
     };
-  } catch (error) {
+  } catch {
     return {
       title: "Group Members | WSA App",
     };
@@ -37,37 +38,28 @@ export async function generateMetadata({ params }: MembersPageProps) {
 }
 
 export default async function MembersPage({ params }: MembersPageProps) {
-  const id = params.id;
+  // Await params before accessing its properties
+  const resolvedParams = await params;
+  const id = resolvedParams.id;
 
+  // Fetch the group data for member count
   const convex = getConvex();
-  const group = await convex.query(api.groups.queries.getGroupById, {
-    groupId: id as Id<"groups">,
-  });
+  try {
+    const group = await convex.query(api.groups.queries.getGroupById, {
+      groupId: id as Id<"groups">,
+    });
 
-  if (!group) {
-    notFound();
-  }
+    if (!group) {
+      notFound();
+    }
 
-  // Get user role from group data
-  const userRole = group.userMembership?.role || null;
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Members</h2>
-        <div className="text-sm text-muted-foreground">
-          {group.memberCount} {group.memberCount === 1 ? "member" : "members"}
-        </div>
+    return <MembersContent groupId={id} memberCount={group.memberCount} />;
+  } catch (error) {
+    console.error("Error fetching group data:", error);
+    return (
+      <div className="py-8 text-center text-muted-foreground">
+        Unable to load group members
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Group Members</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <GroupMembersDisplay groupId={group._id} currentUserRole={userRole} />
-        </CardContent>
-      </Card>
-    </div>
-  );
+    );
+  }
 }

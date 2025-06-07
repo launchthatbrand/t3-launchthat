@@ -212,7 +212,7 @@ export function GroupDirectory() {
         ) {
           return "Manage Group";
         }
-        return "Leave Group";
+        return "Leave Groupss";
       },
       onClick: (group) => {
         if (group.userMembership) {

@@ -5,6 +5,40 @@ import { throwForbidden } from "../shared/errors";
 import { requireAdmin } from "./lib";
 
 /**
+ * Get the system user for automated operations
+ * This is useful for scenarios, integrations, and other system processes
+ */
+export const getSystemUser = query({
+  args: {},
+  handler: async (ctx) => {
+    // First try to find an existing system user
+    const systemUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", "system@example.com"))
+      .first();
+
+    if (systemUser) {
+      return systemUser;
+    }
+
+    // If no system user exists, find any admin user
+    const adminUser = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("role"), "admin"))
+      .first();
+
+    if (adminUser) {
+      return adminUser;
+    }
+
+    // If no admin user exists, return any user (last resort)
+    const anyUser = await ctx.db.query("users").first();
+
+    return anyUser;
+  },
+});
+
+/**
  * Get a user by their Clerk ID
  */
 export const getUserByClerkId = query({

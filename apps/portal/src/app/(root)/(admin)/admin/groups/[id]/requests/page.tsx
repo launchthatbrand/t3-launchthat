@@ -1,90 +1,43 @@
-"use client";
-
 import type { Id } from "@/convex/_generated/dataModel";
-import { GroupMembershipRequests } from "@/components/groups/GroupMembershipRequests";
-import { PendingInvitations } from "@/components/groups/PendingInvitations";
 import { api } from "@/convex/_generated/api";
-import { useUser } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
-import { AlertCircle } from "lucide-react";
+import { getConvex } from "@/lib/convex";
 
-import { Alert, AlertDescription, AlertTitle } from "@acme/ui/alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Spinner } from "@acme/ui/spinner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { RequestsContent } from "../components/RequestsContent";
 
-export default function GroupRequestsPage() {
-  const { user } = useUser();
-  // Parse the groupId from the current URL
-  const groupId = window.location.pathname.split("/").slice(-2)[0];
+interface RequestsPageProps {
+  params: { id: string };
+}
 
-  const group = useQuery(api.groups.queries.getGroupById, {
-    groupId: groupId as Id<"groups">,
-  });
+export async function generateMetadata({ params }: RequestsPageProps) {
+  const resolvedParams = await params;
+  const id = resolvedParams.id;
 
-  const membership = useQuery(
-    api.groups.getUserMembership,
-    user?.id
-      ? {
-          groupId: groupId as Id<"groups">,
-          userId: user.id as Id<"users">,
-        }
-      : "skip",
-  );
+  try {
+    const convex = getConvex();
+    const group = await convex.query(api.groups.queries.getGroupById, {
+      groupId: id as Id<"groups">,
+    });
 
-  // Show loading state
-  if (!group || !membership) {
-    return (
-      <div className="flex h-40 w-full items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    if (!group) {
+      return {
+        title: "Group Not Found | Requests",
+      };
+    }
+
+    return {
+      title: `${group.name} Membership Requests | WSA App`,
+      description: `Manage membership requests for the ${group.name} group`,
+    };
+  } catch {
+    return {
+      title: "Group Membership Requests | WSA App",
+    };
   }
+}
 
-  // Check if user is admin or moderator
-  const isAdminOrModerator =
-    membership &&
-    membership.role &&
-    (membership.role === "admin" || membership.role === "moderator");
+export default async function RequestsPage({ params }: RequestsPageProps) {
+  const resolvedParams = await params;
+  const id = resolvedParams.id;
 
-  if (!isAdminOrModerator) {
-    return (
-      <div className="space-y-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Access Denied</AlertTitle>
-          <AlertDescription>
-            You don't have permission to view this page. Only group
-            administrators and moderators can manage membership requests.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Membership Requests</h2>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Membership Management</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="requests" className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="requests">Join Requests</TabsTrigger>
-              <TabsTrigger value="invitations">Pending Invitations</TabsTrigger>
-            </TabsList>
-            <TabsContent value="requests">
-              <GroupMembershipRequests groupId={groupId} />
-            </TabsContent>
-            <TabsContent value="invitations">
-              <PendingInvitations groupId={groupId} />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  return <RequestsContent groupId={id} />;
 }

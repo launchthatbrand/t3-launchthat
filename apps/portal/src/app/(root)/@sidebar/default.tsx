@@ -11,6 +11,7 @@ import {
   Map,
   PieChart,
   Settings2,
+  Share2,
   ShoppingCart,
   TerminalSquare,
   Twitter,
@@ -252,6 +253,25 @@ export default function DefaultSidebar() {
         {
           title: "Seo",
           url: "/admin/settings/roles",
+        },
+      ],
+    },
+    {
+      title: "Integrations",
+      url: "/integrations",
+      icon: Share2,
+      items: [
+        {
+          title: "Apps",
+          url: "/integrations",
+        },
+        {
+          title: "Connections",
+          url: "/integrations?tab=connections",
+        },
+        {
+          title: "Scenarios",
+          url: "/integrations?tab=scenarios",
         },
       ],
     },

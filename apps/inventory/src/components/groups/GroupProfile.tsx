@@ -131,10 +131,17 @@ export function GroupProfile({ groupId }: GroupProfileProps) {
   const renderJoinButton = () => {
     if (!groupQuery) return null;
 
+    <Button
+      variant="outline"
+      onClick={() => router.push(`/groups/${groupId}/editor`)}
+    >
+      Edit
+    </Button>;
+
     if (isMember) {
       return (
         <Button variant="outline" onClick={handleLeaveGroup}>
-          Leave Group
+          Leave Groupss
         </Button>
       );
     }

@@ -43,6 +43,7 @@ export const groupsTable = defineTable({
       }),
     ),
   ), // Carousel items for group header
+  dashboardData: v.optional(v.any()), // Data for customized group dashboard
   isArchived: v.optional(v.boolean()),
   settings: v.optional(
     v.object({

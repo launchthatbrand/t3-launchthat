@@ -1,7 +1,7 @@
 "use client";
 
-import type { Id } from "@/convex/_generated/dataModel";
 import type { GroupWithDetails } from "@/types/groups";
+import type { Id } from "@convex-config/_generated/dataModel";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -9,8 +9,8 @@ import { GroupHeaderCarousel } from "@/components/groups/GroupHeaderCarousel";
 import { GroupHeaderEditor } from "@/components/groups/GroupHeaderEditor";
 import { InviteGroupMembers } from "@/components/groups/InviteGroupMembers";
 import { JoinGroupButton } from "@/components/groups/JoinGroupButton";
-import { api } from "@/convex/_generated/api";
 import useCarouselStore from "@/store/useCarouselStore";
+import { api } from "@convex-config/_generated/api";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import {
   Calendar,

@@ -1,8 +1,8 @@
 import { ConvexError, v } from "convex/values";
-import type { GroupMemberRole, GroupMemberStatus } from "./schema/types";
-import { getAuthenticatedUser, isGroupAdminOrModerator } from "./lib/helpers";
 
+import type { GroupMemberRole, GroupMemberStatus } from "./schema/types";
 import { mutation } from "../_generated/server";
+import { getAuthenticatedUser, isGroupAdminOrModerator } from "./lib/helpers";
 
 /**
  * Create a new group
@@ -709,5 +709,30 @@ export const updateGroupMemberRole = mutation({
       memberId: args.memberId,
       newRole: args.newRole,
     };
+  },
+});
+
+// Add this mutation to update the dashboard data
+export const updateDashboardData = mutation({
+  args: {
+    groupId: v.id("groups"),
+    dashboardData: v.any(),
+  },
+  returns: v.id("groups"),
+  handler: async (ctx, args) => {
+    const { groupId, dashboardData } = args;
+
+    // Check if the group exists
+    const group = await ctx.db.get(groupId);
+    if (!group) {
+      throw new Error(`Group with ID ${groupId} not found`);
+    }
+
+    // Update the group with the new dashboard data
+    const updatedGroupId = await ctx.db.patch(groupId, {
+      dashboardData,
+    });
+
+    return updatedGroupId;
   },
 });

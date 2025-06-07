@@ -243,7 +243,7 @@ export function GroupProfileClient({
       if (userMembership.status === "active") {
         return (
           <Button variant="outline" onClick={handleLeaveGroup}>
-            Leave Group
+            Leave Groupss
           </Button>
         );
       } else if (userMembership.status === "pending") {

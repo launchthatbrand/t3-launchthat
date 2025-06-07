@@ -1,10 +1,10 @@
-import type { Id } from "@/convex/_generated/dataModel";
 import type { GroupWithDetails } from "@/types/groups";
+import type { Id } from "@convex-config/_generated/dataModel";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
-import { api } from "@/convex/_generated/api";
 import { getConvex } from "@/lib/convex";
 import { auth } from "@clerk/nextjs/server";
+import { api } from "@convex-config/_generated/api";
 
 import { GroupProfileClient } from "./components/GroupProfileClient";
 

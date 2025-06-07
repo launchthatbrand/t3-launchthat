@@ -1,16 +1,16 @@
-import { MutationCtx, internalMutation, mutation } from "../_generated/server";
+import { v } from "convex/values";
+
+import type { UserRole } from "./schema/types";
+import { internal } from "../_generated/api";
+import { Id } from "../_generated/dataModel";
+import { internalMutation, mutation, MutationCtx } from "../_generated/server";
 import {
   logError,
   throwForbidden,
   throwNotFound,
   throwUnauthorized,
 } from "../shared/errors";
-
-import { Id } from "../_generated/dataModel";
-import type { UserRole } from "./schema/types";
-import { internal } from "../_generated/api";
 import { requireAdmin } from "./lib";
-import { v } from "convex/values";
 
 /**
  * Make the current authenticated user an admin
@@ -264,5 +264,37 @@ export const deleteUser = mutation({
     await ctx.db.delete(args.userId);
 
     return { success: true };
+  },
+});
+
+/**
+ * Create a system user if one doesn't already exist
+ * This is useful for scenarios, integrations, and other system processes
+ */
+export const createSystemUserIfNeeded = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Check if a system user already exists
+    const existingSystemUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", "system@example.com"))
+      .first();
+
+    // If a system user already exists, return it
+    if (existingSystemUser) {
+      return existingSystemUser._id;
+    }
+
+    // Otherwise, create a new system user
+    const now = Date.now();
+    const systemUserId = await ctx.db.insert("users", {
+      name: "System",
+      email: "system@example.com",
+      role: "admin",
+      username: "system",
+      tokenIdentifier: "",
+    });
+
+    return systemUserId;
   },
 });

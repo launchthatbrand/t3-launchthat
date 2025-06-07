@@ -628,53 +628,51 @@ export const getGroupStats = query({
     groupId: v.id("groups"),
   },
   handler: async (ctx, args) => {
-    // Verify group exists
-    const group = await ctx.db.get(args.groupId);
-    if (!group) {
-      throw new ConvexError("Group not found");
-    }
+    const { groupId } = args;
 
-    // Get member count
+    // Count members
     const members = await ctx.db
       .query("groupMembers")
       .withIndex("by_group_status", (q) =>
-        q.eq("groupId", args.groupId).eq("status", "active"),
+        q.eq("groupId", groupId).eq("status", "active"),
       )
       .collect();
     const memberCount = members.length;
 
-    // Get post count
+    // Count posts
     const posts = await ctx.db
       .query("groupPosts")
-      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+      .withIndex("by_group", (q) => q.eq("groupId", groupId))
       .collect();
     const postCount = posts.length;
 
-    // Get event count
+    // Count events
+    const now = Date.now();
     const events = await ctx.db
       .query("groupEvents")
-      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+      .withIndex("by_group", (q) => q.eq("groupId", groupId))
+      .filter((q) => q.gte(q.field("startTime"), now))
       .collect();
     const eventCount = events.length;
 
-    // Calculate active members (members active in the last 30 days)
-    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const activities = await ctx.db
-      .query("groupActivity")
-      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
-      .filter((q) => q.gt(q.field("timestamp"), thirtyDaysAgo))
+    // Count active members (members who have posted in the last 30 days)
+    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+    const recentPosts = await ctx.db
+      .query("groupPosts")
+      .withIndex("by_group", (q) => q.eq("groupId", groupId))
+      .filter((q) => q.gte(q.field("_creationTime"), thirtyDaysAgo))
       .collect();
 
-    // Get unique user IDs from activity
-    const uniqueActiveUserIds = new Set(
-      activities.map((activity) => activity.userId.toString()),
+    const activeAuthorIds = new Set(
+      recentPosts.map((post) => post.authorId.toString()),
     );
+    const activeMembers = activeAuthorIds.size;
 
     return {
       memberCount,
       postCount,
       eventCount,
-      activeMembers: uniqueActiveUserIds.size,
+      activeMembers,
     };
   },
 });
@@ -769,5 +767,136 @@ export const getUserMembershipInGroup = query({
       role: membership.role,
       status: mappedStatus,
     };
+  },
+});
+
+/**
+ * Get latest posts for a group
+ */
+export const getLatestGroupPosts = query({
+  args: {
+    groupId: v.id("groups"),
+    limit: v.optional(v.number()),
+    paginationOpts: v.optional(paginationOptsValidator),
+  },
+  handler: async (ctx, args) => {
+    const { groupId } = args;
+
+    // Handle both pagination styles for backward compatibility
+    let limitValue = 5; // Default
+
+    if (args.paginationOpts) {
+      limitValue = args.paginationOpts.numItems;
+    } else if (args.limit !== undefined) {
+      limitValue = args.limit;
+    }
+
+    const posts = await ctx.db
+      .query("groupPosts")
+      .withIndex("by_group", (q) => q.eq("groupId", groupId))
+      .order("desc")
+      .take(limitValue);
+
+    // Fetch author information for each post
+    const postsWithAuthors = await Promise.all(
+      posts.map(async (post) => {
+        let author = null;
+        if (post.authorId) {
+          const user = await ctx.db.get(post.authorId);
+          if (user) {
+            author = {
+              name: user.name ?? "Anonymous User",
+              profileImageUrl: user.image ?? null,
+            };
+          }
+        }
+        return { ...post, author };
+      }),
+    );
+
+    return postsWithAuthors;
+  },
+});
+
+/**
+ * Get upcoming events for a group
+ */
+export const getUpcomingGroupEvents = query({
+  args: {
+    groupId: v.id("groups"),
+    limit: v.optional(v.number()),
+    paginationOpts: v.optional(paginationOptsValidator),
+  },
+  handler: async (ctx, args) => {
+    const { groupId } = args;
+    const now = Date.now();
+
+    // Handle both pagination styles for backward compatibility
+    let limitValue = 3; // Default
+
+    if (args.paginationOpts) {
+      limitValue = args.paginationOpts.numItems;
+    } else if (args.limit !== undefined) {
+      limitValue = args.limit;
+    }
+
+    const events = await ctx.db
+      .query("groupEvents")
+      .withIndex("by_group", (q) => q.eq("groupId", groupId))
+      .filter((q) => q.gte(q.field("startTime"), now))
+      .order("asc")
+      .take(limitValue);
+
+    return events;
+  },
+});
+
+/**
+ * Get active members for a group
+ */
+export const getActiveGroupMembers = query({
+  args: {
+    groupId: v.id("groups"),
+    limit: v.optional(v.number()),
+    paginationOpts: v.optional(paginationOptsValidator),
+  },
+  handler: async (ctx, args) => {
+    const { groupId } = args;
+
+    // Handle both pagination styles for backward compatibility
+    let limitValue = 5; // Default
+
+    if (args.paginationOpts) {
+      limitValue = args.paginationOpts.numItems;
+    } else if (args.limit !== undefined) {
+      limitValue = args.limit;
+    }
+
+    const members = await ctx.db
+      .query("groupMembers")
+      .withIndex("by_group_status", (q) =>
+        q.eq("groupId", groupId).eq("status", "active"),
+      )
+      .take(limitValue);
+
+    // Fetch user information for each member
+    const membersWithInfo = await Promise.all(
+      members.map(async (member) => {
+        const user = await ctx.db.get(member.userId);
+        if (!user) {
+          return null;
+        }
+
+        return {
+          _id: user._id,
+          name: user.name ?? "Anonymous User",
+          profileImageUrl: user.image ?? null,
+          role: member.role,
+        };
+      }),
+    );
+
+    // Filter out any null values (in case a user was deleted)
+    return membersWithInfo.filter(Boolean);
   },
 });
