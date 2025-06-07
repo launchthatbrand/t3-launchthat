@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { useCarouselStore } from "@/store";
+import { useCarouselStore } from "@/src/store";
 import { Pencil } from "lucide-react";
 
 import { Button } from "@acme/ui/button";

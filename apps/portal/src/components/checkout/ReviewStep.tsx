@@ -1,15 +1,15 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
+import { api } from "@/convex/_generated/api";
+import { useCheckoutStore } from "@/src/store/checkoutStore";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
-import Image from "next/image";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Separator } from "@acme/ui/separator"; // Assuming you have a Separator
-import { api } from "@/convex/_generated/api";
-import { useCheckoutStore } from "@/store/checkoutStore";
 
 const formatPrice = (price: number | undefined) => {
   if (price === undefined) return "N/A";
@@ -31,7 +31,9 @@ export const ReviewStep = () => {
     user?.email ? { userId: user.email } : "skip", // Assuming userId for cart is email
   );
 
-  const createOrderMutation = useMutation(api.ecommerce.checkout.createOrder as any);
+  const createOrderMutation = useMutation(
+    api.ecommerce.checkout.createOrder as any,
+  );
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

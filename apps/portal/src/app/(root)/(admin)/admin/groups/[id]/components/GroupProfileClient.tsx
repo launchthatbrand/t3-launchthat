@@ -1,6 +1,6 @@
 "use client";
 
-import type { GroupWithDetails } from "@/types/groups";
+import type { GroupWithDetails } from "@/src/types/groups";
 import type { Id } from "@convex-config/_generated/dataModel";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef } from "react";
@@ -9,7 +9,7 @@ import { GroupHeaderCarousel } from "@/components/groups/GroupHeaderCarousel";
 import { GroupHeaderEditor } from "@/components/groups/GroupHeaderEditor";
 import { InviteGroupMembers } from "@/components/groups/InviteGroupMembers";
 import { JoinGroupButton } from "@/components/groups/JoinGroupButton";
-import useCarouselStore from "@/store/useCarouselStore";
+import useCarouselStore from "@/src/store/useCarouselStore";
 import { api } from "@convex-config/_generated/api";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import {
@@ -90,9 +90,22 @@ export function GroupProfileClient({
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
 
   // Get the current active tab from the URL path segments
-  // The path will be like /groups/[id]/[tab]
+  // For admin routes, the path will be like /admin/groups/[id]/[tab]
   const pathSegments = pathname.split("/");
-  const activeTab = pathSegments.length > 3 ? pathSegments[3] : "";
+
+  // Debug the path structure
+  console.log("[GroupProfileClient] URL path:", pathname);
+  console.log("[GroupProfileClient] Path segments:", pathSegments);
+
+  // Extract the tab name from the URL
+  // The structure is /admin/groups/[id]/[tab], so tab would be at index 4
+  const activeTab = pathSegments.length > 4 ? pathSegments[4] : "";
+
+  console.log("[GroupProfileClient] Active tab from URL:", activeTab);
+  console.log(
+    "[GroupProfileClient] Available tabs:",
+    tabs.map((tab) => tab.value),
+  );
 
   // Use a ref to track if items have been initialized
   const itemsInitialized = useRef(false);
@@ -153,8 +166,8 @@ export function GroupProfileClient({
     // Prefetch each accessible tab
     for (const tab of tabsToPrefetch) {
       const route = tab.value
-        ? `/groups/${groupId}/${tab.value}`
-        : `/groups/${groupId}`;
+        ? `/admin/groups/${groupId}/${tab.value}`
+        : `/admin/groups/${groupId}`;
       router.prefetch(route);
     }
   }, [groupId, groupData.userMembership?.role, router]);
@@ -208,8 +221,18 @@ export function GroupProfileClient({
 
   // Handle tab change
   const handleTabChange = (value: string) => {
+    // For admin routes, the pattern is /admin/groups/[id]/[tab]
     const route =
-      value === "" ? `/groups/${groupId}` : `/groups/${groupId}/${value}`;
+      value === ""
+        ? `/admin/groups/${groupId}`
+        : `/admin/groups/${groupId}/${value}`;
+
+    console.log(
+      "[GroupProfileClient] Changing tab to:",
+      value,
+      "with route:",
+      route,
+    );
     router.push(route, { scroll: false }); // Add scroll: false to prevent scrolling to top
   };
 

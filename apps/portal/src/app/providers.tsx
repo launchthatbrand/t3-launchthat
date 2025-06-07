@@ -2,18 +2,21 @@
 "use client";
 
 // Import Clerk provider and hook
-import React from "react";
+import React, { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { ClerkProvider, useAuth } from "@clerk/clerk-react";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 
 import { SidebarProvider } from "@acme/ui/components/sidebar";
+import StandardLayout from "@acme/ui/layout/StandardLayout";
 import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
 import { Toaster } from "@acme/ui/toast";
 
+import { PuckEditor } from "~/components/puckeditor/PuckEditorProvider";
 import { env } from "~/env";
+import useEditorStore from "~/store/useEditorStore";
 // Import the correct Convex provider for Clerk integration
-import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
 import { GuestCartMerger } from "./GuestCartMerger";
 
 // Ensure Clerk key exists, otherwise ClerkProvider will error
@@ -22,8 +25,33 @@ if (!env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
 }
 
 // Initialize Convex client within the Client Component
-
 const convex = new ConvexReactClient(env.NEXT_PUBLIC_CONVEX_URL);
+
+/**
+ * EditorModeDetector watches for ?editor=true in URL and updates the editor store
+ */
+function EditorModeDetector() {
+  const searchParams = useSearchParams();
+  const setEditorMode = useEditorStore((state) => state.setEditorMode);
+
+  useEffect(() => {
+    const isEditorMode = searchParams.get("editor") === "true";
+    setEditorMode(isEditorMode);
+  }, [searchParams, setEditorMode]);
+
+  return null; // This is a utility component with no UI
+}
+
+/**
+ * StandardLayoutWrapper is a client component that modifies the StandardLayout based on editor mode
+ */
+function StandardLayoutWrapper(
+  props: React.ComponentProps<typeof StandardLayout>,
+) {
+  const isEditorMode = useEditorStore((state) => state.isEditorMode);
+
+  return <StandardLayout {...props} showSidebar={!isEditorMode} />;
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -34,7 +62,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
           {/* <ConvexUserEnsurer /> */}
           <GuestCartMerger />
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            {children}
+            <EditorModeDetector />
+            <PuckEditor>{children}</PuckEditor>
             <div className="absolute bottom-4 right-4">
               <ThemeToggle />
             </div>
@@ -45,3 +74,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     </ClerkProvider>
   );
 }
+
+// Export components for use in layouts
+export { StandardLayoutWrapper };

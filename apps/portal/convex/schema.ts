@@ -114,4 +114,12 @@ export default defineSchema({
     .index("by_featured", ["featured"])
     .searchIndex("search_title", { searchField: "title" })
     .searchIndex("search_content", { searchField: "content" }),
+
+  // Add the groupDashboards table to the schema
+  groupDashboards: defineTable({
+    groupId: v.id("groups"),
+    data: v.any(), // Store the Puck Data object
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_group", ["groupId"]),
 });

@@ -20,6 +20,7 @@ export async function generateMetadata({ params }: GroupPageProps) {
     const group = await convex.query(api.groups.queries.getGroupById, {
       groupId: id as Id<"groups">,
     });
+    console.log("group", group);
 
     if (!group) {
       return {

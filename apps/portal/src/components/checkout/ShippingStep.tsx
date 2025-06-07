@@ -1,12 +1,13 @@
 "use client";
 
-import type { AddressData } from "@/store/checkoutStore";
-import { AddressForm } from "./AddressForm";
 import type { Id } from "@/convex/_generated/dataModel"; // Import Id
-import { api } from "@/convex/_generated/api";
-import { useCheckoutStore } from "@/store/checkoutStore";
-import { useMutation } from "convex/react";
+import type { AddressData } from "@/src/store/checkoutStore";
 import { useState } from "react";
+import { api } from "@/convex/_generated/api";
+import { useCheckoutStore } from "@/src/store/checkoutStore";
+import { useMutation } from "convex/react";
+
+import { AddressForm } from "./AddressForm";
 
 export const ShippingStep = () => {
   const {

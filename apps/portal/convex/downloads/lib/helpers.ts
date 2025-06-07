@@ -131,3 +131,41 @@ export async function isAdmin(
   const user = await ctx.db.get(userId);
   return user?.role === "admin";
 }
+
+/**
+ * Get downloads associated with a specific group
+ */
+export async function getGroupDownloads(
+  ctx: QueryCtx,
+  groupId: Id<"groups">,
+  limit: number = 5,
+) {
+  // Get downloads for the specified group, ordered by creation time
+  const downloads = await ctx.db
+    .query("downloads")
+    .withIndex("by_group", (q) => q.eq("groupId", groupId))
+    .order("desc")
+    .take(limit);
+
+  // Enhance with uploader information
+  const result = [];
+  for (const download of downloads) {
+    let uploader = null;
+    if (download.uploadedBy) {
+      const user = await ctx.db.get(download.uploadedBy);
+      if (user) {
+        uploader = {
+          name: user.name,
+          image: user.image,
+        };
+      }
+    }
+
+    result.push({
+      ...download,
+      uploader,
+    });
+  }
+
+  return result;
+}

@@ -1,24 +1,10 @@
 "use client";
 
-import type { Metadata, Viewport } from "next";
-
 import { cn } from "@acme/ui";
-import {
-  Sidebar,
-  SidebarInset,
-  SidebarRail,
-} from "@acme/ui/components/sidebar";
+import { SidebarInset } from "@acme/ui/components/sidebar";
 
-import TopNavbar from "../general/TopNavbar";
 import AppHeader from "./AppHeader";
 import { AppSidebar } from "./AppSidebar";
-
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "white" },
-    { media: "(prefers-color-scheme: dark)", color: "black" },
-  ],
-};
 
 export default function StandardLayout(props: {
   children?: React.ReactNode;
@@ -28,13 +14,18 @@ export default function StandardLayout(props: {
   className?: string;
   header?: React.ReactNode;
   sidebarVariant?: "inset" | "floating" | "sidebar";
+  showSidebar?: boolean;
 }) {
   const sidebarToggle = props.sidebar !== undefined;
+  // If showSidebar is explicitly set to false, hide the sidebar
+  // Otherwise, show it if it exists
+  const shouldShowSidebar = props.showSidebar !== false && sidebarToggle;
+
   return (
     <div className={cn("flex flex-1 flex-col", props.className)}>
       {/* {props.topbar !== undefined ? <TopNavbar /> : null} */}
       <div className="flex flex-1">
-        {props.sidebar !== undefined ? (
+        {shouldShowSidebar ? (
           <AppSidebar
             sidebar={props.sidebar}
             className="list-none"

@@ -1,10 +1,10 @@
 "use client";
 
 import type { Id } from "@/convex/_generated/dataModel";
-import type { AddressData } from "@/store";
+import type { AddressData } from "@/src/store";
 import { useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
-import { useCheckoutStore } from "@/store";
+import { useCheckoutStore } from "@/src/store";
 import { useMutation } from "convex/react";
 
 import { Checkbox } from "@acme/ui/checkbox";

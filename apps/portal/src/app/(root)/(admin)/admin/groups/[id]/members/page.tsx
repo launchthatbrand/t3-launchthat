@@ -42,12 +42,19 @@ export default async function MembersPage({ params }: MembersPageProps) {
   const resolvedParams = await params;
   const id = resolvedParams.id;
 
+  console.log("[MembersPage] Rendering with id:", id);
+
   // Fetch the group data for member count
   const convex = getConvex();
   try {
     const group = await convex.query(api.groups.queries.getGroupById, {
       groupId: id as Id<"groups">,
     });
+
+    console.log(
+      "[MembersPage] Group data:",
+      group ? `Found group: ${group.name}` : "Group not found",
+    );
 
     if (!group) {
       notFound();

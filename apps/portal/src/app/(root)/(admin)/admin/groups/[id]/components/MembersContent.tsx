@@ -17,6 +17,13 @@ export function MembersContent({ groupId, memberCount }: MembersContentProps) {
     notFound();
   }
 
+  console.log(
+    "[MembersContent] Rendering with groupId:",
+    groupId,
+    "memberCount:",
+    memberCount,
+  );
+
   return (
     <TabsContent value="members" className="outline-none">
       <h2 className="text-xl font-semibold">Members</h2>

@@ -99,6 +99,9 @@ interface EditorState {
   // Reset states
   resetFormatting: () => void;
   resetStore: () => void;
+
+  isEditorMode: boolean;
+  setEditorMode: (isEditor: boolean) => void;
 }
 
 const DEFAULT_TEXT_FORMATTING: TextFormatting = {
@@ -359,4 +362,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       tableColumns: "3",
     });
   },
+
+  isEditorMode: false,
+  setEditorMode: (isEditor) => set({ isEditorMode: isEditor }),
 }));
+
+export default useEditorStore;

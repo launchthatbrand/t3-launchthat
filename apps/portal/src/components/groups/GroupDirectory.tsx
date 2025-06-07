@@ -196,7 +196,7 @@ export function GroupDirectory() {
     {
       id: "view",
       label: "View",
-      onClick: (group) => router.push(`/groups/${group._id}`),
+      onClick: (group) => router.push(`/admin/groups/${group._id}`),
       variant: "outline",
       icon: <Eye className="mr-2 h-4 w-4" />,
     },

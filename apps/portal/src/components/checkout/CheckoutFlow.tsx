@@ -1,8 +1,8 @@
 "use client";
 
-import type { CheckoutStep } from "@/store";
+import type { CheckoutStep } from "@/src/store";
 import React from "react";
-import { useCheckoutStore } from "@/store";
+import { useCheckoutStore } from "@/src/store";
 
 import { Button } from "@acme/ui/button";
 

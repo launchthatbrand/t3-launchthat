@@ -1,26 +1,13 @@
 import "~/app/globals.css";
 
 import type { Metadata, Viewport } from "next";
-// import Link from "next/link";
-// // Import the CartDropdown component
-// import { CartDropdown } from "@/components/cart";
-// import { NotificationIcon } from "@/components/notifications/NotificationIcon";
-// Import Clerk components
-// import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 
-// Import the Providers component
-// import { Providers } from "~/app/providers";
-// import { InvitationBadge } from "~/components/groups/InvitationBadge";
-import { Button, cn, NavItem, SidebarInset, SiteHeader } from "@acme/ui";
-import { AppSidebar } from "@acme/ui/components/sidebar-layout/app-sidebar";
+import { cn } from "@acme/ui";
 import StandardLayout from "@acme/ui/layout/StandardLayout";
 
 import { Providers } from "../providers";
-
-// ThemeProvider, ThemeToggle, Toaster are now handled in Providers
-// ConvexProvider, ConvexReactClient are now handled in Providers
 
 // Metadata for the app
 export const metadata: Metadata = {
@@ -46,7 +33,7 @@ export const viewport: Viewport = {
   ],
 };
 
-const headerNavItems: NavItem[] = [
+const _headerNavItems = [
   { title: "Groups", url: "/groups" },
   { title: "Downloads", url: "/downloads" },
   { title: "Store", url: "/store" },
@@ -55,7 +42,7 @@ const headerNavItems: NavItem[] = [
   { title: "User", url: "/user" },
 ];
 
-const sidebarNavItems: NavItem[] = [
+const _sidebarNavItems = [
   { title: "Groups", url: "/groups" },
   { title: "Downloads", url: "/downloads" },
   { title: "Store", url: "/store" },
@@ -83,7 +70,6 @@ export default function RootLayout(props: {
             appName="Portal Demo"
             sidebar={props.sidebar}
             header={props.header}
-            // topbar={true}
             sidebarVariant="inset"
           >
             {props.children}
@@ -94,7 +80,7 @@ export default function RootLayout(props: {
   );
 }
 
-function Package2Icon(props: React.SVGProps<SVGSVGElement>) {
+function _Package2Icon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       {...props}

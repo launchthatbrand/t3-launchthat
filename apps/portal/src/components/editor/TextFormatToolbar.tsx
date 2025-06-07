@@ -1,4 +1,4 @@
-import { useEditorStore } from "@/store";
+import { useEditorStore } from "@/src/store";
 import {
   Bold,
   Code,

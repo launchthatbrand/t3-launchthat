@@ -1,5 +1,15 @@
 "use client";
 
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import React, { useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { api } from "@/convex/_generated/api";
+import { useCheckoutStore } from "@/src/store/checkoutStore";
+import { useQuery } from "convex/react";
+import { CheckCircle } from "lucide-react";
+
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -8,17 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import React, { useEffect } from "react";
-
-import { Button } from "@acme/ui/button";
-import { CheckCircle } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
 import { Separator } from "@acme/ui/separator";
-import { api } from "@/convex/_generated/api";
-import { useCheckoutStore } from "@/store/checkoutStore";
-import { useQuery } from "convex/react";
 
 const formatPrice = (price: number | undefined) => {
   if (price === undefined) return "N/A";

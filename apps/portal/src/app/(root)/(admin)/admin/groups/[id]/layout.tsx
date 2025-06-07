@@ -6,7 +6,7 @@ import { getConvex } from "@/lib/convex";
 import { auth } from "@clerk/nextjs/server";
 import { api } from "@convex-config/_generated/api";
 
-import { LayoutClientWrapper } from "./layout.client";
+import { GroupProfileClient } from "./components/GroupProfileClient";
 
 interface GroupProfileLayoutProps {
   children: ReactNode;
@@ -22,10 +22,6 @@ export default async function GroupProfileLayout({
 
   // Get the current user data from Clerk
   const { userId } = await auth();
-  console.log(
-    "[GroupProfileLayout] Clerk user:",
-    userId ? { id: userId } : "Not authenticated",
-  );
 
   // Server-side data fetching
   const convex = getConvex();
@@ -40,17 +36,11 @@ export default async function GroupProfileLayout({
       notFound();
     }
 
-    console.log("[GroupProfileLayout] Group data:", {
-      id: groupData._id.toString(),
-      name: groupData.name,
-      userMembership: groupData.userMembership,
-    });
-
-    // Pass the server-fetched data to the client component with search params handling
+    // Pass the server-fetched data directly to the GroupProfileClient
     return (
-      <LayoutClientWrapper groupData={groupData} groupId={id as Id<"groups">}>
+      <GroupProfileClient groupData={groupData} groupId={id as Id<"groups">}>
         {children}
-      </LayoutClientWrapper>
+      </GroupProfileClient>
     );
   } catch (error) {
     console.error("Error fetching group:", error);

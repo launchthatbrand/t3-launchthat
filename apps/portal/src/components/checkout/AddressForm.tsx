@@ -1,7 +1,12 @@
 "use client";
 
+// Assuming these are Shadcn UI form components
+import type { AddressData } from "@/src/store/checkoutStore";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import * as z from "zod";
 
+import { Button } from "@acme/ui/button";
 import {
   Form,
   FormControl,
@@ -10,13 +15,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@acme/ui/form";
-
-// Assuming these are Shadcn UI form components
-import type { AddressData } from "@/store/checkoutStore";
-import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 
 // Zod schema for address validation
 const addressSchema = z.object({

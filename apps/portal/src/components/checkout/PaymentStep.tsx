@@ -1,20 +1,21 @@
 "use client";
 
+import type { Id } from "@/convex/_generated/dataModel";
+import React, { useState } from "react";
+import { api } from "@/convex/_generated/api";
+import { useCheckoutStore } from "@/src/store/checkoutStore";
 import {
   CardElement,
   Elements,
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
-import React, { useState } from "react";
+import { loadStripe } from "@stripe/stripe-js";
+import { useMutation } from "convex/react";
 
 import { Button } from "@acme/ui/button";
-import type { Id } from "@/convex/_generated/dataModel";
-import { api } from "@/convex/_generated/api";
+
 import { env } from "~/env";
-import { loadStripe } from "@stripe/stripe-js";
-import { useCheckoutStore } from "@/store/checkoutStore";
-import { useMutation } from "convex/react";
 
 // Initialize Stripe.js with your publishable key
 // USER ACTION REQUIRED: Ensure NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is correctly set up
@@ -28,7 +29,9 @@ const PaymentForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const processPaymentAction = useMutation(api.ecommerce.checkout.processPayment as any);
+  const processPaymentAction = useMutation(
+    api.ecommerce.checkout.processPayment as any,
+  );
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

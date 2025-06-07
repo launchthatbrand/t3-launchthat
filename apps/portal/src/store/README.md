@@ -16,10 +16,10 @@ Always import stores and their types from the central export:
 
 ```typescript
 // ✅ Good import pattern
-import { useEditorStore, type TextFormatting } from "@/store";
+import { useEditorStore, type TextFormatting } from "@/src/store";
 
 // ❌ Avoid direct imports
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore } from "@/src/store/useEditorStore";
 ```
 
 ## Implementation Guidelines
@@ -130,7 +130,7 @@ When adding a new store:
 ## Example Store Usage
 
 ```typescript
-import { useEditorStore } from '@/store';
+import { useEditorStore } from '@/src/store';
 
 const MyComponent = () => {
   // Use individual state values from the store

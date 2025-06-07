@@ -10,7 +10,7 @@
       "@convexcms-config": ["./src/convexcms.config.ts"],
       "@convex-config/*": ["./convex/*"],
       "react": ["./node_modules/@types/react"],
-      "@/*": ["./src/*"],
+      "@/*": ["./*"],
       "@/components/*": ["./src/components/*"],
       "@/hooks/*": ["./src/hooks/*"],
       "@/lib/*": ["./src/lib/*"],

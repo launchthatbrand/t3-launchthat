@@ -3,7 +3,7 @@
 import type { UseEmblaCarouselType } from "embla-carousel-react";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { useCarouselStore } from "@/store";
+import { useCarouselStore } from "@/src/store";
 
 import { Card, CardContent } from "@acme/ui/card";
 import {

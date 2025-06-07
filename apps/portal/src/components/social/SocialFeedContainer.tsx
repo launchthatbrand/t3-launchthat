@@ -1,8 +1,9 @@
-import { Button } from "@acme/ui/button";
-import { Loader2 } from "lucide-react";
-import type { Post } from "@/store";
+import type { Post } from "@/src/store";
 import { useEffect } from "react";
-import { useSocialStore } from "@/store";
+import { useSocialStore } from "@/src/store";
+import { Loader2 } from "lucide-react";
+
+import { Button } from "@acme/ui/button";
 
 interface SocialFeedProps {
   groupId?: string;
