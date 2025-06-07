@@ -10,7 +10,7 @@ import { GroupProfileClient } from "./components/GroupProfileClient";
 
 interface GroupProfileLayoutProps {
   children: ReactNode;
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function GroupProfileLayout({
@@ -18,7 +18,7 @@ export default async function GroupProfileLayout({
   params,
 }: GroupProfileLayoutProps) {
   // Get the ID from params
-  const { id } = params;
+  const { id } = await params;
 
   // Get the current user data from Clerk
   const { userId } = await auth();

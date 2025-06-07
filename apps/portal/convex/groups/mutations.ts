@@ -716,7 +716,7 @@ export const updateGroupMemberRole = mutation({
 export const updateDashboardData = mutation({
   args: {
     groupId: v.id("groups"),
-    dashboardData: v.any(),
+    dashboardData: v.string(),
   },
   returns: v.id("groups"),
   handler: async (ctx, args) => {
@@ -729,10 +729,10 @@ export const updateDashboardData = mutation({
     }
 
     // Update the group with the new dashboard data
-    const updatedGroupId = await ctx.db.patch(groupId, {
+    await ctx.db.patch(groupId, {
       dashboardData,
     });
 
-    return updatedGroupId;
+    return groupId;
   },
 });

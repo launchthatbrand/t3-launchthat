@@ -421,7 +421,12 @@ export function GroupProfileClient({
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={() => router.push(`/admin/groups/${groupId}?editor=true`)}
+            onClick={() => {
+              // Add editor=true to the current URL
+              const url = new URL(window.location.href);
+              url.searchParams.set("editor", "true");
+              router.push(url.toString());
+            }}
           >
             Edit Page
           </Button>

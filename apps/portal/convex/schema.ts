@@ -15,6 +15,7 @@ import { groupsSchema } from "./groups/schema";
 import integrationsSchema from "./integrations/schema";
 import { lmsSchema } from "./lms/schema";
 import { notificationsSchema } from "./notifications/schema";
+import { puckEditorTable } from "./puckEditor/schema";
 import socialFeedSchema from "./socialfeed/schema";
 import { usersSchema } from "./users/schema";
 
@@ -122,4 +123,6 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_group", ["groupId"]),
+
+  puckEditor: puckEditorTable,
 });

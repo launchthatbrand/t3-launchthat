@@ -181,6 +181,8 @@ import type * as notifications_schema_types from "../notifications/schema/types.
 import type * as orders from "../orders.js";
 import type * as permissionsUtils from "../permissionsUtils.js";
 import type * as posts from "../posts.js";
+import type * as puckEditor_mutations from "../puckEditor/mutations.js";
+import type * as puckEditor_queries from "../puckEditor/queries.js";
 import type * as roles from "../roles.js";
 import type * as search from "../search.js";
 import type * as seedPermissions from "../seedPermissions.js";
@@ -398,6 +400,8 @@ declare const fullApi: ApiFromModules<{
   orders: typeof orders;
   permissionsUtils: typeof permissionsUtils;
   posts: typeof posts;
+  "puckEditor/mutations": typeof puckEditor_mutations;
+  "puckEditor/queries": typeof puckEditor_queries;
   roles: typeof roles;
   search: typeof search;
   seedPermissions: typeof seedPermissions;

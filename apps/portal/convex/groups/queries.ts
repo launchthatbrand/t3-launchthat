@@ -208,15 +208,6 @@ export const getGroupById = query({
 
     // Get the authenticated user (if any)
     const identity = await ctx.auth.getUserIdentity();
-    console.log(
-      "[getGroupById] Auth identity:",
-      identity
-        ? {
-            tokenIdentifier: identity.tokenIdentifier,
-            isAuthenticated: true,
-          }
-        : "Not authenticated",
-    );
 
     let userId = null;
     if (identity) {
@@ -301,13 +292,6 @@ export const getGroupById = query({
       // Add missing field required by GroupWithDetails type
       createdBy: group.creator || null,
     } as unknown as GroupWithDetails;
-
-    console.log("[getGroupById] Returning group with details:", {
-      groupId: group._id,
-      name: group.name,
-      memberCount,
-      userMembership,
-    });
 
     return groupWithDetails;
   },
@@ -689,16 +673,6 @@ export const getUserMembershipInGroup = query({
     // Get the authenticated user (if any)
     const identity = await ctx.auth.getUserIdentity();
 
-    console.log(
-      "[getUserMembershipInGroup] Auth identity:",
-      identity
-        ? {
-            tokenIdentifier: identity.tokenIdentifier,
-            isAuthenticated: true,
-          }
-        : "Not authenticated",
-    );
-
     if (!identity) {
       return null; // Not authenticated
     }
@@ -898,5 +872,27 @@ export const getActiveGroupMembers = query({
 
     // Filter out any null values (in case a user was deleted)
     return membersWithInfo.filter(Boolean);
+  },
+});
+
+/**
+ * Get the dashboard data for a specific group
+ */
+export const getDashboardData = query({
+  args: {
+    groupId: v.id("groups"),
+  },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args) => {
+    const { groupId } = args;
+
+    // Get the group
+    const group = await ctx.db.get(groupId);
+    if (!group) {
+      return null;
+    }
+
+    // Return the dashboard data if it exists, otherwise null
+    return typeof group.dashboardData === "string" ? group.dashboardData : null;
   },
 });

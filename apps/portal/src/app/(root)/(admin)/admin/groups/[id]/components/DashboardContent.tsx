@@ -1,7 +1,7 @@
 "use client";
 
 import type { GroupWithDetails } from "@convex-config/groups/schema/types";
-import type { Data } from "@measured/puck";
+import type { Data as PuckData } from "@measured/puck";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -35,15 +35,22 @@ const PuckRenderer = dynamic(
 interface DashboardContentProps {
   group: GroupWithDetails;
   hasCustomDashboard?: boolean;
+  pageIdentifier: string;
 }
 
 export function DashboardContent({
   group,
   hasCustomDashboard = false,
+  pageIdentifier,
 }: DashboardContentProps) {
   const { user } = useUser();
   const router = useRouter();
   const joinGroup = useMutation(api.groups.mutations.joinGroup);
+
+  // Query dashboard data from the puckEditor table with type safety
+  const dashboardDataResult = useQuery(api.puckEditor.queries.getData, {
+    pageIdentifier,
+  });
 
   // Query additional group data
   const membersData = useQuery(api.groups.queries.getGroupMembers, {
@@ -84,7 +91,7 @@ export function DashboardContent({
     }
   };
 
-  if (hasCustomDashboard) {
+  if (hasCustomDashboard && dashboardDataResult) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -99,7 +106,10 @@ export function DashboardContent({
               <Button onClick={handleJoinGroup}>Join Group</Button>
             )}
             {isUserGroupAdmin && (
-              <Link href={`/admin/groups/${group._id}/editor`}>
+              <Link
+                href={`/admin/groups/${group._id}?editor=true`}
+                className="inline-flex"
+              >
                 <Button variant="outline" size="sm" className="gap-2">
                   <Edit className="h-4 w-4" />
                   Edit Dashboard
@@ -109,12 +119,13 @@ export function DashboardContent({
           </div>
         </div>
 
-        <PuckRenderer
-          data={
-            (group as GroupWithDetails & { dashboardData: Data }).dashboardData
-          }
-          groupId={group._id}
-        />
+        {/* Parse the JSON string from dashboardData safely */}
+        {typeof dashboardDataResult === "string" && (
+          <PuckRenderer
+            data={JSON.parse(dashboardDataResult) as PuckData}
+            groupId={group._id}
+          />
+        )}
       </div>
     );
   }
@@ -133,7 +144,7 @@ export function DashboardContent({
             <Button onClick={handleJoinGroup}>Join Group</Button>
           )}
           {isUserGroupAdmin && (
-            <Link href={`/admin/groups/${group._id}/editor`}>
+            <Link href={`/admin/groups/${group._id}?editor=true`}>
               <Button variant="outline" size="sm" className="gap-2">
                 <Edit className="h-4 w-4" />
                 Create Custom Dashboard

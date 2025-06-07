@@ -3,24 +3,24 @@ import { notFound } from "next/navigation";
 import { getConvex } from "@/lib/convex";
 import { api } from "@convex-config/_generated/api";
 
+import { getPageIdentifier } from "~/utils/pageIdentifier";
 import { DashboardContent } from "./components/DashboardContent";
 
 interface GroupPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 // Generate metadata dynamically
 export async function generateMetadata({ params }: GroupPageProps) {
-  const id = params.id;
+  const id = (await params).id;
 
   try {
     const convex = getConvex();
     const group = await convex.query(api.groups.queries.getGroupById, {
       groupId: id as Id<"groups">,
     });
-    console.log("group", group);
 
     if (!group) {
       return {
@@ -41,10 +41,12 @@ export async function generateMetadata({ params }: GroupPageProps) {
 }
 
 export default async function GroupPage({ params }: GroupPageProps) {
-  const id = params.id;
+  const id = (await params).id;
 
   try {
     const convex = getConvex();
+
+    // Get the group data
     const group = await convex.query(api.groups.queries.getGroupById, {
       groupId: id as Id<"groups">,
     });
@@ -53,16 +55,31 @@ export default async function GroupPage({ params }: GroupPageProps) {
       notFound();
     }
 
-    // Check if this group has a custom dashboard
-    const hasCustomDashboard = !!(group as any).dashboardData;
+    // Use the new utility to generate a consistent page identifier
+    const pathname = `/admin/groups/${id}`;
+    const pageIdentifier = getPageIdentifier(pathname, id);
 
-    // If it has a custom dashboard, render it with the PuckRenderer
-    // Otherwise, render the standard dashboard
+    // Safely handle the puckEditor data query with proper types
+    let dashboardData = null;
+    try {
+      dashboardData = await convex.query(api.puckEditor.queries.getData, {
+        pageIdentifier,
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      // Continue with null dashboardData
+    }
+
+    // Determine if a custom dashboard exists based on whether we found data
+    const hasCustomDashboard = typeof dashboardData === "string";
+
+    // Render the dashboard content with appropriate props
     return (
       <div className="container mx-auto pb-12 pt-6">
         <DashboardContent
           group={group}
           hasCustomDashboard={hasCustomDashboard}
+          pageIdentifier={pageIdentifier}
         />
       </div>
     );

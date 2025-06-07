@@ -6,7 +6,6 @@ import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { Users } from "lucide-react";
 
-import { EntityList } from "@acme/ui/advanced/entity-list";
 import { Avatar, AvatarFallback, AvatarImage } from "@acme/ui/avatar";
 import { Badge } from "@acme/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
@@ -17,6 +16,21 @@ interface GroupMembersProps {
   maxMembers?: number;
   showRoles?: boolean;
   variant?: "default" | "compact";
+}
+
+// Add a type that includes the image property
+interface GroupMemberWithUser {
+  _id: Id<"groupMembers">;
+  role: string;
+  joinedAt: number;
+  status: string;
+  user?: {
+    _id: Id<"users">;
+    name?: string;
+    email: string;
+    role: "admin" | "user";
+    image?: string; // Add the image property
+  };
 }
 
 export function GroupMembers({
@@ -41,7 +55,7 @@ export function GroupMembers({
   );
 
   const members = useMemo(() => {
-    return membersQuery?.members || [];
+    return (membersQuery?.members ?? []) as GroupMemberWithUser[];
   }, [membersQuery]);
 
   // If no members data is available yet, show a placeholder
@@ -80,15 +94,15 @@ export function GroupMembers({
                   {member.user?.image && (
                     <AvatarImage
                       src={member.user.image}
-                      alt={member.user?.name || "Member"}
+                      alt={member.user.name ?? "Member"}
                     />
                   )}
                   <AvatarFallback>
-                    {member.user?.name?.[0] || "U"}
+                    {member.user?.name?.[0] ?? "U"}
                   </AvatarFallback>
                 </Avatar>
                 <span className="text-sm font-medium">
-                  {member.user?.name || member.user?.email || "Unknown User"}
+                  {member.user?.name ?? member.user?.email ?? "Unknown User"}
                 </span>
                 {showRoles && member.role && (
                   <Badge
@@ -106,6 +120,7 @@ export function GroupMembers({
     );
   }
 
+  // Default variant - instead of using EntityList, render members directly
   return (
     <Card>
       <CardHeader>
@@ -115,23 +130,51 @@ export function GroupMembers({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <EntityList
-          items={members.map((member) => ({
-            id: member._id,
-            name: member.user?.name || "Unknown User",
-            description: member.user?.email || "",
-            image: member.user?.image,
-            badge: showRoles ? member.role : undefined,
-            timestamp: member.joinedAt,
-          }))}
-          viewMode="list"
-          showSearch={false}
-          emptyState={
-            <div className="py-4 text-center text-muted-foreground">
-              No members to display
-            </div>
-          }
-        />
+        {members.length > 0 ? (
+          <div className="space-y-3">
+            {members.map((member) => (
+              <div
+                key={member._id}
+                className="flex items-center space-x-3 rounded-md border p-3"
+              >
+                <Avatar>
+                  {member.user?.image ? (
+                    <AvatarImage
+                      src={member.user.image}
+                      alt={member.user.name ?? "Member"}
+                    />
+                  ) : (
+                    <AvatarFallback>
+                      {member.user?.name?.[0] ?? "U"}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div className="min-w-0 flex-grow">
+                  <div className="font-medium">
+                    {member.user?.name ?? "Unknown User"}
+                  </div>
+                  {member.user?.email && (
+                    <div className="truncate text-sm text-muted-foreground">
+                      {member.user.email}
+                    </div>
+                  )}
+                </div>
+                {showRoles && member.role && (
+                  <Badge
+                    variant={member.role === "admin" ? "default" : "secondary"}
+                    className="ml-auto"
+                  >
+                    {member.role}
+                  </Badge>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-6 text-center text-muted-foreground">
+            No members to display
+          </div>
+        )}
       </CardContent>
     </Card>
   );

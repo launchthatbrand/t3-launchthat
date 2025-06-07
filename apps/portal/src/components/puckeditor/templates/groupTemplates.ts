@@ -25,6 +25,7 @@ export const groupTemplates: Template[] = [
         {
           type: "HeadingBlock",
           props: {
+            id: "heading-1",
             children: "Group Dashboard",
             level: "h1",
           },
@@ -32,6 +33,7 @@ export const groupTemplates: Template[] = [
         {
           type: "TextBlock",
           props: {
+            id: "text-1",
             content:
               "Welcome to the group dashboard. Here you can find all group-related information and activities.",
           },
@@ -39,12 +41,14 @@ export const groupTemplates: Template[] = [
         {
           type: "Spacer",
           props: {
+            id: "spacer-1",
             height: 20,
           },
         },
         {
           type: "GroupMembers",
           props: {
+            id: "members-1",
             title: "Group Members",
             groupId,
             maxMembers: 5,
@@ -55,12 +59,14 @@ export const groupTemplates: Template[] = [
         {
           type: "Spacer",
           props: {
+            id: "spacer-2",
             height: 20,
           },
         },
         {
           type: "GroupActivity",
           props: {
+            id: "activity-1",
             title: "Recent Activity",
             groupId,
             showStats: "yes",
@@ -82,6 +88,7 @@ export const groupTemplates: Template[] = [
         {
           type: "HeadingBlock",
           props: {
+            id: "heading-1",
             children: "Group Discussions",
             level: "h1",
           },
@@ -89,6 +96,7 @@ export const groupTemplates: Template[] = [
         {
           type: "TextBlock",
           props: {
+            id: "text-1",
             content:
               "Join the conversation and connect with other group members.",
           },
@@ -96,12 +104,14 @@ export const groupTemplates: Template[] = [
         {
           type: "Spacer",
           props: {
+            id: "spacer-1",
             height: 20,
           },
         },
         {
           type: "GroupDiscussions",
           props: {
+            id: "discussions-1",
             title: "Recent Discussions",
             groupId,
             maxPosts: 10,
@@ -112,12 +122,14 @@ export const groupTemplates: Template[] = [
         {
           type: "Spacer",
           props: {
+            id: "spacer-2",
             height: 20,
           },
         },
         {
           type: "GroupMembers",
           props: {
+            id: "members-1",
             title: "Active Members",
             groupId,
             maxMembers: 5,
@@ -140,6 +152,7 @@ export const groupTemplates: Template[] = [
         {
           type: "HeadingBlock",
           props: {
+            id: "heading-1",
             children: "Group Resources",
             level: "h1",
           },
@@ -147,6 +160,7 @@ export const groupTemplates: Template[] = [
         {
           type: "TextBlock",
           props: {
+            id: "text-1",
             content:
               "Access all the resources and files shared within this group.",
           },
@@ -154,12 +168,14 @@ export const groupTemplates: Template[] = [
         {
           type: "Spacer",
           props: {
+            id: "spacer-1",
             height: 20,
           },
         },
         {
           type: "GroupDownloads",
           props: {
+            id: "downloads-1",
             title: "Shared Files",
             groupId,
             maxDownloads: 10,
@@ -170,12 +186,14 @@ export const groupTemplates: Template[] = [
         {
           type: "Spacer",
           props: {
+            id: "spacer-2",
             height: 20,
           },
         },
         {
           type: "GroupEvents",
           props: {
+            id: "events-1",
             title: "Upcoming Events",
             groupId,
             maxEvents: 3,
@@ -198,6 +216,7 @@ export const groupTemplates: Template[] = [
         {
           type: "HeadingBlock",
           props: {
+            id: "heading-1",
             children: "Group Dashboard",
             level: "h1",
           },
@@ -205,22 +224,26 @@ export const groupTemplates: Template[] = [
         {
           type: "Spacer",
           props: {
+            id: "spacer-1",
             height: 20,
           },
         },
         {
           type: "div",
           props: {
+            id: "grid-container",
             className: "grid grid-cols-1 md:grid-cols-3 gap-4",
             children: [
               {
                 type: "div",
                 props: {
+                  id: "main-column",
                   className: "md:col-span-2",
                   children: [
                     {
                       type: "GroupDiscussions",
                       props: {
+                        id: "discussions-1",
                         title: "Discussions",
                         groupId,
                         maxPosts: 5,
@@ -231,12 +254,14 @@ export const groupTemplates: Template[] = [
                     {
                       type: "Spacer",
                       props: {
+                        id: "spacer-2",
                         height: 20,
                       },
                     },
                     {
                       type: "GroupEvents",
                       props: {
+                        id: "events-1",
                         title: "Events",
                         groupId,
                         maxEvents: 3,
@@ -250,11 +275,13 @@ export const groupTemplates: Template[] = [
               {
                 type: "div",
                 props: {
+                  id: "sidebar-column",
                   className: "md:col-span-1",
                   children: [
                     {
                       type: "GroupMembers",
                       props: {
+                        id: "members-1",
                         title: "Members",
                         groupId,
                         maxMembers: 10,
@@ -265,12 +292,14 @@ export const groupTemplates: Template[] = [
                     {
                       type: "Spacer",
                       props: {
+                        id: "spacer-3",
                         height: 20,
                       },
                     },
                     {
                       type: "GroupActivity",
                       props: {
+                        id: "activity-1",
                         title: "Activity",
                         groupId,
                         showStats: "yes",
@@ -299,7 +328,7 @@ export function getTemplatesByCategory() {
     if (!categories[template.category]) {
       categories[template.category] = [];
     }
-    categories[template.category].push(template);
+    categories[template.category]?.push(template);
   });
 
   return categories;
