@@ -108,10 +108,10 @@ const newQuizSchema = z.object({
   title: z.string().min(1, { message: "Quiz title is required" }),
 });
 
-type DraggedItemData = {
+interface DraggedItemData {
   type: string;
   item: Doc<"lessons"> | Doc<"topics"> | Doc<"quizzes">;
-};
+}
 
 export default function CourseBuilder() {
   const params = useParams();
@@ -185,14 +185,11 @@ export default function CourseBuilder() {
     useSensor(KeyboardSensor),
   );
 
-  const [activeItem, setActiveItem] = useState<Active<DraggedItemData> | null>(
-    null,
-  );
+  const [activeItem, setActiveItem] = useState<Active | null>(null);
 
   const activeDragItem = useMemo(() => {
     if (!activeItem) return null;
-    const data = activeItem.data.current;
-    if (!data) return null;
+    const data = activeItem.data.current as DraggedItemData;
 
     switch (data.type) {
       case "lesson":
@@ -224,7 +221,9 @@ export default function CourseBuilder() {
     availableQuizzes,
   ]);
 
-  const activeDragItemType = activeItem?.data.current?.type;
+  const activeDragItemType = activeItem?.data.current?.type as
+    | string
+    | undefined;
 
   // Early returns for loading/error states
   if (!courseId) {
@@ -244,9 +243,11 @@ export default function CourseBuilder() {
     return <div>Course not found.</div>;
   }
 
-  type CourseStructureItem = { lessonId: Id<"lessons"> };
+  interface CourseStructureItem {
+    lessonId: Id<"lessons">;
+  }
   const lessonsInCourseStructure: (Doc<"lessons"> & { type: "lesson" })[] = (
-    (courseData.course.courseStructure as CourseStructureItem[]) ?? []
+    (courseData.course.courseStructure ?? []) as CourseStructureItem[]
   )
     .map((structureItem) => {
       const lesson = courseData.attachedLessons.find(
@@ -259,7 +260,7 @@ export default function CourseBuilder() {
     );
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveItem(event.active as Active<DraggedItemData>);
+    setActiveItem(event.active as Active);
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -270,9 +271,9 @@ export default function CourseBuilder() {
       return;
     }
 
-    const activeType = active.data.current?.type;
+    const activeType = (active.data.current as DraggedItemData).type;
     const activeId = active.id as Id<"lessons" | "topics" | "quizzes">;
-    const overType = over.data.current?.type;
+    const overType = (over.data.current as DraggedItemData).type;
     const overId = over.id as Id<"lessons" | "topics" | "quizzes">;
 
     // Handle reordering lessons within the course structure
@@ -590,7 +591,9 @@ export default function CourseBuilder() {
                   {activeItem && activeDragItem ? (
                     <SortableItem
                       id={activeItem.id.toString()}
-                      data={activeItem.data.current}
+                      as
+                      string
+                      data={activeItem.data.current as DraggedItemData}
                       isDragging={true}
                     >
                       <div className="rounded-md bg-background p-4 opacity-80 shadow-lg">

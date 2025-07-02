@@ -55,6 +55,7 @@ export const getCourseStructureWithItems = query({
             v.literal("video"),
             v.literal("quiz"),
           ),
+          isPublished: v.optional(v.boolean()),
         }),
       ),
       attachedQuizzes: v.array(
@@ -66,6 +67,7 @@ export const getCourseStructureWithItems = query({
           questions: v.optional(v.array(v.any())),
           order: v.optional(v.number()),
           lessonId: v.optional(v.id("lessons")),
+          isPublished: v.optional(v.boolean()),
         }),
       ),
     }),
@@ -188,6 +190,7 @@ export const getAvailableQuizzes = query({
       title: v.string(),
       description: v.optional(v.string()),
       questions: v.optional(v.array(v.any())),
+      isPublished: v.optional(v.boolean()),
     }),
   ),
   handler: async (ctx) => {
