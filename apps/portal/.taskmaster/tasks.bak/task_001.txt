@@ -1,0 +1,118 @@
+# Task ID: 1
+# Title: Create Database Schema for Integration System
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Design and implement the database schema for the integration system including tables for Apps, Connections, Scenarios, and Nodes.
+# Details:
+Create the following tables:
+1. Apps: id, name, description, auth_type, config_template, created_at, updated_at
+2. Connections: id, app_id, name, credentials (encrypted), status, last_checked_at, created_at, updated_at
+3. Scenarios: id, name, description, status, created_at, updated_at
+4. Nodes: id, scenario_id, type, config, position, created_at, updated_at
+5. NodeConnections: id, scenario_id, source_node_id, target_node_id, mapping
+
+Ensure proper foreign key constraints and indexes for performance. Implement encryption for the credentials field in the Connections table.
+
+# Test Strategy:
+Write unit tests for Convex schema definitions and their relationships. Test CRUD operations for each table. Verify encryption/decryption of credentials works correctly. Test referential integrity and query performance with indexes.
+
+# Subtasks:
+## 1. Create Integration Apps Table Schema [done]
+### Dependencies: None
+### Description: Design and implement the Convex schema definition for the Integration Apps table.
+### Details:
+Define the schema with fields: id, name, description, auth_type, config_template, created_at, updated_at. Add appropriate indexes for query performance, especially for name lookups. Implement validation rules for required fields.
+<info added on 2025-06-06T18:18:41.043Z>
+Schema for Integration Apps has been implemented in apps/portal/convex/integrations/schema/appsSchema.ts with the following structure:
+
+Fields:
+- name: String for app name (WordPress, Monday.com, etc.)
+- description: String for app description
+- authType: String for authentication type (oauth, apiKey, usernamePassword)
+- configTemplate: String for JSON configuration template
+- iconUrl: Optional string for app icon
+- isEnabled: Boolean for app availability
+- createdAt: Number for creation timestamp
+- updatedAt: Number for update timestamp
+
+Indexes:
+- by_name: For looking up apps by name
+- by_enabled: For filtering enabled/disabled apps
+
+The schema has been exported as integrationsAppsSchema object for integration with the main schema.
+</info added on 2025-06-06T18:18:41.043Z>
+
+## 2. Create Connections Table Schema [done]
+### Dependencies: 1.1
+### Description: Design and implement the Convex schema definition for the Connections table.
+### Details:
+Define the schema with fields: id, app_id, name, credentials (encrypted), status, last_checked_at, created_at, updated_at. Ensure proper relationship with the Apps table. Implement encryption for the credentials field and add indexes for app_id and status fields.
+<info added on 2025-06-06T18:19:19.089Z>
+Created the Connections schema in apps/portal/convex/integrations/schema/connectionsSchema.ts with all required fields: appId, name, credentials (encrypted), status, lastCheckedAt, plus additional fields: config (optional), lastError (optional), ownerId, createdAt, and updatedAt. 
+
+Implemented four indexes:
+- by_app_id: For looking up connections by app
+- by_status: For looking up connections by status
+- by_owner: For looking up connections by owner
+- by_app_and_owner: For looking up connections by app and owner
+
+The schema has been exported in an integrationsConnectionsSchema object for integration with the main schema, ensuring proper relationship with the Apps table as specified.
+</info added on 2025-06-06T18:19:19.089Z>
+
+## 3. Create Scenarios Table Schema [done]
+### Dependencies: None
+### Description: Design and implement the Convex schema definition for the Scenarios table.
+### Details:
+Define the schema with fields: id, name, description, status, created_at, updated_at. Add indexes for status and name fields to optimize queries. Implement validation for the status field to ensure only valid values are accepted.
+<info added on 2025-06-06T18:20:30.613Z>
+I've implemented the Scenarios schema in apps/portal/convex/integrations/schema/scenariosSchema.ts with the following structure:
+
+Fields:
+- name: String for scenario name
+- description: String for detailed description
+- status: String for current status (draft, active, inactive, error)
+- schedule: Optional string for automatic execution schedule
+- lastExecutedAt: Optional number for last execution timestamp
+- lastExecutionResult: Optional string for execution result
+- lastExecutionError: Optional string for error message
+- ownerId: ID reference to the user who created the scenario
+- createdAt: Number for creation timestamp
+- updatedAt: Number for update timestamp
+
+Indexes:
+- by_status: For looking up scenarios by status
+- by_owner: For looking up scenarios by owner
+- by_name: For finding scenarios by name
+- by_owner_and_status: For finding scenarios by owner and status
+
+The schema has been exported in an integrationsScenariosSchema object for integration with the main schema.
+</info added on 2025-06-06T18:20:30.613Z>
+
+## 4. Create Nodes Table Schema [done]
+### Dependencies: 1.3
+### Description: Design and implement the Convex schema definition for the Nodes table.
+### Details:
+Define the schema with fields: id, scenario_id, type, config, position, created_at, updated_at. Ensure proper relationship with the Scenarios table. Add indexes for scenario_id and type fields to optimize queries for node filtering.
+<info added on 2025-06-06T18:21:13.358Z>
+Implemented the Nodes schema in apps/portal/convex/integrations/schema/nodesSchema.ts with all required fields: scenarioId, type, label, config, position, order (optional), createdAt, and updatedAt. Added four indexes for efficient querying: by_scenario, by_type, by_scenario_and_type, and by_scenario_and_order. The schema properly maintains relationship with the Scenarios table through the scenarioId field. All fields match the planned schema with minor naming adjustments (scenarioId instead of scenario_id) to follow the codebase conventions. The schema has been exported in an integrationsNodesSchema object for integration with the main schema.
+</info added on 2025-06-06T18:21:13.358Z>
+
+## 5. Create NodeConnections Table Schema [done]
+### Dependencies: 1.3, 1.4
+### Description: Design and implement the Convex schema definition for the NodeConnections table.
+### Details:
+Define the schema with fields: id, scenario_id, source_node_id, target_node_id, mapping. Ensure proper relationships with the Scenarios and Nodes tables. Add indexes for scenario_id, source_node_id, and target_node_id to optimize connection lookups.
+
+## 6. Implement Encryption for Credentials [done]
+### Dependencies: 1.2
+### Description: Develop and integrate the encryption mechanism for storing sensitive credential data in Convex.
+### Details:
+Choose a strong encryption algorithm compatible with Convex, implement key management, and create functions for encrypting and decrypting credential data. Ensure the encryption process is seamlessly integrated with database operations.
+
+## 7. Test Schema Definitions and Relationships [done]
+### Dependencies: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6
+### Description: Conduct thorough testing of the implemented Convex schema definitions and their relationships.
+### Details:
+Create test cases for CRUD operations on all tables. Verify data integrity, relationships between tables, and proper encryption/decryption of sensitive data. Test query performance with the implemented indexes and optimize as needed.
+

@@ -1,0 +1,89 @@
+# Task ID: 1
+# Title: Design Feed Data Model
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Create the database schema for the social feed system including feed items, reactions, comments, and user subscriptions tables.
+# Details:
+Implement the following tables in Convex database:
+
+1. Feed Items Table:
+- id: unique identifier
+- contentType: enum (post, share, comment)
+- creatorId: reference to user
+- createdAt: timestamp
+- updatedAt: timestamp
+- content: text content
+- mediaUrls: array of media references
+- visibility: enum (public, private, group)
+- originalContentId: reference to original content if shared
+- moduleType: enum (blog, course, group, event)
+- moduleId: reference to specific module item
+
+2. Reactions Table:
+- id: unique identifier
+- userId: reference to user
+- feedItemId: reference to feed item
+- reactionType: enum (like, celebrate, support, etc.)
+- createdAt: timestamp
+
+3. Comments Table:
+- id: unique identifier
+- feedItemId: reference to feed item
+- userId: reference to user
+- content: text content
+- parentCommentId: reference to parent comment (for threading)
+- createdAt: timestamp
+- updatedAt: timestamp
+
+4. Feed Subscriptions Table:
+- id: unique identifier
+- userId: reference to user
+- followType: enum (user, topic, group)
+- followId: reference to followed entity
+- createdAt: timestamp
+
+5. Saved Items Table:
+- id: unique identifier
+- userId: reference to user
+- feedItemId: reference to feed item
+- createdAt: timestamp
+
+# Test Strategy:
+1. Create unit tests to verify schema integrity
+2. Test data relationships and constraints
+3. Validate that indexes are properly set up for query performance
+4. Test CRUD operations on each table
+5. Verify that timestamps are automatically updated
+
+# Subtasks:
+## 1. Design User Table [done]
+### Dependencies: None
+### Description: Create schema for the User table, including fields for user information and authentication
+### Details:
+Define fields such as user_id, username, email, password_hash, created_at, last_login. Consider indexing on username and email for faster lookups.
+
+## 2. Design Post Table [done]
+### Dependencies: 1.1
+### Description: Create schema for the Post table, including fields for post content and metadata
+### Details:
+Define fields such as post_id, user_id (foreign key to User table), content, created_at, updated_at. Index on user_id and created_at for efficient retrieval of user posts and timeline generation.
+
+## 3. Design Comment Table [done]
+### Dependencies: 1.1, 1.2
+### Description: Create schema for the Comment table, including fields for comment content and relationships
+### Details:
+Define fields such as comment_id, post_id (foreign key to Post table), user_id (foreign key to User table), content, created_at. Index on post_id and user_id for quick retrieval of comments on posts and by users.
+
+## 4. Design Like Table [done]
+### Dependencies: 1.1, 1.2
+### Description: Create schema for the Like table to track user likes on posts
+### Details:
+Define fields such as like_id, user_id (foreign key to User table), post_id (foreign key to Post table), created_at. Create a unique composite index on (user_id, post_id) to ensure one like per user per post.
+
+## 5. Map Relationships and Optimize Queries [done]
+### Dependencies: 1.1, 1.2, 1.3, 1.4
+### Description: Define relationships between tables and optimize queries for common feed operations
+### Details:
+Map one-to-many and many-to-many relationships between tables. Create views or stored procedures for common feed queries like retrieving a user's timeline or post details with comments and likes. Consider denormalization techniques for performance if necessary.
+

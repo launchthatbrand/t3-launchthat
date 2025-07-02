@@ -19,8 +19,8 @@ import {
   Users,
 } from "lucide-react";
 
-import { SidebarHeader } from "@acme/ui/components/sidebar";
 import { NavMain } from "@acme/ui/general/nav-main";
+import { SidebarHeader } from "@acme/ui/components/sidebar";
 import { TeamSwitcher } from "@acme/ui/general/team-switcher";
 
 // import { useLearndash } from "../hooks/useLearndash";
@@ -77,6 +77,11 @@ export default function DefaultSidebar() {
       url: "/dashboard",
       icon: TerminalSquare,
       isActive: true,
+    },
+    {
+      title: "Courses",
+      url: "/admin/courses",
+      icon: Users,
     },
     {
       title: "Downloads",

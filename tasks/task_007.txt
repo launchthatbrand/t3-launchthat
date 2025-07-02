@@ -1,0 +1,48 @@
+# Task ID: 7
+# Title: Develop Post Card Component
+# Status: done
+# Dependencies: 3, 4
+# Priority: high
+# Description: Create a component to display individual feed items with all interaction options including reactions, comments, and sharing.
+# Details:
+Implement a `PostCard` React component with the following features:
+
+1. Content Display:
+   - Formatted text content with support for links
+   - Media gallery with image preview
+   - Metadata (author, timestamp, visibility)
+   - Original content preview for shares
+
+2. Interaction Controls:
+   - Reaction buttons with counts
+   - Comment button and count
+   - Share button
+   - Save/bookmark button
+   - More options menu (report, hide, etc.)
+
+3. Author Actions:
+   - Edit post option (if owner)
+   - Delete post option (if owner)
+   - Pin post option (if applicable)
+
+4. Expandable Elements:
+   - "Show more" for long text
+   - Expandable media gallery
+   - Expandable comment section
+
+5. Styling:
+   - Responsive layout
+   - Consistent with platform design
+   - Appropriate spacing and typography
+   - Hover and focus states
+
+Implement optimistic UI updates for reactions and other interactions. Handle different content types (text, images, links) appropriately.
+
+# Test Strategy:
+1. Test rendering of different content types
+2. Verify all interaction buttons work
+3. Test expandable sections
+4. Verify owner-specific actions appear correctly
+5. Test responsive behavior
+6. Verify accessibility
+7. Test optimistic updates and error recovery

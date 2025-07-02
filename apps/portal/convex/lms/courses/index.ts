@@ -1,8 +1,10 @@
+import { filter } from "convex-helpers/server/filter";
 // Remove unused type imports
 // import type { Doc, Id } from "./_generated/dataModel";
 // import type { MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 
+import type { Id } from "../../_generated/dataModel";
 import { internal } from "../../_generated/api"; // Ensure internal is imported
 import { internalMutation, mutation, query } from "../../_generated/server";
 import { requireAdmin } from "../../lib/permissions/requirePermission"; // Use the consolidated version
@@ -154,7 +156,7 @@ export const getCourseStructure = query({
       isPublished: v.optional(v.boolean()),
       courseStructure: v.optional(
         v.array(v.object({ lessonId: v.id("lessons") })),
-      ), // Include courseStructure in return
+      ),
       // Nested lessons array
       lessons: v.array(
         v.object({
@@ -172,7 +174,7 @@ export const getCourseStructure = query({
               // Topic fields from schema
               _id: v.id("topics"),
               _creationTime: v.number(),
-              lessonId: v.optional(v.id("lessons")), // Make optional
+              lessonId: v.optional(v.id("lessons")),
               title: v.string(),
               contentType: v.union(
                 v.literal("text"),
@@ -180,7 +182,7 @@ export const getCourseStructure = query({
                 v.literal("quiz"),
               ),
               content: v.optional(v.string()),
-              order: v.optional(v.number()), // Make optional
+              order: v.optional(v.number()),
               isPublished: v.optional(v.boolean()),
             }),
           ),
@@ -209,7 +211,7 @@ export const getAvailableTopics = query({
     v.object({
       _id: v.id("topics"),
       _creationTime: v.number(),
-      lessonId: v.optional(v.id("lessons")), // Make optional
+      lessonId: v.optional(v.id("lessons")),
       title: v.string(),
       contentType: v.union(
         v.literal("text"),
@@ -217,7 +219,7 @@ export const getAvailableTopics = query({
         v.literal("quiz"),
       ),
       content: v.optional(v.string()),
-      order: v.optional(v.number()), // Make optional
+      order: v.optional(v.number()),
       isPublished: v.optional(v.boolean()),
     }),
   ),
@@ -235,7 +237,7 @@ export const getAvailableQuizzes = query({
 
     // Filter out quizzes linked to a topic or lesson
     const availableQuizzes = allQuizzes.filter(
-      (quiz) => !quiz.topicId && !quiz.lessonId, // Check both optional fields
+      (quiz) => !quiz.topicId && !quiz.lessonId,
     );
 
     return availableQuizzes;
@@ -246,26 +248,74 @@ export const getAvailableQuizzes = query({
       _id: v.id("quizzes"),
       _creationTime: v.number(),
       title: v.string(),
-      lessonId: v.optional(v.id("lessons")),
-      topicId: v.optional(v.id("topics")),
-      questions: v.array(
-        v.object({
-          questionText: v.string(),
-          type: v.union(
-            v.literal("single-choice"),
-            v.literal("multiple-choice"),
-            v.literal("true-false"),
-          ),
-          options: v.optional(v.array(v.string())),
-          correctAnswer: v.union(v.string(), v.boolean(), v.array(v.string())),
-          explanation: v.optional(v.string()),
-        }),
-      ),
-      timeLimit: v.optional(v.number()), // in minutes
-      passThreshold: v.optional(v.number()), // percentage (e.g., 70)
-      isPublished: v.optional(v.boolean()),
+      description: v.optional(v.string()),
+      questions: v.optional(v.array(v.any())),
     }),
   ),
+});
+
+/**
+ * Lightweight query for course metadata only
+ * Useful for components that only need basic course info
+ */
+export const getCourseMetadata = query({
+  args: { courseId: v.id("courses") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("courses"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      isPublished: v.optional(v.boolean()),
+      lessonCount: v.number(),
+      topicCount: v.number(),
+      quizCount: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const course = await ctx.db.get(args.courseId);
+    if (!course) {
+      return null;
+    }
+
+    // Get counts for dashboard/summary views
+    const lessonCount = await ctx.db
+      .query("lessons")
+      .withIndex("by_course_order", (q) => q.eq("courseId", args.courseId))
+      .collect()
+      .then((lessons) => lessons.length);
+
+    const lessonIds = await ctx.db
+      .query("lessons")
+      .withIndex("by_course_order", (q) => q.eq("courseId", args.courseId))
+      .collect()
+      .then((lessons) => lessons.map((l) => l._id));
+
+    let topicCount = 0;
+    let quizCount = 0;
+
+    for (const lessonId of lessonIds) {
+      const topics = await ctx.db
+        .query("topics")
+        .withIndex("by_lessonId_order", (q) => q.eq("lessonId", lessonId))
+        .collect();
+      topicCount += topics.length;
+
+      const quizzes = await ctx.db
+        .query("quizzes")
+        .withIndex("by_lessonId", (q) => q.eq("lessonId", lessonId))
+        .collect();
+      quizCount += quizzes.length;
+    }
+
+    return {
+      ...course,
+      lessonCount,
+      topicCount,
+      quizCount,
+    };
+  },
 });
 
 // --- Mutation Functions ---
@@ -351,7 +401,7 @@ export const deleteCourse = mutation({
         // Schedule internal deletion for each lesson
         await ctx.scheduler.runAfter(
           0,
-          internal.lms.courses.internalDeleteLessonAndContent, // Corrected path
+          internal.lms.courses.index.internalDeleteLessonAndContent, // Corrected path
           {
             lessonId: lessonItem.lessonId,
           },
@@ -420,55 +470,43 @@ export const addLessonToCourse = mutation({
   args: {
     courseId: v.id("courses"),
     lessonId: v.id("lessons"),
-    order: v.optional(v.number()), // Optional: if not provided, appends to the end
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
+    // Attach the lesson to the course (update its courseId field)
+    await ctx.db.patch(args.lessonId, { courseId: args.courseId });
+
+    // Update the course's structure to include the new lesson
     const course = await ctx.db.get(args.courseId);
     if (!course) {
       throw new Error("Course not found");
     }
 
-    const lesson = await ctx.db.get(args.lessonId);
-    if (!lesson) {
-      throw new Error("Lesson not found");
-    }
-
-    // Ensure lesson is not already in the course structure
-    const existingEntry = (course.courseStructure ?? []).find(
+    // Prevent adding the same lesson multiple times to the structure
+    const existingEntry = course.courseStructure?.find(
       (item) => item.lessonId === args.lessonId,
     );
     if (existingEntry) {
-      throw new Error("Lesson already exists in this course");
+      return null; // Lesson already in structure, no need to add again
     }
 
-    const newStructureItem = { lessonId: args.lessonId };
-    let updatedStructure = [...(course.courseStructure ?? [])];
-
-    if (args.order !== undefined && args.order >= 0) {
-      updatedStructure.splice(args.order, 0, newStructureItem);
-    } else {
-      updatedStructure.push(newStructureItem);
-    }
-
-    await ctx.db.patch(args.courseId, { courseStructure: updatedStructure });
-
-    // Update the lesson to link it to this course
-    // No, lessons are standalone, their presence in courseStructure implies the link.
-    // await ctx.db.patch(args.lessonId, { courseId: args.courseId });
-
-    return { success: true };
+    const currentStructure = course.courseStructure ?? [];
+    const newStructure = [
+      ...currentStructure,
+      { lessonId: args.lessonId }, // Removed 'type' field to match schema
+    ];
+    await ctx.db.patch(args.courseId, { courseStructure: newStructure });
+    return null;
   },
-  returns: v.object({ success: v.boolean() }),
 });
 
 /**
- * Remove a lesson from a course's structure.
- * Does NOT delete the lesson itself, only unlinks it from the course structure.
+ * Removes a lesson from a course's structure (unlinks it from the course order).
+ * This does NOT delete the lesson itself.
  * Admin-only mutation.
  */
-export const removeLessonFromCourse = mutation({
+export const removeLessonFromCourseStructure = mutation({
   args: {
     courseId: v.id("courses"),
     lessonId: v.id("lessons"),
@@ -481,52 +519,27 @@ export const removeLessonFromCourse = mutation({
       throw new Error("Course not found");
     }
 
-    const lesson = await ctx.db.get(args.lessonId);
-    if (!lesson) {
-      // Lesson might have been deleted, which is okay for removal from structure
-      console.warn(
-        `Lesson ${args.lessonId} not found, attempting removal from course structure anyway.`,
-      );
-    }
-
-    const updatedStructure = (course.courseStructure ?? []).filter(
-      (item) => item.lessonId !== args.lessonId,
-    );
-
-    if (updatedStructure.length === (course.courseStructure ?? []).length) {
-      // Lesson was not found in the structure, maybe already removed
-      // For idempotency, we can return success or a specific message
-      // throw new Error("Lesson not found in course structure");
-      console.warn(
-        `Lesson ${args.lessonId} not found in structure of course ${args.courseId}.`,
-      );
-      return {
-        success: true,
-        message: "Lesson not found in structure or already removed.",
-      };
-    }
+    const updatedStructure =
+      course.courseStructure?.filter(
+        (item) => item.lessonId !== args.lessonId,
+      ) ?? [];
 
     await ctx.db.patch(args.courseId, { courseStructure: updatedStructure });
 
-    // Unlink the lesson from the course
-    // No, lessons are standalone. Removing from courseStructure is sufficient.
-    // if (lesson && lesson.courseId === args.courseId) {
-    //   await ctx.db.patch(args.lessonId, { courseId: undefined });
-    // }
+    // Also nullify the courseId on the lesson itself, effectively detaching it.
+    await ctx.db.patch(args.lessonId, { courseId: undefined });
 
-    return { success: true };
+    return null;
   },
-  returns: v.object({ success: v.boolean(), message: v.optional(v.string()) }),
 });
 
 /**
- * Reorder lessons within a course's structure.
+ * Reorders lessons within a course's structure.
  * Admin-only mutation.
  */
 export const reorderLessonsInCourse = mutation({
   args: {
     courseId: v.id("courses"),
-    // Expects an array of lesson IDs in the new desired order
     orderedLessonIds: v.array(v.id("lessons")),
   },
   handler: async (ctx, args) => {
@@ -537,17 +550,235 @@ export const reorderLessonsInCourse = mutation({
       throw new Error("Course not found");
     }
 
-    const updatedStructure = args.orderedLessonIds.map((lessonId) => ({
-      lessonId,
-      order:
-        course.courseStructure?.findIndex(
-          (item) => item.lessonId === lessonId,
-        ) ?? 0,
+    // Map the orderedLessonIds to the structure format
+    const newCourseStructure = args.orderedLessonIds.map((lessonId) => ({
+      lessonId: lessonId,
     }));
 
-    await ctx.db.patch(args.courseId, { courseStructure: updatedStructure });
+    await ctx.db.patch(args.courseId, { courseStructure: newCourseStructure });
 
+    return null;
+  },
+});
+
+// --- Get Course Structure ---
+export const getStructure = query({
+  args: {
+    courseId: v.id("courses"),
+  },
+  handler: async (ctx, args) => {
+    const course = await ctx.db.get(args.courseId);
+    if (!course) {
+      throw new Error("Course not found");
+    }
+
+    // Get all lessons for this course
+    const lessons = await ctx.db
+      .query("lessons")
+      .withIndex("by_course_order", (q) => q.eq("courseId", args.courseId))
+      .collect();
+
+    // Get all topics for these lessons
+    const lessonIds = lessons.map((lesson) => lesson._id);
+    const topics = await filter(
+      ctx.db.query("topics").withIndex("by_lessonId_order"),
+      (topic) => lessonIds.includes(topic.lessonId as Id<"lessons">),
+    ).collect();
+
+    // Get all quizzes for these topics
+    const topicIds = topics.map((topic) => topic._id);
+    const quizzes = await filter(
+      ctx.db.query("quizzes").withIndex("by_topicId"),
+      (quiz) => topicIds.includes(quiz.topicId as Id<"topics">),
+    ).collect();
+
+    // Get final quiz if it exists
+    const finalQuiz = course.finalQuizId
+      ? await ctx.db.get(course.finalQuizId)
+      : null;
+
+    return {
+      course,
+      lessons,
+      topics,
+      quizzes,
+      finalQuiz,
+    };
+  },
+});
+
+// --- Update Course Structure ---
+export const updateStructure = mutation({
+  args: {
+    courseId: v.id("courses"),
+    lessonIds: v.array(v.id("lessons")),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    // Update course structure
+    await ctx.db.patch(args.courseId, {
+      courseStructure: args.lessonIds.map((lessonId) => ({ lessonId })),
+    });
+
+    // Update lesson orders
+    for (let i = 0; i < args.lessonIds.length; i++) {
+      await ctx.db.patch(args.lessonIds[i], {
+        courseId: args.courseId,
+        order: i,
+      });
+    }
+  },
+});
+
+// --- Set Final Quiz ---
+export const setFinalQuiz = mutation({
+  args: {
+    courseId: v.id("courses"),
+    quizId: v.optional(v.id("quizzes")),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    // Get current final quiz ID
+    const course = await ctx.db.get(args.courseId);
+    if (!course) {
+      throw new Error("Course not found");
+    }
+
+    // If there was a previous final quiz, unlink it
+    if (course.finalQuizId) {
+      await ctx.db.patch(course.finalQuizId, {
+        courseId: undefined,
+        order: undefined,
+      });
+    }
+
+    // Update course with new final quiz
+    await ctx.db.patch(args.courseId, {
+      finalQuizId: args.quizId,
+    });
+
+    // If setting a new quiz, link it to the course
+    if (args.quizId) {
+      await ctx.db.patch(args.quizId, {
+        courseId: args.courseId,
+        order: 0, // Final quiz is always first/only
+      });
+    }
+  },
+});
+
+// --- Remove Lesson from Course ---
+export const removeLesson = mutation({
+  args: {
+    courseId: v.id("courses"),
+    lessonId: v.id("lessons"),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const course = await ctx.db.get(args.courseId);
+    if (!course) {
+      throw new Error("Course not found");
+    }
+
+    // Remove lesson from course structure
+    const newStructure =
+      course.courseStructure?.filter(
+        (item) => item.lessonId !== args.lessonId,
+      ) ?? [];
+
+    await ctx.db.patch(args.courseId, {
+      courseStructure: newStructure,
+    });
+
+    // Unlink lesson from course
+    await ctx.db.patch(args.lessonId, {
+      courseId: undefined,
+      order: undefined,
+    });
+  },
+});
+
+export const saveCourseStructure = mutation({
+  args: {
+    courseId: v.id("courses"),
+    structure: v.object({
+      lessons: v.array(
+        v.object({
+          lessonId: v.id("lessons"),
+        }),
+      ),
+    }),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    // Verify the course exists
+    const course = await ctx.db.get(args.courseId);
+    if (!course) {
+      throw new Error("Course not found");
+    }
+
+    console.log("Saving course structure:", {
+      courseId: args.courseId,
+      structure: args.structure,
+      currentStructure: course.courseStructure,
+    });
+
+    // Get current course structure to find lessons to detach
+    const currentStructure = course.courseStructure ?? [];
+    const currentLessonIds = new Set(
+      currentStructure.map((item) => item.lessonId),
+    );
+    const newLessonIds = new Set(
+      args.structure.lessons.map((item) => item.lessonId),
+    );
+
+    console.log("Lesson IDs:", {
+      current: Array.from(currentLessonIds),
+      new: Array.from(newLessonIds),
+    });
+
+    // 1. Detach lessons that are no longer in the structure
+    for (const { lessonId } of currentStructure) {
+      if (!newLessonIds.has(lessonId)) {
+        console.log("Detaching lesson:", lessonId);
+        // Remove courseId and order from the lesson
+        await ctx.db.patch(lessonId, {
+          courseId: undefined,
+          order: undefined,
+        });
+      }
+    }
+
+    // 2. Update lesson attachments and order
+    for (let i = 0; i < args.structure.lessons.length; i++) {
+      const { lessonId } = args.structure.lessons[i];
+      console.log("Updating lesson:", { lessonId, order: i });
+
+      // First verify the lesson exists
+      const lesson = await ctx.db.get(lessonId);
+      if (!lesson) {
+        console.log("Warning: Lesson not found:", lessonId);
+        continue;
+      }
+
+      // Attach lesson to course and set its order
+      await ctx.db.patch(lessonId, {
+        courseId: args.courseId,
+        order: i,
+      });
+    }
+
+    // 3. Update the course structure
+    console.log("Updating course structure");
+    await ctx.db.patch(args.courseId, {
+      courseStructure: args.structure.lessons,
+    });
+
+    console.log("Course structure saved successfully");
     return { success: true };
   },
-  returns: v.object({ success: v.boolean() }),
 });

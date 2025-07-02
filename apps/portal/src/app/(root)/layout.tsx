@@ -1,13 +1,12 @@
 import "~/app/globals.css";
 
 import type { Metadata, Viewport } from "next";
+
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
-
-import { cn } from "@acme/ui";
-import StandardLayout from "@acme/ui/layout/StandardLayout";
-
 import { Providers } from "../providers";
+import StandardLayout from "@acme/ui/layout/StandardLayout";
+import { cn } from "@acme/ui";
 
 // Metadata for the app
 export const metadata: Metadata = {
@@ -57,26 +56,27 @@ export default function RootLayout(props: {
   header: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={cn(
-          "min-h-screen bg-background font-sans text-foreground antialiased",
-          GeistSans.variable,
-          GeistMono.variable,
-        )}
-      >
-        <Providers>
-          <StandardLayout
-            appName="Portal Demo"
-            sidebar={props.sidebar}
-            header={props.header}
-            sidebarVariant="inset"
-          >
-            {props.children}
-          </StandardLayout>
-        </Providers>
-      </body>
-    </html>
+    <>{props.children}</>
+    // <html lang="en" suppressHydrationWarning>
+    //   <body
+    //     className={cn(
+    //       "min-h-screen bg-background font-sans text-foreground antialiased",
+    //       GeistSans.variable,
+    //       GeistMono.variable,
+    //     )}
+    //   >
+    //     <Providers>
+    //       <StandardLayout
+    //         appName="Portal Demo"
+    //         sidebar={props.sidebar}
+    //         header={props.header}
+    //         sidebarVariant="inset"
+    //       >
+    //         {props.children}
+    //       </StandardLayout>
+    //     </Providers>
+    //   </body>
+    // </html>
   );
 }
 

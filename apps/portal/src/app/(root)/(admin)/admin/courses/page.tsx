@@ -97,8 +97,8 @@ export default function AdminCoursesPage() {
     return params;
   }, [debouncedSearchTitle, activeFilters]);
 
-  const courses = useQuery(api.courses.listCourses, queryParams);
-  const deleteCourse = useMutation(api.courses.deleteCourse);
+  const courses = useQuery(api.lms.index.listCourses, queryParams);
+  const deleteCourse = useMutation(api.lms.index.deleteCourse);
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [courseToDelete, setCourseToDelete] = React.useState<CourseData | null>(

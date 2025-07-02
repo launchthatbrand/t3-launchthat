@@ -1,0 +1,46 @@
+# Task ID: 11
+# Title: Implement Mentions and Hashtags
+# Status: done
+# Dependencies: 6, 8
+# Priority: medium
+# Description: Add support for @mentions and #hashtags in posts and comments with autocomplete suggestions and linking.
+# Details:
+Implement the following features:
+
+1. Mention System:
+   - Detect @username patterns in text input
+   - Show autocomplete dropdown with matching users
+   - Convert mentions to links/special formatting in rendered content
+   - Store mention metadata for notifications
+
+2. Hashtag System:
+   - Detect #hashtag patterns in text input
+   - Show autocomplete with trending or previously used hashtags
+   - Convert hashtags to links in rendered content
+   - Store hashtag metadata for search and categorization
+
+3. Backend Support:
+   - Create or enhance text parsing functions
+   - Add mention and hashtag extraction during post/comment creation
+   - Update database schema to track mentions and hashtags
+   - Create API for hashtag trending and suggestions
+
+4. Frontend Components:
+   - Enhance text editor with mention/hashtag detection
+   - Create autocomplete components
+   - Style mention and hashtag elements in rendered content
+
+5. Navigation:
+   - Implement hashtag pages showing all content with a specific tag
+   - Ensure mentions link to user profiles
+
+Optimize autocomplete performance for large user bases. Implement proper access control for mentions (only suggest users the author can mention).
+
+# Test Strategy:
+1. Test mention detection and autocomplete
+2. Verify hashtag detection and linking
+3. Test mention notifications
+4. Verify hashtag pages show correct content
+5. Test autocomplete performance with large datasets
+6. Verify accessibility of autocomplete
+7. Test edge cases like special characters in hashtags

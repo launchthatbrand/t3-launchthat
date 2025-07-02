@@ -1,0 +1,256 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Create Database Schema for Integration System",
+      "description": "Design and implement the database schema for the integration system including tables for Apps, Connections, Scenarios, and Nodes.",
+      "details": "Create the following tables:\n1. Apps: id, name, description, auth_type, config_template, created_at, updated_at\n2. Connections: id, app_id, name, credentials (encrypted), status, last_checked_at, created_at, updated_at\n3. Scenarios: id, name, description, status, created_at, updated_at\n4. Nodes: id, scenario_id, type, config, position, created_at, updated_at\n5. NodeConnections: id, scenario_id, source_node_id, target_node_id, mapping\n\nEnsure proper foreign key constraints and indexes for performance. Implement encryption for the credentials field in the Connections table.",
+      "testStrategy": "Write unit tests for database models and their relationships. Test CRUD operations for each table. Verify encryption/decryption of credentials works correctly. Test cascade deletions and referential integrity.",
+      "priority": "high",
+      "dependencies": [],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 2,
+      "title": "Implement Credential Encryption System",
+      "description": "Create a secure system for storing and managing integration credentials with proper encryption/decryption capabilities.",
+      "details": "Implement a credential management service with the following features:\n1. Use industry-standard encryption (AES-256) for storing credentials\n2. Create methods for encrypting credentials before storage\n3. Create methods for decrypting credentials when needed for API calls\n4. Implement key rotation capabilities\n5. Ensure credentials are never logged or exposed in plaintext\n\nCode example:\n```\nclass CredentialManager {\n  encrypt(plaintext) {\n    // Use encryption key from secure environment variable\n    // Return encrypted string\n  }\n  \n  decrypt(encrypted) {\n    // Decrypt and return plaintext for use in API calls\n  }\n}\n```",
+      "testStrategy": "Write unit tests for encryption/decryption. Verify that the same plaintext always encrypts to different ciphertexts (due to IV/salt). Ensure decryption correctly recovers the original plaintext. Test key rotation functionality. Perform security audit of the implementation.",
+      "priority": "high",
+      "dependencies": [
+        1
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 3,
+      "title": "Create Integration App Definition System",
+      "description": "Implement the system for defining integration apps with their configuration templates and authentication methods.",
+      "details": "Create a system for defining integration apps with:\n1. Standard definition format for all supported platforms\n2. Configuration template schema for each app\n3. Authentication method specifications (OAuth, API Key, etc.)\n4. Required fields and validation rules\n\nImplement the WordPress app definition as the first integration:\n```\nconst wordPressAppDefinition = {\n  name: 'WordPress',\n  description: 'Connect to WordPress sites',\n  authType: 'basic', // or oauth depending on implementation\n  configTemplate: {\n    siteUrl: { type: 'string', required: true, validation: 'url' },\n    username: { type: 'string', required: true },\n    password: { type: 'string', required: true }\n  },\n  endpoints: {\n    users: '/wp-json/wp/v2/users',\n    posts: '/wp-json/wp/v2/posts'\n  }\n};\n```",
+      "testStrategy": "Write unit tests for app definition validation. Test that invalid definitions are rejected. Verify that the WordPress definition meets all requirements. Test the configuration template validation logic.",
+      "priority": "high",
+      "dependencies": [
+        1,
+        2
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 4,
+      "title": "Implement Connection Management Backend",
+      "description": "Create the backend API endpoints for managing connections to external services, including creation, testing, and deletion.",
+      "details": "Implement RESTful API endpoints for connection management:\n1. POST /api/connections - Create a new connection\n2. GET /api/connections - List all connections\n3. GET /api/connections/:id - Get connection details\n4. PUT /api/connections/:id - Update connection\n5. DELETE /api/connections/:id - Delete connection\n6. POST /api/connections/:id/test - Test connection\n\nEnsure credentials are properly encrypted before storage. Implement connection testing logic that verifies the provided credentials work with the external service. For WordPress, test by making a simple API call to verify authentication works.",
+      "testStrategy": "Write integration tests for all API endpoints. Test connection creation with valid and invalid credentials. Verify connection testing works correctly for WordPress. Test updating connection credentials. Ensure deleted connections are properly removed from the database.",
+      "priority": "high",
+      "dependencies": [
+        1,
+        2,
+        3
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 5,
+      "title": "Develop WordPress REST API Client",
+      "description": "Create a client for interacting with the WordPress REST API to fetch users, posts, and other data.",
+      "details": "Implement a WordPress API client with the following features:\n1. Authentication using provided credentials\n2. Methods for fetching users with pagination\n3. Methods for fetching posts with pagination\n4. Error handling for API failures\n5. Rate limiting support\n\nExample implementation:\n```\nclass WordPressClient {\n  constructor(siteUrl, credentials) {\n    this.baseUrl = siteUrl;\n    this.credentials = credentials;\n  }\n\n  async getUsers(page = 1, perPage = 10) {\n    const url = `${this.baseUrl}/wp-json/wp/v2/users?page=${page}&per_page=${perPage}`;\n    return this.makeRequest(url);\n  }\n\n  async getPosts(page = 1, perPage = 10) {\n    const url = `${this.baseUrl}/wp-json/wp/v2/posts?page=${page}&per_page=${perPage}`;\n    return this.makeRequest(url);\n  }\n\n  async makeRequest(url) {\n    // Handle authentication and make the request\n    // Implement retry logic and error handling\n  }\n}\n```",
+      "testStrategy": "Write unit tests with mocked API responses. Test pagination works correctly. Test error handling for various HTTP status codes. Create integration tests against a test WordPress instance. Verify rate limiting functionality works as expected.",
+      "priority": "high",
+      "dependencies": [
+        2,
+        3
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 6,
+      "title": "Implement Scenario Data Model and API",
+      "description": "Create the data model and API endpoints for managing automation scenarios, including creation, updating, and deletion.",
+      "details": "Implement the scenario management system with:\n1. Data models for scenarios and their nodes\n2. API endpoints for CRUD operations\n3. Validation logic for scenario configuration\n\nAPI Endpoints:\n- POST /api/scenarios - Create scenario\n- GET /api/scenarios - List scenarios\n- GET /api/scenarios/:id - Get scenario details\n- PUT /api/scenarios/:id - Update scenario\n- DELETE /api/scenarios/:id - Delete scenario\n\nScenario model should include:\n- Name and description\n- Status (active, inactive, draft)\n- Created/updated timestamps\n- Associated nodes and their connections",
+      "testStrategy": "Write unit tests for the scenario model. Test API endpoints for creating, retrieving, updating, and deleting scenarios. Verify validation logic rejects invalid scenario configurations. Test that deleting a scenario properly removes associated nodes.",
+      "priority": "medium",
+      "dependencies": [
+        1,
+        4
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 7,
+      "title": "Develop Node Configuration System",
+      "description": "Implement the system for defining, configuring, and validating nodes within scenarios.",
+      "details": "Create a node configuration system with:\n1. Node type definitions (trigger, action, transformer)\n2. Configuration schema for each node type\n3. Input/output interface definitions\n4. Validation rules for node configurations\n\nImplement the following node types for MVP:\n- WordPress User Trigger: Fetches users from WordPress\n- WordPress Post Trigger: Fetches posts from WordPress\n- Portal User Action: Creates/updates users in Portal\n- Data Mapper: Maps fields between source and destination\n\nExample node definition:\n```\nconst wordPressUserTrigger = {\n  type: 'wordpress_user_trigger',\n  name: 'WordPress User Source',\n  description: 'Fetches users from a WordPress site',\n  configSchema: {\n    connectionId: { type: 'connection', required: true },\n    perPage: { type: 'number', default: 10 },\n    userRole: { type: 'string', required: false }\n  },\n  outputs: {\n    users: { type: 'array', itemType: 'user' }\n  }\n};\n```",
+      "testStrategy": "Write unit tests for node type definitions. Test validation of node configurations. Verify that invalid configurations are rejected. Test the input/output interface validation between connected nodes.",
+      "priority": "medium",
+      "dependencies": [
+        6
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 8,
+      "title": "Implement Scenario Execution Engine",
+      "description": "Create the execution engine for running scenarios, processing nodes in the correct order, and handling data flow between nodes.",
+      "details": "Implement a scenario execution engine with:\n1. Topological sorting of nodes to determine execution order\n2. Data passing between nodes based on defined mappings\n3. Error handling and retry logic\n4. Execution logging for debugging\n\nThe engine should:\n- Load a scenario and its nodes from the database\n- Sort nodes to determine execution order\n- Execute each node in sequence, passing data between them\n- Handle errors and provide detailed logging\n- Store execution results\n\nExample implementation:\n```\nclass ScenarioExecutor {\n  async execute(scenarioId) {\n    const scenario = await loadScenario(scenarioId);\n    const executionOrder = this.topologicalSort(scenario.nodes);\n    const context = {};\n    \n    for (const nodeId of executionOrder) {\n      const node = scenario.nodes.find(n => n.id === nodeId);\n      try {\n        const nodeResult = await this.executeNode(node, context);\n        context[nodeId] = nodeResult;\n      } catch (error) {\n        // Handle error, log, potentially retry\n      }\n    }\n    \n    return context;\n  }\n  \n  topologicalSort(nodes) {\n    // Implementation of topological sort algorithm\n  }\n  \n  async executeNode(node, context) {\n    // Execute the specific node type with the given context\n  }\n}\n```",
+      "testStrategy": "Write unit tests for the execution engine with mocked node implementations. Test topological sorting works correctly. Test data passing between nodes. Test error handling and recovery. Create integration tests with real node implementations for WordPress user import scenario.",
+      "priority": "high",
+      "dependencies": [
+        5,
+        6,
+        7
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 9,
+      "title": "Create Data Mapping System",
+      "description": "Implement the system for mapping data fields between different systems, including type conversion and validation.",
+      "details": "Develop a data mapping system with:\n1. Field mapping definitions between source and destination\n2. Type conversion utilities (string to number, date formatting, etc.)\n3. Default value settings for missing fields\n4. Validation rules for mapped data\n\nThe system should support:\n- One-to-one field mapping\n- Constant value mapping\n- Simple transformations (concatenation, substring, etc.)\n- Type conversion\n\nExample mapping definition:\n```\nconst userMapping = {\n  fields: {\n    'source.username': 'destination.username',\n    'source.email': 'destination.email',\n    'source.first_name': 'destination.firstName',\n    'source.last_name': 'destination.lastName',\n    'constant:active': 'destination.status'\n  },\n  transformations: {\n    'destination.fullName': {\n      type: 'concatenate',\n      fields: ['source.first_name', 'source.last_name'],\n      separator: ' '\n    }\n  },\n  defaults: {\n    'destination.role': 'user'\n  }\n};\n```",
+      "testStrategy": "Write unit tests for the mapping engine. Test field mapping with various data types. Test transformations and type conversions. Verify default values are applied correctly. Test validation of mapped data against destination schema.",
+      "priority": "medium",
+      "dependencies": [
+        7,
+        8
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 10,
+      "title": "Implement Integration Dashboard Frontend",
+      "description": "Create the frontend interface for the integration dashboard, showing available apps, connections, and scenarios.",
+      "details": "Develop the integration dashboard UI with:\n1. List of available integration apps with icons and descriptions\n2. List of existing connections with status indicators\n3. List of scenarios with status and last execution time\n4. Actions for adding new connections and scenarios\n\nThe dashboard should:\n- Load data from the backend API\n- Show connection status (connected, error, etc.)\n- Allow filtering and searching of connections and scenarios\n- Provide quick actions for testing connections and running scenarios\n\nUse responsive design to ensure the dashboard works well on different screen sizes.",
+      "testStrategy": "Write unit tests for UI components. Test loading states and error handling. Create integration tests for API interactions. Perform usability testing to ensure the dashboard is intuitive. Test responsive design on different screen sizes.",
+      "priority": "medium",
+      "dependencies": [
+        3,
+        4,
+        6
+      ],
+      "status": "pending",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement App Listing UI",
+          "description": "Create a component to display available apps for integration",
+          "dependencies": [],
+          "details": "Design and implement a grid or list view to show app icons, names, and brief descriptions. Include search and filter functionality for easy app discovery.",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Develop Connection Management Interface",
+          "description": "Build UI for managing app connections and authentication",
+          "dependencies": [
+            1
+          ],
+          "details": "Create forms for adding new connections, editing existing ones, and handling OAuth flows. Implement status indicators for active/inactive connections.",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "Create Scenario Listing Component",
+          "description": "Implement a view to display and manage integration scenarios",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Design a list or card view for scenarios, showing key information like name, status, and involved apps. Include options for creating, editing, and deleting scenarios.",
+          "status": "pending"
+        },
+        {
+          "id": 4,
+          "title": "Implement Responsive Design",
+          "description": "Ensure the dashboard is fully responsive across devices",
+          "dependencies": [
+            1,
+            2,
+            3
+          ],
+          "details": "Apply responsive design principles to all components, use CSS media queries, and test on various screen sizes. Optimize layout and interactions for both desktop and mobile experiences.",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Develop Connection Management UI",
+      "description": "Create the frontend interface for adding, editing, testing, and deleting connections to external services.",
+      "details": "Implement the connection management UI with:\n1. Form for adding new connections with dynamic fields based on app type\n2. Edit form for updating connection credentials\n3. Test connection functionality with status feedback\n4. Confirmation dialog for deleting connections\n\nThe UI should:\n- Dynamically generate form fields based on the app's configuration template\n- Validate form inputs before submission\n- Show appropriate error messages for invalid inputs\n- Provide real-time feedback during connection testing\n- Warn users about potential impacts when deleting connections used in scenarios",
+      "testStrategy": "Write unit tests for form components. Test form validation logic. Test connection testing UI feedback. Create integration tests for API interactions. Perform usability testing to ensure the form is intuitive and error messages are helpful.",
+      "priority": "medium",
+      "dependencies": [
+        4,
+        10
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 12,
+      "title": "Create Visual Scenario Builder UI",
+      "description": "Implement the visual interface for creating and editing automation scenarios with drag-and-drop functionality.",
+      "details": "Develop a visual scenario builder with:\n1. Drag-and-drop interface for adding nodes\n2. Connection lines between nodes to show data flow\n3. Node configuration panels\n4. Validation of scenario configuration\n\nThe builder should:\n- Allow users to drag nodes from a palette onto the canvas\n- Enable connecting nodes by drawing lines between outputs and inputs\n- Show configuration panels when nodes are selected\n- Validate connections between nodes\n- Provide real-time feedback about invalid configurations\n- Support saving scenarios as drafts\n\nConsider using a library like React Flow or similar for the drag-and-drop functionality.",
+      "testStrategy": "Write unit tests for UI components. Test drag-and-drop functionality. Test connection validation logic. Create integration tests for saving and loading scenarios. Perform usability testing to ensure the builder is intuitive.",
+      "priority": "medium",
+      "dependencies": [
+        6,
+        7,
+        11
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 13,
+      "title": "Implement Data Mapping Interface",
+      "description": "Create the frontend interface for mapping data fields between external systems and Portal.",
+      "details": "Develop a data mapping interface with:\n1. Source and destination field selection\n2. Type conversion options\n3. Default value settings\n4. Validation rule configuration\n\nThe interface should:\n- Show available fields from the source system\n- Show available fields in the destination system\n- Allow users to create mappings between fields\n- Provide options for type conversion and transformation\n- Allow setting default values for unmapped fields\n- Validate mappings against destination field requirements\n\nExample UI layout:\n- Two columns showing source and destination fields\n- Drag-and-drop or dropdown selection for mapping\n- Configuration panel for selected mapping\n- Preview of mapped data with sample values",
+      "testStrategy": "Write unit tests for mapping components. Test field selection and mapping creation. Test validation of mappings. Create integration tests for saving and loading mappings. Perform usability testing to ensure the interface is intuitive.",
+      "priority": "medium",
+      "dependencies": [
+        9,
+        12
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 14,
+      "title": "Implement Execution Logs and Monitoring",
+      "description": "Create the system for logging scenario executions, errors, and providing monitoring capabilities.",
+      "details": "Implement an execution logging system with:\n1. Detailed logs for each scenario execution\n2. Node-level execution details\n3. Error information with context\n4. Performance metrics\n\nThe system should:\n- Log the start and end of each scenario execution\n- Log the execution of each node with input and output data\n- Capture errors with stack traces and context\n- Store performance metrics (execution time, processed items, etc.)\n- Provide an API for retrieving and filtering logs\n\nDatabase schema:\n- ExecutionLogs: id, scenario_id, status, started_at, completed_at, error\n- NodeExecutionLogs: id, execution_id, node_id, status, started_at, completed_at, input, output, error",
+      "testStrategy": "Write unit tests for logging functionality. Test error capturing and formatting. Create integration tests for log retrieval API. Test performance under high log volume. Verify logs contain sufficient information for debugging.",
+      "priority": "low",
+      "dependencies": [
+        8
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 15,
+      "title": "Create WordPress User and Post Import Scenario Templates",
+      "description": "Implement pre-configured scenario templates for importing WordPress users and posts to Portal.",
+      "details": "Create scenario templates for:\n1. WordPress User Import\n   - WordPress User Trigger node\n   - Data Mapper node for user fields\n   - Portal User Action node\n\n2. WordPress Post Import\n   - WordPress Post Trigger node\n   - Data Mapper node for post fields\n   - Portal Content Action node\n\nPre-configure field mappings for common fields:\n- WordPress user to Portal user mapping\n  - wp.username → portal.username\n  - wp.email → portal.email\n  - wp.first_name → portal.firstName\n  - wp.last_name → portal.lastName\n  - wp.roles → portal.roles\n\n- WordPress post to Portal content mapping\n  - wp.title.rendered → portal.title\n  - wp.content.rendered → portal.content\n  - wp.excerpt.rendered → portal.excerpt\n  - wp.date → portal.publishedAt\n  - wp.status → portal.status\n\nProvide UI for selecting these templates when creating a new scenario.",
+      "testStrategy": "Write unit tests for template creation. Test the pre-configured mappings. Create integration tests for creating scenarios from templates. Test execution of template-based scenarios. Perform usability testing to ensure templates are easy to use.",
+      "priority": "low",
+      "dependencies": [
+        5,
+        8,
+        9,
+        13
+      ],
+      "status": "pending",
+      "subtasks": []
+    }
+  ]
+}

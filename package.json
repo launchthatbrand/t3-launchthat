@@ -37,5 +37,8 @@
     "turbo": "^2.4.4",
     "typescript": "catalog:"
   },
-  "prettier": "@acme/prettier-config"
+  "prettier": "@acme/prettier-config",
+  "dependencies": {
+    "convex-helpers": "^0.1.95"
+  }
 }

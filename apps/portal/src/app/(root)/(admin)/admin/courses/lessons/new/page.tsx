@@ -19,7 +19,7 @@ function CreateStandaloneLessonPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Use the correct mutation
-  const createLesson = useMutation(api.courses.createStandaloneLesson);
+  const createLesson = useMutation(api.lms.lessons.index.create);
   // const createLesson = useMutation(api.lessons.createLesson); // TEMPORARY - using existing for now
 
   const handleSubmit = useCallback(

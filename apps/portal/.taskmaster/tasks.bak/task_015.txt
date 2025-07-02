@@ -1,0 +1,37 @@
+# Task ID: 15
+# Title: Create WordPress User and Post Import Scenario Templates
+# Status: pending
+# Dependencies: 5, 8, 9, 13
+# Priority: low
+# Description: Implement pre-configured scenario templates for importing WordPress users and posts to Portal.
+# Details:
+Create scenario templates for:
+1. WordPress User Import
+   - WordPress User Trigger node
+   - Data Mapper node for user fields
+   - Portal User Action node
+
+2. WordPress Post Import
+   - WordPress Post Trigger node
+   - Data Mapper node for post fields
+   - Portal Content Action node
+
+Pre-configure field mappings for common fields:
+- WordPress user to Portal user mapping
+  - wp.username → portal.username
+  - wp.email → portal.email
+  - wp.first_name → portal.firstName
+  - wp.last_name → portal.lastName
+  - wp.roles → portal.roles
+
+- WordPress post to Portal content mapping
+  - wp.title.rendered → portal.title
+  - wp.content.rendered → portal.content
+  - wp.excerpt.rendered → portal.excerpt
+  - wp.date → portal.publishedAt
+  - wp.status → portal.status
+
+Provide UI for selecting these templates when creating a new scenario.
+
+# Test Strategy:
+Write unit tests for template creation. Test the pre-configured mappings. Create integration tests for creating scenarios from templates. Test execution of template-based scenarios. Perform usability testing to ensure templates are easy to use.

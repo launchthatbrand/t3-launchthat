@@ -40,6 +40,24 @@ interface UseCourseBuilderDndProps {
   // Top-level actions
   addMainContentItem: (item: LessonItem | QuizItem) => void;
   reorderMainContentItems: (activeId: string, overId: string) => void;
+
+  // Add onAttachLesson callback
+  onAttachLesson?: (
+    lessonId: string,
+    courseId: string,
+    order: number,
+  ) => Promise<void>;
+  courseId?: string;
+}
+
+interface DropzoneData {
+  kind?: string;
+  type?: string;
+  lessonId?: string;
+  topicId?: string;
+  parentLessonId?: string;
+  parentTopicId?: string;
+  order?: number;
 }
 
 export const useCourseBuilderDnd = ({
@@ -55,6 +73,9 @@ export const useCourseBuilderDnd = ({
   addMainContentItem,
   reorderMainContentItems,
   reorderLessonContentItems,
+  // Add new props
+  onAttachLesson,
+  courseId,
 }: UseCourseBuilderDndProps) => {
   const [activeItem, setActiveItem] = useState<Active | null>(null);
 
@@ -66,7 +87,7 @@ export const useCourseBuilderDnd = ({
     setActiveItem(null);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     setActiveItem(null);
     const { active, over } = event;
     if (!over) return;
@@ -77,17 +98,9 @@ export const useCourseBuilderDnd = ({
     const activeData = active.data.current as {
       parentLessonId?: string;
       parentTopicId?: string;
-      // isFinalQuiz might be irrelevant now unless used for overlay style
     };
 
-    const overData = over.data.current as {
-      kind?: string;
-      type?: string;
-      lessonId?: string;
-      topicId?: string;
-      parentLessonId?: string;
-      parentTopicId?: string;
-    };
+    const overData = over.data.current as DropzoneData;
     const overKind = overData.kind;
     const overType = overData.type;
 
@@ -101,7 +114,18 @@ export const useCourseBuilderDnd = ({
             const lessonData = availableLessons.find(
               (l) => l.id === currentActiveId,
             );
-            if (lessonData) addMainContentItem(lessonData);
+            if (lessonData) {
+              // Get the current order
+              const order = overData.order ?? 0;
+
+              // Call onAttachLesson first if available
+              if (onAttachLesson && courseId) {
+                await onAttachLesson(currentActiveId, courseId, order);
+              }
+
+              // Then update the store
+              addMainContentItem(lessonData);
+            }
           } else if (currentActiveType === "quiz") {
             const quizData = availableQuizzes.find(
               (q) => q.id === currentActiveId,

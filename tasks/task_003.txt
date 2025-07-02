@@ -1,0 +1,58 @@
+# Task ID: 3
+# Title: Implement Feed API Mutations
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Develop the backend API endpoints for creating, updating, and interacting with feed content.
+# Details:
+Create the following Convex mutation functions:
+
+1. `createPost(content, mediaUrls, visibility, moduleType, moduleId)`:
+   - Validate input data
+   - Create new feed item
+   - Handle media references
+   - Set appropriate visibility
+
+2. `updatePost(postId, content, mediaUrls, visibility)`:
+   - Verify user owns the post
+   - Update post content
+   - Handle media changes
+   - Update visibility if needed
+
+3. `deletePost(postId)`:
+   - Verify user owns the post
+   - Soft delete the post and related content
+
+4. `addReaction(feedItemId, reactionType)`:
+   - Add or toggle user reaction
+   - Handle duplicate reactions
+
+5. `removeReaction(feedItemId, reactionType)`:
+   - Remove user reaction
+
+6. `addComment(feedItemId, content, parentCommentId)`:
+   - Create comment
+   - Handle threaded comments
+
+7. `updateComment(commentId, content)`:
+   - Verify user owns comment
+   - Update comment content
+
+8. `deleteComment(commentId)`:
+   - Verify user owns comment
+   - Soft delete comment
+
+9. `shareContent(originalContentId, content, visibility)`:
+   - Create share-type feed item
+   - Link to original content
+   - Add optional commentary
+
+Implement proper validation, error handling, and access control for all mutations.
+
+# Test Strategy:
+1. Unit test each mutation function
+2. Test validation logic for all inputs
+3. Verify error handling for invalid operations
+4. Test permission checks
+5. Verify data integrity after mutations
+6. Test concurrency issues with simultaneous operations

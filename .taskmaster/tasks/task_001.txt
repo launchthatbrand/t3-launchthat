@@ -1,0 +1,115 @@
+# Task ID: 1
+# Title: Implement Unified State Management Architecture
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Redesign the state management to eliminate the frontend/backend state disconnect. Implement a single source of truth with proper synchronization mechanisms.
+# Details:
+1. Replace dual state system with unified reactive state management:
+   - Use Zustand for local state management
+   - Implement Convex real-time subscriptions for backend sync
+   - Create a custom hook `useUnifiedCourseState` that combines Zustand and Convex
+
+2. Implement optimistic updates with rollback on failure:
+   - Use Zustand middleware for optimistic updates
+   - Implement error handling and rollback logic
+
+3. Add state synchronization hooks:
+   - Create `useSyncCourseState` hook for component lifecycle integration
+   - Implement `useConvexSubscription` for real-time updates
+
+Code example for `useUnifiedCourseState`:
+
+```typescript
+import create from 'zustand'
+import { useQuery, useMutation } from 'convex/react'
+
+const useUnifiedCourseState = create((set, get) => ({
+  courseStructure: [],
+  updateStructure: (newStructure) => set({ courseStructure: newStructure }),
+  syncWithBackend: async () => {
+    const backendStructure = await useQuery('getCourseStructure')
+    set({ courseStructure: backendStructure })
+  },
+  optimisticUpdate: (update) => {
+    set((state) => ({ courseStructure: update(state.courseStructure) }))
+    useMutation('updateCourseStructure')(update)
+      .catch(() => {
+        // Rollback on failure
+        get().syncWithBackend()
+      })
+  }
+}))
+```
+
+Ensure to use React.Suspense and error boundaries for proper loading and error states.
+
+# Test Strategy:
+1. Unit tests:
+   - Test `useUnifiedCourseState` hook for all CRUD operations
+   - Verify optimistic updates and rollback functionality
+   - Test synchronization logic between Zustand and Convex
+
+2. Integration tests:
+   - Test drag-and-drop operations with persistence
+   - Verify real-time updates across multiple components
+
+3. End-to-end tests:
+   - Simulate complete course building workflow
+   - Test error scenarios and recovery
+
+4. Performance tests:
+   - Measure update speed for large course structures
+   - Test concurrent updates from multiple users
+
+Use Jest for unit and integration tests, Cypress for E2E tests, and Lighthouse for performance testing.
+
+# Subtasks:
+## 1. Analyze Current State Management Flow [pending]
+### Dependencies: None
+### Description: Document and analyze the existing state management architecture to identify pain points and disconnects between frontend and backend state.
+### Details:
+Map out the current state flow between frontend Zustand stores and backend Convex data. Identify specific areas where state synchronization fails or becomes inconsistent. Document all state update patterns currently in use across the application.
+
+## 2. Design Unified State Architecture [pending]
+### Dependencies: 1.1
+### Description: Create a detailed architecture design for the unified state management system that combines Zustand and Convex.
+### Details:
+Define the core state structure, synchronization patterns, and update flows. Specify how optimistic updates will work with backend validation. Design error handling and rollback mechanisms. Create a detailed API for the unified state hooks.
+
+## 3. Implement Core Zustand Store [pending]
+### Dependencies: 1.2
+### Description: Create the foundational Zustand store with proper typing and state structure to serve as the local state management solution.
+### Details:
+Implement the base Zustand store with TypeScript interfaces for all state objects. Include core state manipulation functions and middleware setup for optimistic updates. Ensure proper immutability patterns are followed for all state updates.
+
+## 4. Implement Convex Real-time Subscriptions [pending]
+### Dependencies: 1.2
+### Description: Create the Convex query subscriptions that will keep the backend state synchronized with the frontend.
+### Details:
+Implement Convex query functions that support real-time subscriptions. Set up proper indexing for efficient queries. Create subscription handlers that process incoming data changes. Implement data transformation functions to convert between Convex and application state formats.
+
+## 5. Create useUnifiedCourseState Custom Hook [pending]
+### Dependencies: 1.3, 1.4
+### Description: Implement the custom hook that combines Zustand local state with Convex real-time data subscriptions.
+### Details:
+Build the useUnifiedCourseState hook that integrates the Zustand store with Convex subscriptions. Implement state synchronization logic to handle initial loading, updates, and conflict resolution. Add proper TypeScript typing for all hook functions and return values.
+
+## 6. Implement Optimistic Updates with Rollback [pending]
+### Dependencies: 1.5
+### Description: Create the optimistic update pattern with proper error handling and automatic rollback on failure.
+### Details:
+Implement the optimisticUpdate function that updates local state immediately while sending changes to the backend. Create rollback mechanism that restores previous state on backend errors. Add transaction logging for debugging failed updates. Implement retry logic for transient failures.
+
+## 7. Create State Synchronization Hooks [pending]
+### Dependencies: 1.5
+### Description: Implement useSyncCourseState and useConvexSubscription hooks for component lifecycle integration and real-time updates.
+### Details:
+Build useSyncCourseState hook to handle component mount/unmount synchronization with backend state. Create useConvexSubscription hook that efficiently manages Convex real-time subscriptions. Implement proper cleanup on component unmount to prevent memory leaks.
+
+## 8. Integrate Error Boundaries and Suspense [pending]
+### Dependencies: 1.5, 1.6, 1.7
+### Description: Add React.Suspense and error boundary integration to handle loading states and errors gracefully.
+### Details:
+Implement custom error boundary components for handling state synchronization errors. Add Suspense integration for loading states during initial data fetch and updates. Create fallback UI components for different error scenarios. Implement retry mechanisms for recoverable errors.
+

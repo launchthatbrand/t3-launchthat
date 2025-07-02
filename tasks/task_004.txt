@@ -1,0 +1,53 @@
+# Task ID: 4
+# Title: Implement Feed Subscription API
+# Status: done
+# Dependencies: 1
+# Priority: medium
+# Description: Create API endpoints for managing user feed preferences, including following/unfollowing users, topics, or groups, and saving items.
+# Details:
+Create the following Convex mutation and query functions:
+
+1. `followUser(targetUserId)`:
+   - Add entry to Feed Subscriptions table
+   - Handle already following case
+
+2. `unfollowUser(targetUserId)`:
+   - Remove entry from Feed Subscriptions table
+
+3. `followTopic(topicId)`:
+   - Add topic subscription
+
+4. `unfollowTopic(topicId)`:
+   - Remove topic subscription
+
+5. `followGroup(groupId)`:
+   - Add group subscription
+   - Verify user has access to group
+
+6. `unfollowGroup(groupId)`:
+   - Remove group subscription
+
+7. `saveItem(feedItemId)`:
+   - Add to Saved Items table
+
+8. `unsaveItem(feedItemId)`:
+   - Remove from Saved Items table
+
+9. `getSavedItems(limit, cursor)`:
+   - Retrieve user's saved items
+   - Support pagination
+
+10. `getFollowing(userId, followType, limit, cursor)`:
+    - Get list of entities user is following
+    - Filter by follow type
+    - Support pagination
+
+Implement proper error handling and validation for all functions.
+
+# Test Strategy:
+1. Test each subscription function
+2. Verify idempotent operations (following twice should not error)
+3. Test that feed content updates appropriately after subscription changes
+4. Verify saved items are retrievable
+5. Test pagination of subscription lists
+6. Verify proper error handling for invalid operations

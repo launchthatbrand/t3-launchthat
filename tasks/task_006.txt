@@ -1,0 +1,48 @@
+# Task ID: 6
+# Title: Create Post Creator Component
+# Status: done
+# Dependencies: 3
+# Priority: high
+# Description: Develop a rich text editor component for creating and editing posts with support for text formatting, media uploads, and visibility controls.
+# Details:
+Implement a `PostCreator` React component with the following features:
+
+1. Rich Text Editing:
+   - Use a library like Slate.js or Draft.js
+   - Support basic formatting (bold, italic, lists)
+   - Allow links and mentions (@username)
+   - Support hashtags (#topic)
+
+2. Media Handling:
+   - Image upload with preview
+   - Drag and drop support
+   - Image resizing and basic editing
+   - Progress indicators during upload
+
+3. Post Controls:
+   - Visibility selector (public, followers, group)
+   - Group selector when posting to a group
+   - Draft saving functionality
+   - Post scheduling UI (if enabled)
+
+4. User Experience:
+   - Character count/limit indicator
+   - Responsive design for mobile and desktop
+   - Keyboard shortcuts for common actions
+   - Autosave functionality
+
+5. Integration:
+   - Submit to appropriate API endpoint
+   - Handle success and error states
+   - Support editing existing posts
+
+Implement proper form validation and error handling. Ensure accessibility compliance for all interactive elements.
+
+# Test Strategy:
+1. Test rich text editing functionality
+2. Verify media upload and preview works
+3. Test form validation and submission
+4. Verify drafts are saved correctly
+5. Test editing existing posts
+6. Verify accessibility of the editor
+7. Test on different devices and screen sizes

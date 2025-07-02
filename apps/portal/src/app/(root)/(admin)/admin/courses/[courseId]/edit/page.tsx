@@ -1,11 +1,11 @@
 "use client";
 
-import type { Id } from "@/../convex/_generated/dataModel"; // Import Id type
+import type { Id } from "@/convex/_generated/dataModel"; // Import Id type
 
 // Import Shadcn components for layout
 import React from "react";
-import { redirect, useRouter } from "next/navigation";
-import { api } from "@/../convex/_generated/api";
+import { redirect, useParams, useRouter } from "next/navigation";
+import { api } from "@/convex/_generated/api";
 // Import Convex hooks and API reference
 import { useMutation, useQuery } from "convex/react";
 
@@ -25,22 +25,18 @@ import { CourseForm } from "../../_components/course-form";
 // Import Sonner for toasts (optional)
 // import { toast } from "sonner";
 
-interface CourseEditPageProps {
-  params: {
-    courseId: Id<"courses">;
-  };
-}
-
-export default function CourseEditPage({ params }: CourseEditPageProps) {
+export default function CourseEditPage() {
   const router = useRouter();
-  const { courseId } = params;
+  // Retrieve courseId from the URL params
+  const { courseId: courseIdRaw } = useParams() as { courseId: string };
+  const courseId = courseIdRaw as Id<"courses">;
 
   // Fetch minimal course data to ensure it exists
   // Switched to getCourse as suggested by linter
-  const course = useQuery(api.courses.getCourse, { courseId });
+  const course = useQuery(api.lms.index.getCourse, { courseId });
 
   // Set up the Convex mutation for updating the course
-  const updateCourse = useMutation(api.courses.updateCourse);
+  const updateCourse = useMutation(api.lms.index.updateCourse);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   // Define the submit handler for the form

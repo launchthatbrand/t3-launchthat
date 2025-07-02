@@ -1,7 +1,5 @@
 "use client";
 
-import "./mockData"; // mockAvailableLessons, // No longer needed here
-
 import React from "react";
 import {
   DndContext,
@@ -12,6 +10,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 
+import type { CourseBuilderState } from "./store/useCourseBuilderStore";
 // Restore ContentItemRenderer for props
 import type {
   ContentItemRenderer,
@@ -54,6 +53,7 @@ import { useCourseBuilderStore } from "./store/useCourseBuilderStore";
 export interface CourseBuilderProps {
   // Restore core structure and action callbacks
   courseStructure?: CourseStructure; // Might be used for initial state
+  initialState?: Partial<CourseBuilderState>;
   onAddLesson?: () => Promise<void>;
   onAddTopic?: (lessonId: string, order: number) => Promise<void>;
   onAddQuiz?: (
@@ -123,6 +123,7 @@ const noopAsyncWithArgs = async (..._args: unknown[]): Promise<void> => {
 const CourseBuilder: React.FC<CourseBuilderProps> = ({
   // Destructure the restored props (even if not used directly below)
   courseStructure: _courseStructure,
+  initialState,
   onAddLesson: _onAddLesson = noopAsync,
   onAddTopic: _onAddTopic = noopAsyncWithArgs,
   onAddQuiz: _onAddQuiz = noopAsyncWithArgs,
@@ -148,26 +149,27 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
   // i18nConfig,
 }) => {
   // 1. Get state and actions from the store
-  const store = useCourseBuilderStore();
   const {
-    // Get the unified items array
     mainContentItems,
-    // Remove unused 'lessons' destructuring
-    // lessons,
     availableLessons: storeAvailableLessons,
     availableTopics: storeAvailableTopics,
     availableQuizzes: storeAvailableQuizzes,
-    // Keep nested actions
     addTopicToLesson,
     addQuizToTopic,
     addQuizToLesson,
-    reorderTopicsInLesson,
-    reorderQuizzesInLesson,
     reorderQuizzesInTopic,
-    // Get unified actions
     addMainContentItem,
     reorderMainContentItems,
-  } = store;
+    reorderLessonContentItems,
+    initialize,
+  } = useCourseBuilderStore();
+
+  // Initialize store with initial state
+  React.useEffect(() => {
+    if (initialState) {
+      initialize(initialState);
+    }
+  }, [initialize, initialState]);
 
   // 1.1 Map store available data
   const availableLessons: LessonItem[] = storeAvailableLessons.map((l) => ({
@@ -186,20 +188,18 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
   // 2. Initialize the DND hook with correct actions
   const { activeItem, handleDragStart, handleDragEnd, handleDragCancel } =
     useCourseBuilderDnd({
-      // Pass nested actions
       addTopicToLesson,
       addQuizToTopic,
       addQuizToLesson,
-      reorderTopicsInLesson,
-      reorderQuizzesInLesson,
       reorderQuizzesInTopic,
-      // Pass unified actions
       addMainContentItem,
       reorderMainContentItems,
-      // Pass available items
+      reorderLessonContentItems,
       availableLessons,
       availableTopics,
       availableQuizzes,
+      onAttachLesson: _onAttachLesson,
+      courseId: _courseStructure?.id,
     });
 
   // 3. Set up sensors

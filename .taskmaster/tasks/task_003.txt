@@ -1,0 +1,140 @@
+# Task ID: 3
+# Title: Redesign Drag-and-Drop System with Immediate Persistence
+# Status: pending
+# Dependencies: 1, 2
+# Priority: medium
+# Description: Rebuild the drag-and-drop system to provide immediate visual feedback with reliable backend persistence and proper error handling.
+# Details:
+1. Implement optimistic updates:
+   - Use react-beautiful-dnd for drag-and-drop functionality
+   - Integrate with unified state management for immediate UI updates
+
+2. Add loading states:
+   - Create custom LoadingIndicator component
+   - Implement skeleton loaders for course structure items
+
+3. Implement rollback mechanisms:
+   - Use Convex's optimistic updates feature
+   - Implement custom rollback logic in Zustand store
+
+4. Add visual indicators:
+   - Create StatusIndicator component for operation status
+   - Implement toast notifications for success/error feedback
+
+Example implementation:
+
+```typescript
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd'
+import { useUnifiedCourseState } from './useUnifiedCourseState'
+import { StatusIndicator, LoadingIndicator } from './components'
+
+const CourseBuilder = () => {
+  const { courseStructure, optimisticUpdate, isSaving } = useUnifiedCourseState()
+
+  const onDragEnd = (result) => {
+    if (!result.destination) return
+
+    const newStructure = Array.from(courseStructure)
+    const [reorderedItem] = newStructure.splice(result.source.index, 1)
+    newStructure.splice(result.destination.index, 0, reorderedItem)
+
+    optimisticUpdate(() => newStructure)
+  }
+
+  return (
+    <DragDropContext onDragEnd={onDragEnd}>
+      <Droppable droppableId="course">
+        {(provided) => (
+          <div {...provided.droppableProps} ref={provided.innerRef}>
+            {courseStructure.map((item, index) => (
+              <Draggable key={item.id} draggableId={item.id} index={index}>
+                {(provided) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                  >
+                    {item.title}
+                    <StatusIndicator status={isSaving ? 'saving' : 'saved'} />
+                  </div>
+                )}
+              </Draggable>
+            ))}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
+      {isSaving && <LoadingIndicator />}
+    </DragDropContext>
+  )
+}
+```
+
+Ensure to implement proper error handling and retry mechanisms for failed operations.
+
+# Test Strategy:
+1. Visual regression testing:
+   - Use Storybook for component development
+   - Implement Percy for visual regression tests
+   - Create stories for different drag-and-drop scenarios
+
+2. Network failure simulation:
+   - Use Mock Service Worker (MSW) to simulate API responses
+   - Test error handling and retry mechanisms
+   - Verify rollback functionality on network failures
+
+3. Performance testing:
+   - Use React DevTools Profiler for performance measurements
+   - Test with large course structures (1000+ items)
+   - Optimize rendering using virtualization if necessary
+
+4. Accessibility testing:
+   - Use axe-core for automated accessibility tests
+   - Implement keyboard navigation for drag-and-drop
+   - Test with screen readers for proper ARIA attributes
+
+Use Jest and React Testing Library for component tests, Cypress for E2E tests, and axe-core for accessibility testing. Implement CI/CD pipeline to run all tests on each pull request.
+
+# Subtasks:
+## 1. Implement react-beautiful-dnd integration [pending]
+### Dependencies: None
+### Description: Set up react-beautiful-dnd library and integrate it with the existing course structure components
+### Details:
+Install react-beautiful-dnd, wrap course structure components with DragDropContext, Droppable, and Draggable components. Implement onDragEnd handler to update local state.
+
+## 2. Develop unified state management system [pending]
+### Dependencies: 3.1
+### Description: Create a unified state management system using Zustand to handle course structure and drag-and-drop operations
+### Details:
+Implement Zustand store with actions for updating course structure, handling optimistic updates, and managing loading states. Ensure the store is integrated with react-beautiful-dnd events.
+
+## 3. Implement optimistic updates [pending]
+### Dependencies: 3.2
+### Description: Develop optimistic update mechanism for immediate UI feedback during drag-and-drop operations
+### Details:
+Modify the Zustand store to apply optimistic updates to the UI state before backend confirmation. Implement a queueing system for pending updates.
+
+## 4. Create loading and status indicator components [pending]
+### Dependencies: None
+### Description: Develop reusable components for displaying loading states and operation status
+### Details:
+Create LoadingIndicator component with skeleton loader functionality. Implement StatusIndicator component to show saving/saved/error states. Ensure components are accessible and responsive.
+
+## 5. Implement backend persistence with Convex [pending]
+### Dependencies: 3.2, 3.3
+### Description: Integrate Convex for reliable backend persistence of drag-and-drop operations
+### Details:
+Set up Convex mutations for updating course structure. Implement optimistic updates feature of Convex. Ensure proper error handling and retry mechanisms for failed operations.
+
+## 6. Develop rollback mechanism [pending]
+### Dependencies: 3.3, 3.5
+### Description: Implement a rollback system to revert UI state in case of backend persistence failures
+### Details:
+Extend the Zustand store with rollback functionality. Implement error handling in Convex mutations to trigger rollbacks. Ensure UI state is consistently reverted to the last known good state.
+
+## 7. Implement toast notifications for user feedback [pending]
+### Dependencies: 3.4, 3.6
+### Description: Add a toast notification system to provide success and error feedback to users
+### Details:
+Integrate a toast notification library (e.g., react-toastify). Implement success notifications for successful drag-and-drop operations and error notifications for failures. Ensure notifications are accessible and dismissible.
+

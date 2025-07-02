@@ -1,0 +1,45 @@
+# Task ID: 2
+# Title: Implement Feed API Queries
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Develop the backend API endpoints for retrieving different types of feeds (universal, personalized, group-specific, and user profile).
+# Details:
+Create the following Convex query functions:
+
+1. `getUniversalFeed(limit, cursor)`:
+   - Retrieve public content from all modules
+   - Sort by creation date (newest first)
+   - Support pagination with cursor-based approach
+   - Include reaction counts and comment counts
+
+2. `getPersonalizedFeed(userId, limit, cursor)`:
+   - Filter content based on user's subscriptions
+   - Include content from followed users, topics, and groups
+   - Sort by relevance algorithm (combination of recency and engagement)
+   - Support pagination
+
+3. `getGroupFeed(groupId, limit, cursor)`:
+   - Retrieve content specific to a group
+   - Filter by visibility permissions
+   - Sort by creation date
+   - Support pagination
+
+4. `getUserProfileFeed(profileId, limit, cursor)`:
+   - Get content created by a specific user
+   - Filter by visibility permissions
+   - Sort by creation date
+   - Support pagination
+
+5. `getFeedItem(feedItemId)`:
+   - Get a single feed item by ID with all associated data
+
+Implement proper access control to ensure users can only see content they have permission to view.
+
+# Test Strategy:
+1. Write unit tests for each query function
+2. Test pagination works correctly
+3. Verify sorting order is correct
+4. Test permission filters work as expected
+5. Benchmark query performance with large datasets
+6. Test edge cases like empty results

@@ -1,0 +1,53 @@
+# Task ID: 8
+# Title: Implement Scenario Execution Engine
+# Status: pending
+# Dependencies: 5, 6, 7
+# Priority: high
+# Description: Create the execution engine for running scenarios, processing nodes in the correct order, and handling data flow between nodes.
+# Details:
+Implement a scenario execution engine with:
+1. Topological sorting of nodes to determine execution order
+2. Data passing between nodes based on defined mappings
+3. Error handling and retry logic
+4. Execution logging for debugging
+
+The engine should:
+- Load a scenario and its nodes from the database
+- Sort nodes to determine execution order
+- Execute each node in sequence, passing data between them
+- Handle errors and provide detailed logging
+- Store execution results
+
+Example implementation:
+```
+class ScenarioExecutor {
+  async execute(scenarioId) {
+    const scenario = await loadScenario(scenarioId);
+    const executionOrder = this.topologicalSort(scenario.nodes);
+    const context = {};
+    
+    for (const nodeId of executionOrder) {
+      const node = scenario.nodes.find(n => n.id === nodeId);
+      try {
+        const nodeResult = await this.executeNode(node, context);
+        context[nodeId] = nodeResult;
+      } catch (error) {
+        // Handle error, log, potentially retry
+      }
+    }
+    
+    return context;
+  }
+  
+  topologicalSort(nodes) {
+    // Implementation of topological sort algorithm
+  }
+  
+  async executeNode(node, context) {
+    // Execute the specific node type with the given context
+  }
+}
+```
+
+# Test Strategy:
+Write unit tests for the execution engine with mocked node implementations. Test topological sorting works correctly. Test data passing between nodes. Test error handling and recovery. Create integration tests with real node implementations for WordPress user import scenario.

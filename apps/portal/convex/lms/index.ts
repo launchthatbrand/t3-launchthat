@@ -8,6 +8,8 @@
 // Export all components from subdirectories
 export * from "./courses";
 export * from "./topics";
+export * from "./lessons";
+export * from "./quizzes";
 export * from "./enrollments";
 export * from "./lib";
 export * from "./schema"; // This will export lmsSchema

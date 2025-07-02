@@ -1,0 +1,115 @@
+# Task ID: 2
+# Title: Refactor Data Layer and Type System
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Unify the type system and data transformation layer to eliminate type conflicts and ensure consistent data flow between components.
+# Details:
+1. Create unified type definitions:
+   - Use TypeScript for strong typing
+   - Define shared interfaces for Course, Lesson, Topic, and Quiz
+   - Implement utility types for transformation functions
+
+2. Refactor transformation functions:
+   - Create `transformCourseData` function that handles both `courseStructure` and `courseId` attachment methods
+   - Implement type guards for runtime type checking
+
+3. Add comprehensive error handling:
+   - Create custom error classes for different scenarios
+   - Implement error boundaries in React components
+
+Example of unified type definitions:
+
+```typescript
+// shared/types.ts
+export interface Course {
+  id: string;
+  title: string;
+  structure: (Lesson | Topic | Quiz)[];
+}
+
+export interface Lesson {
+  id: string;
+  type: 'lesson';
+  title: string;
+  content: string;
+  courseId?: string;
+  order?: number;
+}
+
+// Similar interfaces for Topic and Quiz
+
+// Utility type for transformation
+export type TransformableItem = Lesson | Topic | Quiz;
+
+// Transformation function
+export function transformCourseData(course: Course, items: TransformableItem[]): Course {
+  // Implementation that handles both courseStructure and courseId
+}
+
+// Type guard example
+export function isLesson(item: TransformableItem): item is Lesson {
+  return item.type === 'lesson';
+}
+```
+
+Ensure to use ESLint with TypeScript rules and set up strict type checking in tsconfig.json.
+
+# Test Strategy:
+1. Type checking:
+   - Set up TypeScript compiler in strict mode
+   - Implement pre-commit hooks for type checking
+   - Use TypeScript Plugin for ESLint
+
+2. Unit tests for transformation functions:
+   - Test `transformCourseData` with various input scenarios
+   - Verify correct handling of both attachment methods
+   - Test edge cases and error conditions
+
+3. Property-based testing:
+   - Use fast-check library for property-based tests
+   - Generate random course structures to test type safety
+
+4. Error scenario testing:
+   - Simulate various error conditions
+   - Verify error messages and recovery mechanisms
+
+Use Jest for unit tests and fast-check for property-based testing. Implement continuous integration to run type checks and tests on every commit.
+
+# Subtasks:
+## 1. Create Unified Type Definitions [pending]
+### Dependencies: None
+### Description: Define shared interfaces for all data entities using TypeScript to ensure type consistency across the application
+### Details:
+Create a shared/types.ts file with interfaces for Course, Lesson, Topic, and Quiz. Ensure all properties are properly typed with string, number, or other appropriate types. Include discriminant union types where needed (e.g., type: 'lesson'). Define utility types for transformation functions and type narrowing. Configure tsconfig.json with strict type checking enabled.
+
+## 2. Implement Type Guards and Validation Functions [pending]
+### Dependencies: 2.1
+### Description: Create runtime type checking functions to validate data structures at critical boundaries
+### Details:
+Implement isLesson(), isTopic(), isQuiz() type guards for runtime type checking. Create validation functions that verify incoming data from API calls matches expected types. Add zod schemas for runtime validation where TypeScript static typing isn't sufficient. Document validation strategy for team reference.
+
+## 3. Refactor Data Transformation Functions [pending]
+### Dependencies: 2.1, 2.2
+### Description: Unify transformation logic to handle all data attachment methods consistently
+### Details:
+Create a transformCourseData() function that handles both courseStructure and courseId attachment methods. Implement helper functions for specific transformations (attachCourseId, buildCourseStructure). Ensure all transformation functions are properly typed with input/output types. Add error handling for edge cases in transformations.
+
+## 4. Implement Custom Error Handling System [pending]
+### Dependencies: 2.2
+### Description: Create specialized error classes and handling mechanisms for type-related errors
+### Details:
+Define custom error classes (TypeValidationError, TransformationError, etc.) that extend Error. Implement centralized error logging and reporting. Create utility functions for graceful error recovery where possible. Add error boundaries in React components to prevent cascading failures.
+
+## 5. Integrate Type System with Convex Backend [pending]
+### Dependencies: 2.1, 2.3
+### Description: Ensure type definitions are compatible with Convex data models and query results
+### Details:
+Create adapter functions to convert between Convex document types and frontend types. Update Convex schema definitions to align with shared type system. Implement serialization/deserialization utilities for complex types. Document the data flow between Convex and frontend components.
+
+## 6. Set Up Type Checking and Linting Infrastructure [pending]
+### Dependencies: 2.1
+### Description: Configure development tools to enforce type safety across the codebase
+### Details:
+Configure ESLint with TypeScript-specific rules (@typescript-eslint/eslint-plugin). Set up strict type checking in tsconfig.json with noImplicitAny and strictNullChecks enabled. Add pre-commit hooks to run type checking. Create documentation for type system architecture and usage guidelines. Add CI pipeline step for type checking.
+

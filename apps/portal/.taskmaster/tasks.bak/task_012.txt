@@ -1,0 +1,25 @@
+# Task ID: 12
+# Title: Create Visual Scenario Builder UI
+# Status: pending
+# Dependencies: 6, 7, 11
+# Priority: medium
+# Description: Implement the visual interface for creating and editing automation scenarios with drag-and-drop functionality.
+# Details:
+Develop a visual scenario builder with:
+1. Drag-and-drop interface for adding nodes
+2. Connection lines between nodes to show data flow
+3. Node configuration panels
+4. Validation of scenario configuration
+
+The builder should:
+- Allow users to drag nodes from a palette onto the canvas
+- Enable connecting nodes by drawing lines between outputs and inputs
+- Show configuration panels when nodes are selected
+- Validate connections between nodes
+- Provide real-time feedback about invalid configurations
+- Support saving scenarios as drafts
+
+Consider using a library like React Flow or similar for the drag-and-drop functionality.
+
+# Test Strategy:
+Write unit tests for UI components. Test drag-and-drop functionality. Test connection validation logic. Create integration tests for saving and loading scenarios. Perform usability testing to ensure the builder is intuitive.

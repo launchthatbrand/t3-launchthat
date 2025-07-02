@@ -1,0 +1,38 @@
+# Task ID: 7
+# Title: Develop Node Configuration System
+# Status: pending
+# Dependencies: 6
+# Priority: medium
+# Description: Implement the system for defining, configuring, and validating nodes within scenarios.
+# Details:
+Create a node configuration system with:
+1. Node type definitions (trigger, action, transformer)
+2. Configuration schema for each node type
+3. Input/output interface definitions
+4. Validation rules for node configurations
+
+Implement the following node types for MVP:
+- WordPress User Trigger: Fetches users from WordPress
+- WordPress Post Trigger: Fetches posts from WordPress
+- Portal User Action: Creates/updates users in Portal
+- Data Mapper: Maps fields between source and destination
+
+Example node definition:
+```
+const wordPressUserTrigger = {
+  type: 'wordpress_user_trigger',
+  name: 'WordPress User Source',
+  description: 'Fetches users from a WordPress site',
+  configSchema: {
+    connectionId: { type: 'connection', required: true },
+    perPage: { type: 'number', default: 10 },
+    userRole: { type: 'string', required: false }
+  },
+  outputs: {
+    users: { type: 'array', itemType: 'user' }
+  }
+};
+```
+
+# Test Strategy:
+Write unit tests for node type definitions. Test validation of node configurations. Verify that invalid configurations are rejected. Test the input/output interface validation between connected nodes.

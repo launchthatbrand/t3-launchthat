@@ -24,7 +24,9 @@ export const lessonsTable = defineTable({
   title: v.string(),
   description: v.optional(v.string()),
   isPublished: v.optional(v.boolean()),
-});
+  courseId: v.optional(v.id("courses")), // Link to parent course
+  order: v.optional(v.number()), // Order within the course
+}).index("by_course_order", ["courseId", "order"]);
 
 export const topicsTable = defineTable({
   lessonId: v.optional(v.id("lessons")),
@@ -45,19 +47,34 @@ export const topicsTable = defineTable({
 // Define quizzes directly within the lmsSchema for simplicity now
 export const quizzesTable = defineTable({
   title: v.string(),
-  // Link to either a lesson or a topic
+  content: v.optional(v.string()),
+  isPublished: v.optional(v.boolean()),
+  // Link to either a lesson, topic, or course (for final quiz)
   lessonId: v.optional(v.id("lessons")),
   topicId: v.optional(v.id("topics")),
+  courseId: v.optional(v.id("courses")), // For final quiz
+  order: v.optional(v.number()), // Order within parent
   questions: v.array(
     v.object({
+      type: v.union(
+        v.literal("single-choice"),
+        v.literal("multiple-choice"),
+        v.literal("true-false"),
+      ),
       questionText: v.string(),
-      options: v.array(v.string()), // Array of possible answers
-      correctAnswerIndex: v.number(), // Index of the correct answer in the options array
+      options: v.optional(v.array(v.string())), // Array of possible answers
+      explanation: v.optional(v.string()),
+      correctAnswer: v.union(
+        v.string(), // For single-choice
+        v.array(v.string()), // For multiple-choice
+        v.boolean(), // For true-false
+      ),
     }),
   ),
 })
   .index("by_lessonId", ["lessonId"])
-  .index("by_topicId", ["topicId"]);
+  .index("by_topicId", ["topicId"])
+  .index("by_course", ["courseId"]);
 
 export const courseEnrollmentsTable = defineTable({
   userId: v.id("users"),
@@ -70,11 +87,27 @@ export const courseEnrollmentsTable = defineTable({
   .index("by_course", ["courseId"])
   .index("by_user", ["userId"]);
 
+// Track user progress through course content
+export const progressTable = defineTable({
+  userId: v.id("users"),
+  courseId: v.id("courses"),
+  itemId: v.union(v.id("topics"), v.id("quizzes")),
+  itemType: v.union(v.literal("topic"), v.literal("quiz")),
+  completed: v.boolean(),
+  completedAt: v.optional(v.number()), // Timestamp of completion
+  score: v.optional(v.number()), // For quizzes
+  attempts: v.optional(v.number()), // For quizzes
+})
+  .index("by_user_course", ["userId", "courseId"])
+  .index("by_item", ["itemId"])
+  .index("by_user_item", ["userId", "itemId"]);
+
 // Export a proper Convex schema using defineSchema
 export const lmsSchema = defineSchema({
   courses: coursesTable,
   lessons: lessonsTable,
   topics: topicsTable,
   quizzes: quizzesTable,
-  courseEnrollments: courseEnrollmentsTable, // Added courseEnrollments
+  courseEnrollments: courseEnrollmentsTable,
+  progress: progressTable, // Added progress table
 });

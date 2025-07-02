@@ -19,14 +19,15 @@ import {
 } from "@acme/ui/card";
 
 export default function ViewCoursePage() {
-  const params = useParams();
-
-  // Unwrap params with React.use()
-  const unwrappedParams = React.use(params);
-  const courseId = unwrappedParams.courseId as Id<"courses">;
+  // useParams returns a readonly record; spread into a new object to avoid readonly issues
+  const { courseId } = useParams() as { courseId: string };
+  // Cast to Convex Id type
+  const courseIdTyped = courseId as Id<"courses">;
 
   // Type the query result explicitly
-  const course = useQuery(api.courses.getCourse, { courseId });
+  const course = useQuery(api.lms.index.getCourse, {
+    courseId: courseIdTyped,
+  });
 
   if (course === undefined) {
     return <div>Loading course details...</div>;

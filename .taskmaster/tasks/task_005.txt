@@ -1,0 +1,135 @@
+# Task ID: 5
+# Title: Add Advanced Course Structure Management
+# Status: pending
+# Dependencies: 1, 2, 3
+# Priority: low
+# Description: Implement advanced features for course structure management including bulk operations, templates, versioning, and enhanced UX improvements.
+# Details:
+1. Implement bulk operations:
+   - Create a SelectionContext for managing selected items
+   - Implement BulkActionBar component for bulk operations UI
+   - Add bulk move, delete, and duplicate functionality
+
+2. Create course structure templates:
+   - Implement a TemplateManager component
+   - Create a set of predefined course templates
+   - Allow users to save and load custom templates
+
+3. Add version history with restore capabilities:
+   - Use Convex's built-in versioning system
+   - Implement a VersionHistory component
+   - Add restore functionality for previous versions
+
+4. Enhance search and filtering:
+   - Implement full-text search using Convex's search capabilities
+   - Create AdvancedSearch component with filters
+   - Add keyboard shortcuts for quick search
+
+5. Implement keyboard shortcuts and accessibility:
+   - Use react-hotkeys-hook for keyboard shortcut management
+   - Implement focus management for keyboard navigation
+   - Ensure ARIA attributes for all interactive elements
+
+Example implementation for bulk operations:
+
+```typescript
+import { useSelectionContext } from './SelectionContext'
+import { useUnifiedCourseState } from './useUnifiedCourseState'
+import { useHotkeys } from 'react-hotkeys-hook'
+
+const BulkActionBar = () => {
+  const { selectedItems, clearSelection } = useSelectionContext()
+  const { bulkDelete, bulkMove, bulkDuplicate } = useUnifiedCourseState()
+
+  const handleDelete = () => {
+    bulkDelete(selectedItems)
+    clearSelection()
+  }
+
+  const handleMove = (targetSection) => {
+    bulkMove(selectedItems, targetSection)
+    clearSelection()
+  }
+
+  const handleDuplicate = () => {
+    bulkDuplicate(selectedItems)
+    clearSelection()
+  }
+
+  useHotkeys('ctrl+d', handleDuplicate, [selectedItems])
+  useHotkeys('delete', handleDelete, [selectedItems])
+
+  return (
+    <div className="bulk-action-bar">
+      <button onClick={handleDelete}>Delete Selected</button>
+      <button onClick={handleDuplicate}>Duplicate Selected</button>
+      <select onChange={(e) => handleMove(e.target.value)}>
+        <option>Move to...</option>
+        {/* Populate with available sections */}
+      </select>
+    </div>
+  )
+}
+```
+
+Ensure to implement proper error handling and undo functionality for bulk operations.
+
+# Test Strategy:
+1. Bulk operation testing:
+   - Create large test datasets (1000+ items)
+   - Test all bulk operations (move, delete, duplicate)
+   - Verify performance and error handling
+
+2. Template system validation:
+   - Test predefined templates for correctness
+   - Verify custom template saving and loading
+   - Test template application to existing courses
+
+3. Version control testing:
+   - Create complex edit histories
+   - Test version comparison and diff visualization
+   - Verify restore functionality for all item types
+
+4. Accessibility compliance testing:
+   - Use axe-core for automated WCAG 2.1 AA checks
+   - Perform manual keyboard navigation testing
+   - Test with screen readers (NVDA, VoiceOver)
+
+5. Performance testing:
+   - Measure render times for large course structures
+   - Test search performance with large datasets
+   - Profile memory usage during bulk operations
+
+Use Jest and React Testing Library for component tests, Cypress for E2E tests, and Lighthouse for performance testing. Implement visual regression tests using Percy for UI components.
+
+# Subtasks:
+## 1. Implement Bulk Operations [pending]
+### Dependencies: None
+### Description: Create a system for performing actions on multiple course items simultaneously
+### Details:
+Develop SelectionContext for managing selected items. Create BulkActionBar component with UI for bulk operations. Implement bulk move, delete, and duplicate functionality. Add error handling and undo feature for bulk actions.
+
+## 2. Develop Course Structure Templates [pending]
+### Dependencies: None
+### Description: Create a template system for rapid course creation and standardization
+### Details:
+Implement TemplateManager component. Design and create a set of predefined course templates. Develop functionality to save, load, and apply custom templates. Ensure template compatibility with existing course structures.
+
+## 3. Implement Version History and Restore [pending]
+### Dependencies: 5.1, 5.2
+### Description: Add version control to course structures with the ability to view history and restore previous versions
+### Details:
+Utilize Convex's built-in versioning system. Create VersionHistory component to display course structure changes over time. Implement restore functionality to revert to previous versions. Ensure version history is maintained during bulk operations and template applications.
+
+## 4. Enhance Search and Filtering Capabilities [pending]
+### Dependencies: None
+### Description: Improve course navigation with advanced search and filtering options
+### Details:
+Implement full-text search using Convex's search capabilities. Develop AdvancedSearch component with various filtering options. Add keyboard shortcuts for quick search access. Optimize search performance for large course structures.
+
+## 5. Improve Accessibility and Keyboard Navigation [pending]
+### Dependencies: 5.1, 5.4
+### Description: Enhance the user experience with keyboard shortcuts and improved accessibility
+### Details:
+Implement keyboard shortcut management using react-hotkeys-hook. Develop focus management system for keyboard navigation throughout the course structure. Add ARIA attributes to all interactive elements. Ensure compatibility with screen readers and other assistive technologies.
+

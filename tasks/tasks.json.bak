@@ -1,0 +1,315 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Design Feed Data Model",
+      "description": "Create the database schema for the social feed system including feed items, reactions, comments, and user subscriptions tables.",
+      "details": "Implement the following tables in Convex database:\n\n1. Feed Items Table:\n- id: unique identifier\n- contentType: enum (post, share, comment)\n- creatorId: reference to user\n- createdAt: timestamp\n- updatedAt: timestamp\n- content: text content\n- mediaUrls: array of media references\n- visibility: enum (public, private, group)\n- originalContentId: reference to original content if shared\n- moduleType: enum (blog, course, group, event)\n- moduleId: reference to specific module item\n\n2. Reactions Table:\n- id: unique identifier\n- userId: reference to user\n- feedItemId: reference to feed item\n- reactionType: enum (like, celebrate, support, etc.)\n- createdAt: timestamp\n\n3. Comments Table:\n- id: unique identifier\n- feedItemId: reference to feed item\n- userId: reference to user\n- content: text content\n- parentCommentId: reference to parent comment (for threading)\n- createdAt: timestamp\n- updatedAt: timestamp\n\n4. Feed Subscriptions Table:\n- id: unique identifier\n- userId: reference to user\n- followType: enum (user, topic, group)\n- followId: reference to followed entity\n- createdAt: timestamp\n\n5. Saved Items Table:\n- id: unique identifier\n- userId: reference to user\n- feedItemId: reference to feed item\n- createdAt: timestamp",
+      "testStrategy": "1. Create unit tests to verify schema integrity\n2. Test data relationships and constraints\n3. Validate that indexes are properly set up for query performance\n4. Test CRUD operations on each table\n5. Verify that timestamps are automatically updated",
+      "priority": "high",
+      "dependencies": [],
+      "status": "done",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design User Table",
+          "description": "Create schema for the User table, including fields for user information and authentication",
+          "dependencies": [],
+          "details": "Define fields such as user_id, username, email, password_hash, created_at, last_login. Consider indexing on username and email for faster lookups.",
+          "status": "done"
+        },
+        {
+          "id": 2,
+          "title": "Design Post Table",
+          "description": "Create schema for the Post table, including fields for post content and metadata",
+          "dependencies": [
+            1
+          ],
+          "details": "Define fields such as post_id, user_id (foreign key to User table), content, created_at, updated_at. Index on user_id and created_at for efficient retrieval of user posts and timeline generation.",
+          "status": "done"
+        },
+        {
+          "id": 3,
+          "title": "Design Comment Table",
+          "description": "Create schema for the Comment table, including fields for comment content and relationships",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Define fields such as comment_id, post_id (foreign key to Post table), user_id (foreign key to User table), content, created_at. Index on post_id and user_id for quick retrieval of comments on posts and by users.",
+          "status": "done"
+        },
+        {
+          "id": 4,
+          "title": "Design Like Table",
+          "description": "Create schema for the Like table to track user likes on posts",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Define fields such as like_id, user_id (foreign key to User table), post_id (foreign key to Post table), created_at. Create a unique composite index on (user_id, post_id) to ensure one like per user per post.",
+          "status": "done"
+        },
+        {
+          "id": 5,
+          "title": "Map Relationships and Optimize Queries",
+          "description": "Define relationships between tables and optimize queries for common feed operations",
+          "dependencies": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "details": "Map one-to-many and many-to-many relationships between tables. Create views or stored procedures for common feed queries like retrieving a user's timeline or post details with comments and likes. Consider denormalization techniques for performance if necessary.",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Implement Feed API Queries",
+      "description": "Develop the backend API endpoints for retrieving different types of feeds (universal, personalized, group-specific, and user profile).",
+      "details": "Create the following Convex query functions:\n\n1. `getUniversalFeed(limit, cursor)`:\n   - Retrieve public content from all modules\n   - Sort by creation date (newest first)\n   - Support pagination with cursor-based approach\n   - Include reaction counts and comment counts\n\n2. `getPersonalizedFeed(userId, limit, cursor)`:\n   - Filter content based on user's subscriptions\n   - Include content from followed users, topics, and groups\n   - Sort by relevance algorithm (combination of recency and engagement)\n   - Support pagination\n\n3. `getGroupFeed(groupId, limit, cursor)`:\n   - Retrieve content specific to a group\n   - Filter by visibility permissions\n   - Sort by creation date\n   - Support pagination\n\n4. `getUserProfileFeed(profileId, limit, cursor)`:\n   - Get content created by a specific user\n   - Filter by visibility permissions\n   - Sort by creation date\n   - Support pagination\n\n5. `getFeedItem(feedItemId)`:\n   - Get a single feed item by ID with all associated data\n\nImplement proper access control to ensure users can only see content they have permission to view.",
+      "testStrategy": "1. Write unit tests for each query function\n2. Test pagination works correctly\n3. Verify sorting order is correct\n4. Test permission filters work as expected\n5. Benchmark query performance with large datasets\n6. Test edge cases like empty results",
+      "priority": "high",
+      "dependencies": [
+        1
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 3,
+      "title": "Implement Feed API Mutations",
+      "description": "Develop the backend API endpoints for creating, updating, and interacting with feed content.",
+      "details": "Create the following Convex mutation functions:\n\n1. `createPost(content, mediaUrls, visibility, moduleType, moduleId)`:\n   - Validate input data\n   - Create new feed item\n   - Handle media references\n   - Set appropriate visibility\n\n2. `updatePost(postId, content, mediaUrls, visibility)`:\n   - Verify user owns the post\n   - Update post content\n   - Handle media changes\n   - Update visibility if needed\n\n3. `deletePost(postId)`:\n   - Verify user owns the post\n   - Soft delete the post and related content\n\n4. `addReaction(feedItemId, reactionType)`:\n   - Add or toggle user reaction\n   - Handle duplicate reactions\n\n5. `removeReaction(feedItemId, reactionType)`:\n   - Remove user reaction\n\n6. `addComment(feedItemId, content, parentCommentId)`:\n   - Create comment\n   - Handle threaded comments\n\n7. `updateComment(commentId, content)`:\n   - Verify user owns comment\n   - Update comment content\n\n8. `deleteComment(commentId)`:\n   - Verify user owns comment\n   - Soft delete comment\n\n9. `shareContent(originalContentId, content, visibility)`:\n   - Create share-type feed item\n   - Link to original content\n   - Add optional commentary\n\nImplement proper validation, error handling, and access control for all mutations.",
+      "testStrategy": "1. Unit test each mutation function\n2. Test validation logic for all inputs\n3. Verify error handling for invalid operations\n4. Test permission checks\n5. Verify data integrity after mutations\n6. Test concurrency issues with simultaneous operations",
+      "priority": "high",
+      "dependencies": [
+        1
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 4,
+      "title": "Implement Feed Subscription API",
+      "description": "Create API endpoints for managing user feed preferences, including following/unfollowing users, topics, or groups, and saving items.",
+      "details": "Create the following Convex mutation and query functions:\n\n1. `followUser(targetUserId)`:\n   - Add entry to Feed Subscriptions table\n   - Handle already following case\n\n2. `unfollowUser(targetUserId)`:\n   - Remove entry from Feed Subscriptions table\n\n3. `followTopic(topicId)`:\n   - Add topic subscription\n\n4. `unfollowTopic(topicId)`:\n   - Remove topic subscription\n\n5. `followGroup(groupId)`:\n   - Add group subscription\n   - Verify user has access to group\n\n6. `unfollowGroup(groupId)`:\n   - Remove group subscription\n\n7. `saveItem(feedItemId)`:\n   - Add to Saved Items table\n\n8. `unsaveItem(feedItemId)`:\n   - Remove from Saved Items table\n\n9. `getSavedItems(limit, cursor)`:\n   - Retrieve user's saved items\n   - Support pagination\n\n10. `getFollowing(userId, followType, limit, cursor)`:\n    - Get list of entities user is following\n    - Filter by follow type\n    - Support pagination\n\nImplement proper error handling and validation for all functions.",
+      "testStrategy": "1. Test each subscription function\n2. Verify idempotent operations (following twice should not error)\n3. Test that feed content updates appropriately after subscription changes\n4. Verify saved items are retrievable\n5. Test pagination of subscription lists\n6. Verify proper error handling for invalid operations",
+      "priority": "medium",
+      "dependencies": [
+        1
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 5,
+      "title": "Develop Feed Stream Component",
+      "description": "Create a reusable React component for displaying the feed with infinite scrolling, loading states, and error handling.",
+      "details": "Implement a `FeedStream` React component with the following features:\n\n1. Props:\n   - `feedType`: 'universal', 'personalized', 'group', 'profile'\n   - `targetId`: ID of group or profile when applicable\n   - `limit`: Number of items to load per page\n   - `filters`: Object containing active filters\n\n2. Features:\n   - Fetch initial feed data using appropriate API query\n   - Implement infinite scrolling using Intersection Observer\n   - Show loading states during initial load and pagination\n   - Handle empty states with appropriate messaging\n   - Implement error handling with retry options\n   - Support real-time updates using Convex subscriptions\n   - Optimize rendering for large lists using virtualization\n\n3. Styling:\n   - Responsive layout for all screen sizes\n   - Consistent with platform design system\n   - Accessible focus states and keyboard navigation\n   - Smooth animations for loading and new content\n\nUse React Query or similar for data fetching and caching. Implement proper TypeScript types for all props and state.",
+      "testStrategy": "1. Unit test component rendering\n2. Test infinite scrolling behavior\n3. Verify loading states display correctly\n4. Test error handling and retry functionality\n5. Verify real-time updates work\n6. Test responsive behavior across screen sizes\n7. Verify accessibility with screen readers",
+      "priority": "high",
+      "dependencies": [
+        2
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 6,
+      "title": "Create Post Creator Component",
+      "description": "Develop a rich text editor component for creating and editing posts with support for text formatting, media uploads, and visibility controls.",
+      "details": "Implement a `PostCreator` React component with the following features:\n\n1. Rich Text Editing:\n   - Use a library like Slate.js or Draft.js\n   - Support basic formatting (bold, italic, lists)\n   - Allow links and mentions (@username)\n   - Support hashtags (#topic)\n\n2. Media Handling:\n   - Image upload with preview\n   - Drag and drop support\n   - Image resizing and basic editing\n   - Progress indicators during upload\n\n3. Post Controls:\n   - Visibility selector (public, followers, group)\n   - Group selector when posting to a group\n   - Draft saving functionality\n   - Post scheduling UI (if enabled)\n\n4. User Experience:\n   - Character count/limit indicator\n   - Responsive design for mobile and desktop\n   - Keyboard shortcuts for common actions\n   - Autosave functionality\n\n5. Integration:\n   - Submit to appropriate API endpoint\n   - Handle success and error states\n   - Support editing existing posts\n\nImplement proper form validation and error handling. Ensure accessibility compliance for all interactive elements.",
+      "testStrategy": "1. Test rich text editing functionality\n2. Verify media upload and preview works\n3. Test form validation and submission\n4. Verify drafts are saved correctly\n5. Test editing existing posts\n6. Verify accessibility of the editor\n7. Test on different devices and screen sizes",
+      "priority": "high",
+      "dependencies": [
+        3
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 7,
+      "title": "Develop Post Card Component",
+      "description": "Create a component to display individual feed items with all interaction options including reactions, comments, and sharing.",
+      "details": "Implement a `PostCard` React component with the following features:\n\n1. Content Display:\n   - Formatted text content with support for links\n   - Media gallery with image preview\n   - Metadata (author, timestamp, visibility)\n   - Original content preview for shares\n\n2. Interaction Controls:\n   - Reaction buttons with counts\n   - Comment button and count\n   - Share button\n   - Save/bookmark button\n   - More options menu (report, hide, etc.)\n\n3. Author Actions:\n   - Edit post option (if owner)\n   - Delete post option (if owner)\n   - Pin post option (if applicable)\n\n4. Expandable Elements:\n   - \"Show more\" for long text\n   - Expandable media gallery\n   - Expandable comment section\n\n5. Styling:\n   - Responsive layout\n   - Consistent with platform design\n   - Appropriate spacing and typography\n   - Hover and focus states\n\nImplement optimistic UI updates for reactions and other interactions. Handle different content types (text, images, links) appropriately.",
+      "testStrategy": "1. Test rendering of different content types\n2. Verify all interaction buttons work\n3. Test expandable sections\n4. Verify owner-specific actions appear correctly\n5. Test responsive behavior\n6. Verify accessibility\n7. Test optimistic updates and error recovery",
+      "priority": "high",
+      "dependencies": [
+        3,
+        4
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 8,
+      "title": "Implement Comment Thread Component",
+      "description": "Create a component for displaying and interacting with threaded comments on feed items.",
+      "details": "Implement a `CommentThread` React component with the following features:\n\n1. Comment Display:\n   - Threaded hierarchy with indentation\n   - Author information and timestamp\n   - Formatted text content\n   - Reaction counts\n\n2. Comment Creation:\n   - Comment input field\n   - Reply functionality\n   - Mention suggestions (@username)\n\n3. Comment Actions:\n   - Edit own comments\n   - Delete own comments\n   - React to comments\n   - Report inappropriate comments\n\n4. UX Features:\n   - Collapse/expand thread sections\n   - Load more comments button\n   - Sort options (newest, oldest, most reactions)\n   - Real-time updates for new comments\n\n5. Performance:\n   - Lazy loading of deep comment threads\n   - Virtualized rendering for large comment sets\n   - Optimistic UI updates\n\nImplement proper error handling and loading states. Ensure accessibility for all interactive elements.",
+      "testStrategy": "1. Test comment rendering and threading\n2. Verify comment creation and replies work\n3. Test edit and delete functionality\n4. Verify collapse/expand behavior\n5. Test pagination of comments\n6. Verify real-time updates\n7. Test accessibility of comment interactions",
+      "priority": "medium",
+      "dependencies": [
+        3,
+        7
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 9,
+      "title": "Create Feed Filters Component",
+      "description": "Develop UI components for sorting and filtering feed content by various criteria.",
+      "details": "Implement a `FeedFilters` React component with the following features:\n\n1. Filter Options:\n   - Content type filters (posts, shares, media, etc.)\n   - Date range selector\n   - Source filters (modules: blog, courses, groups, etc.)\n   - Author filters (following, all users, etc.)\n\n2. Sort Options:\n   - Newest first\n   - Most popular (by engagement)\n   - Most relevant (personalized)\n\n3. UI Elements:\n   - Filter dropdown/modal\n   - Active filter chips/badges\n   - Clear all filters button\n   - Save filter preset option\n\n4. State Management:\n   - URL parameter synchronization\n   - Filter state persistence\n   - Integration with feed queries\n\n5. Responsive Design:\n   - Compact view for mobile\n   - Expanded view for desktop\n   - Accessible controls\n\nImplement the component to work seamlessly with the FeedStream component. Ensure filters are applied efficiently without unnecessary re-fetching.",
+      "testStrategy": "1. Test each filter option works correctly\n2. Verify sort options change the feed order\n3. Test URL parameter synchronization\n4. Verify filter state persists correctly\n5. Test responsive behavior\n6. Verify accessibility of filter controls\n7. Test performance with various filter combinations",
+      "priority": "medium",
+      "dependencies": [
+        5
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 10,
+      "title": "Implement Notification System Integration",
+      "description": "Integrate the feed system with the existing notification infrastructure to alert users about interactions with their content.",
+      "details": "Implement notification triggers for feed activities:\n\n1. Create notification handlers for:\n   - New reactions on user's posts\n   - New comments on user's posts\n   - Mentions in posts or comments (@username)\n   - Shares of user's content\n   - New posts in followed groups\n   - New posts from followed users\n\n2. Notification Content:\n   - Create appropriate notification messages\n   - Include relevant context (post preview, comment text)\n   - Add deep links to the specific content\n\n3. Notification Delivery:\n   - In-app notifications\n   - Email notifications (respect user preferences)\n   - Push notifications for mobile (if applicable)\n\n4. Notification Settings:\n   - Integrate with existing notification preferences\n   - Add feed-specific notification controls\n   - Support for notification digests\n\n5. Notification Panel:\n   - Enhance existing notification panel to display feed notifications\n   - Add feed-specific notification filters\n\nEnsure notifications are batched appropriately to prevent overwhelming users. Implement proper error handling for notification delivery.",
+      "testStrategy": "1. Test each notification trigger\n2. Verify notification content is correct\n3. Test delivery to different channels\n4. Verify notification preferences are respected\n5. Test batching and throttling behavior\n6. Verify deep links work correctly\n7. Test notification panel integration",
+      "priority": "medium",
+      "dependencies": [
+        3,
+        4
+      ],
+      "status": "done",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement Feed Activity Notification Handlers",
+          "description": "Create notification handlers for social feed activities including likes, comments, mentions, and shares",
+          "dependencies": [],
+          "details": "Develop event listeners that trigger notifications when users interact with feed content. Create separate handlers for each activity type (likes, comments, mentions, shares) that capture relevant context data needed for notifications. Ensure handlers connect to the existing notification pipeline in the portal app.",
+          "status": "done"
+        },
+        {
+          "id": 2,
+          "title": "Design Notification Content Templates",
+          "description": "Create templates for notification content with post previews and contextual information",
+          "dependencies": [
+            1
+          ],
+          "details": "Design and implement reusable templates for each notification type that include post previews, user information, and relevant context. Ensure templates are responsive and support both mobile and desktop views. Include localization support for multilingual content.\n<info added on 2025-05-30T00:20:09.502Z>\nImplemented two specialized components for feed notifications:\n\n1. FeedNotificationCard.tsx - Displays feed notifications with appropriate styling and icons based on notification type (likes, comments, replies, mentions, shares).\n\n2. FeedItemPreview.tsx - Fetches and displays previews of feed post content within notifications.\n\nBoth components are integrated with notification types defined in feedNotifications.ts and are fully functional. Fixed linter errors in NotificationPreferencesForm and FeedItemPreview components to ensure proper API compatibility.\n\nRemaining work:\n- Create a central component to integrate these elements into the notification panel\n- Enhance the notification preferences UI with feed-specific settings\n- Implement notification grouping for similar feed activities\n</info added on 2025-05-30T00:20:09.502Z>",
+          "status": "done"
+        },
+        {
+          "id": 3,
+          "title": "Integrate with Existing Notification Delivery System",
+          "description": "Connect feed notification triggers to the portal app's notification delivery infrastructure",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Integrate the feed notification handlers with the existing notification delivery system. Ensure notifications can be delivered through multiple channels (in-app, email, push) based on user preferences. Implement batching and throttling mechanisms to prevent notification overload.",
+          "status": "done"
+        },
+        {
+          "id": 4,
+          "title": "Develop Feed-Specific Notification Preferences UI",
+          "description": "Add feed-specific notification preference settings to the user interface",
+          "dependencies": [
+            3
+          ],
+          "details": "Extend the existing notification preferences UI to include feed-specific settings. Allow users to customize which feed activities trigger notifications and through which channels. Implement granular controls for different notification types (likes, comments, mentions, shares).\n<info added on 2025-05-30T00:25:00.911Z>\nImplementation Progress:\n\nCompleted the feed-specific notification preferences UI with the following components:\n\n1. NotificationPreferencesForm.tsx:\n   - Added dedicated sections for feed notification types (reactions, comments, mentions, shares, followed users)\n   - Implemented save functionality for all preference settings\n   - Added loading of existing user preferences\n\n2. Supporting components:\n   - useNotificationPreferences.ts hook for preference state management\n   - NotificationDeliveryService.ts for multi-channel delivery\n   - FeedContext.tsx for tracking user feed interactions\n\n3. Extended notification preferences schema with feed-specific fields across all delivery channels (in-app, email, push).\n\n4. Created FeedNotificationIntegration.tsx to:\n   - Validate user preferences before notification delivery\n   - Route notifications to appropriate channels based on settings\n   - Process notifications in batches for efficiency\n\nAll required modules have been created and integration with the existing notification infrastructure is complete. The UI now provides granular control over all feed notification types as specified.\n</info added on 2025-05-30T00:25:00.911Z>",
+          "status": "done"
+        },
+        {
+          "id": 5,
+          "title": "Enhance Notification Panel for Feed Content",
+          "description": "Update the notification panel to properly display and filter feed notifications",
+          "dependencies": [
+            2,
+            3,
+            4
+          ],
+          "details": "Enhance the notification panel UI to display feed notifications with appropriate formatting and context. Implement filtering options to allow users to view specific types of feed notifications. Add interactive elements to allow users to respond to notifications directly from the panel.",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Implement Mentions and Hashtags",
+      "description": "Add support for @mentions and #hashtags in posts and comments with autocomplete suggestions and linking.",
+      "details": "Implement the following features:\n\n1. Mention System:\n   - Detect @username patterns in text input\n   - Show autocomplete dropdown with matching users\n   - Convert mentions to links/special formatting in rendered content\n   - Store mention metadata for notifications\n\n2. Hashtag System:\n   - Detect #hashtag patterns in text input\n   - Show autocomplete with trending or previously used hashtags\n   - Convert hashtags to links in rendered content\n   - Store hashtag metadata for search and categorization\n\n3. Backend Support:\n   - Create or enhance text parsing functions\n   - Add mention and hashtag extraction during post/comment creation\n   - Update database schema to track mentions and hashtags\n   - Create API for hashtag trending and suggestions\n\n4. Frontend Components:\n   - Enhance text editor with mention/hashtag detection\n   - Create autocomplete components\n   - Style mention and hashtag elements in rendered content\n\n5. Navigation:\n   - Implement hashtag pages showing all content with a specific tag\n   - Ensure mentions link to user profiles\n\nOptimize autocomplete performance for large user bases. Implement proper access control for mentions (only suggest users the author can mention).",
+      "testStrategy": "1. Test mention detection and autocomplete\n2. Verify hashtag detection and linking\n3. Test mention notifications\n4. Verify hashtag pages show correct content\n5. Test autocomplete performance with large datasets\n6. Verify accessibility of autocomplete\n7. Test edge cases like special characters in hashtags",
+      "priority": "medium",
+      "dependencies": [
+        6,
+        8
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 12,
+      "title": "Implement Content Sharing Functionality",
+      "description": "Develop the ability to share existing platform content (courses, blog posts, products) to the feed with optional commentary.",
+      "details": "Implement the following features:\n\n1. Share Dialog:\n   - Create modal/popup for sharing content\n   - Allow adding commentary text\n   - Provide visibility options\n   - Show preview of content being shared\n\n2. Content Types Support:\n   - Blog posts: Show title, excerpt, featured image\n   - Courses: Show title, description, cover image\n   - Products: Show name, image, price\n   - Events: Show title, date, location\n   - Group posts: Respect original visibility settings\n\n3. Share Button Integration:\n   - Add share buttons to relevant content across the platform\n   - Implement consistent share flow\n\n4. Shared Content Display:\n   - Design card layout for shared content\n   - Show original content preview with link\n   - Display sharer's commentary\n   - Indicate content type and source\n\n5. Analytics:\n   - Track share counts for content\n   - Record share sources and engagement\n\nEnsure proper permission checking to prevent sharing of restricted content. Implement OpenGraph-style previews for shared content.",
+      "testStrategy": "1. Test sharing different content types\n2. Verify commentary is saved correctly\n3. Test visibility settings work\n4. Verify shared content displays properly in feed\n5. Test permission restrictions\n6. Verify analytics tracking\n7. Test share functionality across different platform sections",
+      "priority": "medium",
+      "dependencies": [
+        3,
+        7
+      ],
+      "status": "in-progress",
+      "subtasks": []
+    },
+    {
+      "id": 13,
+      "title": "Implement Content Discovery Features",
+      "description": "Develop trending content, topic following, and content recommendation features to improve content discovery.",
+      "details": "Implement the following features:\n\n1. Trending Content:\n   - Create algorithm to identify popular content based on:\n     - Recent engagement (reactions, comments, shares)\n     - Velocity of engagement\n     - Content quality and relevance\n   - Implement API endpoint for trending content\n   - Create UI component to display trending items\n\n2. Topic Following:\n   - Enhance hashtag system to support followable topics\n   - Create topic profile pages\n   - Implement topic follow/unfollow functionality\n   - Add topic suggestions based on user behavior\n\n3. Content Recommendations:\n   - Implement basic recommendation algorithm based on:\n     - User's followed topics and users\n     - Content engagement history\n     - Similar user behavior\n   - Create \"Recommended for You\" section in feed\n   - Add explanation for why content is recommended\n\n4. Search Integration:\n   - Enhance existing search to include feed content\n   - Add filters for feed-specific content\n   - Implement typeahead suggestions for hashtags and users\n\n5. Discovery Tab/Page:\n   - Create dedicated discovery interface\n   - Organize by trending, recommended, and topics\n   - Implement browse by category functionality\n\nOptimize algorithms for performance with large datasets. Implement caching for trending calculations.",
+      "testStrategy": "1. Test trending algorithm with various engagement patterns\n2. Verify topic following affects feed content\n3. Test recommendation quality with different user profiles\n4. Verify search returns relevant feed content\n5. Test discovery interface usability\n6. Benchmark performance of recommendation algorithms\n7. Verify caching mechanisms work correctly",
+      "priority": "medium",
+      "dependencies": [
+        2,
+        4,
+        11
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 14,
+      "title": "Implement Privacy and Moderation Tools",
+      "description": "Develop tools for content moderation, abuse reporting, and privacy controls for the feed system.",
+      "details": "Implement the following features:\n\n1. Visibility Controls:\n   - Enhance post creation with privacy options:\n     - Public (visible to all)\n     - Followers only\n     - Group members only\n     - Specific users\n   - Add UI for selecting visibility\n   - Implement backend visibility filtering\n\n2. Content Moderation Tools:\n   - Admin dashboard for reviewing reported content\n   - Bulk moderation actions (approve, hide, delete)\n   - Content filtering rules configuration\n   - Automated content scanning for prohibited material\n\n3. Abuse Reporting:\n   - Report button on posts and comments\n   - Report categories and description field\n   - Reporter feedback mechanism\n   - Rate limiting to prevent report abuse\n\n4. Content Policies:\n   - Create content policy documentation\n   - Implement policy acceptance for content creators\n   - Add policy reference in relevant UI locations\n\n5. Data Privacy Features:\n   - Content export functionality\n   - Data retention controls\n   - Delete/anonymize user content option\n   - Privacy impact assessment documentation\n\nEnsure all features comply with relevant data protection regulations (GDPR, CCPA, etc.). Implement proper audit logging for moderation actions.",
+      "testStrategy": "1. Test visibility controls work correctly\n2. Verify moderation tools function properly\n3. Test abuse reporting flow\n4. Verify rate limiting prevents abuse\n5. Test data export and deletion\n6. Verify audit logging captures required information\n7. Test compliance with privacy regulations",
+      "priority": "high",
+      "dependencies": [
+        3,
+        7,
+        8
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 15,
+      "title": "Implement Analytics and Reporting",
+      "description": "Develop analytics tracking and reporting features to measure engagement and content performance in the feed.",
+      "details": "Implement the following features:\n\n1. Engagement Tracking:\n   - Track views, reactions, comments, and shares\n   - Measure time spent viewing feed items\n   - Record click-through rates on links\n   - Track content discovery paths\n\n2. Content Performance Metrics:\n   - Engagement rate by content type\n   - Reach and impression metrics\n   - Virality score (shares/views ratio)\n   - Retention impact (correlation with return visits)\n\n3. User Activity Analysis:\n   - Posting frequency and patterns\n   - Interaction types and preferences\n   - Topic and hashtag usage\n   - Network growth (follows/followers)\n\n4. Admin Dashboard:\n   - Overview of feed activity\n   - Content performance reports\n   - User engagement reports\n   - Trend analysis over time\n   - Export functionality for reports\n\n5. Creator Insights:\n   - Personal content performance metrics\n   - Audience growth and engagement\n   - Best performing content types\n   - Optimal posting times\n\nImplement proper data aggregation and anonymization for privacy. Ensure analytics collection doesn't impact feed performance.",
+      "testStrategy": "1. Verify all engagement events are tracked correctly\n2. Test dashboard displays accurate metrics\n3. Verify report generation and export\n4. Test performance impact of analytics collection\n5. Verify data aggregation works correctly\n6. Test privacy compliance of analytics data\n7. Verify insights are useful and actionable",
+      "priority": "low",
+      "dependencies": [
+        2,
+        3,
+        7,
+        12
+      ],
+      "status": "pending",
+      "subtasks": []
+    }
+  ]
+}
