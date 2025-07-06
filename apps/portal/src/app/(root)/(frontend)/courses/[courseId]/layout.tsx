@@ -7,7 +7,14 @@ import { api } from "@convex-config/_generated/api";
 import { useQuery } from "convex/react";
 
 import { cn } from "@acme/ui";
+import {
+  CourseSidebarProvider,
+  CourseSidebarTrigger,
+} from "@acme/ui/course-sidebar";
+import { AppSidebar } from "@acme/ui/layout/AppSidebar";
 import { ScrollArea } from "@acme/ui/scroll-area";
+
+import { CoursesSidebar } from "./_components/CourseSidebar";
 
 interface CourseLayoutProps {
   children: ReactNode;
@@ -76,75 +83,82 @@ export default function CourseLayout({ children }: CourseLayoutProps) {
   }
 
   return (
-    <div className="container py-8">
-      <h1 className="mb-4 text-3xl font-bold">{course.title}</h1>
-      {course.description && (
-        <p className="mb-6 max-w-2xl text-muted-foreground">
-          {course.description}
-        </p>
-      )}
-
-      <div className="flex flex-col gap-6 md:flex-row">
-        {/* Sidebar */}
-        <aside className="md:w-64 md:flex-shrink-0">
-          <ScrollArea className="h-[calc(100vh-200px)] rounded-md border p-4">
-            <ul className="space-y-2">
-              {orderedLessons.map((lesson) => (
-                <li key={lesson!._id}>
-                  <Link
-                    href={`/courses/${courseId}/lesson/${lesson!._id}`}
-                    className={cn(
-                      "block rounded-md px-3 py-2 text-sm transition-colors",
-                      selectedLessonSegment === lesson!._id &&
-                        !selectedTopicSegment
-                        ? "bg-muted font-semibold text-primary"
-                        : "hover:bg-accent hover:text-foreground",
-                    )}
-                  >
-                    {lesson!.title}
-                  </Link>
-                  {/* Nested topics */}
-                  <ul className="ml-4 mt-1 space-y-1 border-l pl-3">
-                    {topicsByLesson.get(lesson!._id)?.map((topic) => (
-                      <li key={topic._id}>
-                        <Link
-                          href={`/courses/${courseId}/lesson/${lesson!._id}/topic/${topic._id}`}
-                          className={cn(
-                            "block text-sm transition-colors",
-                            selectedTopicSegment === topic._id
-                              ? "font-semibold text-primary"
-                              : "text-muted-foreground hover:text-foreground",
-                          )}
-                        >
-                          {topic.title}
-                        </Link>
-                      </li>
-                    ))}
-                    {quizzesByLesson.get(lesson!._id)?.map((quiz) => (
-                      <li key={quiz._id}>
-                        <Link
-                          href={`/courses/${courseId}/lesson/${lesson!._id}/quiz/${quiz._id}`}
-                          className={cn(
-                            "block text-sm transition-colors",
-                            selectedQuizSegment === quiz._id
-                              ? "font-semibold text-primary"
-                              : "text-muted-foreground hover:text-foreground",
-                          )}
-                        >
-                          Quiz: {quiz.title}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ul>
-          </ScrollArea>
-        </aside>
-
-        {/* Main outlet */}
-        <section className="flex-1">{children}</section>
+    <CourseSidebarProvider>
+      <CoursesSidebar variant="floating" collapsible="icon" />
+      <div className="flex flex-1 flex-col">
+        <CourseSidebarTrigger />
+        {children}
       </div>
-    </div>
+    </CourseSidebarProvider>
+    // <div className="container md:py-8">
+    //   <h1 className="mb-4 text-3xl font-bold">{course.title}</h1>
+    //   {course.description && (
+    //     <p className="mb-6 max-w-2xl text-muted-foreground">
+    //       {course.description}
+    //     </p>
+    //   )}
+
+    //   <div className="flex gap-6">
+    //     {/* Sidebar */}
+    //     <aside className="md:w-56 md:flex-shrink-0">
+    //       <ScrollArea className="h-auto rounded-md border bg-muted p-2 md:p-4">
+    //         <ul className="space-y-2">
+    //           {orderedLessons.map((lesson) => (
+    //             <li key={lesson!._id}>
+    //               <Link
+    //                 href={`/courses/${courseId}/lesson/${lesson!._id}`}
+    //                 className={cn(
+    //                   "block rounded-md px-1 py-2 text-sm transition-colors md:px-3",
+    //                   selectedLessonSegment === lesson!._id &&
+    //                     !selectedTopicSegment
+    //                     ? "bg-muted font-semibold text-primary"
+    //                     : "hover:bg-accent hover:text-foreground",
+    //                 )}
+    //               >
+    //                 {lesson!.title}
+    //               </Link>
+    //               {/* Nested topics */}
+    //               <ul className="ml-2 mt-1 space-y-1 border-l pl-3 md:ml-4">
+    //                 {topicsByLesson.get(lesson!._id)?.map((topic) => (
+    //                   <li key={topic._id}>
+    //                     <Link
+    //                       href={`/courses/${courseId}/lesson/${lesson!._id}/topic/${topic._id}`}
+    //                       className={cn(
+    //                         "block text-sm transition-colors",
+    //                         selectedTopicSegment === topic._id
+    //                           ? "font-semibold text-primary"
+    //                           : "text-muted-foreground hover:text-foreground",
+    //                       )}
+    //                     >
+    //                       {topic.title}
+    //                     </Link>
+    //                   </li>
+    //                 ))}
+    //                 {quizzesByLesson.get(lesson!._id)?.map((quiz) => (
+    //                   <li key={quiz._id}>
+    //                     <Link
+    //                       href={`/courses/${courseId}/lesson/${lesson!._id}/quiz/${quiz._id}`}
+    //                       className={cn(
+    //                         "block text-sm transition-colors",
+    //                         selectedQuizSegment === quiz._id
+    //                           ? "font-semibold text-primary"
+    //                           : "text-muted-foreground hover:text-foreground",
+    //                       )}
+    //                     >
+    //                       Quiz: {quiz.title}
+    //                     </Link>
+    //                   </li>
+    //                 ))}
+    //               </ul>
+    //             </li>
+    //           ))}
+    //         </ul>
+    //       </ScrollArea>
+    //     </aside>
+
+    //     {/* Main outlet */}
+    //     <section className="flex-1">{children}</section>
+    //   </div>
+    // </div>
   );
 }

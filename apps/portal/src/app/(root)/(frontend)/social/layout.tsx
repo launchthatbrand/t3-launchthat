@@ -74,7 +74,7 @@ export default function SocialLayout({
       </nav>
 
       {/* Desktop side navigation */}
-      <nav className="fixed left-0 top-0 z-10 hidden h-full w-16 flex-col border-r bg-background md:flex">
+      <nav className="absolute left-0 top-0 z-10 hidden h-full w-16 flex-col border-r bg-background md:flex">
         <div className="flex flex-1 flex-col items-center justify-start gap-4 pt-4">
           {navItems.map((item) => (
             <Link

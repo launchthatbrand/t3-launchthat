@@ -1,7 +1,17 @@
 "use client";
 
+import type { VariantProps } from "class-variance-authority";
 import * as React from "react";
+import { ViewVerticalIcon } from "@radix-ui/react-icons";
+import { Slot } from "@radix-ui/react-slot";
+import { cva } from "class-variance-authority";
 
+import { cn } from "@acme/ui";
+
+import { useIsMobile } from "../hooks/use-mobile";
+import { Button } from "./button";
+import { Input } from "./input";
+import { Separator } from "./separator";
 import {
   Sheet,
   SheetContent,
@@ -9,23 +19,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "./sheet";
+import { Skeleton } from "./skeleton";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "./tooltip";
-
-import { Button } from "./button";
-import { Input } from "./input";
-import { Separator } from "./separator";
-import { Skeleton } from "./skeleton";
-import { Slot } from "@radix-ui/react-slot";
-import type { VariantProps } from "class-variance-authority";
-import { ViewVerticalIcon } from "@radix-ui/react-icons";
-import { cn } from "@acme/ui";
-import { cva } from "class-variance-authority";
-import { useIsMobile } from "../hooks/use-mobile";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -90,12 +90,14 @@ const SidebarProvider = React.forwardRef<
         } else {
           _setOpen(openState);
         }
-
-        // This sets the cookie to keep the sidebar state.
-        document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
       },
       [setOpenProp, open],
     );
+
+    // This sets the cookie to keep the sidebar state.
+    React.useEffect(() => {
+      document.cookie = `${SIDEBAR_COOKIE_NAME}=${open}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+    }, [open]);
 
     // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {
@@ -254,7 +256,7 @@ const Sidebar = React.forwardRef<
         />
         <div
           className={cn(
-            "fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] duration-200 ease-linear md:flex",
+            "bg-white! inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] duration-200 ease-linear md:flex",
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",

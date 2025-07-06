@@ -42,6 +42,7 @@
     "./progress": "./src/progress.tsx",
     "./separator": "./src/separator.tsx",
     "./sidebar/*": "./src/sidebar/*.tsx",
+    "./course-sidebar/*": "./src/course-sidebar/*.tsx",
     "./layout/*": "./src/layout/*.tsx",
     "./general/*": "./src/general/*.tsx",
     "./general": "./src/general/index.ts",

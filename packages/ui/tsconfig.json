@@ -11,6 +11,9 @@
       "src//*": ["src/components/*"]
     }
   },
-  "include": ["src"],
+  "include": [
+    "src",
+    "../../apps/portal/src/app/(root)/(frontend)/courses/[courseId]/_components/CourseSidebar.tsx"
+  ],
   "exclude": ["node_modules"]
 }
