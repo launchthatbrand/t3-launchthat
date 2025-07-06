@@ -18,6 +18,7 @@ import { notificationsSchema } from "./notifications/schema";
 import { puckEditorTable } from "./puckEditor/schema";
 import socialFeedSchema from "./socialfeed/schema";
 import { usersSchema } from "./users/schema";
+import { vimeoSchema } from "./vimeo/schema";
 
 // Import new schema modules
 // import { groupsSchema } from "./groupsSchema"; // REMOVE THIS
@@ -88,6 +89,19 @@ export default defineSchema({
 
   // Users tables
   ...usersSchema.tables,
+
+  // Vimeo videos
+  ...vimeoSchema.tables,
+
+  // Media Items table (metadata for Convex storage files)
+  mediaItems: defineTable({
+    storageId: v.id("_storage"),
+    title: v.optional(v.string()),
+    caption: v.optional(v.string()),
+    alt: v.optional(v.string()),
+    categories: v.optional(v.array(v.string())),
+    status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+  }).index("by_storage", ["storageId"]),
 
   // ...unifiedProductSchema, // REMOVE THIS SPREAD
 

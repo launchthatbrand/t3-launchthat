@@ -45,12 +45,28 @@ export const getUserByClerkId = query({
   args: {
     clerkId: v.string(),
   },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("users"),
+      _creationTime: v.number(),
+      name: v.optional(v.string()),
+      email: v.string(),
+      role: v.union(v.literal("admin"), v.literal("user")),
+      tokenIdentifier: v.optional(v.string()),
+      username: v.optional(v.string()),
+      image: v.optional(v.string()),
+    }),
+  ),
   handler: async (ctx, args) => {
     // Get the user based on their Clerk ID (subject)
     const user = await ctx.db
       .query("users")
       .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", `clerk:${args.clerkId}`),
+        q.eq(
+          "tokenIdentifier",
+          `https://topical-raccoon-68.clerk.accounts.dev|${args.clerkId}`,
+        ),
       )
       .unique();
 

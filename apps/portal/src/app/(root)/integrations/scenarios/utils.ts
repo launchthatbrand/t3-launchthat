@@ -166,6 +166,7 @@ export async function testNode(
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
+    let body: string | undefined;
 
     // Set up endpoint and method based on app type
     const appType = appName.toLowerCase();
@@ -193,6 +194,12 @@ export async function testNode(
         endpoint = "https://jsonplaceholder.typicode.com/todos/1";
         method = "GET";
       }
+    } else if (appType === "vimeo") {
+      // For Vimeo, we will call our own Next.js API proxy that requires the connection id
+      if (action === "vimeo_get_videos") {
+        endpoint = `/api/integrations/vimeo/list-videos?connectionId=${connectionId}`;
+        method = "GET";
+      }
     } else if (appType === "calendar") {
       // For calendar endpoints
       if (action === "calendar_event_created") {
@@ -203,6 +210,17 @@ export async function testNode(
       if (action === "webhook_receive") {
         endpoint = "https://jsonplaceholder.typicode.com/posts/1";
         method = "GET";
+      }
+    } else if (appType === "traderlaunchpad") {
+      // Internal app – endpoints are within our own Next.js backend
+      if (action === "tl_get_posts") {
+        endpoint = "/api/traderlaunchpad/get-posts";
+        method = "GET";
+      } else if (action === "tl_create_media") {
+        endpoint = "/api/traderlaunchpad/create-media";
+        method = "POST";
+        body = JSON.stringify({ demo: true });
+        headers["Content-Type"] = "application/json";
       }
     }
 
@@ -225,6 +243,9 @@ export async function testNode(
     const fetchOptions: RequestInit = {
       method,
       headers,
+      ...(body
+        ? { body: typeof body === "string" ? body : JSON.stringify(body) }
+        : {}),
     };
 
     // Try to fetch the data, but handle CORS errors gracefully
@@ -419,6 +440,18 @@ function getMockData(
         },
       };
     }
+  } else if (appType === "vimeo") {
+    if (action === "vimeo_get_videos") {
+      return {
+        id: "vimeo_12345",
+        name: "Sample Videos",
+        description: "A collection of sample videos",
+        videos: [
+          { id: "v_1", name: "Sample Video 1", url: "https://example.com/v_1" },
+          { id: "v_2", name: "Sample Video 2", url: "https://example.com/v_2" },
+        ],
+      };
+    }
   } else if (appType === "calendar") {
     if (action === "calendar_event_created") {
       return {
@@ -457,6 +490,19 @@ function getMockData(
           "user-agent": "Mozilla/5.0...",
           "content-type": "application/json",
         },
+      };
+    }
+  } else if (appType === "traderlaunchpad") {
+    if (action === "tl_get_posts") {
+      return {
+        id: "post_1",
+        title: "Sample Trader Post",
+        content: "This is a post from TraderLaunchpad",
+      };
+    } else if (action === "tl_create_media") {
+      return {
+        mediaId: "media_1",
+        status: "created",
       };
     }
   }

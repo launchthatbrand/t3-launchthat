@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useAction } from "convex/react";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 import {
   Control,
@@ -27,21 +29,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui";
+import { MultiSelect } from "@acme/ui/components/multi-select";
 
-import {
-  App,
-  appActions,
-  Connection,
-  FormValues,
-  SupportedApp,
-} from "../types";
+import type { App, Connection as ConnectionType } from "../types";
+import { api as convexApi } from "../../../../../../convex/_generated/api";
+import { appActions, FormValues, SupportedApp } from "../types";
+import { FieldMapperInput } from "./FieldMapperInput";
 import { NodeTester } from "./NodeTester";
 
 interface ScenarioNodeProps {
   index: number;
   isFirst: boolean;
   availableApps: App[];
-  connections: Connection[];
+  connections: ConnectionType[];
   onRemove: () => void;
   register: UseFormRegister<FormValues>;
   control: Control<FormValues>;
@@ -84,9 +84,19 @@ export function ScenarioNode({
   const selectedAppType = appName?.toLowerCase() as SupportedApp;
 
   // Filter connections by selected app
-  const appConnections = connections.filter((conn) => {
-    return conn.appId === selectedAppId;
-  });
+  const appConnections =
+    selectedAppType === "traderlaunchpad"
+      ? [
+          {
+            _id: "trader_default",
+            _creationTime: 0,
+            name: "TraderLaunchpad",
+            appId: selectedAppId ?? "traderlaunchpad",
+          } as ConnectionType,
+        ]
+      : connections.filter((conn) => {
+          return conn.appId === selectedAppId;
+        });
 
   // Get available actions for the selected app
   const appActionsList =
@@ -105,6 +115,59 @@ export function ScenarioNode({
       console.log(`Sample data saved for node ${index}:`, data);
     }
   };
+
+  const [folderOptions, setFolderOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+  const listFolders = useAction(convexApi.vimeo.actions.listFolders);
+
+  useEffect(() => {
+    const fetchFolders = async () => {
+      if (selectedAppType === "vimeo" && selectedConnectionId) {
+        try {
+          const folders = await listFolders({
+            connectionId: selectedConnectionId,
+          });
+          setFolderOptions(
+            folders.map((f: { name: string; id: string }) => ({
+              label: f.name,
+              value: f.id,
+            })),
+          );
+        } catch (err) {
+          console.error("Failed fetching Vimeo folders", err);
+        }
+      }
+    };
+    fetchFolders();
+  }, [selectedAppType, selectedConnectionId, listFolders]);
+
+  // Build source field options from previous nodes' schemas
+  const nodesValues = watch("nodes") as any[] | undefined;
+  const sourceOptions = (() => {
+    if (!nodesValues) return [];
+    const options: { label: string; value: string }[] = [];
+    nodesValues.slice(0, index).forEach((n) => {
+      const schemaStr = n.outputSchema ?? n.schema;
+      if (!schemaStr) return;
+      try {
+        const fields: string[] = Array.isArray(schemaStr)
+          ? schemaStr
+          : JSON.parse(schemaStr);
+        fields.forEach((f: string) => {
+          options.push({
+            label: `${n.label ?? "node"}.${f}`,
+            value: `{{${n.id ?? "node"}.${f}}}`,
+          });
+        });
+      } catch (err) {
+        // ignore parse errors
+      }
+    });
+    return options;
+  })();
+
+  console.log("[ScenarioNode] sourceOptions", sourceOptions);
 
   return (
     <Card className={`relative mb-2 ${isExpanded ? "border-primary" : ""}`}>
@@ -303,16 +366,81 @@ export function ScenarioNode({
             />
           )}
 
+          {/* Additional configuration for Vimeo Get Videos trigger */}
+          {selectedAppType === "vimeo" &&
+            selectedAction === "vimeo_get_videos" && (
+              <FormField
+                control={control}
+                name={`nodes.${index}.config.folderIds`}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Select Folders</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        options={folderOptions}
+                        defaultValue={field.value ?? []}
+                        onValueChange={(vals) => field.onChange(vals)}
+                        placeholder="Select folders (optional)"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Choose which Vimeo folders to pull videos from. Leave
+                      empty for all.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
           {/* Add the Node Tester if we have all required props */}
           {selectedAppId && selectedConnectionId && selectedAction && (
             <NodeTester
               nodeId={nodeId}
-              appId={selectedAppId}
-              connectionId={selectedConnectionId}
-              action={selectedAction}
+              appId={selectedAppId ?? ""}
+              connectionId={selectedConnectionId ?? ""}
+              action={selectedAction ?? ""}
+              config={watch(`nodes.${index}.config`) as Record<string, unknown>}
+              isDisabled={!selectedConnectionId || !selectedAction}
               onDataReceived={handleDataReceived}
             />
           )}
+
+          {selectedAppType === "traderlaunchpad" &&
+            selectedAction === "tl_create_media" && (
+              <div className="space-y-4">
+                <FormField
+                  control={control}
+                  name={`nodes.${index}.config.title`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title</FormLabel>
+                      <FieldMapperInput
+                        value={field.value as string}
+                        onChange={field.onChange}
+                        sources={sourceOptions}
+                        placeholder="Enter or map a title"
+                      />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={control}
+                  name={`nodes.${index}.config.videoUrl`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Video URL</FormLabel>
+                      <FieldMapperInput
+                        value={field.value as string}
+                        onChange={field.onChange}
+                        sources={sourceOptions}
+                        placeholder="Enter or map a video URL"
+                      />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
         </div>
       </CardContent>
     </Card>

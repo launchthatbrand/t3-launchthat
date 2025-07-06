@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "convex/react";
@@ -26,6 +26,7 @@ import {
   Separator,
 } from "@acme/ui";
 
+import type { App, Connection } from "../types";
 import { api } from "../../../../../../convex/_generated/api";
 import { Id } from "../../../../../../convex/_generated/dataModel";
 import { formSchema, FormValues } from "../types";
@@ -46,11 +47,12 @@ export function ScenarioForm({
 }: ScenarioFormProps) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
+  const [isInitialDataLoaded, setIsInitialDataLoaded] = useState(false);
 
   // Fetch data
-  const apps =
+  const fetchedApps =
     useQuery(api.integrations.apps.queries.list, { showDisabled: false }) ?? [];
-  const connections =
+  const fetchedConnections =
     useQuery(api.integrations.connections.queries.list, {}) ?? [];
   const systemUser = useQuery(api.users.queries.getSystemUser);
   const existingScenario = useQuery(
@@ -62,6 +64,30 @@ export function ScenarioForm({
       api.integrations.nodes.queries.listByScenario,
       scenarioId ? { scenarioId } : "skip",
     ) ?? [];
+
+  // Memoise synthetic TraderLaunchpad app/connection so references stay stable
+  const { apps, connections } = useMemo(() => {
+    const traderApp: App = {
+      _id: "traderlaunchpad",
+      _creationTime: 0,
+      name: "TraderLaunchpad",
+      type: "internal",
+      description: "Built-in trading app",
+    };
+
+    const traderConnection: Connection = {
+      _id: "trader_default",
+      _creationTime: 0,
+      name: "TraderLaunchpad",
+      appId: traderApp._id,
+    };
+
+    return {
+      apps: [...fetchedApps, traderApp] as App[],
+      connections: [...fetchedConnections, traderConnection] as Connection[],
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchedApps, fetchedConnections]);
 
   // Mutations
   const createScenario = useMutation(
@@ -93,8 +119,9 @@ export function ScenarioForm({
     },
   });
 
-  // Load existing scenario data when available
+  // Load existing scenario data when available (run only once)
   useEffect(() => {
+    if (isInitialDataLoaded) return; // prevent re-running once initialized
     if (existingScenario && existingNodes.length > 0) {
       // Sort nodes by order
       const sortedNodes = [...existingNodes].sort(
@@ -114,6 +141,19 @@ export function ScenarioForm({
         const appInfo = apps.find((a) => a.name.toLowerCase() === appTypeName);
         const appId = appInfo?._id ?? "";
 
+        // Determine schema array to include for mapping UI
+        let schemaArr: string[] | undefined;
+        if (node.outputSchema) {
+          try {
+            const parsed = JSON.parse(node.outputSchema as string);
+            if (Array.isArray(parsed)) {
+              schemaArr = parsed;
+            }
+          } catch {
+            /* ignore parse errors */
+          }
+        }
+
         return {
           id: node._id as string,
           type: index === 0 ? ("trigger" as const) : ("action" as const),
@@ -122,6 +162,7 @@ export function ScenarioForm({
           action: config.action,
           config: config.config ?? {},
           isExpanded: index === 0, // Only expand the first node by default
+          schema: schemaArr,
         };
       });
 
@@ -140,8 +181,10 @@ export function ScenarioForm({
                 },
               ],
       });
+
+      setIsInitialDataLoaded(true);
     }
-  }, [existingScenario, existingNodes, form, apps]);
+  }, [existingScenario, existingNodes, form, apps, isInitialDataLoaded]);
 
   // Set up field array for nodes
   const { fields, append, remove } = useFieldArray({

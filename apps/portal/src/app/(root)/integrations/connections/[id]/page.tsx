@@ -39,11 +39,14 @@ import type { Id } from "../../../../../../convex/_generated/dataModel";
 // Import Convex functions
 import { api } from "../../../../../../convex/_generated/api";
 
-// Form validation schema
-const formSchema = z.object({
+// Base fields common to all connections
+const baseSchema = {
   name: z.string().min(2, {
     message: "Connection name must be at least 2 characters.",
   }),
+};
+
+const wpFields = {
   siteUrl: z.string().url({
     message: "Please enter a valid URL including http:// or https://",
   }),
@@ -53,9 +56,26 @@ const formSchema = z.object({
   apiKey: z.string().min(1, {
     message: "API key is required.",
   }),
+};
+
+const vimeoFields = {
+  syncMode: z.enum(["all", "folder"]).default("all"),
+  folderIds: z.string().optional(), // comma separated
+};
+
+// Unified schema: all possible fields optional except required name
+const unifiedSchema = z.object({
+  ...baseSchema,
+  siteUrl: z.string().url().optional(),
+  apiUsername: z.string().optional(),
+  apiKey: z.string().optional(),
+  playlistIds: z.string().optional(),
+  categories: z.string().optional(),
+  syncMode: z.enum(["all", "folder"]).optional(),
+  folderIds: z.string().optional(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<typeof unifiedSchema>;
 
 export default function ConnectionDetailPage() {
   const router = useRouter();
@@ -74,9 +94,11 @@ export default function ConnectionDetailPage() {
     id: id as Id<"connections">,
   });
 
-  // Get app details
+  // Get app list to resolve app name
   const apps =
     useQuery(api.integrations.apps.queries.list, { showDisabled: false }) ?? [];
+
+  const currentApp = apps.find((a) => a._id === connection?.appId);
 
   // Mutations
   const updateConnection = useMutation(
@@ -91,13 +113,17 @@ export default function ConnectionDetailPage() {
 
   // Form setup
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(unifiedSchema),
     defaultValues: {
       name: "",
       siteUrl: "",
       apiUsername: "",
       apiKey: "",
-    },
+      playlistIds: "",
+      categories: "",
+      syncMode: "all",
+      folderIds: "",
+    } as unknown as FormValues,
   });
 
   // Initialize form when connection data is loaded
@@ -105,14 +131,24 @@ export default function ConnectionDetailPage() {
     if (connection && !isLoading) {
       try {
         // Parse credentials JSON
-        const credentials = JSON.parse(connection.credentials);
+        const credentials = JSON.parse(connection!.credentials);
 
-        form.reset({
-          name: connection.name,
-          siteUrl: credentials.siteUrl || "",
-          apiUsername: credentials.apiUsername || "",
-          apiKey: credentials.apiKey || "",
-        });
+        if (currentApp?.name.toLowerCase() === "vimeo") {
+          form.reset({
+            name: connection.name,
+            playlistIds: credentials.playlistIds || "",
+            categories: credentials.categories || "",
+            syncMode: credentials.syncMode || "all",
+            folderIds: credentials.folderIds || "",
+          } as Partial<FormValues>);
+        } else {
+          form.reset({
+            name: connection.name,
+            siteUrl: credentials.siteUrl || "",
+            apiUsername: credentials.apiUsername || "",
+            apiKey: credentials.apiKey || "",
+          } as Partial<FormValues>);
+        }
 
         setDebugInfo(`Loaded connection details for: ${connection.name}`);
       } catch (error) {
@@ -124,7 +160,7 @@ export default function ConnectionDetailPage() {
     }
 
     setIsLoading(false);
-  }, [connection, form, isLoading]);
+  }, [connection, form]);
 
   // Handle test connection
   const handleTestConnection = async (values: FormValues) => {
@@ -134,12 +170,15 @@ export default function ConnectionDetailPage() {
     setDebugInfo(`Testing connection...`);
 
     try {
-      // Prepare credentials as JSON string
-      const credentials = JSON.stringify({
-        siteUrl: values.siteUrl,
-        apiUsername: values.apiUsername,
-        apiKey: values.apiKey,
-      });
+      // For Vimeo we keep existing credentials (access token). Filters are handled in scenarios.
+      const credentials =
+        currentApp?.name.toLowerCase() === "vimeo"
+          ? connection!.credentials
+          : JSON.stringify({
+              siteUrl: (values as any).siteUrl,
+              apiUsername: (values as any).apiUsername,
+              apiKey: (values as any).apiKey,
+            });
 
       // Test the connection
       const result = await testConnection({
@@ -178,12 +217,15 @@ export default function ConnectionDetailPage() {
     setDebugInfo((prev) => `${prev ?? ""}\nUpdating connection...`);
 
     try {
-      // Prepare credentials as JSON string
-      const credentials = JSON.stringify({
-        siteUrl: values.siteUrl,
-        apiUsername: values.apiUsername,
-        apiKey: values.apiKey,
-      });
+      // For Vimeo we keep existing credentials (access token). Filters are handled in scenarios.
+      const credentials =
+        currentApp?.name.toLowerCase() === "vimeo"
+          ? connection!.credentials
+          : JSON.stringify({
+              siteUrl: (values as any).siteUrl,
+              apiUsername: (values as any).apiUsername,
+              apiKey: (values as any).apiKey,
+            });
 
       // Update the connection
       await updateConnection({
@@ -262,8 +304,6 @@ export default function ConnectionDetailPage() {
     );
   }
 
-  const appInfo = apps.find((app) => app._id === connection.appId);
-
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
@@ -280,7 +320,7 @@ export default function ConnectionDetailPage() {
           <div>
             <h1 className="text-3xl font-bold">{connection.name}</h1>
             <p className="text-muted-foreground">
-              {appInfo?.name || "WordPress"} Connection
+              {currentApp?.name || "WordPress"} Connection
             </p>
           </div>
 
@@ -343,59 +383,67 @@ export default function ConnectionDetailPage() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="siteUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>WordPress Site URL</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="https://example.com"
-                        type="url"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      The URL of your WordPress site
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {currentApp?.name.toLowerCase() !== "vimeo" && (
                 <FormField
                   control={form.control}
-                  name="apiUsername"
+                  name="siteUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>API Username</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Username" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="apiKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>API Key</FormLabel>
+                      <FormLabel>WordPress Site URL</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="ck_xxxxxxxxxxxxxxxxxxxxxxxx"
-                          type="password"
+                          placeholder="https://example.com"
+                          type="url"
                           {...field}
                         />
                       </FormControl>
+                      <FormDescription>
+                        Full site URL including protocol (http/https)
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              )}
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {currentApp?.name.toLowerCase() !== "vimeo" && (
+                  <FormField
+                    control={form.control}
+                    name="apiUsername"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>API Username</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Username" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {currentApp?.name.toLowerCase() !== "vimeo" && (
+                  <FormField
+                    control={form.control}
+                    name="apiKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>API Key</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="ck_xxxxxxxxxxxxxxxxxxxxxxxx"
+                            type="password"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {/* Vimeo connection now has no additional credential fields */}
               </div>
 
               {testSuccess && (

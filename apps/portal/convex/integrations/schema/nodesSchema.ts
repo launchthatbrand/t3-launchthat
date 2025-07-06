@@ -21,6 +21,17 @@ export const nodesTable = defineTable({
   // JSON configuration for this node
   config: v.string(),
 
+  // Optional JSON describing the fields emitted by this node when it runs
+  // (array of { field, path, type })
+  outputSchema: v.optional(v.string()),
+
+  // Optional JSON template mapping of this node's expected inputs
+  // (key -> template string e.g. "{{prevNode.title}}")
+  inputMapping: v.optional(v.string()),
+
+  // Optional JSON string containing raw sample data returned from a test run
+  sampleData: v.optional(v.string()),
+
   // Position in the visual editor (JSON with x, y coordinates)
   position: v.string(),
 

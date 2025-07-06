@@ -23,6 +23,7 @@ export const create = mutation({
     credentials: v.string(),
     config: v.optional(v.string()),
     ownerId: v.union(v.id("users"), v.string()),
+    status: v.optional(v.string()),
   },
   returns: v.id("connections"),
   handler: async (ctx, args) => {
@@ -35,15 +36,11 @@ export const create = mutation({
     // For a string owner ID, we'll assume it's a valid system ID
     // In a production environment, you'd verify the user exists
     // or use proper authentication
-    let ownerId = args.ownerId;
-    if (typeof args.ownerId === "string" && args.ownerId === "system") {
-      // For the system user, we just use the string directly
-      // In a real app, you might look up a system user ID
-    } else {
-      // For normal user IDs, verify the user exists
+    if (typeof args.ownerId !== "string") {
+      // Validate user exists when ownerId is a real user id
       const owner = await ctx.db.get(args.ownerId);
       if (!owner) {
-        throw new Error(`User with ID ${args.ownerId} not found`);
+        throw new Error(`User with ID ${String(args.ownerId)} not found`);
       }
     }
 
@@ -54,7 +51,7 @@ export const create = mutation({
       appId: args.appId,
       name: args.name,
       credentials: args.credentials,
-      status: "active",
+      status: args.status ?? "active",
       config: args.config,
       ownerId: args.ownerId,
       createdAt: now,
@@ -142,12 +139,9 @@ export const test = mutation({
     // For example, for WordPress we would call the REST API with the credentials
     console.log("Testing connection with credentials:", connectionCredentials);
 
-    // For now, we'll simulate a successful connection
-    // In a real implementation, you would add app-specific logic
-    // based on the app type (e.g., WordPress, Monday, etc.)
-
-    // Simulate a slight delay to make the UX feel more realistic
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    // Note: setTimeout / sleeping is not permitted in Convex mutations.
+    // If you need to hit an external service, perform that logic in an action.
+    // For now we immediately return a successful test result.
 
     // Update the lastCheckedAt timestamp if this is an existing connection
     if (args.id) {

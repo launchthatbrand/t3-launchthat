@@ -24,7 +24,13 @@ export interface Connection extends DocBase {
 }
 
 // Define supported app types
-export type SupportedApp = "wordpress" | "monday" | "calendar" | "webhook";
+export type SupportedApp =
+  | "wordpress"
+  | "monday"
+  | "calendar"
+  | "webhook"
+  | "vimeo"
+  | "traderlaunchpad";
 
 // Define node types
 export type NodeType = "trigger" | "action" | "transformation";
@@ -36,7 +42,9 @@ export const nodeSchema = z.object({
   app: z.string().min(1, "Please select an app"),
   connectionId: z.string().optional(),
   action: z.string().optional(),
-  config: z.record(z.string(), z.string()).optional(),
+  config: z
+    .record(z.string(), z.union([z.string(), z.array(z.string())]))
+    .optional(),
   isExpanded: z.boolean().optional(),
   // Add fields for sample data and schema
   sampleData: z.record(z.string(), z.unknown()).optional(),
@@ -153,6 +161,29 @@ export const appActions: Record<SupportedApp, ActionDefinition[]> = {
       name: "Send Webhook",
       type: "action",
       description: "Send data to an external webhook",
+    },
+  ],
+  vimeo: [
+    {
+      id: "vimeo_get_videos",
+      name: "Get Videos",
+      type: "trigger",
+      description:
+        "Retrieve videos from Vimeo (optionally filtered by folders)",
+    },
+  ],
+  traderlaunchpad: [
+    {
+      id: "tl_get_posts",
+      name: "Get Posts",
+      type: "trigger",
+      description: "Retrieve posts from TraderLaunchpad",
+    },
+    {
+      id: "tl_create_media",
+      name: "Create Media Item",
+      type: "action",
+      description: "Create media in TraderLaunchpad",
     },
   ],
 };

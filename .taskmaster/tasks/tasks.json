@@ -425,11 +425,80 @@
             "testStrategy": "Automated accessibility testing with tools like axe-core. Manual testing with various assistive technologies. User testing with individuals who have different accessibility needs."
           }
         ]
+      },
+      {
+        "id": 6,
+        "title": "Integrate Vimeo Video Library into Portal App",
+        "description": "Implement Vimeo integration including API configuration, video syncing, media library extension, and embedding capabilities throughout the application.",
+        "details": "1. Create Vimeo Integration UI:\n   - Add a new integration card on the Integrations Apps page\n   - Implement form fields for API key, playlist/category selection\n   - Create a settings persistence mechanism in Convex\n\n2. Implement Vimeo API Integration:\n   - Create a VimeoService class to handle API interactions\n   - Implement authentication with Vimeo API using stored credentials\n   - Build functions to fetch videos from selected playlists/categories\n   - Parse video metadata (title, publish date, embed link, thumbnail)\n\n3. Develop Convex Data Layer:\n   - Create `vimeoVideos` table schema with appropriate fields\n   - Implement mutations for storing and updating video data\n   - Create queries for retrieving videos with filtering options\n   - Add settings table/fields for Vimeo configuration\n\n4. Extend Media Library:\n   - Add a \"Vimeo\" tab to the existing media library interface\n   - Implement thumbnail grid view of synced Vimeo videos\n   - Add search/filter functionality for Vimeo videos\n   - Include video metadata display (title, date, duration)\n\n5. Update MediaPicker Component:\n   - Extend the reusable MediaPicker to include Vimeo tab\n   - Implement selection mechanism for Vimeo videos\n   - Ensure proper return of embed link on selection\n   - Maintain consistent UX with existing media types\n\n6. Enhance Lesson Form:\n   - Update Media tab in Lesson form to support Vimeo selection\n   - Integrate MediaPicker component with Vimeo support\n   - Handle Vimeo-specific metadata in form state\n\n7. Implement Video Rendering:\n   - Create a VimeoEmbed component for rendering videos\n   - Implement iframe embedding with proper responsive design\n   - Handle playback controls and options\n\n8. Set Up Synchronization:\n   - Implement manual sync via UI button\n   - Create Convex cron job for 24-hour automatic syncing\n   - Add progress indicators and error handling for sync operations\n   - Implement conflict resolution for updated videos",
+        "testStrategy": "1. Vimeo API Integration Testing:\n   - Create test Vimeo account with sample videos and playlists\n   - Verify API key validation and error handling\n   - Test API rate limiting and pagination handling\n   - Mock API responses for unit tests\n\n2. Data Persistence Testing:\n   - Verify correct schema implementation in Convex\n   - Test CRUD operations for Vimeo videos\n   - Validate data integrity after sync operations\n   - Test error handling during data persistence\n\n3. UI Component Testing:\n   - Create Storybook stories for Vimeo integration components\n   - Test MediaPicker with Vimeo tab in isolation\n   - Verify responsive design of video embeds\n   - Test accessibility of all new UI components\n\n4. Integration Testing:\n   - Verify end-to-end flow from configuration to video embedding\n   - Test manual sync functionality with real API\n   - Validate cron job execution and results\n   - Test concurrent sync operations\n\n5. Performance Testing:\n   - Measure load times with large video libraries\n   - Test thumbnail loading optimization\n   - Verify efficient querying of video data\n   - Measure impact on application bundle size\n\n6. Cross-browser Testing:\n   - Verify video playback in all supported browsers\n   - Test responsive design across devices\n   - Validate iframe embedding security across browsers",
+        "status": "pending",
+        "dependencies": [
+          1,
+          2
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Vimeo Integration UI and Settings Persistence",
+            "description": "Implement the user interface for Vimeo integration in the Integrations Apps page and create the necessary settings persistence mechanism in Convex.",
+            "dependencies": [],
+            "details": "1. Add a new integration card on the Integrations Apps page with Vimeo branding\n2. Create form fields for API key input and playlist/category selection\n3. Implement form validation for API credentials\n4. Design and implement the settings schema in Convex database\n5. Create mutations for saving and retrieving Vimeo integration settings\n6. Add error handling and success notifications for settings operations",
+            "status": "pending",
+            "testStrategy": "Test form validation with valid and invalid API keys. Verify settings are correctly persisted to and retrieved from Convex. Test UI responsiveness across device sizes."
+          },
+          {
+            "id": 2,
+            "title": "Implement Vimeo API Service and Data Layer",
+            "description": "Create the VimeoService class to handle API interactions and implement the Convex data layer for storing video metadata.",
+            "dependencies": [
+              1
+            ],
+            "details": "1. Create a VimeoService class with methods for API authentication and video fetching\n2. Implement functions to retrieve videos from selected playlists/categories\n3. Parse and normalize video metadata (title, publish date, embed link, thumbnail, duration)\n4. Create the `vimeoVideos` table schema in Convex with appropriate fields\n5. Implement mutations for storing and updating video data\n6. Create queries with filtering options for retrieving videos\n7. Add error handling and rate limiting for API calls",
+            "status": "pending",
+            "testStrategy": "Test API integration with mock responses. Verify correct parsing of video metadata. Test data persistence operations with sample videos. Ensure error handling works for API failures."
+          },
+          {
+            "id": 3,
+            "title": "Extend Media Library with Vimeo Tab",
+            "description": "Add a Vimeo tab to the existing media library interface with thumbnail grid view and search functionality.",
+            "dependencies": [
+              2
+            ],
+            "details": "1. Add a \"Vimeo\" tab to the existing media library component\n2. Implement a thumbnail grid view for displaying synced Vimeo videos\n3. Create search and filter functionality specific to Vimeo videos\n4. Display video metadata (title, date, duration) in the grid items\n5. Implement pagination or infinite scrolling for large video collections\n6. Add loading states and empty states for the Vimeo tab\n7. Ensure responsive design across device sizes",
+            "status": "pending",
+            "testStrategy": "Test UI rendering with various video counts. Verify search and filter functionality works correctly. Test responsive behavior across breakpoints. Ensure accessibility standards are met."
+          },
+          {
+            "id": 4,
+            "title": "Update MediaPicker and Lesson Form for Vimeo Support",
+            "description": "Extend the MediaPicker component to include Vimeo video selection and update the Lesson form to support Vimeo content.",
+            "dependencies": [
+              3
+            ],
+            "details": "1. Extend the reusable MediaPicker component to include a Vimeo tab\n2. Implement selection mechanism for Vimeo videos with preview\n3. Ensure proper return of embed link and metadata on selection\n4. Update the Media tab in Lesson form to support Vimeo selection\n5. Integrate the enhanced MediaPicker component\n6. Handle Vimeo-specific metadata in form state\n7. Maintain consistent UX with existing media types",
+            "status": "pending",
+            "testStrategy": "Test selection and deselection of Vimeo videos. Verify correct metadata is passed to parent components. Test integration with Lesson form. Ensure form submission correctly includes Vimeo data."
+          },
+          {
+            "id": 5,
+            "title": "Implement Video Rendering and Synchronization",
+            "description": "Create the VimeoEmbed component for rendering videos and implement both manual and automatic synchronization with Vimeo.",
+            "dependencies": [
+              2,
+              4
+            ],
+            "details": "1. Create a VimeoEmbed component for rendering videos using iframes\n2. Implement responsive design for the video player\n3. Handle playback controls and options according to Vimeo API capabilities\n4. Add a manual sync button in the Vimeo integration settings\n5. Implement progress indicators and error handling for sync operations\n6. Create a Convex cron job for automatic 24-hour synchronization\n7. Add conflict resolution logic for updated videos\n8. Implement logging for sync operations",
+            "status": "pending",
+            "testStrategy": "Test video rendering across browsers and devices. Verify responsive behavior of the player. Test manual sync with progress indicators. Verify automatic sync via cron job. Test error scenarios and recovery."
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-06-25T19:22:51.994Z",
-      "updated": "2025-06-25T19:41:42.888Z",
+      "updated": "2025-07-03T18:41:10.722Z",
       "description": "Tasks for master context"
     }
   }

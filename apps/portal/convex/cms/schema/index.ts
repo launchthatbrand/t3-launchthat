@@ -5,6 +5,7 @@ import {
   contentTypeFieldsTable,
   contentTypesTable,
 } from "./contentTypesSchema";
+import { menuItemsTable, menusTable } from "./menusSchema";
 import { postsTable } from "./postsSchema";
 
 /**
@@ -25,4 +26,8 @@ export default defineSchema({
   // Content Type System
   contentTypes: contentTypesTable,
   contentTypeFields: contentTypeFieldsTable,
+
+  // Menus
+  menuItems: menuItemsTable,
+  menus: menusTable,
 });

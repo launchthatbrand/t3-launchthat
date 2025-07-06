@@ -23,6 +23,10 @@ export const coursesTable = defineTable({
 export const lessonsTable = defineTable({
   title: v.string(),
   description: v.optional(v.string()),
+  content: v.optional(v.string()),
+  excerpt: v.optional(v.string()),
+  categories: v.optional(v.array(v.string())),
+  featuredImage: v.optional(v.string()),
   isPublished: v.optional(v.boolean()),
   courseId: v.optional(v.id("courses")), // Link to parent course
   order: v.optional(v.number()), // Order within the course
@@ -31,6 +35,10 @@ export const lessonsTable = defineTable({
 export const topicsTable = defineTable({
   lessonId: v.optional(v.id("lessons")),
   title: v.string(),
+  description: v.optional(v.string()),
+  excerpt: v.optional(v.string()),
+  categories: v.optional(v.array(v.string())),
+  featuredImage: v.optional(v.string()),
   contentType: v.union(
     v.literal("text"),
     v.literal("video"),
@@ -47,6 +55,10 @@ export const topicsTable = defineTable({
 // Define quizzes directly within the lmsSchema for simplicity now
 export const quizzesTable = defineTable({
   title: v.string(),
+  description: v.optional(v.string()),
+  excerpt: v.optional(v.string()),
+  categories: v.optional(v.array(v.string())),
+  featuredImage: v.optional(v.string()),
   content: v.optional(v.string()),
   isPublished: v.optional(v.boolean()),
   // Link to either a lesson, topic, or course (for final quiz)

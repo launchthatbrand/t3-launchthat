@@ -1,7 +1,8 @@
-import { env as authEnv } from "@acme/auth/env";
 import { createEnv } from "@t3-oss/env-nextjs";
 import { vercel } from "@t3-oss/env-nextjs/presets-zod";
 import { z } from "zod";
+
+import { env as authEnv } from "@acme/auth/env";
 
 export const env = createEnv({
   extends: [authEnv, vercel()],
@@ -19,6 +20,8 @@ export const env = createEnv({
     AUTHORIZENET_API_LOGIN_ID: z.string(),
     AUTHORIZENET_TRANSACTION_KEY: z.string(),
     CLERK_SECRET_KEY: z.string().min(1),
+    VIMEO_CLIENT_SECRET: z.string().min(1),
+    VIMEO_REDIRECT_URI: z.string().url(),
   },
 
   /**
@@ -31,6 +34,7 @@ export const env = createEnv({
     NEXT_PUBLIC_CONVEX_URL: z.string().url(),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().min(1),
+    NEXT_PUBLIC_VIMEO_CLIENT_ID: z.string().min(1),
   },
   /**
    * Destructure all variables from `process.env` to make sure they aren't tree-shaken away.
@@ -49,6 +53,7 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
     // Server vars like CLERK_SECRET_KEY are validated but not explicitly mapped here
     // as they are usually accessed directly by server-side libraries.
+    NEXT_PUBLIC_VIMEO_CLIENT_ID: process.env.NEXT_PUBLIC_VIMEO_CLIENT_ID,
   },
   skipValidation:
     !!process.env.CI || process.env.npm_lifecycle_event === "lint",

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import {
   BrainCircuit,
   Code,
@@ -36,6 +36,7 @@ interface NodeTesterProps {
   appId: string;
   connectionId: string;
   action: string;
+  config?: Record<string, unknown>;
   isDisabled?: boolean;
   onDataReceived?: (
     data: Record<string, unknown> | null,
@@ -51,6 +52,7 @@ export function NodeTester({
   appId,
   connectionId,
   action,
+  config = {},
   isDisabled = false,
   onDataReceived,
 }: NodeTesterProps) {
@@ -72,6 +74,7 @@ export function NodeTester({
 
   // Get the testNode action from Convex
   const testNodeAction = useAction(api.integrations.nodes.test.testNode);
+  const saveSchema = useMutation(api.integrations.nodes.mutations.updateSchema);
 
   // Handle run test button click
   const handleRunTest = async () => {
@@ -89,7 +92,7 @@ export function NodeTester({
           connectionId,
           action,
           appName,
-          config: {}, // Add any additional config here if needed
+          config,
         });
 
         result = {
@@ -125,6 +128,18 @@ export function NodeTester({
         setActiveTab("error");
       } else {
         setActiveTab("data");
+      }
+
+      // Persist schema to backend
+      if (result.schema && result.schema.length > 0) {
+        try {
+          await saveSchema({
+            id: nodeId as unknown as any, // keep type simple
+            outputSchema: JSON.stringify(result.schema),
+          });
+        } catch (err) {
+          console.error("Failed to save schema", err);
+        }
       }
     } catch (error) {
       console.error("Error running node test:", error);

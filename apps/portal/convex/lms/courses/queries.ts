@@ -1,5 +1,7 @@
+import { filter } from "convex-helpers/server/filter";
 import { v } from "convex/values";
 
+import type { Id } from "../../_generated/dataModel";
 import { query } from "../../_generated/server";
 
 /**
@@ -39,6 +41,9 @@ export const getCourseStructureWithItems = query({
           order: v.optional(v.number()),
           isPublished: v.optional(v.boolean()),
           courseId: v.optional(v.id("courses")),
+          featuredImage: v.optional(v.string()),
+          isBuiltIn: v.optional(v.boolean()),
+          excerpt: v.optional(v.string()),
         }),
       ),
       attachedTopics: v.array(
@@ -259,11 +264,327 @@ export const getCourseMetadata = query({
       quizCount += quizzes.length;
     }
 
+    // Return only the whitelisted fields expected by the validator
     return {
-      ...course,
+      _id: course._id,
+      _creationTime: course._creationTime,
+      title: course.title,
+      description: course.description,
+      isPublished: course.isPublished,
       lessonCount,
       topicCount,
       quizCount,
+    };
+  },
+});
+
+/**
+ * List all published courses for frontend view
+ */
+export const listPublishedCourses = query({
+  args: { searchTitle: v.optional(v.string()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("courses"),
+      title: v.string(),
+      description: v.optional(v.string()),
+      isPublished: v.optional(v.boolean()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const queryBuilder = ctx.db
+      .query("courses")
+      .filter((q) => q.eq(q.field("isPublished"), true));
+
+    const results = args.searchTitle
+      ? await queryBuilder
+          .withSearchIndex("search_title", (q) =>
+            q.search("title", args.searchTitle ?? ""),
+          )
+          .collect()
+      : await queryBuilder.collect();
+
+    // Return only the whitelisted fields expected by the validator
+    return results.map((course) => ({
+      _id: course._id,
+      title: course.title,
+      description: course.description,
+      isPublished: course.isPublished,
+    }));
+  },
+});
+
+// List members enrolled in a course
+export const listCourseMembers = query({
+  args: {
+    courseId: v.id("courses"),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("users"),
+      name: v.optional(v.string()),
+      email: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    // Find all enrollments for course
+    const enrollments = await ctx.db
+      .query("courseEnrollments")
+      .withIndex("by_course", (q) => q.eq("courseId", args.courseId))
+      .collect();
+
+    const users = await Promise.all(
+      enrollments.map(async (enroll) => {
+        const usr = await ctx.db.get(enroll.userId);
+        if (!usr) return null;
+        return {
+          _id: usr._id,
+          name: usr.name,
+          email: usr.email,
+        };
+      }),
+    );
+
+    return users.filter((u): u is NonNullable<typeof u> => u !== null);
+  },
+});
+
+// --- Additional queries moved from index.ts ---
+
+export const listCourses = query({
+  args: { searchTitle: v.optional(v.string()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("courses"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      productId: v.optional(v.id("products")),
+      isPublished: v.optional(v.boolean()),
+      courseStructure: v.optional(
+        v.array(v.object({ lessonId: v.id("lessons") })),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    if (args.searchTitle) {
+      return await ctx.db
+        .query("courses")
+        .withSearchIndex("search_title", (q) =>
+          q.search("title", args.searchTitle ?? ""),
+        )
+        .collect();
+    }
+    return await ctx.db.query("courses").collect();
+  },
+});
+
+export const getCourse = query({
+  args: { courseId: v.id("courses") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("courses"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      productId: v.optional(v.id("products")),
+      isPublished: v.optional(v.boolean()),
+      courseStructure: v.optional(
+        v.array(v.object({ lessonId: v.id("lessons") })),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => ctx.db.get(args.courseId),
+});
+
+export const getCourseStructure = query({
+  args: { courseId: v.id("courses") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("courses"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      productId: v.optional(v.id("products")),
+      isPublished: v.optional(v.boolean()),
+      courseStructure: v.optional(
+        v.array(v.object({ lessonId: v.id("lessons") })),
+      ),
+      lessons: v.array(
+        v.object({
+          _id: v.id("lessons"),
+          _creationTime: v.number(),
+          title: v.string(),
+          description: v.optional(v.string()),
+          isPublished: v.optional(v.boolean()),
+          topics: v.array(
+            v.object({
+              _id: v.id("topics"),
+              _creationTime: v.number(),
+              lessonId: v.optional(v.id("lessons")),
+              title: v.string(),
+              contentType: v.union(
+                v.literal("text"),
+                v.literal("video"),
+                v.literal("quiz"),
+              ),
+              content: v.optional(v.string()),
+              order: v.optional(v.number()),
+              isPublished: v.optional(v.boolean()),
+            }),
+          ),
+        }),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const course = await ctx.db.get(args.courseId);
+    if (!course) return null;
+
+    const orderedIds = (course.courseStructure ?? []).map((i) => i.lessonId);
+    const lessonDocs = await Promise.all(
+      orderedIds.map((id) => ctx.db.get(id)),
+    );
+    const validLessons = lessonDocs.filter(
+      (l): l is NonNullable<typeof l> => l !== null,
+    );
+    const lessonsWithTopics = await Promise.all(
+      validLessons.map(async (lesson) => {
+        const topics = await ctx.db
+          .query("topics")
+          .withIndex("by_lessonId_order", (q) => q.eq("lessonId", lesson._id))
+          .order("asc")
+          .collect();
+        return { ...lesson, topics };
+      }),
+    );
+
+    const orderedLessons = orderedIds
+      .map((id) => lessonsWithTopics.find((l) => l._id === id))
+      .filter((l): l is NonNullable<typeof l> => l !== undefined);
+
+    return { ...course, lessons: orderedLessons };
+  },
+});
+
+export const getStructure = query({
+  args: { courseId: v.id("courses") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      course: v.object({
+        _id: v.id("courses"),
+        _creationTime: v.number(),
+        title: v.string(),
+        description: v.optional(v.string()),
+        productId: v.optional(v.id("products")),
+        isPublished: v.optional(v.boolean()),
+      }),
+      lessons: v.array(
+        v.object({
+          _id: v.id("lessons"),
+          _creationTime: v.number(),
+          title: v.string(),
+          description: v.optional(v.string()),
+        }),
+      ),
+      topics: v.array(
+        v.object({
+          _id: v.id("topics"),
+          _creationTime: v.number(),
+          title: v.string(),
+          contentType: v.union(
+            v.literal("text"),
+            v.literal("video"),
+            v.literal("quiz"),
+          ),
+        }),
+      ),
+      quizzes: v.array(
+        v.object({
+          _id: v.id("quizzes"),
+          _creationTime: v.number(),
+          title: v.string(),
+        }),
+      ),
+      finalQuiz: v.optional(
+        v.object({
+          _id: v.id("quizzes"),
+          _creationTime: v.number(),
+          title: v.string(),
+        }),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const course = await ctx.db.get(args.courseId);
+    if (!course) throw new Error("Course not found");
+
+    const lessonDocs = await ctx.db
+      .query("lessons")
+      .withIndex("by_course_order", (q) => q.eq("courseId", args.courseId))
+      .collect();
+
+    const lessons = lessonDocs.map((l) => ({
+      _id: l._id,
+      _creationTime: l._creationTime,
+      title: l.title,
+      description: l.description,
+    }));
+
+    const lessonIds = lessonDocs.map((l) => l._id);
+
+    const topicDocs = await filter(
+      ctx.db.query("topics").withIndex("by_lessonId_order"),
+      (t) => lessonIds.includes(t.lessonId as Id<"lessons">),
+    ).collect();
+
+    const topics = topicDocs.map((t) => ({
+      _id: t._id,
+      _creationTime: t._creationTime,
+      title: t.title,
+      contentType: t.contentType,
+    }));
+
+    const topicIds = topicDocs.map((t) => t._id);
+
+    const quizDocs = await filter(
+      ctx.db.query("quizzes").withIndex("by_topicId"),
+      (qz) => topicIds.includes(qz.topicId as Id<"topics">),
+    ).collect();
+
+    const quizzes = quizDocs.map((q) => ({
+      _id: q._id,
+      _creationTime: q._creationTime,
+      title: q.title,
+    }));
+
+    const finalQuizDoc = course.finalQuizId
+      ? await ctx.db.get(course.finalQuizId)
+      : null;
+    const finalQuiz = finalQuizDoc
+      ? {
+          _id: finalQuizDoc._id,
+          _creationTime: finalQuizDoc._creationTime,
+          title: finalQuizDoc.title,
+        }
+      : undefined;
+
+    return {
+      course: {
+        _id: course._id,
+        _creationTime: course._creationTime,
+        title: course.title,
+        description: course.description,
+        productId: course.productId,
+        isPublished: course.isPublished,
+      },
+      lessons,
+      topics,
+      quizzes,
+      finalQuiz,
     };
   },
 });

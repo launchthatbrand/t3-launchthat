@@ -93,7 +93,21 @@ export const isAdmin = async (
 ): Promise<boolean> => {
   try {
     const user = await getAuthenticatedUser(ctx);
-    return user.role === "admin";
+
+    // Normalize role string and check common admin indicators
+    const roleNormalized = (user.role ?? "").toString().trim().toLowerCase();
+
+    if (roleNormalized === "admin") return true;
+
+    // Support older rows that store permissions array containing "admin"
+    if (
+      Array.isArray((user as any).permissions) &&
+      (user as any).permissions.includes("admin")
+    ) {
+      return true;
+    }
+
+    return false;
   } catch {
     return false;
   }

@@ -6,17 +6,6 @@ import { query, QueryCtx } from "../_generated/server";
 import { findSimilarUsers } from "./lib/recommendationEngine";
 import { hashtagResponseValidator } from "./schema/hashtagsSchema";
 
-// Define a common user model based on observed properties
-interface UserDoc {
-  _id: Id<"users">;
-  _creationTime: number;
-  name?: string;
-  tokenIdentifier?: string;
-  email: string;
-  role: "admin" | "user";
-  // Add the image property that might be missing in some documents
-}
-
 // Define a common feed item return type to avoid duplication
 const feedItemReturnType = v.object({
   _id: v.id("feedItems"),
@@ -51,7 +40,17 @@ const feedItemReturnType = v.object({
     name: v.string(),
     image: v.optional(v.string()),
   }),
+  hashtags: v.optional(v.array(v.string())),
+  mentions: v.optional(v.array(v.string())),
+  mentionedUserIds: v.optional(v.array(v.id("users"))),
 });
+
+// Define a common user model based on observed properties for internal use
+interface EnrichedUser {
+  _id: Id<"users">;
+  name: string;
+  image?: string;
+}
 
 // Helper function to enrich feed items with creator, reaction counts, etc.
 async function enrichFeedItems(ctx: QueryCtx, page: Doc<"feedItems">[]) {
@@ -68,18 +67,17 @@ async function enrichFeedItems(ctx: QueryCtx, page: Doc<"feedItems">[]) {
     creatorIds.map(async (id) => {
       const user = await ctx.db.get(id);
       return user
-        ? {
+        ? ({
             _id: user._id,
             name: user.name ?? "Unknown User",
-            // Handle missing image property safely
-            image: undefined, // Don't use user.image as it might not exist
-          }
+            image: user.image ?? undefined,
+          } as EnrichedUser)
         : null;
     }),
   );
 
   // Create a map of creator IDs to creator objects
-  const creatorMap = new Map();
+  const creatorMap = new Map<Id<"users">, EnrichedUser>();
   creators.forEach((creator) => {
     if (creator) {
       creatorMap.set(creator._id, creator);
@@ -115,6 +113,10 @@ async function enrichFeedItems(ctx: QueryCtx, page: Doc<"feedItems">[]) {
         reactionsCount,
         commentsCount,
         creator,
+        // Ensure these are always arrays, even if empty, to match the validator
+        hashtags: item.hashtags ?? [],
+        mentions: item.mentions ?? [],
+        mentionedUserIds: item.mentionedUserIds ?? [],
       };
     }),
   );
@@ -699,7 +701,7 @@ export const getFollowing = query({
             if (followedUser) {
               entityDetails = {
                 name: followedUser.name ?? "Unknown User",
-                image: undefined, // Don't use followedUser.image as it might not exist
+                image: followedUser.image ?? undefined, // Use followedUser.image if it exists, otherwise undefined
                 description: undefined,
               };
             }
@@ -1267,5 +1269,101 @@ export const checkTopicFollow = query({
       .first();
 
     return follow !== null;
+  },
+});
+
+/**
+ * Get feed items by hashtag
+ */
+export const getHashtagFeed = query({
+  args: {
+    hashtag: v.string(),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: v.array(feedItemReturnType),
+  handler: async (ctx, args) => {
+    const { page } = await ctx.db
+      .query("feedItems")
+      // Use the 'by_hashtag' index to filter by exact hashtag match
+      .withIndex("by_hashtag", (q) => q.eq("hashtags", args.hashtag))
+      .order("desc")
+      .paginate(args.paginationOpts);
+
+    return enrichFeedItems(ctx, page);
+  },
+});
+
+/**
+ * Get recommended hashtags for the current user
+ */
+export const getRecommendedHashtags = query({
+  args: {
+    userId: v.id("users"),
+    limit: v.number(),
+  },
+  returns: v.array(hashtagResponseValidator),
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      return [];
+    }
+
+    const followedUsers = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_user_and_type", (q) =>
+        q.eq("userId", args.userId).eq("followType", "user"),
+      )
+      .collect();
+
+    const followedUserIds = followedUsers.map((f) => f.followId);
+
+    const relevantFeedItems = await ctx.db
+      .query("feedItems")
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("creatorId"), args.userId),
+          q.or(
+            followedUserIds.length > 0
+              ? q.in(q.field("creatorId"), followedUserIds as Id<"users">[])
+              : q.eq(q.field("creatorId"), args.userId),
+          ),
+        ),
+      )
+      .collect();
+
+    const allHashtags = relevantFeedItems.flatMap(
+      (item) => item.hashtags ?? [],
+    );
+
+    const hashtagCounts = new Map<string, number>();
+    for (const hashtag of allHashtags) {
+      hashtagCounts.set(hashtag, (hashtagCounts.get(hashtag) ?? 0) + 1);
+    }
+
+    const sortedHashtags = [...hashtagCounts.entries()].sort(
+      (a, b) => b[1] - a[1],
+    );
+
+    const recommendedHashtagNames = sortedHashtags
+      .slice(0, args.limit * 2)
+      .map(([hashtag]) => hashtag);
+
+    // Fetch full hashtag documents for the recommended names
+    const recommendedHashtagDocs = await Promise.all(
+      recommendedHashtagNames.map(async (hashtagName) => {
+        const hashtagDoc = await ctx.db
+          .query("hashtags")
+          .withIndex("by_hashtag", (q) => q.eq("hashtag", hashtagName))
+          .unique();
+        return hashtagDoc;
+      }),
+    );
+
+    // Filter out nulls and apply final limit
+    const finalRecommendedHashtags = recommendedHashtagDocs
+      .filter((doc): doc is NonNullable<typeof doc> => doc !== null)
+      .slice(0, args.limit);
+
+    return finalRecommendedHashtags;
   },
 });

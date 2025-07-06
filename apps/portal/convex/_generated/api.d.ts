@@ -48,10 +48,12 @@ import type * as cms_index from "../cms/index.js";
 import type * as cms_init_builtInContentTypes from "../cms/init/builtInContentTypes.js";
 import type * as cms_init_index from "../cms/init/index.js";
 import type * as cms_lib_contentTypes from "../cms/lib/contentTypes.js";
+import type * as cms_menus from "../cms/menus.js";
 import type * as cms_mutations from "../cms/mutations.js";
 import type * as cms_queries from "../cms/queries.js";
 import type * as cms_schema_contentTypesSchema from "../cms/schema/contentTypesSchema.js";
 import type * as cms_schema_index from "../cms/schema/index.js";
+import type * as cms_schema_menusSchema from "../cms/schema/menusSchema.js";
 import type * as cms_schema_postsSchema from "../cms/schema/postsSchema.js";
 import type * as contacts_crud from "../contacts/crud.js";
 import type * as contacts_import from "../contacts/import.js";
@@ -113,6 +115,7 @@ import type * as ecommerce_schema_wishlistSchema from "../ecommerce/schema/wishl
 import type * as ecommerce_variations_index from "../ecommerce/variations/index.js";
 import type * as ecommerce from "../ecommerce.js";
 import type * as env from "../env.js";
+import type * as files_index from "../files/index.js";
 import type * as groupPosts from "../groupPosts.js";
 import type * as groups_index from "../groups/index.js";
 import type * as groups_lib_dashboards from "../groups/lib/dashboards.js";
@@ -160,6 +163,7 @@ import type * as lib_permissions_userAuth from "../lib/permissions/userAuth.js";
 import type * as lib_queryAnalyzer from "../lib/queryAnalyzer.js";
 import type * as lib_slugs from "../lib/slugs.js";
 import type * as lms_courses_index from "../lms/courses/index.js";
+import type * as lms_courses_mutations from "../lms/courses/mutations.js";
 import type * as lms_courses_queries from "../lms/courses/queries.js";
 import type * as lms_enrollments_index from "../lms/enrollments/index.js";
 import type * as lms_index from "../lms/index.js";
@@ -170,6 +174,9 @@ import type * as lms_quizzes_index from "../lms/quizzes/index.js";
 import type * as lms_schema_index from "../lms/schema/index.js";
 import type * as lms_schema_lmsSchema from "../lms/schema/lmsSchema.js";
 import type * as lms_topics_index from "../lms/topics/index.js";
+import type * as media_index from "../media/index.js";
+import type * as media_mutations from "../media/mutations.js";
+import type * as media_queries from "../media/queries.js";
 import type * as notifications_index from "../notifications/index.js";
 import type * as notifications_lib_feedNotifications from "../notifications/lib/feedNotifications.js";
 import type * as notifications_lib_formatters from "../notifications/lib/formatters.js";
@@ -225,6 +232,11 @@ import type * as users_schema_types from "../users/schema/types.js";
 import type * as users_schema_usersSchema from "../users/schema/usersSchema.js";
 import type * as users from "../users.js";
 import type * as versionControl from "../versionControl.js";
+import type * as vimeo_actions from "../vimeo/actions.js";
+import type * as vimeo_crons from "../vimeo/crons.js";
+import type * as vimeo_index from "../vimeo/index.js";
+import type * as vimeo_mutations from "../vimeo/mutations.js";
+import type * as vimeo_queries from "../vimeo/queries.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -270,10 +282,12 @@ declare const fullApi: ApiFromModules<{
   "cms/init/builtInContentTypes": typeof cms_init_builtInContentTypes;
   "cms/init/index": typeof cms_init_index;
   "cms/lib/contentTypes": typeof cms_lib_contentTypes;
+  "cms/menus": typeof cms_menus;
   "cms/mutations": typeof cms_mutations;
   "cms/queries": typeof cms_queries;
   "cms/schema/contentTypesSchema": typeof cms_schema_contentTypesSchema;
   "cms/schema/index": typeof cms_schema_index;
+  "cms/schema/menusSchema": typeof cms_schema_menusSchema;
   "cms/schema/postsSchema": typeof cms_schema_postsSchema;
   "contacts/crud": typeof contacts_crud;
   "contacts/import": typeof contacts_import;
@@ -335,6 +349,7 @@ declare const fullApi: ApiFromModules<{
   "ecommerce/variations/index": typeof ecommerce_variations_index;
   ecommerce: typeof ecommerce;
   env: typeof env;
+  "files/index": typeof files_index;
   groupPosts: typeof groupPosts;
   "groups/index": typeof groups_index;
   "groups/lib/dashboards": typeof groups_lib_dashboards;
@@ -382,6 +397,7 @@ declare const fullApi: ApiFromModules<{
   "lib/queryAnalyzer": typeof lib_queryAnalyzer;
   "lib/slugs": typeof lib_slugs;
   "lms/courses/index": typeof lms_courses_index;
+  "lms/courses/mutations": typeof lms_courses_mutations;
   "lms/courses/queries": typeof lms_courses_queries;
   "lms/enrollments/index": typeof lms_enrollments_index;
   "lms/index": typeof lms_index;
@@ -392,6 +408,9 @@ declare const fullApi: ApiFromModules<{
   "lms/schema/index": typeof lms_schema_index;
   "lms/schema/lmsSchema": typeof lms_schema_lmsSchema;
   "lms/topics/index": typeof lms_topics_index;
+  "media/index": typeof media_index;
+  "media/mutations": typeof media_mutations;
+  "media/queries": typeof media_queries;
   "notifications/index": typeof notifications_index;
   "notifications/lib/feedNotifications": typeof notifications_lib_feedNotifications;
   "notifications/lib/formatters": typeof notifications_lib_formatters;
@@ -447,6 +466,11 @@ declare const fullApi: ApiFromModules<{
   "users/schema/usersSchema": typeof users_schema_usersSchema;
   users: typeof users;
   versionControl: typeof versionControl;
+  "vimeo/actions": typeof vimeo_actions;
+  "vimeo/crons": typeof vimeo_crons;
+  "vimeo/index": typeof vimeo_index;
+  "vimeo/mutations": typeof vimeo_mutations;
+  "vimeo/queries": typeof vimeo_queries;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

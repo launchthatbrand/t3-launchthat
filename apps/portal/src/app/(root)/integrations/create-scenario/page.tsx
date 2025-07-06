@@ -58,11 +58,15 @@ export default function CreateScenarioPage() {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
 
-  // These would be loaded from Convex in a real implementation
+  // Extend available sources to include Vimeo. In production this would be fetched from Convex.
   const availableSources = [
     {
       type: "wordpress",
       connections: [{ id: "conn1", name: "Company Blog" }],
+    },
+    {
+      type: "vimeo",
+      connections: [{ id: "conn3", name: "Marketing Vimeo" }],
     },
     {
       type: "monday",

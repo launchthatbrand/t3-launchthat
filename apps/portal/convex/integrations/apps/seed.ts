@@ -47,6 +47,41 @@ export const seedDefaultApps = mutation({
       numCreated++;
     }
 
+    // Check if Vimeo app exists
+    const vimeoApp = existingApps.find(
+      (app) => app.name.toLowerCase() === "vimeo",
+    );
+
+    if (!vimeoApp) {
+      await ctx.db.insert("apps", {
+        name: "Vimeo",
+        description: "Connect to Vimeo to sync videos and playlists.",
+        authType: "apiKey",
+        configTemplate: JSON.stringify({
+          apiKey: {
+            type: "string",
+            label: "Vimeo API Key",
+            required: true,
+            secret: true,
+          },
+          playlistIds: {
+            type: "string",
+            label: "Playlist IDs (comma separated)",
+            required: false,
+          },
+          categories: {
+            type: "string",
+            label: "Categories (comma separated)",
+            required: false,
+          },
+        }),
+        isEnabled: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+      numCreated++;
+    }
+
     return { numCreated };
   },
 });

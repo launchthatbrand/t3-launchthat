@@ -70,8 +70,7 @@ export default function ScenariosPage() {
 
   // Handle running a scenario
   const handleRunScenario = useCallback(async (scenario: ScenarioItem) => {
-    toast({
-      title: "Running scenario",
+    toast("Running scenario", {
       description: `Executing "${scenario.name}" now...`,
     });
     // TODO: Implement actual scenario execution
@@ -85,15 +84,12 @@ export default function ScenariosPage() {
       try {
         setIsDeleting(true);
         await deleteScenario({ id: scenario._id });
-        toast({
-          title: "Scenario deleted",
+        toast("Scenario deleted", {
           description: `"${scenario.name}" has been removed.`,
         });
       } catch (error) {
-        toast({
-          title: "Error",
+        toast("Error", {
           description: `Failed to delete scenario: ${error instanceof Error ? error.message : "Unknown error"}`,
-          variant: "destructive",
         });
       } finally {
         setIsDeleting(false);
@@ -111,15 +107,15 @@ export default function ScenariosPage() {
           id: scenario._id,
           status: newStatus,
         });
-        toast({
-          title: `Scenario ${newStatus === "active" ? "activated" : "deactivated"}`,
-          description: `"${scenario.name}" is now ${newStatus}.`,
-        });
+        toast(
+          `Scenario ${newStatus === "active" ? "activated" : "deactivated"}`,
+          {
+            description: `"${scenario.name}" is now ${newStatus}.`,
+          },
+        );
       } catch (error) {
-        toast({
-          title: "Error",
+        toast("Error", {
           description: `Failed to update scenario status: ${error instanceof Error ? error.message : "Unknown error"}`,
-          variant: "destructive",
         });
       }
     },

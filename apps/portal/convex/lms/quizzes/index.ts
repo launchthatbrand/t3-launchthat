@@ -186,3 +186,109 @@ export const detachFromLesson = internalMutation({
     return null;
   },
 });
+
+// --- List Quizzes Query ---
+export const listQuizzes = query({
+  args: {
+    searchTitle: v.optional(v.string()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("quizzes"),
+      title: v.string(),
+      isPublished: v.optional(v.boolean()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    // Fetch quizzes (consider adding pagination in future)
+    const allQuizzes = await ctx.db.query("quizzes").collect();
+
+    const filtered = args.searchTitle
+      ? allQuizzes.filter((q) =>
+          q.title.toLowerCase().includes(args.searchTitle!.toLowerCase()),
+        )
+      : allQuizzes;
+
+    return filtered.map(({ _id, title, isPublished }) => ({
+      _id,
+      title,
+      isPublished,
+    }));
+  },
+});
+
+// --- Get Quiz Query ---
+export const getQuiz = query({
+  args: { quizId: v.id("quizzes") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("quizzes"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      questions: v.optional(
+        v.array(
+          v.object({
+            type: v.union(
+              v.literal("single-choice"),
+              v.literal("multiple-choice"),
+              v.literal("true-false"),
+            ),
+            questionText: v.string(),
+            options: v.optional(v.array(v.string())),
+            explanation: v.optional(v.string()),
+            correctAnswer: v.union(
+              v.string(),
+              v.array(v.string()),
+              v.boolean(),
+            ),
+          }),
+        ),
+      ),
+      isPublished: v.optional(v.boolean()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const quiz = await ctx.db.get(args.quizId);
+    if (!quiz) return null;
+    return {
+      _id: quiz._id,
+      _creationTime: quiz._creationTime,
+      title: quiz.title,
+      description: quiz.description,
+      questions: quiz.questions,
+      isPublished: quiz.isPublished,
+    };
+  },
+});
+
+// --- Update Quiz Mutation ---
+export const update = mutation({
+  args: {
+    quizId: v.id("quizzes"),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    questions: v.optional(
+      v.array(
+        v.object({
+          type: v.union(
+            v.literal("single-choice"),
+            v.literal("multiple-choice"),
+            v.literal("true-false"),
+          ),
+          questionText: v.string(),
+          options: v.optional(v.array(v.string())),
+          explanation: v.optional(v.string()),
+          correctAnswer: v.union(v.string(), v.array(v.string()), v.boolean()),
+        }),
+      ),
+    ),
+    isPublished: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const { quizId, ...patch } = args;
+    await ctx.db.patch(quizId, patch);
+  },
+});

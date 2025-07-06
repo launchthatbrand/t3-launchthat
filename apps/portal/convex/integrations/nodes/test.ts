@@ -159,6 +159,40 @@ export const testNode = action({
         if (!mondayCredentials.apiKey) {
           endpoint = "https://jsonplaceholder.typicode.com/users/1";
         }
+      } else if (appType === "vimeo") {
+        // Vimeo integration – use the access token stored in connection credentials
+        const vimeoCredentials = credentials as {
+          accessToken?: string;
+          access_token?: string; // raw Vimeo field name
+        };
+
+        const token =
+          vimeoCredentials.accessToken ?? vimeoCredentials.access_token;
+
+        if (!token) {
+          throw new Error(
+            "Vimeo access token not found in connection credentials. Please reconnect Vimeo.",
+          );
+        }
+
+        headers.Authorization = `Bearer ${token}`;
+
+        if (args.action === "vimeo_get_videos") {
+          // Support folder filtering
+          let folderPart = "";
+          let firstFolder: string | undefined;
+          if (args.config?.folderIds) {
+            if (Array.isArray(args.config.folderIds)) {
+              firstFolder = args.config.folderIds[0];
+            } else if (typeof args.config.folderIds === "string") {
+              firstFolder = args.config.folderIds.split(",")[0]?.trim();
+            }
+            if (firstFolder) folderPart = `/projects/${firstFolder}`;
+          }
+
+          // Fetch first page with 1 item for testing, optionally scoped to a folder
+          endpoint = `https://api.vimeo.com/me${folderPart}/videos?per_page=1`;
+        }
       } else if (appType === "calendar") {
         // Calendar credentials and endpoints would go here
         // For now, use a placeholder
@@ -261,7 +295,7 @@ export const testNode = action({
           ? (responseData[0] as Record<string, unknown>)
           : (responseData as Record<string, unknown>);
 
-      const schema = Object.keys(dataToAnalyze);
+      const schema = extractPaths(dataToAnalyze);
 
       // Return the result
       return {
@@ -282,7 +316,7 @@ export const testNode = action({
 
       return {
         data: mockData,
-        schema: mockData ? Object.keys(mockData) : [],
+        schema: mockData ? extractPaths(mockData) : [],
         isProxied: false,
         error:
           error instanceof Error
@@ -394,6 +428,21 @@ function getMockData(
     }
   }
 
+  if (appType === "vimeo") {
+    if (action === "vimeo_get_videos") {
+      return {
+        total: 1,
+        data: [
+          {
+            id: "v_123",
+            name: "Sample Vimeo Video",
+            embedUrl: "https://player.vimeo.com/video/123",
+          },
+        ],
+      } as unknown as Record<string, unknown>;
+    }
+  }
+
   // Default mock data
   return {
     id: 1,
@@ -402,4 +451,35 @@ function getMockData(
     timestamp: new Date().toISOString(),
     note: "This is fallback data due to an API error",
   };
+}
+
+// Helper to recursively extract dot-notation paths from nested objects/arrays
+function extractPaths(value: unknown, parent: string = ""): string[] {
+  const paths: string[] = [];
+  if (Array.isArray(value)) {
+    if (value.length === 0) return paths;
+    // For arrays, analyse only the first element to infer schema
+    const child = value[0];
+    const arrayPrefix = parent ? `${parent}[]` : "[]";
+    if (typeof child === "object" && child !== null) {
+      const childPaths = extractPaths(child, arrayPrefix);
+      paths.push(...childPaths);
+    } else {
+      // Primitive array – just record the parent path as an array
+      paths.push(arrayPrefix);
+    }
+  } else if (typeof value === "object" && value !== null) {
+    Object.entries(value as Record<string, unknown>).forEach(([key, val]) => {
+      const newPrefix = parent ? `${parent}.${key}` : key;
+      if (val !== null && (Array.isArray(val) || typeof val === "object")) {
+        paths.push(...extractPaths(val, newPrefix));
+      } else {
+        paths.push(newPrefix);
+      }
+    });
+  } else if (parent) {
+    // Primitive value at root
+    paths.push(parent);
+  }
+  return paths;
 }

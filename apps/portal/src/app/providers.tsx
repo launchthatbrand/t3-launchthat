@@ -16,6 +16,7 @@ import { Toaster } from "@acme/ui/toast";
 import { PuckEditor } from "~/components/puckeditor/PuckEditorProvider";
 import { env } from "~/env";
 import useEditorStore from "~/store/useEditorStore";
+import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
 // Import the correct Convex provider for Clerk integration
 import { GuestCartMerger } from "./GuestCartMerger";
 
@@ -59,7 +60,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ClerkProvider publishableKey={env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <SidebarProvider>
-          {/* <ConvexUserEnsurer /> */}
+          <ConvexUserEnsurer />
           <GuestCartMerger />
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <EditorModeDetector />

@@ -4,7 +4,7 @@
 // Correct import for httpRouter according to docs
 import { httpRouter } from "convex/server";
 
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 
 /**
@@ -141,6 +141,30 @@ http.route({
       status: 204,
       headers: createCorsHeaders(),
     });
+  }),
+});
+
+// ---- Lessons webhook ----
+http.route({
+  path: "/lessons",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    try {
+      const json = await req.json();
+      const lessonId = await ctx.runMutation(
+        api.lms.lessons.index.createViaWebhook,
+        json,
+      );
+      return new Response(JSON.stringify({ lessonId }), {
+        status: 201,
+        headers: { ...createCorsHeaders(), "Content-Type": "application/json" },
+      });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: (err as Error).message }), {
+        status: 400,
+        headers: { ...createCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
   }),
 });
 

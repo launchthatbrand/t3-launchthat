@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 
+import type { Id } from "../../_generated/dataModel";
 import { mutation } from "../../_generated/server";
 
 /**
@@ -13,6 +14,10 @@ export const create = mutation({
     config: v.string(),
     position: v.string(),
     order: v.optional(v.number()),
+    // Optional flattened output schema coming from the frontend (JSON string)
+    schema: v.optional(v.string()),
+    // Optional sample data blob captured during testing (JSON string)
+    sampleData: v.optional(v.string()),
   },
   returns: v.id("nodes"),
   handler: async (ctx, args) => {
@@ -32,6 +37,10 @@ export const create = mutation({
       config: args.config,
       position: args.position,
       order: args.order,
+      // Persist schema under the canonical field name if provided
+      ...(args.schema ? { outputSchema: args.schema } : {}),
+      // Persist sampleData if provided (helpful for future previews)
+      ...(args.sampleData ? { sampleData: args.sampleData } : {}),
       createdAt: now,
       updatedAt: now,
     });
@@ -238,5 +247,43 @@ export const removeConnection = mutation({
     await ctx.db.delete(args.id);
 
     return true;
+  },
+});
+
+/**
+ * Update a node's output schema or input mapping (used by builder)
+ */
+export const updateSchema = mutation({
+  args: {
+    // Accept either a real database id or a temporary client id string (e.g., "node-<timestamp>")
+    id: v.string(),
+    outputSchema: v.optional(v.string()),
+    inputMapping: v.optional(v.string()),
+  },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    const { id, outputSchema, inputMapping } = args;
+
+    // If the id does not look like a Convex-generated Id (contains "node-") we skip the patch –
+    // the frontend will send the schema again when it creates the real node record.
+    if (id.startsWith("node-")) {
+      return id as unknown as Id<"nodes">;
+    }
+
+    // At this point it's a real database id; perform the update
+    const dbId = id as Id<"nodes">;
+    const existing = await ctx.db.get(dbId);
+    if (!existing) {
+      // Node may not be persisted yet; ignore and let client retry later
+      return dbId;
+    }
+
+    await ctx.db.patch(dbId, {
+      ...(outputSchema ? { outputSchema } : {}),
+      ...(inputMapping ? { inputMapping } : {}),
+      updatedAt: Date.now(),
+    });
+
+    return dbId;
   },
 });

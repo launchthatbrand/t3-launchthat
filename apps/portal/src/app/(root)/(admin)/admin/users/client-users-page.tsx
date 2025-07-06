@@ -33,9 +33,29 @@ interface User {
 export default function ClientUsersPage() {
   const router = useRouter();
 
-  // Get all users using the listAllUsers endpoint
-  const allUsersResult = useQuery(api.users.listAllUsers);
+  // First get current user to confirm admin status
+  const me = useQuery(api.users.getMe);
+
+  const isMeAdmin = me?.role === "admin";
+
+  // Fetch all users only if admin; otherwise skip
+  const allUsersResult = useQuery(
+    api.users.listAllUsers,
+    isMeAdmin ? {} : "skip",
+  );
   const allUsers: User[] = allUsersResult ?? [];
+
+  if (me && !isMeAdmin) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed">
+        <X className="mb-4 h-12 w-12 text-muted-foreground" />
+        <h3 className="text-lg font-medium">Access Denied</h3>
+        <p className="text-muted-foreground">
+          You must be an administrator to view this page.
+        </p>
+      </div>
+    );
+  }
 
   // Define column configurations for EntityList
   const columns: ColumnDefinition<User>[] = [

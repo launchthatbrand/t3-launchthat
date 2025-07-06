@@ -41,6 +41,7 @@ export default function IntegrationsPage() {
   const testConnection = useMutation(
     api.integrations.connections.mutations.test,
   );
+  const triggerSync = useMutation(api.vimeo.mutations.triggerSync);
 
   useEffect(() => {
     // Update URL when tab changes
@@ -229,13 +230,25 @@ export default function IntegrationsPage() {
                     >
                       Manage
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleTestConnection(connection._id)}
-                    >
-                      Test
-                    </Button>
+                    {connection.app?.name?.toLowerCase() === "vimeo" ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          triggerSync({ connectionId: connection._id })
+                        }
+                      >
+                        Sync
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleTestConnection(connection._id)}
+                      >
+                        Test
+                      </Button>
+                    )}
                   </CardFooter>
                 </Card>
               ))

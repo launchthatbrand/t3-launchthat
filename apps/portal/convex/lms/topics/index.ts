@@ -53,27 +53,28 @@ export const getAvailable = query({
   },
 });
 
-// --- Update Topic Title ---
-export const updateTitle = mutation({
+// --- Update Topic (full) ---
+export const update = mutation({
   args: {
     topicId: v.id("topics"),
-    title: v.string(),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    categories: v.optional(v.array(v.string())),
+    featuredImage: v.optional(v.string()),
+    contentType: v.optional(
+      v.union(v.literal("text"), v.literal("video"), v.literal("quiz")),
+    ),
+    content: v.optional(v.string()),
+    isPublished: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    await ctx.db.patch(args.topicId, { title: args.title });
-  },
-});
 
-// --- Update Topic Content ---
-export const updateContent = mutation({
-  args: {
-    topicId: v.id("topics"),
-    content: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await requireAdmin(ctx);
-    await ctx.db.patch(args.topicId, { content: args.content });
+    const { topicId, ...data } = args;
+
+    // Convert undefined optional array to undefined else join? categories will be stored as array of strings
+    await ctx.db.patch(topicId, data);
   },
 });
 
@@ -148,6 +149,81 @@ export const detachFromLesson = internalMutation({
     // No need for requireAdmin here as it's an internal mutation
     await ctx.db.patch(args.topicId, { lessonId: undefined, order: undefined });
     return null;
+  },
+});
+
+// --- List Topics Query ---
+export const listTopics = query({
+  args: { searchTitle: v.optional(v.string()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("topics"),
+      _creationTime: v.number(),
+      title: v.string(),
+      contentType: v.union(
+        v.literal("text"),
+        v.literal("video"),
+        v.literal("quiz"),
+      ),
+      lessonId: v.optional(v.id("lessons")),
+      description: v.optional(v.string()),
+      excerpt: v.optional(v.string()),
+      categories: v.optional(v.array(v.string())),
+      featuredImage: v.optional(v.string()),
+      isPublished: v.optional(v.boolean()),
+      order: v.optional(v.number()),
+      content: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    // Fetch all topics, optionally filter by title
+    let topics = await ctx.db.query("topics").collect();
+    if (args.searchTitle) {
+      const lower = args.searchTitle.toLowerCase();
+      topics = topics.filter((t) => t.title.toLowerCase().includes(lower));
+    }
+    return topics;
+  },
+});
+
+// --- Get Topic By ID ---
+export const getTopic = query({
+  args: { topicId: v.id("topics") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("topics"),
+      _creationTime: v.number(),
+      title: v.string(),
+      contentType: v.union(
+        v.literal("text"),
+        v.literal("video"),
+        v.literal("quiz"),
+      ),
+      description: v.optional(v.string()),
+      excerpt: v.optional(v.string()),
+      categories: v.optional(v.array(v.string())),
+      featuredImage: v.optional(v.string()),
+      content: v.optional(v.string()),
+      isPublished: v.optional(v.boolean()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const topic = await ctx.db.get(args.topicId);
+    if (!topic) return null;
+
+    return {
+      _id: topic._id,
+      _creationTime: topic._creationTime,
+      title: topic.title,
+      contentType: topic.contentType,
+      description: topic.description,
+      excerpt: topic.excerpt,
+      categories: topic.categories,
+      featuredImage: topic.featuredImage,
+      content: topic.content,
+      isPublished: topic.isPublished,
+    };
   },
 });
 

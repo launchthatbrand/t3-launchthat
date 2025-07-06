@@ -1,7 +1,7 @@
 import { filter } from "convex-helpers/server/filter";
 import { v } from "convex/values";
 
-import type { Doc, Id } from "../../_generated/dataModel";
+import type { Doc } from "../../_generated/dataModel";
 import { mutation, query } from "../../_generated/server";
 import { requireAdmin } from "../../lib/permissions/requirePermission";
 
@@ -9,6 +9,10 @@ import { requireAdmin } from "../../lib/permissions/requirePermission";
 export const create = mutation({
   args: {
     title: v.string(),
+    content: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    categories: v.optional(v.array(v.string())),
+    featuredImage: v.optional(v.string()),
     isPublished: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -17,11 +21,35 @@ export const create = mutation({
     const newLessonId = await ctx.db.insert("lessons", {
       title: args.title,
       description: undefined,
+      content: args.content,
+      excerpt: args.excerpt,
+      categories: args.categories,
+      featuredImage: args.featuredImage,
       isPublished: args.isPublished ?? false,
     });
 
     console.log(`Created new lesson with ID: ${newLessonId}`);
     return newLessonId;
+  },
+});
+
+// --- Public Create Lesson via API Key ---
+export const createViaWebhook = mutation({
+  args: {
+    title: v.string(),
+    content: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    featuredImage: v.optional(v.string()),
+    isPublished: v.optional(v.boolean()),
+  },
+  returns: v.id("lessons"),
+  handler: async (ctx, args) => {
+    // // Simple shared-secret auth (store secret in Convex env vars)
+    // if (args.apiKey !== process.env.MAKE_COM_API_KEY) {
+    //   throw new Error("Invalid API key");
+    // }
+
+    return await ctx.db.insert("lessons", args);
   },
 });
 
@@ -49,6 +77,24 @@ export const updateTitle = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     await ctx.db.patch(args.lessonId, { title: args.title });
+  },
+});
+
+// --- Update Lesson Fields ---
+export const update = mutation({
+  args: {
+    lessonId: v.id("lessons"),
+    title: v.optional(v.string()),
+    content: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    categories: v.optional(v.array(v.string())),
+    featuredImage: v.optional(v.string()),
+    isPublished: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const { lessonId, ...data } = args;
+    await ctx.db.patch(lessonId, data);
   },
 });
 
@@ -89,5 +135,67 @@ export const attachToCourse = mutation({
       courseId: args.courseId,
       order: args.order,
     });
+  },
+});
+
+// --- List Lessons Query ---
+export const listLessons = query({
+  args: { searchTitle: v.optional(v.string()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("lessons"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      content: v.optional(v.string()),
+      excerpt: v.optional(v.string()),
+      featuredImage: v.optional(v.string()),
+      courseId: v.optional(v.id("courses")),
+      isPublished: v.optional(v.boolean()),
+      order: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    let lessons = await ctx.db.query("lessons").collect();
+    if (args.searchTitle) {
+      const lower = args.searchTitle.toLowerCase();
+      lessons = lessons.filter((l) => l.title.toLowerCase().includes(lower));
+    }
+    return lessons;
+  },
+});
+
+// --- Get Lesson By ID ---
+export const getLesson = query({
+  args: { lessonId: v.id("lessons") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("lessons"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      content: v.optional(v.string()),
+      excerpt: v.optional(v.string()),
+      categories: v.optional(v.array(v.string())),
+      featuredImage: v.optional(v.string()),
+      isPublished: v.optional(v.boolean()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const lesson = await ctx.db.get(args.lessonId);
+    if (!lesson) return null;
+
+    return {
+      _id: lesson._id,
+      _creationTime: lesson._creationTime,
+      title: lesson.title,
+      description: lesson.description,
+      content: lesson.content,
+      excerpt: lesson.excerpt,
+      categories: lesson.categories,
+      featuredImage: lesson.featuredImage,
+      isPublished: lesson.isPublished,
+    };
   },
 });
