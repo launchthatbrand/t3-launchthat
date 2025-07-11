@@ -3,7 +3,6 @@
 
 // Import new modular calendar schema
 import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
 
 import calendarSchema from "./calendar/schema";
 import cmsSchema from "./cms/schema";
@@ -17,7 +16,9 @@ import { lmsSchema } from "./lms/schema";
 import { notificationsSchema } from "./notifications/schema";
 import { puckEditorTable } from "./puckEditor/schema";
 import socialFeedSchema from "./socialfeed/schema";
+import { tasksSchema } from "./tasks/schema";
 import { usersSchema } from "./users/schema";
+import { v } from "convex/values";
 import { vimeoSchema } from "./vimeo/schema";
 
 // Import new schema modules
@@ -139,4 +140,7 @@ export default defineSchema({
   }).index("by_group", ["groupId"]),
 
   puckEditor: puckEditorTable,
+
+  // Tasks table (moved to modular schema)
+  ...tasksSchema,
 });

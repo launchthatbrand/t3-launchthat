@@ -43,13 +43,15 @@
     "./separator": "./src/separator.tsx",
     "./sidebar/*": "./src/sidebar/*.tsx",
     "./course-sidebar/*": "./src/course-sidebar/*.tsx",
+    "./tasks-sidebar/*": "./src/tasks-sidebar/*.tsx",
     "./layout/*": "./src/layout/*.tsx",
     "./general/*": "./src/general/*.tsx",
     "./general": "./src/general/index.ts",
     "./components/**/*": "./src/components/**/*.tsx",
     "./toggle-group": "./src/toggle-group.tsx",
     "./calendar/*": "./src/calendar/components/*.tsx",
-    "./calendar": "./src/calendar/index.ts"
+    "./calendar": "./src/calendar/index.ts",
+    "./hooks/*": "./src/hooks/*.tsx"
   },
   "license": "MIT",
   "scripts": {

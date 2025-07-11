@@ -1,116 +1,103 @@
-# Portal Integrations System PRD
+# Taskmaster – Admin Task Management System PRD
 
 ## Overview
-This PRD outlines the development of an integrations system for the Portal application. The integrations system will allow users to connect with external services, import data, and create automation scenarios.
+Taskmaster is an admin-facing task management system for internal use. It enables users to create, view, update, and delete tasks, assign due dates (including recurring rules), and visualize tasks on a calendar. The system should leverage existing campaign calendar components for consistency and efficiency.
 
-## Core Components
+---
 
-### 1. Integration Apps
-- Standard definitions for supported external platforms (WordPress, Monday.com, etc.)
-- Configuration templates for each app
-- Authentication methods for each platform
+## Goals
+- Provide a robust CRUD interface for managing tasks.
+- Allow tasks to have due dates and support recurring schedules.
+- Display all tasks with dates on a calendar, reusing campaign calendar UI.
+- Ensure a seamless, modern admin experience using existing design systems and component libraries.
 
-### 2. Connections
-- Instances of connected apps (e.g., multiple WordPress sites)
-- Credential storage and management
-- Connection status monitoring
-- Connection testing capability
+---
 
-### 3. Scenarios
-- Automation workflows between systems
-- Trigger and action definitions
-- Data transformation capabilities
-- Execution logs and error handling
+## Features & Requirements
 
-### 4. Nodes
-- Individual steps within a scenario
-- Input/output mapping between nodes
-- Validation rules for node connections
-- Node configuration options
+### 1. Task CRUD
+- **Create**: Admins can create new tasks with the following fields:
+  - Title (string, required)
+  - Description (string, optional)
+  - Due Date (date, optional)
+  - Recurring (boolean, optional)
+  - Recurrence Rule (string, optional, e.g., daily/weekly/monthly or RRULE)
+  - Status (enum: pending, completed, cancelled; default: pending)
+- **Read**: List all tasks in a table or list view, sortable by date/status.
+- **Update**: Edit any field of an existing task.
+- **Delete**: Remove a task (with confirmation).
 
-## Feature Requirements
+### 2. Task Dates & Recurrence
+- **Due Date**: Tasks can have a single due date (date picker).
+- **Recurring Tasks**:
+  - Toggle to mark a task as recurring.
+  - Select recurrence pattern (daily, weekly, monthly, or custom RRULE).
+  - Recurring tasks should be expanded into individual events on the calendar view.
 
-### Frontend Requirements
-1. **Integration Dashboard**
-   - List of available apps
-   - List of existing connections
-   - List of scenarios with status
+### 3. Calendar Integration
+- **Calendar View**:
+  - Display all tasks with due dates on a calendar.
+  - Use the same calendar component as the campaign calendar for UI/UX consistency.
+  - Clicking a calendar event opens the task details/edit modal.
+  - Recurring tasks are shown on all relevant dates.
+- **Filtering**:
+  - Option to filter calendar by status (pending/completed/cancelled).
+  - Option to show/hide recurring tasks.
 
-2. **Connection Management**
-   - Add new connections to apps
-   - Edit connection credentials
-   - Test connection functionality
-   - Delete connections
+### 4. UI/UX
+- Use Shadcn UI components for forms, modals, tables, etc.
+- Use React Hook Form + zod for form validation.
+- Use React Query (convex/react) for data fetching and mutations.
+- Ensure accessibility and responsive design.
+- Maintain visual consistency with the admin/campaign calendar.
 
-3. **Scenario Builder**
-   - Visual interface for creating scenarios
-   - Node selection and configuration
-   - Connection mapping between nodes
-   - Validation of scenario configuration
+### 5. Backend
+- Use Convex for data storage and API.
+- Define a `tasks` table with the following fields:
+  - id (Convex id)
+  - title
+  - description
+  - dueDate
+  - isRecurring
+  - recurrenceRule
+  - status
+  - createdAt
+  - updatedAt
+- Implement Convex queries and mutations for all CRUD operations.
 
-4. **Data Mapping Interface**
-   - Field mapping between external systems and Portal
-   - Type conversion options
-   - Default value settings
-   - Validation rules
+---
 
-### Backend Requirements
-1. **Integration Data Store**
-   - Apps table for supported platforms
-   - Connections table for instances
-   - Scenarios table for automation flows
-   - Nodes table for scenario steps
+## Non-Goals
+- No user assignment or multi-user collaboration in this phase.
+- No notifications or reminders.
+- No external integrations.
 
-2. **Authentication Handlers**
-   - OAuth integration for supported platforms
-   - API key management
-   - Credential encryption
+---
 
-3. **Execution Engine**
-   - Scenario execution logic
-   - Data transformation handlers
-   - Error handling and retry logic
-   - Execution logging
+## Success Criteria
+- Admins can create, edit, and delete tasks with all required fields.
+- Tasks with due dates appear on the calendar.
+- Recurring tasks are correctly expanded and displayed on the calendar.
+- The UI is consistent with the rest of the admin panel and campaign calendar.
+- All forms are validated and accessible.
 
-4. **WordPress Integration**
-   - WordPress REST API client
-   - User data import functionality
-   - Post data import functionality
-   - Webhook support for real-time updates
+---
 
-## MVP Scope
-For the initial release, we will focus on:
+## Milestones
+1. **Backend**
+   - Convex schema and CRUD API for tasks.
+2. **Frontend**
+   - Task list/table UI with CRUD.
+   - Task form modal/drawer.
+   - Calendar view with campaign calendar integration.
+   - Recurrence rule support and expansion logic.
+3. **Polish**
+   - Filtering, accessibility, and responsive design.
+   - QA and bugfixes.
 
-1. Setting up the basic structure for the integrations system
-2. Supporting WordPress as the first integration
-3. Implementing basic user and post imports from WordPress to Portal
-4. Creating a simple mapping interface for data fields
+---
 
-### MVP User Flows
-1. User adds a WordPress connection by providing site URL and credentials
-2. User creates a scenario to import WordPress users to Portal users
-3. User maps WordPress user fields to Portal user fields
-4. User executes the scenario to perform the import
-5. User can view the results and logs of the import
-
-## Technical Considerations
-- Secure credential storage
-- Rate limiting for external API calls
-- Error handling for failed connections
-- Data validation before import
-- Incremental sync capabilities
-
-## Future Enhancements (Post-MVP)
-- Additional integration platforms (Monday.com, etc.)
-- Bidirectional sync capabilities
-- Scheduled scenario execution
-- Advanced data transformation options
-- Conditional logic in scenarios
-- Error notifications and alerting
-
-## Success Metrics
-- Number of successful connections established
-- Number of scenarios created
-- Amount of data successfully imported
-- Error rate in scenario execution
-- User satisfaction with the integration experience 
+## References
+- Campaign calendar component (for calendar UI)
+- Shadcn UI documentation
+- Convex documentation 

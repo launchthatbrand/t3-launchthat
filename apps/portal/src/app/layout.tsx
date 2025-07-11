@@ -1,13 +1,14 @@
 // import "@acme/ui/globals.css";
 import "./globals.css";
 
-import { Button, cn } from "@acme/ui";
 import { Geist, Geist_Mono } from "next/font/google";
-
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
-import { Providers } from "./providers";
+
+import { Button, cn } from "@acme/ui";
 import StandardLayout from "@acme/ui/layout/StandardLayout";
+
+import { Providers } from "./providers";
 
 // const fontSans = Geist({
 //   subsets: ["latin"],
@@ -35,7 +36,7 @@ export default function RootLayout(props: {
       >
         <Providers>
           <StandardLayout
-            appName="Portal Demo"
+            appName="Wall Street Academy"
             sidebar={props.sidebar}
             header={props.header}
             sidebarVariant="inset"

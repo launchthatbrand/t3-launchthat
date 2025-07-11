@@ -14,6 +14,7 @@ import {
 import { AppSidebar } from "@acme/ui/layout/AppSidebar";
 import { ScrollArea } from "@acme/ui/scroll-area";
 
+import { Separator } from "~/components/ui/separator";
 import { CoursesSidebar } from "./_components/CourseSidebar";
 
 interface CourseLayoutProps {
@@ -86,7 +87,14 @@ export default function CourseLayout({ children }: CourseLayoutProps) {
     <CourseSidebarProvider>
       <CoursesSidebar variant="floating" collapsible="icon" />
       <div className="flex flex-1 flex-col">
-        <CourseSidebarTrigger />
+        <header className="flex h-16 shrink-0 items-center gap-2 px-4">
+          <CourseSidebarTrigger className="-ml-1" />
+          <Separator
+            orientation="vertical"
+            className="mr-2 data-[orientation=vertical]:h-4"
+          />
+          <h1 className="text-xl font-bold">{course.title}</h1>
+        </header>
         {children}
       </div>
     </CourseSidebarProvider>

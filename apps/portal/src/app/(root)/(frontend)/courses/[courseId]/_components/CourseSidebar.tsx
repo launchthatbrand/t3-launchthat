@@ -18,6 +18,7 @@ import {
   CourseSidebar,
   CourseSidebarContent,
   CourseSidebarGroup,
+  CourseSidebarHeader,
   CourseSidebarMenu,
   CourseSidebarMenuButton,
   CourseSidebarMenuItem,
@@ -42,6 +43,9 @@ export function CoursesSidebar(
   props: React.ComponentProps<typeof CourseSidebar>,
 ) {
   const { courseId: paramCourseId } = useParams();
+  const [openLessonId, setOpenLessonId] = React.useState<Id<"lessons"> | null>(
+    null,
+  );
 
   const courseId = paramCourseId ? (paramCourseId as Id<"courses">) : undefined;
 
@@ -110,13 +114,19 @@ export function CoursesSidebar(
 
   return (
     <CourseSidebar {...props}>
+      <CourseSidebarHeader className="border-b border-border text-lg font-bold">
+        Lessons
+      </CourseSidebarHeader>
       <CourseSidebarContent>
         <CourseSidebarGroup>
           <CourseSidebarMenu>
             {orderedLessons.map((lesson) => (
               <CourseSidebarMenuItem key={lesson._id}>
                 <Collapsible
-                  defaultOpen={lesson.isActive}
+                  open={openLessonId === lesson._id}
+                  onOpenChange={(isOpen) =>
+                    setOpenLessonId(isOpen ? lesson._id : null)
+                  }
                   className="group/collapsible"
                 >
                   <div className="flex items-center justify-between">
@@ -124,19 +134,20 @@ export function CoursesSidebar(
                       asChild
                       tooltip={lesson.title}
                       isActive={lesson.isActive}
+                      onClick={() => setOpenLessonId(lesson._id)}
                     >
                       <Link href={`/courses/${courseId}/lesson/${lesson._id}`}>
                         {lesson.title}
                       </Link>
                     </CourseSidebarMenuButton>
                     <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <ChevronRight className="transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <ChevronRight className="h-3 w-3 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                         <span className="sr-only">Toggle Lesson Content</span>
                       </Button>
                     </CollapsibleTrigger>
                   </div>
-                  <CollapsibleContent className="flex flex-col gap-2">
+                  <CollapsibleContent className="flex flex-col">
                     {topicsByLesson.get(lesson._id)?.length ? (
                       <CourseSidebarMenuSub>
                         {topicsByLesson.get(lesson._id)?.map((topic) => {
@@ -176,7 +187,7 @@ export function CoursesSidebar(
                                   href={`/courses/${courseId}/lesson/${lesson._id}/quiz/${quiz._id}`}
                                 >
                                   <FileQuestionIcon className="h-3 w-3" />
-                                  Quiz: {quiz.title}
+                                  {quiz.title}
                                 </Link>
                               </CourseSidebarMenuSubButton>
                             </CourseSidebarMenuSubItem>

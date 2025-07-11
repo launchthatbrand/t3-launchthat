@@ -1,10 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { AlertCircle } from "lucide-react";
-
 import { Alert, AlertDescription, AlertTitle } from "@acme/ui/alert";
-
 import type {
   ColumnDefinition,
   EntityAction,
@@ -14,6 +10,9 @@ import type {
   SortConfig,
   ViewMode,
 } from "./types";
+import { useEffect, useMemo, useState } from "react";
+
+import { AlertCircle } from "lucide-react";
 import { EntityListFilters } from "./EntityListFilters";
 import { EntityListHeader } from "./EntityListHeader";
 import { EntityListPagination } from "./EntityListPagination";
@@ -157,7 +156,7 @@ export function EntityList<T extends object>({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="w-full space-y-4">
       {/* Header with title, search, and view toggles */}
       <EntityListHeader
         title={title}

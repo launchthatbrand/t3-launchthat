@@ -34,62 +34,14 @@ export default function HeaderLayout({
   return (
     <header className="flex w-full flex-col">
       <TopHeader />
-      <MainHeader />
+      {/* <MainHeader /> */}
       <Breadcrumbs />
     </header>
   );
 }
 
 const TopHeader = () => {
-  return (
-    // <div className="flex items-center justify-between border-b bg-white px-4 py-2">
-    //   <div className="flex items-center">
-    //     <Link href="/" className="mr-4">
-    //       <Logo className="h-8" appName="FDOT" />
-    //     </Link>
-    //   </div>
-
-    //   <div className="flex items-center gap-4">
-    //     <div className="relative w-64 max-w-md">
-    //       <Input
-    //         type="text"
-    //         placeholder="Search..."
-    //         className="rounded-md pr-8"
-    //       />
-    //       <Button
-    //         variant="primary"
-    //         className="absolute right-0 top-0 h-full px-3"
-    //       >
-    //         <SearchIcon className="h-4 w-4" />
-    //       </Button>
-    //     </div>
-
-    //     <Button variant="ghost" size="icon">
-    //       <BellIcon className="h-5 w-5" />
-    //     </Button>
-
-    //     <Link href="/cart">
-    //       <Button variant="ghost" size="icon" className="relative">
-    //         <ShoppingCartIcon className="h-5 w-5" />
-    //         <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-    //           13
-    //         </span>
-    //       </Button>
-    //     </Link>
-
-    //     <div className="ml-2 text-sm">
-    //       <Link href="/support" className="text-purple-700 hover:underline">
-    //         websupport@qcausa.com
-    //       </Link>
-    //     </div>
-
-    //     <Button variant="ghost" size="icon">
-    //       <UserIcon className="h-5 w-5" />
-    //     </Button>
-    //   </div>
-    // </div>
-    <AppHeader appName="FDOT" sidebarToggle={true} />
-  );
+  return <AppHeader appName="Wall Street Academy" sidebarToggle={true} />;
 };
 
 const MainHeader = () => {

@@ -1,505 +1,146 @@
 {
-  "master": {
+  "feature-admin-task-manager": {
     "tasks": [
       {
         "id": 1,
-        "title": "Implement Unified State Management Architecture",
-        "description": "Redesign the state management to eliminate the frontend/backend state disconnect. Implement a single source of truth with proper synchronization mechanisms.",
-        "details": "1. Replace dual state system with unified reactive state management:\n   - Use Zustand for local state management\n   - Implement Convex real-time subscriptions for backend sync\n   - Create a custom hook `useUnifiedCourseState` that combines Zustand and Convex\n\n2. Implement optimistic updates with rollback on failure:\n   - Use Zustand middleware for optimistic updates\n   - Implement error handling and rollback logic\n\n3. Add state synchronization hooks:\n   - Create `useSyncCourseState` hook for component lifecycle integration\n   - Implement `useConvexSubscription` for real-time updates\n\nCode example for `useUnifiedCourseState`:\n\n```typescript\nimport create from 'zustand'\nimport { useQuery, useMutation } from 'convex/react'\n\nconst useUnifiedCourseState = create((set, get) => ({\n  courseStructure: [],\n  updateStructure: (newStructure) => set({ courseStructure: newStructure }),\n  syncWithBackend: async () => {\n    const backendStructure = await useQuery('getCourseStructure')\n    set({ courseStructure: backendStructure })\n  },\n  optimisticUpdate: (update) => {\n    set((state) => ({ courseStructure: update(state.courseStructure) }))\n    useMutation('updateCourseStructure')(update)\n      .catch(() => {\n        // Rollback on failure\n        get().syncWithBackend()\n      })\n  }\n}))\n```\n\nEnsure to use React.Suspense and error boundaries for proper loading and error states.",
-        "testStrategy": "1. Unit tests:\n   - Test `useUnifiedCourseState` hook for all CRUD operations\n   - Verify optimistic updates and rollback functionality\n   - Test synchronization logic between Zustand and Convex\n\n2. Integration tests:\n   - Test drag-and-drop operations with persistence\n   - Verify real-time updates across multiple components\n\n3. End-to-end tests:\n   - Simulate complete course building workflow\n   - Test error scenarios and recovery\n\n4. Performance tests:\n   - Measure update speed for large course structures\n   - Test concurrent updates from multiple users\n\nUse Jest for unit and integration tests, Cypress for E2E tests, and Lighthouse for performance testing.",
+        "title": "Setup Convex Backend Schema",
+        "description": "Define the Convex schema for the tasks table with all required fields according to the PRD specifications.",
+        "details": "Create a new Convex schema file that defines the tasks table with the following fields:\n- id (Convex id, auto-generated)\n- title (string, required)\n- description (string, optional)\n- dueDate (date, optional)\n- isRecurring (boolean, optional)\n- recurrenceRule (string, optional)\n- status (enum: 'pending', 'completed', 'cancelled'; default: 'pending')\n- createdAt (date, auto-generated)\n- updatedAt (date, auto-generated)\n\nExample schema implementation:\n```typescript\nimport { defineSchema, defineTable } from 'convex/server';\nimport { v } from 'convex/values';\n\nexport default defineSchema({\n  tasks: defineTable({\n    title: v.string(),\n    description: v.optional(v.string()),\n    dueDate: v.optional(v.number()), // Unix timestamp\n    isRecurring: v.optional(v.boolean()),\n    recurrenceRule: v.optional(v.string()),\n    status: v.union(v.literal('pending'), v.literal('completed'), v.literal('cancelled')),\n    createdAt: v.number(), // Unix timestamp\n    updatedAt: v.number(), // Unix timestamp\n  })\n});\n```",
+        "testStrategy": "Verify schema definition by running Convex dev server and checking that the schema is correctly applied. Test creating a sample task entry to ensure all fields are properly defined and constraints are enforced.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Analyze Current State Management Flow",
-            "description": "Document and analyze the existing state management architecture to identify pain points and disconnects between frontend and backend state.",
-            "dependencies": [],
-            "details": "Map out the current state flow between frontend Zustand stores and backend Convex data. Identify specific areas where state synchronization fails or becomes inconsistent. Document all state update patterns currently in use across the application.\n<info added on 2025-06-25T19:31:29.033Z>\n## ✅ Completed Comprehensive State Management Flow Analysis\n\n### Analysis Findings\n\n**Root Cause Identified**: The CourseBuilder V3 system suffers from a fundamental **state synchronization disconnect** between frontend UI state (Zustand) and backend persistence (Convex).\n\n### Key Discoveries:\n\n1. **Dual State Sources Problem**:\n   - Frontend: Zustand store manages `mainContentItems` (UI state)\n   - Backend: Convex manages `courseStructure` array (persistence state)\n   - **NO SYNCHRONIZATION** between the two sources\n\n2. **Critical Data Flow Issues**:\n   - `transformCourseData()` ONLY reads from `courseStructure` array\n   - Ignores lessons attached via `courseId` field\n   - Save logic reads from transformed data, not store state\n   - Results in empty saves despite UI showing lessons\n\n3. **Type System Conflicts**:\n   - Store uses `id: string`, Convex uses `_id: Id<\"lessons\">`\n   - Unsafe type casting throughout transformation layer\n   - Runtime errors due to type mismatches\n\n4. **Missing Synchronization Mechanisms**:\n   - No store refresh after backend operations\n   - No real-time subscriptions utilized\n   - Store becomes stale after mutations\n\n### Error Scenarios Documented:\n- **Drag → Disappearance**: Lessons show temporarily then vanish\n- **Save → False Success**: Toast success but empty structure saved\n- **Refresh → Lost Work**: All UI work appears lost\n\n### Files Analyzed:\n- `packages/ui/src/CourseBuilderV3/store/useCourseBuilderStore.ts` (200+ lines)\n- `apps/portal/src/app/(root)/(admin)/admin/courses/[courseId]/builder/page.tsx` (453 lines)\n- Zustand store actions and state management patterns\n- Data transformation functions and type mappings\n\n### Documentation Created:\n- Comprehensive analysis document: `.taskmaster/docs/state_management_analysis.md`\n- Mermaid diagrams showing broken data flow\n- Code examples highlighting critical issues\n- Recommended unified state architecture pattern\n\n### Next Steps Identified:\nThis analysis provides the foundation for Task 1.2 (Design unified state architecture) and subsequent implementation tasks to eliminate the state management disconnect.\n</info added on 2025-06-25T19:31:29.033Z>",
-            "status": "done",
-            "testStrategy": "Create a comprehensive state flow diagram and document key findings in a technical specification."
-          },
-          {
-            "id": 2,
-            "title": "Design Unified State Architecture",
-            "description": "Create a detailed architecture design for the unified state management system that combines Zustand and Convex.",
-            "dependencies": [
-              1
-            ],
-            "details": "Define the core state structure, synchronization patterns, and update flows. Specify how optimistic updates will work with backend validation. Design error handling and rollback mechanisms. Create a detailed API for the unified state hooks.\n<info added on 2025-06-25T19:33:06.331Z>\n## ✅ Unified State Architecture Design Complete\n\n### Architecture Overview\nCreated a comprehensive **unified state management architecture** that eliminates the dual state source problem by combining:\n- **Zustand**: Optimistic updates and UI state management\n- **Convex**: Real-time subscriptions and authoritative backend state\n- **Synchronization Layer**: Ensures consistency between frontend and backend\n\n### Key Architecture Components Designed:\n\n1. **Unified State Hook Structure**:\n   - `useUnifiedCourseState`: Primary hook for components\n   - `useSyncCourseState`: Lifecycle management and synchronization\n   - `useConvexSubscription`: Generic real-time subscription management\n\n2. **State Data Flow Design**:\n   ```\n   UI Component → useUnifiedCourseState → Zustand Store\n                                       → Action Dispatcher → Optimistic Update\n                                                          → Backend Mutation\n                                                          → Rollback Handler\n   Backend Changes → Convex Subscription → State Sync → Zustand Store\n   ```\n\n3. **Unified Type System**:\n   - `UniversalId` type that works across frontend and backend\n   - `CourseLesson`, `CourseTopic`, `CourseQuiz` unified interfaces\n   - Type converters: `toConvexId()` and `fromConvexId()`\n   - Eliminates unsafe casting and type mismatches\n\n4. **Action System Categories**:\n   - **Structure actions**: addLesson, removeLesson, reorderLessons, updateLesson\n   - **Content actions**: attachLesson, detachLesson, addTopic, addQuiz\n   - **UI actions**: setDragging, selectItems, toggleSection\n   - **Sync actions**: forceSyncWithBackend, retryFailedUpdates, clearOptimisticUpdates\n\n5. **Optimistic Update Pattern**:\n   - Immediate UI updates for responsive UX\n   - Automatic rollback on backend failures\n   - Transaction logging with rollback data\n   - Status tracking: pending → confirmed/failed\n\n6. **Real-time Synchronization**:\n   - Convex subscription management with error handling\n   - Periodic sync for missed updates (30-second interval)\n   - State merging between backend changes and local optimistic updates\n\n7. **Error Handling & Recovery**:\n   - React Error Boundaries with retry functionality\n   - React.Suspense integration for loading states\n   - Recovery mechanisms: retry, force sync, state reset\n   - Manual recovery: export/import state capabilities\n\n### Architecture Benefits:\n- ✅ **Eliminates lesson disappearance**: UI and backend stay synchronized\n- ✅ **Prevents false save success**: Save reads from actual state\n- ✅ **Preserves work on refresh**: Backend is source of truth\n- ✅ **Type safety**: Unified type system prevents runtime errors\n- 🚀 **Real-time collaboration ready**: Foundation for multi-user editing\n- ⚡ **Performance optimized**: Intelligent batching and efficient subscriptions\n\n### Implementation Phases Defined:\n1. **Phase 1**: Core Infrastructure (Tasks 1.3-1.4)\n2. **Phase 2**: Optimistic Updates (Task 1.6)\n3. **Phase 3**: Integration (Tasks 1.5, 1.7)\n4. **Phase 4**: Testing & Refinement (Task 1.8)\n\n### Documentation Created:\n- Comprehensive architecture document: `.taskmaster/docs/unified_state_architecture.md`\n- Mermaid diagrams for data flow visualization\n- TypeScript interfaces and implementation patterns\n- Error handling and recovery strategies\n\nThis architecture provides the complete blueprint for implementing the unified state management system that will solve the CourseBuilder's core synchronization issues.\n</info added on 2025-06-25T19:33:06.331Z>",
-            "status": "done",
-            "testStrategy": "Review the architecture with team members and validate against common state management scenarios."
-          },
-          {
-            "id": 3,
-            "title": "Implement Core Zustand Store",
-            "description": "Create the foundational Zustand store with proper typing and state structure to serve as the local state management solution.",
-            "dependencies": [
-              2
-            ],
-            "details": "Implement the base Zustand store with TypeScript interfaces for all state objects. Include core state manipulation functions and middleware setup for optimistic updates. Ensure proper immutability patterns are followed for all state updates.\n<info added on 2025-06-25T19:35:21.196Z>\n## ✅ Core Unified Zustand Store Implementation Complete\n\n### Major Achievement\nSuccessfully implemented the **foundational unified Zustand store** (`useUnifiedCourseStore.ts`) that serves as the cornerstone of the new state management architecture.\n\n### Key Features Implemented:\n\n1. **Unified Type System**:\n   - `UniversalId` type that works across frontend and backend\n   - `CourseLesson`, `CourseTopic`, `CourseQuiz` unified interfaces\n   - Type converters: `toConvexId()` and `fromConvexId()`\n   - Eliminates unsafe casting issues from the analysis\n\n2. **Complete State Structure**:\n   - Course data: `courseId`, `title`, `description`, `lessons`\n   - Available items: `lessons`, `topics`, `quizzes` for drag-and-drop\n   - UI state: `isDragging`, `draggedItem`, `selectedItems`, `expandedSections`\n   - Sync state: `isLoading`, `isSaving`, `hasUnsyncedChanges`, `optimisticUpdates`\n\n3. **Comprehensive Action System**:\n   - **Structure actions**: `addLesson`, `removeLesson`, `reorderLessons`, `updateLesson`\n   - **Content actions**: `attachLesson`, `detachLesson`, `addTopic`, `addQuiz`\n   - **UI actions**: `setDragging`, `selectItems`, `toggleSection`, `clearSelection`\n   - **Sync actions**: `forceSyncWithBackend`, `retryFailedUpdates`, `markSynced`\n\n4. **Advanced Store Features**:\n   - **Immer middleware**: For immutable state updates\n   - **DevTools integration**: For debugging and development\n   - **Subscribe with selector**: For efficient component re-renders\n   - **State queries**: `getLessonById`, `getTopicById`, `getQuizById`\n\n5. **Convenience Hooks**:\n   - `useUnifiedCourseState`: Get state without actions\n   - `useUnifiedCourseActions`: Get all actions\n   - `useStructureActions`, `useContentActions`, `useUIActions`, `useSyncActions`: Category-specific hooks\n\n6. **Developer Experience**:\n   - Comprehensive TypeScript typing throughout\n   - Development utilities and window debugging access\n   - Clear separation of concerns with categorized actions\n   - Proper immutability patterns with Immer\n\n### Architecture Benefits:\n- ✅ **Single source of truth**: All UI state managed in one place\n- ✅ **Type safety**: Unified types prevent runtime errors\n- ✅ **Optimistic updates ready**: Infrastructure for immediate UI updates\n- ✅ **Sync state tracking**: Knows when backend sync is needed\n- ✅ **Performance optimized**: Efficient re-renders with selectors\n\n### Integration Points:\n- **TODO markers** placed for Task 1.4 (Convex subscriptions) integration\n- **TODO markers** for Task 1.6 (Optimistic updates with backend mutations)\n- Ready for real-time synchronization layer implementation\n\n### File Created:\n- `packages/ui/src/CourseBuilderV3/store/useUnifiedCourseStore.ts` (550+ lines)\n\nThis core store eliminates the **dual state source problem** identified in the analysis and provides the foundation for the unified state management system. The store is ready for integration with Convex real-time subscriptions (Task 1.4) and optimistic update patterns (Task 1.6).\n\n**Status**: Core Zustand store implementation complete. Ready for Convex integration.\n</info added on 2025-06-25T19:35:21.196Z>",
-            "status": "done",
-            "testStrategy": "Write unit tests for store initialization and basic state manipulation functions."
-          },
-          {
-            "id": 4,
-            "title": "Implement Convex Real-time Subscriptions",
-            "description": "Create the Convex query subscriptions that will keep the backend state synchronized with the frontend.",
-            "dependencies": [
-              2
-            ],
-            "details": "Implement Convex query functions that support real-time subscriptions. Set up proper indexing for efficient queries. Create subscription handlers that process incoming data changes. Implement data transformation functions to convert between Convex and application state formats.\n<info added on 2025-06-25T19:41:29.097Z>\n## Convex Real-time Subscriptions Implementation - COMPLETED ✅\n\nSuccessfully implemented the complete Convex real-time subscription layer with the following components:\n\n### Created Files:\n1. **`useConvexSubscription.ts`** - Generic subscription hook with lifecycle management\n2. **`dataTransformers.ts`** - Bidirectional data transformation between Convex and Zustand formats  \n3. **`useSyncCourseState.ts`** - State synchronization layer that bridges store and backend\n4. **`useUnifiedCourseState.ts`** - Main unified hook providing single interface for components\n5. **`apps/portal/convex/lms/courses/queries.ts`** - Enhanced Convex queries for real-time subscriptions\n\n### Key Features Implemented:\n- **Real-time Subscriptions**: Generic `useConvexSubscription` hook with error handling and retry logic\n- **Data Transformation**: Complete bidirectional converters between Convex `_id` and universal `id` types\n- **State Synchronization**: Automatic sync between Zustand store and Convex backend with optimistic updates\n- **Enhanced Queries**: New Convex queries optimized for real-time subscriptions:\n  - `getCourseStructureWithItems` - Complete course data in single subscription\n  - `getAvailableLessons/Topics/Quizzes` - Available items for drag-and-drop\n  - `getCourseMetadata` - Lightweight course info with counts\n\n### Architecture Benefits:\n- ✅ Solves dual state source problem with unified subscriptions\n- ✅ Provides optimistic updates with automatic rollback on failure\n- ✅ Handles type conversion issues between Convex and store formats\n- ✅ Enables real-time collaboration with automatic state sync\n- ✅ Performance optimized with selective re-renders and efficient queries\n\n### Integration Points:\n- Ready for Task 1.5 (Custom Hooks Integration)\n- Backend queries support the store actions from Task 1.3\n- Data transformers handle all identified type mismatches\n- Subscription layer enables real-time features for Task 4\n\nThe subscription system provides the critical missing piece: real-time synchronization between frontend Zustand store and backend Convex database, solving the core lesson disappearance issue.\n</info added on 2025-06-25T19:41:29.097Z>",
-            "status": "done",
-            "testStrategy": "Test subscription behavior with mock data changes and verify correct propagation to subscribers."
-          },
-          {
-            "id": 5,
-            "title": "Create useUnifiedCourseState Custom Hook",
-            "description": "Implement the custom hook that combines Zustand local state with Convex real-time data subscriptions.",
-            "dependencies": [
-              3,
-              4
-            ],
-            "details": "Build the useUnifiedCourseState hook that integrates the Zustand store with Convex subscriptions. Implement state synchronization logic to handle initial loading, updates, and conflict resolution. Add proper TypeScript typing for all hook functions and return values.",
-            "status": "in-progress",
-            "testStrategy": "Create component tests that verify the hook correctly synchronizes state between local and remote sources."
-          },
-          {
-            "id": 6,
-            "title": "Implement Optimistic Updates with Rollback",
-            "description": "Create the optimistic update pattern with proper error handling and automatic rollback on failure.",
-            "dependencies": [
-              5
-            ],
-            "details": "Implement the optimisticUpdate function that updates local state immediately while sending changes to the backend. Create rollback mechanism that restores previous state on backend errors. Add transaction logging for debugging failed updates. Implement retry logic for transient failures.",
-            "status": "pending",
-            "testStrategy": "Test optimistic updates with simulated network failures to verify proper rollback behavior."
-          },
-          {
-            "id": 7,
-            "title": "Create State Synchronization Hooks",
-            "description": "Implement useSyncCourseState and useConvexSubscription hooks for component lifecycle integration and real-time updates.",
-            "dependencies": [
-              5
-            ],
-            "details": "Build useSyncCourseState hook to handle component mount/unmount synchronization with backend state. Create useConvexSubscription hook that efficiently manages Convex real-time subscriptions. Implement proper cleanup on component unmount to prevent memory leaks.",
-            "status": "pending",
-            "testStrategy": "Test hooks in isolation with mock components to verify proper lifecycle behavior and subscription management."
-          },
-          {
-            "id": 8,
-            "title": "Integrate Error Boundaries and Suspense",
-            "description": "Add React.Suspense and error boundary integration to handle loading states and errors gracefully.",
-            "dependencies": [
-              5,
-              6,
-              7
-            ],
-            "details": "Implement custom error boundary components for handling state synchronization errors. Add Suspense integration for loading states during initial data fetch and updates. Create fallback UI components for different error scenarios. Implement retry mechanisms for recoverable errors.",
-            "status": "pending",
-            "testStrategy": "Test the complete system with simulated network conditions to verify proper loading, error, and recovery behavior."
-          }
-        ]
+        "status": "done",
+        "subtasks": []
       },
       {
         "id": 2,
-        "title": "Refactor Data Layer and Type System",
-        "description": "Unify the type system and data transformation layer to eliminate type conflicts and ensure consistent data flow between components.",
-        "details": "1. Create unified type definitions:\n   - Use TypeScript for strong typing\n   - Define shared interfaces for Course, Lesson, Topic, and Quiz\n   - Implement utility types for transformation functions\n\n2. Refactor transformation functions:\n   - Create `transformCourseData` function that handles both `courseStructure` and `courseId` attachment methods\n   - Implement type guards for runtime type checking\n\n3. Add comprehensive error handling:\n   - Create custom error classes for different scenarios\n   - Implement error boundaries in React components\n\nExample of unified type definitions:\n\n```typescript\n// shared/types.ts\nexport interface Course {\n  id: string;\n  title: string;\n  structure: (Lesson | Topic | Quiz)[];\n}\n\nexport interface Lesson {\n  id: string;\n  type: 'lesson';\n  title: string;\n  content: string;\n  courseId?: string;\n  order?: number;\n}\n\n// Similar interfaces for Topic and Quiz\n\n// Utility type for transformation\nexport type TransformableItem = Lesson | Topic | Quiz;\n\n// Transformation function\nexport function transformCourseData(course: Course, items: TransformableItem[]): Course {\n  // Implementation that handles both courseStructure and courseId\n}\n\n// Type guard example\nexport function isLesson(item: TransformableItem): item is Lesson {\n  return item.type === 'lesson';\n}\n```\n\nEnsure to use ESLint with TypeScript rules and set up strict type checking in tsconfig.json.",
-        "testStrategy": "1. Type checking:\n   - Set up TypeScript compiler in strict mode\n   - Implement pre-commit hooks for type checking\n   - Use TypeScript Plugin for ESLint\n\n2. Unit tests for transformation functions:\n   - Test `transformCourseData` with various input scenarios\n   - Verify correct handling of both attachment methods\n   - Test edge cases and error conditions\n\n3. Property-based testing:\n   - Use fast-check library for property-based tests\n   - Generate random course structures to test type safety\n\n4. Error scenario testing:\n   - Simulate various error conditions\n   - Verify error messages and recovery mechanisms\n\nUse Jest for unit tests and fast-check for property-based testing. Implement continuous integration to run type checks and tests on every commit.",
+        "title": "Implement Convex CRUD API",
+        "description": "Create Convex queries and mutations for all task CRUD operations as specified in the PRD.",
+        "details": "Implement the following Convex functions:\n\n1. Query to get all tasks:\n```typescript\nexport const getTasks = query(async ({ db }) => {\n  return await db.query('tasks').collect();\n});\n```\n\n2. Query to get a single task by ID:\n```typescript\nexport const getTask = query(async ({ db }, { id }: { id: Id<'tasks'> }) => {\n  return await db.get(id);\n});\n```\n\n3. Mutation to create a task:\n```typescript\nexport const createTask = mutation(async (\n  { db },\n  {\n    title,\n    description,\n    dueDate,\n    isRecurring,\n    recurrenceRule,\n    status = 'pending',\n  }: {\n    title: string;\n    description?: string;\n    dueDate?: number;\n    isRecurring?: boolean;\n    recurrenceRule?: string;\n    status?: 'pending' | 'completed' | 'cancelled';\n  }\n) => {\n  const now = Date.now();\n  return await db.insert('tasks', {\n    title,\n    description,\n    dueDate,\n    isRecurring,\n    recurrenceRule,\n    status,\n    createdAt: now,\n    updatedAt: now,\n  });\n});\n```\n\n4. Mutation to update a task:\n```typescript\nexport const updateTask = mutation(async (\n  { db },\n  {\n    id,\n    title,\n    description,\n    dueDate,\n    isRecurring,\n    recurrenceRule,\n    status,\n  }: {\n    id: Id<'tasks'>;\n    title?: string;\n    description?: string;\n    dueDate?: number;\n    isRecurring?: boolean;\n    recurrenceRule?: string;\n    status?: 'pending' | 'completed' | 'cancelled';\n  }\n) => {\n  const task = await db.get(id);\n  if (!task) throw new Error('Task not found');\n  \n  const updates: Partial<typeof task> = { updatedAt: Date.now() };\n  if (title !== undefined) updates.title = title;\n  if (description !== undefined) updates.description = description;\n  if (dueDate !== undefined) updates.dueDate = dueDate;\n  if (isRecurring !== undefined) updates.isRecurring = isRecurring;\n  if (recurrenceRule !== undefined) updates.recurrenceRule = recurrenceRule;\n  if (status !== undefined) updates.status = status;\n  \n  await db.patch(id, updates);\n  return id;\n});\n```\n\n5. Mutation to delete a task:\n```typescript\nexport const deleteTask = mutation(async ({ db }, { id }: { id: Id<'tasks'> }) => {\n  await db.delete(id);\n  return id;\n});\n```",
+        "testStrategy": "Test each CRUD operation individually:\n1. Create a task and verify all fields are saved correctly\n2. Retrieve tasks and verify data integrity\n3. Update a task and confirm changes are persisted\n4. Delete a task and verify it's removed from the database\n5. Test edge cases like invalid inputs and error handling",
         "priority": "high",
         "dependencies": [
           1
         ],
-        "status": "pending",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Create Unified Type Definitions",
-            "description": "Define shared interfaces for all data entities using TypeScript to ensure type consistency across the application",
-            "dependencies": [],
-            "details": "Create a shared/types.ts file with interfaces for Course, Lesson, Topic, and Quiz. Ensure all properties are properly typed with string, number, or other appropriate types. Include discriminant union types where needed (e.g., type: 'lesson'). Define utility types for transformation functions and type narrowing. Configure tsconfig.json with strict type checking enabled.",
-            "status": "pending",
-            "testStrategy": "Write unit tests to verify type compatibility between frontend components and Convex backend. Test with sample data to ensure type definitions cover all use cases."
-          },
-          {
-            "id": 2,
-            "title": "Implement Type Guards and Validation Functions",
-            "description": "Create runtime type checking functions to validate data structures at critical boundaries",
-            "dependencies": [
-              1
-            ],
-            "details": "Implement isLesson(), isTopic(), isQuiz() type guards for runtime type checking. Create validation functions that verify incoming data from API calls matches expected types. Add zod schemas for runtime validation where TypeScript static typing isn't sufficient. Document validation strategy for team reference.",
-            "status": "pending",
-            "testStrategy": "Test type guards with valid and invalid data structures. Verify validation functions correctly identify malformed data."
-          },
-          {
-            "id": 3,
-            "title": "Refactor Data Transformation Functions",
-            "description": "Unify transformation logic to handle all data attachment methods consistently",
-            "dependencies": [
-              1,
-              2
-            ],
-            "details": "Create a transformCourseData() function that handles both courseStructure and courseId attachment methods. Implement helper functions for specific transformations (attachCourseId, buildCourseStructure). Ensure all transformation functions are properly typed with input/output types. Add error handling for edge cases in transformations.",
-            "status": "pending",
-            "testStrategy": "Create unit tests for transformation functions with various input scenarios. Verify output matches expected structure and maintains type integrity."
-          },
-          {
-            "id": 4,
-            "title": "Implement Custom Error Handling System",
-            "description": "Create specialized error classes and handling mechanisms for type-related errors",
-            "dependencies": [
-              2
-            ],
-            "details": "Define custom error classes (TypeValidationError, TransformationError, etc.) that extend Error. Implement centralized error logging and reporting. Create utility functions for graceful error recovery where possible. Add error boundaries in React components to prevent cascading failures.",
-            "status": "pending",
-            "testStrategy": "Test error handling by deliberately passing malformed data. Verify errors are properly caught, logged, and handled without crashing the application."
-          },
-          {
-            "id": 5,
-            "title": "Integrate Type System with Convex Backend",
-            "description": "Ensure type definitions are compatible with Convex data models and query results",
-            "dependencies": [
-              1,
-              3
-            ],
-            "details": "Create adapter functions to convert between Convex document types and frontend types. Update Convex schema definitions to align with shared type system. Implement serialization/deserialization utilities for complex types. Document the data flow between Convex and frontend components.",
-            "status": "pending",
-            "testStrategy": "Test integration points between Convex and frontend by mocking API responses and verifying type compatibility."
-          },
-          {
-            "id": 6,
-            "title": "Set Up Type Checking and Linting Infrastructure",
-            "description": "Configure development tools to enforce type safety across the codebase",
-            "dependencies": [
-              1
-            ],
-            "details": "Configure ESLint with TypeScript-specific rules (@typescript-eslint/eslint-plugin). Set up strict type checking in tsconfig.json with noImplicitAny and strictNullChecks enabled. Add pre-commit hooks to run type checking. Create documentation for type system architecture and usage guidelines. Add CI pipeline step for type checking.",
-            "status": "pending",
-            "testStrategy": "Verify configuration by introducing type errors and confirming they're caught by the linting/type checking process."
-          }
-        ]
+        "status": "done",
+        "subtasks": []
       },
       {
         "id": 3,
-        "title": "Redesign Drag-and-Drop System with Immediate Persistence",
-        "description": "Rebuild the drag-and-drop system to provide immediate visual feedback with reliable backend persistence and proper error handling.",
-        "details": "1. Implement optimistic updates:\n   - Use react-beautiful-dnd for drag-and-drop functionality\n   - Integrate with unified state management for immediate UI updates\n\n2. Add loading states:\n   - Create custom LoadingIndicator component\n   - Implement skeleton loaders for course structure items\n\n3. Implement rollback mechanisms:\n   - Use Convex's optimistic updates feature\n   - Implement custom rollback logic in Zustand store\n\n4. Add visual indicators:\n   - Create StatusIndicator component for operation status\n   - Implement toast notifications for success/error feedback\n\nExample implementation:\n\n```typescript\nimport { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd'\nimport { useUnifiedCourseState } from './useUnifiedCourseState'\nimport { StatusIndicator, LoadingIndicator } from './components'\n\nconst CourseBuilder = () => {\n  const { courseStructure, optimisticUpdate, isSaving } = useUnifiedCourseState()\n\n  const onDragEnd = (result) => {\n    if (!result.destination) return\n\n    const newStructure = Array.from(courseStructure)\n    const [reorderedItem] = newStructure.splice(result.source.index, 1)\n    newStructure.splice(result.destination.index, 0, reorderedItem)\n\n    optimisticUpdate(() => newStructure)\n  }\n\n  return (\n    <DragDropContext onDragEnd={onDragEnd}>\n      <Droppable droppableId=\"course\">\n        {(provided) => (\n          <div {...provided.droppableProps} ref={provided.innerRef}>\n            {courseStructure.map((item, index) => (\n              <Draggable key={item.id} draggableId={item.id} index={index}>\n                {(provided) => (\n                  <div\n                    ref={provided.innerRef}\n                    {...provided.draggableProps}\n                    {...provided.dragHandleProps}\n                  >\n                    {item.title}\n                    <StatusIndicator status={isSaving ? 'saving' : 'saved'} />\n                  </div>\n                )}\n              </Draggable>\n            ))}\n            {provided.placeholder}\n          </div>\n        )}\n      </Droppable>\n      {isSaving && <LoadingIndicator />}\n    </DragDropContext>\n  )\n}\n```\n\nEnsure to implement proper error handling and retry mechanisms for failed operations.",
-        "testStrategy": "1. Visual regression testing:\n   - Use Storybook for component development\n   - Implement Percy for visual regression tests\n   - Create stories for different drag-and-drop scenarios\n\n2. Network failure simulation:\n   - Use Mock Service Worker (MSW) to simulate API responses\n   - Test error handling and retry mechanisms\n   - Verify rollback functionality on network failures\n\n3. Performance testing:\n   - Use React DevTools Profiler for performance measurements\n   - Test with large course structures (1000+ items)\n   - Optimize rendering using virtualization if necessary\n\n4. Accessibility testing:\n   - Use axe-core for automated accessibility tests\n   - Implement keyboard navigation for drag-and-drop\n   - Test with screen readers for proper ARIA attributes\n\nUse Jest and React Testing Library for component tests, Cypress for E2E tests, and axe-core for accessibility testing. Implement CI/CD pipeline to run all tests on each pull request.",
+        "title": "Create Task List/Table UI Component",
+        "description": "Implement a table or list view that displays all tasks with sorting capabilities by date and status.",
+        "details": "Create a React component using Shadcn UI components for the task list/table view:\n\n```tsx\nimport { useQuery } from 'convex/react';\nimport { api } from '../convex/_generated/api';\nimport {\n  Table,\n  TableBody,\n  TableCell,\n  TableHead,\n  TableHeader,\n  TableRow,\n} from '@/components/ui/table';\nimport { Button } from '@/components/ui/button';\nimport { useState } from 'react';\n\nexport function TaskTable() {\n  const tasks = useQuery(api.tasks.getTasks);\n  const [sortField, setSortField] = useState<'dueDate' | 'status'>('dueDate');\n  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');\n  \n  const sortedTasks = tasks ? [...tasks].sort((a, b) => {\n    if (sortField === 'dueDate') {\n      if (!a.dueDate) return sortDirection === 'asc' ? 1 : -1;\n      if (!b.dueDate) return sortDirection === 'asc' ? -1 : 1;\n      return sortDirection === 'asc' \n        ? a.dueDate - b.dueDate \n        : b.dueDate - a.dueDate;\n    } else {\n      return sortDirection === 'asc' \n        ? a.status.localeCompare(b.status) \n        : b.status.localeCompare(a.status);\n    }\n  }) : [];\n  \n  const toggleSort = (field: 'dueDate' | 'status') => {\n    if (sortField === field) {\n      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');\n    } else {\n      setSortField(field);\n      setSortDirection('asc');\n    }\n  };\n  \n  if (!tasks) return <div>Loading...</div>;\n  \n  return (\n    <div>\n      <Table>\n        <TableHeader>\n          <TableRow>\n            <TableHead>Title</TableHead>\n            <TableHead onClick={() => toggleSort('dueDate')} className=\"cursor-pointer\">\n              Due Date {sortField === 'dueDate' && (sortDirection === 'asc' ? '↑' : '↓')}\n            </TableHead>\n            <TableHead onClick={() => toggleSort('status')} className=\"cursor-pointer\">\n              Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}\n            </TableHead>\n            <TableHead>Recurring</TableHead>\n            <TableHead>Actions</TableHead>\n          </TableRow>\n        </TableHeader>\n        <TableBody>\n          {sortedTasks.map((task) => (\n            <TableRow key={task._id}>\n              <TableCell>{task.title}</TableCell>\n              <TableCell>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No date'}</TableCell>\n              <TableCell>\n                <span className={`status-${task.status}`}>{task.status}</span>\n              </TableCell>\n              <TableCell>{task.isRecurring ? 'Yes' : 'No'}</TableCell>\n              <TableCell>\n                <Button variant=\"outline\" size=\"sm\" onClick={() => handleEdit(task._id)}>Edit</Button>\n                <Button variant=\"destructive\" size=\"sm\" onClick={() => handleDelete(task._id)}>Delete</Button>\n              </TableCell>\n            </TableRow>\n          ))}\n        </TableBody>\n      </Table>\n    </div>\n  );\n}\n```\n\nImplement the handleEdit and handleDelete functions to open the edit modal and confirm deletion respectively.",
+        "testStrategy": "Test the table component by:\n1. Verifying it correctly displays task data\n2. Testing sorting functionality by date and status\n3. Confirming edit and delete buttons trigger the correct actions\n4. Testing responsive behavior on different screen sizes\n5. Checking accessibility with keyboard navigation and screen readers",
         "priority": "medium",
         "dependencies": [
-          1,
           2
         ],
-        "status": "pending",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Implement react-beautiful-dnd integration",
-            "description": "Set up react-beautiful-dnd library and integrate it with the existing course structure components",
-            "dependencies": [],
-            "details": "Install react-beautiful-dnd, wrap course structure components with DragDropContext, Droppable, and Draggable components. Implement onDragEnd handler to update local state.",
-            "status": "pending",
-            "testStrategy": "Create unit tests for DND functionality using react-testing-library and jest"
-          },
-          {
-            "id": 2,
-            "title": "Develop unified state management system",
-            "description": "Create a unified state management system using Zustand to handle course structure and drag-and-drop operations",
-            "dependencies": [
-              1
-            ],
-            "details": "Implement Zustand store with actions for updating course structure, handling optimistic updates, and managing loading states. Ensure the store is integrated with react-beautiful-dnd events.",
-            "status": "pending",
-            "testStrategy": "Write unit tests for Zustand store actions and selectors"
-          },
-          {
-            "id": 3,
-            "title": "Implement optimistic updates",
-            "description": "Develop optimistic update mechanism for immediate UI feedback during drag-and-drop operations",
-            "dependencies": [
-              2
-            ],
-            "details": "Modify the Zustand store to apply optimistic updates to the UI state before backend confirmation. Implement a queueing system for pending updates.",
-            "status": "pending",
-            "testStrategy": "Create integration tests to verify optimistic updates are applied correctly and reverted on failure"
-          },
-          {
-            "id": 4,
-            "title": "Create loading and status indicator components",
-            "description": "Develop reusable components for displaying loading states and operation status",
-            "dependencies": [],
-            "details": "Create LoadingIndicator component with skeleton loader functionality. Implement StatusIndicator component to show saving/saved/error states. Ensure components are accessible and responsive.",
-            "status": "pending",
-            "testStrategy": "Develop snapshot tests and accessibility tests for the new components"
-          },
-          {
-            "id": 5,
-            "title": "Implement backend persistence with Convex",
-            "description": "Integrate Convex for reliable backend persistence of drag-and-drop operations",
-            "dependencies": [
-              2,
-              3
-            ],
-            "details": "Set up Convex mutations for updating course structure. Implement optimistic updates feature of Convex. Ensure proper error handling and retry mechanisms for failed operations.",
-            "status": "pending",
-            "testStrategy": "Write integration tests for Convex mutations and error scenarios"
-          },
-          {
-            "id": 6,
-            "title": "Develop rollback mechanism",
-            "description": "Implement a rollback system to revert UI state in case of backend persistence failures",
-            "dependencies": [
-              3,
-              5
-            ],
-            "details": "Extend the Zustand store with rollback functionality. Implement error handling in Convex mutations to trigger rollbacks. Ensure UI state is consistently reverted to the last known good state.",
-            "status": "pending",
-            "testStrategy": "Create unit and integration tests for rollback scenarios, including network failures and validation errors"
-          },
-          {
-            "id": 7,
-            "title": "Implement toast notifications for user feedback",
-            "description": "Add a toast notification system to provide success and error feedback to users",
-            "dependencies": [
-              4,
-              6
-            ],
-            "details": "Integrate a toast notification library (e.g., react-toastify). Implement success notifications for successful drag-and-drop operations and error notifications for failures. Ensure notifications are accessible and dismissible.",
-            "status": "pending",
-            "testStrategy": "Develop user acceptance tests for various notification scenarios and accessibility compliance"
-          }
-        ]
+        "status": "in-progress",
+        "subtasks": []
       },
       {
         "id": 4,
-        "title": "Implement Real-time Collaborative Features",
-        "description": "Add real-time collaborative editing capabilities to allow multiple users to work on course structures simultaneously with conflict resolution.",
-        "details": "1. Implement operational transformation:\n   - Use Yjs library for CRDT-based collaboration\n   - Integrate Yjs with Convex for persistence\n\n2. Add real-time presence indicators:\n   - Implement a PresenceIndicator component\n   - Use Convex real-time subscriptions for user presence\n\n3. Create conflict resolution UI:\n   - Implement a ConflictResolutionModal component\n   - Use diff algorithm to highlight conflicting changes\n\n4. Implement change attribution and activity feeds:\n   - Create an ActivityFeed component\n   - Store user actions in Convex with timestamps\n\nExample implementation:\n\n```typescript\nimport * as Y from 'yjs'\nimport { WebsocketProvider } from 'y-websocket'\nimport { useConvex } from 'convex/react'\nimport { useUnifiedCourseState } from './useUnifiedCourseState'\n\nconst CollaborativeCourseBuilder = () => {\n  const convex = useConvex()\n  const { courseStructure, updateStructure } = useUnifiedCourseState()\n\n  useEffect(() => {\n    const ydoc = new Y.Doc()\n    const provider = new WebsocketProvider('wss://your-server.com', 'course-room', ydoc)\n    const yarray = ydoc.getArray('course-structure')\n\n    yarray.observe(event => {\n      const newStructure = yarray.toArray()\n      updateStructure(newStructure)\n      convex.mutation('updateCourseStructure', { structure: newStructure })\n    })\n\n    return () => {\n      provider.disconnect()\n      ydoc.destroy()\n    }\n  }, [])\n\n  return (\n    <div>\n      <CourseBuilder structure={courseStructure} />\n      <PresenceIndicator />\n      <ActivityFeed />\n      <ConflictResolutionModal />\n    </div>\n  )\n}\n```\n\nEnsure to implement proper error handling and offline support for collaborative features.",
-        "testStrategy": "1. Multi-user testing:\n   - Set up multiple browser instances with Puppeteer\n   - Simulate concurrent edits and verify consistency\n   - Test various network conditions (latency, packet loss)\n\n2. Conflict scenario testing:\n   - Create test cases for common conflict scenarios\n   - Verify conflict resolution UI and logic\n   - Test edge cases (e.g., conflicting deletes)\n\n3. Network partition testing:\n   - Simulate network partitions using Toxiproxy\n   - Verify eventual consistency after partition healing\n   - Test offline editing and synchronization\n\n4. Performance testing with multiple users:\n   - Simulate 50+ concurrent users editing\n   - Measure latency and CPU/memory usage\n   - Optimize for large-scale collaboration\n\nUse Jest for unit tests, Puppeteer for multi-user simulations, and Toxiproxy for network condition testing. Implement load testing using k6 for simulating many concurrent users.",
-        "priority": "medium",
+        "title": "Implement Task Form with Validation",
+        "description": "Create a form component for creating and editing tasks with React Hook Form and zod validation.",
+        "details": "Create a reusable task form component using React Hook Form with zod validation:\n\n```tsx\nimport { useForm } from 'react-hook-form';\nimport { zodResolver } from '@hookform/resolvers/zod';\nimport * as z from 'zod';\nimport { Button } from '@/components/ui/button';\nimport {\n  Form,\n  FormControl,\n  FormDescription,\n  FormField,\n  FormItem,\n  FormLabel,\n  FormMessage,\n} from '@/components/ui/form';\nimport { Input } from '@/components/ui/input';\nimport { Textarea } from '@/components/ui/textarea';\nimport { Checkbox } from '@/components/ui/checkbox';\nimport { DatePicker } from '@/components/ui/date-picker';\nimport { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';\n\nconst taskFormSchema = z.object({\n  title: z.string().min(1, 'Title is required'),\n  description: z.string().optional(),\n  dueDate: z.date().optional(),\n  isRecurring: z.boolean().default(false),\n  recurrenceRule: z.string().optional(),\n  status: z.enum(['pending', 'completed', 'cancelled']).default('pending'),\n});\n\ntype TaskFormValues = z.infer<typeof taskFormSchema>;\n\ninterface TaskFormProps {\n  defaultValues?: Partial<TaskFormValues>;\n  onSubmit: (data: TaskFormValues) => void;\n  isEditing?: boolean;\n}\n\nexport function TaskForm({ defaultValues, onSubmit, isEditing = false }: TaskFormProps) {\n  const form = useForm<TaskFormValues>({\n    resolver: zodResolver(taskFormSchema),\n    defaultValues: {\n      title: '',\n      description: '',\n      isRecurring: false,\n      status: 'pending',\n      ...defaultValues,\n    },\n  });\n\n  const { watch, setValue } = form;\n  const isRecurring = watch('isRecurring');\n\n  return (\n    <Form {...form}>\n      <form onSubmit={form.handleSubmit(onSubmit)} className=\"space-y-4\">\n        <FormField\n          control={form.control}\n          name=\"title\"\n          render={({ field }) => (\n            <FormItem>\n              <FormLabel>Title</FormLabel>\n              <FormControl>\n                <Input {...field} />\n              </FormControl>\n              <FormMessage />\n            </FormItem>\n          )}\n        />\n        \n        <FormField\n          control={form.control}\n          name=\"description\"\n          render={({ field }) => (\n            <FormItem>\n              <FormLabel>Description</FormLabel>\n              <FormControl>\n                <Textarea {...field} />\n              </FormControl>\n              <FormMessage />\n            </FormItem>\n          )}\n        />\n        \n        <FormField\n          control={form.control}\n          name=\"dueDate\"\n          render={({ field }) => (\n            <FormItem>\n              <FormLabel>Due Date</FormLabel>\n              <FormControl>\n                <DatePicker \n                  date={field.value} \n                  setDate={(date) => field.onChange(date)} \n                />\n              </FormControl>\n              <FormMessage />\n            </FormItem>\n          )}\n        />\n        \n        <FormField\n          control={form.control}\n          name=\"isRecurring\"\n          render={({ field }) => (\n            <FormItem className=\"flex items-center space-x-2\">\n              <FormControl>\n                <Checkbox \n                  checked={field.value} \n                  onCheckedChange={field.onChange} \n                />\n              </FormControl>\n              <FormLabel>Recurring Task</FormLabel>\n              <FormMessage />\n            </FormItem>\n          )}\n        />\n        \n        {isRecurring && (\n          <FormField\n            control={form.control}\n            name=\"recurrenceRule\"\n            render={({ field }) => (\n              <FormItem>\n                <FormLabel>Recurrence Pattern</FormLabel>\n                <FormControl>\n                  <Select \n                    value={field.value} \n                    onValueChange={field.onChange}\n                  >\n                    <SelectTrigger>\n                      <SelectValue placeholder=\"Select pattern\" />\n                    </SelectTrigger>\n                    <SelectContent>\n                      <SelectItem value=\"FREQ=DAILY\">Daily</SelectItem>\n                      <SelectItem value=\"FREQ=WEEKLY\">Weekly</SelectItem>\n                      <SelectItem value=\"FREQ=MONTHLY\">Monthly</SelectItem>\n                      <SelectItem value=\"custom\">Custom RRULE</SelectItem>\n                    </SelectContent>\n                  </Select>\n                </FormControl>\n                <FormDescription>\n                  Select a recurrence pattern for this task\n                </FormDescription>\n                <FormMessage />\n              </FormItem>\n            )}\n          />\n        )}\n        \n        {isEditing && (\n          <FormField\n            control={form.control}\n            name=\"status\"\n            render={({ field }) => (\n              <FormItem>\n                <FormLabel>Status</FormLabel>\n                <FormControl>\n                  <Select \n                    value={field.value} \n                    onValueChange={field.onChange}\n                  >\n                    <SelectTrigger>\n                      <SelectValue />\n                    </SelectTrigger>\n                    <SelectContent>\n                      <SelectItem value=\"pending\">Pending</SelectItem>\n                      <SelectItem value=\"completed\">Completed</SelectItem>\n                      <SelectItem value=\"cancelled\">Cancelled</SelectItem>\n                    </SelectContent>\n                  </Select>\n                </FormControl>\n                <FormMessage />\n              </FormItem>\n            )}\n          />\n        )}\n        \n        <Button type=\"submit\">{isEditing ? 'Update Task' : 'Create Task'}</Button>\n      </form>\n    </Form>\n  );\n}\n```",
+        "testStrategy": "Test the form component by:\n1. Validating required fields (title)\n2. Testing form submission with various input combinations\n3. Verifying conditional fields (recurrence rule only shows when isRecurring is true)\n4. Testing form validation error messages\n5. Verifying the form works correctly in both create and edit modes\n6. Testing accessibility of form controls",
+        "priority": "high",
         "dependencies": [
-          1,
-          2,
-          3
+          2
         ],
         "status": "pending",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Implement Yjs Integration",
-            "description": "Integrate Yjs library with the existing course structure for CRDT-based collaboration",
-            "dependencies": [],
-            "details": "Set up Yjs document, integrate WebsocketProvider, and create shared data types for course structure. Implement synchronization between Yjs and local state.",
-            "status": "pending",
-            "testStrategy": "Unit test Yjs integration and synchronization with mock WebSocket connections"
-          },
-          {
-            "id": 2,
-            "title": "Develop Real-time Presence Indicators",
-            "description": "Create a PresenceIndicator component to show active users in the collaborative session",
-            "dependencies": [
-              1
-            ],
-            "details": "Implement user presence tracking using Convex real-time subscriptions. Design and create a UI component to display active users with their current editing positions.",
-            "status": "pending",
-            "testStrategy": "Write integration tests for presence updates and UI rendering"
-          },
-          {
-            "id": 3,
-            "title": "Implement Conflict Resolution UI",
-            "description": "Create a ConflictResolutionModal component to handle and resolve editing conflicts",
-            "dependencies": [
-              1
-            ],
-            "details": "Develop a diff algorithm to detect conflicts. Design and implement a modal UI for displaying conflicting changes and allowing users to choose which changes to keep.",
-            "status": "pending",
-            "testStrategy": "Create unit tests for the diff algorithm and integration tests for the conflict resolution flow"
-          },
-          {
-            "id": 4,
-            "title": "Create Activity Feed Component",
-            "description": "Develop an ActivityFeed component to display recent changes and user actions",
-            "dependencies": [
-              1,
-              2
-            ],
-            "details": "Implement a system to track and store user actions with timestamps in Convex. Create a UI component to display the activity feed with real-time updates.",
-            "status": "pending",
-            "testStrategy": "Write unit tests for action tracking and integration tests for real-time feed updates"
-          },
-          {
-            "id": 5,
-            "title": "Implement Offline Support",
-            "description": "Add offline capabilities to allow users to continue working without an internet connection",
-            "dependencies": [
-              1,
-              3
-            ],
-            "details": "Implement local storage for offline edits. Develop a synchronization mechanism to reconcile offline changes with the server when the connection is restored.",
-            "status": "pending",
-            "testStrategy": "Create integration tests simulating offline scenarios and reconnection events"
-          },
-          {
-            "id": 6,
-            "title": "Optimize Performance and Error Handling",
-            "description": "Improve the overall performance of the collaborative features and implement robust error handling",
-            "dependencies": [
-              1,
-              2,
-              3,
-              4,
-              5
-            ],
-            "details": "Optimize Yjs operations for large documents. Implement debouncing and throttling for real-time updates. Add comprehensive error handling for network issues, conflicts, and synchronization failures.",
-            "status": "pending",
-            "testStrategy": "Perform load testing with simulated concurrent users and write unit tests for error handling scenarios"
-          }
-        ]
+        "subtasks": []
       },
       {
         "id": 5,
-        "title": "Add Advanced Course Structure Management",
-        "description": "Implement advanced features for course structure management including bulk operations, templates, versioning, and enhanced UX improvements.",
-        "details": "1. Implement bulk operations:\n   - Create a SelectionContext for managing selected items\n   - Implement BulkActionBar component for bulk operations UI\n   - Add bulk move, delete, and duplicate functionality\n\n2. Create course structure templates:\n   - Implement a TemplateManager component\n   - Create a set of predefined course templates\n   - Allow users to save and load custom templates\n\n3. Add version history with restore capabilities:\n   - Use Convex's built-in versioning system\n   - Implement a VersionHistory component\n   - Add restore functionality for previous versions\n\n4. Enhance search and filtering:\n   - Implement full-text search using Convex's search capabilities\n   - Create AdvancedSearch component with filters\n   - Add keyboard shortcuts for quick search\n\n5. Implement keyboard shortcuts and accessibility:\n   - Use react-hotkeys-hook for keyboard shortcut management\n   - Implement focus management for keyboard navigation\n   - Ensure ARIA attributes for all interactive elements\n\nExample implementation for bulk operations:\n\n```typescript\nimport { useSelectionContext } from './SelectionContext'\nimport { useUnifiedCourseState } from './useUnifiedCourseState'\nimport { useHotkeys } from 'react-hotkeys-hook'\n\nconst BulkActionBar = () => {\n  const { selectedItems, clearSelection } = useSelectionContext()\n  const { bulkDelete, bulkMove, bulkDuplicate } = useUnifiedCourseState()\n\n  const handleDelete = () => {\n    bulkDelete(selectedItems)\n    clearSelection()\n  }\n\n  const handleMove = (targetSection) => {\n    bulkMove(selectedItems, targetSection)\n    clearSelection()\n  }\n\n  const handleDuplicate = () => {\n    bulkDuplicate(selectedItems)\n    clearSelection()\n  }\n\n  useHotkeys('ctrl+d', handleDuplicate, [selectedItems])\n  useHotkeys('delete', handleDelete, [selectedItems])\n\n  return (\n    <div className=\"bulk-action-bar\">\n      <button onClick={handleDelete}>Delete Selected</button>\n      <button onClick={handleDuplicate}>Duplicate Selected</button>\n      <select onChange={(e) => handleMove(e.target.value)}>\n        <option>Move to...</option>\n        {/* Populate with available sections */}\n      </select>\n    </div>\n  )\n}\n```\n\nEnsure to implement proper error handling and undo functionality for bulk operations.",
-        "testStrategy": "1. Bulk operation testing:\n   - Create large test datasets (1000+ items)\n   - Test all bulk operations (move, delete, duplicate)\n   - Verify performance and error handling\n\n2. Template system validation:\n   - Test predefined templates for correctness\n   - Verify custom template saving and loading\n   - Test template application to existing courses\n\n3. Version control testing:\n   - Create complex edit histories\n   - Test version comparison and diff visualization\n   - Verify restore functionality for all item types\n\n4. Accessibility compliance testing:\n   - Use axe-core for automated WCAG 2.1 AA checks\n   - Perform manual keyboard navigation testing\n   - Test with screen readers (NVDA, VoiceOver)\n\n5. Performance testing:\n   - Measure render times for large course structures\n   - Test search performance with large datasets\n   - Profile memory usage during bulk operations\n\nUse Jest and React Testing Library for component tests, Cypress for E2E tests, and Lighthouse for performance testing. Implement visual regression tests using Percy for UI components.",
-        "priority": "low",
+        "title": "Create Task Modal Components",
+        "description": "Implement modal/drawer components for creating, editing, and confirming deletion of tasks.",
+        "details": "Create three modal components using Shadcn UI's Dialog component:\n\n1. Create/Edit Task Modal:\n```tsx\nimport { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';\nimport { TaskForm } from './TaskForm';\nimport { useMutation } from 'convex/react';\nimport { api } from '../convex/_generated/api';\nimport { Id } from '../convex/_generated/dataModel';\n\ninterface TaskModalProps {\n  isOpen: boolean;\n  onClose: () => void;\n  task?: any; // The task to edit, if editing\n}\n\nexport function TaskModal({ isOpen, onClose, task }: TaskModalProps) {\n  const createTask = useMutation(api.tasks.createTask);\n  const updateTask = useMutation(api.tasks.updateTask);\n  \n  const handleSubmit = async (data: any) => {\n    try {\n      if (task) {\n        // Editing existing task\n        await updateTask({\n          id: task._id as Id<'tasks'>,\n          ...data,\n          dueDate: data.dueDate ? data.dueDate.getTime() : undefined,\n        });\n      } else {\n        // Creating new task\n        await createTask({\n          ...data,\n          dueDate: data.dueDate ? data.dueDate.getTime() : undefined,\n        });\n      }\n      onClose();\n    } catch (error) {\n      console.error('Error saving task:', error);\n    }\n  };\n  \n  const defaultValues = task\n    ? {\n        ...task,\n        dueDate: task.dueDate ? new Date(task.dueDate) : undefined,\n      }\n    : undefined;\n  \n  return (\n    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>\n      <DialogContent>\n        <DialogHeader>\n          <DialogTitle>{task ? 'Edit Task' : 'Create New Task'}</DialogTitle>\n        </DialogHeader>\n        <TaskForm \n          defaultValues={defaultValues} \n          onSubmit={handleSubmit} \n          isEditing={!!task} \n        />\n      </DialogContent>\n    </Dialog>\n  );\n}\n```\n\n2. Delete Confirmation Modal:\n```tsx\nimport {\n  AlertDialog,\n  AlertDialogAction,\n  AlertDialogCancel,\n  AlertDialogContent,\n  AlertDialogDescription,\n  AlertDialogFooter,\n  AlertDialogHeader,\n  AlertDialogTitle,\n} from '@/components/ui/alert-dialog';\nimport { useMutation } from 'convex/react';\nimport { api } from '../convex/_generated/api';\nimport { Id } from '../convex/_generated/dataModel';\n\ninterface DeleteTaskDialogProps {\n  isOpen: boolean;\n  onClose: () => void;\n  taskId: Id<'tasks'> | null;\n}\n\nexport function DeleteTaskDialog({ isOpen, onClose, taskId }: DeleteTaskDialogProps) {\n  const deleteTask = useMutation(api.tasks.deleteTask);\n  \n  const handleDelete = async () => {\n    if (!taskId) return;\n    try {\n      await deleteTask({ id: taskId });\n      onClose();\n    } catch (error) {\n      console.error('Error deleting task:', error);\n    }\n  };\n  \n  return (\n    <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>\n      <AlertDialogContent>\n        <AlertDialogHeader>\n          <AlertDialogTitle>Are you sure?</AlertDialogTitle>\n          <AlertDialogDescription>\n            This action cannot be undone. This will permanently delete the task.\n          </AlertDialogDescription>\n        </AlertDialogHeader>\n        <AlertDialogFooter>\n          <AlertDialogCancel>Cancel</AlertDialogCancel>\n          <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>\n        </AlertDialogFooter>\n      </AlertDialogContent>\n    </AlertDialog>\n  );\n}\n```",
+        "testStrategy": "Test the modal components by:\n1. Verifying they open and close correctly\n2. Testing form submission in the create/edit modal\n3. Confirming the delete confirmation works as expected\n4. Testing that the modals correctly handle the task data for editing\n5. Verifying error handling for failed operations\n6. Testing accessibility of the modals (keyboard navigation, focus trapping)",
+        "priority": "medium",
         "dependencies": [
-          1,
-          2,
-          3
+          3,
+          4
         ],
         "status": "pending",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Implement Bulk Operations",
-            "description": "Create a system for performing actions on multiple course items simultaneously",
-            "dependencies": [],
-            "details": "Develop SelectionContext for managing selected items. Create BulkActionBar component with UI for bulk operations. Implement bulk move, delete, and duplicate functionality. Add error handling and undo feature for bulk actions.",
-            "status": "pending",
-            "testStrategy": "Unit test SelectionContext and BulkActionBar. Integration test bulk operations with mock data. User acceptance testing for bulk action workflows."
-          },
-          {
-            "id": 2,
-            "title": "Develop Course Structure Templates",
-            "description": "Create a template system for rapid course creation and standardization",
-            "dependencies": [],
-            "details": "Implement TemplateManager component. Design and create a set of predefined course templates. Develop functionality to save, load, and apply custom templates. Ensure template compatibility with existing course structures.",
-            "status": "pending",
-            "testStrategy": "Unit test TemplateManager functions. Integration test template application to courses. User testing for template creation and application process."
-          },
-          {
-            "id": 3,
-            "title": "Implement Version History and Restore",
-            "description": "Add version control to course structures with the ability to view history and restore previous versions",
-            "dependencies": [
-              1,
-              2
-            ],
-            "details": "Utilize Convex's built-in versioning system. Create VersionHistory component to display course structure changes over time. Implement restore functionality to revert to previous versions. Ensure version history is maintained during bulk operations and template applications.",
-            "status": "pending",
-            "testStrategy": "Unit test version history retrieval and restore functions. Integration test version control with course modifications. Stress test with large courses and frequent changes."
-          },
-          {
-            "id": 4,
-            "title": "Enhance Search and Filtering Capabilities",
-            "description": "Improve course navigation with advanced search and filtering options",
-            "dependencies": [],
-            "details": "Implement full-text search using Convex's search capabilities. Develop AdvancedSearch component with various filtering options. Add keyboard shortcuts for quick search access. Optimize search performance for large course structures.",
-            "status": "pending",
-            "testStrategy": "Unit test search and filter functions. Integration test search with various course sizes. User testing for search UX and performance."
-          },
-          {
-            "id": 5,
-            "title": "Improve Accessibility and Keyboard Navigation",
-            "description": "Enhance the user experience with keyboard shortcuts and improved accessibility",
-            "dependencies": [
-              1,
-              4
-            ],
-            "details": "Implement keyboard shortcut management using react-hotkeys-hook. Develop focus management system for keyboard navigation throughout the course structure. Add ARIA attributes to all interactive elements. Ensure compatibility with screen readers and other assistive technologies.",
-            "status": "pending",
-            "testStrategy": "Automated accessibility testing with tools like axe-core. Manual testing with various assistive technologies. User testing with individuals who have different accessibility needs."
-          }
-        ]
+        "subtasks": []
       },
       {
         "id": 6,
-        "title": "Integrate Vimeo Video Library into Portal App",
-        "description": "Implement Vimeo integration including API configuration, video syncing, media library extension, and embedding capabilities throughout the application.",
-        "details": "1. Create Vimeo Integration UI:\n   - Add a new integration card on the Integrations Apps page\n   - Implement form fields for API key, playlist/category selection\n   - Create a settings persistence mechanism in Convex\n\n2. Implement Vimeo API Integration:\n   - Create a VimeoService class to handle API interactions\n   - Implement authentication with Vimeo API using stored credentials\n   - Build functions to fetch videos from selected playlists/categories\n   - Parse video metadata (title, publish date, embed link, thumbnail)\n\n3. Develop Convex Data Layer:\n   - Create `vimeoVideos` table schema with appropriate fields\n   - Implement mutations for storing and updating video data\n   - Create queries for retrieving videos with filtering options\n   - Add settings table/fields for Vimeo configuration\n\n4. Extend Media Library:\n   - Add a \"Vimeo\" tab to the existing media library interface\n   - Implement thumbnail grid view of synced Vimeo videos\n   - Add search/filter functionality for Vimeo videos\n   - Include video metadata display (title, date, duration)\n\n5. Update MediaPicker Component:\n   - Extend the reusable MediaPicker to include Vimeo tab\n   - Implement selection mechanism for Vimeo videos\n   - Ensure proper return of embed link on selection\n   - Maintain consistent UX with existing media types\n\n6. Enhance Lesson Form:\n   - Update Media tab in Lesson form to support Vimeo selection\n   - Integrate MediaPicker component with Vimeo support\n   - Handle Vimeo-specific metadata in form state\n\n7. Implement Video Rendering:\n   - Create a VimeoEmbed component for rendering videos\n   - Implement iframe embedding with proper responsive design\n   - Handle playback controls and options\n\n8. Set Up Synchronization:\n   - Implement manual sync via UI button\n   - Create Convex cron job for 24-hour automatic syncing\n   - Add progress indicators and error handling for sync operations\n   - Implement conflict resolution for updated videos",
-        "testStrategy": "1. Vimeo API Integration Testing:\n   - Create test Vimeo account with sample videos and playlists\n   - Verify API key validation and error handling\n   - Test API rate limiting and pagination handling\n   - Mock API responses for unit tests\n\n2. Data Persistence Testing:\n   - Verify correct schema implementation in Convex\n   - Test CRUD operations for Vimeo videos\n   - Validate data integrity after sync operations\n   - Test error handling during data persistence\n\n3. UI Component Testing:\n   - Create Storybook stories for Vimeo integration components\n   - Test MediaPicker with Vimeo tab in isolation\n   - Verify responsive design of video embeds\n   - Test accessibility of all new UI components\n\n4. Integration Testing:\n   - Verify end-to-end flow from configuration to video embedding\n   - Test manual sync functionality with real API\n   - Validate cron job execution and results\n   - Test concurrent sync operations\n\n5. Performance Testing:\n   - Measure load times with large video libraries\n   - Test thumbnail loading optimization\n   - Verify efficient querying of video data\n   - Measure impact on application bundle size\n\n6. Cross-browser Testing:\n   - Verify video playback in all supported browsers\n   - Test responsive design across devices\n   - Validate iframe embedding security across browsers",
-        "status": "pending",
+        "title": "Implement Recurrence Rule Logic",
+        "description": "Create utility functions to handle recurring tasks, including RRULE parsing and expansion for calendar display.",
+        "details": "Implement utility functions to handle recurring tasks using the rrule.js library:\n\n```typescript\nimport { RRule, RRuleSet, rrulestr } from 'rrule';\n\n// Convert a simple recurrence pattern to an RRULE string\nexport function patternToRRule(pattern: string, startDate: Date): string {\n  const options: Partial<RRule.Options> = {\n    dtstart: startDate,\n  };\n  \n  switch (pattern) {\n    case 'daily':\n      options.freq = RRule.DAILY;\n      break;\n    case 'weekly':\n      options.freq = RRule.WEEKLY;\n      break;\n    case 'monthly':\n      options.freq = RRule.MONTHLY;\n      break;\n    default:\n      // If it's already a valid RRULE string, return it\n      if (pattern.startsWith('FREQ=')) {\n        return pattern;\n      }\n      // Default to daily if unknown pattern\n      options.freq = RRule.DAILY;\n  }\n  \n  return new RRule(options).toString();\n}\n\n// Expand a recurring task into individual occurrences for a date range\nexport function expandRecurringTask(task: any, start: Date, end: Date): any[] {\n  if (!task.isRecurring || !task.recurrenceRule || !task.dueDate) {\n    return [task];\n  }\n  \n  const startDate = new Date(task.dueDate);\n  let rrule;\n  \n  try {\n    // Try to parse the recurrence rule\n    if (task.recurrenceRule.startsWith('FREQ=')) {\n      rrule = rrulestr(task.recurrenceRule, { dtstart: startDate });\n    } else {\n      rrule = new RRule({\n        ...getRRuleOptions(task.recurrenceRule),\n        dtstart: startDate\n      });\n    }\n    \n    // Get all occurrences in the date range\n    const occurrences = rrule.between(start, end, true);\n    \n    // Create a task instance for each occurrence\n    return occurrences.map((date, index) => ({\n      ...task,\n      _id: `${task._id}_${index}`, // Create a unique ID for each occurrence\n      dueDate: date.getTime(),\n      isRecurrenceInstance: true,\n      originalTaskId: task._id,\n    }));\n  } catch (error) {\n    console.error('Error parsing recurrence rule:', error);\n    return [task];\n  }\n}\n\n// Helper to convert simple patterns to RRule options\nfunction getRRuleOptions(pattern: string): Partial<RRule.Options> {\n  switch (pattern) {\n    case 'daily':\n      return { freq: RRule.DAILY };\n    case 'weekly':\n      return { freq: RRule.WEEKLY };\n    case 'monthly':\n      return { freq: RRule.MONTHLY };\n    default:\n      return { freq: RRule.DAILY };\n  }\n}\n\n// Get all task occurrences for calendar view\nexport function getCalendarTasks(tasks: any[], start: Date, end: Date): any[] {\n  const regularTasks = tasks.filter(task => \n    !task.isRecurring && task.dueDate && \n    new Date(task.dueDate) >= start && \n    new Date(task.dueDate) <= end\n  );\n  \n  const recurringTasksExpanded = tasks\n    .filter(task => task.isRecurring && task.dueDate)\n    .flatMap(task => expandRecurringTask(task, start, end));\n  \n  return [...regularTasks, ...recurringTasksExpanded];\n}\n```",
+        "testStrategy": "Test the recurrence utilities by:\n1. Verifying pattern to RRULE conversion for different patterns\n2. Testing expansion of recurring tasks with various recurrence rules\n3. Confirming date calculations are correct\n4. Testing edge cases like invalid recurrence rules\n5. Verifying the calendar task aggregation function works correctly\n6. Testing with different date ranges and recurrence patterns",
+        "priority": "high",
         "dependencies": [
-          1,
           2
         ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Implement Calendar View Integration",
+        "description": "Integrate with the existing campaign calendar component to display tasks with due dates on the calendar.",
+        "details": "Create a calendar view component that integrates with the existing campaign calendar:\n\n```tsx\nimport { useQuery } from 'convex/react';\nimport { api } from '../convex/_generated/api';\nimport { CampaignCalendar } from '@/components/campaign/CampaignCalendar';\nimport { useState, useMemo } from 'react';\nimport { getCalendarTasks } from '../utils/recurrence';\n\nexport function TaskCalendar() {\n  const tasks = useQuery(api.tasks.getTasks);\n  const [dateRange, setDateRange] = useState({\n    start: new Date(new Date().setDate(1)), // First day of current month\n    end: new Date(new Date().setMonth(new Date().getMonth() + 1, 0)), // Last day of current month\n  });\n  const [filters, setFilters] = useState({\n    status: 'all', // 'all', 'pending', 'completed', 'cancelled'\n    showRecurring: true,\n  });\n  \n  // Transform tasks for calendar display\n  const calendarEvents = useMemo(() => {\n    if (!tasks) return [];\n    \n    // Filter tasks based on status\n    let filteredTasks = tasks;\n    if (filters.status !== 'all') {\n      filteredTasks = filteredTasks.filter(task => task.status === filters.status);\n    }\n    \n    // Filter out recurring tasks if not showing them\n    if (!filters.showRecurring) {\n      filteredTasks = filteredTasks.filter(task => !task.isRecurring);\n    }\n    \n    // Expand recurring tasks and format for calendar\n    const calendarTasks = getCalendarTasks(filteredTasks, dateRange.start, dateRange.end);\n    \n    // Convert to calendar event format\n    return calendarTasks.map(task => ({\n      id: task._id,\n      title: task.title,\n      start: new Date(task.dueDate),\n      end: new Date(task.dueDate),\n      allDay: true,\n      status: task.status,\n      isRecurring: task.isRecurring,\n      originalData: task,\n    }));\n  }, [tasks, dateRange, filters]);\n  \n  const handleEventClick = (event: any) => {\n    // Open task edit modal with the clicked task\n    const taskId = event.originalData.originalTaskId || event.id;\n    // Call function to open edit modal with taskId\n  };\n  \n  const handleRangeChange = (start: Date, end: Date) => {\n    setDateRange({ start, end });\n  };\n  \n  return (\n    <div className=\"space-y-4\">\n      <div className=\"flex gap-4\">\n        <select\n          value={filters.status}\n          onChange={(e) => setFilters({ ...filters, status: e.target.value })}\n          className=\"border rounded p-2\"\n        >\n          <option value=\"all\">All Statuses</option>\n          <option value=\"pending\">Pending</option>\n          <option value=\"completed\">Completed</option>\n          <option value=\"cancelled\">Cancelled</option>\n        </select>\n        \n        <label className=\"flex items-center gap-2\">\n          <input\n            type=\"checkbox\"\n            checked={filters.showRecurring}\n            onChange={(e) => setFilters({ ...filters, showRecurring: e.target.checked })}\n          />\n          Show Recurring Tasks\n        </label>\n      </div>\n      \n      <CampaignCalendar\n        events={calendarEvents}\n        onEventClick={handleEventClick}\n        onRangeChange={handleRangeChange}\n      />\n    </div>\n  );\n}\n```\n\nNote: This implementation assumes the existence of a `CampaignCalendar` component that accepts `events`, `onEventClick`, and `onRangeChange` props. You'll need to adapt this to match the actual API of your campaign calendar component.",
+        "testStrategy": "Test the calendar integration by:\n1. Verifying tasks appear correctly on the calendar\n2. Testing that recurring tasks expand properly across multiple dates\n3. Confirming filters work as expected\n4. Testing event click handling opens the correct task\n5. Verifying date range changes update the displayed tasks\n6. Testing with various task configurations (recurring/non-recurring, different statuses)",
+        "priority": "high",
+        "dependencies": [
+          3,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Create Main Task Management Page",
+        "description": "Implement the main task management page that combines the task table, form modals, and calendar view.",
+        "details": "Create the main task management page that integrates all components:\n\n```tsx\nimport { useState } from 'react';\nimport { Button } from '@/components/ui/button';\nimport { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';\nimport { TaskTable } from '@/components/TaskTable';\nimport { TaskCalendar } from '@/components/TaskCalendar';\nimport { TaskModal } from '@/components/TaskModal';\nimport { DeleteTaskDialog } from '@/components/DeleteTaskDialog';\nimport { Id } from '../convex/_generated/dataModel';\n\nexport default function TaskManagementPage() {\n  const [activeTab, setActiveTab] = useState('list');\n  const [taskModalOpen, setTaskModalOpen] = useState(false);\n  const [currentTask, setCurrentTask] = useState<any | null>(null);\n  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);\n  const [taskToDelete, setTaskToDelete] = useState<Id<'tasks'> | null>(null);\n  \n  const handleCreateTask = () => {\n    setCurrentTask(null);\n    setTaskModalOpen(true);\n  };\n  \n  const handleEditTask = (task: any) => {\n    setCurrentTask(task);\n    setTaskModalOpen(true);\n  };\n  \n  const handleDeleteTask = (taskId: Id<'tasks'>) => {\n    setTaskToDelete(taskId);\n    setDeleteDialogOpen(true);\n  };\n  \n  return (\n    <div className=\"container mx-auto py-6 space-y-6\">\n      <div className=\"flex justify-between items-center\">\n        <h1 className=\"text-3xl font-bold\">Task Management</h1>\n        <Button onClick={handleCreateTask}>Create Task</Button>\n      </div>\n      \n      <Tabs value={activeTab} onValueChange={setActiveTab}>\n        <TabsList>\n          <TabsTrigger value=\"list\">List View</TabsTrigger>\n          <TabsTrigger value=\"calendar\">Calendar View</TabsTrigger>\n        </TabsList>\n        \n        <TabsContent value=\"list\" className=\"mt-4\">\n          <TaskTable onEdit={handleEditTask} onDelete={handleDeleteTask} />\n        </TabsContent>\n        \n        <TabsContent value=\"calendar\" className=\"mt-4\">\n          <TaskCalendar onTaskClick={handleEditTask} />\n        </TabsContent>\n      </Tabs>\n      \n      <TaskModal \n        isOpen={taskModalOpen} \n        onClose={() => setTaskModalOpen(false)} \n        task={currentTask} \n      />\n      \n      <DeleteTaskDialog \n        isOpen={deleteDialogOpen} \n        onClose={() => setDeleteDialogOpen(false)} \n        taskId={taskToDelete} \n      />\n    </div>\n  );\n}\n```",
+        "testStrategy": "Test the main page by:\n1. Verifying all components render correctly\n2. Testing tab switching between list and calendar views\n3. Confirming create, edit, and delete workflows function properly\n4. Testing integration between components (e.g., editing a task from calendar view)\n5. Verifying responsive design on different screen sizes\n6. Testing accessibility of the entire page",
         "priority": "medium",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Create Vimeo Integration UI and Settings Persistence",
-            "description": "Implement the user interface for Vimeo integration in the Integrations Apps page and create the necessary settings persistence mechanism in Convex.",
-            "dependencies": [],
-            "details": "1. Add a new integration card on the Integrations Apps page with Vimeo branding\n2. Create form fields for API key input and playlist/category selection\n3. Implement form validation for API credentials\n4. Design and implement the settings schema in Convex database\n5. Create mutations for saving and retrieving Vimeo integration settings\n6. Add error handling and success notifications for settings operations",
-            "status": "pending",
-            "testStrategy": "Test form validation with valid and invalid API keys. Verify settings are correctly persisted to and retrieved from Convex. Test UI responsiveness across device sizes."
-          },
-          {
-            "id": 2,
-            "title": "Implement Vimeo API Service and Data Layer",
-            "description": "Create the VimeoService class to handle API interactions and implement the Convex data layer for storing video metadata.",
-            "dependencies": [
-              1
-            ],
-            "details": "1. Create a VimeoService class with methods for API authentication and video fetching\n2. Implement functions to retrieve videos from selected playlists/categories\n3. Parse and normalize video metadata (title, publish date, embed link, thumbnail, duration)\n4. Create the `vimeoVideos` table schema in Convex with appropriate fields\n5. Implement mutations for storing and updating video data\n6. Create queries with filtering options for retrieving videos\n7. Add error handling and rate limiting for API calls",
-            "status": "pending",
-            "testStrategy": "Test API integration with mock responses. Verify correct parsing of video metadata. Test data persistence operations with sample videos. Ensure error handling works for API failures."
-          },
-          {
-            "id": 3,
-            "title": "Extend Media Library with Vimeo Tab",
-            "description": "Add a Vimeo tab to the existing media library interface with thumbnail grid view and search functionality.",
-            "dependencies": [
-              2
-            ],
-            "details": "1. Add a \"Vimeo\" tab to the existing media library component\n2. Implement a thumbnail grid view for displaying synced Vimeo videos\n3. Create search and filter functionality specific to Vimeo videos\n4. Display video metadata (title, date, duration) in the grid items\n5. Implement pagination or infinite scrolling for large video collections\n6. Add loading states and empty states for the Vimeo tab\n7. Ensure responsive design across device sizes",
-            "status": "pending",
-            "testStrategy": "Test UI rendering with various video counts. Verify search and filter functionality works correctly. Test responsive behavior across breakpoints. Ensure accessibility standards are met."
-          },
-          {
-            "id": 4,
-            "title": "Update MediaPicker and Lesson Form for Vimeo Support",
-            "description": "Extend the MediaPicker component to include Vimeo video selection and update the Lesson form to support Vimeo content.",
-            "dependencies": [
-              3
-            ],
-            "details": "1. Extend the reusable MediaPicker component to include a Vimeo tab\n2. Implement selection mechanism for Vimeo videos with preview\n3. Ensure proper return of embed link and metadata on selection\n4. Update the Media tab in Lesson form to support Vimeo selection\n5. Integrate the enhanced MediaPicker component\n6. Handle Vimeo-specific metadata in form state\n7. Maintain consistent UX with existing media types",
-            "status": "pending",
-            "testStrategy": "Test selection and deselection of Vimeo videos. Verify correct metadata is passed to parent components. Test integration with Lesson form. Ensure form submission correctly includes Vimeo data."
-          },
-          {
-            "id": 5,
-            "title": "Implement Video Rendering and Synchronization",
-            "description": "Create the VimeoEmbed component for rendering videos and implement both manual and automatic synchronization with Vimeo.",
-            "dependencies": [
-              2,
-              4
-            ],
-            "details": "1. Create a VimeoEmbed component for rendering videos using iframes\n2. Implement responsive design for the video player\n3. Handle playback controls and options according to Vimeo API capabilities\n4. Add a manual sync button in the Vimeo integration settings\n5. Implement progress indicators and error handling for sync operations\n6. Create a Convex cron job for automatic 24-hour synchronization\n7. Add conflict resolution logic for updated videos\n8. Implement logging for sync operations",
-            "status": "pending",
-            "testStrategy": "Test video rendering across browsers and devices. Verify responsive behavior of the player. Test manual sync with progress indicators. Verify automatic sync via cron job. Test error scenarios and recovery."
-          }
-        ]
+        "dependencies": [
+          3,
+          5,
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Implement Filtering and Sorting",
+        "description": "Add filtering and sorting capabilities to both the task list and calendar views.",
+        "details": "Enhance the task list and calendar components with filtering and sorting:\n\n1. Add filtering to TaskTable component:\n```tsx\n// Add to TaskTable component\nconst [filters, setFilters] = useState({\n  status: 'all',\n  hasDate: 'all', // 'all', 'withDate', 'withoutDate'\n  isRecurring: 'all', // 'all', 'recurring', 'nonRecurring'\n});\n\nconst filteredTasks = tasks ? tasks.filter(task => {\n  // Filter by status\n  if (filters.status !== 'all' && task.status !== filters.status) {\n    return false;\n  }\n  \n  // Filter by date\n  if (filters.hasDate === 'withDate' && !task.dueDate) {\n    return false;\n  }\n  if (filters.hasDate === 'withoutDate' && task.dueDate) {\n    return false;\n  }\n  \n  // Filter by recurring\n  if (filters.isRecurring === 'recurring' && !task.isRecurring) {\n    return false;\n  }\n  if (filters.isRecurring === 'nonRecurring' && task.isRecurring) {\n    return false;\n  }\n  \n  return true;\n}) : [];\n\n// Add filter controls to the UI\nconst FilterControls = () => (\n  <div className=\"flex flex-wrap gap-4 mb-4\">\n    <div>\n      <label className=\"block text-sm font-medium mb-1\">Status</label>\n      <select\n        value={filters.status}\n        onChange={(e) => setFilters({ ...filters, status: e.target.value })}\n        className=\"border rounded p-2\"\n      >\n        <option value=\"all\">All Statuses</option>\n        <option value=\"pending\">Pending</option>\n        <option value=\"completed\">Completed</option>\n        <option value=\"cancelled\">Cancelled</option>\n      </select>\n    </div>\n    \n    <div>\n      <label className=\"block text-sm font-medium mb-1\">Due Date</label>\n      <select\n        value={filters.hasDate}\n        onChange={(e) => setFilters({ ...filters, hasDate: e.target.value })}\n        className=\"border rounded p-2\"\n      >\n        <option value=\"all\">All Tasks</option>\n        <option value=\"withDate\">With Due Date</option>\n        <option value=\"withoutDate\">Without Due Date</option>\n      </select>\n    </div>\n    \n    <div>\n      <label className=\"block text-sm font-medium mb-1\">Recurrence</label>\n      <select\n        value={filters.isRecurring}\n        onChange={(e) => setFilters({ ...filters, isRecurring: e.target.value })}\n        className=\"border rounded p-2\"\n      >\n        <option value=\"all\">All Tasks</option>\n        <option value=\"recurring\">Recurring Only</option>\n        <option value=\"nonRecurring\">Non-recurring Only</option>\n      </select>\n    </div>\n  </div>\n);\n```\n\n2. Enhance calendar filtering:\n```tsx\n// Add to TaskCalendar component\nconst [filters, setFilters] = useState({\n  status: 'all',\n  showRecurring: true,\n  showCompleted: true,\n});\n\n// Update the filter controls\nconst FilterControls = () => (\n  <div className=\"flex flex-wrap gap-4 mb-4\">\n    <div>\n      <label className=\"block text-sm font-medium mb-1\">Status</label>\n      <select\n        value={filters.status}\n        onChange={(e) => setFilters({ ...filters, status: e.target.value })}\n        className=\"border rounded p-2\"\n      >\n        <option value=\"all\">All Statuses</option>\n        <option value=\"pending\">Pending</option>\n        <option value=\"completed\">Completed</option>\n        <option value=\"cancelled\">Cancelled</option>\n      </select>\n    </div>\n    \n    <label className=\"flex items-center gap-2\">\n      <input\n        type=\"checkbox\"\n        checked={filters.showRecurring}\n        onChange={(e) => setFilters({ ...filters, showRecurring: e.target.checked })}\n      />\n      Show Recurring Tasks\n    </label>\n    \n    <label className=\"flex items-center gap-2\">\n      <input\n        type=\"checkbox\"\n        checked={filters.showCompleted}\n        onChange={(e) => setFilters({ ...filters, showCompleted: e.target.checked })}\n      />\n      Show Completed Tasks\n    </label>\n  </div>\n);\n\n// Update the filtering logic in the useMemo\nlet filteredTasks = tasks;\nif (filters.status !== 'all') {\n  filteredTasks = filteredTasks.filter(task => task.status === filters.status);\n} else if (!filters.showCompleted) {\n  filteredTasks = filteredTasks.filter(task => task.status !== 'completed');\n}\n\nif (!filters.showRecurring) {\n  filteredTasks = filteredTasks.filter(task => !task.isRecurring);\n}\n```",
+        "testStrategy": "Test the filtering and sorting functionality by:\n1. Verifying all filter controls work correctly\n2. Testing combinations of filters to ensure they work together\n3. Confirming sorting in the task table works for all columns\n4. Testing that filters persist when switching between views\n5. Verifying filter state is correctly reflected in the UI\n6. Testing edge cases like filtering with no matching results",
+        "priority": "low",
+        "dependencies": [
+          3,
+          7,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Implement Accessibility and Responsive Design",
+        "description": "Ensure the task management system is fully accessible and responsive across different screen sizes.",
+        "details": "Implement accessibility and responsive design improvements:\n\n1. Accessibility enhancements:\n```tsx\n// Add to all interactive components\n// Example for a button:\n<Button \n  onClick={handleAction}\n  aria-label=\"Create new task\"\n>\n  Create Task\n</Button>\n\n// Add proper labels to form fields\n<FormLabel htmlFor=\"task-title\">Title</FormLabel>\n<Input id=\"task-title\" {...field} />\n\n// Add ARIA attributes to custom components\n<div role=\"grid\" aria-label=\"Task list\">\n  {/* Task table content */}\n</div>\n\n// Add keyboard navigation to custom components\n// Example for task table rows:\nconst handleKeyDown = (e: React.KeyboardEvent, taskId: string) => {\n  if (e.key === 'Enter' || e.key === ' ') {\n    e.preventDefault();\n    handleEdit(taskId);\n  }\n};\n\n<TableRow \n  key={task._id}\n  tabIndex={0}\n  onKeyDown={(e) => handleKeyDown(e, task._id)}\n  role=\"row\"\n>\n  {/* Row content */}\n</TableRow>\n```\n\n2. Responsive design improvements:\n```tsx\n// Make the task table responsive\n<div className=\"overflow-x-auto\">\n  <Table>\n    {/* Table content */}\n  </Table>\n</div>\n\n// Make the filter controls responsive\n<div className=\"flex flex-wrap gap-4 mb-4\">\n  {/* Filter controls */}\n</div>\n\n// Use responsive utility classes for the main layout\n<div className=\"container mx-auto px-4 py-6 space-y-6\">\n  <div className=\"flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4\">\n    <h1 className=\"text-2xl sm:text-3xl font-bold\">Task Management</h1>\n    <Button onClick={handleCreateTask}>Create Task</Button>\n  </div>\n  \n  {/* Rest of the content */}\n</div>\n\n// Make the task form responsive in the modal\n<DialogContent className=\"sm:max-w-md md:max-w-lg\">\n  {/* Form content */}\n</DialogContent>\n```\n\n3. Add focus management for modals:\n```tsx\n// In the TaskModal component\nimport { useRef, useEffect } from 'react';\n\nconst initialFocusRef = useRef<HTMLInputElement>(null);\n\nuseEffect(() => {\n  if (isOpen && initialFocusRef.current) {\n    initialFocusRef.current.focus();\n  }\n}, [isOpen]);\n\n// In the form\n<Input ref={initialFocusRef} {...field} />\n```\n\n4. Add responsive calendar view:\n```tsx\n// In the TaskCalendar component\nimport { useMediaQuery } from '@/hooks/useMediaQuery';\n\nconst isMobile = useMediaQuery('(max-width: 640px)');\n\n// Pass view type to calendar based on screen size\n<CampaignCalendar\n  events={calendarEvents}\n  onEventClick={handleEventClick}\n  onRangeChange={handleRangeChange}\n  defaultView={isMobile ? 'day' : 'month'}\n/>\n```",
+        "testStrategy": "Test accessibility and responsive design by:\n1. Running automated accessibility tests (e.g., using axe-core)\n2. Testing keyboard navigation throughout the application\n3. Verifying screen reader compatibility\n4. Testing on various screen sizes (mobile, tablet, desktop)\n5. Verifying that all interactive elements are properly sized for touch input\n6. Testing focus management in modals and dialogs\n7. Verifying color contrast meets WCAG standards",
+        "priority": "medium",
+        "dependencies": [
+          8,
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
       }
     ],
     "metadata": {
-      "created": "2025-06-25T19:22:51.994Z",
-      "updated": "2025-07-03T18:41:10.722Z",
-      "description": "Tasks for master context"
+      "created": "2025-07-11T13:44:11.799Z",
+      "updated": "2025-07-11T13:58:11.687Z",
+      "description": "Tasks for feature-admin-task-manager context"
     }
   }
 }

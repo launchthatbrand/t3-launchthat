@@ -10,22 +10,22 @@ import type {
   EventClickArg,
   EventContentArg,
 } from "@fullcalendar/core/index.js";
+import { earliestTime, latestTime } from "../utils/data";
 import { useRef, useState } from "react";
+
+import type { CalendarEvent } from "../utils/data";
+import CalendarNav from "./calendar-nav";
+import { Card } from "./ui/card";
+import { EventEditForm } from "./event-edit-form";
+import { EventView } from "./event-view";
+import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
+import { getDateFromMinutes } from "../lib/utils";
 import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
 import multiMonthPlugin from "@fullcalendar/multimonth";
-import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
-
-import type { CalendarEvent } from "../utils/data";
 import { useEvents } from "../context/events-context";
-import { getDateFromMinutes } from "../lib/utils";
-import { earliestTime, latestTime } from "../utils/data";
-import CalendarNav from "./calendar-nav";
-import { EventEditForm } from "./event-edit-form";
-import { EventView } from "./event-view";
-import { Card } from "./ui/card";
 
 interface EventItemProps {
   info: EventContentArg;
@@ -285,7 +285,7 @@ export default function Calendar({
         showAddEventButton={showAddEventButton}
       />
 
-      <Card className="p-3">
+      <Card className="p-0">
         <FullCalendar
           ref={calendarRef}
           timeZone="local"

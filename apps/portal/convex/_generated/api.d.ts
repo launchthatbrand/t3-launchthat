@@ -221,6 +221,10 @@ import type * as socialfeed_schema_savedItemsSchema from "../socialfeed/schema/s
 import type * as socialfeed_schema_subscriptionsSchema from "../socialfeed/schema/subscriptionsSchema.js";
 import type * as socialfeed_schema_topicFollowsSchema from "../socialfeed/schema/topicFollowsSchema.js";
 import type * as socialfeed_schema_trendingContentSchema from "../socialfeed/schema/trendingContentSchema.js";
+import type * as tasks_boards_mutations from "../tasks/boards/mutations.js";
+import type * as tasks_boards_queries from "../tasks/boards/queries.js";
+import type * as tasks_boards from "../tasks/boards.js";
+import type * as tasks_index from "../tasks/index.js";
 import type * as test_schema from "../test_schema.js";
 import type * as topics from "../topics.js";
 import type * as users_index from "../users/index.js";
@@ -455,6 +459,10 @@ declare const fullApi: ApiFromModules<{
   "socialfeed/schema/subscriptionsSchema": typeof socialfeed_schema_subscriptionsSchema;
   "socialfeed/schema/topicFollowsSchema": typeof socialfeed_schema_topicFollowsSchema;
   "socialfeed/schema/trendingContentSchema": typeof socialfeed_schema_trendingContentSchema;
+  "tasks/boards/mutations": typeof tasks_boards_mutations;
+  "tasks/boards/queries": typeof tasks_boards_queries;
+  "tasks/boards": typeof tasks_boards;
+  "tasks/index": typeof tasks_index;
   test_schema: typeof test_schema;
   topics: typeof topics;
   "users/index": typeof users_index;
