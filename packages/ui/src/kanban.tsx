@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
-import { Button, buttonVariants } from "./button";
 /* eslint-disable react-compiler/react-compiler */
 import type {
   ChangeEvent,
@@ -8,12 +7,6 @@ import type {
   KeyboardEvent,
   RefObject,
 } from "react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "./tooltip";
 import {
   createContext,
   useCallback,
@@ -25,11 +18,19 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 
+import { cn } from "@acme/ui";
+
+import { Button, buttonVariants } from "./button";
 import { Skeleton } from "./skeleton";
 import { Textarea } from "./textarea";
-import { cn } from "@acme/ui";
-import { createPortal } from "react-dom";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./tooltip";
 
 /*
 Accessibility
@@ -463,7 +464,7 @@ export interface KanbanBoardColumnProps {
 }
 
 export const kanbanBoardColumnClassNames =
-  "w-64 flex-shrink-0 rounded-lg border flex flex-col border-border bg-sidebar py-2 max-h-full";
+  "w-64 flex-shrink-0 rounded-lg border flex flex-col border-border bg-sidebar p-2 max-h-full";
 
 export function KanbanBoardColumn({
   className,

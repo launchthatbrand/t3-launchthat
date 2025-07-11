@@ -1,14 +1,30 @@
 "use client";
 
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import React, { use, useState } from "react";
+import { useParams } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { useQuery } from "convex/react";
+import { Plus, Trash } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import { Plus, Trash } from "lucide-react";
-import React, { use, useState } from "react";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@acme/ui/drawer";
+
+import type { ColumnDefinition } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "~/components/shared/EntityList/EntityList";
 import {
   useCreateTask,
   useDeleteTask,
@@ -16,35 +32,11 @@ import {
   useTasksByBoard,
   useUpdateTask,
 } from "../../_api/tasks";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import type { ColumnDefinition } from "~/components/shared/EntityList/EntityList";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
-import { TaskForm } from "../../_components/TaskForm";
-import { api } from "@convex-config/_generated/api";
-import { useParams } from "next/navigation";
-import { useQuery } from "convex/react";
+import { TaskForm, TaskFormValues } from "../../_components/TaskForm";
 
 // Placeholder for DetachableFilters component
 const DetachableFilters = ({ filters, activeFilters, onFilterChange }: any) =>
   null;
-
-// --- Move handlers up so they're defined before use ---
-const handleCreateClick = () => {
-  setEditTask(null);
-  setDrawerOpen(true);
-};
-
-const handleEditClick = (task: Doc<"tasks">) => {
-  setEditTask(task);
-  setDrawerOpen(true);
-};
-
-const handleDrawerClose = () => {
-  setDrawerOpen(false);
-  setEditTask(null);
-};
 
 const handleSubmit = async (values: TaskFormValues) => {
   // Convert dueDate to number (timestamp) or undefined
@@ -169,6 +161,47 @@ const BoardPage = ({ params }: { params: Promise<{ boardId: string }> }) => {
   const [editTask, setEditTask] = React.useState<Doc<"tasks"> | null>(null);
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
+
+  // Entity actions for each row
+  const entityActions = [
+    {
+      id: "edit",
+      label: "Edit",
+      onClick: (task: Doc<"tasks">) => {
+        handleEditClick(task);
+      },
+      variant: "secondary" as const,
+      icon: <Plus className="mr-2 h-4 w-4" />,
+    },
+    {
+      id: "delete",
+      label: "Delete",
+      onClick: async (task: Doc<"tasks">) => {
+        if (confirm(`Delete task: ${task.title}?`)) {
+          await deleteTask({ taskId: task._id });
+        }
+      },
+      variant: "destructive" as const,
+      icon: <Trash className="mr-2 h-4 w-4" />,
+    },
+  ];
+
+  // --- Move handlers up so they're defined before use ---
+  const handleCreateClick = () => {
+    setEditTask(null);
+    setDrawerOpen(true);
+  };
+
+  const handleEditClick = (task: Doc<"tasks">) => {
+    console.log("[handleEditClick] task", task);
+    setEditTask(task);
+    setDrawerOpen(true);
+  };
+
+  const handleDrawerClose = () => {
+    setDrawerOpen(false);
+    setEditTask(null);
+  };
   const board = useQuery(api.tasks.boards.getBoard, {
     boardId: boardId as Id<"taskBoards">,
   });
@@ -177,7 +210,6 @@ const BoardPage = ({ params }: { params: Promise<{ boardId: string }> }) => {
   const [open, setOpen] = useState(false);
 
   const handleFilterChange = (newFilters: any) => setActiveFilters(newFilters);
-  const handleCreateClick = () => setOpen(true);
 
   const headerActions: any[] = [];
 
@@ -190,7 +222,7 @@ const BoardPage = ({ params }: { params: Promise<{ boardId: string }> }) => {
   }
 
   return (
-    <div className="container flex">
+    <div className="container flex py-4">
       <Dialog open={open} onOpenChange={setOpen}>
         <EntityList<Doc<"tasks">>
           data={tasks ?? []}
@@ -221,6 +253,24 @@ const BoardPage = ({ params }: { params: Promise<{ boardId: string }> }) => {
             </DialogTrigger>
           }
         />
+        <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>
+                {editTask ? "Edit Task" : "Create Task"}
+              </DrawerTitle>
+              <DrawerClose onClick={handleDrawerClose} />
+            </DrawerHeader>
+            <div className="p-4">
+              <TaskForm
+                task={editTask}
+                onSubmit={handleSubmit}
+                // No isSubmitting prop, as Convex hooks do not provide isPending by default
+                submitButtonText={editTask ? "Update Task" : "Create Task"}
+              />
+            </div>
+          </DrawerContent>
+        </Drawer>
         <DialogContent>
           <DialogTitle>Create Task</DialogTitle>
           <TaskForm

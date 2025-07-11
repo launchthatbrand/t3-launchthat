@@ -1,20 +1,23 @@
 "use client";
 
+import React from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { useQuery } from "convex/react";
+
+import { Card, CardContent } from "@acme/ui/card";
+import { AppSidebar } from "@acme/ui/layout/AppSidebar";
+import { ScrollArea } from "@acme/ui/scroll-area";
+import { SidebarInset } from "@acme/ui/sidebar";
 import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import {
   TaskSidebarProvider,
   TaskSidebarTrigger,
 } from "@acme/ui/tasks-sidebar";
-import { usePathname, useRouter } from "next/navigation";
 
-import { AppSidebar } from "@acme/ui/layout/AppSidebar";
-import Link from "next/link";
-import React from "react";
-import { ScrollArea } from "@acme/ui/scroll-area";
 import { Separator } from "~/components/ui/separator";
 import { TasksSidebar } from "./_components/TaskSidebar";
-import { api } from "@convex-config/_generated/api";
-import { useQuery } from "convex/react";
 
 interface TasksLayoutProps {
   children: React.ReactNode;
@@ -52,23 +55,28 @@ export default function TasksLayout({
   return (
     <TaskSidebarProvider>
       <TasksSidebar variant="floating" collapsible="icon" />
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-2 px-4">
-          <TaskSidebarTrigger className="-ml-1" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
-          />
-          <Tabs value={tabValue} onValueChange={handleTabChange}>
-            <TabsList>
-              <TabsTrigger value="tasks">Main</TabsTrigger>
-              <TabsTrigger value="boards">Kaban</TabsTrigger>
-              <TabsTrigger value="calendar">Calendar</TabsTrigger>
-            </TabsList>
-          </Tabs>
+      <SidebarInset className="m-2">
+        <header>
+          <Card className="h-16 w-full items-center shadow-none">
+            <CardContent className="flex h-16 flex-row items-center gap-2 p-2">
+              <TaskSidebarTrigger className="-ml-1" />
+              <Separator
+                orientation="vertical"
+                className="mr-2 data-[orientation=vertical]:h-4"
+              />
+              <Tabs value={tabValue} onValueChange={handleTabChange}>
+                <TabsList>
+                  <TabsTrigger value="tasks">Main</TabsTrigger>
+                  <TabsTrigger value="boards">Kaban</TabsTrigger>
+                  <TabsTrigger value="calendar">Calendar</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </CardContent>
+          </Card>
         </header>
+
         {children}
-      </div>
+      </SidebarInset>
     </TaskSidebarProvider>
   );
 }

@@ -1,5 +1,11 @@
 "use client";
 
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import React from "react";
+import { useParams } from "next/navigation";
+import { api } from "@/convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
+
 import {
   KanbanBoard,
   KanbanBoardCard,
@@ -11,11 +17,6 @@ import {
   KanbanBoardColumnTitle,
   KanbanBoardProvider,
 } from "@acme/ui/kanban";
-import { useMutation, useQuery } from "convex/react";
-
-import type { Doc } from "@/convex/_generated/dataModel";
-import React from "react";
-import { api } from "@/convex/_generated/api";
 
 const STATUS_COLUMNS = [
   { id: "pending", label: "Pending" },
@@ -24,8 +25,11 @@ const STATUS_COLUMNS = [
 ];
 
 export default function KanbanPage() {
+  const { boardId } = useParams();
   // Fetch all tasks
-  const tasks = useQuery(api.tasks.index.listTasks, {});
+  const tasks = useQuery(api.tasks.index.listTasksByBoard, {
+    boardId: boardId as Id<"taskBoards">,
+  });
   const updateTask = useMutation(api.tasks.index.updateTask);
 
   // Group tasks by status
@@ -56,7 +60,7 @@ export default function KanbanPage() {
   );
 
   return (
-    <div className="container py-8">
+    <div className="container py-4">
       <h1 className="mb-6 text-2xl font-bold">Task Kanban Board</h1>
       <KanbanBoardProvider>
         <KanbanBoard>

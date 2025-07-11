@@ -1,8 +1,17 @@
 "use client";
 
-import * as React from "react";
-
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import * as React from "react";
+import { api } from "@/convex/_generated/api";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "convex/react";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
+import { Button } from "@acme/ui/button";
+import { Calendar } from "@acme/ui/calendar";
 import {
   Form,
   FormControl,
@@ -12,6 +21,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@acme/ui/form";
+import { Input } from "@acme/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
 import {
   Select,
@@ -20,20 +30,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-
-import { Button } from "@acme/ui/button";
-import { Calendar } from "@acme/ui/calendar";
-import { CalendarIcon } from "lucide-react";
-import { Input } from "@acme/ui/input";
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
-import { api } from "@/convex/_generated/api";
-import { format } from "date-fns";
-import { useAction } from "@/hooks/useAction";
-import { useForm } from "react-hook-form";
-import { useMutation } from "convex/react";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 
 // Local cn utility (Tailwind merge helper)
 function cn(...classes: (string | false | null | undefined)[]) {
@@ -51,51 +49,77 @@ export const TaskFormSchema = z.object({
 
 export type TaskFormValues = z.infer<typeof TaskFormSchema>;
 
-type TaskFormProps = {
+export interface TaskFormProps {
   boardId?: Id<"taskBoards">;
   task?: Doc<"tasks">;
   onSuccess?: () => void;
-};
+}
 
 export const TaskForm: React.FC<TaskFormProps> = ({
   boardId,
   task,
   onSuccess,
 }) => {
-  const [error, setError] = React.useState<string | null>(null);
+  console.log("[TaskForm] task", task);
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(TaskFormSchema),
     defaultValues: {
-      title: task?.title ?? "",
-      description: task?.description ?? "",
-      dueDate: task?.dueDate ? new Date(task.dueDate) : undefined,
-      isRecurring: task?.isRecurring ?? false,
-      recurrenceRule: task?.recurrenceRule ?? "",
-      status: task?.status ?? "pending",
+      title: "",
+      description: "",
+      dueDate: undefined,
+      isRecurring: false,
+      recurrenceRule: "",
+      status: "pending",
     },
   });
+
+  // Robust: Reset form when task changes
+  React.useEffect(() => {
+    if (task) {
+      form.reset({
+        title: task.title,
+        description: task.description,
+        dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
+        isRecurring: task.isRecurring,
+        recurrenceRule: task.recurrenceRule,
+        status: task.status,
+      });
+    } else {
+      form.reset({
+        title: "",
+        description: "",
+        dueDate: undefined,
+        isRecurring: false,
+        recurrenceRule: "",
+        status: "pending",
+      });
+    }
+  }, [task, form]);
 
   const createTask = useMutation(api.tasks.index.createTask);
   const updateTask = useMutation(api.tasks.index.updateTask);
 
   const onSubmit = async (values: TaskFormValues) => {
-    setError(null);
     try {
+      const payload = {
+        ...values,
+        dueDate: values.dueDate ? values.dueDate.getTime() : undefined,
+      };
       if (task) {
         await updateTask({
           taskId: task._id,
-          ...values,
+          ...payload,
         });
       } else {
         await createTask({
-          ...values,
+          ...payload,
           ...(boardId ? { boardId } : {}),
         });
       }
       form.reset();
       onSuccess?.();
-    } catch (err) {
-      setError((err as Error).message);
+    } catch {
+      // Optionally handle error
     }
   };
 
@@ -160,7 +184,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    selected={field.value}
+                    selected={field.value ?? undefined}
                     onSelect={field.onChange}
                     captionLayout="dropdown"
                   />
