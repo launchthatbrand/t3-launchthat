@@ -1,0 +1,587 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Initialize Next.js Application with Convex",
+      "description": "Set up the Next.js application with TypeScript, configure the project structure, and integrate Convex as the backend.",
+      "status": "done",
+      "dependencies": [],
+      "priority": "high",
+      "details": "Create a new Next.js application in the apps/wsa directory using the App Router. Initialize TypeScript configuration. Install and configure Convex client. Set up the basic project structure with appropriate folders for components, layouts, and pages. Configure environment variables for development.",
+      "testStrategy": "Verify that the application starts without errors. Confirm Convex connection is established. Check that the basic Next.js structure follows best practices."
+    },
+    {
+      "id": 2,
+      "title": "Configure Tailwind CSS and Shadcn UI",
+      "description": "Set up Tailwind CSS and install Shadcn UI components for consistent styling across the application.",
+      "status": "done",
+      "dependencies": [
+        1
+      ],
+      "priority": "high",
+      "details": "Install and configure Tailwind CSS. Set up the Shadcn UI component library following their installation guide. Configure the color theme and component styles to match the application design. Create a components.json file for Shadcn configuration. Set up any global styles needed.",
+      "testStrategy": "Verify that Tailwind classes are working correctly. Test rendering of basic Shadcn UI components to ensure proper installation and configuration."
+    },
+    {
+      "id": 3,
+      "title": "Define Convex Schema for Core Entities",
+      "description": "Create the Convex schema for all core entities including Users, Courses, Lessons, Topics, and Quizzes.",
+      "status": "done",
+      "dependencies": [
+        1
+      ],
+      "priority": "high",
+      "details": "Define the schema in convex/schema.ts with appropriate tables and fields for Users (id, name, email, role, etc.), Courses (id, title, description, etc.), Lessons (id, courseId, title, description, order, etc.), Topics (id, lessonId, title, content, type, order, etc.), and Quizzes (id, topicId/lessonId, title, etc.). Include appropriate indexes and relationships between entities.",
+      "testStrategy": "Validate the schema by running Convex validation. Ensure all required fields are present and relationships are correctly defined. Test creating sample records for each entity."
+    },
+    {
+      "id": 4,
+      "title": "Define Convex Schema for E-commerce Entities",
+      "description": "Create the Convex schema for e-commerce related entities including Products and Transactions.",
+      "status": "done",
+      "dependencies": [
+        3
+      ],
+      "priority": "high",
+      "details": "Extend the schema in convex/schema.ts to include Products (id, name, description, price, etc.), and Transactions (id, userId, productId, amount, status, timestamp, etc.). Define relationships between Products and Courses. Include appropriate indexes for efficient querying.",
+      "testStrategy": "Validate the schema by running Convex validation. Test creating sample records for Products and Transactions. Verify relationships between Products and Courses work as expected."
+    },
+    {
+      "id": 5,
+      "title": "Implement User Authentication with Convex",
+      "description": "Set up user authentication using Clerk.",
+      "status": "done",
+      "dependencies": [
+        1,
+        3
+      ],
+      "priority": "high",
+      "details": "Configure Clerk provider in the Next.js application using environment variables (NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY). Create login and signup routes/components using Clerk's Next.js components (<SignIn>, <SignUp>). Implement authentication state management using Clerk's hooks (useAuth, useUser). Set up protected routes using Clerk middleware or helpers. Ensure Convex user schema includes necessary fields to potentially link with Clerk user IDs if needed for roles/app-specific data.",
+      "testStrategy": "Test user registration, login, and logout flows via Clerk components. Verify authentication state (useAuth, useUser) provides correct user data. Ensure protected routes redirect unauthenticated users appropriately. Verify authentication state persists across page refreshes."
+    },
+    {
+      "id": 6,
+      "title": "Implement Role-Based Access Control",
+      "description": "Create a system for role-based access control to distinguish between admin and regular users using Clerk authentication.",
+      "status": "done",
+      "dependencies": [
+        5
+      ],
+      "priority": "high",
+      "details": "Extend the Convex user schema to include role information (admin/user). Create Convex functions to fetch the user role based on the authenticated user ID (obtained from Clerk's useAuth hook). Implement middleware or wrapper components in Next.js to protect admin routes, checking the user's role via the Convex function after verifying authentication with Clerk. Create a higher-order component or hook for role-based conditional rendering based on Clerk auth state and Convex role data. Set up initial admin user creation in Convex (associating with a Clerk user).",
+      "testStrategy": "Test access control by attempting to access admin routes logged in as different Clerk users with varying roles defined in Convex. Verify admin-only components are only visible to admin users. Test role-checking functions with various user roles.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Extend Convex User Schema with Role Information",
+          "description": "Modify the existing Convex user schema to include role information that distinguishes between admin and regular users.",
+          "dependencies": [],
+          "details": "1. Update the Convex schema definition to add a 'role' field to the user table/document with type string and default value 'user'.\n2. Define an enum or constants for available roles ('admin', 'user').\n3. Ensure the schema validates that role values can only be one of the predefined options.\n4. Run schema migration if necessary.\n5. Test by manually creating test users with different roles in the Convex dashboard.\n6. Document the updated schema structure.\n\n<info added on 2025-04-25T18:38:03.346Z>\nBased on the exploration findings, the subtask appears to be already implemented. Here's the additional information to add:\n\nThe `role` field is already properly implemented in the Convex user schema. Instead of modifying the schema, we should focus on:\n\n1. Verifying the existing implementation works as expected by:\n   - Creating test users with different roles through the Convex dashboard\n   - Confirming role validation is enforced when attempting to set invalid values\n\n2. Adding utility functions to:\n   ```typescript\n   // Add to usersSchema.ts or a new auth.ts file\n   export const isAdmin = (user: Doc<\"users\">) => user.role === 'admin';\n   export const isUser = (user: Doc<\"users\">) => user.role === 'user';\n   \n   // Function to check permissions in protected routes\n   export async function requireAdmin(ctx: MutationCtx) {\n     const identity = await ctx.auth.getUserIdentity();\n     if (!identity) throw new Error(\"Unauthenticated\");\n     \n     const user = await ctx.db.get(ctx.db.query(\"users\").filter(q => \n       q.eq(q.field(\"tokenIdentifier\"), identity.tokenIdentifier)\n     ).first());\n     \n     if (!user || user.role !== 'admin') {\n       throw new Error(\"Unauthorized: Admin access required\");\n     }\n     \n     return user;\n   }\n   ```\n\n3. Document that the schema already includes role information and how to use the utility functions for role-based access control.\n</info added on 2025-04-25T18:38:03.346Z>",
+          "status": "done",
+          "parentTaskId": 6
+        },
+        {
+          "id": 2,
+          "title": "Create Convex Functions for Role Management",
+          "description": "Implement Convex functions to fetch, verify, and manage user roles based on authenticated user IDs from Clerk.",
+          "dependencies": [
+            1
+          ],
+          "details": "1. Create a `getUserRole` function that accepts a Clerk user ID and returns the corresponding role from Convex.\n2. Implement a `hasRole` function that checks if a user has a specific role (e.g., isAdmin).\n3. Create an admin-only function to update user roles (for future admin panel use).\n4. Add proper authentication checks using Clerk's identity in these functions.\n5. Test each function using the Convex dev tools.\n6. Create utility functions to map between Clerk user IDs and Convex user IDs if needed.\n\n<info added on 2025-04-25T18:38:37.250Z>\nHere's additional implementation information for the role management functions:\n\n```typescript\n// apps/wsa/convex/roles.ts\nimport { v } from \"convex/values\";\nimport { query, mutation } from \"./_generated/server\";\nimport { getUserIdentity } from \"./users\";\n\n// Define role types for better type safety\nexport type UserRole = \"admin\" | \"member\" | \"guest\";\n\n// Query to get a user's role\nexport const getUserRole = query({\n  args: {},\n  handler: async (ctx) => {\n    const identity = await getUserIdentity(ctx);\n    if (!identity) return null;\n    \n    const user = await ctx.db\n      .query(\"users\")\n      .withIndex(\"by_token\", (q) => \n        q.eq(\"tokenIdentifier\", identity.tokenIdentifier)\n      )\n      .first();\n    \n    return user?.role as UserRole | null;\n  },\n});\n\n// Check if user has a specific role\nexport const hasRole = query({\n  args: { role: v.string() },\n  handler: async (ctx, args) => {\n    try {\n      const userRole = await getUserRole(ctx, {});\n      return userRole === args.role;\n    } catch (error) {\n      return false;\n    }\n  },\n});\n\n// Admin-only function to update user roles\nexport const updateUserRole = mutation({\n  args: { \n    userId: v.id(\"users\"),\n    newRole: v.string() \n  },\n  handler: async (ctx, args) => {\n    // Verify the caller is an admin\n    const isAdmin = await hasRole(ctx, { role: \"admin\" });\n    if (!isAdmin) {\n      throw new Error(\"Unauthorized: Admin access required\");\n    }\n    \n    // Update the user's role\n    return await ctx.db.patch(args.userId, { \n      role: args.newRole as UserRole \n    });\n  },\n});\n\n// Helper function for role-based access control in other functions\nexport const requireRole = async (ctx, requiredRole: UserRole) => {\n  const hasRequiredRole = await hasRole(ctx, { role: requiredRole });\n  if (!hasRequiredRole) {\n    throw new Error(`Unauthorized: ${requiredRole} access required`);\n  }\n  return true;\n};\n```\n\nInclude error handling with specific error messages and implement a reusable `requireRole` helper that can be used in other functions to enforce role-based access control. The type definition for `UserRole` ensures type safety throughout the application.\n</info added on 2025-04-25T18:38:37.250Z>",
+          "status": "done",
+          "parentTaskId": 6
+        },
+        {
+          "id": 3,
+          "title": "Implement Next.js Middleware for Route Protection",
+          "description": "Create middleware in Next.js to protect admin routes by verifying user roles after authentication.",
+          "dependencies": [
+            2
+          ],
+          "details": "1. Create a middleware.ts file in the Next.js app root that intercepts requests to admin routes.\n2. Use Clerk's middleware to verify authentication status.\n3. For authenticated users, call the Convex `hasRole` function to check if the user has admin privileges.\n4. Redirect unauthorized users to an appropriate page (login or unauthorized page).\n5. Configure middleware to only run on admin routes using the matcher configuration.\n6. Test by attempting to access admin routes with different user roles.\n7. Add appropriate error handling and loading states.",
+          "status": "done",
+          "parentTaskId": 6
+        },
+        {
+          "id": 4,
+          "title": "Create Role-Based Conditional Rendering Components",
+          "description": "Implement higher-order components or hooks for conditionally rendering UI elements based on user roles.",
+          "dependencies": [
+            2
+          ],
+          "details": "1. Create a `useUserRole` hook that combines Clerk's `useAuth` with Convex's role data.\n2. Implement a `<RequireRole>` component that conditionally renders children based on the user's role.\n3. Create an `<AdminOnly>` component that only renders content for admin users.\n4. Add appropriate loading states and fallback UI for when role information is being fetched.\n5. Test components with different user roles to ensure proper rendering behavior.\n6. Document usage examples for the team.",
+          "status": "done",
+          "parentTaskId": 6
+        },
+        {
+          "id": 5,
+          "title": "Set Up Initial Admin User Creation",
+          "description": "Implement a mechanism to create and designate the initial admin user in the system.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "1. Create a Convex mutation function to set a user as admin.\n2. Implement a secure admin initialization process (options include environment variables, initial setup page with secure token, or CLI tool).\n3. Create a one-time setup endpoint or script that can only be triggered during initial deployment.\n4. Add validation to prevent creating multiple initial admins.\n5. Document the admin setup process for deployment.\n6. Test the complete flow from user creation in Clerk to admin designation in Convex.\n7. Add logging for admin user creation events.",
+          "status": "done",
+          "parentTaskId": 6
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Create Admin Layout with Navigation",
+      "description": "Develop the base layout for the admin interface with navigation using Shadcn UI components.",
+      "status": "done",
+      "dependencies": [
+        2,
+        6
+      ],
+      "priority": "high",
+      "details": "Create an admin layout component under `/admin` using Shadcn UI Sidebar. Implement the navigation structure for all admin sections (Courses, Lessons, Topics, Quizzes, Products, Users, Orders, Settings). Set up the route group for admin pages under /admin. Ensure the layout is responsive and includes proper authentication checks using Clerk's hooks/middleware to prevent unauthorized access to the entire `/admin` section.",
+      "testStrategy": "Verify that the admin layout renders correctly with all navigation items. Test responsive behavior on different screen sizes. Ensure authentication checks using Clerk prevent unauthorized access to the admin section."
+    },
+    {
+      "id": 8,
+      "title": "Implement Course Management in Admin",
+      "description": "Create the admin interface for managing courses, including listing, creation, editing, and deletion.",
+      "status": "done",
+      "dependencies": [
+        3,
+        7
+      ],
+      "priority": "high",
+      "details": "Develop a courses listing page with Shadcn UI Table component. Create forms for adding and editing courses using Shadcn UI form components. Implement Convex queries for fetching courses and mutations for creating, updating, and deleting courses. Add search and filtering functionality for the courses list.",
+      "testStrategy": "Test the complete CRUD flow for courses. Verify that real-time updates work when courses are modified. Test validation on course forms. Ensure search and filtering work correctly.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create Convex Schema and Queries for Courses",
+          "description": "Define the Convex schema for courses and implement the necessary queries and mutations for CRUD operations.",
+          "dependencies": [],
+          "details": "Implementation steps:\n1. Define the course schema in Convex schema file with fields like id, title, description, instructor, duration, price, category, etc.\n2. Implement a query to fetch all courses with optional pagination\n3. Implement a query to fetch a single course by ID\n4. Create a mutation for adding a new course\n5. Create a mutation for updating an existing course\n6. Create a mutation for deleting a course\n7. Add proper validation and error handling\n\nTesting approach:\n- Test each query and mutation using the Convex dashboard\n- Verify data integrity and validation works correctly\n- Test edge cases like empty fields or invalid inputs",
+          "status": "done",
+          "parentTaskId": 8
+        },
+        {
+          "id": 2,
+          "title": "Implement Courses Listing Page with Shadcn UI Table",
+          "description": "Create the admin interface for displaying all courses in a table format with sorting capabilities.",
+          "dependencies": [
+            1
+          ],
+          "details": "Implementation steps:\n1. Create a new page at `/admin/courses` using Next.js routing\n2. Import and set up the Shadcn UI Table component\n3. Connect to the Convex query to fetch all courses\n4. Define table columns (title, instructor, category, price, etc.)\n5. Implement sorting functionality for relevant columns\n6. Add loading states and error handling\n7. Style the table according to the application's design system\n\nTesting approach:\n- Verify courses are displayed correctly in the table\n- Test sorting functionality for each column\n- Ensure loading states work properly\n- Test with empty data and error states",
+          "status": "done",
+          "parentTaskId": 8
+        },
+        {
+          "id": 3,
+          "title": "Implement Course Creation Form",
+          "description": "Create a form for adding new courses using Shadcn UI form components with validation.",
+          "dependencies": [
+            1
+          ],
+          "details": "Implementation steps:\n1. Create a new page at `/admin/courses/new` or a modal component\n2. Set up Shadcn UI form components with React Hook Form\n3. Add form fields for all course properties (title, description, instructor, etc.)\n4. Implement form validation using zod or similar\n5. Connect form submission to the Convex mutation for creating courses\n6. Add loading state during submission\n7. Implement success/error notifications\n8. Add a cancel button that returns to the courses listing\n\nTesting approach:\n- Test form validation for required fields and format constraints\n- Verify successful submission creates a new course\n- Test error handling for failed submissions\n- Ensure the form resets properly after submission",
+          "status": "done",
+          "parentTaskId": 8
+        },
+        {
+          "id": 4,
+          "title": "Implement Course Editing Functionality",
+          "description": "Create a form for editing existing courses, pre-populated with course data.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Implementation steps:\n1. Create a new page at `/admin/courses/[id]/edit` or a modal component\n2. Reuse the form components from the creation form\n3. Fetch the existing course data using the Convex query\n4. Pre-populate the form with the existing course data\n5. Connect form submission to the Convex mutation for updating courses\n6. Add loading state during submission\n7. Implement success/error notifications\n8. Add a cancel button that returns to the courses listing\n\nTesting approach:\n- Verify form is correctly pre-populated with existing course data\n- Test that updates are correctly saved to the database\n- Test validation works correctly for edited fields\n- Ensure cancellation works without saving changes",
+          "status": "done",
+          "parentTaskId": 8
+        },
+        {
+          "id": 5,
+          "title": "Implement Search, Filtering, and Delete Functionality",
+          "description": "Add search and filtering capabilities to the courses list and implement course deletion.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Implementation steps:\n1. Add a search input above the courses table\n2. Modify the Convex query to support searching by course title or description\n3. Implement filter dropdowns for categories or other relevant fields\n4. Update the query to support filtering\n5. Add a delete button to each course row in the table\n6. Implement a confirmation dialog before deletion\n7. Connect the delete button to the Convex deletion mutation\n8. Add success/error notifications for deletion\n\nTesting approach:\n- Test search functionality with various search terms\n- Verify filters correctly narrow down the displayed courses\n- Test that deletion works correctly after confirmation\n- Ensure the UI updates immediately after deletion\n- Test combinations of search and filters",
+          "status": "done",
+          "parentTaskId": 8
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Implement Lesson Management in Admin",
+      "description": "Develop a modern, reusable React component for building course structures (lessons, topics) using drag-and-drop functionality.",
+      "status": "pending",
+      "dependencies": [
+        8
+      ],
+      "priority": "high",
+      "details": "Create a reusable CourseBuilder component that enables management of course structure. Utilize @dnd-kit/core and @dnd-kit/sortable for drag-and-drop interactions. Fetch course structure data (lessons, topics) from Convex using useQuery. Implement mutations for adding, deleting, reordering, and renaming lessons and topics. Ensure the component manages its own state for structure and drag operations. Reference existing @acme/ui/CourseBuilder components, adapting them away from Payload CMS specifics. Build the UI using Shadcn components. Maintain proper relationships between courses, lessons, and topics.",
+      "testStrategy": "Test drag-and-drop reordering of lessons and topics. Test adding and deleting lessons/topics. Test renaming items. Verify changes are persisted correctly via Convex. Ensure component is reusable and renders correctly with different course data. Test the complete CRUD flow for lessons and topics. Verify real-time updates work when course structure is modified.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Set up CourseBuilder component structure and state management",
+          "description": "Create the base CourseBuilder component with initial state management for course structure data",
+          "dependencies": [],
+          "details": "1. Create a new CourseBuilder.tsx component in the appropriate directory\n2. Define TypeScript interfaces for course structure data (Course, Lesson, Topic)\n3. Set up React state hooks to manage the course structure\n4. Implement a basic layout structure using Shadcn components\n5. Create placeholder sections for lessons and topics\n6. Add empty handler functions for future CRUD operations\n7. Test the component renders correctly with mock data",
+          "status": "pending",
+          "parentTaskId": 9
+        },
+        {
+          "id": 2,
+          "title": "Implement Convex data fetching and basic display",
+          "description": "Connect the CourseBuilder to Convex backend for fetching course structure data",
+          "dependencies": [
+            1
+          ],
+          "details": "1. Create Convex query functions to fetch course, lesson, and topic data\n2. Implement useQuery hooks in the CourseBuilder to fetch real data\n3. Update the component state with fetched data\n4. Display the course structure (lessons and topics) in the UI\n5. Add loading states and error handling\n6. Implement basic navigation between lessons and topics\n7. Test that data is correctly fetched and displayed",
+          "status": "pending",
+          "parentTaskId": 9
+        },
+        {
+          "id": 3,
+          "title": "Integrate drag-and-drop functionality with dnd-kit",
+          "description": "Add drag-and-drop capabilities for reordering lessons and topics",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "1. Install @dnd-kit/core and @dnd-kit/sortable packages\n2. Set up DndContext and SortableContext providers\n3. Create SortableItem components for lessons and topics\n4. Implement drag handlers for reordering items\n5. Update local state when items are reordered\n6. Add visual feedback during drag operations (highlighting, shadows)\n7. Test drag-and-drop functionality works correctly for both lessons and topics",
+          "status": "pending",
+          "parentTaskId": 9
+        },
+        {
+          "id": 4,
+          "title": "Implement Convex mutations for CRUD operations",
+          "description": "Create and connect mutation functions for adding, updating, deleting, and reordering course items",
+          "dependencies": [
+            2,
+            3
+          ],
+          "details": "1. Create Convex mutation functions for:\n   - Adding new lessons and topics\n   - Updating lesson and topic names\n   - Deleting lessons and topics\n   - Reordering lessons and topics\n2. Connect UI actions to these mutations\n3. Implement optimistic updates for better UX\n4. Add confirmation dialogs for destructive actions\n5. Ensure proper error handling and recovery\n6. Update the UI to reflect changes immediately\n7. Test all CRUD operations work correctly and maintain data integrity",
+          "status": "pending",
+          "parentTaskId": 9
+        },
+        {
+          "id": 5,
+          "title": "Refine UI and implement advanced features",
+          "description": "Polish the UI and add advanced features like nested drag-and-drop and validation",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "1. Refine the UI using Shadcn components for a modern look\n2. Implement nested drag-and-drop (moving topics between lessons)\n3. Add form validation for lesson and topic names\n4. Implement keyboard accessibility for drag-and-drop operations\n5. Add animations for smoother transitions\n6. Create a responsive design that works on different screen sizes\n7. Add comprehensive error states and empty states\n8. Perform final testing of all features and edge cases",
+          "status": "pending",
+          "parentTaskId": 9
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Implement Topic Management in Admin",
+      "description": "Create the admin interface for managing topics within lessons, including different content types.",
+      "status": "pending",
+      "dependencies": [
+        9
+      ],
+      "priority": "high",
+      "details": "Develop a topics listing page within the lesson context. Create forms for adding and editing topics with support for different content types (text, video embed). Implement topic ordering functionality. Create Convex queries and mutations for topic management. Ensure proper relationship with parent lessons is maintained.",
+      "testStrategy": "Test the complete CRUD flow for topics. Verify that topics are correctly associated with lessons. Test topic ordering functionality. Ensure different content types can be created and edited correctly."
+    },
+    {
+      "id": 11,
+      "title": "Implement Quiz Management in Admin",
+      "description": "Create the admin interface for managing quizzes and questions associated with topics or lessons.",
+      "status": "pending",
+      "dependencies": [
+        10
+      ],
+      "priority": "medium",
+      "details": "Develop interfaces for creating and managing quizzes. Create forms for adding multiple-choice questions to quizzes. Implement Convex queries and mutations for quiz and question management. Ensure proper relationships with topics/lessons are maintained. Add functionality to set pass/fail criteria.",
+      "testStrategy": "Test creating quizzes with multiple questions. Verify that quizzes are correctly associated with topics or lessons. Test editing and deleting quizzes and questions. Ensure pass/fail criteria can be set and saved."
+    },
+    {
+      "id": 12,
+      "title": "Implement Product Management in Admin",
+      "description": "Create the admin interface for managing products, including linking products to courses.",
+      "status": "pending",
+      "dependencies": [
+        4,
+        8
+      ],
+      "priority": "high",
+      "details": "Develop a products listing page with Shadcn UI Table component. Create forms for adding and editing products, including price setting. Implement functionality to link products to one or more courses. Create Convex queries and mutations for product management. Add search and filtering functionality for the products list.",
+      "testStrategy": "Test the complete CRUD flow for products. Verify that products can be linked to courses correctly. Test price setting functionality. Ensure search and filtering work correctly."
+    },
+    {
+      "id": 13,
+      "title": "Implement User Management in Admin",
+      "description": "Create the admin interface for viewing and managing users with Clerk integration.",
+      "status": "pending",
+      "dependencies": [
+        5,
+        7
+      ],
+      "priority": "medium",
+      "details": "Develop a users listing page in the admin UI using Shadcn UI Table component. Implement Convex queries to fetch user data (including roles) stored in the Convex `users` table. This table should potentially store the Clerk User ID for proper linking between authentication and application data. Consider whether to display users directly from Clerk API (if available) or primarily manage app-specific user data (like roles) in Convex with links to Clerk auth. Add search and filtering functionality for the users list. Implement basic user management functions (e.g., changing roles in the Convex table).",
+      "testStrategy": "Test that users are correctly displayed in the admin interface with proper Clerk integration. Verify that user details show the correct information. Test search and filtering functionality. Ensure role changes are applied correctly in the Convex table and properly reflected in the UI. Verify the linking between Clerk User IDs and Convex user records works as expected."
+    },
+    {
+      "id": 14,
+      "title": "Implement Order/Transaction Management in Admin",
+      "description": "Create the admin interface for viewing and managing orders and transactions.",
+      "status": "pending",
+      "dependencies": [
+        4,
+        7
+      ],
+      "priority": "medium",
+      "details": "Develop a transactions listing page with Shadcn UI Table component. Create a transaction details view showing the associated user, product, and status. Implement Convex queries for fetching transactions and their related data. Add search, filtering, and sorting functionality for the transactions list.",
+      "testStrategy": "Test that transactions are correctly displayed in the admin interface. Verify that transaction details show the correct associated data. Test search, filtering, and sorting functionality."
+    },
+    {
+      "id": 15,
+      "title": "Implement Settings Management in Admin",
+      "description": "Create the admin interface for managing application settings, including Authorize.Net credentials.",
+      "status": "pending",
+      "dependencies": [
+        7
+      ],
+      "priority": "medium",
+      "details": "Develop a settings page with sections for different configuration options. Create a form for managing Authorize.Net credentials. Implement a secure Convex action for updating environment variables that can only be called by admins. Ensure sensitive information is masked when displayed.",
+      "testStrategy": "Test saving and updating settings. Verify that only admin users can access and modify settings. Ensure sensitive information is properly masked in the UI. Test the secure Convex action for updating environment variables."
+    },
+    {
+      "id": 16,
+      "title": "Create User Frontend Layout",
+      "description": "Develop the base layout for the user-facing frontend with navigation and authentication components using Clerk for authentication.",
+      "status": "pending",
+      "dependencies": [
+        2,
+        5
+      ],
+      "priority": "high",
+      "details": "Create a user frontend layout with header, footer, and navigation using Shadcn components. Implement responsive design using Tailwind CSS. Integrate Clerk authentication components (<SignInButton>, <SignUpButton>, <UserButton>) or create custom buttons that trigger Clerk modals. Set up the route structure for user-facing pages. Ensure the layout adapts based on authentication state using Clerk hooks (useAuth, useUser) to conditionally render UI elements.",
+      "testStrategy": "Verify that the user layout renders correctly with all components. Test responsive behavior on different screen sizes. Ensure authentication state is correctly reflected in the UI using Clerk's authentication state. Test that Clerk components render properly and authentication flows work as expected."
+    },
+    {
+      "id": 17,
+      "title": "Implement Course Listing and Details Pages",
+      "description": "Create pages for users to browse available courses and view course details.",
+      "status": "pending",
+      "dependencies": [
+        3,
+        16
+      ],
+      "priority": "high",
+      "details": "Develop a courses listing page showing available courses. Create a course details page with description, lessons overview, and purchase option. Implement Convex queries for fetching courses and their related data. Add filtering and search functionality for the courses list.",
+      "testStrategy": "Test that courses are correctly displayed on the listing page. Verify that course details show the correct information. Test filtering and search functionality. Ensure purchase options are correctly displayed based on user enrollment status."
+    },
+    {
+      "id": 18,
+      "title": "Implement User Dashboard",
+      "description": "Create a dashboard for users to view their purchased courses and access course content.",
+      "status": "pending",
+      "dependencies": [
+        5,
+        16
+      ],
+      "priority": "high",
+      "details": "Develop a user dashboard showing purchased courses. Create a clean and intuitive interface for accessing course content. Implement Convex queries for fetching user-specific data, linking via Clerk user ID stored in Convex. Ensure the dashboard is only accessible to authenticated users, verified using Clerk's hooks (useAuth) or middleware.",
+      "testStrategy": "Test that the dashboard correctly displays purchased courses. Verify that course access links work correctly. Ensure unauthenticated users are redirected appropriately using Clerk authentication. Test that user-specific data is correctly fetched based on the Clerk user ID."
+    },
+    {
+      "id": 19,
+      "title": "Implement Course Consumption Interface",
+      "description": "Create the interface for users to consume course content, including lessons and topics.",
+      "status": "pending",
+      "dependencies": [
+        18
+      ],
+      "priority": "high",
+      "details": "Develop a course consumption interface with navigation between lessons and topics. Create components for displaying different types of topic content (text, video). Implement progress tracking functionality. Create Convex queries for fetching course content and mutations for updating progress.",
+      "testStrategy": "Test navigation between lessons and topics. Verify that different content types display correctly. Test that only purchased courses are accessible. Ensure progress is correctly tracked and persisted."
+    },
+    {
+      "id": 20,
+      "title": "Implement Quiz Taking Functionality",
+      "description": "Create the interface for users to take quizzes and view results.",
+      "status": "pending",
+      "dependencies": [
+        19
+      ],
+      "priority": "medium",
+      "details": "Develop a quiz interface for answering multiple-choice questions. Create a results view showing pass/fail status. Implement Convex queries for fetching quiz questions and mutations for submitting answers. Ensure quizzes are only accessible within the context of purchased courses.",
+      "testStrategy": "Test taking quizzes with different question types. Verify that quiz results are correctly calculated and displayed. Test that quiz progress is saved correctly."
+    },
+    {
+      "id": 21,
+      "title": "Set Up Authorize.Net Integration",
+      "description": "Integrate Authorize.Net for payment processing, including client-side tokenization.",
+      "status": "pending",
+      "dependencies": [
+        4
+      ],
+      "priority": "high",
+      "details": "Install and configure the react-authorize-net package. Set up the PaymentForm component with proper configuration. Create a Convex action for processing payments using the Authorize.Net Node SDK. Implement secure handling of payment credentials. Set up test environment for Authorize.Net.",
+      "testStrategy": "Test the payment form rendering and tokenization process. Verify that the Convex action correctly processes payments. Test with Authorize.Net sandbox credentials. Ensure error handling works correctly."
+    },
+    {
+      "id": 22,
+      "title": "Implement Dynamic Checkout Pages",
+      "description": "Create dynamic checkout pages for purchasing products with integrated Authorize.Net payment form.",
+      "status": "pending",
+      "dependencies": [
+        12,
+        21
+      ],
+      "priority": "high",
+      "details": "Develop dynamic checkout pages at /checkout/[productId]. Create components for displaying product details and price. Integrate the Authorize.Net PaymentForm component. Implement Convex queries for fetching product details. Ensure the checkout page handles both authenticated and unauthenticated users.",
+      "testStrategy": "Test the checkout flow with different products. Verify that product details and prices are correctly displayed. Test the payment form with various input scenarios. Ensure the page handles authentication state correctly."
+    },
+    {
+      "id": 23,
+      "title": "Implement Payment Processing Flow",
+      "description": "Create the complete payment processing flow from client-side tokenization to transaction creation.",
+      "status": "pending",
+      "dependencies": [
+        21,
+        22
+      ],
+      "priority": "high",
+      "details": "Implement the client-side payment submission flow. Create a Convex action (internalCreateAuthNetTransaction) for processing payments. Handle user creation/association based on Clerk authentication: if user is logged in (check via Clerk's useAuth), pass the Clerk user ID to the Convex action; if not logged in, implement logic to either prompt for signup/login via Clerk before checkout, or create/associate a user record in Convex based on email collected during guest checkout, potentially linking to a Clerk user later if they sign up with the same email. Ensure transaction records link to the correct user ID (either Convex internal ID or Clerk ID stored in Convex). Implement error handling and validation. Ensure transaction records are created with proper details.",
+      "testStrategy": "Test the complete payment flow from form submission to transaction creation. Verify that transactions are correctly recorded in the database and linked to the appropriate user ID. Test both authenticated (Clerk) user flows and guest checkout flows. Verify that guest users can be properly associated with Clerk accounts if they later sign up. Test error scenarios and validation. Ensure user association works correctly for both authenticated and unauthenticated users."
+    },
+    {
+      "id": 24,
+      "title": "Create Order Confirmation Page",
+      "description": "Develop the order confirmation page displayed after successful payment processing.",
+      "status": "pending",
+      "dependencies": [
+        23
+      ],
+      "priority": "medium",
+      "details": "Create an order confirmation page showing transaction details and purchased items. Implement real-time status updates using Convex's real-time capabilities. Provide links to access purchased content. Create a clean and user-friendly design using Shadcn UI components.",
+      "testStrategy": "Test the order confirmation page with various transaction scenarios. Verify that real-time updates work correctly. Ensure links to purchased content are correct and functional."
+    },
+    {
+      "id": 25,
+      "title": "Implement Post-Payment Access Rights",
+      "description": "Set up the system for granting access to purchased courses after successful payment.",
+      "status": "pending",
+      "dependencies": [
+        23
+      ],
+      "priority": "high",
+      "details": "Create a Convex mutation for granting course access rights to users. Implement the logic to associate users with purchased courses. Ensure this process is triggered automatically after successful payment. Handle edge cases such as failed payments or retries.",
+      "testStrategy": "Test that users gain access to courses after successful payment. Verify that access rights are correctly recorded in the database. Test edge cases such as payment failures or retries."
+    },
+    {
+      "id": 26,
+      "title": "Implement User Profile Management",
+      "description": "Create functionality for users to view and update their profile information using Clerk's components and Convex for app-specific data.",
+      "status": "pending",
+      "dependencies": [
+        5,
+        16
+      ],
+      "priority": "low",
+      "details": "Implement user profile management using Clerk's `<UserProfile />` component for standard profile information (email, password, MFA, connected accounts). For app-specific profile data that needs to be stored in Convex, create separate forms/pages that link to the user via their Clerk user ID. Ensure all profile-related pages are only accessible to authenticated users.",
+      "testStrategy": "Test that Clerk's `<UserProfile />` component renders correctly and allows users to update their standard profile information. For app-specific profile data, test that forms correctly save data to Convex and retrieve it based on the Clerk user ID. Verify validation works correctly for custom fields. Ensure changes are persisted to the database. Test that only authenticated users can access and modify their own profile information.",
+      "subtasks": [
+        {
+          "id": "26.1",
+          "title": "Integrate Clerk's UserProfile component",
+          "description": "Add the Clerk `<UserProfile />` component to the profile page for managing standard user information.",
+          "status": "pending"
+        },
+        {
+          "id": "26.2",
+          "title": "Design app-specific profile data schema",
+          "description": "Determine what additional user profile data needs to be stored in Convex and create the appropriate schema.",
+          "status": "pending"
+        },
+        {
+          "id": "26.3",
+          "title": "Create forms for app-specific profile data",
+          "description": "Develop forms for users to update app-specific profile information that will be stored in Convex.",
+          "status": "pending"
+        },
+        {
+          "id": "26.4",
+          "title": "Implement Convex mutations for app-specific data",
+          "description": "Create Convex mutations to store and update app-specific profile data, linking it to the user's Clerk ID.",
+          "status": "pending"
+        },
+        {
+          "id": "26.5",
+          "title": "Add authentication checks",
+          "description": "Ensure all profile-related pages and mutations verify user authentication and prevent users from accessing others' data.",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "title": "Create Comprehensive Error Handling",
+      "description": "Implement robust error handling throughout the application for both frontend and backend operations.",
+      "status": "pending",
+      "dependencies": [
+        19,
+        23
+      ],
+      "priority": "medium",
+      "details": "Develop error handling components and utilities. Implement error boundaries for React components. Create consistent error messaging for Convex operations. Handle network errors and retry mechanisms. Ensure user-friendly error messages are displayed.",
+      "testStrategy": "Test error scenarios throughout the application. Verify that error messages are user-friendly and helpful. Ensure error boundaries catch and display component errors correctly. Test network error handling and retry mechanisms."
+    },
+    {
+      "id": 28,
+      "title": "Implement Application-Wide Search",
+      "description": "Create a search functionality that works across courses, lessons, and topics.",
+      "status": "pending",
+      "dependencies": [
+        17,
+        19
+      ],
+      "priority": "low",
+      "details": "Develop a search component that can be used throughout the application. Implement Convex queries for searching across different entities. Create a search results page showing categorized results. Ensure search is performant and user-friendly.",
+      "testStrategy": "Test searching with various queries. Verify that results are correctly categorized and displayed. Test search performance with larger datasets. Ensure the search UI is intuitive and responsive."
+    },
+    {
+      "id": 29,
+      "title": "Implement Comprehensive Testing",
+      "description": "Set up and implement testing for critical application components and flows.",
+      "status": "pending",
+      "dependencies": [
+        19,
+        23,
+        25
+      ],
+      "priority": "medium",
+      "details": "Set up testing frameworks and utilities. Create unit tests for critical components. Implement integration tests for key flows like checkout and course access. Set up end-to-end testing for critical user journeys. Ensure tests are maintainable and provide good coverage.",
+      "testStrategy": "Verify that tests provide good coverage of critical functionality. Ensure tests are reliable and not flaky. Test that key user journeys work correctly end-to-end."
+    },
+    {
+      "id": 30,
+      "title": "Prepare for Deployment",
+      "description": "Set up the deployment workflow for both Next.js and Convex components of the application.",
+      "status": "pending",
+      "dependencies": [
+        29
+      ],
+      "priority": "medium",
+      "details": "Configure environment variables for production. Set up the deployment workflow for Next.js. Configure the Convex push process for schema updates. Create documentation for the deployment process. Ensure all necessary build steps are included.",
+      "testStrategy": "Test the deployment process in a staging environment. Verify that the application works correctly after deployment. Ensure environment variables are correctly configured. Test that Convex schema updates are applied correctly."
+    }
+  ],
+  "metadata": {
+    "projectName": "WSA - Learning Management & E-commerce Platform",
+    "totalTasks": 30,
+    "sourceFile": "/Users/desmondtatilian/Builds/t3-launchthat/apps/wsa/scripts/prd.txt",
+    "generatedAt": "2023-11-15"
+  }
+}
