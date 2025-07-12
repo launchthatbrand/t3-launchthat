@@ -4,9 +4,10 @@ import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
+import { Id } from "@convex-config/_generated/dataModel";
 import { useQuery } from "convex/react";
 
-import { Card, CardContent } from "@acme/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { AppSidebar } from "@acme/ui/layout/AppSidebar";
 import { ScrollArea } from "@acme/ui/scroll-area";
 import { SidebarInset } from "@acme/ui/sidebar";
@@ -37,6 +38,10 @@ export default function TasksLayout({
   const router = useRouter();
   const pathname = usePathname();
   const boardId = getBoardIdFromPath(pathname);
+  const board = useQuery(
+    api.tasks.boards.getBoard,
+    boardId ? { boardId: boardId as Id<"taskBoards"> } : "skip",
+  );
 
   // Determine active tab from pathname
   let tabValue: string = "tasks";
@@ -45,38 +50,41 @@ export default function TasksLayout({
   else tabValue = "tasks";
 
   const handleTabChange = (value: string) => {
-    if (!boardId) return;
-    let url = `/admin/tasks/board/${boardId}`;
-    if (value === "boards") url += "/kaban";
-    else if (value === "calendar") url += "/calendar";
+    let url: string;
+    if (boardId) {
+      url = `/admin/tasks/board/${boardId}`;
+      if (value === "boards") url += "/kaban";
+      else if (value === "calendar") url += "/calendar";
+    } else {
+      url = `/admin/tasks`;
+      if (value === "boards") url += "/kaban";
+      else if (value === "calendar") url += "/calendar";
+    }
     router.push(url);
   };
 
   return (
-    <TaskSidebarProvider>
-      <TasksSidebar variant="floating" collapsible="icon" />
-      <SidebarInset className="m-2">
-        <header>
-          <Card className="h-16 w-full items-center shadow-none">
-            <CardContent className="flex h-16 flex-row items-center gap-2 p-2">
-              <TaskSidebarTrigger className="-ml-1" />
-              <Separator
-                orientation="vertical"
-                className="mr-2 data-[orientation=vertical]:h-4"
-              />
-              <Tabs value={tabValue} onValueChange={handleTabChange}>
-                <TabsList>
-                  <TabsTrigger value="tasks">Main</TabsTrigger>
-                  <TabsTrigger value="boards">Kaban</TabsTrigger>
-                  <TabsTrigger value="calendar">Calendar</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </header>
+    <div>
+      <header>
+        <Card className="w-full items-center shadow-none">
+          <CardHeader className="flex flex-row items-center justify-between p-3">
+            <CardTitle className="text-xl font-bold">
+              {board?.name ?? "All Tasks"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex h-16 flex-row items-center gap-2 p-2">
+            <Tabs value={tabValue} onValueChange={handleTabChange}>
+              <TabsList>
+                <TabsTrigger value="tasks">Main</TabsTrigger>
+                <TabsTrigger value="boards">Kaban</TabsTrigger>
+                <TabsTrigger value="calendar">Calendar</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </header>
 
-        {children}
-      </SidebarInset>
-    </TaskSidebarProvider>
+      {children}
+    </div>
   );
 }

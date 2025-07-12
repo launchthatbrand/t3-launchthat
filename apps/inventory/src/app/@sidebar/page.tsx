@@ -26,7 +26,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@acme/ui/components/sidebar";
+} from "@acme/ui/sidebar";
 import { NavMain } from "@acme/ui/sidebar/nav-main";
 
 // import { GET_COURSES } from "~/app/course/queries";

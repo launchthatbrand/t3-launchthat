@@ -1,13 +1,13 @@
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import React from "react";
+import { api } from "@convex-config/_generated/api";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "convex/react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
-import React from "react";
-import { api } from "@convex-config/_generated/api";
-import { useForm } from "react-hook-form";
-import { useMutation } from "convex/react";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 
 const boardSchema = z.object({
   name: z.string().min(1, "Board name is required"),
@@ -75,8 +75,8 @@ export const BoardForm: React.FC<BoardFormProps> = ({ board, onSuccess }) => {
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex justify-end gap-2">
-        <Button type="submit" {...(isSubmitting ? { loading: true } : {})}>
-          {board ? "Save Changes" : "Create Board"}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Saving..." : board ? "Save Changes" : "Create Board"}
         </Button>
       </div>
     </form>

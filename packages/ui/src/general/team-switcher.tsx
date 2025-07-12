@@ -17,7 +17,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@acme/ui/components/sidebar";
+} from "@acme/ui/sidebar";
 
 const mockNfts = [
   {

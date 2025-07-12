@@ -3,10 +3,10 @@ import Link from "next/link";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 
 import { cn, Separator } from "@acme/ui";
-import { SidebarTrigger } from "@acme/ui/components/sidebar";
 import { Logo } from "@acme/ui/general/Logo";
 import { NavUser } from "@acme/ui/general/nav-user";
 import TopNavbar from "@acme/ui/general/TopNavbar";
+import { SidebarTrigger } from "@acme/ui/sidebar";
 
 const SidebarTriggerWrapper = ({ className }: { className?: string }) => {
   // const { isInMonday } = useMondayContext();

@@ -2,8 +2,13 @@
 
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ChevronRight, MailIcon, PlusCircleIcon } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  ChevronRight,
+  MailIcon,
+  MoveLeftIcon,
+  PlusCircleIcon,
+} from "lucide-react";
 
 import { Button, cn } from "@acme/ui";
 import {
@@ -20,7 +25,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-} from "@acme/ui/components/sidebar";
+} from "@acme/ui/sidebar";
 
 import { QuickCreateDialog } from "./quick-create-dialog";
 
@@ -67,30 +72,11 @@ export function NavMain({ items }: { items: NavItem[] }) {
     return subItems.some((subItem) => isActive(subItem.url));
   };
 
+  const router = useRouter();
+
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
-        <SidebarMenu>
-          <SidebarMenuItem className="flex items-center gap-2">
-            <QuickCreateDialog>
-              <SidebarMenuButton
-                tooltip="Quick Create"
-                className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
-              >
-                <PlusCircleIcon />
-                <span>Quick Create</span>
-              </SidebarMenuButton>
-            </QuickCreateDialog>
-            <Button
-              size="icon"
-              className="h-9 w-9 shrink-0 group-data-[collapsible=icon]:opacity-0"
-              variant="outline"
-            >
-              <MailIcon />
-              <span className="sr-only">Inbox</span>
-            </Button>
-          </SidebarMenuItem>
-        </SidebarMenu>
         <SidebarMenu>
           {items.map((item) => {
             const itemActive = isActive(item.url);
@@ -152,7 +138,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
 
             // Otherwise render as a regular menu item
             return (
-              <SidebarMenuItem key={item.title}>
+              <SidebarMenuItem key={item.url}>
                 <SidebarMenuButton
                   tooltip={item.title}
                   asChild

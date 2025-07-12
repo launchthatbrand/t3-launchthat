@@ -16,5 +16,8 @@ export const tasksSchema = {
     createdAt: v.number(), // Unix timestamp (ms)
     updatedAt: v.number(), // Unix timestamp (ms)
     boardId: v.optional(v.id("taskBoards")),
-  }),
+    sortIndex: v.optional(v.number()), // Order index for DnD reordering
+  })
+    .index("by_boardId_and_sortIndex", ["boardId", "sortIndex"])
+    .index("by_sortIndex", ["sortIndex"]),
 };

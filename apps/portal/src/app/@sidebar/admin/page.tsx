@@ -21,9 +21,9 @@ import {
   Users,
 } from "lucide-react";
 
-import { SidebarHeader } from "@acme/ui/components/sidebar";
 import { NavMain } from "@acme/ui/general/nav-main";
 import { TeamSwitcher } from "@acme/ui/general/team-switcher";
+import { SidebarHeader } from "@acme/ui/sidebar";
 
 // import { useLearndash } from "../hooks/useLearndash";
 
@@ -259,6 +259,11 @@ export default function DefaultSidebar() {
       ],
     },
     {
+      title: "Tasks",
+      url: "/admin/tasks",
+      icon: BookOpen,
+    },
+    {
       title: "Settings",
       url: "/admin/settings",
       icon: Settings2,
@@ -314,7 +319,7 @@ export default function DefaultSidebar() {
       <SidebarHeader>
         <TeamSwitcher />
       </SidebarHeader>
-      TEST
+      PAGE
       <NavMain items={navMain} />
     </>
   );

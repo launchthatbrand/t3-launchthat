@@ -18,6 +18,9 @@ import {
   CollapsibleTrigger,
 } from "@acme/ui/components/collapsible";
 import { ScrollArea } from "@acme/ui/components/scroll-area";
+import { Logo } from "@acme/ui/general/Logo";
+import { NavUser } from "@acme/ui/general/nav-user";
+import TopNavbar from "@acme/ui/general/TopNavbar";
 import {
   SidebarFooter,
   SidebarGroup,
@@ -27,10 +30,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
-} from "@acme/ui/components/sidebar";
-import { Logo } from "@acme/ui/general/Logo";
-import { NavUser } from "@acme/ui/general/nav-user";
-import TopNavbar from "@acme/ui/general/TopNavbar";
+} from "@acme/ui/sidebar";
 import { NavMain } from "@acme/ui/sidebar/nav-main";
 
 // import { GET_COURSES } from "~/app/course/queries";

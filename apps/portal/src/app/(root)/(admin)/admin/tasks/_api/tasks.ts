@@ -1,7 +1,6 @@
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
-
 import { api } from "@/convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
 
 export function useTasks() {
   return useQuery(api.tasks.index.listTasks, {});
@@ -21,3 +20,6 @@ export function useTasksByBoard(boardId: Id<"taskBoards"> | null) {
 export const useCreateTask = () => useMutation(api.tasks.index.createTask);
 export const useUpdateTask = () => useMutation(api.tasks.index.updateTask);
 export const useDeleteTask = () => useMutation(api.tasks.index.deleteTask);
+
+// Add a hook for reordering tasks
+export const useReorderTasks = () => useMutation(api.tasks.index.reorderTasks);

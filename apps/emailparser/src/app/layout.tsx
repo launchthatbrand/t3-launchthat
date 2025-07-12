@@ -14,8 +14,8 @@ import { GeistSans } from "geist/font/sans";
 // import { Providers } from "~/app/providers";
 // import { InvitationBadge } from "~/components/groups/InvitationBadge";
 import { Button, cn, NavItem, SidebarInset, SiteHeader } from "@acme/ui";
-import { AppSidebar } from "@acme/ui/components/sidebar-layout/app-sidebar";
 import StandardLayout from "@acme/ui/layout/StandardLayout";
+import { AppSidebar } from "@acme/ui/sidebar-layout/app-sidebar";
 
 import { Providers } from "./providers";
 

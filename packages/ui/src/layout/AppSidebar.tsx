@@ -10,7 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-} from "@acme/ui/components/sidebar";
+} from "@acme/ui/sidebar";
 
 import { NavMain } from "../general/nav-main";
 import { NavUser } from "../general/NavUser";

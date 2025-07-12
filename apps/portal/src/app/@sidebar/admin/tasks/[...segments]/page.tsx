@@ -1,6 +1,9 @@
 "use client";
 
-import { useSelectedLayoutSegment } from "next/navigation";
+import { useRouter, useSelectedLayoutSegment } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { Doc } from "@convex-config/_generated/dataModel";
+import { useQuery } from "convex/react";
 import {
   AudioWaveform,
   BookOpen,
@@ -11,6 +14,7 @@ import {
   HelpCircle,
   Image,
   Map,
+  MoveLeftIcon,
   PieChart,
   Settings2,
   Share2,
@@ -23,7 +27,14 @@ import {
 
 import { NavMain } from "@acme/ui/general/nav-main";
 import { TeamSwitcher } from "@acme/ui/general/team-switcher";
-import { SidebarHeader } from "@acme/ui/sidebar";
+import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@acme/ui/sidebar";
 
 // import { useLearndash } from "../hooks/useLearndash";
 
@@ -305,17 +316,36 @@ export default function DefaultSidebar() {
       ],
     },
   ];
+  const boards: Doc<"taskBoards">[] | undefined = useQuery(
+    api.tasks.boards.listBoards,
+    {},
+  );
 
-  const loginSegment = useSelectedLayoutSegment("sidebar");
-  console.log("loginSegment2", loginSegment);
+  const router = useRouter();
 
   return (
-    <>
-      <SidebarHeader>
-        <TeamSwitcher />
-      </SidebarHeader>
-      DEFAULT
-      <NavMain items={navMain} />
-    </>
+    <SidebarGroup>
+      <SidebarGroupContent className="flex flex-col gap-2">
+        <SidebarMenu>
+          <SidebarMenuItem className="flex items-center gap-2">
+            <SidebarMenuButton
+              tooltip="Quick Create"
+              onClick={() => router.push("/admin")}
+              className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
+            >
+              <MoveLeftIcon />
+              <span>Back To Dashboard</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        <NavMain
+          items={(boards ?? []).map((board) => ({
+            title: board.name,
+            url: `/admin/tasks/board/${board._id}`,
+            key: board._id,
+          }))}
+        />
+      </SidebarGroupContent>
+    </SidebarGroup>
   );
 }

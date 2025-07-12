@@ -19,9 +19,9 @@ import {
   Users,
 } from "lucide-react";
 
-import { SidebarHeader } from "@acme/ui/components/sidebar";
 import { NavMain } from "@acme/ui/general/nav-main";
 import { TeamSwitcher } from "@acme/ui/general/team-switcher";
+import { SidebarHeader } from "@acme/ui/sidebar";
 
 // import { useLearndash } from "../hooks/useLearndash";
 

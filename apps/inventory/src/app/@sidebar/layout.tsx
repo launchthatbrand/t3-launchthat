@@ -1,11 +1,7 @@
 import { headers } from "next/headers";
 
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-} from "@acme/ui/components/sidebar";
 import { TeamSwitcher } from "@acme/ui/general/team-switcher";
+import { Sidebar, SidebarContent, SidebarHeader } from "@acme/ui/sidebar";
 
 // function isMondayFrame() {
 //   const headersList = headers();
