@@ -8,11 +8,6 @@
  * @module
  */
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
 import type * as accessControl from "../accessControl.js";
 import type * as actions_payments from "../actions/payments.js";
 import type * as calendar_attendance_index from "../calendar/attendance/index.js";
@@ -38,6 +33,8 @@ import type * as calendar_reminders from "../calendar/reminders.js";
 import type * as calendar_schema_calendarSchema from "../calendar/schema/calendarSchema.js";
 import type * as calendar_schema_index from "../calendar/schema/index.js";
 import type * as cart from "../cart.js";
+import type * as categories_mutations from "../categories/mutations.js";
+import type * as categories_queries from "../categories/queries.js";
 import type * as cms__generated_collections_Posts from "../cms/_generated/collections/Posts.js";
 import type * as cms__generated_collections_Transactions from "../cms/_generated/collections/Transactions.js";
 import type * as cms__generated_collections_index from "../cms/_generated/collections/index.js";
@@ -64,6 +61,8 @@ import type * as contacts_schema_contactsSchema from "../contacts/schema/contact
 import type * as contacts_schema_index from "../contacts/schema/index.js";
 import type * as contacts_tags from "../contacts/tags.js";
 import type * as contacts_types from "../contacts/types.js";
+import type * as contentType_mutations from "../contentType/mutations.js";
+import type * as contentType_queries from "../contentType/queries.js";
 import type * as core_lib_auth from "../core/lib/auth.js";
 import type * as core_lib_index from "../core/lib/index.js";
 import type * as core_lib_permissions from "../core/lib/permissions.js";
@@ -174,6 +173,8 @@ import type * as lms_quizzes_index from "../lms/quizzes/index.js";
 import type * as lms_schema_index from "../lms/schema/index.js";
 import type * as lms_schema_lmsSchema from "../lms/schema/lmsSchema.js";
 import type * as lms_topics_index from "../lms/topics/index.js";
+import type * as media_categories from "../media/categories.js";
+import type * as media_http from "../media/http.js";
 import type * as media_index from "../media/index.js";
 import type * as media_mutations from "../media/mutations.js";
 import type * as media_queries from "../media/queries.js";
@@ -242,6 +243,12 @@ import type * as vimeo_index from "../vimeo/index.js";
 import type * as vimeo_mutations from "../vimeo/mutations.js";
 import type * as vimeo_queries from "../vimeo/queries.js";
 
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
+
 /**
  * A utility for referencing Convex functions in your app's API.
  *
@@ -276,6 +283,8 @@ declare const fullApi: ApiFromModules<{
   "calendar/schema/calendarSchema": typeof calendar_schema_calendarSchema;
   "calendar/schema/index": typeof calendar_schema_index;
   cart: typeof cart;
+  "categories/mutations": typeof categories_mutations;
+  "categories/queries": typeof categories_queries;
   "cms/_generated/collections/Posts": typeof cms__generated_collections_Posts;
   "cms/_generated/collections/Transactions": typeof cms__generated_collections_Transactions;
   "cms/_generated/collections/index": typeof cms__generated_collections_index;
@@ -302,6 +311,8 @@ declare const fullApi: ApiFromModules<{
   "contacts/schema/index": typeof contacts_schema_index;
   "contacts/tags": typeof contacts_tags;
   "contacts/types": typeof contacts_types;
+  "contentType/mutations": typeof contentType_mutations;
+  "contentType/queries": typeof contentType_queries;
   "core/lib/auth": typeof core_lib_auth;
   "core/lib/index": typeof core_lib_index;
   "core/lib/permissions": typeof core_lib_permissions;
@@ -412,6 +423,8 @@ declare const fullApi: ApiFromModules<{
   "lms/schema/index": typeof lms_schema_index;
   "lms/schema/lmsSchema": typeof lms_schema_lmsSchema;
   "lms/topics/index": typeof lms_topics_index;
+  "media/categories": typeof media_categories;
+  "media/http": typeof media_http;
   "media/index": typeof media_index;
   "media/mutations": typeof media_mutations;
   "media/queries": typeof media_queries;
@@ -480,11 +493,58 @@ declare const fullApi: ApiFromModules<{
   "vimeo/mutations": typeof vimeo_mutations;
   "vimeo/queries": typeof vimeo_queries;
 }>;
+declare const fullApiWithMounts: typeof fullApi;
+
 export declare const api: FilterApi<
-  typeof fullApi,
+  typeof fullApiWithMounts,
   FunctionReference<any, "public">
 >;
 export declare const internal: FilterApi<
-  typeof fullApi,
+  typeof fullApiWithMounts,
   FunctionReference<any, "internal">
 >;
+
+export declare const components: {
+  actionCache: {
+    crons: {
+      purge: FunctionReference<
+        "mutation",
+        "internal",
+        { expiresAt?: number },
+        null
+      >;
+    };
+    lib: {
+      get: FunctionReference<
+        "query",
+        "internal",
+        { args: any; name: string; ttl: number | null },
+        { kind: "hit"; value: any } | { expiredEntry?: string; kind: "miss" }
+      >;
+      put: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          args: any;
+          expiredEntry?: string;
+          name: string;
+          ttl: number | null;
+          value: any;
+        },
+        { cacheHit: boolean; deletedExpiredEntry: boolean }
+      >;
+      remove: FunctionReference<
+        "mutation",
+        "internal",
+        { args: any; name: string },
+        null
+      >;
+      removeAll: FunctionReference<
+        "mutation",
+        "internal",
+        { batchSize?: number; before?: number; name?: string },
+        null
+      >;
+    };
+  };
+};

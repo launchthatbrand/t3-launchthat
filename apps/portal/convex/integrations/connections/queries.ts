@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import { Doc, Id } from "../../_generated/dataModel";
-import { query } from "../../_generated/server";
+import { internalQuery, query } from "../../_generated/server";
 
 /**
  * List all connections, optionally filtered by app or owner
@@ -152,5 +152,30 @@ export const get = query({
           }
         : null,
     };
+  },
+});
+
+export const getVimeoApp = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("apps")
+      .filter((q) => q.eq(q.field("name"), "Vimeo"))
+      .unique();
+  },
+});
+
+export const getConnectionByAppAndOwner = internalQuery({
+  args: {
+    appId: v.id("apps"),
+    ownerId: v.union(v.id("users"), v.string()),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("connections")
+      .withIndex("by_app_and_owner", (q) =>
+        q.eq("appId", args.appId).eq("ownerId", args.ownerId),
+      )
+      .unique();
   },
 });

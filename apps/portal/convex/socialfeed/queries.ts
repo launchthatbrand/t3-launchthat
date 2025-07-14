@@ -6,6 +6,114 @@ import { query, QueryCtx } from "../_generated/server";
 import { findSimilarUsers } from "./lib/recommendationEngine";
 import { hashtagResponseValidator } from "./schema/hashtagsSchema";
 
+// Define a common user model based on observed properties for internal use
+interface EnrichedUser {
+  _id: Id<"users">;
+  name: string;
+  image?: string;
+}
+
+// Define a common comment return type to avoid duplication
+const commentReturnType = v.object({
+  _id: v.id("comments"),
+  _creationTime: v.number(),
+  parentId: v.union(
+    v.id("feedItems"),
+    v.id("courses"),
+    v.id("lessons"),
+    v.id("topics"),
+    v.id("quizzes"),
+    v.id("posts"),
+    v.id("downloads"),
+    v.id("helpdeskArticles"),
+  ),
+  parentType: v.union(
+    v.literal("feedItem"),
+    v.literal("course"),
+    v.literal("lesson"),
+    v.literal("topic"),
+    v.literal("quiz"),
+    v.literal("post"),
+    v.literal("download"),
+    v.literal("helpdeskArticle"),
+  ),
+  userId: v.id("users"),
+  content: v.string(),
+  parentCommentId: v.optional(v.id("comments")),
+  mediaUrls: v.optional(v.array(v.string())),
+  updatedAt: v.optional(v.number()),
+  user: v.object({
+    _id: v.id("users"),
+    name: v.string(),
+    image: v.optional(v.string()),
+  }),
+  repliesCount: v.number(),
+});
+
+type EnrichedComment = Doc<"comments"> & {
+  user: EnrichedUser;
+  repliesCount: number;
+};
+
+// Helper function to enrich comments with user data and replies count
+async function enrichComments(ctx: QueryCtx, page: Doc<"comments">[]) {
+  // Early return if no items
+  if (page.length === 0) {
+    return [];
+  }
+
+  // Collect all user IDs
+  const userIds = [...new Set(page.map((comment) => comment.userId))];
+
+  // Get all users in one batch
+  const users = await Promise.all(
+    userIds.map(async (id) => {
+      const user = await ctx.db.get(id);
+      return user
+        ? ({
+            _id: user._id,
+            name: user.name ?? "Unknown User",
+            image: user.image ?? undefined,
+          } as EnrichedUser)
+        : null;
+    }),
+  );
+
+  // Create a map of user IDs to user objects
+  const userMap = new Map<Id<"users">, EnrichedUser>();
+  users.forEach((user) => {
+    if (user) {
+      userMap.set(user._id, user);
+    }
+  });
+
+  // Count replies for each comment
+  const commentsWithCounts = await Promise.all(
+    page.map(async (comment: Doc<"comments">) => {
+      // Count replies
+      const repliesCount = await ctx.db
+        .query("comments")
+        .withIndex("by_parentCommentId", (q) =>
+          q.eq("parentCommentId", comment._id),
+        )
+        .collect()
+        .then((replies) => replies.length);
+
+      return {
+        ...comment,
+        repliesCount,
+        user: userMap.get(comment.userId) ?? {
+          _id: comment.userId,
+          name: "Unknown User",
+          image: undefined,
+        },
+      };
+    }),
+  );
+
+  return commentsWithCounts;
+}
+
 // Define a common feed item return type to avoid duplication
 const feedItemReturnType = v.object({
   _id: v.id("feedItems"),
@@ -44,13 +152,6 @@ const feedItemReturnType = v.object({
   mentions: v.optional(v.array(v.string())),
   mentionedUserIds: v.optional(v.array(v.id("users"))),
 });
-
-// Define a common user model based on observed properties for internal use
-interface EnrichedUser {
-  _id: Id<"users">;
-  name: string;
-  image?: string;
-}
 
 // Helper function to enrich feed items with creator, reaction counts, etc.
 async function enrichFeedItems(ctx: QueryCtx, page: Doc<"feedItems">[]) {
@@ -97,7 +198,9 @@ async function enrichFeedItems(ctx: QueryCtx, page: Doc<"feedItems">[]) {
       // Count comments
       const commentsCount = await ctx.db
         .query("comments")
-        .withIndex("by_feed_item", (q) => q.eq("feedItemId", item._id))
+        .withIndex("by_parent", (q) =>
+          q.eq("parentId", item._id).eq("parentType", "feedItem"),
+        )
         .collect()
         .then((comments) => comments.length);
 
@@ -129,16 +232,22 @@ async function enrichFeedItems(ctx: QueryCtx, page: Doc<"feedItems">[]) {
  */
 export const getUniversalFeed = query({
   args: { paginationOpts: paginationOptsValidator },
-  returns: v.array(feedItemReturnType),
+  returns: v.object({
+    page: v.array(feedItemReturnType),
+    continueCursor: v.union(v.string(), v.null()),
+    isDone: v.boolean(),
+  }),
   handler: async (ctx, args) => {
     // Get feed items that are public
-    const { page } = await ctx.db
+    const { page, continueCursor, isDone } = await ctx.db
       .query("feedItems")
       .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
       .order("desc")
       .paginate(args.paginationOpts);
 
-    return enrichFeedItems(ctx, page);
+    const enrichedFeedItems = await enrichFeedItems(ctx, page);
+
+    return { page: enrichedFeedItems, continueCursor, isDone };
   },
 });
 
@@ -150,7 +259,11 @@ export const getPersonalizedFeed = query({
     userId: v.id("users"),
     paginationOpts: paginationOptsValidator,
   },
-  returns: v.array(feedItemReturnType),
+  returns: v.object({
+    page: v.array(feedItemReturnType),
+    continueCursor: v.union(v.string(), v.null()),
+    isDone: v.boolean(),
+  }),
   handler: async (ctx, args) => {
     // Get all users this user follows
     const subscriptions = await ctx.db
@@ -164,7 +277,7 @@ export const getPersonalizedFeed = query({
     const followedUserIds = subscriptions.map((sub) => sub.followId);
 
     // Get feed items from followed users and public items
-    const { page } = await ctx.db
+    const { page, continueCursor, isDone } = await ctx.db
       .query("feedItems")
       .filter((q) => {
         // Include public posts
@@ -192,7 +305,9 @@ export const getPersonalizedFeed = query({
       .order("desc")
       .paginate(args.paginationOpts);
 
-    return enrichFeedItems(ctx, page);
+    const enrichedFeedItems = await enrichFeedItems(ctx, page);
+
+    return { page: enrichedFeedItems, continueCursor, isDone };
   },
 });
 
@@ -204,10 +319,14 @@ export const getGroupFeed = query({
     groupId: v.id("groups"),
     paginationOpts: paginationOptsValidator,
   },
-  returns: v.array(feedItemReturnType),
+  returns: v.object({
+    page: v.array(feedItemReturnType),
+    continueCursor: v.union(v.string(), v.null()),
+    isDone: v.boolean(),
+  }),
   handler: async (ctx, args) => {
     // Get feed items that are for this group
-    const { page } = await ctx.db
+    const { page, continueCursor, isDone } = await ctx.db
       .query("feedItems")
       .withIndex("by_module", (q) =>
         q.eq("moduleType", "group").eq("moduleId", args.groupId),
@@ -215,7 +334,9 @@ export const getGroupFeed = query({
       .order("desc")
       .paginate(args.paginationOpts);
 
-    return enrichFeedItems(ctx, page);
+    const enrichedFeedItems = await enrichFeedItems(ctx, page);
+
+    return { page: enrichedFeedItems, continueCursor, isDone };
   },
 });
 
@@ -228,12 +349,16 @@ export const getUserProfileFeed = query({
     viewerId: v.optional(v.id("users")),
     paginationOpts: paginationOptsValidator,
   },
-  returns: v.array(feedItemReturnType),
+  returns: v.object({
+    page: v.array(feedItemReturnType),
+    continueCursor: v.union(v.string(), v.null()),
+    isDone: v.boolean(),
+  }),
   handler: async (ctx, args) => {
     // Validate that the profile exists
     const profile = await ctx.db.get(args.profileId);
     if (!profile) {
-      return [];
+      return { page: [], continueCursor: null, isDone: true };
     }
 
     // Check if the viewer and profile are the same user
@@ -252,710 +377,203 @@ export const getUserProfileFeed = query({
       );
     }
 
-    const { page } = await feedItemsQuery
-      .order("desc")
+    const { page, continueCursor, isDone } = await feedItemsQuery
+      .order("desc") // Ensure order is applied before paginate
       .paginate(args.paginationOpts);
 
-    return enrichFeedItems(ctx, page);
+    const enrichedFeedItems = await enrichFeedItems(ctx, page);
+
+    return { page: enrichedFeedItems, continueCursor, isDone };
   },
 });
 
 /**
- * Get a single feed item by ID with all associated data
+ * Get a single feed item by ID
  */
 export const getFeedItem = query({
-  args: {
-    feedItemId: v.id("feedItems"),
-    viewerId: v.optional(v.id("users")),
-  },
-  returns: v.union(feedItemReturnType, v.null()),
+  args: { feedItemId: v.id("feedItems") },
+  returns: v.union(v.null(), feedItemReturnType),
   handler: async (ctx, args) => {
-    // Get the feed item
-    const feedItem = await ctx.db.get(args.feedItemId);
-    if (!feedItem) {
+    const item = await ctx.db.get(args.feedItemId);
+    if (!item) {
       return null;
     }
 
-    // Check permissions
-    const isCreator = args.viewerId === feedItem.creatorId;
-    const isPublic = feedItem.visibility === "public";
+    const [enrichedItem] = await enrichFeedItems(ctx, [item]);
+    return enrichedItem;
+  },
+});
 
-    // If the item is private and viewer is not the creator, deny access
-    if (feedItem.visibility === "private" && !isCreator) {
-      return null;
+/**
+ * Get hashtag details and associated feed items
+ */
+export const getHashtagFeed = query({
+  args: {
+    tag: v.string(),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: v.object({
+    hashtag: v.union(v.null(), hashtagResponseValidator),
+    feedItems: v.object({
+      page: v.array(feedItemReturnType),
+      continueCursor: v.union(v.string(), v.null()),
+      isDone: v.boolean(),
+    }),
+  }),
+  handler: async (ctx, args) => {
+    const tag = args.tag.toLowerCase();
+    const hashtagDoc = await ctx.db
+      .query("hashtags")
+      .withIndex("by_tag", (q) => q.eq("tag", tag))
+      .first();
+
+    if (!hashtagDoc) {
+      return {
+        hashtag: null,
+        feedItems: { page: [], continueCursor: null, isDone: true },
+      };
     }
 
-    // If the item is for a group, check if the viewer is a member
-    if (
-      feedItem.visibility === "group" &&
-      feedItem.moduleType === "group" &&
-      !isCreator &&
-      args.viewerId &&
-      feedItem.moduleId
-    ) {
-      // For group content, we need to verify group membership
-      // This would typically be a more complex check against group membership
-      // For now we'll do a simplified check
-      const isMember = await ctx.db
-        .query("subscriptions")
-        .withIndex("by_user_follow", (q) =>
-          q
-            .eq("userId", args.viewerId)
-            .eq("followType", "group")
-            .eq("followId", feedItem.moduleId),
-        )
-        .first()
-        .then((sub) => !!sub);
+    const { page, continueCursor, isDone } = await ctx.db
+      .query("feedItems")
+      .withIndex("by_hashtag", (q) => q.eq("hashtags", tag))
+      .order("desc")
+      .paginate(args.paginationOpts);
 
-      if (!isMember) {
-        return null;
-      }
-    }
-
-    // Get creator info
-    const creator = await ctx.db.get(feedItem.creatorId);
-
-    // Get reaction count
-    const reactionsCount = await ctx.db
-      .query("reactions")
-      .withIndex("by_feed_item", (q) => q.eq("feedItemId", args.feedItemId))
-      .collect()
-      .then((reactions) => reactions.length);
-
-    // Get comment count
-    const commentsCount = await ctx.db
-      .query("comments")
-      .withIndex("by_feed_item", (q) => q.eq("feedItemId", args.feedItemId))
-      .collect()
-      .then((comments) => comments.length);
-
-    // If shared content, get original content
-    let originalContent = null;
-    if (feedItem.contentType === "share" && feedItem.originalContentId) {
-      originalContent = await ctx.db.get(feedItem.originalContentId);
-    }
+    const enrichedFeedItems = await enrichFeedItems(ctx, page);
 
     return {
-      ...feedItem,
-      reactionsCount,
-      commentsCount,
-      creator: {
-        _id: creator?._id ?? feedItem.creatorId,
-        name: creator?.name ?? "Unknown User",
-        image: undefined, // Don't use creator?.image as it might not exist
-      },
-      // We could include the original content here as well if needed
+      hashtag: hashtagDoc,
+      feedItems: { page: enrichedFeedItems, continueCursor, isDone },
     };
   },
 });
 
 /**
- * Get comments for a specific feed item
+ * Get comments for a specific feed item or parent content
  */
 export const getComments = query({
   args: {
-    feedItemId: v.id("feedItems"),
+    // Update arguments to be polymorphic
+    parentId: v.union(
+      v.id("feedItems"),
+      v.id("courses"),
+      v.id("lessons"),
+      v.id("topics"),
+      v.id("quizzes"),
+      v.id("posts"),
+      v.id("downloads"),
+      v.id("helpdeskArticles"),
+    ),
+    parentType: v.union(
+      v.literal("feedItem"),
+      v.literal("course"),
+      v.literal("lesson"),
+      v.literal("topic"),
+      v.literal("quiz"),
+      v.literal("post"),
+      v.literal("download"),
+      v.literal("helpdeskArticle"),
+    ),
     paginationOpts: paginationOptsValidator,
+    sortOrder: v.optional(v.union(v.literal("newest"), v.literal("oldest"))),
   },
-  returns: v.array(
-    v.object({
-      _id: v.id("comments"),
-      _creationTime: v.number(),
-      feedItemId: v.id("feedItems"),
-      userId: v.id("users"),
-      content: v.string(),
-      parentCommentId: v.optional(v.id("comments")),
-      mediaUrls: v.optional(v.array(v.string())),
-      updatedAt: v.optional(v.number()),
-      user: v.object({
-        _id: v.id("users"),
-        name: v.string(),
-        image: v.optional(v.string()),
-      }),
-      repliesCount: v.number(),
-    }),
-  ),
+  returns: v.object({
+    page: v.array(commentReturnType),
+    continueCursor: v.union(v.string(), v.null()),
+    isDone: v.boolean(),
+  }),
   handler: async (ctx, args) => {
-    // Get comments for this feed item
-    const { page } = await ctx.db
+    // Build base query
+    let queryBuilder = ctx.db
       .query("comments")
-      .withIndex("by_feed_item", (q) => q.eq("feedItemId", args.feedItemId))
-      .filter((q) => q.eq(q.field("parentCommentId"), undefined)) // Only top-level comments
-      .order("asc") // Oldest first
-      .paginate(args.paginationOpts);
+      .withIndex("by_parent", (q) =>
+        q.eq("parentId", args.parentId).eq("parentType", args.parentType),
+      )
+      .filter((q) => q.eq(q.field("parentCommentId"), undefined)); // Only top-level comments
 
-    if (page.length === 0) {
-      return [];
+    // Apply sorting
+    if (args.sortOrder === "oldest") {
+      queryBuilder = queryBuilder.order("asc");
+    } else {
+      // Default to newest
+      queryBuilder = queryBuilder.order("desc");
     }
 
-    // Get all user IDs
-    const userIds = [...new Set(page.map((comment) => comment.userId))];
-
-    // Get all users in one batch
-    const users = await Promise.all(
-      userIds.map(async (id) => {
-        const user = await ctx.db.get(id);
-        return user
-          ? {
-              _id: user._id,
-              name: user.name ?? "Unknown User",
-              image: undefined, // Don't use user.image as it might not exist
-            }
-          : null;
-      }),
+    // Paginate and enrich results
+    const { page, continueCursor, isDone } = await queryBuilder.paginate(
+      args.paginationOpts,
     );
 
-    // Create a map of user IDs to user objects
-    const userMap = new Map();
-    users.forEach((user) => {
-      if (user) {
-        userMap.set(user._id, user);
-      }
-    });
+    const enrichedComments = await enrichComments(ctx, page);
 
-    // Count replies for each comment
-    const commentsWithCounts = await Promise.all(
-      page.map(async (comment) => {
-        // Count replies
-        const repliesCount = await ctx.db
-          .query("comments")
-          .withIndex("by_parent", (q) => q.eq("parentCommentId", comment._id))
-          .collect()
-          .then((replies) => replies.length);
-
-        return {
-          ...comment,
-          repliesCount,
-          user: userMap.get(comment.userId) ?? {
-            _id: comment.userId,
-            name: "Unknown User",
-            image: undefined,
-          },
-        };
-      }),
-    );
-
-    return commentsWithCounts;
+    return { page: enrichedComments, continueCursor, isDone };
   },
 });
 
 /**
  * Get replies for a specific comment
  */
-export const getCommentReplies = query({
+export const getReplies = query({
   args: {
-    feedItemId: v.id("feedItems"),
     parentCommentId: v.id("comments"),
     paginationOpts: paginationOptsValidator,
   },
-  returns: v.array(
-    v.object({
-      _id: v.id("comments"),
-      _creationTime: v.number(),
-      feedItemId: v.id("feedItems"),
-      userId: v.id("users"),
-      content: v.string(),
-      parentCommentId: v.optional(v.id("comments")),
-      mediaUrls: v.optional(v.array(v.string())),
-      updatedAt: v.optional(v.number()),
-      user: v.object({
-        _id: v.id("users"),
-        name: v.string(),
-        image: v.optional(v.string()),
-      }),
-      repliesCount: v.number(),
-    }),
-  ),
+  returns: v.object({
+    page: v.array(commentReturnType),
+    continueCursor: v.union(v.string(), v.null()),
+    isDone: v.boolean(),
+  }),
   handler: async (ctx, args) => {
-    // Get replies for this comment
-    const { page } = await ctx.db
+    // Build base query
+    let queryBuilder = ctx.db
       .query("comments")
-      .withIndex("by_parent", (q) =>
+      .withIndex("by_parentCommentId", (q) =>
         q.eq("parentCommentId", args.parentCommentId),
-      )
-      .filter((q) => q.eq(q.field("feedItemId"), args.feedItemId))
-      .order("asc") // Oldest first
-      .paginate(args.paginationOpts);
+      );
 
-    if (page.length === 0) {
-      return [];
-    }
+    // Apply sorting
+    queryBuilder = queryBuilder.order("asc"); // Replies are always oldest first
 
-    // Get all user IDs
-    const userIds = [...new Set(page.map((comment) => comment.userId))];
-
-    // Get all users in one batch
-    const users = await Promise.all(
-      userIds.map(async (id) => {
-        const user = await ctx.db.get(id);
-        return user
-          ? {
-              _id: user._id,
-              name: user.name ?? "Unknown User",
-              // The image might not exist in the type but could be available in the data
-              image: undefined,
-            }
-          : null;
-      }),
+    const { page, continueCursor, isDone } = await queryBuilder.paginate(
+      args.paginationOpts,
     );
 
-    // Create a map of user IDs to user objects
-    const userMap = new Map();
-    users.forEach((user) => {
-      if (user) {
-        userMap.set(user._id, user);
-      }
-    });
+    const enrichedComments = await enrichComments(ctx, page);
 
-    // Count replies for each comment (nested replies)
-    const commentsWithCounts = await Promise.all(
-      page.map(async (comment) => {
-        // Count replies
-        const repliesCount = await ctx.db
-          .query("comments")
-          .withIndex("by_parent", (q) => q.eq("parentCommentId", comment._id))
-          .collect()
-          .then((replies) => replies.length);
-
-        return {
-          ...comment,
-          repliesCount,
-          user: userMap.get(comment.userId) ?? {
-            _id: comment.userId,
-            name: "Unknown User",
-            image: undefined,
-          },
-        };
-      }),
-    );
-
-    return commentsWithCounts;
+    return { page: enrichedComments, continueCursor, isDone };
   },
 });
 
 /**
- * Get saved items for a user
+ * Search for users by username for mentions
  */
-export const getSavedItems = query({
-  args: {
-    userId: v.id("users"),
-    paginationOpts: paginationOptsValidator,
-  },
-  returns: v.array(
-    v.object({
-      _id: v.id("savedItems"),
-      _creationTime: v.number(),
-      userId: v.id("users"),
-      feedItemId: v.id("feedItems"),
-      collectionName: v.optional(v.string()),
-      notes: v.optional(v.string()),
-      feedItem: feedItemReturnType,
-    }),
-  ),
-  handler: async (ctx, args) => {
-    // Validate user exists
-    const user = await ctx.db.get(args.userId);
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    // Get saved items
-    const { page } = await ctx.db
-      .query("savedItems")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .order("desc")
-      .paginate(args.paginationOpts);
-
-    if (page.length === 0) {
-      return [];
-    }
-
-    // Fetch all feed items at once
-    const feedItemIds = page.map((savedItem) => savedItem.feedItemId);
-    const feedItems = await Promise.all(
-      feedItemIds.map(async (id) => {
-        const item = await ctx.db.get(id);
-        return item;
-      }),
-    );
-
-    // Create a map of feed item IDs to feed items
-    const feedItemMap = new Map();
-    feedItems.forEach((item) => {
-      if (item) {
-        feedItemMap.set(item._id, item);
-      }
-    });
-
-    // Enrich the feed items
-    const enrichedFeedItems = await enrichFeedItems(
-      ctx,
-      feedItems.filter((item): item is Doc<"feedItems"> => !!item),
-    );
-
-    // Create a map of enriched feed items
-    const enrichedFeedItemMap = new Map();
-    enrichedFeedItems.forEach((item) => {
-      enrichedFeedItemMap.set(item._id, item);
-    });
-
-    // Combine saved items with their feed items
-    return page.map((savedItem) => {
-      const enrichedFeedItem = enrichedFeedItemMap.get(savedItem.feedItemId);
-      if (!enrichedFeedItem) {
-        throw new Error(`Feed item not found: ${savedItem.feedItemId}`);
-      }
-
-      return {
-        ...savedItem,
-        feedItem: enrichedFeedItem,
-      };
-    });
-  },
-});
-
-/**
- * Get entities that a user is following
- */
-export const getFollowing = query({
-  args: {
-    userId: v.id("users"),
-    followType: v.optional(
-      v.union(
-        v.literal("user"),
-        v.literal("topic"),
-        v.literal("group"),
-        v.literal("hashtag"),
-      ),
-    ),
-    paginationOpts: paginationOptsValidator,
-  },
-  returns: v.array(
-    v.object({
-      _id: v.id("subscriptions"),
-      _creationTime: v.number(),
-      userId: v.id("users"),
-      followType: v.union(
-        v.literal("user"),
-        v.literal("topic"),
-        v.literal("group"),
-        v.literal("hashtag"),
-      ),
-      followId: v.string(),
-      notificationsEnabled: v.optional(v.boolean()),
-      entityDetails: v.optional(
-        v.object({
-          name: v.optional(v.string()),
-          image: v.optional(v.string()),
-          description: v.optional(v.string()),
-        }),
-      ),
-    }),
-  ),
-  handler: async (ctx, args) => {
-    // Validate user exists
-    const user = await ctx.db.get(args.userId);
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    // Build the query based on whether a follow type is specified
-    const { page } = args.followType
-      ? await ctx.db
-          .query("subscriptions")
-          .withIndex("by_user_and_type", (q) =>
-            q.eq("userId", args.userId).eq("followType", args.followType),
-          )
-          .order("desc")
-          .paginate(args.paginationOpts)
-      : await ctx.db
-          .query("subscriptions")
-          .withIndex("by_user", (q) => q.eq("userId", args.userId))
-          .order("desc")
-          .paginate(args.paginationOpts);
-
-    if (page.length === 0) {
-      return [];
-    }
-
-    // Enhance subscriptions with entity details when possible
-    return await Promise.all(
-      page.map(async (subscription) => {
-        // Define the type for entityDetails
-        type EntityDetails = {
-          name?: string;
-          image?: string;
-          description?: string;
-        };
-
-        // Initialize with basic subscription data
-        let entityDetails: EntityDetails | undefined = undefined;
-
-        // Add entity details based on follow type
-        if (subscription.followType === "user") {
-          try {
-            // For users, get their name and profile image
-            const followedUser = await ctx.db.get(
-              subscription.followId as Id<"users">,
-            );
-            if (followedUser) {
-              entityDetails = {
-                name: followedUser.name ?? "Unknown User",
-                image: followedUser.image ?? undefined, // Use followedUser.image if it exists, otherwise undefined
-                description: undefined,
-              };
-            }
-          } catch (error) {
-            // Handle case where followId might not be a valid user ID
-            console.error("Error fetching user details:", error);
-          }
-        } else if (subscription.followType === "group") {
-          try {
-            // For groups, get group details
-            const group = await ctx.db.get(
-              subscription.followId as Id<"groups">,
-            );
-            if (group) {
-              entityDetails = {
-                name: (group.name as string) ?? "Unknown Group",
-                image: (group.avatar as string) ?? undefined,
-                description: (group.description as string) ?? undefined,
-              };
-            }
-          } catch (error) {
-            // Handle case where followId might not be a valid group ID
-            console.error("Error fetching group details:", error);
-          }
-        } else if (subscription.followType === "topic") {
-          // For topics, we might just have the name
-          entityDetails = {
-            name: subscription.followId, // Use the ID as the name for topics
-            image: undefined,
-            description: undefined,
-          };
-        }
-
-        return {
-          ...subscription,
-          entityDetails,
-        };
-      }),
-    );
-  },
-});
-
-/**
- * Get trending hashtags
- */
-export const getTrendingHashtags = query({
-  args: {
-    limit: v.optional(v.number()),
-    timeframe: v.optional(v.string()),
-  },
-  returns: v.array(hashtagResponseValidator),
-  handler: async (ctx, args) => {
-    const { limit = 10, timeframe } = args;
-
-    // Calculate the minimum timestamp based on timeframe
-    let minTimestamp = 0;
-    if (timeframe) {
-      const now = Date.now();
-      switch (timeframe) {
-        case "day":
-          minTimestamp = now - 24 * 60 * 60 * 1000;
-          break;
-        case "week":
-          minTimestamp = now - 7 * 24 * 60 * 60 * 1000;
-          break;
-        case "month":
-          minTimestamp = now - 30 * 24 * 60 * 60 * 1000;
-          break;
-        default:
-          // No minimum timestamp if timeframe is not recognized
-          break;
-      }
-    }
-
-    // Query hashtags, ordered by usage count
-    const hashtags = await ctx.db
-      .query("hashtags")
-      .filter((q) =>
-        minTimestamp > 0 ? q.gte(q.field("lastUsed"), minTimestamp) : q,
-      )
-      .order("desc")
-      .take(limit);
-
-    return hashtags;
-  },
-});
-
-/**
- * Search for hashtags by prefix
- */
-export const searchHashtags = query({
-  args: {
-    prefix: v.string(),
-    limit: v.optional(v.number()),
-  },
-  returns: v.array(hashtagResponseValidator),
-  handler: async (ctx, args) => {
-    const { prefix, limit = 5 } = args;
-
-    // Search for hashtags that start with the given prefix
-    // Note: In a real application, you might want to use a more sophisticated search
-    // mechanism, possibly with a dedicated search index
-    const hashtags = await ctx.db
-      .query("hashtags")
-      .filter((q) =>
-        q.and(
-          q.gte(q.field("tag"), prefix),
-          q.lt(q.field("tag"), prefix + "\uffff"),
-        ),
-      )
-      .order("desc")
-      .take(limit);
-
-    return hashtags;
-  },
-});
-
-/**
- * Get posts by hashtag
- */
-export const getPostsByHashtag = query({
-  args: {
-    hashtag: v.string(),
-    paginationOpts: paginationOptsValidator,
-  },
-  handler: async (ctx, args) => {
-    const { hashtag, paginationOpts } = args;
-    const { numItems, cursor } = paginationOpts;
-
-    // Query feed items that have this hashtag
-    const feedItems = await ctx.db
-      .query("feedItems")
-      .withIndex("by_hashtag", (q) => q.eq("hashtags", hashtag))
-      .filter(
-        (q) =>
-          q.eq(q.field("deleted"), false) ||
-          q.eq(q.field("deleted"), undefined),
-      )
-      .order("desc")
-      .paginate({ numItems, cursor });
-
-    // For each feed item, fetch the creator info
-    const itemsWithCreators = await Promise.all(
-      feedItems.page.map(async (item) => {
-        const creator = await ctx.db.get(item.creatorId);
-        return {
-          ...item,
-          creator: creator
-            ? {
-                _id: creator._id,
-                name: creator.name || "Unknown User",
-                image: creator.image,
-              }
-            : {
-                _id: item.creatorId,
-                name: "Unknown User",
-                image: undefined,
-              },
-        };
-      }),
-    );
-
-    return {
-      ...feedItems,
-      page: itemsWithCreators,
-    };
-  },
-});
-
-/**
- * Get user suggestions for mentions
- */
-export const getUserSuggestions = query({
+export const searchUsersForMentions = query({
   args: {
     query: v.string(),
     limit: v.optional(v.number()),
   },
+  returns: v.array(
+    v.object({
+      _id: v.id("users"),
+      name: v.string(),
+      image: v.optional(v.string()),
+    }),
+  ),
   handler: async (ctx, args) => {
-    const { query, limit = 5 } = args;
-
-    // If query is empty, return empty array
-    if (!query.trim()) {
-      return [];
-    }
-
-    // Search for users by name
-    // Using a simple substring search
+    if (args.query.length < 2) return [];
     const users = await ctx.db
       .query("users")
-      .filter((q) =>
-        q.or(
-          q.gte(q.field("name"), query) &&
-            q.lt(q.field("name"), query + "\uffff"),
-          q.gte(q.field("username"), query) &&
-            q.lt(q.field("username"), query + "\uffff"),
-        ),
+      .withSearchIndex("search_name_username", (q) =>
+        q.search("name", args.query).search("username", args.query),
       )
-      .take(limit);
+      .take(args.limit ?? 10);
 
-    // Return only the necessary fields for the suggestions
     return users.map((user) => ({
       _id: user._id,
-      name: user.name || "Unknown User",
-      username:
-        user.username || user.name?.toLowerCase().replace(/\s+/g, "") || "",
+      name: user.name ?? "Unknown User",
       image: user.image,
     }));
-  },
-});
-
-/**
- * Get trending content
- */
-export const getTrendingContent = query({
-  args: {
-    paginationOpts: paginationOptsValidator,
-    topicId: v.optional(v.id("hashtags")),
-  },
-  returns: v.array(feedItemReturnType),
-  handler: async (ctx, args) => {
-    // Get trending content sorted by trending score
-    let trendingContentQuery = ctx.db
-      .query("trendingContent")
-      .withIndex("by_trending_score")
-      .order("desc");
-
-    // Filter by topic if provided
-    if (args.topicId) {
-      // Get the hashtag to filter by
-      const topic = await ctx.db.get(args.topicId);
-      if (!topic) {
-        return [];
-      }
-
-      // Filter trending content with this hashtag
-      trendingContentQuery = trendingContentQuery.filter((q) =>
-        q.eq(q.field("topics").includes(topic.tag), true),
-      );
-    }
-
-    // Paginate the results
-    const { page } = await trendingContentQuery.paginate(args.paginationOpts);
-
-    // Get the content items
-    const contentIds = page.map((item) => item.contentId);
-    const feedItems = await Promise.all(
-      contentIds.map(async (id) => await ctx.db.get(id)),
-    );
-
-    // Filter out null items and enrich with creator/counts
-    const validItems = feedItems.filter(
-      (item) => item !== null,
-    ) as Doc<"feedItems">[];
-    return enrichFeedItems(ctx, validItems);
   },
 });
 
@@ -966,73 +584,37 @@ export const getRecommendedContent = query({
   args: {
     userId: v.id("users"),
     paginationOpts: paginationOptsValidator,
-    includeReasons: v.optional(v.boolean()),
   },
-  returns: v.array(
-    v.object({
-      ...feedItemReturnType.properties,
-      recommendationReason: v.optional(v.string()),
-    }),
-  ),
+  returns: v.object({
+    page: v.array(feedItemReturnType),
+    continueCursor: v.union(v.string(), v.null()),
+    isDone: v.boolean(),
+  }),
   handler: async (ctx, args) => {
-    // Get user's recommendations, sorted by relevance
-    const { page } = await ctx.db
-      .query("contentRecommendations")
-      .withIndex("by_relevance", (q) => q.eq("userId", args.userId))
+    const recommendations = await findSimilarUsers(ctx, args.userId);
+
+    if (!recommendations) {
+      return { page: [], continueCursor: null, isDone: true };
+    }
+
+    const { page, continueCursor, isDone } = await ctx.db
+      .query("feedItems")
+      .filter((q) =>
+        q.or(
+          // Include posts from similar users
+          ...recommendations.similarUserIds.map((id) =>
+            q.eq(q.field("creatorId"), id),
+          ),
+          // Include popular public posts
+          q.eq(q.field("visibility"), "public"),
+        ),
+      )
       .order("desc")
       .paginate(args.paginationOpts);
 
-    // Early return if no recommendations
-    if (page.length === 0) {
-      return [];
-    }
+    const enrichedFeedItems = await enrichFeedItems(ctx, page);
 
-    // Get the content items
-    const contentIds = page.map((item) => item.contentId);
-    const feedItems = await Promise.all(
-      contentIds.map(async (id) => await ctx.db.get(id)),
-    );
-
-    // Enrich the feed items
-    const enrichedItems = await enrichFeedItems(
-      ctx,
-      feedItems.filter((item) => item !== null) as Doc<"feedItems">[],
-    );
-
-    // Add recommendation reasons if requested
-    if (args.includeReasons) {
-      return enrichedItems.map((item) => {
-        const recommendation = page.find((rec) => rec.contentId === item._id);
-
-        let reasonText = "";
-        if (recommendation) {
-          switch (recommendation.reasonType) {
-            case "topic":
-              reasonText = `Based on your interest in #${recommendation.reasonContext}`;
-              break;
-            case "similarUser":
-              reasonText = "Based on content similar users engaged with";
-              break;
-            case "engagement":
-              reasonText = "Based on your recent activity";
-              break;
-            case "trending":
-              reasonText = "Popular content you might like";
-              break;
-            case "newContent":
-              reasonText = "New content you might be interested in";
-              break;
-          }
-        }
-
-        return {
-          ...item,
-          recommendationReason: reasonText,
-        };
-      });
-    }
-
-    return enrichedItems;
+    return { page: enrichedFeedItems, continueCursor, isDone };
   },
 });
 
@@ -1269,27 +851,6 @@ export const checkTopicFollow = query({
       .first();
 
     return follow !== null;
-  },
-});
-
-/**
- * Get feed items by hashtag
- */
-export const getHashtagFeed = query({
-  args: {
-    hashtag: v.string(),
-    paginationOpts: paginationOptsValidator,
-  },
-  returns: v.array(feedItemReturnType),
-  handler: async (ctx, args) => {
-    const { page } = await ctx.db
-      .query("feedItems")
-      // Use the 'by_hashtag' index to filter by exact hashtag match
-      .withIndex("by_hashtag", (q) => q.eq("hashtags", args.hashtag))
-      .order("desc")
-      .paginate(args.paginationOpts);
-
-    return enrichFeedItems(ctx, page);
   },
 });
 

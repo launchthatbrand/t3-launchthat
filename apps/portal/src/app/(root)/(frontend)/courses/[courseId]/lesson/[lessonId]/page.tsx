@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 "use client";
 
 import Link from "next/link";
@@ -17,9 +18,8 @@ import {
 import { Separator } from "@acme/ui/separator";
 import { toast } from "@acme/ui/toast";
 
-import LessonForm, {
-  LessonFormValues,
-} from "~/app/(root)/(admin)/admin/lessons/_components/LessonForm";
+import type { LessonFormValues } from "~/app/(root)/(admin)/admin/lessons/_components/LessonForm";
+import LessonForm from "~/app/(root)/(admin)/admin/lessons/_components/LessonForm";
 
 export default function LessonPage() {
   const params = useParams();
@@ -37,6 +37,15 @@ export default function LessonPage() {
 
   const lesson = data.attachedLessons.find((l) => l._id === lessonId);
   if (!lesson) return <div>Lesson not found.</div>;
+
+  const getVimeoEmbedUrl = (vimeoUrl: string) => {
+    const regex = /(?:vimeo\.com\/(?:video\/|.*\?.*v=)?([^#&?]*)).*/;
+    const match = vimeoUrl.match(regex);
+    if (match && match[1]) {
+      return `https://player.vimeo.com/video/${match[1]}`;
+    }
+    return null;
+  };
 
   const topics = data.attachedTopics.filter((t) => t.lessonId === lessonId);
   const quizzes = data.attachedQuizzes.filter((q) => q.lessonId === lessonId);
@@ -58,8 +67,8 @@ export default function LessonPage() {
 
   return (
     <Card className="shadow-sm">
-      <CardHeader className="flex items-center justify-between">
-        <CardTitle>{lesson.title}</CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-xl font-bold">{lesson.title}</CardTitle>
         <Dialog>
           <DialogTrigger asChild>
             <Button size="sm" variant="outline">
@@ -72,11 +81,12 @@ export default function LessonPage() {
             </DialogHeader>
             <LessonForm
               initialData={{
+                _id: lesson._id,
                 title: lesson.title,
                 content: lesson.content ?? "",
                 excerpt: lesson.excerpt ?? "",
                 categories: lesson.categories?.join(", ") ?? "",
-                featuredImageUrl: lesson.featuredImage ?? "",
+                featuredMedia: lesson.featuredMedia ?? "",
                 status: lesson.isPublished ? "published" : "draft",
                 featured: false,
               }}
@@ -89,6 +99,16 @@ export default function LessonPage() {
         </Dialog>
       </CardHeader>
       <CardContent>
+        {lesson.content?.includes("vimeo") && (
+          <div className="relative mb-4 h-0 overflow-hidden rounded-md pb-[56.25%]">
+            <iframe
+              src={getVimeoEmbedUrl(lesson.content)}
+              allow="autoplay; fullscreen; picture-in-picture"
+              allowFullScreen
+              className="absolute left-0 top-0 h-full w-full border-0"
+            ></iframe>
+          </div>
+        )}
         {lesson.description && (
           <p className="mb-4 text-sm text-muted-foreground">
             {lesson.description}

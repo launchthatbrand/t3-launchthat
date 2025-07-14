@@ -1,6 +1,12 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+import { clsx } from "clsx";
+import { AlertCircle } from "lucide-react";
+
 import { Alert, AlertDescription, AlertTitle } from "@acme/ui/alert";
+import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+
 import type {
   ColumnDefinition,
   EntityAction,
@@ -8,11 +14,9 @@ import type {
   FilterConfig,
   FilterValue,
   SortConfig,
+  TabHookResult,
   ViewMode,
 } from "./types";
-import { useEffect, useMemo, useState } from "react";
-
-import { AlertCircle } from "lucide-react";
 import { EntityListFilters } from "./EntityListFilters";
 import { EntityListHeader } from "./EntityListHeader";
 import { EntityListPagination } from "./EntityListPagination";
@@ -28,10 +32,15 @@ export function EntityList<T extends object>({
   data,
   columns,
   filters,
+  filterType = "default",
+  customFilterComponent,
+  tabOptions,
+  tabFilterKey,
   isLoading = false,
   viewModes = ["list", "grid"],
   defaultViewMode = "list",
   title,
+  mode,
   description,
   onRowClick,
   actions,
@@ -43,6 +52,10 @@ export function EntityList<T extends object>({
   hideFilters = false,
   initialFilters = {},
   onFiltersChange,
+  tabRender: _tabRender,
+  tabHooks = [],
+  className,
+  selectedId,
 }: EntityListProps<T>) {
   // State for view mode
   const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
@@ -57,6 +70,16 @@ export function EntityList<T extends object>({
 
   // State for sorting
   const [sorting, setSorting] = useState<SortConfig | undefined>(initialSort);
+
+  // Add state for tab hook overrides
+  const [hookData, setHookData] = useState<T[] | undefined>();
+  const [hookRender, setHookRender] = useState<React.ReactNode | undefined>();
+  const [hookFilters, setHookFilters] = useState<
+    Record<string, FilterValue> | undefined
+  >();
+
+  // State for selected tab
+  const [selectedTab, setSelectedTab] = useState<string>("all");
 
   // Handle search term changes with isSearching state
   const handleSearchChange = (value: string) => {
@@ -83,64 +106,156 @@ export function EntityList<T extends object>({
 
   // Handle filter changes
   const handleFilterChange = (newFilters: Record<string, FilterValue>) => {
+    console.log("handleFilterChange", newFilters);
     setActiveFilters(newFilters);
-
     // Notify parent component if callback provided
     if (onFiltersChange) {
       onFiltersChange(newFilters);
+      return;
     }
   };
 
-  // Filter data based on search term and active filters
-  const filteredData = useMemo(() => {
-    if (!data.length) return [];
+  // For tabs filterType, always use 'all' as the default tab value
+  const firstTabValue = "all";
 
-    let filtered = [...data];
+  // Compose full tab list
+  const combinedTabs = useMemo(() => {
+    const base = tabOptions ?? [];
+    const hooksAsTabs = tabHooks.map((h) => ({ label: h.label, value: h.id }));
+    return [...base, ...hooksAsTabs];
+  }, [tabOptions, tabHooks]);
 
-    // Apply search filter if searchTerm is provided
-    if (searchTerm.trim()) {
-      const lowercasedTerm = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter((item) => {
-        // Search through all accessible fields (columns with accessorKey)
-        return columns.some((column) => {
-          if (!column.accessorKey) return false;
-          const value = item[column.accessorKey];
-          return (
-            value != null &&
-            String(value).toLowerCase().includes(lowercasedTerm)
-          );
-        });
-      });
+  // Compute the selected tab value (string)
+  const selectedTabValue = selectedTab;
+
+  console.log("selectedTabValue", selectedTabValue);
+
+  // Whenever selected tab changes, evaluate hooks
+  useEffect(() => {
+    if (filterType !== "tabs") return;
+    if (!selectedTab || selectedTab === firstTabValue) {
+      setHookData(undefined);
+      setHookRender(undefined);
+      setHookFilters(undefined);
+      return;
     }
-
-    // Apply active filters
-    if (Object.keys(activeFilters).length > 0 && filters?.length) {
-      Object.entries(activeFilters).forEach(([filterId, filterValue]) => {
-        const filterConfig = filters.find((f) => f.id === filterId);
-        if (!filterConfig) return;
-
-        filtered = filtered.filter((item) => {
-          if (typeof filterConfig.field === "function") {
-            // If field is a function, use it to filter
-            return filterConfig.field(item);
-          } else {
-            // Otherwise filter by matching the field value
-            const itemValue = item[filterConfig.field];
-            return itemValue === filterValue;
-          }
-        });
+    const hook = tabHooks.find((h) => h.id === selectedTab);
+    if (hook?.onActivate) {
+      const result = hook.onActivate({
+        currentData: data,
+        currentFilters: activeFilters,
       });
+      if (!result) {
+        setHookRender(undefined);
+        setHookData(undefined);
+        setHookFilters(undefined);
+        return;
+      }
+      if ("render" in result) {
+        setHookRender(result.render);
+      } else {
+        setHookRender(undefined);
+        setHookData(result.data);
+        setHookFilters(result.filters);
+      }
+    } else {
+      setHookData(undefined);
+      setHookRender(undefined);
+      setHookFilters(undefined);
     }
-
-    return filtered;
-  }, [data, searchTerm, activeFilters, columns, filters]);
+  }, [selectedTab, filterType, tabHooks, data, activeFilters]);
 
   // Handle sorting change
   const handleSortChange = (newSortConfig: SortConfig) => {
     setSorting(newSortConfig);
   };
 
-  // Handle error state
+  // Tabs filterType support
+  let filterUI = null;
+  if (filterType === "tabs" && tabFilterKey) {
+    filterUI = (
+      <Tabs
+        value={selectedTab}
+        onValueChange={(val: string) => {
+          setSelectedTab(val);
+          if (val === "all") {
+            handleFilterChange({});
+          } else {
+            const hookExists = tabHooks.some((h) => h.id === val);
+            if (hookExists) {
+              console.log("hookExists", hookExists);
+              // do not alter filters
+            } else {
+              handleFilterChange({ ...activeFilters, [tabFilterKey]: val });
+            }
+          }
+        }}
+      >
+        <TabsList>
+          <TabsTrigger value="all">All</TabsTrigger>
+          {combinedTabs.map((opt) => (
+            <TabsTrigger key={opt.value} value={String(opt.value)}>
+              {opt.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+    );
+  } else if (filterType === "custom" && customFilterComponent) {
+    filterUI = customFilterComponent;
+  } else if (
+    filterType === "default" &&
+    filters &&
+    filters.length > 0 &&
+    !hideFilters
+  ) {
+    filterUI = (
+      <EntityListFilters
+        filters={filters}
+        activeFilters={activeFilters}
+        onFilterChange={handleFilterChange}
+      />
+    );
+  }
+
+  // Prepare baseData considering hookData override
+  const baseData = hookData ?? data;
+  // Prepare filter source merging hookFilters with activeFilters
+  const effectiveFilters = hookFilters
+    ? { ...activeFilters, ...hookFilters }
+    : activeFilters;
+
+  const filteredData = useMemo(() => {
+    if (!baseData.length) return [];
+    let filtered: T[] = [...baseData];
+    console.log("filtered1", filtered);
+    if (searchTerm.trim()) {
+      const lower = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(
+        (item) =>
+          columns.some((col) => {
+            if (!col.accessorKey) return false;
+            const val = item[col.accessorKey];
+            return val != null && String(val).toLowerCase().includes(lower);
+          }),
+        console.log("filtered2", filtered),
+      );
+    }
+    if (Object.keys(effectiveFilters).length && filters?.length) {
+      Object.entries(effectiveFilters).forEach(([filterId, val]) => {
+        const fc = filters.find((f) => f.id === filterId);
+        if (!fc) return;
+        filtered = filtered.filter((item) => {
+          if (typeof fc.field === "function") return fc.field(item);
+          return item[fc.field] === val;
+        });
+      });
+    }
+    console.log("filtered3", filtered);
+    return filtered;
+  }, [baseData, searchTerm, effectiveFilters, columns, filters]);
+
+  // Handle error state AFTER hooks are declared to satisfy ESLint hooks rules
   if (error) {
     return (
       <Alert variant="destructive">
@@ -155,8 +270,30 @@ export function EntityList<T extends object>({
     );
   }
 
+  // If hook provided custom render, show it
+  if (hookRender) {
+    return (
+      <div className="w-full space-y-4">
+        <EntityListHeader
+          title={title}
+          description={description}
+          searchTerm={searchTerm}
+          onSearchChange={handleSearchChange}
+          viewMode={viewMode}
+          viewModes={viewModes}
+          onViewModeChange={setViewMode}
+          actions={actions}
+          isSearching={isSearching || isLoading}
+        />
+        {filterUI}
+        {hookRender}
+      </div>
+    );
+  }
+
+  // Default: render filtered list view
   return (
-    <div className="w-full space-y-4">
+    <div className={clsx("w-full space-y-4", className)}>
       {/* Header with title, search, and view toggles */}
       <EntityListHeader
         title={title}
@@ -170,14 +307,8 @@ export function EntityList<T extends object>({
         isSearching={isSearching || isLoading}
       />
 
-      {/* Filters section */}
-      {filters && filters.length > 0 && !hideFilters && (
-        <EntityListFilters
-          filters={filters}
-          activeFilters={activeFilters}
-          onFilterChange={handleFilterChange}
-        />
-      )}
+      {/* Render filter UI (tabs, custom, or default) */}
+      {filterUI}
 
       {/* Main content - list or grid view */}
       <EntityListView
@@ -190,6 +321,7 @@ export function EntityList<T extends object>({
         entityActions={entityActions}
         sortConfig={sorting}
         onSortChange={handleSortChange}
+        selectedId={selectedId}
       />
 
       {/* Pagination controls */}

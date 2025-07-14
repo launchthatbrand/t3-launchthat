@@ -27,88 +27,7 @@ import {
 } from "../../_api/tasks";
 import { TaskForm, TaskFormValues } from "../../_components/TaskForm";
 import { TasksTable } from "../../_components/TasksTable";
-
-const columns: ColumnDef<Doc<"tasks">, any>[] = [
-  {
-    accessorKey: "title",
-    header: "Title",
-    cell: ({ row }) => (
-      <span className="font-medium">{row.original.title}</span>
-    ),
-  },
-  {
-    accessorKey: "description",
-    header: "Description",
-    cell: ({ row }) => (
-      <div className="max-w-xs truncate">
-        {row.original.description ?? "N/A"}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "dueDate",
-    header: "Due Date",
-    cell: ({ row }) =>
-      row.original.dueDate ? (
-        <span>{new Date(row.original.dueDate).toLocaleDateString()}</span>
-      ) : (
-        <span className="text-muted-foreground">No date</span>
-      ),
-  },
-  {
-    accessorKey: "isRecurring",
-    header: "Recurring",
-    cell: ({ row }) =>
-      row.original.isRecurring ? (
-        <Badge variant="default">Yes</Badge>
-      ) : (
-        <Badge variant="secondary">No</Badge>
-      ),
-  },
-  {
-    accessorKey: "recurrenceRule",
-    header: "Recurrence Rule",
-    cell: ({ row }) =>
-      row.original.recurrenceRule ?? (
-        <span className="text-muted-foreground">N/A</span>
-      ),
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => {
-      let variant: "default" | "secondary" | "destructive" = "default";
-      if (row.original.status === "completed") variant = "default";
-      else if (row.original.status === "pending") variant = "secondary";
-      else if (row.original.status === "cancelled") variant = "destructive";
-      return <Badge variant={variant}>{row.original.status}</Badge>;
-    },
-  },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => (
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => handleEditClick(row.original)}
-        >
-          <Plus className="mr-1 h-4 w-4" /> Edit
-        </Button>
-        <Button
-          size="sm"
-          variant="destructive"
-          onClick={() => handleDelete(row.original)}
-        >
-          <Trash className="mr-1 h-4 w-4" /> Delete
-        </Button>
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-];
+import { fieldRegistry } from "../../_fields/registry";
 
 const BoardPage = ({ params }: { params: Promise<{ boardId: string }> }) => {
   const { boardId } = useParams();
@@ -131,6 +50,98 @@ const BoardPage = ({ params }: { params: Promise<{ boardId: string }> }) => {
       await deleteTask({ taskId: task._id });
     }
   };
+
+  // Move columns array here so it can access the handlers
+  const columns: ColumnDef<Doc<"tasks">>[] = [
+    {
+      accessorKey: "title",
+      header: "Title",
+      cell: ({ row }) => {
+        const TextField = fieldRegistry.text;
+        return (
+          <TextField
+            value={row.original.title}
+            onSave={(newTitle) =>
+              updateTask({ taskId: row.original._id, title: newTitle })
+            }
+            className="font-medium"
+          />
+        );
+      },
+    },
+    {
+      accessorKey: "description",
+      header: "Description",
+      cell: ({ row }) => (
+        <div className="max-w-xs truncate">
+          {row.original.description ?? "N/A"}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "dueDate",
+      header: "Due Date",
+      cell: ({ row }) =>
+        row.original.dueDate ? (
+          <span>{new Date(row.original.dueDate).toLocaleDateString()}</span>
+        ) : (
+          <span className="text-muted-foreground">No date</span>
+        ),
+    },
+    {
+      accessorKey: "isRecurring",
+      header: "Recurring",
+      cell: ({ row }) =>
+        row.original.isRecurring ? (
+          <Badge variant="default">Yes</Badge>
+        ) : (
+          <Badge variant="secondary">No</Badge>
+        ),
+    },
+    {
+      accessorKey: "recurrenceRule",
+      header: "Recurrence Rule",
+      cell: ({ row }) =>
+        row.original.recurrenceRule ?? (
+          <span className="text-muted-foreground">N/A</span>
+        ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        let variant: "default" | "secondary" | "destructive" = "default";
+        if (row.original.status === "completed") variant = "default";
+        else if (row.original.status === "pending") variant = "secondary";
+        else if (row.original.status === "cancelled") variant = "destructive";
+        return <Badge variant={variant}>{row.original.status}</Badge>;
+      },
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => (
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => handleEditClick(row.original)}
+          >
+            <Plus className="mr-1 h-4 w-4" /> Edit
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => handleDelete(row.original)}
+          >
+            <Trash className="mr-1 h-4 w-4" /> Delete
+          </Button>
+        </div>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+  ];
 
   return (
     <div className="container flex py-4">

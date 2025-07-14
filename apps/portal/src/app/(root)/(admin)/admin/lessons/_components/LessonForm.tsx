@@ -2,7 +2,7 @@
 
 import type { UseFormReturn } from "react-hook-form";
 import React, { useState } from "react";
-import { MediaPicker } from "@/components/MediaPicker";
+import MediaPicker from "@/components/MediaPicker";
 import { Save } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -38,11 +38,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { Textarea } from "@acme/ui/textarea";
 
 export const lessonFormSchema = z.object({
+  _id: z.string().optional(),
+  slug: z.string().min(1, { message: "Slug is required" }),
   title: z.string().min(1, { message: "Title is required" }),
   content: z.string().optional(),
   excerpt: z.string().optional(),
   categories: z.string().optional(), // comma separated
-  featuredImageUrl: z.string().url().optional(),
+  featuredMedia: z.string().url().optional(),
   status: z.enum(["draft", "published"]).optional(),
   featured: z.boolean().optional(),
 });
@@ -65,6 +67,7 @@ export const LessonForm: React.FC<LessonFormProps> = ({
   categories,
   submitButtonText = "Save Lesson",
 }) => {
+  console.log("initialData", initialData);
   const [activeTab, setActiveTab] = useState("content");
   const [currentStatus, setCurrentStatus] = useState<"draft" | "published">(
     initialData?.status ?? "draft",
@@ -75,11 +78,12 @@ export const LessonForm: React.FC<LessonFormProps> = ({
 
   const form = useForm<LessonFormValues>({
     defaultValues: {
+      _id: initialData?._id ?? "",
       title: initialData?.title ?? "",
       content: initialData?.content ?? "",
       excerpt: initialData?.excerpt ?? "",
       categories: initialData?.categories ?? "",
-      featuredImageUrl: initialData?.featuredImageUrl ?? "",
+      featuredMedia: initialData?.featuredMedia ?? "",
       status: initialData?.status ?? "draft",
       featured: initialData?.featured ?? false,
     },
@@ -100,18 +104,33 @@ export const LessonForm: React.FC<LessonFormProps> = ({
           {/* Main content */}
           <div className="md:col-span-4">
             <Card>
-              <CardHeader className="pb-0">
-                <Tabs
-                  value={activeTab}
-                  onValueChange={setActiveTab}
-                  className="w-full"
-                >
-                  <TabsList className="mb-2">
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="w-full"
+              >
+                <CardHeader className="pb-0">
+                  <TabsList className="mb-2 flex justify-start">
                     <TabsTrigger value="content">Content</TabsTrigger>
                     <TabsTrigger value="media">Media</TabsTrigger>
                   </TabsList>
+                </CardHeader>
+                <CardContent>
                   <TabsContent value="content" className="pt-4">
                     <div className="grid gap-6">
+                      <FormField
+                        control={form.control}
+                        name="_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ID</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Lesson ID" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <FormField
                         control={form.control}
                         name="title"
@@ -164,21 +183,24 @@ export const LessonForm: React.FC<LessonFormProps> = ({
                   <TabsContent value="media" className="pt-4">
                     <FormField
                       control={form.control}
-                      name="featuredImageUrl"
+                      name="featuredMedia"
                       render={() => (
                         <FormItem>
-                          <FormLabel>Featured Image</FormLabel>
+                          <FormLabel>Featured Media</FormLabel>
                           <MediaPicker
                             control={form.control}
-                            name="featuredImageUrl"
+                            postId={initialData?._id}
+                            postType="lesson"
+                            name="featuredMedia"
                             placeholder="Choose featured image"
+                            _value={initialData?.featuredMedia}
                           />
                         </FormItem>
                       )}
                     />
                   </TabsContent>
-                </Tabs>
-              </CardHeader>
+                </CardContent>
+              </Tabs>
             </Card>
           </div>
           {/* Sidebar */}

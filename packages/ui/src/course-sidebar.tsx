@@ -29,7 +29,7 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "course_sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-export const SIDEBAR_WIDTH = "12rem";
+export const SIDEBAR_WIDTH = "15rem";
 export const SIDEBAR_WIDTH_MOBILE = "18rem";
 export const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
@@ -102,9 +102,10 @@ const CourseSidebarProvider = React.forwardRef<
 
     // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {
-      console.log("toggleSidebar");
-      return setOpen((open) => !open);
-    }, [setOpen]);
+      return isMobile
+        ? setOpenMobile((open) => !open)
+        : setOpen((open) => !open);
+    }, [isMobile, setOpen, setOpenMobile]);
 
     // Adds a keyboard shortcut to toggle the sidebar.
     React.useEffect(() => {
@@ -211,29 +212,29 @@ const CourseSidebar = React.forwardRef<
       );
     }
 
-    // if (isMobile) {
-    //   return (
-    //     <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
-    //       <SheetContent
-    //         data-sidebar="sidebar"
-    //         data-mobile="true"
-    //         className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
-    //         style={
-    //           {
-    //             "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-    //           } as React.CSSProperties
-    //         }
-    //         side={side}
-    //       >
-    //         <SheetHeader className="sr-only">
-    //           <SheetTitle>Sidebar</SheetTitle>
-    //           <SheetDescription>Displays the mobile sidebar.</SheetDescription>
-    //         </SheetHeader>
-    //         <div className="flex h-full w-full flex-col">{children}</div>
-    //       </SheetContent>
-    //     </Sheet>
-    //   );
-    // }
+    if (isMobile) {
+      return (
+        <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
+          <SheetContent
+            data-sidebar="sidebar"
+            data-mobile="true"
+            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+            style={
+              {
+                "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+              } as React.CSSProperties
+            }
+            side={side}
+          >
+            <SheetHeader className="sr-only">
+              <SheetTitle>Sidebar</SheetTitle>
+              <SheetDescription>Displays the mobile sidebar.</SheetDescription>
+            </SheetHeader>
+            <div className="flex h-full w-full flex-col">{children}</div>
+          </SheetContent>
+        </Sheet>
+      );
+    }
 
     return (
       <div

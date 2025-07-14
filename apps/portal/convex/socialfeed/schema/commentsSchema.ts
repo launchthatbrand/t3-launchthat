@@ -4,7 +4,26 @@ import { v } from "convex/values";
 // Define the Comments table
 export const commentsTable = defineTable({
   // Feed item being commented on
-  feedItemId: v.id("feedItems"),
+  parentId: v.union(
+    v.id("feedItems"),
+    v.id("courses"),
+    v.id("lessons"),
+    v.id("topics"),
+    v.id("quizzes"),
+    v.id("posts"),
+    v.id("downloads"),
+    v.id("helpdeskArticles"),
+  ),
+  parentType: v.union(
+    v.literal("feedItem"),
+    v.literal("course"),
+    v.literal("lesson"),
+    v.literal("topic"),
+    v.literal("quiz"),
+    v.literal("post"),
+    v.literal("download"),
+    v.literal("helpdeskArticle"),
+  ),
 
   // User who created the comment
   userId: v.id("users"),
@@ -30,9 +49,9 @@ export const commentsTable = defineTable({
   deleted: v.optional(v.boolean()),
   deletedAt: v.optional(v.number()),
 })
-  .index("by_feed_item", ["feedItemId"])
+  .index("by_parent", ["parentId", "parentType"])
   .index("by_user", ["userId"])
-  .index("by_parent", ["parentCommentId"])
+  .index("by_parentCommentId", ["parentCommentId"])
   .index("by_mentioned_user", ["mentionedUserIds"]); // Enable querying by mentioned user
 
 // Export the schema

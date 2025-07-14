@@ -19,12 +19,13 @@ export const getCourseStructureWithItems = query({
         _creationTime: v.number(),
         title: v.string(),
         description: v.optional(v.string()),
+        wp_id: v.optional(v.number()),
         productId: v.optional(v.string()),
         isPublished: v.optional(v.boolean()),
         courseStructure: v.optional(
           v.array(
             v.object({
-              lessonId: v.string(),
+              lessonId: v.id("lessons"),
             }),
           ),
         ),
@@ -41,7 +42,21 @@ export const getCourseStructureWithItems = query({
           order: v.optional(v.number()),
           isPublished: v.optional(v.boolean()),
           courseId: v.optional(v.id("courses")),
-          featuredImage: v.optional(v.string()),
+          wp_id: v.optional(v.float64()),
+          featuredMedia: v.optional(
+            v.union(
+              v.object({
+                type: v.literal("convex"),
+                mediaItemId: v.id("mediaItems"),
+              }),
+              v.object({
+                type: v.literal("vimeo"),
+                vimeoId: v.string(),
+                vimeoUrl: v.string(),
+              }),
+              v.string(),
+            ),
+          ),
           isBuiltIn: v.optional(v.boolean()),
           excerpt: v.optional(v.string()),
         }),
@@ -55,10 +70,23 @@ export const getCourseStructureWithItems = query({
           content: v.optional(v.string()),
           order: v.optional(v.number()),
           lessonId: v.optional(v.id("lessons")),
-          contentType: v.union(
-            v.literal("text"),
-            v.literal("video"),
-            v.literal("quiz"),
+          wp_id: v.optional(v.float64()),
+          featuredMedia: v.optional(
+            v.union(
+              v.object({
+                type: v.literal("convex"),
+                mediaItemId: v.id("mediaItems"),
+              }),
+              v.object({
+                type: v.literal("vimeo"),
+                vimeoId: v.string(),
+                vimeoUrl: v.string(),
+              }),
+              v.string(),
+            ),
+          ),
+          contentType: v.optional(
+            v.union(v.literal("text"), v.literal("video"), v.literal("quiz")),
           ),
           isPublished: v.optional(v.boolean()),
         }),
@@ -132,6 +160,22 @@ export const getAvailableLessons = query({
       _creationTime: v.number(),
       title: v.string(),
       description: v.optional(v.string()),
+      wp_id: v.optional(v.number()),
+      excerpt: v.optional(v.string()),
+      featuredMedia: v.optional(
+        v.union(
+          v.object({
+            type: v.literal("convex"),
+            mediaItemId: v.id("mediaItems"),
+          }),
+          v.object({
+            type: v.literal("vimeo"),
+            vimeoId: v.string(),
+            vimeoUrl: v.string(),
+          }),
+          v.string(),
+        ),
+      ),
       content: v.optional(v.string()),
       videoUrl: v.optional(v.string()),
       duration: v.optional(v.number()),
@@ -162,11 +206,10 @@ export const getAvailableTopics = query({
       _creationTime: v.number(),
       title: v.string(),
       description: v.optional(v.string()),
+      wp_id: v.optional(v.float64()),
       content: v.optional(v.string()),
-      contentType: v.union(
-        v.literal("text"),
-        v.literal("video"),
-        v.literal("quiz"),
+      contentType: v.optional(
+        v.union(v.literal("text"), v.literal("video"), v.literal("quiz")),
       ),
       isPublished: v.optional(v.boolean()),
     }),

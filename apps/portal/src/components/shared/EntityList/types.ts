@@ -118,6 +118,40 @@ export interface EntityListProps<T extends object> {
   /** Filter configurations (optional) */
   filters?: FilterConfig<T>[];
 
+  /** Mode of the EntityList */
+  mode?: "default" | "select";
+
+  /** Advanced dynamic tabs injected via hook system */
+  tabHooks?: TabHook<T>[];
+
+  /**
+   * Type of filter UI to use: 'default' (built-in), 'custom' (provide your own component), or 'tabs' (tabbed filter UI)
+   */
+  filterType?: "default" | "custom" | "tabs";
+
+  /**
+   * Tab options for 'tabs' filterType. Each option has a label and value.
+   */
+  tabOptions?: { label: string; value: string }[];
+
+  /**
+   * Optional custom tab renderer. If provided and returns a non-null value for the selected tab,
+   * EntityList will render that component instead of the filtered list. Useful for special tabs
+   * (e.g., 'Vimeo') that need to display custom content.
+   *
+   * @param tabValue The value of the currently selected tab
+   * @returns ReactNode to render, or null/undefined to render the default filtered list
+   */
+  tabRender?: (tabValue: string) => React.ReactNode;
+
+  /**
+   * The filter key to update when a tab is selected (e.g., 'category').
+   */
+  tabFilterKey?: string;
+
+  /** Custom filter component to render when filterType is 'custom' */
+  customFilterComponent?: ReactNode;
+
   /** Whether the data is currently loading */
   isLoading?: boolean;
 
@@ -162,6 +196,12 @@ export interface EntityListProps<T extends object> {
 
   /** Handler for filter changes (optional) */
   onFiltersChange?: (filters: Record<string, FilterValue>) => void;
+
+  /** Additional className passed to wrapper */
+  className?: string;
+
+  /** The currently selected item ID, if any. Used for highlighting. */
+  selectedId?: string | null;
 }
 
 /**
@@ -247,6 +287,9 @@ export interface EntityListViewProps<T extends object> {
 
   /** Handler for sort changes (optional) */
   onSortChange?: (config: SortConfig) => void;
+
+  /** The currently selected item ID, if any. Used for highlighting. */
+  selectedId?: string | null;
 }
 
 /**
@@ -267,4 +310,33 @@ export interface EntityListPaginationProps {
 
   /** Handler for page size changes (optional) */
   onPageSizeChange?: (size: number) => void;
+}
+
+// Hook system for dynamic tabs injected by parent components
+export interface TabHookContext<T> {
+  currentData: T[];
+  currentFilters: Record<string, FilterValue>;
+}
+
+export type TabHookResult<T> =
+  | {
+      /** Replace dataset used by EntityList */
+      data?: T[];
+      /** Merge/override filters */
+      filters?: Record<string, FilterValue>;
+    }
+  | {
+      /** Completely custom render instead of default list */
+      render: React.ReactNode;
+    };
+
+export interface TabHook<T> {
+  /** Unique id (matches TabsTrigger value) */
+  id: string;
+  /** Display label */
+  label: string;
+  /** Optional sort order */
+  order?: number;
+  /** Called when tab activated */
+  onActivate?: (ctx: TabHookContext<T>) => TabHookResult<T> | void;
 }

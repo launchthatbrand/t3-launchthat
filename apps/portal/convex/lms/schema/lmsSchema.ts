@@ -23,10 +23,22 @@ export const coursesTable = defineTable({
 export const lessonsTable = defineTable({
   title: v.string(),
   description: v.optional(v.string()),
+  wp_id: v.optional(v.float64()),
   content: v.optional(v.string()),
   excerpt: v.optional(v.string()),
   categories: v.optional(v.array(v.string())),
   featuredImage: v.optional(v.string()),
+  featuredMedia: v.optional(
+    v.union(
+      v.object({ type: v.literal("convex"), mediaItemId: v.id("mediaItems") }),
+      v.object({
+        type: v.literal("vimeo"),
+        vimeoId: v.string(),
+        vimeoUrl: v.string(),
+      }),
+      v.string(),
+    ),
+  ),
   isPublished: v.optional(v.boolean()),
   courseId: v.optional(v.id("courses")), // Link to parent course
   order: v.optional(v.number()), // Order within the course
@@ -38,11 +50,20 @@ export const topicsTable = defineTable({
   description: v.optional(v.string()),
   excerpt: v.optional(v.string()),
   categories: v.optional(v.array(v.string())),
-  featuredImage: v.optional(v.string()),
-  contentType: v.union(
-    v.literal("text"),
-    v.literal("video"),
-    v.literal("quiz"),
+  wp_id: v.optional(v.float64()),
+  featuredMedia: v.optional(
+    v.union(
+      v.object({ type: v.literal("convex"), mediaItemId: v.id("mediaItems") }),
+      v.object({
+        type: v.literal("vimeo"),
+        vimeoId: v.string(),
+        vimeoUrl: v.string(),
+      }),
+      v.string(),
+    ),
+  ),
+  contentType: v.optional(
+    v.union(v.literal("text"), v.literal("video"), v.literal("quiz")),
   ),
   // Store text content directly, video URL for video type
   content: v.optional(v.string()),

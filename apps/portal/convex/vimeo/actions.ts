@@ -1,7 +1,9 @@
+import { ActionCache } from "@convex-dev/action-cache";
 import { v } from "convex/values";
 
-import { internal } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import { action, internalAction } from "../_generated/server";
+import { env } from "../../../portal/src/env";
 
 interface VimeoApiVideo {
   uri: string; // e.g. "/videos/123456"
@@ -113,10 +115,11 @@ export const syncVimeoVideos = internalAction({
 export const syncAllConnections = internalAction({
   args: {},
   handler: async (ctx) => {
-    const vimeoApp = await ctx.db
-      .query("apps")
-      .filter((q) => q.eq(q.field("name"), "Vimeo"))
-      .unique();
+    const vimeoApp = await ctx.runQuery(
+      internal.integrations.connections.queries.getVimeoApp,
+      {},
+    );
+
     if (!vimeoApp) return;
 
     const connections = await ctx.db
@@ -174,4 +177,75 @@ export const listFolders = action({
       })) ?? [];
     return folders;
   },
+});
+
+// Internal action: fetches from Vimeo API
+export const fetchVimeoVideos = internalAction({
+  args: {
+    ownerId: v.union(v.id("users"), v.string()),
+  },
+  handler: async (ctx, args) => {
+    // 1. Find the Vimeo app
+    const vimeoApp = await ctx.runQuery(
+      internal.integrations.connections.queries.getVimeoApp,
+      {},
+    );
+    if (!vimeoApp) throw new Error("Vimeo app not found");
+
+    // 2. Find the connection for this user/org
+    const connection = await ctx.runQuery(
+      internal["integrations/connections"].queries.getConnectionByAppAndOwner,
+      { appId: vimeoApp._id, ownerId: args.ownerId },
+    );
+    console.log("connection", connection);
+    if (!connection)
+      throw new Error("No Vimeo connection found for this user/org");
+
+    // 3. Extract accessToken from credentials
+    let credentials: { accessToken?: string; access_token?: string } = {};
+    try {
+      credentials = JSON.parse(connection.credentials);
+    } catch {
+      throw new Error("Invalid credentials JSON for connection");
+    }
+    const accessToken = credentials.accessToken || credentials.access_token;
+    if (!accessToken) throw new Error("Access token missing in credentials");
+
+    // 4. Fetch videos from Vimeo API
+    const response = await fetch(
+      "https://api.vimeo.com/me/videos?fields=id,uri,name,folder,description,link,created_time,pictures.sizes&page=1&per_page=100",
+      {
+        headers: {
+          Authorization: `bearer ${accessToken}`,
+          Accept: "application/vnd.vimeo.*+json;version=3.4",
+        },
+      },
+    );
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(
+        `Failed to fetch Vimeo videos: ${response.status} ${text}`,
+      );
+    }
+    const data = await response.json();
+    console.log("fetchVimeoVideos data", data);
+    return data;
+  },
+});
+
+// Public action to get cached Vimeo videos
+export const getCachedVimeoVideos = action({
+  args: {
+    ownerId: v.union(v.id("users"), v.string()),
+  },
+  handler: async (ctx, args) => {
+    return await cache.fetch(ctx, args);
+  },
+});
+
+// ActionCache instance for 5 minute caching
+const cache = new ActionCache(components.actionCache, {
+  action: internal.vimeo.actions.fetchVimeoVideos,
+  name: "vimeoVideos",
+  ttl: 1000 * 60 * 1, // 5 minutes
 });

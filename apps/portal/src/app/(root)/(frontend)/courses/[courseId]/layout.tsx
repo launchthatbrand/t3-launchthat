@@ -4,6 +4,7 @@ import { ReactNode, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useSelectedLayoutSegment } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
+import { Id } from "@convex-config/_generated/dataModel";
 import { useQuery } from "convex/react";
 
 import { cn } from "@acme/ui";
@@ -25,10 +26,9 @@ export default function CourseLayout({ children }: CourseLayoutProps) {
   const params = useParams();
   const courseId = params.courseId as string | undefined;
 
-  const data = useQuery(
-    api.lms.courses.queries.getCourseStructureWithItems,
-    courseId ? { courseId } : "skip",
-  );
+  const data = useQuery(api.lms.courses.queries.getCourseStructureWithItems, {
+    courseId: courseId as Id<"courses">,
+  });
 
   // Provide safe fallbacks while data is loading to keep hook order consistent
   const course = data?.course;
@@ -84,7 +84,7 @@ export default function CourseLayout({ children }: CourseLayoutProps) {
   }
 
   return (
-    <CourseSidebarProvider>
+    <CourseSidebarProvider className="gap-6">
       <CoursesSidebar variant="floating" collapsible="icon" />
       <div className="flex flex-1 flex-col">
         <header className="flex h-16 shrink-0 items-center gap-2 px-4">

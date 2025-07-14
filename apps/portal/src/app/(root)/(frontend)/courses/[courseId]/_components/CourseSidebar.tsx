@@ -121,7 +121,10 @@ export function CoursesSidebar(
         <CourseSidebarGroup>
           <CourseSidebarMenu>
             {orderedLessons.map((lesson) => (
-              <CourseSidebarMenuItem key={lesson._id}>
+              <CourseSidebarMenuItem
+                key={lesson._id}
+                className="h-auto text-sm"
+              >
                 <Collapsible
                   open={openLessonId === lesson._id}
                   onOpenChange={(isOpen) =>
@@ -135,6 +138,7 @@ export function CoursesSidebar(
                       tooltip={lesson.title}
                       isActive={lesson.isActive}
                       onClick={() => setOpenLessonId(lesson._id)}
+                      className="h-auto text-sm"
                     >
                       <Link href={`/courses/${courseId}/lesson/${lesson._id}`}>
                         {lesson.title}
@@ -159,9 +163,11 @@ export function CoursesSidebar(
                               <CourseSidebarMenuSubButton
                                 asChild
                                 isActive={isActiveTopic}
+                                className="h-auto min-h-7 p-2"
                               >
                                 <Link
                                   href={`/courses/${courseId}/lesson/${lesson._id}/topic/${topic._id}`}
+                                  // className="h-10"
                                 >
                                   {topic.title}
                                 </Link>

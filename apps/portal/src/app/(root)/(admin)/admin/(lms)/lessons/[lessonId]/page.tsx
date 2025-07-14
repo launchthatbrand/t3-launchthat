@@ -6,9 +6,8 @@ import { useMutation, useQuery } from "convex/react";
 
 import { toast } from "@acme/ui/toast";
 
-import LessonForm, {
-  LessonFormValues,
-} from "../../../lessons/_components/LessonForm";
+import type { LessonFormValues } from "../../../lessons/_components/LessonForm";
+import LessonForm from "../../../lessons/_components/LessonForm";
 
 export default function AdminLessonEditPage() {
   const params = useParams();
@@ -27,7 +26,7 @@ export default function AdminLessonEditPage() {
       categories: values.categories
         ? values.categories.split(",").map((c) => c.trim())
         : undefined,
-      featuredImage: values.featuredImageUrl,
+      featuredMedia: values.featuredMedia,
       // status handled via isPublished in form values
       isPublished: values.status === "published",
     });
@@ -46,11 +45,12 @@ export default function AdminLessonEditPage() {
   return (
     <LessonForm
       initialData={{
+        _id: lesson._id,
         title: lesson.title,
         content: lesson.content ?? "",
         excerpt: lesson.excerpt ?? "",
         categories: lesson.categories?.join(", ") ?? "",
-        featuredImageUrl: lesson.featuredImage ?? "",
+        featuredMedia: lesson.featuredMedia ?? "",
         status: lesson.isPublished ? "published" : "draft",
         featured: false,
       }}

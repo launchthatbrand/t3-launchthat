@@ -23,6 +23,7 @@ export function EntityListView<T extends object>({
   viewMode,
   isLoading = false,
   onRowClick,
+  selectedId,
   emptyState,
   entityActions,
   sortConfig,
@@ -97,6 +98,7 @@ export function EntityListView<T extends object>({
         data={data}
         columns={columns}
         onRowClick={onRowClick}
+        selectedId={selectedId}
         entityActions={entityActions}
         sortConfig={sortConfig}
         onSortChange={onSortChange}
@@ -109,6 +111,7 @@ export function EntityListView<T extends object>({
       data={data}
       columns={columns}
       onCardClick={onRowClick}
+      selectedId={selectedId}
       entityActions={entityActions}
     />
   );

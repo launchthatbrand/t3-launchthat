@@ -160,13 +160,12 @@ export const listTopics = query({
       _id: v.id("topics"),
       _creationTime: v.number(),
       title: v.string(),
-      contentType: v.union(
-        v.literal("text"),
-        v.literal("video"),
-        v.literal("quiz"),
+      contentType: v.optional(
+        v.union(v.literal("text"), v.literal("video"), v.literal("quiz")),
       ),
       lessonId: v.optional(v.id("lessons")),
       description: v.optional(v.string()),
+      wp_id: v.optional(v.float64()),
       excerpt: v.optional(v.string()),
       categories: v.optional(v.array(v.string())),
       featuredImage: v.optional(v.string()),

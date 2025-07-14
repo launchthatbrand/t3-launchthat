@@ -84,6 +84,13 @@ export default function DefaultSidebar() {
       title: "Media",
       url: "/admin/media",
       icon: Image,
+      items: [
+        {
+          title: "Categories",
+          url: "/admin/media/categories",
+          icon: BookOpen,
+        },
+      ],
     },
     {
       title: "Courses",

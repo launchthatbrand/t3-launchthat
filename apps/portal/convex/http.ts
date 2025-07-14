@@ -6,6 +6,7 @@ import { httpRouter } from "convex/server";
 
 import { api, internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
+import { createMediaFromWebhook } from "./media/http";
 
 /**
  * Request body structure expected by the createAuthNetTransaction endpoint.
@@ -166,6 +167,12 @@ http.route({
       });
     }
   }),
+});
+
+http.route({
+  path: "/webhook/media",
+  method: "POST",
+  handler: createMediaFromWebhook,
 });
 
 // Export the router as the default export

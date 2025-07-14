@@ -6,6 +6,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 import calendarSchema from "./calendar/schema";
+import { categoriesTable } from "./categories/schema";
 import cmsSchema from "./cms/schema";
 import contactsSchema from "./contacts/schema";
 import { coreSchema } from "./core/schema"; // This should be the result of defineSchema()
@@ -14,6 +15,7 @@ import ecommerceSchema from "./ecommerce/schema";
 import { groupsSchema } from "./groups/schema";
 import integrationsSchema from "./integrations/schema";
 import { lmsSchema } from "./lms/schema";
+import { mediaSchema } from "./media/schema";
 import { notificationsSchema } from "./notifications/schema";
 import { puckEditorTable } from "./puckEditor/schema";
 import socialFeedSchema from "./socialfeed/schema";
@@ -96,14 +98,23 @@ export default defineSchema({
   ...vimeoSchema.tables,
 
   // Media Items table (metadata for Convex storage files)
-  mediaItems: defineTable({
-    storageId: v.id("_storage"),
-    title: v.optional(v.string()),
-    caption: v.optional(v.string()),
-    alt: v.optional(v.string()),
-    categories: v.optional(v.array(v.string())),
-    status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
-  }).index("by_storage", ["storageId"]),
+  // mediaItems: defineTable({
+  //   storageId: v.id("_storage"),
+  //   title: v.optional(v.string()),
+  //   caption: v.optional(v.string()),
+  //   alt: v.optional(v.string()),
+  //   categories: v.optional(v.array(v.string())),
+  //   status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+  // }).index("by_storage", ["storageId"]),
+
+  // Media Categories table
+  // mediaCategories: defineTable({
+  //   name: v.string(),
+  //   description: v.optional(v.string()),
+  // }),
+
+  // Categories table
+  categories: categoriesTable,
 
   // ...unifiedProductSchema, // REMOVE THIS SPREAD
 
@@ -145,4 +156,5 @@ export default defineSchema({
   // Tasks table (moved to modular schema)
   ...tasksSchema,
   ...taskBoardsSchema,
+  ...mediaSchema.tables,
 });

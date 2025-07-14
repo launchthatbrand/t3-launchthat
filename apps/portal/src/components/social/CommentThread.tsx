@@ -51,7 +51,24 @@ import { api } from "../../../convex/_generated/api";
 type SortOption = "newest" | "oldest" | "popular";
 
 export interface CommentThreadProps {
-  postId: Id<"feedItems">;
+  postId:
+    | Id<"feedItems">
+    | Id<"courses">
+    | Id<"lessons">
+    | Id<"topics">
+    | Id<"quizzes">
+    | Id<"posts">
+    | Id<"downloads">
+    | Id<"helpdeskArticles">;
+  postType:
+    | "feedItem"
+    | "course"
+    | "lesson"
+    | "topic"
+    | "quiz"
+    | "post"
+    | "download"
+    | "helpdeskArticle";
   onCommentAdded?: () => void;
   className?: string;
   initialExpanded?: boolean;
@@ -60,7 +77,24 @@ export interface CommentThreadProps {
 interface Comment {
   _id: Id<"comments">;
   _creationTime: number;
-  feedItemId: Id<"feedItems">;
+  parentId:
+    | Id<"feedItems">
+    | Id<"courses">
+    | Id<"lessons">
+    | Id<"topics">
+    | Id<"quizzes">
+    | Id<"posts">
+    | Id<"downloads">
+    | Id<"helpdeskArticles">;
+  parentType:
+    | "feedItem"
+    | "course"
+    | "lesson"
+    | "topic"
+    | "quiz"
+    | "post"
+    | "download"
+    | "helpdeskArticle";
   userId: Id<"users">;
   content: string;
   parentCommentId?: Id<"comments">;
@@ -76,6 +110,7 @@ interface Comment {
 
 export function CommentThread({
   postId,
+  postType,
   onCommentAdded,
   className = "",
   initialExpanded = false,
@@ -114,7 +149,8 @@ export function CommentThread({
   // Get comments based on sort option
   const comments =
     useQuery(api.socialfeed.queries.getComments, {
-      feedItemId: postId,
+      parentId: postId,
+      parentType: postType,
       paginationOpts,
     }) || [];
 
@@ -169,7 +205,8 @@ export function CommentThread({
 
       await addComment({
         userId: userId as Id<"users">,
-        feedItemId: postId,
+        parentId: postId,
+        parentType: postType,
         content: commentText.trim(),
       });
 
@@ -200,7 +237,8 @@ export function CommentThread({
     try {
       await addComment({
         userId: userId as Id<"users">,
-        feedItemId: postId,
+        parentId: postId,
+        parentType: postType,
         content: replyText.trim(),
         parentCommentId,
       });
