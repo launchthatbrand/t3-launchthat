@@ -7,7 +7,7 @@ import { api } from "@convex-config/_generated/api";
 import { Id } from "@convex-config/_generated/dataModel";
 import { useQuery } from "convex/react";
 
-import { cn } from "@acme/ui";
+import { Badge, Card, cn } from "@acme/ui";
 import {
   CourseSidebarProvider,
   CourseSidebarTrigger,
@@ -16,7 +16,10 @@ import { AppSidebar } from "@acme/ui/layout/AppSidebar";
 import { ScrollArea } from "@acme/ui/scroll-area";
 
 import { Separator } from "~/components/ui/separator";
+import CourseHeader from "./_components/CourseHeader";
 import { CoursesSidebar } from "./_components/CourseSidebar";
+import LessonHeader from "./lesson/[lessonId]/_components/LessonHeader";
+import LessonSidebar from "./lesson/[lessonId]/_components/LessonSidebar";
 
 interface CourseLayoutProps {
   children: ReactNode;
@@ -24,7 +27,10 @@ interface CourseLayoutProps {
 
 export default function CourseLayout({ children }: CourseLayoutProps) {
   const params = useParams();
-  const courseId = params.courseId as string | undefined;
+  const { courseId, lessonId } = params as {
+    courseId: string;
+    lessonId: string;
+  };
 
   const data = useQuery(api.lms.courses.queries.getCourseStructureWithItems, {
     courseId: courseId as Id<"courses">,
@@ -84,20 +90,40 @@ export default function CourseLayout({ children }: CourseLayoutProps) {
   }
 
   return (
-    <CourseSidebarProvider className="gap-6">
-      <CoursesSidebar variant="floating" collapsible="icon" />
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-2 px-4">
-          <CourseSidebarTrigger className="-ml-1" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
+    <div>
+      {/* <LessonHeader /> */}
+      <CourseSidebarProvider className="flex-col gap-3">
+        <CourseHeader />
+        <div className="sticky top-0 flex flex-col gap-3 p-2 md:flex-row md:gap-0">
+          <CoursesSidebar
+            variant="floating"
+            collapsible="icon"
+            className="bg-red-500"
           />
-          <h1 className="text-xl font-bold">{course.title}</h1>
-        </header>
-        {children}
-      </div>
-    </CourseSidebarProvider>
+          <Card className="flex flex-1 flex-col rounded-l-none">
+            <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 rounded-lg bg-primary p-3 md:rounded-l-none">
+              <div className="flex flex-1 items-center gap-2">
+                <CourseSidebarTrigger className="-ml-1 text-white" />
+                <Separator
+                  orientation="vertical"
+                  className="mr-2 data-[orientation=vertical]:h-4"
+                />
+                <h1 className="text-2xl font-bold text-white">
+                  {lessonMap.get(lessonId)?.title}
+                </h1>
+              </div>{" "}
+              <Badge variant="outline" className="text-md bg-white">
+                Lesson
+              </Badge>
+            </header>
+            {children}
+          </Card>
+          <div className="order-first hidden w-full items-start md:order-last md:flex md:w-1/4 md:pl-6">
+            <LessonSidebar />
+          </div>
+        </div>
+      </CourseSidebarProvider>
+    </div>
     // <div className="container md:py-8">
     //   <h1 className="mb-4 text-3xl font-bold">{course.title}</h1>
     //   {course.description && (

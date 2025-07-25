@@ -114,97 +114,110 @@ export function GridView<T extends object>({
 
   return (
     <div className={gridClasses}>
-      {data.map((item, index) => (
-        <Card
-          key={index}
-          className={
-            onCardClick
-              ? "cursor-pointer transition-shadow hover:shadow-md"
-              : ""
-          }
-          onClick={() => onCardClick && onCardClick(item)}
-        >
-          {selectable && (
-            <div className="absolute right-2 top-2 z-10">
-              <Checkbox
-                checked={selectedIds.includes(String(item[idField]))}
-                onCheckedChange={() => handleSelectCard(item)}
-                onClick={(e) => e.stopPropagation()}
-                aria-label="Select item"
-              />
+      {data.map((item, index) => {
+        if (cardRenderer) {
+          return (
+            <div
+              key={index}
+              onClick={() => onCardClick && onCardClick(item)}
+              className="cursor-pointer"
+            >
+              {cardRenderer(item)}
             </div>
-          )}
+          );
+        }
+        return (
+          <Card
+            key={index}
+            className={
+              onCardClick
+                ? "cursor-pointer transition-shadow hover:shadow-md"
+                : ""
+            }
+            onClick={() => onCardClick && onCardClick(item)}
+          >
+            {selectable && (
+              <div className="absolute right-2 top-2 z-10">
+                <Checkbox
+                  checked={selectedIds.includes(String(item[idField]))}
+                  onCheckedChange={() => handleSelectCard(item)}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label="Select item"
+                />
+              </div>
+            )}
 
-          {cardRenderer ? (
-            // Use custom card renderer if provided
-            cardRenderer(item)
-          ) : (
-            <>
-              <CardHeader className="pb-2">
-                {/* Use the first column as a title */}
-                {columns[0] && (
-                  <h3 className="text-lg font-semibold">
-                    {columns[0].cell
-                      ? columns[0].cell(item)
-                      : columns[0].accessorKey
-                        ? String(item[columns[0].accessorKey] ?? "")
-                        : ""}
-                  </h3>
-                )}
-              </CardHeader>
-
-              <CardContent className="space-y-2 pb-4">
-                {/* Render other columns except the first one */}
-                {columns.slice(1).map((column) => (
-                  <div key={column.id}>
-                    <div className="text-sm font-medium text-muted-foreground">
-                      {column.header}
-                    </div>
-                    <div>
-                      {column.cell
-                        ? column.cell(item)
-                        : column.accessorKey
-                          ? String(item[column.accessorKey] ?? "")
+            {cardRenderer ? (
+              // Use custom card renderer if provided
+              cardRenderer(item)
+            ) : (
+              <>
+                <CardHeader className="pb-2">
+                  {/* Use the first column as a title */}
+                  {columns[0] && (
+                    <h3 className="text-lg font-semibold">
+                      {columns[0].cell
+                        ? columns[0].cell(item)
+                        : columns[0].accessorKey
+                          ? String(item[columns[0].accessorKey] ?? "")
                           : ""}
+                    </h3>
+                  )}
+                </CardHeader>
+
+                <CardContent className="space-y-2 pb-4">
+                  {/* Render other columns except the first one */}
+                  {columns.slice(1).map((column) => (
+                    <div key={column.id}>
+                      <div className="text-sm font-medium text-muted-foreground">
+                        {column.header}
+                      </div>
+                      <div>
+                        {column.cell
+                          ? column.cell(item)
+                          : column.accessorKey
+                            ? String(item[column.accessorKey] ?? "")
+                            : ""}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </CardContent>
+                  ))}
+                </CardContent>
 
-              {entityActions && entityActions.length > 0 && (
-                <CardFooter className="flex flex-wrap gap-2 border-t pt-4">
-                  {entityActions.map((action) => {
-                    const isDisabled =
-                      typeof action.isDisabled === "function"
-                        ? action.isDisabled(item)
-                        : action.isDisabled;
+                {entityActions && entityActions.length > 0 && (
+                  <CardFooter className="flex flex-wrap gap-2 border-t pt-4">
+                    {entityActions.map((action) => {
+                      const isDisabled =
+                        typeof action.isDisabled === "function"
+                          ? action.isDisabled(item)
+                          : action.isDisabled;
 
-                    return (
-                      <Button
-                        key={action.id}
-                        size="sm"
-                        variant={action.variant ?? "outline"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          action.onClick(item);
-                        }}
-                        disabled={isDisabled}
-                      >
-                        {action.icon && (
-                          <span className="mr-1">{action.icon}</span>
-                        )}
-                        {typeof action.label === "function"
-                          ? action.label(item)
-                          : action.label}
-                      </Button>
-                    );
-                  })}
-                </CardFooter>
-              )}
-            </>
-          )}
-        </Card>
-      ))}
+                      return (
+                        <Button
+                          key={action.id}
+                          size="sm"
+                          variant={action.variant ?? "outline"}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            action.onClick(item);
+                          }}
+                          disabled={isDisabled}
+                        >
+                          {action.icon && (
+                            <span className="mr-1">{action.icon}</span>
+                          )}
+                          {typeof action.label === "function"
+                            ? action.label(item)
+                            : action.label}
+                        </Button>
+                      );
+                    })}
+                  </CardFooter>
+                )}
+              </>
+            )}
+          </Card>
+        );
+      })}
     </div>
   );
 }

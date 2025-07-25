@@ -1,11 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 "use client";
 
+import type { Lesson } from "@convex-config/_generated/dataModel";
+import Image from "next/image";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
+import { Doc } from "@convex-config/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 
+import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
@@ -19,7 +23,51 @@ import { Separator } from "@acme/ui/separator";
 import { toast } from "@acme/ui/toast";
 
 import type { LessonFormValues } from "~/app/(root)/(admin)/admin/lessons/_components/LessonForm";
+import type {
+  ColumnDefinition,
+  EntityListItem,
+} from "~/components/shared/EntityList/types";
 import LessonForm from "~/app/(root)/(admin)/admin/lessons/_components/LessonForm";
+import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityListView } from "~/components/shared/EntityList/EntityListView";
+import LessonSidebar from "./_components/LessonSidebar";
+
+type Topic = Doc<"topics">;
+
+const lessonColumns: ColumnDefinition<Topic>[] = [
+  {
+    id: "title",
+    header: "Title",
+    accessorKey: "title",
+    sortable: true,
+  },
+  {
+    id: "content",
+    header: "Content",
+    accessorKey: "content",
+    sortable: true,
+  },
+  {
+    id: "featuredImage",
+    header: "Featured Image",
+    accessorKey: "featuredImage",
+    sortable: true,
+    cell(item) {
+      return (
+        <Image
+          src={
+            item.featuredImage && item.featuredImage !== ""
+              ? item.featuredImage
+              : "https://placehold.co/600x400.png"
+          }
+          alt={item.title}
+          width={100}
+          height={100}
+        />
+      );
+    },
+  },
+];
 
 export default function LessonPage() {
   const params = useParams();
@@ -27,6 +75,8 @@ export default function LessonPage() {
     courseId: string;
     lessonId: string;
   };
+
+  const router = useRouter();
 
   const data = useQuery(api.lms.courses.queries.getCourseStructureWithItems, {
     courseId,
@@ -60,101 +110,115 @@ export default function LessonPage() {
       categories: values.categories
         ? values.categories.split(",").map((c) => c.trim())
         : undefined,
-      featuredImage: values.featuredImageUrl,
+      featuredMedia: values.featuredMedia,
     });
     toast.success("Lesson updated");
   };
 
+  const topicItems: EntityListItem[] = topics.map((topic) => ({
+    id: topic._id,
+    title: topic.title,
+    description: topic.excerpt ?? "",
+    href: `/courses/${courseId}/lesson/${lessonId}/topic/${topic._id}`,
+    featuredImage: topic.featuredImage,
+  }));
+
   return (
-    <Card className="shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-xl font-bold">{lesson.title}</CardTitle>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button size="sm" variant="outline">
-              Edit Lesson
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
-            <DialogHeader>
-              <DialogTitle>Edit Lesson</DialogTitle>
-            </DialogHeader>
-            <LessonForm
-              initialData={{
-                _id: lesson._id,
-                title: lesson.title,
-                content: lesson.content ?? "",
-                excerpt: lesson.excerpt ?? "",
-                categories: lesson.categories?.join(", ") ?? "",
-                featuredMedia: lesson.featuredMedia ?? "",
-                status: lesson.isPublished ? "published" : "draft",
-                featured: false,
-              }}
-              onSubmit={handleUpdate}
-              isSubmitting={false}
-              categories={[]}
-              submitButtonText="Save Lesson"
-            />
-          </DialogContent>
-        </Dialog>
-      </CardHeader>
-      <CardContent>
-        {lesson.content?.includes("vimeo") && (
-          <div className="relative mb-4 h-0 overflow-hidden rounded-md pb-[56.25%]">
-            <iframe
-              src={getVimeoEmbedUrl(lesson.content)}
-              allow="autoplay; fullscreen; picture-in-picture"
-              allowFullScreen
-              className="absolute left-0 top-0 h-full w-full border-0"
-            ></iframe>
-          </div>
-        )}
-        {lesson.description && (
-          <p className="mb-4 text-sm text-muted-foreground">
-            {lesson.description}
-          </p>
-        )}
+    <div className="flex flex-col gap-4">
+      {/* <LessonHeader lesson={lesson} /> */}
+      <div className="flex gap-6 p-3">
+        <div className="flex-1">
+          <Card className="border-none shadow-none">
+            <CardContent className="p-6">
+              {lesson.content?.includes("vimeo") && (
+                <div className="relative mb-4 h-0 overflow-hidden rounded-md pb-[56.25%]">
+                  <iframe
+                    src={getVimeoEmbedUrl(lesson.content)}
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                    className="absolute left-0 top-0 h-full w-full border-0"
+                  ></iframe>
+                </div>
+              )}
+              {lesson.description && (
+                <p className="mb-4 text-sm text-muted-foreground">
+                  {lesson.description}
+                </p>
+              )}
 
-        {/* Topics */}
-        {topics.length > 0 && (
-          <>
-            <h3 className="mb-2 font-semibold">Topics</h3>
-            <ul className="mb-4 list-disc pl-6">
-              {topics.map((topic) => (
-                <li key={topic._id}>
-                  <Link
-                    href={`/courses/${courseId}/lesson/${lessonId}/topic/${topic._id}`}
-                    className="text-primary underline"
-                  >
-                    {topic.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
+              {/* Topics */}
+              {topics.length > 0 && (
+                <EntityList
+                  title="Topics"
+                  description="All topics in this lesson"
+                  columns={lessonColumns}
+                  data={topicItems}
+                  gridColumns={{ sm: 1, md: 2, lg: 3, xl: 3 }}
+                  onRowClick={(item) => {
+                    router.push(
+                      `/courses/${courseId}/lesson/${lessonId}/topic/${item.id}`,
+                    );
+                  }}
+                  itemRender={(item) => (
+                    <Card className="h-full p-0">
+                      <CardContent className="p-0">
+                        <Image
+                          src={
+                            item.featuredImage && item.featuredImage !== ""
+                              ? item.featuredImage
+                              : "https://placehold.co/600x300.png"
+                          }
+                          alt={item.title}
+                          width={100}
+                          height={100}
+                          className="w-full"
+                        />
+                      </CardContent>
+                      <CardHeader className="p-3">
+                        <CardTitle>{item.title}</CardTitle>
+                      </CardHeader>
+                    </Card>
+                  )}
+                  defaultViewMode="grid"
+                />
+              )}
 
-        <Separator />
+              <Separator />
 
-        {/* Quizzes */}
-        {quizzes.length > 0 && (
-          <>
-            <h3 className="mb-2 mt-4 font-semibold">Quizzes</h3>
-            <ul className="list-disc pl-6">
-              {quizzes.map((quiz) => (
-                <li key={quiz._id}>
-                  <Link
-                    href={`/courses/${courseId}/lesson/${lessonId}/quiz/${quiz._id}`}
-                    className="text-xs text-primary underline"
-                  >
-                    Quiz: {quiz.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </CardContent>
-    </Card>
+              {/* Quizzes */}
+              {quizzes.length > 0 && (
+                <EntityList
+                  title="Quizzes"
+                  description="All quizzes in this lesson"
+                  items={quizzes.map((quiz) => ({
+                    id: quiz._id,
+                    title: quiz.title,
+                    description: quiz.description ?? "",
+                    href: `/courses/${courseId}/lesson/${lessonId}/quiz/${quiz._id}`,
+                  }))}
+                  renderItem={(item) => <EntityListView item={item} />}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+        {/* <div className="-mt-24 w-1/3 p-3">
+          <LessonSidebar />
+        </div> */}
+      </div>
+    </div>
   );
 }
+
+const LessonHeader = ({ lesson }: { lesson: Lesson }) => {
+  return (
+    <CardHeader className="flex justify-between">
+      <div className="flex flex-1 justify-between gap-2">
+        <CardTitle className="flex gap-2 text-2xl font-bold">
+          {lesson.title}
+          <Badge variant="outline">Lesson</Badge>
+        </CardTitle>
+      </div>
+    </CardHeader>
+  );
+};

@@ -17,26 +17,28 @@ export function EntityListHeader({
   onViewModeChange,
   actions,
   isSearching,
+  enableSearch,
 }: EntityListHeaderProps) {
+  console.log("[EntityListHeader] viewModes", viewModes);
   return (
     <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
       <div>
-        {title && (
-          <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
-        )}
+        {title && <h2 className="text-xl font-bold tracking-tight">{title}</h2>}
         {description && <p className="text-muted-foreground">{description}</p>}
       </div>
 
       <div className="flex flex-col space-y-3 sm:flex-row sm:space-x-3 sm:space-y-0 md:items-center">
-        <Search
-          value={searchTerm}
-          onChange={onSearchChange}
-          isSearching={isSearching}
-          placeholder="Search..."
-          className="max-w-xs"
-        />
+        {enableSearch && (
+          <Search
+            value={searchTerm}
+            onChange={onSearchChange}
+            isSearching={isSearching}
+            placeholder="Search..."
+            className="max-w-xs"
+          />
+        )}
 
-        {viewModes.length > 1 && (
+        {viewModes.length >= 1 && (
           <div className="flex rounded-md border">
             {viewModes.includes("list") && (
               <Button

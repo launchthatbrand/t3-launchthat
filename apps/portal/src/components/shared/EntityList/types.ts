@@ -109,8 +109,18 @@ export interface PaginationConfig {
  * @template T - The type of data being displayed (must be an object)
  */
 export interface EntityListProps<T extends object> {
+  /** Number of columns at different breakpoints */
+  gridColumns?: {
+    sm?: number; // Small screens (default: 1)
+    md?: number; // Medium screens (default: 2)
+    lg?: number; // Large screens (default: 3)
+    xl?: number; // Extra large screens (default: 4)
+  };
   /** Array of data items to display */
   data: T[];
+
+  /** Whether search is enabled */
+  enableSearch?: boolean;
 
   /** Column configurations */
   columns: ColumnDefinition<T>[];
@@ -160,6 +170,9 @@ export interface EntityListProps<T extends object> {
 
   /** Available view modes (default: ["list", "grid"]) */
   viewModes?: ViewMode[];
+
+  /** Custom item renderer (optional) */
+  itemRender?: (item: T) => ReactNode;
 
   /** Default view mode (default: "list") */
   defaultViewMode?: ViewMode;
@@ -214,6 +227,9 @@ export interface EntityListHeaderProps {
   /** Description text (optional) */
   description?: string;
 
+  /** Whether search is enabled */
+  enableSearch?: boolean;
+
   /** Current search term */
   searchTerm: string;
 
@@ -261,6 +277,14 @@ export interface EntityListFiltersProps<T> {
  * @template T - The type of data being displayed
  */
 export interface EntityListViewProps<T extends object> {
+  /** Number of columns at different breakpoints */
+  gridColumns?: {
+    sm?: number; // Small screens (default: 1)
+    md?: number; // Medium screens (default: 2)
+    lg?: number; // Large screens (default: 3)
+    xl?: number; // Extra large screens (default: 4)
+  };
+
   /** Array of data items to display */
   data: T[];
 
@@ -290,6 +314,9 @@ export interface EntityListViewProps<T extends object> {
 
   /** The currently selected item ID, if any. Used for highlighting. */
   selectedId?: string | null;
+
+  /** Custom item renderer (optional) */
+  itemRender?: (item: T) => ReactNode;
 }
 
 /**

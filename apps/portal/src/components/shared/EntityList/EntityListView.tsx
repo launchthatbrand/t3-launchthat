@@ -23,11 +23,13 @@ export function EntityListView<T extends object>({
   viewMode,
   isLoading = false,
   onRowClick,
+  gridColumns,
   selectedId,
   emptyState,
   entityActions,
   sortConfig,
   onSortChange,
+  itemRender,
 }: EntityListViewProps<T>) {
   if (isLoading) {
     return (
@@ -113,6 +115,8 @@ export function EntityListView<T extends object>({
       onCardClick={onRowClick}
       selectedId={selectedId}
       entityActions={entityActions}
+      cardRenderer={itemRender}
+      gridColumns={gridColumns}
     />
   );
 }

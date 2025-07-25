@@ -1,0 +1,1 @@
+{"_creationTime":1745266834203.751,"_id":"j5792sm9j638fhfx2ckxy08tq97efrqj","amount":100.0,"authNetTransactionId":"120061760025","lineItems":[{"productId":"placeholder_prod_1","productName":"Placeholder Item","quantity":1.0,"totalPrice":100.0,"unitPrice":100.0}],"opaqueDataDescriptor":"COMMON.ACCEPT.INAPP.PAYMENT","paymentMethod":"credit-card","status":"succeeded"}

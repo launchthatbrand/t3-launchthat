@@ -113,8 +113,8 @@ export function CoursesSidebar(
   ]);
 
   return (
-    <CourseSidebar {...props}>
-      <CourseSidebarHeader className="border-b border-border text-lg font-bold">
+    <CourseSidebar {...props} className="TEST sticky top-0 p-0">
+      <CourseSidebarHeader className="h-14 justify-center border-b border-border text-lg font-bold">
         Lessons
       </CourseSidebarHeader>
       <CourseSidebarContent>

@@ -1,7 +1,7 @@
 import { filter } from "convex-helpers/server/filter";
 import { v } from "convex/values";
 
-import type { Id } from "../../_generated/dataModel";
+import type { Doc, Id } from "../../_generated/dataModel";
 import { query } from "../../_generated/server";
 
 /**
@@ -19,9 +19,12 @@ export const getCourseStructureWithItems = query({
         _creationTime: v.number(),
         title: v.string(),
         description: v.optional(v.string()),
-        wp_id: v.optional(v.number()),
+        wp_id: v.optional(v.float64()),
         productId: v.optional(v.string()),
         isPublished: v.optional(v.boolean()),
+        categories: v.optional(v.array(v.string())),
+        tagIds: v.optional(v.array(v.id("tags"))),
+        menuOrder: v.optional(v.number()),
         courseStructure: v.optional(
           v.array(
             v.object({
@@ -29,6 +32,7 @@ export const getCourseStructureWithItems = query({
             }),
           ),
         ),
+        finalQuizId: v.optional(v.id("quizzes")),
       }),
       attachedLessons: v.array(
         v.object({
@@ -37,12 +41,10 @@ export const getCourseStructureWithItems = query({
           title: v.string(),
           description: v.optional(v.string()),
           content: v.optional(v.string()),
-          videoUrl: v.optional(v.string()),
-          duration: v.optional(v.number()),
-          order: v.optional(v.number()),
-          isPublished: v.optional(v.boolean()),
-          courseId: v.optional(v.id("courses")),
-          wp_id: v.optional(v.float64()),
+          excerpt: v.optional(v.string()),
+          categories: v.optional(v.array(v.string())),
+          tagIds: v.optional(v.array(v.id("tags"))),
+          featuredImage: v.optional(v.string()),
           featuredMedia: v.optional(
             v.union(
               v.object({
@@ -57,8 +59,10 @@ export const getCourseStructureWithItems = query({
               v.string(),
             ),
           ),
-          isBuiltIn: v.optional(v.boolean()),
-          excerpt: v.optional(v.string()),
+          isPublished: v.optional(v.boolean()),
+          courseId: v.optional(v.id("courses")),
+          wp_id: v.optional(v.float64()),
+          menuOrder: v.optional(v.number()),
         }),
       ),
       attachedTopics: v.array(
@@ -67,10 +71,11 @@ export const getCourseStructureWithItems = query({
           _creationTime: v.number(),
           title: v.string(),
           description: v.optional(v.string()),
-          content: v.optional(v.string()),
-          order: v.optional(v.number()),
-          lessonId: v.optional(v.id("lessons")),
+          excerpt: v.optional(v.string()),
+          categories: v.optional(v.array(v.string())),
+          tagIds: v.optional(v.array(v.id("tags"))),
           wp_id: v.optional(v.float64()),
+          featuredImage: v.optional(v.string()),
           featuredMedia: v.optional(
             v.union(
               v.object({
@@ -88,7 +93,11 @@ export const getCourseStructureWithItems = query({
           contentType: v.optional(
             v.union(v.literal("text"), v.literal("video"), v.literal("quiz")),
           ),
+          content: v.optional(v.string()),
+          order: v.optional(v.number()),
+          menuOrder: v.optional(v.number()),
           isPublished: v.optional(v.boolean()),
+          lessonId: v.optional(v.id("lessons")),
         }),
       ),
       attachedQuizzes: v.array(
@@ -112,16 +121,20 @@ export const getCourseStructureWithItems = query({
       return null;
     }
 
-    // Get all lessons attached to this course
-    const attachedLessons = await ctx.db
-      .query("lessons")
-      .withIndex("by_course_order", (q) => q.eq("courseId", args.courseId))
-      .collect();
+    // Get all lessons attached to this course and order them according to course.courseStructure
+    const attachedLessons: Doc<"lessons">[] = [];
+    if (course.courseStructure) {
+      for (const structureItem of course.courseStructure) {
+        const lesson = await ctx.db.get(structureItem.lessonId);
+        if (lesson) {
+          attachedLessons.push(lesson);
+        }
+      }
+    }
 
     // Get all topics attached to lessons in this course
-    const lessonIds = attachedLessons.map((lesson) => lesson._id);
-    const attachedTopics = [];
-    for (const lessonId of lessonIds) {
+    const attachedTopics: Doc<"topics">[] = [];
+    for (const lessonId of attachedLessons.map((l) => l._id)) {
       const topics = await ctx.db
         .query("topics")
         .withIndex("by_lessonId_order", (q) => q.eq("lessonId", lessonId))
@@ -131,7 +144,7 @@ export const getCourseStructureWithItems = query({
 
     // Get all quizzes attached to lessons in this course
     const attachedQuizzes = [];
-    for (const lessonId of lessonIds) {
+    for (const lessonId of attachedLessons.map((l) => l._id)) {
       const quizzes = await ctx.db
         .query("quizzes")
         .withIndex("by_lessonId", (q) => q.eq("lessonId", lessonId))
@@ -140,7 +153,18 @@ export const getCourseStructureWithItems = query({
     }
 
     return {
-      course,
+      course: {
+        _id: course._id,
+        _creationTime: course._creationTime,
+        title: course.title,
+        description: course.description,
+        productId: course.productId,
+        isPublished: course.isPublished,
+        tagIds: course.tagIds,
+        menuOrder: course.menuOrder,
+        courseStructure: course.courseStructure,
+        finalQuizId: course.finalQuizId,
+      },
       attachedLessons,
       attachedTopics,
       attachedQuizzes,
@@ -160,8 +184,11 @@ export const getAvailableLessons = query({
       _creationTime: v.number(),
       title: v.string(),
       description: v.optional(v.string()),
-      wp_id: v.optional(v.number()),
+      wp_id: v.optional(v.float64()),
       excerpt: v.optional(v.string()),
+      categories: v.optional(v.array(v.string())),
+      tagIds: v.optional(v.array(v.id("tags"))),
+      featuredImage: v.optional(v.string()),
       featuredMedia: v.optional(
         v.union(
           v.object({
@@ -177,10 +204,12 @@ export const getAvailableLessons = query({
         ),
       ),
       content: v.optional(v.string()),
-      videoUrl: v.optional(v.string()),
       duration: v.optional(v.number()),
       isPublished: v.optional(v.boolean()),
       order: v.optional(v.number()),
+      menuOrder: v.optional(v.number()),
+      courseId: v.optional(v.id("courses")),
+      isBuiltIn: v.optional(v.boolean()),
     }),
   ),
   handler: async (ctx) => {
@@ -190,7 +219,23 @@ export const getAvailableLessons = query({
       .filter((q) => q.eq(q.field("courseId"), undefined))
       .collect();
 
-    return availableLessons;
+    return availableLessons.map((l) => ({
+      _id: l._id,
+      _creationTime: l._creationTime,
+      title: l.title,
+      description: l.description,
+      wp_id: l.wp_id,
+      excerpt: l.excerpt,
+      categories: l.categories,
+      tagIds: l.tagIds,
+      featuredImage: l.featuredImage,
+      featuredMedia: l.featuredMedia,
+      content: l.content,
+      isPublished: l.isPublished,
+      menuOrder: l.menuOrder,
+      courseId: l.courseId,
+      isBuiltIn: l.isBuiltIn,
+    }));
   },
 });
 
@@ -199,29 +244,67 @@ export const getAvailableLessons = query({
  * Supports the available items panel in the course builder
  */
 export const getAvailableTopics = query({
-  args: {},
+  args: {
+    lessonId: v.id("lessons"),
+  },
   returns: v.array(
     v.object({
       _id: v.id("topics"),
       _creationTime: v.number(),
+      lessonId: v.optional(v.id("lessons")),
       title: v.string(),
       description: v.optional(v.string()),
+      excerpt: v.optional(v.string()),
+      categories: v.optional(v.array(v.string())),
+      tagIds: v.optional(v.array(v.id("tags"))),
       wp_id: v.optional(v.float64()),
-      content: v.optional(v.string()),
+      featuredImage: v.optional(v.string()),
+      featuredMedia: v.optional(
+        v.union(
+          v.object({
+            type: v.literal("convex"),
+            mediaItemId: v.id("mediaItems"),
+          }),
+          v.object({
+            type: v.literal("vimeo"),
+            vimeoId: v.string(),
+            vimeoUrl: v.string(),
+          }),
+          v.string(),
+        ),
+      ),
       contentType: v.optional(
         v.union(v.literal("text"), v.literal("video"), v.literal("quiz")),
       ),
+      content: v.optional(v.string()),
+      order: v.optional(v.number()),
+      menuOrder: v.optional(v.number()),
       isPublished: v.optional(v.boolean()),
     }),
   ),
-  handler: async (ctx) => {
-    // Get topics that are not attached to any lesson
-    const availableTopics = await ctx.db
+  handler: async (ctx, args) => {
+    const topics = await ctx.db
       .query("topics")
-      .filter((q) => q.eq(q.field("lessonId"), undefined))
+      .filter((q) => q.eq(q.field("lessonId"), args.lessonId))
       .collect();
-
-    return availableTopics;
+    return topics.map((topic) => ({
+      _id: topic._id,
+      _creationTime: topic._creationTime,
+      title: topic.title,
+      description: topic.description,
+      wp_id: topic.wp_id,
+      featuredImage: topic.featuredImage,
+      featuredMedia: topic.featuredMedia,
+      content: topic.content,
+      order: topic.order,
+      menuOrder: topic.menuOrder,
+      isPublished: topic.isPublished,
+      lessonId: topic.lessonId,
+      categories: topic.categories,
+      tagIds: topic.tagIds,
+      excerpt: topic.excerpt,
+      contentType: topic.contentType,
+    }));
   },
 });
 
@@ -238,6 +321,8 @@ export const getAvailableQuizzes = query({
       title: v.string(),
       description: v.optional(v.string()),
       questions: v.optional(v.array(v.any())),
+      order: v.optional(v.number()),
+      lessonId: v.optional(v.id("lessons")),
       isPublished: v.optional(v.boolean()),
     }),
   ),
@@ -280,13 +365,13 @@ export const getCourseMetadata = query({
     // Get counts for dashboard/summary views
     const lessonCount = await ctx.db
       .query("lessons")
-      .withIndex("by_course_order", (q) => q.eq("courseId", args.courseId))
+      .withIndex("by_course", (q) => q.eq("courseId", args.courseId))
       .collect()
       .then((lessons) => lessons.length);
 
     const lessonIds = await ctx.db
       .query("lessons")
-      .withIndex("by_course_order", (q) => q.eq("courseId", args.courseId))
+      .withIndex("by_course", (q) => q.eq("courseId", args.courseId))
       .collect()
       .then((lessons) => lessons.map((l) => l._id));
 
@@ -329,6 +414,7 @@ export const listPublishedCourses = query({
   returns: v.array(
     v.object({
       _id: v.id("courses"),
+      _creationTime: v.number(),
       title: v.string(),
       description: v.optional(v.string()),
       isPublished: v.optional(v.boolean()),
@@ -350,6 +436,7 @@ export const listPublishedCourses = query({
     // Return only the whitelisted fields expected by the validator
     return results.map((course) => ({
       _id: course._id,
+      _creationTime: course._creationTime, // Explicitly include _creationTime
       title: course.title,
       description: course.description,
       isPublished: course.isPublished,
@@ -402,7 +489,7 @@ export const listCourses = query({
       _creationTime: v.number(),
       title: v.string(),
       description: v.optional(v.string()),
-      productId: v.optional(v.id("products")),
+      productId: v.optional(v.string()), // Changed to v.string() as per schema
       isPublished: v.optional(v.boolean()),
       courseStructure: v.optional(
         v.array(v.object({ lessonId: v.id("lessons") })),
@@ -431,7 +518,7 @@ export const getCourse = query({
       _creationTime: v.number(),
       title: v.string(),
       description: v.optional(v.string()),
-      productId: v.optional(v.id("products")),
+      productId: v.optional(v.string()), // Changed to v.string() as per schema
       isPublished: v.optional(v.boolean()),
       courseStructure: v.optional(
         v.array(v.object({ lessonId: v.id("lessons") })),
@@ -450,8 +537,10 @@ export const getCourseStructure = query({
       _creationTime: v.number(),
       title: v.string(),
       description: v.optional(v.string()),
-      productId: v.optional(v.id("products")),
+      productId: v.optional(v.string()), // Changed to v.string() as per schema
       isPublished: v.optional(v.boolean()),
+      tagIds: v.optional(v.array(v.id("tags"))),
+      menuOrder: v.optional(v.number()),
       courseStructure: v.optional(
         v.array(v.object({ lessonId: v.id("lessons") })),
       ),
@@ -461,23 +550,28 @@ export const getCourseStructure = query({
           _creationTime: v.number(),
           title: v.string(),
           description: v.optional(v.string()),
+          content: v.optional(v.string()),
+          menuOrder: v.optional(v.number()),
           isPublished: v.optional(v.boolean()),
-          topics: v.array(
-            v.object({
-              _id: v.id("topics"),
-              _creationTime: v.number(),
-              lessonId: v.optional(v.id("lessons")),
-              title: v.string(),
-              contentType: v.union(
-                v.literal("text"),
-                v.literal("video"),
-                v.literal("quiz"),
-              ),
-              content: v.optional(v.string()),
-              order: v.optional(v.number()),
-              isPublished: v.optional(v.boolean()),
-            }),
+          courseId: v.optional(v.id("courses")),
+          featuredImage: v.optional(v.string()),
+          featuredMedia: v.optional(
+            v.union(
+              v.object({
+                type: v.literal("convex"),
+                mediaItemId: v.id("mediaItems"),
+              }),
+              v.object({
+                type: v.literal("vimeo"),
+                vimeoId: v.string(),
+                vimeoUrl: v.string(),
+              }),
+              v.string(),
+            ),
           ),
+          excerpt: v.optional(v.string()),
+          categories: v.optional(v.array(v.string())),
+          tagIds: v.optional(v.array(v.id("tags"))),
         }),
       ),
     }),
@@ -500,7 +594,39 @@ export const getCourseStructure = query({
           .withIndex("by_lessonId_order", (q) => q.eq("lessonId", lesson._id))
           .order("asc")
           .collect();
-        return { ...lesson, topics };
+        return {
+          _id: lesson._id,
+          _creationTime: lesson._creationTime,
+          title: lesson.title,
+          description: lesson.description,
+          content: lesson.content,
+          menuOrder: lesson.menuOrder,
+          isPublished: lesson.isPublished,
+          courseId: lesson.courseId,
+          featuredImage: lesson.featuredImage,
+          featuredMedia: lesson.featuredMedia,
+          excerpt: lesson.excerpt,
+          categories: lesson.categories,
+          tagIds: lesson.tagIds,
+          topics: topics.map((t) => ({
+            _id: t._id,
+            _creationTime: t._creationTime,
+            lessonId: t.lessonId,
+            title: t.title,
+            contentType: t.contentType,
+            content: t.content,
+            order: t.order,
+            menuOrder: t.menuOrder,
+            isPublished: t.isPublished,
+            description: t.description,
+            excerpt: t.excerpt,
+            categories: t.categories,
+            tagIds: t.tagIds,
+            wp_id: t.wp_id,
+            featuredImage: t.featuredImage,
+            featuredMedia: t.featuredMedia,
+          })),
+        };
       }),
     );
 
@@ -508,7 +634,18 @@ export const getCourseStructure = query({
       .map((id) => lessonsWithTopics.find((l) => l._id === id))
       .filter((l): l is NonNullable<typeof l> => l !== undefined);
 
-    return { ...course, lessons: orderedLessons };
+    return {
+      _id: course._id,
+      _creationTime: course._creationTime,
+      title: course.title,
+      description: course.description,
+      productId: course.productId,
+      isPublished: course.isPublished,
+      tagIds: course.tagIds,
+      menuOrder: course.menuOrder,
+      courseStructure: course.courseStructure,
+      lessons: orderedLessons,
+    };
   },
 });
 
@@ -522,8 +659,10 @@ export const getStructure = query({
         _creationTime: v.number(),
         title: v.string(),
         description: v.optional(v.string()),
-        productId: v.optional(v.id("products")),
+        productId: v.optional(v.string()), // Changed to v.string() as per schema
         isPublished: v.optional(v.boolean()),
+        tagIds: v.optional(v.array(v.id("tags"))),
+        menuOrder: v.optional(v.number()),
       }),
       lessons: v.array(
         v.object({
@@ -531,6 +670,28 @@ export const getStructure = query({
           _creationTime: v.number(),
           title: v.string(),
           description: v.optional(v.string()),
+          tagIds: v.optional(v.array(v.id("tags"))),
+          featuredImage: v.optional(v.string()),
+          featuredMedia: v.optional(
+            v.union(
+              v.object({
+                type: v.literal("convex"),
+                mediaItemId: v.id("mediaItems"),
+              }),
+              v.object({
+                type: v.literal("vimeo"),
+                vimeoId: v.string(),
+                vimeoUrl: v.string(),
+              }),
+              v.string(),
+            ),
+          ),
+          isBuiltIn: v.optional(v.boolean()),
+          excerpt: v.optional(v.string()),
+          content: v.optional(v.string()),
+          menuOrder: v.optional(v.number()),
+          isPublished: v.optional(v.boolean()),
+          courseId: v.optional(v.id("courses")),
         }),
       ),
       topics: v.array(
@@ -538,11 +699,34 @@ export const getStructure = query({
           _id: v.id("topics"),
           _creationTime: v.number(),
           title: v.string(),
-          contentType: v.union(
-            v.literal("text"),
-            v.literal("video"),
-            v.literal("quiz"),
+          contentType: v.optional(
+            v.union(v.literal("text"), v.literal("video"), v.literal("quiz")),
           ),
+          categories: v.optional(v.array(v.string())),
+          tagIds: v.optional(v.array(v.id("tags"))),
+          description: v.optional(v.string()),
+          excerpt: v.optional(v.string()),
+          wp_id: v.optional(v.float64()),
+          featuredImage: v.optional(v.string()),
+          featuredMedia: v.optional(
+            v.union(
+              v.object({
+                type: v.literal("convex"),
+                mediaItemId: v.id("mediaItems"),
+              }),
+              v.object({
+                type: v.literal("vimeo"),
+                vimeoId: v.string(),
+                vimeoUrl: v.string(),
+              }),
+              v.string(),
+            ),
+          ),
+          content: v.optional(v.string()),
+          order: v.optional(v.number()),
+          menuOrder: v.optional(v.number()),
+          isPublished: v.optional(v.boolean()),
+          lessonId: v.optional(v.id("lessons")),
         }),
       ),
       quizzes: v.array(
@@ -567,7 +751,7 @@ export const getStructure = query({
 
     const lessonDocs = await ctx.db
       .query("lessons")
-      .withIndex("by_course_order", (q) => q.eq("courseId", args.courseId))
+      .withIndex("by_course", (q) => q.eq("courseId", args.courseId))
       .collect();
 
     const lessons = lessonDocs.map((l) => ({
@@ -575,6 +759,16 @@ export const getStructure = query({
       _creationTime: l._creationTime,
       title: l.title,
       description: l.description,
+      categories: l.categories,
+      tagIds: l.tagIds,
+      featuredImage: l.featuredImage,
+      featuredMedia: l.featuredMedia,
+      isBuiltIn: l.isBuiltIn,
+      excerpt: l.excerpt,
+      content: l.content,
+      menuOrder: l.menuOrder,
+      isPublished: l.isPublished,
+      courseId: l.courseId,
     }));
 
     const lessonIds = lessonDocs.map((l) => l._id);
@@ -589,6 +783,18 @@ export const getStructure = query({
       _creationTime: t._creationTime,
       title: t.title,
       contentType: t.contentType,
+      categories: t.categories,
+      tagIds: t.tagIds,
+      description: t.description,
+      excerpt: t.excerpt,
+      wp_id: t.wp_id,
+      featuredImage: t.featuredImage,
+      featuredMedia: t.featuredMedia,
+      content: t.content,
+      order: t.order,
+      menuOrder: t.menuOrder,
+      isPublished: t.isPublished,
+      lessonId: t.lessonId,
     }));
 
     const topicIds = topicDocs.map((t) => t._id);
@@ -623,6 +829,8 @@ export const getStructure = query({
         description: course.description,
         productId: course.productId,
         isPublished: course.isPublished,
+        tagIds: course.tagIds,
+        menuOrder: course.menuOrder,
       },
       lessons,
       topics,

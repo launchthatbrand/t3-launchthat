@@ -19,6 +19,7 @@ import { mediaSchema } from "./media/schema";
 import { notificationsSchema } from "./notifications/schema";
 import { puckEditorTable } from "./puckEditor/schema";
 import socialFeedSchema from "./socialfeed/schema";
+import { tagsTable } from "./tags/schema";
 import { taskBoardsSchema } from "./tasks/boards/schema";
 import { tasksSchema } from "./tasks/schema";
 import { usersSchema } from "./users/schema";
@@ -116,6 +117,9 @@ export default defineSchema({
   // Categories table
   categories: categoriesTable,
 
+  // Global Tags table
+  tags: tagsTable,
+
   // ...unifiedProductSchema, // REMOVE THIS SPREAD
 
   // posts: postsTable, // REMOVE - now in coreSchema
@@ -134,7 +138,7 @@ export default defineSchema({
     featured: v.boolean(),
     lastUpdated: v.number(),
     views: v.number(),
-    tags: v.array(v.string()),
+    tags: v.array(v.string()), // This can be updated to v.array(v.id("tags")) later
   })
     .index("by_slug", ["slug"])
     .index("by_category", ["category"])

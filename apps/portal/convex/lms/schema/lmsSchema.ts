@@ -6,10 +6,13 @@ export const coursesTable = defineTable({
   description: v.optional(v.string()),
   productId: v.optional(v.id("products")), // Link to ecommerce product
   isPublished: v.optional(v.boolean()),
+  // For display ordering in admin lists
+  menuOrder: v.optional(v.number()),
   courseStructure: v.optional(
     v.array(v.object({ lessonId: v.id("lessons") })), // Store ordered lesson IDs
   ),
   finalQuizId: v.optional(v.id("quizzes")), // Added field for final quiz
+  tagIds: v.optional(v.array(v.id("tags"))), // New field for global tags
   // Add other course metadata as needed
 })
   // Add a search index on the title field
@@ -27,6 +30,7 @@ export const lessonsTable = defineTable({
   content: v.optional(v.string()),
   excerpt: v.optional(v.string()),
   categories: v.optional(v.array(v.string())),
+  tagIds: v.optional(v.array(v.id("tags"))), // New field for global tags
   featuredImage: v.optional(v.string()),
   featuredMedia: v.optional(
     v.union(
@@ -40,9 +44,10 @@ export const lessonsTable = defineTable({
     ),
   ),
   isPublished: v.optional(v.boolean()),
+  // Order of lessons within a course (fallback if not using courseStructure)
+  menuOrder: v.optional(v.number()),
   courseId: v.optional(v.id("courses")), // Link to parent course
-  order: v.optional(v.number()), // Order within the course
-}).index("by_course_order", ["courseId", "order"]);
+}).index("by_course", ["courseId"]);
 
 export const topicsTable = defineTable({
   lessonId: v.optional(v.id("lessons")),
@@ -50,7 +55,9 @@ export const topicsTable = defineTable({
   description: v.optional(v.string()),
   excerpt: v.optional(v.string()),
   categories: v.optional(v.array(v.string())),
+  tagIds: v.optional(v.array(v.id("tags"))), // New field for global tags
   wp_id: v.optional(v.float64()),
+  featuredImage: v.optional(v.string()),
   featuredMedia: v.optional(
     v.union(
       v.object({ type: v.literal("convex"), mediaItemId: v.id("mediaItems") }),
@@ -68,9 +75,12 @@ export const topicsTable = defineTable({
   // Store text content directly, video URL for video type
   content: v.optional(v.string()),
   order: v.optional(v.number()),
+  // New field for admin-controlled ordering
+  menuOrder: v.optional(v.number()),
   isPublished: v.optional(v.boolean()),
 })
   .index("by_lessonId_order", ["lessonId", "order"])
+  .index("by_lessonId_menuOrder", ["lessonId", "menuOrder"])
   .index("by_unattached", ["lessonId"]);
 
 // Define quizzes directly within the lmsSchema for simplicity now

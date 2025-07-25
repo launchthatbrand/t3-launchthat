@@ -1,0 +1,2 @@
+{"_creationTime":1748303263601.249,"_id":"qn79j17attfmpjwgyn7z3xvcms7gnh1d","description":"Standard user with basic permissions","isAssignable":true,"isSystem":true,"name":"User","priority":10.0,"scope":"global"}
+{"_creationTime":1748303263601.2488,"_id":"qn7ekxtwndtw4ye7y61haqhncx7gmhf5","description":"Full system administrator with all permissions","isAssignable":true,"isSystem":true,"name":"Admin","priority":100.0,"scope":"global"}

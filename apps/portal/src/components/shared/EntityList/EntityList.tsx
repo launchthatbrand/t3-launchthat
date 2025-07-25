@@ -29,6 +29,7 @@ import { EntityListView } from "./EntityListView";
  * @template T - The type of data items being displayed (must be an object)
  */
 export function EntityList<T extends object>({
+  gridColumns,
   data,
   columns,
   filters,
@@ -44,6 +45,7 @@ export function EntityList<T extends object>({
   description,
   onRowClick,
   actions,
+  itemRender,
   emptyState,
   pagination,
   entityActions,
@@ -56,6 +58,7 @@ export function EntityList<T extends object>({
   tabHooks = [],
   className,
   selectedId,
+  enableSearch,
 }: EntityListProps<T>) {
   // State for view mode
   const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
@@ -284,6 +287,7 @@ export function EntityList<T extends object>({
           onViewModeChange={setViewMode}
           actions={actions}
           isSearching={isSearching || isLoading}
+          enableSearch={enableSearch}
         />
         {filterUI}
         {hookRender}
@@ -314,6 +318,7 @@ export function EntityList<T extends object>({
       <EntityListView
         data={filteredData}
         columns={columns}
+        gridColumns={gridColumns}
         viewMode={viewMode}
         isLoading={isLoading}
         onRowClick={onRowClick}
@@ -322,6 +327,7 @@ export function EntityList<T extends object>({
         sortConfig={sorting}
         onSortChange={handleSortChange}
         selectedId={selectedId}
+        itemRender={itemRender}
       />
 
       {/* Pagination controls */}

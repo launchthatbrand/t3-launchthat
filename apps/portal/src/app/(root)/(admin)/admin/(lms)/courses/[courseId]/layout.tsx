@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
+import { Id } from "@convex-config/_generated/dataModel";
 import { useQuery } from "convex/react";
 import { ChevronLeft } from "lucide-react";
 
@@ -20,16 +21,17 @@ export default function CourseAdminLayout({
   const pathname = usePathname();
   const courseId = params.courseId as string | undefined;
 
+  const baseUrl = `/admin/courses/${courseId ?? ""}`;
+
+  // Always call the hook; when courseId is undefined we pass "skip" so the query is not executed
+  const course = useQuery(
+    api.lms.courses.queries.getCourseMetadata,
+    courseId ? { courseId: courseId as Id<"courses"> } : "skip",
+  );
+
   if (!courseId) {
     return <div className="container py-6">Invalid course id</div>;
   }
-
-  const baseUrl = `/admin/courses/${courseId}`;
-
-  // Fetch course metadata
-  const course = useQuery(api.lms.courses.queries.getCourseMetadata, {
-    courseId: courseId as any,
-  });
 
   if (course === undefined) {
     return <div className="container py-6">Loading course...</div>;

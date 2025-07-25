@@ -4,338 +4,49 @@ import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import type { Active, DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import React, { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { ConfirmationDialog } from "@/components/ConfirmationDialog";
-import { EditItemDialog } from "@/components/EditItemDialog";
-import { NestedSortableList } from "@/components/NestedSortableList";
-import { NewItemDialog } from "@/components/NewItemDialog";
+import { AvailableItemSelector } from "@/components/AvailableItemSelector";
+import { BuilderDndProvider } from "@/components/BuilderDndProvider";
+import { CourseStructureDropzone } from "@/components/CourseStructureDropzone";
+import { CreateLessonDialog } from "@/components/CreateLessonDialog";
+import { CreateQuizDialog } from "@/components/CreateQuizDialog"; // New import
+import { CreateTopicDialog } from "@/components/CreateTopicDialog"; // New import
+
+import { LessonCard } from "@/components/LessonCard";
+import { SortableItem } from "@/components/SortableItem";
+import { SortableList } from "@/components/SortableList";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { api } from "@convex-config/_generated/api";
-import {
-  closestCenter,
-  DndContext,
-  DragOverlay,
-  KeyboardSensor,
-  PointerSensor,
-  useDroppable,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { DragOverlay } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 import { useMutation, useQuery } from "convex/react";
-import { ChevronDown, GripVertical } from "lucide-react";
-import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@acme/ui/command";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@acme/ui/form";
-import { Input } from "@acme/ui/input";
 import { Separator } from "@acme/ui/separator";
 import { toast } from "@acme/ui/toast";
 
-import {
-  LessonForm,
-  LessonFormValues,
-} from "../../../../lessons/_components/LessonForm";
-
-interface SortableItemProps {
-  id: string;
-  children: React.ReactNode;
-  data: { type: string; item: Doc<"lessons"> | Doc<"topics"> | Doc<"quizzes"> };
-  isOverlayDragging?: boolean;
-}
-
-export const SortableItem: React.FC<SortableItemProps> = ({
-  id,
-  children,
-  data,
-  isOverlayDragging,
-}) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging: isSortableDragging,
-  } = useSortable({
-    id,
-    data,
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isSortableDragging || isOverlayDragging ? 0.5 : 1,
-    zIndex: isSortableDragging || isOverlayDragging ? 100 : "auto",
-    position: "relative" as const,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      className="my-2 rounded-md border p-4 shadow-sm"
-    >
-      <div
-        className="absolute left-2 top-1/2 -translate-y-1/2 cursor-grab"
-        {...listeners}
-        data-dnd-handle="true"
-      >
-        <GripVertical className="h-5 w-5 text-muted-foreground" />
-      </div>
-      <div className="ml-8">{children}</div>
-    </div>
-  );
-};
-
-interface DropzoneProps {
-  id: string;
-  children: React.ReactNode;
-  lessonId: Id<"lessons">;
-}
-
-const TopicDropzone: React.FC<DropzoneProps> = ({ id, children, lessonId }) => {
-  const { setNodeRef, isOver } = useDroppable({
-    id,
-    data: { lessonId, type: "topicDropzone" },
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`mt-2 rounded-md border p-2 text-center text-muted-foreground ${
-        isOver ? "border-primary bg-primary/10" : "border-dashed"
-      }`}
-    >
-      {children}
-    </div>
-  );
-};
-
-const QuizDropzone: React.FC<DropzoneProps> = ({ id, children, lessonId }) => {
-  const { setNodeRef, isOver } = useDroppable({
-    id,
-    data: { lessonId, type: "quizDropzone" },
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`mt-2 rounded-md border p-2 text-center text-muted-foreground ${
-        isOver ? "border-primary bg-primary/10" : "border-dashed"
-      }`}
-    >
-      {children}
-    </div>
-  );
-};
-
-interface LessonDropzoneData {
-  type: "course-structure-droppable";
-}
-
+// Define these type interfaces here, as they are specific to this page's Dnd implementation
 interface TopicDropzoneData {
   type: "topicDropzone";
   lessonId: Id<"lessons">;
 }
-
 interface QuizDropzoneData {
   type: "quizDropzone";
   lessonId: Id<"lessons">;
 }
-
 interface DraggedItemData {
   type: string;
   item: Doc<"lessons"> | Doc<"topics"> | Doc<"quizzes">;
 }
 
-type ActiveCurrentData =
-  | DraggedItemData
-  | LessonDropzoneData
-  | TopicDropzoneData
-  | QuizDropzoneData;
-
-// Edit Lesson Dialog Component using shared LessonForm
-const EditLessonDialog: React.FC<{
-  lesson: Doc<"lessons">;
-  onSave: (values: LessonFormValues) => Promise<void>;
-}> = ({ lesson, onSave }) => {
-  const [open, setOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Placeholder categories until taxonomy implemented
-  const categories = [
-    { value: "general", label: "General" },
-    { value: "advanced", label: "Advanced" },
-  ];
-
-  const handleSubmit = async (values: LessonFormValues) => {
-    setIsSubmitting(true);
-    await onSave(values);
-    setIsSubmitting(false);
-    setOpen(false);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          Edit
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
-        <DialogHeader>
-          <DialogTitle>Edit Lesson</DialogTitle>
-        </DialogHeader>
-        <LessonForm
-          initialData={{
-            title: lesson.title,
-            content: lesson.content ?? "",
-            excerpt: lesson.excerpt ?? "",
-            categories: lesson.categories?.join(", ") ?? "",
-            featuredImageUrl: lesson.featuredImage ?? "",
-            status: lesson.isPublished ? "published" : "draft",
-            featured: false,
-          }}
-          onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-          categories={categories}
-          submitButtonText="Save Lesson"
-        />
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-// Create Lesson Dialog Component using shared LessonForm
-const CreateLessonDialog: React.FC<{
-  courseId: Id<"courses">;
-  onCreate: (lessonId: Id<"lessons">) => Promise<void>;
-}> = ({ courseId, onCreate }) => {
-  const [open, setOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const createLesson = useMutation(api.lms.lessons.index.create);
-  const addLessonToCourse = useMutation(
-    api.lms.courses.index.addLessonToCourse,
-  );
-
-  // Placeholder categories until taxonomy implemented
-  const categories = [
-    { value: "general", label: "General" },
-    { value: "advanced", label: "Advanced" },
-  ];
-
-  const handleSubmit = async (values: LessonFormValues) => {
-    setIsSubmitting(true);
-    try {
-      const newLessonId = await createLesson({
-        title: values.title,
-        content: values.content,
-        excerpt: values.excerpt,
-        categories: values.categories
-          ? values.categories
-              .split(",")
-              .map((c) => c.trim())
-              .filter(Boolean)
-          : undefined,
-        featuredImage: values.featuredImageUrl,
-      });
-      await addLessonToCourse({ courseId, lessonId: newLessonId });
-      await onCreate(newLessonId);
-      toast.success("Lesson created and added to course!");
-      setOpen(false);
-    } catch (error) {
-      console.error("Failed to create lesson:", error);
-      toast.error("Failed to create lesson.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="m-2 h-auto px-2 py-1">
-          Create Lesson
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
-        <DialogHeader>
-          <DialogTitle>Create New Lesson</DialogTitle>
-        </DialogHeader>
-        <LessonForm
-          initialData={null}
-          onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-          categories={categories}
-          submitButtonText="Create Lesson"
-        />
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-// Topic and Quiz creation schemas (used in sidebar dialogs)
-const newTopicSchema = z.object({
-  title: z.string().min(1, { message: "Topic title is required" }),
-  contentType: z.union(
-    [z.literal("text"), z.literal("video"), z.literal("quiz")],
-    { message: "Content type is required" },
-  ),
-  content: z.string().optional(),
-});
-
-const newQuizSchema = z.object({
-  title: z.string().min(1, { message: "Quiz title is required" }),
-});
+type ActiveCurrentData = DraggedItemData | TopicDropzoneData | QuizDropzoneData;
 
 // Forms for topic and quiz creation
-const useNewTopicForm = () =>
-  useForm<z.infer<typeof newTopicSchema>>({
-    resolver: zodResolver(newTopicSchema),
-    defaultValues: { title: "", contentType: "text", content: "" },
-  });
+// Moved inside CourseBuilder component
 
-const useNewQuizForm = () =>
-  useForm<z.infer<typeof newQuizSchema>>({
-    resolver: zodResolver(newQuizSchema),
-    defaultValues: { title: "" },
-  });
+interface CourseStructureItem {
+  lessonId: Id<"lessons">;
+}
 
 export default function CourseBuilder() {
   const params = useParams();
@@ -381,18 +92,19 @@ export default function CourseBuilder() {
   const removeQuizFromLesson = useMutation(
     api.lms.quizzes.index.removeQuizFromLesson,
   );
-  const updateLesson = useMutation(api.lms.lessons.index.update);
-  const updateTopicTitle = useMutation(api.lms.topics.index.updateTitle);
-  const updateQuizTitle = useMutation(api.lms.quizzes.index.updateTitle);
+  const reorderTopicsInLesson = useMutation(
+    api.lms.topics.index.reorderTopicsInLesson,
+  );
 
-  const [isNewTopicModalOpen, setIsNewTopicModalOpen] = useState(false);
-  const [isNewQuizModalOpen, setIsNewQuizModalOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<Id<"lessons"> | null>(
     null,
   );
 
   // Track expanded/collapsed lessons
   const [expandedLessons, setExpandedLessons] = useState<Id<"lessons">[]>([]);
+  const [lessonTopicSortOrder, setLessonTopicSortOrder] = useState<
+    Record<Id<"lessons">, "alphabetical" | "date">
+  >({});
 
   const toggleLessonExpand = (lessonId: Id<"lessons">) => {
     setExpandedLessons((prev) =>
@@ -402,10 +114,21 @@ export default function CourseBuilder() {
     );
   };
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor),
-  );
+  const _topicsForLesson = useMemo(() => {
+    if (!courseData?.attachedTopics || !selectedLesson) return []; // Ensure courseData is defined
+    return courseData.attachedTopics.filter(
+      (t) => t.lessonId === selectedLesson,
+    );
+  }, [selectedLesson, courseData?.attachedTopics]); // Depend on courseData.attachedTopics
+
+  // computed sorted topics is done inline where needed to avoid unused var
+
+  const _quizzesForLesson = useMemo(() => {
+    if (!courseData?.attachedQuizzes || !selectedLesson) return [];
+    return courseData.attachedQuizzes.filter(
+      (q) => q.lessonId === selectedLesson,
+    );
+  }, [selectedLesson, courseData?.attachedQuizzes]);
 
   const [activeItem, setActiveItem] = useState<Active | null>(null);
 
@@ -449,10 +172,6 @@ export default function CourseBuilder() {
     | string
     | undefined;
 
-  // Initialize forms for topic and quiz creation
-  const newTopicForm = useNewTopicForm();
-  const newQuizForm = useNewQuizForm();
-
   // Early returns for loading/error states
   if (!courseId) {
     return <div>Loading course ID...</div>;
@@ -471,9 +190,6 @@ export default function CourseBuilder() {
     return <div>Course not found.</div>;
   }
 
-  interface CourseStructureItem {
-    lessonId: Id<"lessons">;
-  }
   const lessonsInCourseStructure: (Doc<"lessons"> & { type: "lesson" })[] = (
     (courseData.course.courseStructure ?? []) as CourseStructureItem[]
   )
@@ -542,8 +258,12 @@ export default function CourseBuilder() {
             orderedLessonIds: newOrder,
           });
           toast.success("Lessons reordered!");
-        } catch (error) {
-          console.error("Failed to reorder lessons:", error);
+        } catch (error: unknown) {
+          // Explicitly type error as unknown
+          console.error(
+            "Failed to reorder lessons:",
+            error instanceof Error ? error.message : String(error),
+          ); // Safely access error message
           toast.error("Failed to reorder lessons.");
         }
       }
@@ -560,8 +280,11 @@ export default function CourseBuilder() {
           lessonId: activeId as Id<"lessons">,
         });
         toast.success("Lesson added to course structure!");
-      } catch (error) {
-        console.error("Failed to add lesson to course:", error);
+      } catch (error: unknown) {
+        console.error(
+          "Failed to add lesson to course:",
+          error instanceof Error ? error.message : String(error),
+        );
         toast.error("Failed to add lesson to course.");
       }
     }
@@ -575,8 +298,11 @@ export default function CourseBuilder() {
           order: 0,
         });
         toast.success("Topic attached to lesson!");
-      } catch (error) {
-        console.error("Failed to attach topic to lesson:", error);
+      } catch (error: unknown) {
+        console.error(
+          "Failed to attach topic to lesson:",
+          error instanceof Error ? error.message : String(error),
+        );
         toast.error("Failed to attach topic to lesson.");
       }
     }
@@ -591,9 +317,56 @@ export default function CourseBuilder() {
           isFinal: false,
         });
         toast.success("Quiz attached to lesson!");
-      } catch (error) {
-        console.error("Failed to attach quiz to lesson:", error);
+      } catch (error: unknown) {
+        console.error(
+          "Failed to attach quiz to lesson:",
+          error instanceof Error ? error.message : String(error),
+        );
         toast.error("Failed to attach quiz to lesson.");
+      }
+    }
+
+    // ────────────────────────────────
+    // Handle reordering topics *within the same lesson* via drag-and-drop
+    // ────────────────────────────────
+    if (activeType === "topic" && overType === "topic") {
+      const activeTopic = activeData.item as Doc<"topics">;
+      const overTopic = overData.item as Doc<"topics">;
+
+      // Only reorder if both topics belong to the same lesson
+      if (activeTopic.lessonId && activeTopic.lessonId === overTopic.lessonId) {
+        const lessonId = activeTopic.lessonId;
+
+        // Build current ordered list for that lesson (as seen in UI)
+        const currentTopics = courseData.attachedTopics
+          .filter((t) => t.lessonId === lessonId)
+          .sort(
+            (a, b) =>
+              (a.menuOrder ?? a.order ?? 0) - (b.menuOrder ?? b.order ?? 0),
+          );
+
+        const oldIndex = currentTopics.findIndex((t) => t._id === activeId);
+        const newIndex = currentTopics.findIndex((t) => t._id === overId);
+
+        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+          const newOrder = arrayMove(currentTopics, oldIndex, newIndex).map(
+            (t) => t._id,
+          );
+
+          try {
+            await reorderTopicsInLesson({
+              lessonId,
+              orderedTopicIds: newOrder,
+            });
+            toast.success("Topics reordered!");
+          } catch (error: unknown) {
+            console.error(
+              "Failed to reorder topics:",
+              error instanceof Error ? error.message : String(error),
+            );
+            toast.error("Failed to reorder topics.");
+          }
+        }
       }
     }
 
@@ -605,38 +378,69 @@ export default function CourseBuilder() {
   };
 
   const handleNewTopicSubmit = async (
-    values: z.infer<typeof newTopicSchema>,
+    values: z.infer<typeof createTopicSchema>,
   ) => {
+    // This function is now handled by CreateTopicDialog internally
+    // The logic below is no longer used, but kept for reference if needed
+    console.warn("handleNewTopicSubmit in builder/page.tsx is deprecated.");
     try {
-      await createTopic(values);
+      const newTopicId = await createTopic(values);
+      if (selectedLesson) {
+        await attachTopicToLesson({
+          lessonId: selectedLesson,
+          topicId: newTopicId,
+          order: 0,
+        });
+      }
       toast.success("Topic created!");
-      setIsNewTopicModalOpen(false);
-      newTopicForm.reset();
-    } catch (error) {
-      console.error("Failed to create topic:", error);
+    } catch (error: unknown) {
+      console.error(
+        "Failed to create topic:",
+        error instanceof Error ? error.message : String(error),
+      );
       toast.error("Failed to create topic.");
     }
   };
 
-  const handleNewQuizSubmit = async (values: z.infer<typeof newQuizSchema>) => {
+  const handleNewQuizSubmit = async (
+    values: z.infer<typeof createQuizSchema>,
+  ) => {
+    // This function is now handled by CreateQuizDialog internally
+    // The logic below is no longer used, but kept for reference if needed
+    console.warn("handleNewQuizSubmit in builder/page.tsx is deprecated.");
     try {
-      await createQuiz({ title: values.title, questions: [] }); // Pass empty array for questions
+      const newQuizId = await createQuiz({
+        title: values.title,
+        questions: [],
+      });
+      if (selectedLesson) {
+        await attachQuizToLesson({
+          lessonId: selectedLesson,
+          quizId: newQuizId,
+          order: 0,
+          isFinal: false,
+        });
+      }
       toast.success("Quiz created!");
-      setIsNewQuizModalOpen(false);
-      newQuizForm.reset();
-    } catch (error) {
-      console.error("Failed to create quiz:", error);
+    } catch (error: unknown) {
+      console.error(
+        "Failed to create quiz:",
+        error instanceof Error ? error.message : String(error),
+      );
       toast.error("Failed to create quiz.");
     }
   };
 
-  const handleAddLessonToCourse = async (lessonId: Id<"lessons">) => {
+  const _handleAddLessonToCourse = async (lessonId: Id<"lessons">) => {
     if (!courseId) return;
     try {
       await addLessonToCourse({ courseId, lessonId });
       toast.success("Lesson added to course structure!");
-    } catch (error) {
-      console.error("Failed to add lesson to course:", error);
+    } catch (error: unknown) {
+      console.error(
+        "Failed to add lesson to course:",
+        error instanceof Error ? error.message : String(error),
+      );
       toast.error("Failed to add lesson to course.");
     }
   };
@@ -646,8 +450,11 @@ export default function CourseBuilder() {
     try {
       await removeLessonFromCourseStructure({ courseId, lessonId });
       toast.success("Lesson removed from course structure!");
-    } catch (error) {
-      console.error("Failed to remove lesson from course:", error);
+    } catch (error: unknown) {
+      console.error(
+        "Failed to remove lesson from course:",
+        error instanceof Error ? error.message : String(error),
+      );
       toast.error("Failed to remove lesson from course.");
     }
   };
@@ -656,8 +463,11 @@ export default function CourseBuilder() {
     try {
       await removeTopicFromLesson({ topicId });
       toast.success("Topic removed from lesson!");
-    } catch (error) {
-      console.error("Failed to remove topic from lesson:", error);
+    } catch (error: unknown) {
+      console.error(
+        "Failed to remove topic from lesson:",
+        error instanceof Error ? error.message : String(error),
+      );
       toast.error("Failed to remove topic from lesson.");
     }
   };
@@ -666,16 +476,21 @@ export default function CourseBuilder() {
     try {
       await removeQuizFromLesson({ quizId });
       toast.success("Quiz removed from lesson!");
-    } catch (error) {
-      console.error("Failed to remove quiz from lesson:", error);
+    } catch (error: unknown) {
+      console.error(
+        "Failed to remove quiz from lesson:",
+        error instanceof Error ? error.message : String(error),
+      );
       toast.error("Failed to remove quiz from lesson.");
     }
   };
 
   return (
-    <div>
-      <h1 className="mb-6 text-3xl font-bold">Course Builder</h1>
-
+    <BuilderDndProvider
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
       {/* Course Details */}
       <Card className="mb-6">
         <CardHeader>
@@ -689,431 +504,174 @@ export default function CourseBuilder() {
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {/* Left Column: Course Structure */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
-        >
-          <div className="md:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Course Structure</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SortableContext
-                  items={lessonsInCourseStructure.map((l) => l._id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {lessonsInCourseStructure.length === 0 ? (
-                    <div
-                      id="course-structure-droppable"
-                      className="flex h-48 items-center justify-center rounded-lg border-2 border-dashed p-8 text-center text-muted-foreground"
-                    >
-                      Drag available lessons here to add them to the course
-                      structure.
-                    </div>
-                  ) : (
-                    lessonsInCourseStructure.map((lesson) => {
-                      const topicsForLesson = courseData.attachedTopics.filter(
-                        (t) => t.lessonId === lesson._id,
-                      );
-                      const quizzesForLesson =
-                        courseData.attachedQuizzes.filter(
-                          (q) => q.lessonId === lesson._id,
-                        );
+        <div className="md:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Course Structure</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SortableList
+                items={lessonsInCourseStructure}
+                type="lesson"
+                renderItem={(lesson) => {
+                  // These topicsForLesson and quizzesForLesson are correctly scoped within the map loop
+                  const topicsForLesson = courseData.attachedTopics.filter(
+                    (t) => t.lessonId === lesson._id,
+                  );
+                  const quizzesForLesson = courseData.attachedQuizzes.filter(
+                    (q) => q.lessonId === lesson._id,
+                  );
 
-                      return (
-                        <SortableItem
-                          key={lesson._id}
-                          id={lesson._id}
-                          data={{ type: "lesson", item: lesson }}
-                        >
-                          <Card
-                            className={`relative mb-4 shadow-sm ${
-                              selectedLesson === lesson._id
-                                ? "ring-2 ring-primary"
-                                : ""
-                            }`}
-                          >
-                            <CardHeader
-                              className="flex cursor-pointer flex-row items-center justify-between space-y-0 p-2"
-                              onClick={() => {
-                                setSelectedLesson(lesson._id);
-                                toggleLessonExpand(lesson._id);
-                              }}
-                            >
-                              <div className="flex items-center gap-2">
-                                <ChevronDown
-                                  className={`h-4 w-4 transition-transform duration-200 ${
-                                    expandedLessons.includes(lesson._id)
-                                      ? "rotate-180"
-                                      : "rotate-0"
-                                  }`}
-                                />
-                                <CardTitle className="text-lg font-medium">
-                                  {lesson.title}
-                                </CardTitle>
-                              </div>
-                              <div
-                                className="flex gap-2"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <EditLessonDialog
-                                  lesson={lesson}
-                                  onSave={async (values) => {
-                                    await updateLesson({
-                                      lessonId: lesson._id,
-                                      title: values.title,
-                                      content: values.content,
-                                      excerpt: values.excerpt,
-                                      categories: values.categories
-                                        ? values.categories
-                                            .split(",")
-                                            .map((c: string) => c.trim())
-                                            .filter(Boolean)
-                                        : undefined,
-                                      featuredImage: values.featuredImageUrl,
-                                    });
-                                    toast.success("Lesson updated!");
-                                  }}
-                                />
-                                <ConfirmationDialog
-                                  triggerButtonText="Remove"
-                                  title="Are you sure you want to remove this lesson?"
-                                  description="This action will remove the lesson from the course structure."
-                                  onConfirm={() =>
-                                    handleRemoveLessonFromCourse(lesson._id)
-                                  }
-                                />
-                              </div>
-                            </CardHeader>
-                            {expandedLessons.includes(lesson._id) && (
-                              <CardContent>
-                                <p className="text-sm text-muted-foreground">
-                                  {lesson.description}
-                                </p>
-                                <div className="mt-4">
-                                  <NestedSortableList
-                                    title="Topics"
-                                    items={topicsForLesson}
-                                    emptyMessage="Drag available topics here"
-                                    renderItem={(topic) => (
-                                      <div
-                                        key={topic._id}
-                                        className="mb-2 flex items-center justify-between gap-2 rounded-md border p-2"
-                                      >
-                                        <span>
-                                          {topic.title} ({topic.contentType})
-                                        </span>
-                                        <div className="flex gap-2">
-                                          <EditItemDialog
-                                            dialogTitle="Edit Topic"
-                                            initialTitle={topic.title}
-                                            onSubmit={async ({ title }) => {
-                                              await updateTopicTitle({
-                                                topicId: topic._id,
-                                                title,
-                                              });
-                                              toast.success("Topic updated!");
-                                            }}
-                                          />
-                                          <ConfirmationDialog
-                                            triggerButtonText="Remove"
-                                            title="Are you sure you want to remove this topic?"
-                                            description="This action will detach the topic from the lesson."
-                                            onConfirm={() =>
-                                              handleRemoveTopicFromLesson(
-                                                topic._id,
-                                              )
-                                            }
-                                          />
-                                        </div>
-                                      </div>
-                                    )}
-                                    DropzoneComponent={TopicDropzone}
-                                    lessonId={lesson._id}
-                                    dropzoneType="topicDropzone"
-                                  />
+                  return (
+                    <LessonCard
+                      lesson={lesson}
+                      topics={topicsForLesson}
+                      quizzes={quizzesForLesson}
+                      topicSortOrder={
+                        lessonTopicSortOrder[lesson._id] ?? "alphabetical"
+                      }
+                      onToggleSortOrder={async () => {
+                        const newSortOrder =
+                          (lessonTopicSortOrder[lesson._id] ??
+                            "alphabetical") === "alphabetical"
+                            ? "date"
+                            : "alphabetical";
 
-                                  <NestedSortableList
-                                    title="Quizzes"
-                                    items={quizzesForLesson}
-                                    emptyMessage="Drag available quizzes here"
-                                    renderItem={(quiz) => (
-                                      <div
-                                        key={quiz._id}
-                                        className="mb-2 flex items-center justify-between gap-2 rounded-md border p-2"
-                                      >
-                                        <span>{quiz.title}</span>
-                                        <div className="flex gap-2">
-                                          <EditItemDialog
-                                            dialogTitle="Edit Quiz"
-                                            initialTitle={quiz.title}
-                                            onSubmit={async ({ title }) => {
-                                              await updateQuizTitle({
-                                                quizId: quiz._id,
-                                                title,
-                                              });
-                                              toast.success("Quiz updated!");
-                                            }}
-                                          />
-                                          <ConfirmationDialog
-                                            triggerButtonText="Remove"
-                                            title="Are you sure you want to remove this quiz?"
-                                            description="This action will detach the quiz from the lesson."
-                                            onConfirm={() =>
-                                              handleRemoveQuizFromLesson(
-                                                quiz._id,
-                                              )
-                                            }
-                                          />
-                                        </div>
-                                      </div>
-                                    )}
-                                    DropzoneComponent={QuizDropzone}
-                                    lessonId={lesson._id}
-                                    dropzoneType="quizDropzone"
-                                  />
-                                </div>
-                              </CardContent>
-                            )}
-                          </Card>
-                        </SortableItem>
-                      );
-                    })
-                  )}
-                </SortableContext>
-                <DragOverlay>
-                  {activeItem && activeDragItem ? (
-                    <SortableItem
-                      id={activeItem.id.toString()}
-                      data={activeItem.data.current as DraggedItemData}
-                      isOverlayDragging={true}
-                    >
-                      <div className="rounded-md bg-background p-4 opacity-80 shadow-lg">
-                        <h4 className="text-lg font-semibold">
-                          {activeDragItemType === "lesson" ||
-                          activeDragItemType === "availableLesson"
-                            ? (activeDragItem as Doc<"lessons">).title
-                            : activeDragItemType === "topic" ||
-                                activeDragItemType === "availableTopic"
-                              ? (activeDragItem as Doc<"topics">).title
-                              : activeDragItemType === "quiz" ||
-                                  activeDragItemType === "availableQuiz"
-                                ? (activeDragItem as Doc<"quizzes">).title
-                                : ""}
-                        </h4>
-                      </div>
-                    </SortableItem>
-                  ) : null}
-                </DragOverlay>
-              </CardContent>
-            </Card>
-          </div>
+                        // compute sorted topics according to newSortOrder
+                        const sorted = [...topicsForLesson].sort((a, b) => {
+                          if (newSortOrder === "alphabetical") {
+                            return a.title.localeCompare(b.title);
+                          }
+                          return a._creationTime - b._creationTime;
+                        });
 
-          {/* Right Column: Available Items and Creation Forms */}
-          <div>
-            {/* Lesson Selector */}
-            <Command className="h-44 rounded-lg border shadow-md">
-              <div className="flex items-center border-b">
-                <CommandInput
-                  placeholder="Search lesson..."
-                  className="flex-1 border-none"
-                />
-                <CreateLessonDialog
-                  courseId={courseId}
-                  onCreate={(id) => {
-                    setSelectedLesson(id);
-                    return Promise.resolve();
-                  }}
-                />
-              </div>
-              <CommandList>
-                <CommandEmpty>No lesson found.</CommandEmpty>
-                <CommandGroup>
-                  {availableLessons.map((lesson) => (
-                    <CommandItem
-                      key={lesson._id}
-                      value={lesson.title}
-                      onSelect={async () => {
-                        await handleAddLessonToCourse(lesson._id);
-                        setSelectedLesson(lesson._id);
+                        await reorderTopicsInLesson({
+                          lessonId: lesson._id,
+                          orderedTopicIds: sorted.map((t) => t._id),
+                        });
+
+                        setLessonTopicSortOrder((prev) => ({
+                          ...prev,
+                          [lesson._id]: newSortOrder,
+                        }));
                       }}
-                    >
-                      {lesson.title}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-
-            <Separator className="my-6" />
-
-            {/* Topic Selector */}
-            <Command className="h-44 rounded-lg border shadow-md">
-              <div className="flex items-center border-b">
-                <CommandInput
-                  placeholder="Search topic..."
-                  className="flex-1! border-none"
-                />
-                <NewItemDialog
-                  title="Create New Topic"
-                  description="Enter the title and content type for your new topic."
-                  form={newTopicForm}
-                  onSubmit={handleNewTopicSubmit}
-                  open={isNewTopicModalOpen}
-                  onOpenChange={setIsNewTopicModalOpen}
-                  triggerButtonText="Create Topic"
-                  triggerButtonClassName="m-2 text-s p-1 h-auto w-auto"
-                  triggerButtonVariant="outline"
-                >
-                  <FormField
-                    control={newTopicForm.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Title</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={newTopicForm.control}
-                    name="contentType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Content Type</FormLabel>
-                        <FormControl>
-                          <select
-                            {...field}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                          >
-                            <option value="text">Text</option>
-                            <option value="video">Video</option>
-                            <option value="quiz">Quiz</option>
-                          </select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  {newTopicForm.watch("contentType") === "text" && (
-                    <FormField
-                      control={newTopicForm.control}
-                      name="content"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Content</FormLabel>
-                          <FormControl>
-                            <textarea
-                              {...field}
-                              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                      onRemoveLesson={handleRemoveLessonFromCourse}
+                      onRemoveTopic={handleRemoveTopicFromLesson}
+                      onRemoveQuiz={handleRemoveQuizFromLesson}
+                      lessonExpanded={expandedLessons.includes(lesson._id)}
+                      onToggleExpand={toggleLessonExpand}
                     />
-                  )}
-                </NewItemDialog>
-              </div>
-              <CommandList>
-                <CommandEmpty>No topic found.</CommandEmpty>
-                <CommandGroup>
-                  {availableTopics.map((topic) => (
-                    <CommandItem
-                      key={topic._id}
-                      value={topic.title}
-                      onSelect={async () => {
-                        if (!selectedLesson) {
-                          toast.error("Select a lesson first");
-                          return;
-                        }
-                        await attachTopicToLesson({
-                          lessonId: selectedLesson,
-                          topicId: topic._id,
-                          order: 0,
-                        });
-                        toast.success("Topic attached to lesson!");
-                      }}
-                    >
-                      {topic.title}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
+                  );
+                }}
+              />
+              {lessonsInCourseStructure.length === 0 && (
+                <CourseStructureDropzone id="course-structure-droppable">
+                  <p className="text-sm text-muted-foreground">
+                    Drag available lessons here to add them to the course
+                    structure.
+                  </p>
+                </CourseStructureDropzone>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-            <Separator className="my-6" />
+        {/* Right Column: Available Items and Creation Forms */}
+        <div>
+          {/* Lesson Selector */}
+          <AvailableItemSelector
+            title="Lessons"
+            items={availableLessons}
+            searchPlaceholder="Search lesson..."
+            label={(l) => l.title}
+            newItemTrigger={
+              <CreateLessonDialog
+                courseId={courseId}
+                onCreate={(id) => {
+                  setSelectedLesson(id);
+                  return Promise.resolve();
+                }}
+              />
+            }
+            onSelect={(lesson) => {
+              setSelectedLesson(lesson._id);
+              toast.success("Lesson selected");
+            }}
+          />
 
-            {/* Quiz Selector */}
-            <Command className="h-44 rounded-lg border shadow-md">
-              <div className="flex items-center border-b">
-                <CommandInput
-                  placeholder="Search quiz..."
-                  className="flex-1! border-none"
-                />
-                <NewItemDialog
-                  title="Create New Quiz"
-                  description="Enter the title for your new quiz."
-                  form={newQuizForm}
-                  onSubmit={handleNewQuizSubmit}
-                  open={isNewQuizModalOpen}
-                  onOpenChange={setIsNewQuizModalOpen}
-                  triggerButtonText="Create Quiz"
-                  triggerButtonClassName="m-2 text-s p-1 h-auto w-auto"
-                  triggerButtonVariant="outline"
-                >
-                  <FormField
-                    control={newQuizForm.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Title</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </NewItemDialog>
-              </div>
-              <CommandList>
-                <CommandEmpty>No quiz found.</CommandEmpty>
-                <CommandGroup>
-                  {availableQuizzes.map((quiz) => (
-                    <CommandItem
-                      key={quiz._id}
-                      value={quiz.title}
-                      onSelect={async () => {
-                        if (!selectedLesson) {
-                          toast.error("Select a lesson first");
-                          return;
-                        }
-                        await attachQuizToLesson({
-                          lessonId: selectedLesson,
-                          quizId: quiz._id,
-                          order: 0,
-                          isFinal: false,
-                        });
-                        toast.success("Quiz attached to lesson!");
-                      }}
-                    >
-                      {quiz.title}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </div>
-        </DndContext>
+          <Separator className="my-6" />
+
+          {/* Topic Selector */}
+          <AvailableItemSelector
+            title="Topics"
+            items={availableTopics}
+            searchPlaceholder="Search topic..."
+            label={(t) => t.title}
+            newItemTrigger={
+              <CreateTopicDialog
+                lessonId={selectedLesson || undefined} // Pass selected lesson if available
+                onCreate={(id) => {
+                  toast.success("New topic created.");
+                  // Optionally set selected topic, or refresh list
+                }}
+              />
+            }
+            onSelect={(topic) => {
+              // This is for selecting an existing topic to reorder/attach
+              setSelectedLesson(topic.lessonId || null); // Assuming topics have a lessonId
+              toast.success("Topic selected");
+            }}
+          />
+
+          <Separator className="my-6" />
+
+          {/* Quiz Selector */}
+          <AvailableItemSelector
+            title="Quizzes"
+            items={availableQuizzes}
+            searchPlaceholder="Search quiz..."
+            label={(q) => q.title}
+            newItemTrigger={
+              <CreateQuizDialog
+                lessonId={selectedLesson || undefined} // Pass selected lesson if available
+                onCreate={(id) => {
+                  toast.success("New quiz created.");
+                  // Optionally set selected quiz, or refresh list
+                }}
+              />
+            }
+            onSelect={(quiz) => {
+              // This is for selecting an existing quiz to reorder/attach
+              setSelectedLesson(quiz.lessonId || null); // Assuming quizzes have a lessonId
+              toast.success("Quiz selected");
+            }}
+          />
+        </div>
       </div>
-    </div>
+      <DragOverlay>
+        {activeItem && activeDragItem ? (
+          <SortableItem
+            id={activeItem.id.toString()}
+            data={activeItem.data.current as DraggedItemData}
+            isOverlayDragging={true}
+          >
+            <div className="rounded-md bg-background p-4 opacity-80 shadow-lg">
+              <h4 className="text-lg font-semibold">
+                {activeDragItemType === "lesson" ||
+                activeDragItemType === "availableLesson"
+                  ? (activeDragItem as Doc<"lessons">).title
+                  : activeDragItemType === "topic" ||
+                      activeDragItemType === "availableTopic"
+                    ? (activeDragItem as Doc<"topics">).title
+                    : activeDragItemType === "quiz" ||
+                        activeDragItemType === "availableQuiz"
+                      ? (activeDragItem as Doc<"quizzes">).title
+                      : ""}
+              </h4>
+            </div>
+          </SortableItem>
+        ) : null}
+      </DragOverlay>
+    </BuilderDndProvider>
   );
 }

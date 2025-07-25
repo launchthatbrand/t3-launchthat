@@ -1,5 +1,5 @@
 import { filter } from "convex-helpers/server/filter";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 import type { Doc } from "../../_generated/dataModel";
 import { internal } from "../../_generated/api";
@@ -114,7 +114,27 @@ export const attachToLesson = mutation({
     await ctx.db.patch(args.topicId, {
       lessonId: args.lessonId,
       order: args.order,
+      menuOrder: args.order,
     });
+  },
+});
+
+// --- Reorder Topics in Lesson ---
+export const reorderTopicsInLesson = mutation({
+  args: {
+    lessonId: v.id("lessons"),
+    orderedTopicIds: v.array(v.id("topics")),
+  },
+  handler: async (ctx, { lessonId, orderedTopicIds }) => {
+    await requireAdmin(ctx);
+    for (let i = 0; i < orderedTopicIds.length; i++) {
+      await ctx.db.patch(orderedTopicIds[i], {
+        lessonId,
+        order: i,
+        menuOrder: i,
+      });
+    }
+    return null;
   },
 });
 
@@ -152,80 +172,267 @@ export const detachFromLesson = internalMutation({
   },
 });
 
-// --- List Topics Query ---
+/**
+ * Get all topics.
+ */
 export const listTopics = query({
-  args: { searchTitle: v.optional(v.string()) },
+  args: {
+    searchTitle: v.optional(v.string()),
+    lessonId: v.optional(v.id("lessons")),
+    isPublished: v.optional(v.boolean()),
+    // Add more filters as needed
+  },
   returns: v.array(
     v.object({
       _id: v.id("topics"),
       _creationTime: v.number(),
+      lessonId: v.optional(v.id("lessons")),
       title: v.string(),
+      description: v.optional(v.string()),
+      excerpt: v.optional(v.string()),
+      categories: v.optional(v.array(v.string())),
+      tagIds: v.optional(v.array(v.id("tags"))),
+      wp_id: v.optional(v.float64()),
+      featuredImage: v.optional(v.string()),
+      featuredMedia: v.optional(
+        v.union(
+          v.object({
+            type: v.literal("convex"),
+            mediaItemId: v.id("mediaItems"),
+          }),
+          v.object({
+            type: v.literal("vimeo"),
+            vimeoId: v.string(),
+            vimeoUrl: v.string(),
+          }),
+          v.string(),
+        ),
+      ),
       contentType: v.optional(
         v.union(v.literal("text"), v.literal("video"), v.literal("quiz")),
       ),
-      lessonId: v.optional(v.id("lessons")),
-      description: v.optional(v.string()),
-      wp_id: v.optional(v.float64()),
-      excerpt: v.optional(v.string()),
-      categories: v.optional(v.array(v.string())),
-      featuredImage: v.optional(v.string()),
-      isPublished: v.optional(v.boolean()),
-      order: v.optional(v.number()),
       content: v.optional(v.string()),
+      order: v.optional(v.number()),
+      menuOrder: v.optional(v.number()),
+      isPublished: v.optional(v.boolean()),
     }),
   ),
   handler: async (ctx, args) => {
-    // Fetch all topics, optionally filter by title
     let topics = await ctx.db.query("topics").collect();
-    if (args.searchTitle) {
-      const lower = args.searchTitle.toLowerCase();
-      topics = topics.filter((t) => t.title.toLowerCase().includes(lower));
+
+    if (args.lessonId !== undefined) {
+      topics = topics.filter((topic) => topic.lessonId === args.lessonId);
     }
+
+    if (args.searchTitle) {
+      const searchRegex = new RegExp(args.searchTitle, "i");
+      topics = topics.filter((topic) => searchRegex.test(topic.title));
+    }
+
+    if (args.isPublished !== undefined) {
+      topics = topics.filter((topic) => topic.isPublished === args.isPublished);
+    }
+
+    // Sort by menuOrder if available, otherwise by creationTime
+    topics.sort((a, b) => {
+      if (a.menuOrder !== undefined && b.menuOrder !== undefined) {
+        return a.menuOrder - b.menuOrder;
+      }
+      return a._creationTime - b._creationTime;
+    });
+
     return topics;
   },
 });
 
-// --- Get Topic By ID ---
+/**
+ * Get a single topic by ID.
+ */
 export const getTopic = query({
-  args: { topicId: v.id("topics") },
-  returns: v.union(
-    v.null(),
-    v.object({
-      _id: v.id("topics"),
-      _creationTime: v.number(),
-      title: v.string(),
-      contentType: v.union(
-        v.literal("text"),
-        v.literal("video"),
-        v.literal("quiz"),
+  args: {
+    id: v.id("topics"),
+  },
+  returns: v.object({
+    _id: v.id("topics"),
+    _creationTime: v.number(),
+    lessonId: v.optional(v.id("lessons")),
+    title: v.string(),
+    description: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    categories: v.optional(v.array(v.string())),
+    tagIds: v.optional(v.array(v.id("tags"))),
+    wp_id: v.optional(v.float64()),
+    featuredImage: v.optional(v.string()),
+    featuredMedia: v.optional(
+      v.union(
+        v.object({
+          type: v.literal("convex"),
+          mediaItemId: v.id("mediaItems"),
+        }),
+        v.object({
+          type: v.literal("vimeo"),
+          vimeoId: v.string(),
+          vimeoUrl: v.string(),
+        }),
+        v.string(),
       ),
-      description: v.optional(v.string()),
-      excerpt: v.optional(v.string()),
-      categories: v.optional(v.array(v.string())),
-      featuredImage: v.optional(v.string()),
-      content: v.optional(v.string()),
-      isPublished: v.optional(v.boolean()),
-    }),
-  ),
+    ),
+    contentType: v.optional(
+      v.union(v.literal("text"), v.literal("video"), v.literal("quiz")),
+    ),
+    content: v.optional(v.string()),
+    order: v.optional(v.number()),
+    menuOrder: v.optional(v.number()),
+    isPublished: v.optional(v.boolean()),
+  }),
   handler: async (ctx, args) => {
-    const topic = await ctx.db.get(args.topicId);
-    if (!topic) return null;
-
-    return {
-      _id: topic._id,
-      _creationTime: topic._creationTime,
-      title: topic.title,
-      contentType: topic.contentType,
-      description: topic.description,
-      excerpt: topic.excerpt,
-      categories: topic.categories,
-      featuredImage: topic.featuredImage,
-      content: topic.content,
-      isPublished: topic.isPublished,
-    };
+    const topic = await ctx.db.get(args.id);
+    if (!topic) {
+      throw new ConvexError("Topic not found");
+    }
+    return topic;
   },
 });
 
-// --- Other Topic Mutations/Queries (placeholder) ---
-// export const update = mutation({...});
-// export const get = query({...});
+/**
+ * Create a new topic.
+ */
+export const createTopic = mutation({
+  args: {
+    lessonId: v.optional(v.id("lessons")),
+    title: v.string(),
+    description: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    categories: v.optional(v.array(v.string())),
+    tagIds: v.optional(v.array(v.id("tags"))),
+    wp_id: v.optional(v.float64()),
+    featuredImage: v.optional(v.string()),
+    featuredMedia: v.optional(
+      v.union(
+        v.object({
+          type: v.literal("convex"),
+          mediaItemId: v.id("mediaItems"),
+        }),
+        v.object({
+          type: v.literal("vimeo"),
+          vimeoId: v.string(),
+          vimeoUrl: v.string(),
+        }),
+        v.string(),
+      ),
+    ),
+    contentType: v.optional(
+      v.union(v.literal("text"), v.literal("video"), v.literal("quiz")),
+    ),
+    content: v.optional(v.string()),
+    order: v.optional(v.number()),
+    menuOrder: v.optional(v.number()),
+    isPublished: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    // If lessonId is provided, find the max order for that lesson
+    let order = args.order;
+    if (args.lessonId && order === undefined) {
+      const existingTopics = await ctx.db
+        .query("topics")
+        .withIndex("by_lessonId_order", (q) => q.eq("lessonId", args.lessonId))
+        .order("desc")
+        .take(1);
+      order = (existingTopics[0]?.order ?? 0) + 1;
+    }
+
+    const newTopicId = await ctx.db.insert("topics", {
+      lessonId: args.lessonId,
+      title: args.title,
+      description: args.description,
+      excerpt: args.excerpt,
+      categories: args.categories,
+      tagIds: args.tagIds,
+      wp_id: args.wp_id,
+      featuredImage: args.featuredImage,
+      featuredMedia: args.featuredMedia,
+      contentType: args.contentType,
+      content: args.content,
+      order: order,
+      menuOrder: args.menuOrder,
+      isPublished: args.isPublished,
+    });
+    return newTopicId;
+  },
+});
+
+/**
+ * Update an existing topic.
+ */
+export const updateTopic = mutation({
+  args: {
+    id: v.id("topics"),
+    lessonId: v.optional(v.id("lessons")),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    categories: v.optional(v.array(v.string())),
+    tagIds: v.optional(v.array(v.id("tags"))),
+    wp_id: v.optional(v.float64()),
+    featuredImage: v.optional(v.string()),
+    featuredMedia: v.optional(
+      v.union(
+        v.object({
+          type: v.literal("convex"),
+          mediaItemId: v.id("mediaItems"),
+        }),
+        v.object({
+          type: v.literal("vimeo"),
+          vimeoId: v.string(),
+          vimeoUrl: v.string(),
+        }),
+        v.string(),
+      ),
+    ),
+    contentType: v.optional(
+      v.union(v.literal("text"), v.literal("video"), v.literal("quiz")),
+    ),
+    content: v.optional(v.string()),
+    order: v.optional(v.number()),
+    menuOrder: v.optional(v.number()),
+    isPublished: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const { id, ...patch } = args;
+
+    // If lessonId is being updated and order is not provided, re-calculate order
+    if (patch.lessonId !== undefined && patch.order === undefined) {
+      const existingTopics = await ctx.db
+        .query("topics")
+        .withIndex("by_lessonId_order", (q) => q.eq("lessonId", patch.lessonId))
+        .order("desc")
+        .take(1);
+      patch.order = (existingTopics[0]?.order ?? 0) + 1;
+    }
+
+    await ctx.db.patch(id, patch);
+  },
+});
+
+/**
+ * Paginate topics by lessonId.
+ */
+export const paginateTopicsByLessonId = query({
+  args: {
+    lessonId: v.id("lessons"),
+    paginationOpts: v.any(), // TODO: Replace with proper paginationOptsValidator
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("topics")
+      .withIndex("by_lessonId_menuOrder", (q) =>
+        q.eq("lessonId", args.lessonId),
+      )
+      .order("asc")
+      .paginate(args.paginationOpts);
+  },
+});
