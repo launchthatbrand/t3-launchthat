@@ -86,24 +86,34 @@ export const useContentAccess = ({
   );
 
   // Check parent content rules for cascading (always run if parent info exists)
-  const parentRules = useQuery(
-    api.lms.contentAccess.index.getContentAccessRules,
+  const parentQueryParams =
     parentContentType && parentContentId
       ? {
           contentType: parentContentType,
           contentId: parentContentId,
         }
-      : "skip",
+      : "skip";
+
+  const parentRules = useQuery(
+    api.lms.contentAccess.index.getContentAccessRules,
+    parentQueryParams,
   );
 
   // Get course information for buy button (when dealing with course content)
+  // Always call the hook, but use "skip" when we don't need course info
+  const courseQueryParams = (() => {
+    if (contentType === "course" && contentId) {
+      return { courseId: contentId as Id<"courses"> };
+    }
+    if (parentContentType === "course" && parentContentId) {
+      return { courseId: parentContentId as Id<"courses"> };
+    }
+    return "skip";
+  })();
+
   const courseInfo = useQuery(
     api.lms.courses.queries.getCourse,
-    contentType === "course" && contentId
-      ? { courseId: contentId as Id<"courses"> }
-      : parentContentType === "course" && parentContentId
-        ? { courseId: parentContentId as Id<"courses"> }
-        : "skip",
+    courseQueryParams,
   );
 
   // Get user tags (always run if user exists)

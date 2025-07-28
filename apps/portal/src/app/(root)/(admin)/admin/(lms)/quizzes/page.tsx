@@ -1,12 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { api } from "@convex-config/_generated/api";
-import { useMutation, useQuery } from "convex/react";
-import { Edit, Plus, PlusCircle, Trash } from "lucide-react";
-import { useDebounce } from "use-debounce";
 
 import {
   AlertDialog,
@@ -18,25 +12,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@acme/ui/alert-dialog";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-
-import type { Doc } from "../../../../../../../convex/_generated/dataModel";
+import { Edit, Plus, PlusCircle, Trash } from "lucide-react";
 import type {
-  ColumnDefinition,
   EntityAction,
   FilterConfig,
   FilterValue,
 } from "~/components/shared/EntityList/types";
-import { DetachableFilters } from "~/components/shared/EntityList/DetachableFilters";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { useMutation, useQuery } from "convex/react";
 
-type QuizData = {
-  _id: string;
-  title: string;
-  isPublished?: boolean;
-};
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import type { ColumnDef } from "@tanstack/react-table";
+import { DetachableFilters } from "~/components/shared/EntityList/DetachableFilters";
+import type { Doc } from "../../../../../../../convex/_generated/dataModel";
+import { EntityList } from "~/components/shared/EntityList/EntityList";
+import Link from "next/link";
+import { api } from "@convex-config/_generated/api";
+import { useDebounce } from "use-debounce";
+import { useRouter } from "next/navigation";
+
+type QuizData = Doc<"quizzes">;
 
 interface DeleteQuizDialogProps {
   open: boolean;
@@ -114,30 +110,36 @@ export default function AdminQuizzesPage() {
   };
 
   // Column definitions
-  const columns: ColumnDefinition<QuizData>[] = [
+  const columns: ColumnDef<QuizData>[] = [
     {
       id: "title",
       header: "Title",
       accessorKey: "title",
-      sortable: true,
-      cell: (quiz) => (
-        <Link
-          href={`/admin/quizzes/${quiz._id}`}
-          className="font-medium hover:underline"
-        >
-          {quiz.title}
-        </Link>
-      ),
+      enableSorting: true,
+      cell: ({ row }) => {
+        const quiz = row.original;
+        return (
+          <Link
+            href={`/admin/quizzes/${quiz._id}`}
+            className="font-medium hover:underline"
+          >
+            {quiz.title}
+          </Link>
+        );
+      },
     },
     {
       id: "status",
       header: "Status",
       accessorKey: "isPublished",
-      cell: (quiz) => (
-        <Badge variant={quiz.isPublished ? "default" : "secondary"}>
-          {quiz.isPublished ? "Published" : "Draft"}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const quiz = row.original;
+        return (
+          <Badge variant={quiz.isPublished ? "default" : "secondary"}>
+            {quiz.isPublished ? "Published" : "Draft"}
+          </Badge>
+        );
+      },
     },
   ];
 
@@ -228,12 +230,31 @@ export default function AdminQuizzesPage() {
 
         {/* Entity list */}
         <div className="md:col-span-3">
-          <EntityList
-            data={quizzes}
+          <EntityList<QuizData>
+            data={quizzes ?? []}
             columns={columns}
+            filters={filters}
+            hideFilters={true}
+            initialFilters={activeFilters}
+            onFiltersChange={handleFilterChange}
+            isLoading={quizzes === undefined}
+            title="Quiz Management"
+            description="Manage your quizzes here."
+            defaultViewMode="list"
+            viewModes={["list"]}
             entityActions={entityActions}
-            headerActions={headerActions}
-            emptyMessage="No quizzes found."
+            actions={headerActions}
+            emptyState={
+              <div className="flex h-40 flex-col items-center justify-center gap-2 text-center">
+                <p className="text-muted-foreground">No quizzes found</p>
+                <Button asChild variant="outline">
+                  <Link href="/admin/quizzes/new">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Create your first
+                    quiz
+                  </Link>
+                </Button>
+              </div>
+            }
           />
         </div>
       </div>

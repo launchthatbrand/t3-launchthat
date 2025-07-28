@@ -1,5 +1,13 @@
+"use client";
+
 import "lucide-react";
 
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { Doc, Id } from "@convex-config/_generated/dataModel";
+import { useQuery } from "convex/react";
 import {
   Award,
   CheckCircle,
@@ -8,6 +16,9 @@ import {
   Clock,
   FileQuestionIcon,
 } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
@@ -26,21 +37,14 @@ import {
   CourseSidebarMenuSubItem,
   CourseSidebarRail,
 } from "@acme/ui/course-sidebar";
-import { Doc, Id } from "@convex-config/_generated/dataModel";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
 
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import Link from "next/link";
-import { api } from "@convex-config/_generated/api";
-import { cn } from "~/lib/utils";
 import { useConvexUser } from "~/hooks/useConvexUser";
-import { useParams } from "next/navigation";
-import { useQuery } from "convex/react";
+import { cn } from "~/lib/utils";
 
 export function CoursesSidebar(
   props: React.ComponentProps<typeof CourseSidebar>,
 ) {
+  const router = useRouter();
   const params = useParams();
   const {
     courseId: paramCourseId,
@@ -332,7 +336,7 @@ export function CoursesSidebar(
                           return (
                             <CourseSidebarMenuSubItem key={topic._id}>
                               <CourseSidebarMenuSubButton
-                                asChild
+                                // asChild
                                 isActive={isActiveTopic}
                                 className={cn("h-auto min-h-7 p-2", {
                                   "bg-muted text-foreground": isActiveTopic,
@@ -342,8 +346,14 @@ export function CoursesSidebar(
                                     setActiveItemRef(topic._id, el);
                                   }
                                 }}
+                                onClick={() => {
+                                  setOpenLessonId(lesson._id);
+                                  router.push(
+                                    `/courses/${courseId}/lesson/${lesson._id}/topic/${topic._id}`,
+                                  );
+                                }}
                               >
-                                <Link
+                                {/* <Link
                                   href={`/courses/${courseId}/lesson/${lesson._id}/topic/${topic._id}`}
                                   className="flex w-full items-center gap-2"
                                 >
@@ -355,7 +365,8 @@ export function CoursesSidebar(
                                   <span className="truncate">
                                     {topic.title}
                                   </span>
-                                </Link>
+                                </Link> */}
+                                {topic.title}
                               </CourseSidebarMenuSubButton>
                             </CourseSidebarMenuSubItem>
                           );

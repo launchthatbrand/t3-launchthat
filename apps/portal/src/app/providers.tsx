@@ -1,25 +1,27 @@
 /* eslint-disable react-compiler/react-compiler */
 "use client";
 
-import { ClerkProvider, useAuth } from "@clerk/clerk-react";
 // Import Clerk provider and hook
 import React, { useEffect } from "react";
-import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
-
-import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { useSearchParams } from "next/navigation";
+import { ClerkProvider, useAuth } from "@clerk/clerk-react";
+import { SessionProvider } from "convex-helpers/react/sessions";
 import { ConvexReactClient } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { useLocalStorage } from "usehooks-ts";
+
+import StandardLayout from "@acme/ui/layout/StandardLayout";
+import { SidebarProvider } from "@acme/ui/sidebar";
+import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
+import { Toaster } from "@acme/ui/toast";
+
+import { ContentProtectionProvider } from "~/components/access/ContentProtectionProvider";
+import { PuckEditor } from "~/components/puckeditor/PuckEditorProvider";
+import { env } from "~/env";
+import useEditorStore from "~/store/useEditorStore";
 import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
 // Import the correct Convex provider for Clerk integration
 import { GuestCartMerger } from "./GuestCartMerger";
-import { PuckEditor } from "~/components/puckeditor/PuckEditorProvider";
-import { SessionProvider } from "convex-helpers/react/sessions";
-import { SidebarProvider } from "@acme/ui/sidebar";
-import StandardLayout from "@acme/ui/layout/StandardLayout";
-import { Toaster } from "@acme/ui/toast";
-import { env } from "~/env";
-import useEditorStore from "~/store/useEditorStore";
-import { useLocalStorage } from "usehooks-ts";
-import { useSearchParams } from "next/navigation";
 
 // Ensure Clerk key exists, otherwise ClerkProvider will error
 if (!env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
@@ -61,18 +63,24 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ClerkProvider publishableKey={env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <SessionProvider storageKey="cart-session" useStorage={useLocalStorage}>
-          <SidebarProvider>
-            <ConvexUserEnsurer />
-            <GuestCartMerger />
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-              <EditorModeDetector />
-              <PuckEditor>{children}</PuckEditor>
-              <div className="absolute bottom-4 right-4">
-                <ThemeToggle />
-              </div>
-              <Toaster />
-            </ThemeProvider>
-          </SidebarProvider>
+          <ContentProtectionProvider>
+            <SidebarProvider>
+              <ConvexUserEnsurer />
+              <GuestCartMerger />
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+              >
+                <EditorModeDetector />
+                <PuckEditor>{children}</PuckEditor>
+                <div className="absolute bottom-4 right-4">
+                  <ThemeToggle />
+                </div>
+                <Toaster />
+              </ThemeProvider>
+            </SidebarProvider>
+          </ContentProtectionProvider>
         </SessionProvider>
       </ConvexProviderWithClerk>
     </ClerkProvider>

@@ -1,17 +1,14 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import type {
-  ColumnDefinition,
-  EntityAction,
-  FilterConfig,
-} from "~/components/shared/EntityList/types";
-import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import { Edit, Plus, Shield, Trash2, Users } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { Doc } from "@convex-config/_generated/dataModel";
+import type { EntityAction } from "~/components/shared/EntityList/types";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
 import { api } from "@convex-config/_generated/api";
 import { toast } from "@acme/ui/toast";
@@ -26,7 +23,6 @@ type RoleData = Doc<"roles"> & {
 
 export default function RolesAdminPage() {
   const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState("");
 
   // Queries
   const rolesQuery = useQuery(api.roles.functions.getRoles);
@@ -38,14 +34,6 @@ export default function RolesAdminPage() {
     userCount: 0, // TODO: Add query to get user count per role
     permissionCount: 0, // TODO: Add query to get permission count per role
   }));
-
-  // Filter roles based on search
-  const filteredRoles = roles.filter(
-    (role) =>
-      role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (role.description &&
-        role.description.toLowerCase().includes(searchTerm.toLowerCase())),
-  );
 
   // Handle role deletion
   const handleDeleteRole = async (role: RoleData) => {
@@ -64,76 +52,103 @@ export default function RolesAdminPage() {
   };
 
   // Define columns for EntityList
-  const columns: ColumnDefinition<RoleData>[] = [
+  const columns: ColumnDef<RoleData>[] = [
     {
-      key: "name",
-      title: "Name",
-      render: (value, row) => (
-        <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-muted-foreground" />
-          <div>
-            <div className="font-medium">{value}</div>
-            {row.isSystem && (
-              <Badge variant="secondary" className="text-xs">
-                System
-              </Badge>
-            )}
+      id: "name",
+      header: "Name",
+      accessorKey: "name",
+      cell: ({ row }) => {
+        const role = row.original;
+        return (
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <div className="font-medium">{role.name}</div>
+              {role.isSystem && (
+                <Badge variant="secondary" className="text-xs">
+                  System
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
-      key: "description",
-      title: "Description",
-      render: (value) => (
-        <div className="line-clamp-2 text-sm text-muted-foreground">
-          {value || "No description"}
-        </div>
-      ),
+      id: "description",
+      header: "Description",
+      accessorKey: "description",
+      cell: ({ row }) => {
+        const role = row.original;
+        return (
+          <div className="line-clamp-2 text-sm text-muted-foreground">
+            {role.description || "No description"}
+          </div>
+        );
+      },
     },
     {
-      key: "scope",
-      title: "Scope",
-      render: (value) => (
-        <Badge variant="outline">
-          {(value as string).charAt(0).toUpperCase() +
-            (value as string).slice(1)}
-        </Badge>
-      ),
+      id: "scope",
+      header: "Scope",
+      accessorKey: "scope",
+      cell: ({ row }) => {
+        const role = row.original;
+        return (
+          <Badge variant="outline">
+            {role.scope.charAt(0).toUpperCase() + role.scope.slice(1)}
+          </Badge>
+        );
+      },
     },
     {
-      key: "priority",
-      title: "Priority",
-      render: (value) => <Badge variant="secondary">{value}</Badge>,
+      id: "priority",
+      header: "Priority",
+      accessorKey: "priority",
+      cell: ({ row }) => {
+        const role = row.original;
+        return <Badge variant="secondary">{role.priority}</Badge>;
+      },
     },
     {
-      key: "userCount",
-      title: "Users",
-      render: (value) => (
-        <div className="flex items-center gap-1 text-sm">
-          <Users className="h-3 w-3" />
-          {value}
-        </div>
-      ),
+      id: "userCount",
+      header: "Users",
+      accessorKey: "userCount",
+      cell: ({ row }) => {
+        const role = row.original;
+        return (
+          <div className="flex items-center gap-1 text-sm">
+            <Users className="h-3 w-3" />
+            {role.userCount}
+          </div>
+        );
+      },
     },
     {
-      key: "permissionCount",
-      title: "Permissions",
-      render: (value) => (
-        <div className="flex items-center gap-1 text-sm">
-          <Shield className="h-3 w-3" />
-          {value}
-        </div>
-      ),
+      id: "permissionCount",
+      header: "Permissions",
+      accessorKey: "permissionCount",
+      cell: ({ row }) => {
+        const role = row.original;
+        return (
+          <div className="flex items-center gap-1 text-sm">
+            <Shield className="h-3 w-3" />
+            {role.permissionCount}
+          </div>
+        );
+      },
     },
     {
-      key: "isAssignable",
-      title: "Assignable",
-      render: (value) => (
-        <Badge variant={value ? "default" : "secondary"}>
-          {value ? "Yes" : "No"}
-        </Badge>
-      ),
+      id: "isAssignable",
+      header: "Assignable",
+      accessorKey: "isAssignable",
+      cell: ({ row }) => {
+        const role = row.original;
+        return (
+          <Badge variant={role.isAssignable ? "default" : "secondary"}>
+            {role.isAssignable ? "Yes" : "No"}
+          </Badge>
+        );
+      },
     },
   ];
 
@@ -144,7 +159,7 @@ export default function RolesAdminPage() {
       label: "Edit Role",
       onClick: (role) => router.push(`/admin/settings/roles/${role._id}/edit`),
       variant: "outline",
-      icon: Edit,
+      icon: <Edit className="mr-2 h-4 w-4" />,
     },
     {
       id: "permissions",
@@ -152,53 +167,17 @@ export default function RolesAdminPage() {
       onClick: (role) =>
         router.push(`/admin/settings/roles/${role._id}/permissions`),
       variant: "outline",
-      icon: Shield,
+      icon: <Shield className="mr-2 h-4 w-4" />,
     },
     {
       id: "delete",
       label: "Delete Role",
-      onClick: (role) => handleDeleteRole(role),
+      onClick: (role) => void handleDeleteRole(role),
       variant: "destructive",
-      icon: Trash2,
-      disabled: (role) => role.isSystem,
+      icon: <Trash2 className="mr-2 h-4 w-4" />,
+      isDisabled: (role) => role.isSystem,
     },
   ];
-
-  // Define filter config
-  const filterConfig: FilterConfig = {
-    searchPlaceholder: "Search roles by name or description...",
-    filters: [
-      {
-        key: "scope",
-        label: "Scope",
-        type: "select",
-        options: [
-          { value: "global", label: "Global" },
-          { value: "group", label: "Group" },
-          { value: "course", label: "Course" },
-          { value: "organization", label: "Organization" },
-        ],
-      },
-      {
-        key: "isAssignable",
-        label: "Assignable",
-        type: "select",
-        options: [
-          { value: "true", label: "Yes" },
-          { value: "false", label: "No" },
-        ],
-      },
-      {
-        key: "isSystem",
-        label: "Type",
-        type: "select",
-        options: [
-          { value: "true", label: "System" },
-          { value: "false", label: "Custom" },
-        ],
-      },
-    ],
-  };
 
   // Header actions
   const headerActions = (
@@ -227,19 +206,33 @@ export default function RolesAdminPage() {
           <CardTitle>Role Management</CardTitle>
         </CardHeader>
         <CardContent>
-          <EntityList
-            data={filteredRoles}
+          <EntityList<RoleData>
+            data={roles}
             columns={columns}
+            filters={[]}
+            hideFilters={true}
+            initialFilters={{}}
+            onFiltersChange={() => {}}
+            isLoading={rolesQuery === undefined}
+            title="Role Management"
+            description="Manage user roles and their permissions"
+            defaultViewMode="list"
+            viewModes={["list"]}
             entityActions={entityActions}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            filterConfig={filterConfig}
             actions={headerActions}
-            emptyState={{
-              icon: Shield,
-              title: "No roles found",
-              description: "Create your first role to get started",
-            }}
+            emptyState={
+              <div className="flex h-40 flex-col items-center justify-center gap-2 text-center">
+                <Shield className="h-8 w-8 text-muted-foreground" />
+                <p className="text-muted-foreground">No roles found</p>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/admin/settings/roles/new")}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create your first role
+                </Button>
+              </div>
+            }
           />
         </CardContent>
       </Card>

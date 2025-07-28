@@ -1,17 +1,20 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import type { Id } from "@convex-config/_generated/dataModel";
+import React from "react";
+import { useParams } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { useQuery } from "convex/react";
 
 import { Badge } from "@acme/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Separator } from "@acme/ui/separator";
+
+import { useConvexUser } from "~/hooks/useConvexUser";
 import { CompleteContentButton } from "./CompleteContentButton";
 import { CourseProgress } from "./CourseProgress";
-import { Id } from "@convex-config/_generated/dataModel";
-import React from "react";
-import { Separator } from "@acme/ui/separator";
-import { api } from "@convex-config/_generated/api";
-import { useConvexUser } from "~/hooks/useConvexUser";
-import { useParams } from "next/navigation";
-import { useQuery } from "convex/react";
+
+// import { fetchQuery } from "convex/nextjs";
 
 const CourseHeader = () => {
   const params = useParams();
@@ -35,10 +38,10 @@ const CourseHeader = () => {
       : "skip",
   );
 
-  if (data === undefined) return <div>Loading...</div>;
-  if (data === null) return <div>Course not found.</div>;
+  // if (data === undefined) return <div>Loading...</div>;
+  // if (data === null) return <div>Course not found.</div>;
 
-  const course = data.course;
+  const course = data?.course;
 
   return (
     <Card className="z-20 flex flex-col rounded-none rounded-b-2xl bg-primary">
@@ -48,7 +51,7 @@ const CourseHeader = () => {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-col gap-3 md:flex-row md:items-center">
               <CardTitle className="text-3xl font-bold text-white md:text-4xl">
-                {course.title}
+                {course?.title}
               </CardTitle>
               <Badge
                 variant="outline"
@@ -73,7 +76,7 @@ const CourseHeader = () => {
           </div>
 
           {/* Course Description */}
-          {course.description && (
+          {course?.description && (
             <p className="max-w-4xl text-lg text-white/90">
               {course.description}
             </p>
@@ -86,7 +89,7 @@ const CourseHeader = () => {
             <h3 className="text-lg font-semibold text-white">Your Progress</h3>
             <CourseProgress
               courseProgressByLessons={courseProgressByLessons}
-              lessons={data.attachedLessons}
+              lessons={data?.attachedLessons}
               userId={userId}
               courseId={courseId as Id<"courses">}
               className="text-white [&_.text-muted-foreground]:text-white/70"

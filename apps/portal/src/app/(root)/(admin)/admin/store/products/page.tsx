@@ -1,22 +1,21 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { useConvexAuth, useQuery } from "convex/react";
 import { Edit, Eye, Package, PlusCircle } from "lucide-react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { toast } from "@acme/ui/toast";
-
 import type {
-  ColumnDefinition,
   EntityAction,
   FilterConfig,
 } from "~/components/shared/EntityList/types";
+import React, { useEffect, useState } from "react";
+import { useConvexAuth, useQuery } from "convex/react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import type { ColumnDef } from "@tanstack/react-table";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
+import Link from "next/link";
+import { api } from "@/convex/_generated/api";
+import { toast } from "@acme/ui/toast";
+import { useRouter } from "next/navigation";
 
 interface ProductItem {
   _id: string;
@@ -136,61 +135,69 @@ function ProductsContent({ router }: { router: ReturnType<typeof useRouter> }) {
   }, [products]);
 
   // Define column configurations
-  const columns: ColumnDefinition<ProductItem>[] = [
+  const columns: ColumnDef<ProductItem>[] = [
     {
       id: "name",
       header: "Product Name",
       accessorKey: "name",
-      cell: (product) => (
-        <div className="flex items-center">
-          {product.images && product.images.length > 0 ? (
-            <img
-              src={
-                product.images.find((img) => img.isPrimary)?.url ??
-                product.images[0]?.url ??
-                "/placeholder.jpg"
-              }
-              alt={product.name}
-              className="mr-3 h-10 w-10 rounded-md object-cover"
-            />
-          ) : (
-            <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-md bg-muted">
-              <Package className="h-5 w-5 text-muted-foreground" />
-            </div>
-          )}
-          <span className="font-medium">{product.name}</span>
-        </div>
-      ),
-      sortable: true,
+      enableSorting: true,
+      cell: ({ row }) => {
+        const product = row.original;
+        return (
+          <div className="flex items-center">
+            {product.images && product.images.length > 0 ? (
+              <img
+                src={
+                  product.images.find((img) => img.isPrimary)?.url ??
+                  product.images[0]?.url ??
+                  "/placeholder.jpg"
+                }
+                alt={product.name}
+                className="mr-3 h-10 w-10 rounded-md object-cover"
+              />
+            ) : (
+              <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+                <Package className="h-5 w-5 text-muted-foreground" />
+              </div>
+            )}
+            <span className="font-medium">{product.name}</span>
+          </div>
+        );
+      },
     },
     {
       id: "price",
       header: "Price",
       accessorKey: "price",
-      cell: (product) => (
-        <div>
-          {product.salePrice ? (
-            <div>
-              <span className="text-sm text-muted-foreground line-through">
-                {formatPrice(product.price)}
-              </span>
-              <br />
-              <span className="font-medium text-green-600">
-                {formatPrice(product.salePrice)}
-              </span>
-            </div>
-          ) : (
-            <span>{formatPrice(product.price)}</span>
-          )}
-        </div>
-      ),
-      sortable: true,
+      enableSorting: true,
+      cell: ({ row }) => {
+        const product = row.original;
+        return (
+          <div>
+            {product.salePrice ? (
+              <div>
+                <span className="text-sm text-muted-foreground line-through">
+                  {formatPrice(product.price)}
+                </span>
+                <br />
+                <span className="font-medium text-green-600">
+                  {formatPrice(product.salePrice)}
+                </span>
+              </div>
+            ) : (
+              <span>{formatPrice(product.price)}</span>
+            )}
+          </div>
+        );
+      },
     },
     {
       id: "status",
       header: "Status",
       accessorKey: "status",
-      cell: (product) => {
+      enableSorting: true,
+      cell: ({ row }) => {
+        const product = row.original;
         const statusMap: Record<
           string,
           {
@@ -210,37 +217,44 @@ function ProductsContent({ router }: { router: ReturnType<typeof useRouter> }) {
 
         return <Badge variant={status.variant}>{status.label}</Badge>;
       },
-      sortable: true,
     },
     {
       id: "type",
       header: "Type",
       accessorKey: "isDigital",
-      cell: (product) => (
-        <Badge variant="outline">
-          {product.isDigital ? "Digital" : "Physical"}
-        </Badge>
-      ),
-      sortable: true,
+      enableSorting: true,
+      cell: ({ row }) => {
+        const product = row.original;
+        return (
+          <Badge variant="outline">
+            {product.isDigital ? "Digital" : "Physical"}
+          </Badge>
+        );
+      },
     },
     {
       id: "inventory",
       header: "Inventory",
       accessorKey: "stockQuantity",
-      cell: (product) =>
-        typeof product.stockQuantity === "number" ? (
+      enableSorting: true,
+      cell: ({ row }) => {
+        const product = row.original;
+        return typeof product.stockQuantity === "number" ? (
           product.stockQuantity
         ) : (
           <span className="text-muted-foreground">N/A</span>
-        ),
-      sortable: true,
+        );
+      },
     },
     {
       id: "createdAt",
       header: "Created",
       accessorKey: "createdAt",
-      cell: (product) => new Date(product.createdAt).toLocaleDateString(),
-      sortable: true,
+      enableSorting: true,
+      cell: ({ row }) => {
+        const product = row.original;
+        return new Date(product.createdAt).toLocaleDateString();
+      },
     },
   ];
 

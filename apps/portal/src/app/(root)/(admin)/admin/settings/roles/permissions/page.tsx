@@ -1,17 +1,17 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Edit, Key, Lock, Plus, Shield, Trash2 } from "lucide-react";
 import type {
-  ColumnDefinition,
   EntityAction,
   FilterConfig,
 } from "~/components/shared/EntityList/types";
-import type { Doc, Id } from "@convex-config/_generated/dataModel";
-import { Edit, Key, Lock, Plus, Shield, Trash2 } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { Doc } from "@convex-config/_generated/dataModel";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
 import { api } from "@convex-config/_generated/api";
 import { toast } from "@acme/ui/toast";
@@ -70,60 +70,78 @@ export default function PermissionsAdminPage() {
   };
 
   // Define columns for EntityList
-  const columns: ColumnDefinition<PermissionData>[] = [
+  const columns: ColumnDef<PermissionData>[] = [
     {
-      key: "name",
-      title: "Name",
-      render: (value, row) => (
-        <div className="flex items-center gap-2">
-          <Key className="h-4 w-4 text-muted-foreground" />
-          <div>
-            <div className="font-medium">{value}</div>
-            <div className="font-mono text-xs text-muted-foreground">
-              {row.key}
+      id: "name",
+      header: "Name",
+      accessorKey: "name",
+      cell: ({ row }) => {
+        const permission = row.original;
+        return (
+          <div className="flex items-center gap-2">
+            <Key className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <div className="font-medium">{permission.name}</div>
+              <div className="font-mono text-xs text-muted-foreground">
+                {permission.key}
+              </div>
+              {permission.isSystem && (
+                <Badge variant="secondary" className="mt-1 text-xs">
+                  System
+                </Badge>
+              )}
             </div>
-            {row.isSystem && (
-              <Badge variant="secondary" className="mt-1 text-xs">
-                System
-              </Badge>
-            )}
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
-      key: "description",
-      title: "Description",
-      render: (value) => (
-        <div className="line-clamp-2 text-sm text-muted-foreground">
-          {value || "No description"}
-        </div>
-      ),
+      id: "description",
+      header: "Description",
+      accessorKey: "description",
+      cell: ({ row }) => {
+        const permission = row.original;
+        return (
+          <div className="line-clamp-2 text-sm text-muted-foreground">
+            {permission.description ?? "No description"}
+          </div>
+        );
+      },
     },
     {
-      key: "resource",
-      title: "Resource",
-      render: (value) => (
-        <Badge variant="outline">
-          {(value as string).charAt(0).toUpperCase() +
-            (value as string).slice(1)}
-        </Badge>
-      ),
+      id: "resource",
+      header: "Resource",
+      accessorKey: "resource",
+      cell: ({ row }) => {
+        const permission = row.original;
+        return (
+          <Badge variant="outline">
+            {permission.resource.charAt(0).toUpperCase() +
+              permission.resource.slice(1)}
+          </Badge>
+        );
+      },
     },
     {
-      key: "action",
-      title: "Action",
-      render: (value) => (
-        <Badge variant="secondary">
-          {(value as string).charAt(0).toUpperCase() +
-            (value as string).slice(1)}
-        </Badge>
-      ),
+      id: "action",
+      header: "Action",
+      accessorKey: "action",
+      cell: ({ row }) => {
+        const permission = row.original;
+        return (
+          <Badge variant="secondary">
+            {permission.action.charAt(0).toUpperCase() +
+              permission.action.slice(1)}
+          </Badge>
+        );
+      },
     },
     {
-      key: "defaultLevel",
-      title: "Default Level",
-      render: (value) => {
+      id: "defaultLevel",
+      header: "Default Level",
+      accessorKey: "defaultLevel",
+      cell: ({ row }) => {
+        const permission = row.original;
         const levelColors = {
           none: "destructive",
           own: "secondary",
@@ -134,36 +152,46 @@ export default function PermissionsAdminPage() {
         return (
           <Badge
             variant={
-              levelColors[value as keyof typeof levelColors] || "secondary"
+              levelColors[
+                permission.defaultLevel as keyof typeof levelColors
+              ] ?? "secondary"
             }
           >
-            {(value as string).charAt(0).toUpperCase() +
-              (value as string).slice(1)}
+            {permission.defaultLevel.charAt(0).toUpperCase() +
+              permission.defaultLevel.slice(1)}
           </Badge>
         );
       },
     },
     {
-      key: "category",
-      title: "Category",
-      render: (value) => (
-        <Badge variant="outline">
-          {value
-            ? (value as string).charAt(0).toUpperCase() +
-              (value as string).slice(1)
-            : "Uncategorized"}
-        </Badge>
-      ),
+      id: "category",
+      header: "Category",
+      accessorKey: "category",
+      cell: ({ row }) => {
+        const permission = row.original;
+        return (
+          <Badge variant="outline">
+            {permission.category
+              ? permission.category.charAt(0).toUpperCase() +
+                permission.category.slice(1)
+              : "Uncategorized"}
+          </Badge>
+        );
+      },
     },
     {
-      key: "roleCount",
-      title: "Roles",
-      render: (value) => (
-        <div className="flex items-center gap-1 text-sm">
-          <Shield className="h-3 w-3" />
-          {value}
-        </div>
-      ),
+      id: "roleCount",
+      header: "Roles",
+      accessorKey: "roleCount",
+      cell: ({ row }) => {
+        const permission = row.original;
+        return (
+          <div className="flex items-center gap-1 text-sm">
+            <Shield className="h-3 w-3" />
+            {permission.roleCount}
+          </div>
+        );
+      },
     },
   ];
 
@@ -175,7 +203,7 @@ export default function PermissionsAdminPage() {
       onClick: (permission) =>
         router.push(`/admin/settings/permissions/${permission._id}/edit`),
       variant: "outline",
-      icon: Edit,
+      icon: <Edit className="mr-2 h-4 w-4" />,
     },
     {
       id: "roles",
@@ -183,20 +211,20 @@ export default function PermissionsAdminPage() {
       onClick: (permission) =>
         router.push(`/admin/settings/permissions/${permission._id}/roles`),
       variant: "outline",
-      icon: Shield,
+      icon: <Shield className="mr-2 h-4 w-4" />,
     },
     {
       id: "delete",
       label: "Delete Permission",
-      onClick: (permission) => handleDeletePermission(permission),
+      onClick: (permission) => void handleDeletePermission(permission),
       variant: "destructive",
-      icon: Trash2,
-      disabled: (permission) => permission.isSystem,
+      icon: <Trash2 className="mr-2 h-4 w-4" />,
+      isDisabled: (permission) => permission.isSystem,
     },
   ];
 
   // Define filter config
-  const filterConfig: FilterConfig = {
+  const filterConfig: FilterConfig<PermissionData> = {
     searchPlaceholder: "Search permissions by name, key, or resource...",
     filters: [
       {
@@ -291,19 +319,33 @@ export default function PermissionsAdminPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <EntityList
+          <EntityList<PermissionData>
             data={filteredPermissions}
             columns={columns}
+            filters={[]}
+            hideFilters={true}
+            initialFilters={{}}
+            onFiltersChange={() => {}}
+            isLoading={permissionsQuery === undefined}
+            title="Permission Management"
+            description="Manage system permissions and their role assignments"
+            defaultViewMode="list"
+            viewModes={["list"]}
             entityActions={entityActions}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            filterConfig={filterConfig}
             actions={headerActions}
-            emptyState={{
-              icon: Key,
-              title: "No permissions found",
-              description: "Create your first permission to get started",
-            }}
+            emptyState={
+              <div className="flex h-40 flex-col items-center justify-center gap-2 text-center">
+                <Key className="h-8 w-8 text-muted-foreground" />
+                <p className="text-muted-foreground">No permissions found</p>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/admin/settings/permissions/new")}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create your first permission
+                </Button>
+              </div>
+            }
           />
         </CardContent>
       </Card>

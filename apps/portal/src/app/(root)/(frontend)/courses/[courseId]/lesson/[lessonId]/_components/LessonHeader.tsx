@@ -4,75 +4,127 @@ import React from "react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
+import { Id } from "@convex-config/_generated/dataModel";
 import { useQuery } from "convex/react";
+import { CheckCircle2 } from "lucide-react";
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@acme/ui/accordion";
 import { Badge } from "@acme/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { CourseSidebarTrigger } from "@acme/ui/course-sidebar";
+import { useIsMobile } from "@acme/ui/hooks/use-mobile";
 import { Separator } from "@acme/ui/separator";
+
+import { useConvexUser } from "~/hooks/useConvexUser";
+import { cn } from "~/lib/utils";
+import LessonSidebar from "./LessonSidebar";
 
 const LessonHeader = () => {
   const params = useParams();
-  const { courseId, lessonId } = params as {
+  const isMobile = useIsMobile();
+  const { convexId: userId, isLoading: _isAuthLoading } = useConvexUser();
+  const { courseId, lessonId, topicId } = params as {
     courseId: string;
     lessonId: string;
+    topicId: string;
   };
 
   const data = useQuery(api.lms.courses.queries.getCourseStructureWithItems, {
-    courseId,
+    courseId: courseId as Id<"courses">,
   });
 
-  if (data === undefined) return <div>Loading...</div>;
+  const lesson = data?.attachedLessons.find((l) => l._id === lessonId);
+
+  const topic = data?.attachedTopics.find((t) => t._id === topicId);
+
+  const isCompleted = useQuery(
+    api.lms.progress.index.isItemCompleted,
+    userId && topicId
+      ? {
+          userId,
+          itemId: topicId as Id<"topics">,
+        }
+      : "skip",
+  );
+
+  // if (data === undefined) return <div>Loading...</div>;
   if (data === null) return <div>Course not found.</div>;
 
-  const course = data.course;
-  const lesson = data.attachedLessons.find((l) => l._id === lessonId);
+  // const course = data.course;
+  // const lesson = data.attachedLessons.find((l) => l._id === lessonId);
   // if (!lesson) return <div>Lesson not found.</div>;
   return (
-    <Card className="flex h-56 items-center bg-primary">
-      <CardContent>
-        <CardHeader>
-          <h1 className="flex gap-2 text-3xl font-bold text-white">
-            {course.title} <Badge variant="outline">Course</Badge>
-          </h1>
+    <header className="sticky top-0 z-10 flex shrink-0 flex-col">
+      {lessonId && (
+        <div className="flex gap-2 rounded-none rounded-tr-xl bg-primary p-3">
+          <div className="flex flex-1 items-center gap-2">
+            <CourseSidebarTrigger className="-ml-1 text-white" />
+            <Separator
+              orientation="vertical"
+              className="mr-2 data-[orientation=vertical]:h-4"
+            />
+            <h1 className="text-2xl font-bold text-white">{lesson?.title}</h1>
+          </div>
+          <Badge variant="outline" className="text-md bg-white">
+            {lessonId ? "Lesson" : "Course"}
+          </Badge>
+        </div>
+      )}
+      {topicId && (
+        <Card className="overflow-hidden rounded-l-none rounded-t-none">
+          <Accordion
+            type="single"
+            collapsible
+            defaultValue="item-1"
+            className="sticky top-14 z-20"
+          >
+            <AccordionItem value="item-1">
+              <CardHeader className="sticky:shadow-lg sticky top-14 z-10 flex flex-col justify-between gap-3 space-y-0 bg-white p-4">
+                <div className="flex flex-row items-center justify-between gap-2">
+                  <CardTitle className="flex gap-2 text-xl font-bold">
+                    {topic?.title}
+                  </CardTitle>
+                  <Badge
+                    variant="outline"
+                    className={cn("text-md flex gap-3", {
+                      "bg-green-500 text-white": isCompleted,
+                      "bg-white": !isCompleted,
+                    })}
+                  >
+                    Topic
+                    {isCompleted && <CheckCircle2 className="h-5 w-5" />}
+                  </Badge>
+                </div>
 
-          <CardTitle className="flex gap-2 text-2xl font-bold text-white">
-            {lesson?.title ?? "Lesson"}
-            <Badge variant="outline" className="text-white">
-              Lesson
-            </Badge>
-          </CardTitle>
-          {/* <Dialog>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline">
-                Edit Lesson
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
-              <DialogHeader>
-                <DialogTitle>Edit Lesson</DialogTitle>
-              </DialogHeader>
-              <LessonForm
-                initialData={{
-                  _id: lesson._id,
-                  title: lesson.title,
-                  content: lesson.content ?? "",
-                  excerpt: lesson.excerpt ?? "",
-                  categories: lesson.categories?.join(", ") ?? "",
-                  featuredMedia: lesson.featuredMedia ?? "",
-                  status: lesson.isPublished ? "published" : "draft",
-                  featured: false,
-                }}
-                onSubmit={handleUpdate}
-                isSubmitting={false}
-                categories={[]}
-                submitButtonText="Save Lesson"
-              />
-            </DialogContent>
-          </Dialog> */}
-        </CardHeader>
-      </CardContent>
-    </Card>
+                {/* Course Progress Indicator */}
+                {/* {courseProgress && (
+              <div className="text-sm text-muted-foreground">
+                Course Progress: {courseProgress.percentComplete}% (
+                {courseProgress.completed}/{courseProgress.total} items
+                completed)
+              </div>
+            )} */}
+
+                {isMobile && (
+                  <AccordionTrigger className="rounded-md bg-slate-100 p-3 [&>svg]:h-6 [&>svg]:w-6 [&>svg]:rounded-md [&>svg]:bg-white [&>svg]:shadow-md">
+                    Additional Information
+                  </AccordionTrigger>
+                )}
+              </CardHeader>
+
+              <AccordionContent className="bg-slate-100 p-4 md:hidden">
+                <LessonSidebar />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </Card>
+      )}
+    </header>
   );
   return <div className="flex h-64 flex-col gap-4 bg-blue-500">HEADER</div>;
 };

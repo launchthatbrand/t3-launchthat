@@ -292,7 +292,7 @@ export default function DefaultSidebar() {
           url: "/admin/settings/menus",
         },
         {
-          title: "Seo",
+          title: "Roles",
           url: "/admin/settings/roles",
         },
       ],

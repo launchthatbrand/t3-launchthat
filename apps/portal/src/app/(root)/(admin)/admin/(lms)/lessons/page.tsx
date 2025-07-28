@@ -1,12 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { api } from "@convex-config/_generated/api";
-import { useMutation, useQuery } from "convex/react";
-import { Edit, Plus, PlusCircle, Trash } from "lucide-react";
-import { useDebounce } from "use-debounce";
 
 import {
   AlertDialog,
@@ -18,19 +12,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@acme/ui/alert-dialog";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-
-import type { Doc } from "../../../../../../../convex/_generated/dataModel";
+import { Edit, Plus, PlusCircle, Trash } from "lucide-react";
 import type {
-  ColumnDefinition,
   EntityAction,
   FilterConfig,
   FilterValue,
 } from "~/components/shared/EntityList/types";
+import { useMutation, useQuery } from "convex/react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import type { ColumnDef } from "@tanstack/react-table";
 import { DetachableFilters } from "~/components/shared/EntityList/DetachableFilters";
+import type { Doc } from "../../../../../../../convex/_generated/dataModel";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
+import Link from "next/link";
+import { api } from "@convex-config/_generated/api";
+import { useDebounce } from "use-debounce";
+import { useRouter } from "next/navigation";
 
 type LessonData = Doc<"lessons">;
 
@@ -116,38 +116,47 @@ export default function AdminLessonsPage() {
   };
 
   // Columns for lessons
-  const columns: ColumnDefinition<LessonData>[] = [
+  const columns: ColumnDef<LessonData>[] = [
     {
       id: "title",
       header: "Title",
       accessorKey: "title",
-      sortable: true,
-      cell: (lesson) => (
-        <Link
-          href={`/admin/lessons/${lesson._id}`}
-          className="font-medium hover:underline"
-        >
-          {lesson.title}
-        </Link>
-      ),
+      enableSorting: true,
+      cell: ({ row }) => {
+        const lesson = row.original;
+        return (
+          <Link
+            href={`/admin/lessons/${lesson._id}`}
+            className="font-medium hover:underline"
+          >
+            {lesson.title}
+          </Link>
+        );
+      },
     },
     {
       id: "description",
       header: "Description",
       accessorKey: "description",
-      cell: (lesson) => (
-        <div className="max-w-xs truncate">{lesson.description ?? "N/A"}</div>
-      ),
+      cell: ({ row }) => {
+        const lesson = row.original;
+        return (
+          <div className="max-w-xs truncate">{lesson.description ?? "N/A"}</div>
+        );
+      },
     },
     {
       id: "status",
       header: "Status",
       accessorKey: "isPublished",
-      cell: (lesson) => (
-        <Badge variant={lesson.isPublished ? "default" : "secondary"}>
-          {lesson.isPublished ? "Published" : "Draft"}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const lesson = row.original;
+        return (
+          <Badge variant={lesson.isPublished ? "default" : "secondary"}>
+            {lesson.isPublished ? "Published" : "Draft"}
+          </Badge>
+        );
+      },
     },
   ];
 

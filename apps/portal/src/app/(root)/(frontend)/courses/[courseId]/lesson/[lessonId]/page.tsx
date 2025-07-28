@@ -71,17 +71,21 @@ const lessonColumns: ColumnDefinition<Topic>[] = [
 
 export default function LessonPage() {
   const params = useParams();
+  const router = useRouter();
+
+  // All hooks must be called at the top level, before any conditional logic
   const { courseId, lessonId } = params as {
     courseId: string;
     lessonId: string;
   };
 
-  const router = useRouter();
-
   const data = useQuery(api.lms.courses.queries.getCourseStructureWithItems, {
     courseId,
   });
 
+  const updateLesson = useMutation(api.lms.lessons.index.update);
+
+  // Now we can do conditional checks after all hooks are called
   if (data === undefined) return <div>Loading...</div>;
   if (data === null) return <div>Course not found.</div>;
 
@@ -100,7 +104,6 @@ export default function LessonPage() {
   const topics = data.attachedTopics.filter((t) => t.lessonId === lessonId);
   const quizzes = data.attachedQuizzes.filter((q) => q.lessonId === lessonId);
 
-  const updateLesson = useMutation(api.lms.lessons.index.update);
   const handleUpdate = async (values: LessonFormValues) => {
     await updateLesson({
       lessonId,

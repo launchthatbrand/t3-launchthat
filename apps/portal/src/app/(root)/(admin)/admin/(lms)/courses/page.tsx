@@ -1,11 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
-import { Edit, Plus, PlusCircle, Trash } from "lucide-react";
-import { useDebounce } from "use-debounce";
 
 import {
   AlertDialog,
@@ -17,20 +12,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@acme/ui/alert-dialog";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-
-import type { Doc } from "../../../../../../../convex/_generated/dataModel";
+import { Edit, Plus, PlusCircle, Trash } from "lucide-react";
 import type {
-  ColumnDefinition,
   EntityAction,
   FilterConfig,
   FilterValue,
 } from "~/components/shared/EntityList/types";
+import { useMutation, useQuery } from "convex/react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import type { ColumnDef } from "@tanstack/react-table";
 import { DetachableFilters } from "~/components/shared/EntityList/DetachableFilters";
+import type { Doc } from "../../../../../../../convex/_generated/dataModel";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
+import Link from "next/link";
 import { api } from "../../../../../../../convex/_generated/api";
+import { useDebounce } from "use-debounce";
+import { useRouter } from "next/navigation";
 
 type CourseData = Doc<"courses">;
 
@@ -123,38 +123,47 @@ export default function AdminCoursesPage() {
   };
 
   // Define columns for EntityList
-  const columns: ColumnDefinition<CourseData>[] = [
+  const columns: ColumnDef<CourseData>[] = [
     {
       id: "title",
       header: "Title",
       accessorKey: "title",
-      sortable: true,
-      cell: (course) => (
-        <Link
-          href={`/admin/courses/${course._id}`}
-          className="font-medium hover:underline"
-        >
-          {course.title}
-        </Link>
-      ),
+      enableSorting: true,
+      cell: ({ row }) => {
+        const course = row.original;
+        return (
+          <Link
+            href={`/admin/courses/${course._id}`}
+            className="font-medium hover:underline"
+          >
+            {course.title}
+          </Link>
+        );
+      },
     },
     {
       id: "description",
       header: "Description",
       accessorKey: "description",
-      cell: (course) => (
-        <div className="max-w-xs truncate">{course.description ?? "N/A"}</div>
-      ),
+      cell: ({ row }) => {
+        const course = row.original;
+        return (
+          <div className="max-w-xs truncate">{course.description ?? "N/A"}</div>
+        );
+      },
     },
     {
       id: "status",
       header: "Status",
       accessorKey: "isPublished",
-      cell: (course) => (
-        <Badge variant={course.isPublished ? "default" : "secondary"}>
-          {course.isPublished ? "Published" : "Draft"}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const course = row.original;
+        return (
+          <Badge variant={course.isPublished ? "default" : "secondary"}>
+            {course.isPublished ? "Published" : "Draft"}
+          </Badge>
+        );
+      },
     },
   ];
 

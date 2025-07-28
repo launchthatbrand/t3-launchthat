@@ -1,11 +1,21 @@
 "use client";
 
+import React from "react";
+import Image from "next/image";
+import { useParams, useRouter } from "next/navigation";
+import { EditItemDialog } from "@/components/EditItemDialog";
+import { api } from "@convex-config/_generated/api";
+import { Doc, Id } from "@convex-config/_generated/dataModel";
+import { useMutation, useQuery } from "convex/react";
+import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@acme/ui/accordion";
+import { Badge } from "@acme/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
   Carousel,
@@ -14,27 +24,17 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@acme/ui/carousel";
-import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
-import { Doc, Id } from "@convex-config/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
-import { useParams, useRouter } from "next/navigation";
-
-import { Badge } from "@acme/ui/badge";
-import { CommentThread } from "~/components/social/CommentThread";
-import { CompleteContentButton } from "../../../../_components/CompleteContentButton";
-import { EditItemDialog } from "@/components/EditItemDialog";
-import Image from "next/image";
-import LessonSidebar from "../../_components/LessonSidebar";
-import React from "react";
 import { Separator } from "@acme/ui/separator";
-import { api } from "@convex-config/_generated/api";
-import { cn } from "~/lib/utils";
+import { Skeleton } from "@acme/ui/skeleton";
 import { toast } from "@acme/ui/toast";
+
+import { ProtectedContent } from "~/components/access/ProtectedContent";
+import { CommentThread } from "~/components/social/CommentThread";
 import { useConvexUser } from "~/hooks/useConvexUser";
-import { useIsMobile } from "@acme/ui/hooks/use-mobile";
+import { CompleteContentButton } from "../../../../_components/CompleteContentButton";
 
 export default function TopicPage() {
-  const isMobile = useIsMobile();
+  // const isMobile = useIsMobile();
   const router = useRouter();
   const { convexId: userId, isLoading: _isAuthLoading } = useConvexUser();
   const params = useParams();
@@ -53,16 +53,16 @@ export default function TopicPage() {
     courseId: courseId as Id<"courses">,
   });
 
-  // Check if this topic is completed for the current user
-  const isCompleted = useQuery(
-    api.lms.progress.index.isItemCompleted,
-    userId
-      ? {
-          userId,
-          itemId: topicId as Id<"topics">,
-        }
-      : "skip",
-  );
+  // // Check if this topic is completed for the current user
+  // const isCompleted = useQuery(
+  //   api.lms.progress.index.isItemCompleted,
+  //   userId
+  //     ? {
+  //         userId,
+  //         itemId: topicId as Id<"topics">,
+  //       }
+  //     : "skip",
+  // );
 
   // Get course progress for the user
   const _courseProgress = useQuery(
@@ -91,7 +91,13 @@ export default function TopicPage() {
     }
   }, [topicId, courseId, userId, startTopicProgress]);
 
-  if (data === undefined) return <div>Loading...</div>;
+  if (data === undefined)
+    return (
+      <Card className="border-none p-6 shadow-none">
+        <Skeleton className="h-64 w-full" />
+      </Card>
+    );
+
   if (data === null) return <div>Course not found.</div>;
 
   const topic = data.attachedTopics.find((t) => t._id === topicId);
@@ -130,67 +136,34 @@ export default function TopicPage() {
 
   return (
     <Card className="border-none shadow-none">
-      <Accordion
-        type="single"
-        collapsible
-        defaultValue="item-1"
-        className="sticky top-14 z-20"
-      >
-        <AccordionItem value="item-1">
-          <CardHeader className="sticky:shadow-lg sticky top-14 z-10 flex flex-col justify-between gap-3 space-y-0 bg-white p-4">
-            <div className="flex flex-row items-center justify-between gap-2">
-              <CardTitle className="flex gap-2 text-xl font-bold">
-                {topic.title}
-              </CardTitle>
-              <Badge
-                variant="outline"
-                className={cn("text-md flex gap-3", {
-                  "bg-green-500 text-white": isCompleted,
-                  "bg-white": !isCompleted,
-                })}
-              >
-                Topic
-                {isCompleted && <CheckCircle2 className="h-5 w-5" />}
-              </Badge>
-            </div>
-
-            {/* Course Progress Indicator */}
-            {/* {courseProgress && (
-              <div className="text-sm text-muted-foreground">
-                Course Progress: {courseProgress.percentComplete}% (
-                {courseProgress.completed}/{courseProgress.total} items
-                completed)
-              </div>
-            )} */}
-
-            {isMobile && (
-              <AccordionTrigger className="rounded-md bg-slate-100 p-3 [&>svg]:h-6 [&>svg]:w-6 [&>svg]:rounded-md [&>svg]:bg-white [&>svg]:shadow-md">
-                Additional Information
-              </AccordionTrigger>
-            )}
-          </CardHeader>
-
-          <AccordionContent className="bg-slate-100 p-4 md:hidden">
-            <LessonSidebar />
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-
       <CardContent className="p-6">
-        {topic.content?.includes("vimeo") ? (
-          getVimeoEmbedUrl(topic.content) && (
-            <div className="relative mb-4 h-0 overflow-hidden rounded-md px-5 pb-[56.25%] shadow-xl">
-              <iframe
-                src={getVimeoEmbedUrl(topic.content) ?? undefined}
-                allow="autoplay; fullscreen; picture-in-picture"
-                allowFullScreen
-                className="absolute left-0 top-0 h-full w-full border-0"
-              ></iframe>
-            </div>
-          )
-        ) : (
-          <p className="text-sm text-muted-foreground">No content available.</p>
-        )}
+        {/* Protect the video content specifically */}
+        <ProtectedContent
+          contentType="topic"
+          contentId={topicId}
+          mode="optimistic"
+          title={`Topic: ${topic.title}`}
+          showAccessDetails={false}
+        >
+          {topic.content?.includes("vimeo") ? (
+            getVimeoEmbedUrl(topic.content) && (
+              <div className="relative mb-4 h-0 overflow-hidden rounded-md px-5 pb-[56.25%] shadow-xl">
+                <iframe
+                  src={getVimeoEmbedUrl(topic.content) ?? undefined}
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                  className="absolute left-0 top-0 h-full w-full border-0"
+                ></iframe>
+              </div>
+            )
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No content available.
+            </p>
+          )}
+        </ProtectedContent>
+
+        {/* Navigation and comments remain unprotected */}
         <Carousel className="w-full">
           <CarouselContent className="flex-wrap p-0">
             <CarouselItem

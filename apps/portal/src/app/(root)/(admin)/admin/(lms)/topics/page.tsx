@@ -1,12 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { api } from "@convex-config/_generated/api";
-import { useMutation, useQuery } from "convex/react";
-import { Edit, Plus, PlusCircle, Trash } from "lucide-react";
-import { useDebounce } from "use-debounce";
 
 import {
   AlertDialog,
@@ -18,19 +12,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@acme/ui/alert-dialog";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-
-import type { Doc } from "../../../../../../../convex/_generated/dataModel";
+import { Edit, Plus, PlusCircle, Trash } from "lucide-react";
 import type {
-  ColumnDefinition,
   EntityAction,
   FilterConfig,
   FilterValue,
 } from "~/components/shared/EntityList/types";
+import { useMutation, useQuery } from "convex/react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import type { ColumnDef } from "@tanstack/react-table";
 import { DetachableFilters } from "~/components/shared/EntityList/DetachableFilters";
+import type { Doc } from "../../../../../../../convex/_generated/dataModel";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
+import Link from "next/link";
+import { api } from "@convex-config/_generated/api";
+import { useDebounce } from "use-debounce";
+import { useRouter } from "next/navigation";
 
 type TopicData = Doc<"topics">;
 
@@ -88,6 +88,7 @@ export default function AdminTopicsPage() {
   }, [debouncedSearchTitle]);
 
   const topics = useQuery(api.lms.topics.index.listTopics, queryParams);
+  console.log("topics", topics);
   const deleteTopic = useMutation(api.lms.topics.index.remove);
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
@@ -111,36 +112,45 @@ export default function AdminTopicsPage() {
     }
   };
 
-  const columns: ColumnDefinition<TopicData>[] = [
+  const columns: ColumnDef<TopicData>[] = [
     {
       id: "title",
       header: "Title",
       accessorKey: "title",
-      sortable: true,
-      cell: (topic) => (
-        <Link
-          href={`/admin/topics/${topic._id}`}
-          className="font-medium hover:underline"
-        >
-          {topic.title}
-        </Link>
-      ),
+      enableSorting: true,
+      cell: ({ row }) => {
+        const topic = row.original;
+        return (
+          <Link
+            href={`/admin/topics/${topic._id}`}
+            className="font-medium hover:underline"
+          >
+            {topic.title}
+          </Link>
+        );
+      },
     },
     {
       id: "contentType",
       header: "Type",
       accessorKey: "contentType",
-      cell: (topic) => <span>{topic.contentType}</span>,
+      cell: ({ row }) => {
+        const topic = row.original;
+        return <span>{topic.contentType}</span>;
+      },
     },
     {
       id: "status",
       header: "Status",
       accessorKey: "isPublished",
-      cell: (topic) => (
-        <Badge variant={topic.isPublished ? "default" : "secondary"}>
-          {topic.isPublished ? "Published" : "Draft"}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const topic = row.original;
+        return (
+          <Badge variant={topic.isPublished ? "default" : "secondary"}>
+            {topic.isPublished ? "Published" : "Draft"}
+          </Badge>
+        );
+      },
     },
   ];
 
@@ -239,12 +249,30 @@ export default function AdminTopicsPage() {
         </div>
 
         <div className="md:col-span-3">
-          <EntityList
-            data={topics}
+          <EntityList<TopicData>
+            data={topics ?? []}
             columns={columns}
+            filters={filters}
+            hideFilters={true}
+            initialFilters={activeFilters}
+            onFiltersChange={handleFilterChange}
+            isLoading={topics === undefined}
+            title="Topic Management"
+            description="Manage your topics here."
+            defaultViewMode="list"
             entityActions={entityActions}
-            headerActions={headerActions}
-            emptyMessage="No topics found."
+            actions={headerActions}
+            emptyState={
+              <div className="flex h-40 flex-col items-center justify-center gap-2 text-center">
+                <p className="text-muted-foreground">No topics found</p>
+                <Button asChild variant="outline">
+                  <Link href="/admin/topics/new">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Create your first
+                    topic
+                  </Link>
+                </Button>
+              </div>
+            }
           />
         </div>
       </div>
