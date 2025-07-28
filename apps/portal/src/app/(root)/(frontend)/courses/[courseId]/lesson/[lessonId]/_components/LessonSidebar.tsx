@@ -1,44 +1,21 @@
 "use client";
 
-import React from "react";
-import Image from "next/image";
-import { useParams, useRouter } from "next/navigation";
-import { api } from "@convex-config/_generated/api";
-import { Id } from "@convex-config/_generated/dataModel";
-import { useQuery } from "convex/react";
-import { CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
-
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@acme/ui/accordion";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@acme/ui/carousel";
-import { useIsMobile } from "@acme/ui/hooks/use-mobile";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@acme/ui/hover-card";
-import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
-import { Progress } from "@acme/ui/progress";
+import { useParams, useRouter } from "next/navigation";
+
+import { Id } from "@convex-config/_generated/dataModel";
+import Image from "next/image";
+import { LessonProgress } from "../../../_components/LessonProgress";
+import React from "react";
+import RelatedContent from "./RelatedContent";
 import { Separator } from "@acme/ui/separator";
-import { Sheet, SheetContent, SheetTrigger } from "@acme/ui/sheet";
+import { api } from "@convex-config/_generated/api";
+import { useConvexUser } from "~/hooks/useConvexUser";
+import { useQuery } from "convex/react";
 
 const LessonSidebar = () => {
-  const isMobile = useIsMobile();
   const params = useParams();
-  const router = useRouter();
+  const { convexId: userId } = useConvexUser();
   const { courseId, lessonId, topicId } = params as {
     courseId: string;
     lessonId: string;
@@ -50,6 +27,28 @@ const LessonSidebar = () => {
   const data = useQuery(api.lms.courses.queries.getCourseStructureWithItems, {
     courseId: courseId as Id<"courses">,
   });
+
+  // Get real lesson progress data
+  const lessonProgress = useQuery(
+    api.lms.progress.index.getLessonProgress,
+    userId && lessonId
+      ? {
+          userId,
+          courseId: courseId as Id<"courses">,
+          lessonId: lessonId as Id<"lessons">,
+        }
+      : "skip",
+  );
+
+  // Get quizzes for this lesson to use as milestone markers
+  const lessonQuizzes = useQuery(
+    api.lms.quizzes.index.getQuizzesByLesson,
+    lessonId
+      ? {
+          lessonId: lessonId as Id<"lessons">,
+        }
+      : "skip",
+  );
 
   if (data === undefined) return <div>Loading...</div>;
   if (data === null) return <div>Course not found.</div>;
@@ -79,13 +78,24 @@ const LessonSidebar = () => {
         <div className="sticky top-6 flex w-full flex-col gap-4 overflow-hidden">
           <Card className="overflow-hidden">
             <CardHeader className="py-3">
-              <CardTitle className="text-lg">Lesson Progression</CardTitle>
+              <CardTitle className="text-lg">Lesson Progress</CardTitle>
+              {lessonProgress && (
+                <div className="text-sm text-muted-foreground">
+                  {lessonProgress.topicsCompleted} of{" "}
+                  {lessonProgress.totalTopics} topics completed
+                </div>
+              )}
             </CardHeader>
 
             <Separator />
 
             <CardContent className="flex flex-col gap-4 p-6">
-              <LessonProgress />
+              <LessonProgress
+                lessonProgress={lessonProgress}
+                quizzes={lessonQuizzes}
+                userId={userId}
+                _courseId={courseId as Id<"courses">}
+              />
             </CardContent>
           </Card>
           <Card className="overflow-hidden">
@@ -96,7 +106,11 @@ const LessonSidebar = () => {
             <Separator />
 
             <CardContent className="flex flex-col gap-4 p-6">
-              <LessonProgress />
+              <RelatedContent
+                lesson={lesson}
+                topic={topic}
+                course={data.course}
+              />
             </CardContent>
           </Card>
         </div>
@@ -124,54 +138,3 @@ const LessonSidebar = () => {
 };
 
 export default LessonSidebar;
-
-const LessonProgress = () => {
-  const keyPoints = [
-    {
-      title: "Quiz 1",
-      percentage: 25,
-      icon: <CheckCircle />,
-    },
-    {
-      title: "Quiz 2",
-      percentage: 50,
-      icon: <CheckCircle />,
-    },
-    {
-      title: "Quiz 3",
-      percentage: 75,
-      color: "bg-primary",
-    },
-    {
-      title: "Quiz 4",
-      percentage: 100,
-      color: "bg-primary",
-    },
-  ];
-
-  // For demonstration, let's assume a current progress value
-  const currentProgress = 60;
-
-  return (
-    <div className="relative flex w-full items-center">
-      <Progress value={currentProgress} className="h-3 w-full bg-muted" />
-      {keyPoints.map((keyPoint) => (
-        <HoverCard openDelay={1} key={keyPoint.title}>
-          <HoverCardTrigger asChild>
-            <Button
-              variant="secondary"
-              size="sm"
-              className={`absolute z-10 -translate-x-1/2 rounded-full p-1 ${keyPoint.color}`}
-              style={{ left: `${keyPoint.percentage}%` }}
-            >
-              {keyPoint.icon}
-            </Button>
-          </HoverCardTrigger>
-          <HoverCardContent className="w-40 text-center text-sm">
-            {keyPoint.title}
-          </HoverCardContent>
-        </HoverCard>
-      ))}
-    </div>
-  );
-};

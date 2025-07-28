@@ -1,16 +1,15 @@
 "use client";
 
-import type { Id } from "@/convex/_generated/dataModel";
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import React, { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
-
-import type { ProductFormData } from "../../_components/ProductForm";
+import type { Id } from "@/convex/_generated/dataModel";
 import ProductForm from "../../_components/ProductForm";
+import type { ProductFormData } from "../../_components/ProductForm";
+import { api } from "@/convex/_generated/api";
+import { useRouter } from "next/navigation";
 
 export default function EditProductPage({
   params,
@@ -44,7 +43,6 @@ export default function EditProductPage({
         // Keep existing values for fields not in the form
         salePrice: product?.salePrice,
         costPrice: product?.costPrice,
-        inventoryLevel: product?.stockQuantity,
         tags: product?.tags ?? [],
         metaTitle: product?.metaTitle,
         metaDescription: product?.metaDescription,

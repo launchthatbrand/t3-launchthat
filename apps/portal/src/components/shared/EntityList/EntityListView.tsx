@@ -1,8 +1,13 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import * as React from "react";
 
-import { Skeleton } from "@acme/ui/skeleton";
+import type {
+  ColumnDef,
+  ColumnFiltersState,
+  SortingState,
+  VisibilityState,
+} from "@tanstack/react-table";
 import {
   Table,
   TableBody,
@@ -11,17 +16,26 @@ import {
   TableHeader,
   TableRow,
 } from "@acme/ui/table";
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 
-import type { EntityListViewProps } from "./types";
 import { EmptyState } from "../../EmptyState";
+import type { EntityListViewProps } from "./types";
 import { GridView } from "./GridView";
-import { ListView } from "./ListView";
+import { Loader2 } from "lucide-react";
+import { Skeleton } from "@acme/ui/skeleton";
 
 export function EntityListView<T extends object>({
   data,
   columns,
   viewMode,
-  isLoading = false,
+  isLoading,
   onRowClick,
   gridColumns,
   selectedId,
@@ -31,6 +45,64 @@ export function EntityListView<T extends object>({
   onSortChange,
   itemRender,
 }: EntityListViewProps<T>) {
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    [],
+  );
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = React.useState({});
+
+  // Use ColumnDef directly and add actions column if needed
+  const tableColumns: ColumnDef<T>[] = React.useMemo(() => {
+    const cols: ColumnDef<T>[] = [...columns];
+
+    // Add actions column if entityActions exist
+    if (entityActions && entityActions.length > 0) {
+      cols.push({
+        id: "actions",
+        header: "Actions",
+        enableHiding: false,
+        enableSorting: false,
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            {entityActions.map((action, index) => (
+              <button
+                key={index}
+                onClick={() => action.onClick(row.original)}
+                className="rounded p-1 hover:bg-gray-100"
+                title={action.label}
+              >
+                {action.icon}
+              </button>
+            ))}
+          </div>
+        ),
+      });
+    }
+
+    return cols;
+  }, [columns, entityActions]);
+
+  const table = useReactTable({
+    data,
+    columns: tableColumns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="w-full">
@@ -40,10 +112,14 @@ export function EntityListView<T extends object>({
               <TableHeader>
                 <TableRow>
                   {columns.map((column) => (
-                    <TableHead key={column.id}>{column.header}</TableHead>
+                    <TableHead key={column.id}>
+                      <Skeleton className="h-4 w-full" />
+                    </TableHead>
                   ))}
                   {entityActions && entityActions.length > 0 && (
-                    <TableHead>Actions</TableHead>
+                    <TableHead>
+                      <Skeleton className="h-4 w-16" />
+                    </TableHead>
                   )}
                 </TableRow>
               </TableHeader>
@@ -96,15 +172,60 @@ export function EntityListView<T extends object>({
 
   if (viewMode === "list") {
     return (
-      <ListView
-        data={data}
-        columns={columns}
-        onRowClick={onRowClick}
-        selectedId={selectedId}
-        entityActions={entityActions}
-        sortConfig={sortConfig}
-        onSortChange={onSortChange}
-      />
+      <div className="w-full">
+        <div className="overflow-hidden rounded-md border">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    return (
+                      <TableHead key={header.id}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                      </TableHead>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    className={onRowClick ? "cursor-pointer" : ""}
+                    onClick={() => onRowClick?.(row.original)}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={tableColumns.length}
+                    className="h-24 text-center"
+                  >
+                    No results.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
     );
   }
 
@@ -113,7 +234,7 @@ export function EntityListView<T extends object>({
       data={data}
       columns={columns}
       onCardClick={onRowClick}
-      selectedId={selectedId}
+      selectedIds={selectedId ? [selectedId] : []}
       entityActions={entityActions}
       cardRenderer={itemRender}
       gridColumns={gridColumns}

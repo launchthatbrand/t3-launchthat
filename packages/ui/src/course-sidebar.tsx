@@ -1,17 +1,7 @@
 "use client";
 
-import type { VariantProps } from "class-variance-authority";
 import * as React from "react";
-import { ViewVerticalIcon } from "@radix-ui/react-icons";
-import { Slot } from "@radix-ui/react-slot";
-import { cva } from "class-variance-authority";
 
-import { cn } from "@acme/ui";
-
-import { useIsMobile } from "../hooks/use-mobile";
-import { Button } from "./button";
-import { Input } from "./input";
-import { Separator } from "./separator";
 import {
   Sheet,
   SheetContent,
@@ -19,13 +9,23 @@ import {
   SheetHeader,
   SheetTitle,
 } from "./sheet";
-import { Skeleton } from "./skeleton";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "./tooltip";
+
+import { Button } from "./button";
+import { Input } from "./input";
+import { Separator } from "./separator";
+import { Skeleton } from "./skeleton";
+import { Slot } from "@radix-ui/react-slot";
+import type { VariantProps } from "class-variance-authority";
+import { ViewVerticalIcon } from "@radix-ui/react-icons";
+import { cn } from "@acme/ui";
+import { cva } from "class-variance-authority";
+import { useIsMobile } from "../hooks/use-mobile";
 
 const SIDEBAR_COOKIE_NAME = "course_sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -748,7 +748,7 @@ const CourseSidebarMenuSubButton = React.forwardRef<
       data-active={isActive}
       className={cn(
         "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-1 text-sidebar-foreground outline-none ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
-        "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
+        "data-[active=true]:border-l-2 data-[active=true]:border-primary data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
         size === "sm" && "text-xs",
         size === "md" && "text-sm",
         "group-data-[collapsible=icon]:hidden",

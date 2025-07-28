@@ -1,21 +1,11 @@
 "use client";
 
-import Image from "next/image";
-import { useParams, useRouter } from "next/navigation";
-import { EditItemDialog } from "@/components/EditItemDialog";
-import { api } from "@convex-config/_generated/api";
-import { Id } from "@convex-config/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@acme/ui/accordion";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
   Carousel,
@@ -24,16 +14,29 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@acme/ui/carousel";
-import { useIsMobile } from "@acme/ui/hooks/use-mobile";
-import { Separator } from "@acme/ui/separator";
-import { toast } from "@acme/ui/toast";
+import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Doc, Id } from "@convex-config/_generated/dataModel";
+import { useMutation, useQuery } from "convex/react";
+import { useParams, useRouter } from "next/navigation";
 
+import { Badge } from "@acme/ui/badge";
 import { CommentThread } from "~/components/social/CommentThread";
+import { CompleteContentButton } from "../../../../_components/CompleteContentButton";
+import { EditItemDialog } from "@/components/EditItemDialog";
+import Image from "next/image";
 import LessonSidebar from "../../_components/LessonSidebar";
+import React from "react";
+import { Separator } from "@acme/ui/separator";
+import { api } from "@convex-config/_generated/api";
+import { cn } from "~/lib/utils";
+import { toast } from "@acme/ui/toast";
+import { useConvexUser } from "~/hooks/useConvexUser";
+import { useIsMobile } from "@acme/ui/hooks/use-mobile";
 
 export default function TopicPage() {
   const isMobile = useIsMobile();
   const router = useRouter();
+  const { convexId: userId, isLoading: _isAuthLoading } = useConvexUser();
   const params = useParams();
   const {
     courseId,
@@ -45,9 +48,48 @@ export default function TopicPage() {
     topicId: string;
   };
 
+  // Queries
   const data = useQuery(api.lms.courses.queries.getCourseStructureWithItems, {
     courseId: courseId as Id<"courses">,
   });
+
+  // Check if this topic is completed for the current user
+  const isCompleted = useQuery(
+    api.lms.progress.index.isItemCompleted,
+    userId
+      ? {
+          userId,
+          itemId: topicId as Id<"topics">,
+        }
+      : "skip",
+  );
+
+  // Get course progress for the user
+  const _courseProgress = useQuery(
+    api.lms.progress.index.getCourseProgressMeta,
+    userId
+      ? {
+          userId,
+          courseId: courseId as Id<"courses">,
+        }
+      : "skip",
+  );
+
+  // Mutations
+  const updateTopicTitle = useMutation(api.lms.topics.index.update);
+  const startTopicProgress = useMutation(api.lms.progress.index.startItem);
+
+  // Start tracking progress when component loads
+  React.useEffect(() => {
+    if (topicId && courseId && userId) {
+      void startTopicProgress({
+        userId,
+        courseId: courseId as Id<"courses">,
+        itemId: topicId as Id<"topics">,
+        itemType: "topic",
+      });
+    }
+  }, [topicId, courseId, userId, startTopicProgress]);
 
   if (data === undefined) return <div>Loading...</div>;
   if (data === null) return <div>Course not found.</div>;
@@ -56,8 +98,6 @@ export default function TopicPage() {
   console.log("[TopicPage] topic", topic);
   if (!topic) return <div>Topic not found.</div>;
 
-  const updateTopicTitle = useMutation(api.lms.topics.index.update);
-
   const handleSave = async (values: { title: string }) => {
     await updateTopicTitle({
       topicId: topicId as Id<"topics">,
@@ -65,15 +105,15 @@ export default function TopicPage() {
     });
     toast.success("Topic updated");
   };
+
   const getVimeoEmbedUrl = (vimeoUrl: string) => {
     const regex = /(?:vimeo\.com\/(?:video\/|.*\?.*v=)?([^#&?]*)).*/;
-    const match = vimeoUrl.match(regex);
-    if (match && match[1]) {
+    const match = regex.exec(vimeoUrl);
+    if (match?.[1]) {
       return `https://player.vimeo.com/video/${match[1]}`;
     }
     return null;
   };
-  const lesson = data.attachedLessons.find((l) => l._id === _lessonId);
 
   const topicIndex = data.attachedTopics.findIndex((t) => t._id === topicId);
 
@@ -102,10 +142,26 @@ export default function TopicPage() {
               <CardTitle className="flex gap-2 text-xl font-bold">
                 {topic.title}
               </CardTitle>
-              <Badge variant="outline" className="text-md bg-white">
+              <Badge
+                variant="outline"
+                className={cn("text-md flex gap-3", {
+                  "bg-green-500 text-white": isCompleted,
+                  "bg-white": !isCompleted,
+                })}
+              >
                 Topic
+                {isCompleted && <CheckCircle2 className="h-5 w-5" />}
               </Badge>
             </div>
+
+            {/* Course Progress Indicator */}
+            {/* {courseProgress && (
+              <div className="text-sm text-muted-foreground">
+                Course Progress: {courseProgress.percentComplete}% (
+                {courseProgress.completed}/{courseProgress.total} items
+                completed)
+              </div>
+            )} */}
 
             {isMobile && (
               <AccordionTrigger className="rounded-md bg-slate-100 p-3 [&>svg]:h-6 [&>svg]:w-6 [&>svg]:rounded-md [&>svg]:bg-white [&>svg]:shadow-md">
@@ -125,7 +181,7 @@ export default function TopicPage() {
           getVimeoEmbedUrl(topic.content) && (
             <div className="relative mb-4 h-0 overflow-hidden rounded-md px-5 pb-[56.25%] shadow-xl">
               <iframe
-                src={getVimeoEmbedUrl(topic.content) as string}
+                src={getVimeoEmbedUrl(topic.content) ?? undefined}
                 allow="autoplay; fullscreen; picture-in-picture"
                 allowFullScreen
                 className="absolute left-0 top-0 h-full w-full border-0"
@@ -141,98 +197,33 @@ export default function TopicPage() {
               className="group basis-1/2 cursor-pointer md:basis-1/4 lg:basis-1/5"
               onClick={() => handleVideoNavigation(previousTopic?._id ?? "")}
             >
-              <Card className="relative flex flex-col gap-2 overflow-hidden p-1">
-                <Image
-                  src={
-                    previousTopic?.featuredImage &&
-                    previousTopic?.featuredImage !== ""
-                      ? previousTopic.featuredImage
-                      : "https://placehold.co/600x400"
-                  }
-                  alt={topic.title}
-                  width={500}
-                  height={500}
-                  className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-50 p-2 text-center text-white transition-opacity duration-300 group-hover:opacity-0">
-                  <Badge
-                    variant="outline"
-                    className="mb-2 bg-white transition-opacity duration-300 group-hover:opacity-0"
-                  >
-                    Previous
-                  </Badge>
-                  <p className="text-sm font-semibold transition-opacity duration-300 group-hover:opacity-0">
-                    {previousTopic?.title ?? "No previous topic"}
-                  </p>
-                </div>
-              </Card>
+              <OverlayCard item={previousTopic} badgeText="Previous" />
             </CarouselItem>
 
-            {topic && (
-              <CarouselItem className="order-first mb-5 flex basis-full cursor-default items-stretch gap-3 transition-all duration-300 md:order-none md:basis-1/2 lg:basis-3/5">
-                <Button className="w-full flex-1 bg-green-500 text-lg font-semibold hover:bg-green-600">
-                  Complete Topic
-                </Button>
-                <EditItemDialog
-                  dialogTitle="Edit Topic"
-                  initialTitle={topic.title}
-                  onSubmit={handleSave}
-                  triggerButtonClassName="h-full"
-                />
-                {/* <Card className="flex flex-col gap-2 p-1 ring-1 ring-primary">
-                  {topic.featuredImage && (
-                    <Image
-                      src={
-                        topic.featuredImage && topic.featuredImage !== ""
-                          ? topic.featuredImage
-                          : "https://placehold.co/600x400"
-                      }
-                      alt={topic.title}
-                      width={300}
-                      height={100}
-                      className="h-12 w-full"
-                    />
-                  )}
-                  <div className="flex flex-col gap-2 text-center text-sm">
-                    <Badge variant="outline">Current</Badge>
-                    <p className="text-sm font-semibold">{topic.title}</p>
-                  </div>
-                </Card> */}
-              </CarouselItem>
-            )}
+            <CarouselItem className="order-first mb-5 flex basis-full cursor-default flex-col items-stretch gap-3 transition-all duration-300 md:order-none md:basis-1/2 lg:basis-3/5">
+              <CompleteContentButton
+                contentType="topic"
+                courseId={courseId as Id<"courses">}
+                contentId={topicId as Id<"topics">}
+                timeSpent={300} // 5 minutes as example
+                className="w-full flex-1 text-lg font-semibold"
+                size="lg"
+                showProgress={false}
+              />
+              <EditItemDialog
+                dialogTitle="Edit Topic"
+                initialTitle={topic.title}
+                onSubmit={handleSave}
+                triggerButtonClassName="h-full h-8"
+              />
+            </CarouselItem>
+
             {nextTopic && (
               <CarouselItem
                 className="group basis-1/2 cursor-pointer md:basis-1/4 lg:basis-1/5"
                 onClick={() => handleVideoNavigation(nextTopic._id)}
               >
-                <Card className="relative flex flex-col gap-2 overflow-hidden p-1">
-                  {nextTopic.featuredImage && (
-                    <Image
-                      src={
-                        nextTopic.featuredImage &&
-                        nextTopic.featuredImage !== ""
-                          ? nextTopic.featuredImage
-                          : "https://placehold.co/600x400"
-                      }
-                      alt={topic.title}
-                      width={500}
-                      height={500}
-                      className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  )}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-50 p-5 text-center text-white transition-opacity duration-300 group-hover:opacity-0">
-                    <Badge
-                      variant="outline"
-                      className="mb-2 bg-white transition-opacity duration-300 group-hover:opacity-0"
-                    >
-                      Next
-                    </Badge>
-                    <p className="text-sm font-semibold transition-opacity duration-300 group-hover:opacity-0">
-                      {nextTopic.title}
-                    </p>
-                  </div>
-                </Card>
+                <OverlayCard item={nextTopic} badgeText="Next" />
               </CarouselItem>
             )}
           </CarouselContent>
@@ -253,3 +244,48 @@ export default function TopicPage() {
     </Card>
   );
 }
+
+export const OverlayCard = ({
+  item,
+  badgeText,
+  onClick,
+}: {
+  item: Doc<"topics"> | Doc<"lessons"> | null | undefined;
+  badgeText?: string;
+  onClick?: () => void;
+}) => {
+  if (!item) return null;
+  return (
+    <Card
+      className="group relative flex cursor-pointer flex-col gap-2 overflow-hidden p-1"
+      onClick={onClick}
+    >
+      {item.featuredImage && (
+        <Image
+          src={
+            item.featuredImage && item.featuredImage !== ""
+              ? item.featuredImage
+              : "https://placehold.co/600x400"
+          }
+          alt={item.title}
+          width={500}
+          height={500}
+          className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+      )}
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-50 p-5 text-center text-white transition-opacity duration-300 group-hover:opacity-0">
+        {badgeText && (
+          <Badge
+            variant="outline"
+            className="mb-2 bg-white transition-opacity duration-300 group-hover:opacity-0"
+          >
+            {badgeText}
+          </Badge>
+        )}
+        <p className="text-sm font-semibold transition-opacity duration-300 group-hover:opacity-0">
+          {item.title}
+        </p>
+      </div>
+    </Card>
+  );
+};

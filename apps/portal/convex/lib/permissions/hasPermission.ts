@@ -1,7 +1,7 @@
-import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
+
+import type { Id } from "../../_generated/dataModel";
 import type { PermissionScope } from "../../core/schema/permissionsSchema";
-import { internal } from "../../_generated/api";
 import { getAuthenticatedUser } from "./userAuth";
 
 /**
@@ -26,14 +26,35 @@ export const hasPermission = async (
     // If userId is provided, use it; otherwise get the authenticated user
     const userId = options?.userId || (await getAuthenticatedUser(ctx))._id;
 
-    // Call the internal permission check function
-    return await ctx.runQuery(internal.permissionsUtils.hasPermissionInternal, {
-      userId,
-      permissionKey,
-      scopeType: options?.scopeType ?? "global",
-      scopeId: options?.scopeId,
-      resourceOwnerId: options?.resourceOwnerId,
-    });
+    // Simple role-based permission check
+    const user = await ctx.db.get(userId);
+    if (!user) return false;
+
+    const userRole = user.role ?? "user";
+
+    // Admin has all permissions - check for multiple admin role variants
+    const adminRoles = ["admin", "administrator"];
+    if (adminRoles.includes(userRole.toLowerCase())) {
+      return true;
+    }
+
+    // Define role permissions mapping
+    const rolePermissions: Record<string, string[]> = {
+      admin: [], // Admin gets all permissions, handled above
+      administrator: [], // Administrator gets all permissions, handled above
+      manager: [
+        "canViewOrders",
+        "canManageProducts",
+        "canManageUsers",
+        "canManageOrders", // Managers can also manage orders
+      ],
+      user: [
+        "canViewOrders", // Users can only view their own orders
+      ],
+    };
+
+    const permissions = rolePermissions[userRole] ?? [];
+    return permissions.includes(permissionKey);
   } catch (error) {
     // If there's an error (user not authenticated, etc.), return false
     console.error("Permission check error:", error);
@@ -93,11 +114,14 @@ export const isAdmin = async (
 ): Promise<boolean> => {
   try {
     const user = await getAuthenticatedUser(ctx);
+    console.log("[isAdmin]", user);
 
     // Normalize role string and check common admin indicators
     const roleNormalized = (user.role ?? "").toString().trim().toLowerCase();
 
-    if (roleNormalized === "admin") return true;
+    // Check for multiple admin role variants
+    const adminRoles = ["admin", "administrator"];
+    if (adminRoles.includes(roleNormalized)) return true;
 
     // Support older rows that store permissions array containing "admin"
     if (

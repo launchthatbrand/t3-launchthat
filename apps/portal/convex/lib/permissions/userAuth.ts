@@ -1,7 +1,7 @@
-import { ConvexError } from "convex/values";
-
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
+
+import { ConvexError } from "convex/values";
 
 /**
  * Gets the authenticated user ID from the Convex context
@@ -44,6 +44,7 @@ export const getAuthenticatedUser = async (
   ctx: QueryCtx | MutationCtx,
 ): Promise<Doc<"users">> => {
   const identity = await ctx.auth.getUserIdentity();
+  console.log("[getAuthenticatedUser]", identity);
   if (!identity) {
     throw new ConvexError(
       "Unauthorized: You must be logged in to perform this action",

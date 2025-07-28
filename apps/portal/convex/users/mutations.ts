@@ -1,16 +1,16 @@
-import { v } from "convex/values";
-
-import type { UserRole } from "./schema/types";
-import { internal } from "../_generated/api";
-import { Id } from "../_generated/dataModel";
-import { internalMutation, mutation, MutationCtx } from "../_generated/server";
+import { MutationCtx, internalMutation, mutation } from "../_generated/server";
 import {
   logError,
   throwForbidden,
   throwNotFound,
   throwUnauthorized,
 } from "../shared/errors";
+
+import { Id } from "../_generated/dataModel";
+import type { UserRole } from "./schema/types";
+import { internal } from "../_generated/api";
 import { requireAdmin } from "./lib";
+import { v } from "convex/values";
 
 /**
  * Make the current authenticated user an admin
@@ -194,7 +194,7 @@ export const updateUser = mutation({
     data: v.object({
       name: v.optional(v.string()),
       email: v.optional(v.string()),
-      role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
+      role: v.optional(v.string()), // Changed to accept any string role
     }),
   },
   handler: async (ctx, args) => {

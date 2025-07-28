@@ -1,25 +1,24 @@
 "use client";
 
-import { ReactNode, useMemo } from "react";
-import Link from "next/link";
-import { useParams, useSelectedLayoutSegment } from "next/navigation";
-import { api } from "@convex-config/_generated/api";
-import { Id } from "@convex-config/_generated/dataModel";
-import { useQuery } from "convex/react";
-
 import { Badge, Card, cn } from "@acme/ui";
 import {
   CourseSidebarProvider,
   CourseSidebarTrigger,
 } from "@acme/ui/course-sidebar";
-import { AppSidebar } from "@acme/ui/layout/AppSidebar";
-import { ScrollArea } from "@acme/ui/scroll-area";
+import { ReactNode, useMemo } from "react";
+import { useParams, useSelectedLayoutSegment } from "next/navigation";
 
-import { Separator } from "~/components/ui/separator";
+import { AppSidebar } from "@acme/ui/layout/AppSidebar";
 import CourseHeader from "./_components/CourseHeader";
 import { CoursesSidebar } from "./_components/CourseSidebar";
-import LessonHeader from "./lesson/[lessonId]/_components/LessonHeader";
+import { Id } from "@convex-config/_generated/dataModel";
 import LessonSidebar from "./lesson/[lessonId]/_components/LessonSidebar";
+import Link from "next/link";
+import { ScrollArea } from "@acme/ui/scroll-area";
+import { Separator } from "~/components/ui/separator";
+import { api } from "@convex-config/_generated/api";
+import { useAccessContext } from "../../layout"; // Import the access context
+import { useQuery } from "convex/react";
 
 interface CourseLayoutProps {
   children: ReactNode;
@@ -32,63 +31,118 @@ export default function CourseLayout({ children }: CourseLayoutProps) {
     lessonId: string;
   };
 
-  const data = useQuery(api.lms.courses.queries.getCourseStructureWithItems, {
+  // Use the global access context
+  const { hasAccess, isLoading, reason, accessRules, userTags } =
+    useAccessContext();
+
+  // Get course data for the header
+  const courseData = useQuery(api.lms.courses.queries.getCourse, {
     courseId: courseId as Id<"courses">,
   });
 
   // Provide safe fallbacks while data is loading to keep hook order consistent
-  const course = data?.course;
-  const attachedLessons = data?.attachedLessons ?? [];
-  const attachedTopics = data?.attachedTopics ?? [];
-  const attachedQuizzes = data?.attachedQuizzes ?? [];
+  const course = courseData?.course;
+  const attachedLessons = courseData?.attachedLessons ?? [];
+  const attachedTopics = courseData?.attachedTopics ?? [];
+  const attachedQuizzes = courseData?.attachedQuizzes ?? [];
 
   const lessonMap = useMemo(
     () => new Map(attachedLessons.map((l) => [l._id, l])),
     [attachedLessons],
   );
 
-  const topicsByLesson = useMemo(() => {
-    const map = new Map<string, typeof attachedTopics>();
-    attachedLessons.forEach((l) => {
-      map.set(
-        l._id,
-        attachedTopics.filter((t) => t.lessonId === l._id),
-      );
-    });
-    return map;
-  }, [attachedLessons, attachedTopics]);
+  // Show access denied if no access
+  if (!hasAccess) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Card className="w-full max-w-md border-destructive">
+          <div className="p-6">
+            <h2 className="mb-4 text-xl font-bold text-destructive">
+              Access Restricted
+            </h2>
+            <p className="mb-4 text-muted-foreground">
+              You don't have permission to access "{courseData.title}"
+            </p>
+            <div className="rounded-md bg-destructive/10 p-3">
+              <p className="text-sm font-medium text-destructive">
+                Access Denied
+              </p>
+              <p className="text-sm text-destructive/80">{reason}</p>
+            </div>
 
-  const quizzesByLesson = useMemo(() => {
-    const map = new Map<string, typeof attachedQuizzes>();
-    attachedLessons.forEach((l) => {
-      map.set(
-        l._id,
-        attachedQuizzes.filter((q) => q.lessonId === l._id),
-      );
-    });
-    return map;
-  }, [attachedLessons, attachedQuizzes]);
+            {accessRules && (
+              <div className="mt-4">
+                <h3 className="text-sm font-medium">Access Requirements</h3>
 
-  const orderedLessons = useMemo(() => {
-    return (course?.courseStructure ?? [])
-      .map((s) => lessonMap.get(s.lessonId))
-      .filter(Boolean);
-  }, [course?.courseStructure, lessonMap]);
+                {accessRules.requiredTags.tagIds.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-sm text-muted-foreground">
+                      Required tags (must have{" "}
+                      {accessRules.requiredTags.mode === "all"
+                        ? "ALL"
+                        : "AT LEAST ONE"}
+                      ):
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {accessRules.requiredTags.tagIds.map((tagId: string) => (
+                        <Badge
+                          key={tagId}
+                          variant="outline"
+                          className="text-xs"
+                        >
+                          {tagId}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-  // current selected params from route – useSelectedLayoutSegment gives dynamic segment names
-  const selectedLessonSegment = useSelectedLayoutSegment("lesson");
-  const selectedTopicSegment = useSelectedLayoutSegment("topic");
-  const selectedQuizSegment = useSelectedLayoutSegment("quiz");
+                {accessRules.excludedTags.tagIds.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-sm text-muted-foreground">
+                      Must NOT have{" "}
+                      {accessRules.excludedTags.mode === "all" ? "ALL" : "ANY"}{" "}
+                      of:
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {accessRules.excludedTags.tagIds.map((tagId: string) => (
+                        <Badge
+                          key={tagId}
+                          variant="destructive"
+                          className="text-xs"
+                        >
+                          {tagId}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-  // Loading / not-found states after hooks to maintain consistent order
-  if (data === undefined) {
-    return <div className="container py-8">Loading...</div>;
+                <div className="mt-3">
+                  <p className="text-sm text-muted-foreground">
+                    Your current tags:
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {userTags.map((tag: any, index: number) => (
+                      <Badge
+                        key={tag.marketingTag._id}
+                        variant="secondary"
+                        className="bg-blue-50 text-xs"
+                      >
+                        {tag.marketingTag.name} - {tag.marketingTag._id}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+    );
   }
 
-  if (data === null || !course) {
-    return <div className="container py-8">Course not found.</div>;
-  }
-
+  // Render the normal course layout if access is granted
   return (
     <div>
       {/* <LessonHeader /> */}

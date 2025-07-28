@@ -1,3 +1,4 @@
+import { ColumnDef } from "@tanstack/react-table";
 import { ReactNode } from "react";
 
 /**
@@ -123,7 +124,7 @@ export interface EntityListProps<T extends object> {
   enableSearch?: boolean;
 
   /** Column configurations */
-  columns: ColumnDefinition<T>[];
+  columns: ColumnDef<T>[];
 
   /** Filter configurations (optional) */
   filters?: FilterConfig<T>[];
@@ -289,7 +290,7 @@ export interface EntityListViewProps<T extends object> {
   data: T[];
 
   /** Column configurations */
-  columns: ColumnDefinition<T>[];
+  columns: ColumnDef<T>[];
 
   /** Current view mode */
   viewMode: ViewMode;

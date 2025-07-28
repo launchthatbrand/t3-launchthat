@@ -1,8 +1,76 @@
+import type { Doc, Id } from "../../_generated/dataModel";
+
+import type { QueryCtx } from "../../_generated/server";
 import { filter } from "convex-helpers/server/filter";
+import { query } from "../../_generated/server";
 import { v } from "convex/values";
 
-import type { Doc, Id } from "../../_generated/dataModel";
-import { query } from "../../_generated/server";
+// Helper functions for formatting lessons and topics to include tagNames
+async function formatLessonWithTags(
+  ctx: QueryCtx,
+  lesson: Doc<"lessons">,
+): Promise<Doc<"lessons"> & { tagNames: string[] }> {
+  const tags = lesson.tagIds
+    ? await Promise.all(lesson.tagIds.map((id) => ctx.db.get(id)))
+    : [];
+  const tagNames = tags.filter(Boolean).map((tag) => {
+    if (tag) {
+      return tag.name;
+    }
+    return "";
+  });
+  return {
+    _id: lesson._id,
+    _creationTime: lesson._creationTime,
+    title: lesson.title,
+    description: lesson.description,
+    wp_id: lesson.wp_id,
+    content: lesson.content,
+    excerpt: lesson.excerpt,
+    categories: lesson.categories,
+    tagIds: lesson.tagIds,
+    tagNames: tagNames,
+    featuredImage: lesson.featuredImage,
+    featuredMedia: lesson.featuredMedia,
+    isPublished: lesson.isPublished,
+    menuOrder: lesson.menuOrder,
+    courseId: lesson.courseId,
+  };
+}
+
+async function formatTopicWithTags(
+  ctx: QueryCtx,
+  topic: Doc<"topics">,
+): Promise<Doc<"topics"> & { tagNames: string[] }> {
+  const tags = topic.tagIds
+    ? await Promise.all(topic.tagIds.map((id) => ctx.db.get(id)))
+    : [];
+  const tagNames = tags.filter(Boolean).map((tag) => {
+    if (tag) {
+      return tag.name;
+    }
+    return "";
+  });
+  return {
+    _id: topic._id,
+    _creationTime: topic._creationTime,
+    lessonId: topic.lessonId,
+    title: topic.title,
+    description: topic.description,
+    excerpt: topic.excerpt,
+    categories: topic.categories,
+    tagIds: topic.tagIds,
+    tagNames: tagNames,
+    wp_id: topic.wp_id,
+    featuredImage: topic.featuredImage,
+    featuredMedia: topic.featuredMedia,
+    contentType: topic.contentType,
+    content: topic.content,
+    order: topic.order,
+    menuOrder: topic.menuOrder,
+    isPublished: topic.isPublished,
+  };
+}
 
 /**
  * Enhanced query to get complete course structure for real-time subscriptions
@@ -209,7 +277,6 @@ export const getAvailableLessons = query({
       order: v.optional(v.number()),
       menuOrder: v.optional(v.number()),
       courseId: v.optional(v.id("courses")),
-      isBuiltIn: v.optional(v.boolean()),
     }),
   ),
   handler: async (ctx) => {
@@ -234,18 +301,19 @@ export const getAvailableLessons = query({
       isPublished: l.isPublished,
       menuOrder: l.menuOrder,
       courseId: l.courseId,
-      isBuiltIn: l.isBuiltIn,
     }));
   },
 });
 
 /**
- * Query to get available topics (not attached to any lesson)
+ * Query to get available topics
+ * If lessonId is provided, returns topics attached to that lesson
+ * If lessonId is not provided, returns topics not attached to any lesson
  * Supports the available items panel in the course builder
  */
 export const getAvailableTopics = query({
   args: {
-    lessonId: v.id("lessons"),
+    lessonId: v.optional(v.id("lessons")),
   },
   returns: v.array(
     v.object({
@@ -283,10 +351,22 @@ export const getAvailableTopics = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const topics = await ctx.db
-      .query("topics")
-      .filter((q) => q.eq(q.field("lessonId"), args.lessonId))
-      .collect();
+    let topics;
+
+    if (args.lessonId) {
+      // Get topics attached to the specified lesson
+      topics = await ctx.db
+        .query("topics")
+        .filter((q) => q.eq(q.field("lessonId"), args.lessonId))
+        .collect();
+    } else {
+      // Get topics that are not attached to any lesson (available for assignment)
+      topics = await ctx.db
+        .query("topics")
+        .filter((q) => q.eq(q.field("lessonId"), undefined))
+        .collect();
+    }
+
     return topics.map((topic) => ({
       _id: topic._id,
       _creationTime: topic._creationTime,
@@ -686,7 +766,6 @@ export const getStructure = query({
               v.string(),
             ),
           ),
-          isBuiltIn: v.optional(v.boolean()),
           excerpt: v.optional(v.string()),
           content: v.optional(v.string()),
           menuOrder: v.optional(v.number()),
@@ -763,7 +842,6 @@ export const getStructure = query({
       tagIds: l.tagIds,
       featuredImage: l.featuredImage,
       featuredMedia: l.featuredMedia,
-      isBuiltIn: l.isBuiltIn,
       excerpt: l.excerpt,
       content: l.content,
       menuOrder: l.menuOrder,
@@ -836,6 +914,114 @@ export const getStructure = query({
       topics,
       quizzes,
       finalQuiz,
+    };
+  },
+});
+
+export const getRelatedContentByTagIds = query({
+  args: {
+    tagIds: v.array(v.id("tags")),
+    currentLessonId: v.optional(v.id("lessons")),
+    currentTopicId: v.optional(v.id("topics")),
+  },
+  returns: v.object({
+    lessons: v.array(
+      v.object({
+        _id: v.id("lessons"),
+        _creationTime: v.number(),
+        title: v.string(),
+        description: v.optional(v.string()),
+        wp_id: v.optional(v.float64()),
+        content: v.optional(v.string()),
+        excerpt: v.optional(v.string()),
+        categories: v.optional(v.array(v.string())),
+        tagIds: v.optional(v.array(v.id("tags"))),
+        featuredImage: v.optional(v.string()),
+        featuredMedia: v.optional(
+          v.union(
+            v.object({
+              type: v.literal("convex"),
+              mediaItemId: v.id("mediaItems"),
+            }),
+            v.object({
+              type: v.literal("vimeo"),
+              vimeoId: v.string(),
+              vimeoUrl: v.string(),
+            }),
+            v.string(),
+          ),
+        ),
+        isPublished: v.optional(v.boolean()),
+        menuOrder: v.optional(v.number()),
+        courseId: v.optional(v.id("courses")),
+      }),
+    ),
+    topics: v.array(
+      v.object({
+        _id: v.id("topics"),
+        _creationTime: v.number(),
+        lessonId: v.optional(v.id("lessons")),
+        title: v.string(),
+        description: v.optional(v.string()),
+        excerpt: v.optional(v.string()),
+        categories: v.optional(v.array(v.string())),
+        tagIds: v.optional(v.array(v.id("tags"))),
+        tagNames: v.array(v.string()), // New field for tag names
+        wp_id: v.optional(v.float64()),
+        featuredImage: v.optional(v.string()),
+        featuredMedia: v.optional(
+          v.union(
+            v.object({
+              type: v.literal("convex"),
+              mediaItemId: v.id("mediaItems"),
+            }),
+            v.object({
+              type: v.literal("vimeo"),
+              vimeoId: v.string(),
+              vimeoUrl: v.string(),
+            }),
+            v.string(),
+          ),
+        ),
+        contentType: v.optional(
+          v.union(v.literal("text"), v.literal("video"), v.literal("quiz")),
+        ),
+        content: v.optional(v.string()),
+        order: v.optional(v.number()),
+        menuOrder: v.optional(v.number()),
+        isPublished: v.optional(v.boolean()),
+      }),
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const searchTagIds = args.tagIds.map((id) => id.toString());
+
+    const allLessons = (await ctx.db.query("lessons").collect()).filter(
+      (lesson) =>
+        lesson._id !== args.currentLessonId &&
+        lesson.tagIds &&
+        searchTagIds.some((searchId) =>
+          lesson.tagIds?.map((id) => id.toString()).includes(searchId),
+        ),
+    );
+    const allTopics = (await ctx.db.query("topics").collect()).filter(
+      (topic) =>
+        topic._id !== args.currentTopicId &&
+        topic.tagIds &&
+        searchTagIds.some((searchId) =>
+          topic.tagIds?.map((id) => id.toString()).includes(searchId),
+        ),
+    );
+
+    // No need for explicit deduplication here as we are filtering from all, not pushing from multiple queries
+
+    return {
+      lessons: await Promise.all(
+        allLessons.map((lesson) => formatLessonWithTags(ctx, lesson)),
+      ),
+      topics: await Promise.all(
+        allTopics.map((topic) => formatTopicWithTags(ctx, topic)),
+      ),
     };
   },
 });

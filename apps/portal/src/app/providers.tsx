@@ -1,24 +1,25 @@
 /* eslint-disable react-compiler/react-compiler */
 "use client";
 
+import { ClerkProvider, useAuth } from "@clerk/clerk-react";
 // Import Clerk provider and hook
 import React, { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
-import { ClerkProvider, useAuth } from "@clerk/clerk-react";
-import { ConvexReactClient } from "convex/react";
-import { ConvexProviderWithClerk } from "convex/react-clerk";
-
-import StandardLayout from "@acme/ui/layout/StandardLayout";
-import { SidebarProvider } from "@acme/ui/sidebar";
 import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
-import { Toaster } from "@acme/ui/toast";
 
-import { PuckEditor } from "~/components/puckeditor/PuckEditorProvider";
-import { env } from "~/env";
-import useEditorStore from "~/store/useEditorStore";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ConvexReactClient } from "convex/react";
 import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
 // Import the correct Convex provider for Clerk integration
 import { GuestCartMerger } from "./GuestCartMerger";
+import { PuckEditor } from "~/components/puckeditor/PuckEditorProvider";
+import { SessionProvider } from "convex-helpers/react/sessions";
+import { SidebarProvider } from "@acme/ui/sidebar";
+import StandardLayout from "@acme/ui/layout/StandardLayout";
+import { Toaster } from "@acme/ui/toast";
+import { env } from "~/env";
+import useEditorStore from "~/store/useEditorStore";
+import { useLocalStorage } from "usehooks-ts";
+import { useSearchParams } from "next/navigation";
 
 // Ensure Clerk key exists, otherwise ClerkProvider will error
 if (!env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
@@ -59,18 +60,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
     // Wrap everything with ClerkProvider - key is now guaranteed to be a string
     <ClerkProvider publishableKey={env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-        <SidebarProvider>
-          <ConvexUserEnsurer />
-          <GuestCartMerger />
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <EditorModeDetector />
-            <PuckEditor>{children}</PuckEditor>
-            <div className="absolute bottom-4 right-4">
-              <ThemeToggle />
-            </div>
-            <Toaster />
-          </ThemeProvider>
-        </SidebarProvider>
+        <SessionProvider storageKey="cart-session" useStorage={useLocalStorage}>
+          <SidebarProvider>
+            <ConvexUserEnsurer />
+            <GuestCartMerger />
+            <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+              <EditorModeDetector />
+              <PuckEditor>{children}</PuckEditor>
+              <div className="absolute bottom-4 right-4">
+                <ThemeToggle />
+              </div>
+              <Toaster />
+            </ThemeProvider>
+          </SidebarProvider>
+        </SessionProvider>
       </ConvexProviderWithClerk>
     </ClerkProvider>
   );

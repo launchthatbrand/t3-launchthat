@@ -1,8 +1,7 @@
-import { v } from "convex/values";
-
 import { query } from "../_generated/server";
-import { throwForbidden } from "../shared/errors";
 import { requireAdmin } from "./lib";
+import { throwForbidden } from "../shared/errors";
+import { v } from "convex/values";
 
 /**
  * Get the system user for automated operations
@@ -52,7 +51,7 @@ export const getUserByClerkId = query({
       _creationTime: v.number(),
       name: v.optional(v.string()),
       email: v.string(),
-      role: v.union(v.literal("admin"), v.literal("user")),
+      role: v.optional(v.string()), // Changed to accept any string role
       tokenIdentifier: v.optional(v.string()),
       username: v.optional(v.string()),
       image: v.optional(v.string()),
@@ -127,6 +126,19 @@ export const getUserById = query({
   args: {
     userId: v.id("users"),
   },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("users"),
+      _creationTime: v.number(),
+      name: v.optional(v.string()),
+      email: v.string(),
+      role: v.optional(v.string()), // Changed to accept any string role
+      tokenIdentifier: v.optional(v.string()),
+      username: v.optional(v.string()),
+      image: v.optional(v.string()),
+    }),
+  ),
   handler: async (ctx, args) => {
     try {
       // Check if user is an admin

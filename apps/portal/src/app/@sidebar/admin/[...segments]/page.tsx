@@ -1,6 +1,5 @@
 "use client";
 
-import { useSelectedLayoutSegment } from "next/navigation";
 import {
   AudioWaveform,
   BookOpen,
@@ -22,8 +21,9 @@ import {
 } from "lucide-react";
 
 import { NavMain } from "@acme/ui/general/nav-main";
-import { TeamSwitcher } from "@acme/ui/general/team-switcher";
 import { SidebarHeader } from "@acme/ui/sidebar";
+import { TeamSwitcher } from "@acme/ui/general/team-switcher";
+import { useSelectedLayoutSegment } from "next/navigation";
 
 // import { useLearndash } from "../hooks/useLearndash";
 
@@ -182,23 +182,23 @@ export default function DefaultSidebar() {
         },
         {
           title: "Orders",
-          url: "/admin/orders",
+          url: "/admin/store/orders",
           icon: BookOpen,
         },
         {
           title: "Products",
-          url: "/admin/products",
+          url: "/admin/store/products",
           icon: BookOpen,
         },
         {
           title: "Categories",
-          url: "/admin/products/category",
+          url: "/admin/store/products/categories",
           icon: BookOpen,
         },
 
         {
           title: "Tags",
-          url: "/admin/products/tags",
+          url: "/admin/store/products/tags",
           icon: BookOpen,
         },
       ],

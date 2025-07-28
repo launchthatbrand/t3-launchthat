@@ -1,16 +1,5 @@
 "use client";
 
-import type { Id } from "@convex-config/_generated/dataModel";
-import React from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
-import { CourseForm, CourseFormValues } from "@/components/CourseForm";
-import { api } from "@convex-config/_generated/api";
-import { useMutation, useQuery } from "convex/react";
-import { ChevronLeft } from "lucide-react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -19,12 +8,27 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import { CourseForm, CourseFormValues } from "@/components/CourseForm";
+import React, { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { useMutation, useQuery } from "convex/react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { ChevronLeft } from "lucide-react";
+import { ContentAccess } from "@/components/admin/ContentAccess";
+import type { Id } from "@convex-config/_generated/dataModel";
+import Link from "next/link";
+import { LinkedProduct } from "@/components/admin/LinkedProduct";
 import { Separator } from "@acme/ui/separator";
+import { api } from "@convex-config/_generated/api";
 import { toast } from "@acme/ui/toast";
+import { useParams } from "next/navigation";
 
 export default function EditCoursePage() {
   const params = useParams();
   const courseIdTyped = params.courseId as unknown as Id<"courses">;
+  const [activeTab, setActiveTab] = useState("details");
 
   // Fetch course details
   const course = useQuery(api.lms.courses.index.getCourse, {
@@ -53,6 +57,17 @@ export default function EditCoursePage() {
     toast.success("Course updated");
   };
 
+  const handleAccessRulesChange = (accessRules: any) => {
+    console.log("Access rules changed:", accessRules);
+    // TODO: Save access rules to backend
+  };
+
+  const handleProductLinked = (productId: string | undefined) => {
+    console.log("Product linked:", productId);
+    // The LinkedProduct component handles the backend update
+    // We could refetch course data here if needed
+  };
+
   return (
     <>
       <div className="mb-6 flex items-center gap-2">
@@ -64,20 +79,8 @@ export default function EditCoursePage() {
         <h2 className="text-2xl font-semibold">Edit Course</h2>
       </div>
 
-      <CourseForm
-        initialData={{
-          title: course.title,
-          description: course.description ?? "",
-          isPublished: course.isPublished ?? false,
-        }}
-        onSubmit={handleSaveCourse}
-        isSubmitting={false}
-        submitButtonText="Save Course"
-      />
-
-      <Separator className="my-8" />
-
-      <Card>
+      {/* Course Header Info */}
+      <Card className="mb-6">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>{course.title}</CardTitle>
@@ -101,7 +104,55 @@ export default function EditCoursePage() {
           <p className="text-sm text-muted-foreground">Description:</p>
           <p>{course.description ?? "No description provided."}</p>
         </CardContent>
-        <CardFooter>
+      </Card>
+
+      {/* Tabbed Interface */}
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="details">Course Details</TabsTrigger>
+          <TabsTrigger value="access">Content Access</TabsTrigger>
+          <TabsTrigger value="product">Linked Product</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="details">
+          <CourseForm
+            initialData={{
+              title: course.title,
+              description: course.description ?? "",
+              isPublished: course.isPublished ?? false,
+            }}
+            onSubmit={handleSaveCourse}
+            isSubmitting={false}
+            submitButtonText="Save Course"
+          />
+        </TabsContent>
+
+        <TabsContent value="access">
+          <ContentAccess
+            contentType="course"
+            contentId={courseIdTyped}
+            onAccessRulesChange={handleAccessRulesChange}
+          />
+        </TabsContent>
+
+        <TabsContent value="product">
+          <LinkedProduct
+            contentType="course"
+            contentId={courseIdTyped}
+            currentProductId={course.productId}
+            onProductLinked={handleProductLinked}
+          />
+        </TabsContent>
+      </Tabs>
+
+      <Separator className="my-8" />
+
+      <Card>
+        <CardFooter className="pt-6">
           <Button asChild variant="secondary">
             <Link href="/admin/courses">Back to List</Link>
           </Button>

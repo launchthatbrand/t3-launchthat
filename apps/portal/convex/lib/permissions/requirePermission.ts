@@ -1,9 +1,9 @@
-import { ConvexError } from "convex/values";
-
-import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
-import type { PermissionScope } from "../../core/schema/permissionsSchema";
 import { hasPermission, isAdmin } from "./hasPermission";
+
+import { ConvexError } from "convex/values";
+import type { Id } from "../../_generated/dataModel";
+import type { PermissionScope } from "../../core/schema/permissionsSchema";
 import { getAuthenticatedUser } from "./userAuth";
 
 /**
@@ -90,6 +90,7 @@ export const requireAdmin = async (
   errorMessage?: string,
 ): Promise<void> => {
   const admin = await isAdmin(ctx);
+  console.log("[requireAdmin]", admin);
 
   if (!admin) {
     throw new ConvexError(

@@ -21,14 +21,17 @@ export const productsTable = defineTable({
   primaryCategoryId: v.id("productCategories"), // Main category
   categoryIds: v.array(v.id("productCategories")), // All categories this product belongs to
 
-  // Pricing (enhanced)
-  price: v.number(), // Same as priceInCents for consistency
+  // Pricing (enhanced) - price is the main field, priceInCents kept for backward compatibility
+  price: v.number(), // Main price field - supports decimals (e.g., 9.99, 0.13, 999)
   salePrice: v.optional(v.number()),
   costPrice: v.optional(v.number()),
 
   // Inventory
   sku: v.string(),
-  stockQuantity: v.optional(v.number()),
+  stockStatus: v.optional(
+    v.union(v.literal("in_stock"), v.literal("out_of_stock")),
+  ), // Primary stock status field - optional for backward compatibility
+  stockQuantity: v.optional(v.number()), // Optional: actual quantity if tracking specific amounts
 
   // Product type
   isDigital: v.boolean(),

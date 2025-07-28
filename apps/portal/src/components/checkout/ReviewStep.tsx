@@ -1,15 +1,13 @@
 "use client";
 
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import React, { useEffect, useState } from "react";
-import Image from "next/image";
-import { api } from "@/convex/_generated/api";
-import { useCheckoutStore } from "@/src/store/checkoutStore";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import React, { useState } from "react";
 
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Separator } from "@acme/ui/separator"; // Assuming you have a Separator
+import type { Doc } from "@convex-config/_generated/dataModel";
+import Image from "next/image";
+import { Separator } from "@acme/ui/separator";
+import { useCart } from "~/hooks/useCart";
 
 const formatPrice = (price: number | undefined) => {
   if (price === undefined) return "N/A";
@@ -17,57 +15,62 @@ const formatPrice = (price: number | undefined) => {
 };
 
 export const ReviewStep = () => {
-  const { checkoutId, shippingAddress, billingAddress, setCurrentStep } =
-    useCheckoutStore();
-  const { user } = useConvexAuth(); // Or useUser() from Clerk if preferred for UI user details
-
-  const checkoutSession = useQuery(
-    api.ecommerce.checkout.getCheckout,
-    checkoutId ? { checkoutId: checkoutId as Id<"checkoutSessions"> } : "skip",
-  );
-
-  const cartData = useQuery(
-    api.cart.getCart,
-    user?.email ? { userId: user.email } : "skip", // Assuming userId for cart is email
-  );
-
-  const createOrderMutation = useMutation(
-    api.ecommerce.checkout.createOrder as any,
-  );
+  const { cart } = useCart();
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Mock checkout session data for now
+  const checkoutSession = {
+    subtotal: 2000, // $20.00 in cents
+    taxAmount: 200, // $2.00 in cents
+    shippingAmount: 500, // $5.00 in cents
+    totalAmount: 2700, // $27.00 in cents
+  };
+
+  // Mock addresses for now
+  const shippingAddress = {
+    fullName: "Guest User",
+    addressLine1: "123 Main St",
+    addressLine2: "",
+    city: "Anytown",
+    stateOrProvince: "ST",
+    postalCode: "12345",
+    country: "US",
+    phoneNumber: "",
+  };
+
+  const billingAddress = shippingAddress;
 
   // For displaying items, we'll use cartData if available,
   // otherwise, we might need to enhance checkoutSession to include item snapshots directly
   // For now, this assumes cartData.items would be relevant for the current checkout.
 
   const handlePlaceOrder = async () => {
-    if (!checkoutId) {
-      setError("Checkout session is invalid.");
-      return;
-    }
     setIsPlacingOrder(true);
     setError(null);
     try {
-      const orderId = await createOrderMutation({
-        checkoutId: checkoutId as Id<"checkoutSessions">,
-      });
-      console.log("Order placed successfully, Order ID:", orderId);
-      // Update zustand store with orderId if needed
-      // useCheckoutStore.setState({ orderId: orderId });
-      setCurrentStep("confirmation");
-    } catch (e: any) {
+      // TODO: Implement actual order creation
+      console.log("Placing order with cart:", cart);
+      // Simulate order processing
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      console.log("Order placed successfully");
+      // TODO: Navigate to confirmation step
+    } catch (e) {
       console.error("Failed to place order:", e);
-      setError(e.message || "Could not place your order. Please try again.");
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Could not place your order. Please try again.",
+      );
     }
     setIsPlacingOrder(false);
   };
 
-  if (!checkoutSession || !cartData) {
-    return <div>Loading review details...</div>; // Or a more sophisticated loader
+  if (!cart) {
+    return <div>Loading review details...</div>;
   }
 
-  const { items = [], summary: cartSummary } = cartData;
+  const { items = [] } = cart;
   const { subtotal, taxAmount, shippingAmount, totalAmount } = checkoutSession;
 
   return (
@@ -132,17 +135,17 @@ export const ReviewStep = () => {
             <CardTitle>Shipping Address</CardTitle>
           </CardHeader>
           <CardContent className="text-sm">
-            <p>{shippingAddress?.fullName}</p>
-            <p>{shippingAddress?.addressLine1}</p>
-            {shippingAddress?.addressLine2 && (
+            <p>{shippingAddress.fullName}</p>
+            <p>{shippingAddress.addressLine1}</p>
+            {shippingAddress.addressLine2 && (
               <p>{shippingAddress.addressLine2}</p>
             )}
             <p>
-              {shippingAddress?.city}, {shippingAddress?.stateOrProvince}{" "}
-              {shippingAddress?.postalCode}
+              {shippingAddress.city}, {shippingAddress.stateOrProvince}{" "}
+              {shippingAddress.postalCode}
             </p>
-            <p>{shippingAddress?.country}</p>
-            {shippingAddress?.phoneNumber && (
+            <p>{shippingAddress.country}</p>
+            {shippingAddress.phoneNumber && (
               <p>Phone: {shippingAddress.phoneNumber}</p>
             )}
           </CardContent>
@@ -152,17 +155,17 @@ export const ReviewStep = () => {
             <CardTitle>Billing Address</CardTitle>
           </CardHeader>
           <CardContent className="text-sm">
-            <p>{billingAddress?.fullName}</p>
-            <p>{billingAddress?.addressLine1}</p>
-            {billingAddress?.addressLine2 && (
+            <p>{billingAddress.fullName}</p>
+            <p>{billingAddress.addressLine1}</p>
+            {billingAddress.addressLine2 && (
               <p>{billingAddress.addressLine2}</p>
             )}
             <p>
-              {billingAddress?.city}, {billingAddress?.stateOrProvince}{" "}
-              {billingAddress?.postalCode}
+              {billingAddress.city}, {billingAddress.stateOrProvince}{" "}
+              {billingAddress.postalCode}
             </p>
-            <p>{billingAddress?.country}</p>
-            {billingAddress?.phoneNumber && (
+            <p>{billingAddress.country}</p>
+            {billingAddress.phoneNumber && (
               <p>Phone: {billingAddress.phoneNumber}</p>
             )}
           </CardContent>

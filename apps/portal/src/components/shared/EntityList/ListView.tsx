@@ -1,9 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
-
-import { Button } from "@acme/ui/button";
+import type { EntityAction, SortConfig } from "./types";
 import {
   Table,
   TableBody,
@@ -13,14 +11,16 @@ import {
   TableRow,
 } from "@acme/ui/table";
 
-import type { ColumnDefinition, EntityAction, SortConfig } from "./types";
+import { Button } from "@acme/ui/button";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useMemo } from "react";
 
 export interface ListViewProps<T extends object> {
   /** Data to display in the table */
   data: T[];
 
   /** Column definitions */
-  columns: ColumnDefinition<T>[];
+  columns: ColumnDef<T>[];
 
   /** Optional handler for row clicks */
   onRowClick?: (item: T) => void;

@@ -32,9 +32,15 @@ export const LoadingSpinner = ({
   className,
 }: LoadingSpinnerProps) => {
   return (
-    <Loader2
-      className={cn("animate-spin text-primary", sizeClasses[size], className)}
-    />
+    <div className="flex items-center justify-center">
+      <Loader2
+        className={cn(
+          "animate-spin text-primary",
+          sizeClasses[size],
+          className,
+        )}
+      />
+    </div>
   );
 };
 

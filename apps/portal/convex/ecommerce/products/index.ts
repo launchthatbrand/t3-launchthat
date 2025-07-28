@@ -1,8 +1,8 @@
-import { v } from "convex/values";
+import { generateUniqueSlug, sanitizeSlug } from "../../lib/slugs";
+import { mutation, query } from "../../_generated/server";
 
 import type { Id } from "../../_generated/dataModel";
-import { mutation, query } from "../../_generated/server";
-import { generateUniqueSlug, sanitizeSlug } from "../../lib/slugs";
+import { v } from "convex/values";
 
 /**
  * List all products
@@ -84,6 +84,9 @@ export const createProduct = mutation({
     salePrice: v.optional(v.number()),
     costPrice: v.optional(v.number()),
     sku: v.string(),
+    stockStatus: v.optional(
+      v.union(v.literal("in_stock"), v.literal("out_of_stock")),
+    ),
     stockQuantity: v.optional(v.number()),
     inventoryLevel: v.optional(v.number()),
     primaryCategoryId: v.optional(v.id("productCategories")),
@@ -151,6 +154,7 @@ export const createProduct = mutation({
       salePrice: args.salePrice,
       costPrice: args.costPrice,
       sku: args.sku,
+      stockStatus: args.stockStatus ?? "in_stock", // Default to in_stock if not specified
       stockQuantity: args.stockQuantity ?? args.inventoryLevel,
       primaryCategoryId: primaryCategoryId, // Now guaranteed to be defined
       categoryIds: args.categoryIds,
@@ -187,6 +191,9 @@ export const updateProduct = mutation({
     salePrice: v.optional(v.number()),
     costPrice: v.optional(v.number()),
     sku: v.string(),
+    stockStatus: v.optional(
+      v.union(v.literal("in_stock"), v.literal("out_of_stock")),
+    ),
     inventoryLevel: v.optional(v.number()),
     primaryCategoryId: v.optional(v.id("productCategories")),
     categoryIds: v.array(v.id("productCategories")),
@@ -249,11 +256,13 @@ export const updateProduct = mutation({
       slug,
       description: args.description,
       shortDescription: args.shortDescription,
-      basePrice: args.basePrice,
+      price: args.basePrice, // Use basePrice as the main price field (supports decimals)
+      priceInCents: args.basePrice, // Keep for backward compatibility but same value as price
       salePrice: args.salePrice,
       costPrice: args.costPrice,
       sku: args.sku,
-      inventoryLevel: args.inventoryLevel,
+      stockStatus: args.stockStatus, // Update stock status if provided
+      stockQuantity: args.inventoryLevel, // Map inventoryLevel to stockQuantity
       primaryCategoryId: args.primaryCategoryId,
       categoryIds: args.categoryIds,
       status: args.status,

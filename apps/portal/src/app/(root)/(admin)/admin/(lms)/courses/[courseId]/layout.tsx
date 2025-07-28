@@ -1,14 +1,14 @@
 "use client";
 
-import { ReactNode } from "react";
-import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
-import { api } from "@convex-config/_generated/api";
-import { Id } from "@convex-config/_generated/dataModel";
-import { useQuery } from "convex/react";
-import { ChevronLeft } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
+import { ChevronLeft } from "lucide-react";
+import { Id } from "@convex-config/_generated/dataModel";
+import Link from "next/link";
+import { ReactNode } from "react";
+import { api } from "@convex-config/_generated/api";
+import { useQuery } from "convex/react";
 
 interface CourseAdminLayoutProps {
   children: ReactNode;
@@ -67,6 +67,12 @@ export default function CourseAdminLayout({
             className={`whitespace-nowrap border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${pathname.startsWith(`${baseUrl}/members`) ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-primary"}`}
           >
             Members
+          </Link>
+          <Link
+            href={`${baseUrl}/linked-product`}
+            className={`whitespace-nowrap border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${pathname.startsWith(`${baseUrl}/linked-product`) ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-primary"}`}
+          >
+            Linked Product
           </Link>
         </nav>
       </div>

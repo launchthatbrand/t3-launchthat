@@ -1,14 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { clsx } from "clsx";
-import { AlertCircle } from "lucide-react";
-
 import { Alert, AlertDescription, AlertTitle } from "@acme/ui/alert";
-import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
-
 import type {
-  ColumnDefinition,
   EntityAction,
   EntityListProps,
   FilterConfig,
@@ -17,10 +10,16 @@ import type {
   TabHookResult,
   ViewMode,
 } from "./types";
+import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { useEffect, useMemo, useState } from "react";
+
+import { AlertCircle } from "lucide-react";
+import { ColumnDef } from "@tanstack/react-table";
 import { EntityListFilters } from "./EntityListFilters";
 import { EntityListHeader } from "./EntityListHeader";
 import { EntityListPagination } from "./EntityListPagination";
 import { EntityListView } from "./EntityListView";
+import { clsx } from "clsx";
 
 /**
  * EntityList is a universal component for displaying collections of data
@@ -229,7 +228,7 @@ export function EntityList<T extends object>({
     : activeFilters;
 
   const filteredData = useMemo(() => {
-    if (!baseData.length) return [];
+    if (!baseData?.length) return [];
     let filtered: T[] = [...baseData];
     console.log("filtered1", filtered);
     if (searchTerm.trim()) {
@@ -338,7 +337,7 @@ export function EntityList<T extends object>({
 
 // Re-export types for ease of use
 export type {
-  ColumnDefinition,
+  ColumnDef,
   EntityAction,
   EntityListProps,
   FilterConfig,

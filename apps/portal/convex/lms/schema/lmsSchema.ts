@@ -1,4 +1,9 @@
+import {
+  contentAccessLogTable,
+  contentAccessRulesTable,
+} from "./contentAccessSchema";
 import { defineSchema, defineTable } from "convex/server";
+
 import { v } from "convex/values";
 
 export const coursesTable = defineTable({
@@ -47,7 +52,9 @@ export const lessonsTable = defineTable({
   // Order of lessons within a course (fallback if not using courseStructure)
   menuOrder: v.optional(v.number()),
   courseId: v.optional(v.id("courses")), // Link to parent course
-}).index("by_course", ["courseId"]);
+})
+  .index("by_course", ["courseId"])
+  .index("by_tagIds", ["tagIds"]);
 
 export const topicsTable = defineTable({
   lessonId: v.optional(v.id("lessons")),
@@ -81,7 +88,8 @@ export const topicsTable = defineTable({
 })
   .index("by_lessonId_order", ["lessonId", "order"])
   .index("by_lessonId_menuOrder", ["lessonId", "menuOrder"])
-  .index("by_unattached", ["lessonId"]);
+  .index("by_unattached", ["lessonId"])
+  .index("by_tagIds", ["tagIds"]);
 
 // Define quizzes directly within the lmsSchema for simplicity now
 export const quizzesTable = defineTable({
@@ -134,16 +142,53 @@ export const courseEnrollmentsTable = defineTable({
 export const progressTable = defineTable({
   userId: v.id("users"),
   courseId: v.id("courses"),
-  itemId: v.union(v.id("topics"), v.id("quizzes")),
-  itemType: v.union(v.literal("topic"), v.literal("quiz")),
+  itemId: v.union(v.id("lessons"), v.id("topics"), v.id("quizzes")),
+  itemType: v.union(v.literal("lesson"), v.literal("topic"), v.literal("quiz")),
   completed: v.boolean(),
   completedAt: v.optional(v.number()), // Timestamp of completion
   score: v.optional(v.number()), // For quizzes
   attempts: v.optional(v.number()), // For quizzes
+  startedAt: v.optional(v.number()), // When user first accessed the item
+  timeSpent: v.optional(v.number()), // Time spent in seconds
 })
   .index("by_user_course", ["userId", "courseId"])
   .index("by_item", ["itemId"])
-  .index("by_user_item", ["userId", "itemId"]);
+  .index("by_user_item", ["userId", "itemId"])
+  .index("by_user_course_type", ["userId", "courseId", "itemType"]);
+
+// Course-level progress metadata (similar to LearnDash _sfwd-course_progress)
+export const courseProgressTable = defineTable({
+  userId: v.id("users"),
+  courseId: v.id("courses"),
+  // Lesson completion tracking
+  lessons: v.object({
+    completed: v.array(v.id("lessons")), // Array of completed lesson IDs
+    total: v.number(), // Total number of lessons in course
+  }),
+  // Topic completion tracking (per lesson)
+  topics: v.record(v.id("lessons"), v.array(v.id("topics"))), // lessonId -> completed topic IDs
+  // Overall progress
+  completed: v.number(), // Total completed items (lessons + topics + quizzes)
+  total: v.number(), // Total items in course
+  lastAccessedId: v.optional(
+    v.union(v.id("lessons"), v.id("topics"), v.id("quizzes")),
+  ), // Last accessed item
+  lastAccessedType: v.optional(
+    v.union(v.literal("lesson"), v.literal("topic"), v.literal("quiz")),
+  ),
+  status: v.union(
+    v.literal("not_started"),
+    v.literal("in_progress"),
+    v.literal("completed"),
+  ),
+  // Timestamps
+  startedAt: v.optional(v.number()),
+  completedAt: v.optional(v.number()),
+  lastAccessedAt: v.number(),
+})
+  .index("by_user_course", ["userId", "courseId"])
+  .index("by_user", ["userId"])
+  .index("by_course", ["courseId"]);
 
 // Export a proper Convex schema using defineSchema
 export const lmsSchema = defineSchema({
@@ -153,4 +198,7 @@ export const lmsSchema = defineSchema({
   quizzes: quizzesTable,
   courseEnrollments: courseEnrollmentsTable,
   progress: progressTable, // Added progress table
+  courseProgress: courseProgressTable, // Course-level progress metadata
+  contentAccessRules: contentAccessRulesTable, // Content access control rules
+  contentAccessLog: contentAccessLogTable, // Content access audit log
 });

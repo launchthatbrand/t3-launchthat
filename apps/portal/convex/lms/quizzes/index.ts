@@ -1,10 +1,10 @@
-import { filter } from "convex-helpers/server/filter";
-import { v } from "convex/values";
+import { internalMutation, mutation, query } from "../../_generated/server";
 
 import type { Doc } from "../../_generated/dataModel";
+import { filter } from "convex-helpers/server/filter";
 import { internal } from "../../_generated/api";
-import { internalMutation, mutation, query } from "../../_generated/server";
 import { requireAdmin } from "../../lib/permissions/requirePermission";
+import { v } from "convex/values";
 
 // --- Create Quiz Mutation ---
 export const create = mutation({
@@ -290,5 +290,40 @@ export const update = mutation({
     await requireAdmin(ctx);
     const { quizId, ...patch } = args;
     await ctx.db.patch(quizId, patch);
+  },
+});
+
+// --- Get Quizzes by Lesson Query ---
+export const getQuizzesByLesson = query({
+  args: { lessonId: v.id("lessons") },
+  returns: v.array(
+    v.object({
+      _id: v.id("quizzes"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      order: v.optional(v.number()),
+      isPublished: v.optional(v.boolean()),
+      lessonId: v.optional(v.id("lessons")),
+      topicId: v.optional(v.id("topics")),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    // Get quizzes directly attached to the lesson
+    const lessonQuizzes = await ctx.db
+      .query("quizzes")
+      .withIndex("by_lessonId", (q) => q.eq("lessonId", args.lessonId))
+      .collect();
+
+    return lessonQuizzes.map((quiz) => ({
+      _id: quiz._id,
+      _creationTime: quiz._creationTime,
+      title: quiz.title,
+      description: quiz.description,
+      order: quiz.order,
+      isPublished: quiz.isPublished,
+      lessonId: quiz.lessonId,
+      topicId: quiz.topicId,
+    }));
   },
 });

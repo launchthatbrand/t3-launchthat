@@ -1,9 +1,5 @@
 "use client";
 
-import type { Id } from "@/convex/_generated/dataModel";
-import React, { useEffect, useState } from "react";
-
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -11,9 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Checkbox } from "@acme/ui/checkbox";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
+import React, { useEffect, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -21,6 +15,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
+
+import { Button } from "@acme/ui/button";
+import { Checkbox } from "@acme/ui/checkbox";
+import type { Id } from "@/convex/_generated/dataModel";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
 import { Textarea } from "@acme/ui/textarea";
 
 // Define product data interfaces
@@ -32,6 +32,7 @@ export interface ProductFormData {
   salePrice?: number;
   costPrice?: number;
   sku: string;
+  stockStatus?: "in_stock" | "out_of_stock";
   inventoryLevel?: number;
   primaryCategoryId: Id<"productCategories">;
   categoryIds: Id<"productCategories">[];
@@ -39,12 +40,12 @@ export interface ProductFormData {
   isVisible: boolean;
   isDigital: boolean;
   hasVariants: boolean;
-  images: Array<{
+  images: {
     url: string;
     alt?: string;
     position?: number;
     isPrimary?: boolean;
-  }>;
+  }[];
   taxable: boolean;
   isFeatured: boolean;
   tags?: string[];
@@ -61,6 +62,7 @@ export interface ProductData extends ProductFormData {
   updatedAt: number;
   priceInCents?: number;
   price?: number;
+  stockStatus?: "in_stock" | "out_of_stock";
   stockQuantity?: number;
 }
 
@@ -69,10 +71,10 @@ interface ProductFormProps {
   initialData?: Partial<ProductData>;
   onSubmit: (data: ProductFormData) => Promise<void>;
   isSubmitting: boolean;
-  categories: Array<{
+  categories: {
     _id: Id<"productCategories">;
     name: string;
-  }>;
+  }[];
   submitButtonText?: string;
 }
 
@@ -97,25 +99,46 @@ export default function ProductForm({
     hasVariants: false,
     taxable: true,
     isFeatured: false,
+    // New inventory management fields
+    stockStatus: "in_stock" as "in_stock" | "out_of_stock",
+    manageInventory: false,
+    stockQuantity: 0,
+    inStock: true,
   });
 
   // Load initial data if provided
   useEffect(() => {
     if (initialData) {
+      // Check if inventory is managed (stockQuantity exists and is not undefined)
+      const hasStockQuantity = initialData.stockQuantity !== undefined;
+
+      // Use price field directly - it supports decimals (0.13, 9.99, 999, etc.)
+      const displayPrice = initialData.price ?? initialData.basePrice ?? 0;
+
       setFormData({
         name: initialData.name ?? "",
         description: initialData.description ?? "",
         shortDescription: initialData.shortDescription ?? "",
-        // Convert price from cents to dollars for display
-        price: initialData.price ?? (initialData.priceInCents ?? 0) / 100,
+        price: displayPrice,
         sku: initialData.sku ?? "",
         primaryCategoryId: initialData.primaryCategoryId ?? "",
-        status: initialData.status ?? "draft",
+        // Ensure status is a valid enum value
+        status:
+          initialData.status === "draft" ||
+          initialData.status === "active" ||
+          initialData.status === "archived"
+            ? initialData.status
+            : "draft",
         isVisible: initialData.isVisible ?? false,
         isDigital: initialData.isDigital ?? false,
         hasVariants: initialData.hasVariants ?? false,
         taxable: initialData.taxable ?? true,
         isFeatured: initialData.isFeatured ?? false,
+        // Initialize inventory management fields
+        stockStatus: initialData.stockStatus ?? "in_stock",
+        manageInventory: hasStockQuantity,
+        stockQuantity: initialData.stockQuantity ?? 0,
+        inStock: hasStockQuantity ? (initialData.stockQuantity ?? 0) > 0 : true,
       });
     }
   }, [initialData]);
@@ -125,10 +148,20 @@ export default function ProductForm({
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+
+    // Handle number inputs properly
+    if (name === "price" || name === "stockQuantity") {
+      const numberValue = parseFloat(value) || 0;
+      setFormData({
+        ...formData,
+        [name]: numberValue,
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
 
   const handleCheckboxChange = (name: string, checked: boolean) => {
@@ -155,17 +188,36 @@ export default function ProductForm({
       return;
     }
 
-    // Convert price from dollars to cents
-    const priceInCents = Math.round(
-      parseFloat(formData.price.toString()) * 100,
-    );
+    // Ensure we have a valid status
+    if (!["draft", "active", "archived"].includes(formData.status)) {
+      alert("Please select a valid status");
+      return;
+    }
+
+    // Use price directly (supports decimals like 0.13, 9.99, 999)
+    const price = parseFloat(formData.price.toString());
+
+    // Calculate inventory level based on stockQuantity
+    let inventoryLevel: number | undefined;
+
+    if (formData.isDigital) {
+      // Digital products don't need inventory tracking
+      inventoryLevel = undefined;
+    } else {
+      // Use stockQuantity if provided, otherwise undefined (unlimited)
+      inventoryLevel = formData.stockQuantity
+        ? parseInt(formData.stockQuantity.toString()) || undefined
+        : undefined;
+    }
 
     await onSubmit({
       name: formData.name,
       description: formData.description,
       shortDescription: formData.shortDescription || undefined,
-      basePrice: priceInCents,
+      basePrice: price,
       sku: formData.sku,
+      stockStatus: formData.stockStatus,
+      inventoryLevel,
       primaryCategoryId: formData.primaryCategoryId as Id<"productCategories">,
       categoryIds: [formData.primaryCategoryId as Id<"productCategories">],
       status: formData.status,
@@ -348,6 +400,74 @@ export default function ProductForm({
               />
               <Label htmlFor="isFeatured">Featured product</Label>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Inventory Management */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Inventory Management</CardTitle>
+            <CardDescription>
+              Configure how inventory is tracked for this product.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Only show inventory options for physical products */}
+            {!formData.isDigital && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="stockStatus">Stock Status *</Label>
+                  <Select
+                    value={formData.stockStatus}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        stockStatus: value as "in_stock" | "out_of_stock",
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select stock status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="in_stock">In Stock</SelectItem>
+                      <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Set whether this product is currently available for
+                    purchase.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="stockQuantity">
+                    Stock Quantity (Optional)
+                  </Label>
+                  <Input
+                    id="stockQuantity"
+                    name="stockQuantity"
+                    type="number"
+                    min="0"
+                    placeholder="Leave empty for unlimited stock"
+                    value={formData.stockQuantity || ""}
+                    onChange={handleChange}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Enter a specific quantity if you want to track exact stock
+                    levels. Leave empty if you don't need to track specific
+                    quantities.
+                  </p>
+                </div>
+              </>
+            )}
+
+            {formData.isDigital && (
+              <p className="text-sm text-muted-foreground">
+                Digital products don't require inventory tracking as they have
+                unlimited availability.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

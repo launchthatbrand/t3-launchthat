@@ -1,7 +1,9 @@
-import { v } from "convex/values";
-
 import { mutation, query } from "../../_generated/server";
+
+import { getAuthenticatedUser } from "../../lib/permissions/userAuth";
+import { isAdmin } from "../../lib/permissions/hasPermission";
 import { requirePermission } from "../../lib/permissions/requirePermission";
+import { v } from "convex/values";
 
 /**
  * Get a single order by its ID, ensuring user owns it or is admin
@@ -11,8 +13,11 @@ export const getOrder = query({
     orderId: v.id("orders"),
   },
   handler: async (ctx, args) => {
-    // Get the authenticated user or throw error
-    const { userId } = await requirePermission(ctx, "canViewOrders");
+    // Check if user has permission to view orders
+    await requirePermission(ctx, "canViewOrders");
+
+    // Get the authenticated user
+    const user = await getAuthenticatedUser(ctx);
 
     const order = await ctx.db.get(args.orderId);
     if (!order) {
@@ -20,8 +25,8 @@ export const getOrder = query({
     }
 
     // If user is not an admin, ensure they own the order
-    if (!(await requirePermission.isAdmin(ctx, { throwError: false }))) {
-      if (order.userId !== userId) {
+    if (!(await isAdmin(ctx))) {
+      if (order.userId !== user._id) {
         throw new Error("Unauthorized access to order");
       }
     }
@@ -418,13 +423,16 @@ export const getUserOrders = query({
     skip: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    // Get the authenticated user or throw error
-    const { userId } = await requirePermission(ctx, "canViewOrders");
+    // Check if user has permission to view orders
+    await requirePermission(ctx, "canViewOrders");
+
+    // Get the authenticated user
+    const user = await getAuthenticatedUser(ctx);
 
     // Fetch orders for this user, most recent first
     const orders = await ctx.db
       .query("orders")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
       .collect();
 
@@ -433,5 +441,38 @@ export const getUserOrders = query({
     const limit = args.limit ?? 10;
 
     return orders.slice(skip, skip + limit);
+  },
+});
+
+/**
+ * Delete an order
+ */
+export const deleteOrder = mutation({
+  args: {
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx, args) => {
+    // Require admin permission to delete orders
+    await requirePermission(ctx, "canManageOrders");
+
+    // Get the order to ensure it exists
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error(`Order with ID ${args.orderId} not found`);
+    }
+
+    // Check if order can be deleted (business logic)
+    if (
+      order.status === "shipped" ||
+      order.status === "delivered" ||
+      order.status === "completed"
+    ) {
+      throw new Error(`Cannot delete order with status: ${order.status}`);
+    }
+
+    // Delete the order
+    await ctx.db.delete(args.orderId);
+
+    return { success: true };
   },
 });

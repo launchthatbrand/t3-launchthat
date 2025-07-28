@@ -1,14 +1,5 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, Loader2, Save, Trash, User } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import * as z from "zod";
 
 import { Alert, AlertDescription, AlertTitle } from "@acme/ui/alert";
@@ -23,7 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@acme/ui/alert-dialog";
-import { Button } from "@acme/ui/button";
+import { ArrowLeft, Loader2, Save, Trash } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -41,7 +32,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@acme/ui/form";
-import { Input } from "@acme/ui/input";
+import React, { useEffect, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -49,7 +40,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
+import { useMutation, useQuery } from "convex/react";
+import { useParams, useRouter } from "next/navigation";
+
+import { Button } from "@acme/ui/button";
+import { Id } from "@/convex/_generated/dataModel";
+import { Input } from "@acme/ui/input";
 import { Skeleton } from "@acme/ui/skeleton";
+import { UserMarketingTagsManager } from "@/components/admin/UserMarketingTagsManager";
+import { api } from "@/convex/_generated/api";
+import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 // Define the form schema
 const userFormSchema = z.object({
@@ -59,8 +61,8 @@ const userFormSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
-  role: z.enum(["admin", "user"], {
-    required_error: "Please select a role.",
+  role: z.string().min(1, {
+    message: "Please select a role.",
   }),
 });
 
@@ -69,9 +71,8 @@ type UserFormValues = z.infer<typeof userFormSchema>;
 export default function UserEditPage() {
   const params = useParams();
   const router = useRouter();
-  // Unwrap params with React.use() before accessing properties
-  const unwrappedParams = React.use(params);
-  const userId = unwrappedParams.id as string;
+  // Extract userId directly from params (no need for React.use() in Next.js 13+)
+  const userId = params.id as string;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -80,6 +81,8 @@ export default function UserEditPage() {
   const user = useQuery(api.users.getUserById, {
     userId: userId as Id<"users">,
   });
+
+  console.log("user", user);
 
   // Update user mutation
   const updateUser = useMutation(api.users.updateUser);
@@ -100,10 +103,11 @@ export default function UserEditPage() {
   // Update form values when user data is loaded
   useEffect(() => {
     if (user) {
+      console.log("Updating form with user data:", user);
       form.reset({
-        name: user.name || "",
-        email: user.email || "",
-        role: user.role || "user",
+        name: user.name ?? "",
+        email: user.email,
+        role: user.role ?? "user",
       });
     }
   }, [user, form]);
@@ -116,16 +120,18 @@ export default function UserEditPage() {
     try {
       const result = await updateUser({
         userId: userId as Id<"users">,
-        name: values.name,
-        email: values.email,
-        role: values.role,
+        data: {
+          name: values.name,
+          email: values.email,
+          role: values.role,
+        },
       });
 
-      if (result.success) {
+      if (result) {
         toast.success("User updated successfully");
       } else {
-        setError(result.message || "Failed to update user");
-        toast.error(result.message || "Failed to update user");
+        setError("Failed to update user");
+        toast.error("Failed to update user");
       }
     } catch (err) {
       const errorMessage =
@@ -151,8 +157,8 @@ export default function UserEditPage() {
         toast.success("User deleted successfully");
         router.push("/admin/users");
       } else {
-        setError(result.message ?? "Failed to delete user");
-        toast.error(result.message ?? "Failed to delete user");
+        setError("Failed to delete user");
+        toast.error("Failed to delete user");
       }
     } catch (err) {
       const errorMessage =
@@ -291,7 +297,7 @@ export default function UserEditPage() {
                       <FormLabel>Role</FormLabel>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -300,7 +306,8 @@ export default function UserEditPage() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="user">User</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="admin">Administrator</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormDescription>
@@ -334,6 +341,8 @@ export default function UserEditPage() {
             </Form>
           </CardContent>
         </Card>
+
+        <UserMarketingTagsManager userId={userId as Id<"users">} />
 
         <Card className="border-destructive">
           <CardHeader>
