@@ -9,6 +9,7 @@ import { useQuery } from "convex/react";
 import { Badge } from "@acme/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Separator } from "@acme/ui/separator";
+import { Skeleton } from "@acme/ui/skeleton";
 
 import { useConvexUser } from "~/hooks/useConvexUser";
 import { CompleteContentButton } from "./CompleteContentButton";
@@ -38,6 +39,8 @@ const CourseHeader = () => {
       : "skip",
   );
 
+  const isCourseProgressLoading = courseProgressByLessons === undefined;
+
   // if (data === undefined) return <div>Loading...</div>;
   // if (data === null) return <div>Course not found.</div>;
 
@@ -51,7 +54,7 @@ const CourseHeader = () => {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-col gap-3 md:flex-row md:items-center">
               <CardTitle className="text-3xl font-bold text-white md:text-4xl">
-                {course?.title}
+                {course?.title ?? <Skeleton className="h-8 w-60 bg-white/30" />}
               </CardTitle>
               <Badge
                 variant="outline"
@@ -90,6 +93,7 @@ const CourseHeader = () => {
             <CourseProgress
               courseProgressByLessons={courseProgressByLessons}
               lessons={data?.attachedLessons}
+              isLoading={isCourseProgressLoading}
               userId={userId}
               courseId={courseId as Id<"courses">}
               className="text-white [&_.text-muted-foreground]:text-white/70"

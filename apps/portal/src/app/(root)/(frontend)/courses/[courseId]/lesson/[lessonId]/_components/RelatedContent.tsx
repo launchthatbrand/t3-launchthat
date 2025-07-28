@@ -4,13 +4,8 @@ import { api } from "@convex-config/_generated/api";
 import { Doc } from "@convex-config/_generated/dataModel";
 import { useQuery } from "convex/react";
 
-import { Badge } from "@acme/ui/badge";
-import { Card, CardContent } from "@acme/ui/card";
-
 import { LoadingSpinner } from "~/components/ui/loading-spinner";
 import { OverlayCard } from "../topic/[topicId]/page";
-
-// import { OverlayCard } from "../topic/[topicId]/page"; // No longer directly used here for related content
 
 interface RelatedContentProps {
   lesson: Doc<"lessons">;
@@ -24,31 +19,35 @@ const RelatedContent: React.FC<RelatedContentProps> = ({
   topic,
 }) => {
   const currentTagIds = lesson.tagIds ?? topic.tagIds ?? [];
-
   const router = useRouter();
-
   const courseId = course._id;
+
+  // If no tags, don't query and show no content message
+  if (currentTagIds.length === 0) {
+    return <div>No related content found.</div>;
+  }
+
+  // Simplify the conditional logic to avoid type instantiation depth issues
+  const queryArgs = {
+    tagIds: currentTagIds,
+    currentLessonId: lesson._id,
+    currentTopicId: topic._id,
+  };
 
   const relatedContent = useQuery(
     api.lms.courses.queries.getRelatedContentByTagIds,
-    currentTagIds.length > 0
-      ? {
-          tagIds: currentTagIds,
-          currentLessonId: lesson._id,
-          currentTopicId: topic._id,
-        }
-      : "skip",
+    queryArgs,
   );
 
+  if (relatedContent === undefined) {
+    return <LoadingSpinner />;
+  }
+
   if (
-    relatedContent &&
     relatedContent.lessons.length === 0 &&
     relatedContent.topics.length === 0
   ) {
     return <div>No related content found.</div>;
-  }
-  if (relatedContent === undefined) {
-    return <LoadingSpinner />;
   }
 
   return (
@@ -83,17 +82,6 @@ const RelatedContent: React.FC<RelatedContentProps> = ({
                 );
               }}
             />
-            //   <li key={item._id} className="mt-2">
-            //     <a
-            //       href={`/courses/${item.lessonId}/lesson/${item._id}`}
-            //       className="text-blue-600 hover:underline"
-            //     >
-            //       {item.title}
-            //     </a>
-            //     {item.tagNames && item.tagNames.length > 0 && (
-            //       <Badge className="ml-2">{item.tagNames.join(", ")}</Badge>
-            //     )}
-            //   </li>
           ))}
         </div>
       )}

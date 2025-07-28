@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { CourseSidebarTrigger } from "@acme/ui/course-sidebar";
 import { useIsMobile } from "@acme/ui/hooks/use-mobile";
 import { Separator } from "@acme/ui/separator";
+import { Skeleton } from "@acme/ui/skeleton";
 
 import { useConvexUser } from "~/hooks/useConvexUser";
 import { cn } from "~/lib/utils";
@@ -68,7 +69,11 @@ const LessonHeader = () => {
               orientation="vertical"
               className="mr-2 data-[orientation=vertical]:h-4"
             />
-            <h1 className="text-2xl font-bold text-white">{lesson?.title}</h1>
+            {lesson?.title ? (
+              <h1 className="text-2xl font-bold text-white">{lesson?.title}</h1>
+            ) : (
+              <Skeleton className="h-8 w-32 bg-white/30" />
+            )}
           </div>
           <Badge variant="outline" className="text-md bg-white">
             {lessonId ? "Lesson" : "Course"}
@@ -87,7 +92,7 @@ const LessonHeader = () => {
               <CardHeader className="sticky:shadow-lg sticky top-14 z-10 flex flex-col justify-between gap-3 space-y-0 bg-white p-4">
                 <div className="flex flex-row items-center justify-between gap-2">
                   <CardTitle className="flex gap-2 text-xl font-bold">
-                    {topic?.title}
+                    {topic?.title || <Skeleton className="h-8 w-32" />}
                   </CardTitle>
                   <Badge
                     variant="outline"

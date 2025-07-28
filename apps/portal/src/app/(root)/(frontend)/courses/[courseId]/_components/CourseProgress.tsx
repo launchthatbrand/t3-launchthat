@@ -1,11 +1,8 @@
 "use client";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@acme/ui/accordion";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Id } from "@convex-config/_generated/dataModel";
 import {
   Award,
   BookOpen,
@@ -15,16 +12,20 @@ import {
   PlayCircle,
   Target,
 } from "lucide-react";
+
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@acme/ui/accordion";
+import { Badge } from "@acme/ui/badge";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@acme/ui/hover-card";
-import React, { useState } from "react";
-
-import { Badge } from "@acme/ui/badge";
-import { Id } from "@convex-config/_generated/dataModel";
-import { useRouter } from "next/navigation";
+import { Skeleton } from "@acme/ui/skeleton";
 
 interface LessonSegment {
   lessonId: Id<"lessons">;
@@ -67,6 +68,7 @@ interface CourseProgressProps {
   courseId: Id<"courses">;
   className?: string;
   showDetails?: boolean;
+  isLoading?: boolean;
 }
 
 export const CourseProgress = ({
@@ -74,6 +76,7 @@ export const CourseProgress = ({
   lessons: _lessons = [],
   userId,
   courseId: _courseId,
+  isLoading,
   className,
   showDetails = true,
 }: CourseProgressProps) => {
@@ -88,6 +91,10 @@ export const CourseProgress = ({
       [lessonId]: isOpen,
     }));
   };
+
+  if (isLoading) {
+    return <Skeleton className="h-10 w-full bg-white/30" />;
+  }
 
   // If no user is logged in, show generic progress
   if (!userId || !courseProgressByLessons) {
