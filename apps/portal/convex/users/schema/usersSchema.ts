@@ -1,6 +1,17 @@
 import { defineSchema, defineTable } from "convex/server";
-
 import { v } from "convex/values";
+
+// Address object definition (for user addresses)
+const addressObject = v.object({
+  fullName: v.string(),
+  addressLine1: v.string(),
+  addressLine2: v.optional(v.string()),
+  city: v.string(),
+  stateOrProvince: v.string(),
+  postalCode: v.string(),
+  country: v.string(),
+  phoneNumber: v.optional(v.string()),
+});
 
 export const usersTable = defineTable({
   name: v.optional(v.string()),
@@ -12,6 +23,8 @@ export const usersTable = defineTable({
   username: v.optional(v.string()),
   // Profile image URL
   image: v.optional(v.string()),
+  // User addresses for shipping/billing
+  addresses: v.optional(v.array(addressObject)),
   // Add other user profile fields as needed
 })
   .index("by_email", ["email"])

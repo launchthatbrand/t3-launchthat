@@ -125,6 +125,7 @@ export const ordersTable = defineTable({
     v.literal("refunded"), // Fully refunded
     v.literal("partially_refunded"), // Partially refunded
     v.literal("on_hold"), // Manual hold
+    v.literal("chargeback"), // Order disputed via chargeback
   ),
 
   // Fulfillment information
@@ -166,6 +167,7 @@ export const ordersTable = defineTable({
   isSubscription: v.optional(v.boolean()),
   subscriptionId: v.optional(v.id("subscriptions")),
 })
+  .index("by_orderId", ["orderId"]) // Add missing index for orderId
   .index("by_user", ["userId"])
   .index("by_email", ["email"])
   .index("by_status", ["status"])

@@ -2,7 +2,15 @@
 
 import React from "react";
 import Link from "next/link";
-import { Cog, Globe, ListTree, MenuSquare, Settings, Tag } from "lucide-react";
+import {
+  Cog,
+  Database,
+  Globe,
+  ListTree,
+  MenuSquare,
+  Settings,
+  Tag,
+} from "lucide-react";
 
 import { Button } from "@acme/ui/button";
 import {
@@ -83,6 +91,12 @@ function SettingsPage() {
       description: "Access advanced configuration options and system settings",
       icon: <Settings className="h-6 w-6" />,
       href: "/admin/settings/advanced",
+    },
+    {
+      title: "Mock Data",
+      description: "Generate test data for development and testing purposes",
+      icon: <Database className="h-6 w-6" />,
+      href: "/admin/settings/mockdata",
     },
   ];
 

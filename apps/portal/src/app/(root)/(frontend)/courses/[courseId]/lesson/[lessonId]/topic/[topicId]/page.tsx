@@ -31,6 +31,7 @@ import { toast } from "@acme/ui/toast";
 import { ProtectedContent } from "~/components/access/ProtectedContent";
 import { CommentThread } from "~/components/social/CommentThread";
 import { useConvexUser } from "~/hooks/useConvexUser";
+import { cn } from "~/lib/utils";
 import { CompleteContentButton } from "../../../../_components/CompleteContentButton";
 
 export default function TopicPage() {
@@ -222,15 +223,20 @@ export const OverlayCard = ({
   item,
   badgeText,
   onClick,
+  className,
 }: {
   item: Doc<"topics"> | Doc<"lessons"> | null | undefined;
   badgeText?: string;
   onClick?: () => void;
+  className?: string;
 }) => {
   if (!item) return null;
   return (
     <Card
-      className="group relative flex cursor-pointer flex-col gap-2 overflow-hidden p-1"
+      className={cn(
+        "group relative flex cursor-pointer flex-col gap-2 overflow-hidden p-1",
+        className,
+      )}
       onClick={onClick}
     >
       {item.featuredImage && (
@@ -255,7 +261,7 @@ export const OverlayCard = ({
             {badgeText}
           </Badge>
         )}
-        <p className="text-sm font-semibold transition-opacity duration-300 group-hover:opacity-0">
+        <p className="font-semibold transition-opacity duration-300 group-hover:opacity-0">
           {item.title}
         </p>
       </div>

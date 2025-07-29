@@ -1,17 +1,19 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { useParams, useRouter } from "next/navigation";
-
-import { Id } from "@convex-config/_generated/dataModel";
-import Image from "next/image";
-import { LessonProgress } from "../../../_components/LessonProgress";
 import React from "react";
-import RelatedContent from "./RelatedContent";
-import { Separator } from "@acme/ui/separator";
+import Image from "next/image";
+import { useParams, useRouter } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
-import { useConvexUser } from "~/hooks/useConvexUser";
+import { Id } from "@convex-config/_generated/dataModel";
 import { useQuery } from "convex/react";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Separator } from "@acme/ui/separator";
+
+import { useConvexUser } from "~/hooks/useConvexUser";
+import { LessonProgress } from "../../../_components/LessonProgress";
+import RecentContent from "./RecentContent";
+import RelatedContent from "./RelatedContent";
 
 const LessonSidebar = () => {
   const params = useParams();
@@ -107,6 +109,21 @@ const LessonSidebar = () => {
 
             <CardContent className="flex flex-col gap-4 p-6">
               <RelatedContent
+                lesson={lesson}
+                topic={topic}
+                course={data.course}
+              />
+            </CardContent>
+          </Card>
+          <Card className="overflow-hidden">
+            <CardHeader className="py-3">
+              <CardTitle className="text-lg">Recent Content</CardTitle>
+            </CardHeader>
+
+            <Separator />
+
+            <CardContent className="flex flex-col gap-4 p-6">
+              <RecentContent
                 lesson={lesson}
                 topic={topic}
                 course={data.course}

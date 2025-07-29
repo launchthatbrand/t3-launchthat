@@ -1,12 +1,12 @@
 "use client";
 
+import { ReactNode } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ClipboardList, PieChart, Settings, Users } from "lucide-react";
 
-import Link from "next/link";
-import { ReactNode } from "react";
-import { Separator } from "@acme/ui/separator";
 import { cn } from "@acme/ui";
-import { usePathname } from "next/navigation";
+import { Separator } from "@acme/ui/separator";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -70,6 +70,19 @@ export default function AdminOrdersLayout({ children }: AdminLayoutProps) {
             className={`whitespace-nowrap border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${pathname.startsWith(`${baseUrl}/quizzes`) ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-primary"}`}
           >
             Product Tags
+          </Link>
+          <Link
+            href={`${baseUrl}/chargebacks`}
+            className={`whitespace-nowrap border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${pathname.startsWith(`${baseUrl}/quizzes`) ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-primary"}`}
+          >
+            Chargebacks
+          </Link>
+
+          <Link
+            href={`${baseUrl}/balances`}
+            className={`whitespace-nowrap border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${pathname.startsWith(`${baseUrl}/quizzes`) ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-primary"}`}
+          >
+            Balances
           </Link>
         </nav>
       </div>

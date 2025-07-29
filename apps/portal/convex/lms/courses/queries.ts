@@ -1,9 +1,9 @@
-import type { Doc, Id } from "../../_generated/dataModel";
-
-import type { QueryCtx } from "../../_generated/server";
 import { filter } from "convex-helpers/server/filter";
-import { query } from "../../_generated/server";
 import { v } from "convex/values";
+
+import type { Doc, Id } from "../../_generated/dataModel";
+import type { QueryCtx } from "../../_generated/server";
+import { query } from "../../_generated/server";
 
 // Helper functions for formatting lessons and topics to include tagNames
 async function formatLessonWithTags(
@@ -1022,6 +1022,146 @@ export const getRelatedContentByTagIds = query({
       topics: await Promise.all(
         allTopics.map((topic) => formatTopicWithTags(ctx, topic)),
       ),
+    };
+  },
+});
+
+export const getRecentContent = query({
+  args: {
+    currentLessonId: v.optional(v.id("lessons")),
+    currentTopicId: v.optional(v.id("topics")),
+    limit: v.optional(v.number()),
+  },
+  returns: v.object({
+    lessons: v.array(
+      v.object({
+        _id: v.id("lessons"),
+        _creationTime: v.number(),
+        title: v.string(),
+        description: v.optional(v.string()),
+        wp_id: v.optional(v.float64()),
+        content: v.optional(v.string()),
+        excerpt: v.optional(v.string()),
+        categories: v.optional(v.array(v.string())),
+        tagIds: v.optional(v.array(v.id("tags"))),
+        featuredImage: v.optional(v.string()),
+        featuredMedia: v.optional(
+          v.union(
+            v.object({
+              type: v.literal("convex"),
+              mediaItemId: v.id("mediaItems"),
+            }),
+            v.object({
+              type: v.literal("vimeo"),
+              vimeoId: v.string(),
+              vimeoUrl: v.string(),
+            }),
+            v.string(),
+          ),
+        ),
+        isPublished: v.optional(v.boolean()),
+        menuOrder: v.optional(v.number()),
+        courseId: v.optional(v.id("courses")),
+      }),
+    ),
+    topics: v.array(
+      v.object({
+        _id: v.id("topics"),
+        _creationTime: v.number(),
+        lessonId: v.optional(v.id("lessons")),
+        title: v.string(),
+        description: v.optional(v.string()),
+        excerpt: v.optional(v.string()),
+        categories: v.optional(v.array(v.string())),
+        tagIds: v.optional(v.array(v.id("tags"))),
+        wp_id: v.optional(v.float64()),
+        featuredImage: v.optional(v.string()),
+        featuredMedia: v.optional(
+          v.union(
+            v.object({
+              type: v.literal("convex"),
+              mediaItemId: v.id("mediaItems"),
+            }),
+            v.object({
+              type: v.literal("vimeo"),
+              vimeoId: v.string(),
+              vimeoUrl: v.string(),
+            }),
+            v.string(),
+          ),
+        ),
+        contentType: v.optional(
+          v.union(v.literal("text"), v.literal("video"), v.literal("quiz")),
+        ),
+        content: v.optional(v.string()),
+        order: v.optional(v.number()),
+        menuOrder: v.optional(v.number()),
+        isPublished: v.optional(v.boolean()),
+      }),
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 6; // Default to 6 items
+
+    // Get recent lessons, excluding the current one
+    const recentLessons = await ctx.db
+      .query("lessons")
+      .filter(
+        (q) =>
+          args.currentLessonId
+            ? q.neq(q.field("_id"), args.currentLessonId)
+            : q.eq(q.field("_id"), q.field("_id")), // Always true condition
+      )
+      .order("desc")
+      .take(limit);
+
+    // Get recent topics, excluding the current one
+    const recentTopics = await ctx.db
+      .query("topics")
+      .filter(
+        (q) =>
+          args.currentTopicId
+            ? q.neq(q.field("_id"), args.currentTopicId)
+            : q.eq(q.field("_id"), q.field("_id")), // Always true condition
+      )
+      .order("desc")
+      .take(limit);
+
+    return {
+      lessons: recentLessons.map((lesson) => ({
+        _id: lesson._id,
+        _creationTime: lesson._creationTime,
+        title: lesson.title,
+        description: lesson.description,
+        wp_id: lesson.wp_id,
+        content: lesson.content,
+        excerpt: lesson.excerpt,
+        categories: lesson.categories,
+        tagIds: lesson.tagIds,
+        featuredImage: lesson.featuredImage,
+        featuredMedia: lesson.featuredMedia,
+        isPublished: lesson.isPublished,
+        menuOrder: lesson.menuOrder,
+        courseId: lesson.courseId,
+      })),
+      topics: recentTopics.map((topic) => ({
+        _id: topic._id,
+        _creationTime: topic._creationTime,
+        lessonId: topic.lessonId,
+        title: topic.title,
+        description: topic.description,
+        excerpt: topic.excerpt,
+        categories: topic.categories,
+        tagIds: topic.tagIds,
+        wp_id: topic.wp_id,
+        featuredImage: topic.featuredImage,
+        featuredMedia: topic.featuredMedia,
+        contentType: topic.contentType,
+        content: topic.content,
+        order: topic.order,
+        menuOrder: topic.menuOrder,
+        isPublished: topic.isPublished,
+      })),
     };
   },
 });

@@ -1,7 +1,9 @@
 import { defineSchema } from "convex/server";
 
+import { balancesSchema } from "./balancesSchema";
 import { cartSchema } from "./cartSchema";
 import { categoriesSchema } from "./categoriesSchema";
+import { chargebacksSchema } from "./chargebacksSchema";
 import { checkoutsSchema } from "./checkoutsSchema";
 import { couponsSchema } from "./couponsSchema";
 import { ordersSchema } from "./ordersSchema";
@@ -29,21 +31,25 @@ export default defineSchema({
   ...taxRatesSchema,
   ...couponsSchema,
   ...checkoutsSchema,
+  ...chargebacksSchema,
+  ...balancesSchema,
 });
 
 // Keep the original export for backward compatibility
-export const ecommerceSchema = {
-  ...cartSchema,
-  ...productsSchema,
-  ...categoriesSchema,
-  ...ordersSchema,
-  ...transactionsSchema,
-  ...subscriptionsSchema,
-  ...wishlistSchema,
-  ...productReviewsSchema,
-  ...paymentMethodsSchema,
-  ...shippingMethodsSchema,
-  ...taxRatesSchema,
-  ...couponsSchema,
-  ...checkoutsSchema,
-};
+// export const ecommerceSchema = {
+//   ...cartSchema,
+//   ...productsSchema,
+//   ...categoriesSchema,
+//   ...ordersSchema,
+//   ...transactionsSchema,
+//   ...subscriptionsSchema,
+//   ...wishlistSchema,
+//   ...productReviewsSchema,
+//   ...paymentMethodsSchema,
+//   ...shippingMethodsSchema,
+//   ...taxRatesSchema,
+//   ...couponsSchema,
+//   ...checkoutsSchema,
+//   ...chargebacksSchema,
+//   ...balancesSchema,
+// };

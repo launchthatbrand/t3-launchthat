@@ -1,5 +1,16 @@
 "use client";
 
+import type { Doc, Id } from "@convex-config/_generated/dataModel";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import { useAuth } from "@clerk/nextjs";
+import { api } from "@convex-config/_generated/api";
+import { useQuery } from "convex/react";
+import { Plus, Trash2 } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
   Dialog,
@@ -7,8 +18,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@acme/ui/dialog";
-import type { Doc, Id } from "@convex-config/_generated/dataModel";
-import { Plus, Trash2 } from "lucide-react";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -16,21 +27,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { useEffect, useState } from "react";
+import { Textarea } from "@acme/ui/textarea";
+import { toast } from "@acme/ui/toast";
 
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import type { ColumnDef } from "@tanstack/react-table";
 import type { EntityAction } from "~/components/shared/EntityList/types";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
-import Image from "next/image";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import { Textarea } from "@acme/ui/textarea";
-import { api } from "@convex-config/_generated/api";
-import { toast } from "@acme/ui/toast";
-import { useAuth } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
 
 // Order line item interface
 export interface OrderLineItem {
@@ -1037,9 +1038,41 @@ export function OrderForm({
                   <span>Items Subtotal:</span>
                   <span>${subtotal.toFixed(2)}</span>
                 </div>
+
+                {/* Show shipping if available */}
+                {existingOrder?.shipping !== undefined &&
+                  existingOrder?.shipping !== null && (
+                    <div className="flex justify-between">
+                      <span>Shipping:</span>
+                      <span>
+                        {existingOrder.shipping === 0
+                          ? "FREE"
+                          : `$${existingOrder.shipping.toFixed(2)}`}
+                      </span>
+                    </div>
+                  )}
+
+                {/* Show tax if available */}
+                {existingOrder?.tax !== undefined &&
+                  existingOrder?.tax !== null && (
+                    <div className="flex justify-between">
+                      <span>Tax:</span>
+                      <span>${existingOrder.tax.toFixed(2)}</span>
+                    </div>
+                  )}
+
+                {/* Show discount if available */}
+                {existingOrder?.discount && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount:</span>
+                    <span>-${existingOrder.discount.toFixed(2)}</span>
+                  </div>
+                )}
+
+                <hr className="my-2" />
                 <div className="flex justify-between font-medium">
                   <span>Order Total:</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>${(existingOrder?.total || total).toFixed(2)}</span>
                 </div>
               </div>
             </div>

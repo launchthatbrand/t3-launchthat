@@ -118,8 +118,8 @@ export function EntityListView<T extends object>({
             <Table>
               <TableHeader>
                 <TableRow>
-                  {columns.map((column) => (
-                    <TableHead key={column.id}>
+                  {columns.map((column, index) => (
+                    <TableHead key={column.id ?? index}>
                       <Skeleton className="h-4 w-full" />
                     </TableHead>
                   ))}
@@ -133,8 +133,8 @@ export function EntityListView<T extends object>({
               <TableBody>
                 {Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={i}>
-                    {columns.map((column) => (
-                      <TableCell key={column.id}>
+                    {columns.map((column, index) => (
+                      <TableCell key={column.id ?? index}>
                         <Skeleton className="h-6 w-full" />
                       </TableCell>
                     ))}
