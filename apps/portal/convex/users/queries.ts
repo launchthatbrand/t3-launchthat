@@ -120,6 +120,56 @@ export const getMe = query({
 });
 
 /**
+ * Get a user by email address
+ */
+export const getUserByEmail = query({
+  args: {
+    email: v.string(),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("users"),
+      _creationTime: v.number(),
+      name: v.optional(v.string()),
+      email: v.string(),
+      role: v.optional(v.string()),
+      tokenIdentifier: v.optional(v.string()),
+      username: v.optional(v.string()),
+      image: v.optional(v.string()),
+      addresses: v.optional(
+        v.array(
+          v.object({
+            addressLine1: v.string(),
+            addressLine2: v.optional(v.string()),
+            city: v.string(),
+            country: v.string(),
+            fullName: v.string(),
+            phoneNumber: v.optional(v.string()),
+            postalCode: v.string(),
+            stateOrProvince: v.string(),
+          }),
+        ),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    try {
+      // Find user by email
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", args.email))
+        .first();
+
+      return user;
+    } catch (error) {
+      console.error("Error in getUserByEmail:", error);
+      return null;
+    }
+  },
+});
+
+/**
  * Get a user by ID
  */
 export const getUserById = query({

@@ -63,3 +63,6 @@ export type { CourseBuilderProps } from "./CourseBuilderV3";
 
 // Advanced components
 export * from "./advanced";
+export * from "./copy-text";
+export * from "./pdf-export";
+export * from "./entity-list-with-pdf-export";

@@ -1,17 +1,7 @@
 "use client";
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@acme/ui/alert-dialog";
-import {
+  Activity,
   AlertTriangle,
   ArrowLeft,
   Calendar,
@@ -22,6 +12,17 @@ import {
   Trash2,
   User,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@acme/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
   Dialog,
@@ -33,11 +34,13 @@ import {
 import React, { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 
+import { AuditLogViewer } from "~/components/admin/AuditLogViewer";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { ChargebackEvidenceManager } from "~/components/admin/ChargebackEvidenceManager";
 import { ChargebackForm } from "~/components/admin/ChargebackForm";
 import { Id } from "@convex-config/_generated/dataModel";
+import Link from "next/link";
 import { Separator } from "@acme/ui/separator";
 import { api } from "@convex-config/_generated/api";
 import { format } from "date-fns";
@@ -67,6 +70,12 @@ export default function ChargebackDetailPage({ params }: Props) {
   const order = useQuery(
     api.ecommerce.getOrder,
     chargeback ? { orderId: chargeback.orderId } : "skip",
+  );
+
+  // Get the user associated with this chargeback's email
+  const customerUser = useQuery(
+    api.users.getUserByEmail,
+    chargeback ? { email: chargeback.customerInfo.email } : "skip",
   );
 
   // Delete mutation
@@ -289,15 +298,32 @@ export default function ChargebackDetailPage({ params }: Props) {
                   <label className="text-sm font-medium text-muted-foreground">
                     Name
                   </label>
-                  <div className="font-medium">
-                    {chargeback.customerInfo.name}
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">
+                      {chargeback.customerInfo.name}
+                    </span>
+                    {customerUser && (
+                      <Link
+                        href={`/admin/users/${customerUser._id}`}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Link>
+                    )}
                   </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
                     Email
                   </label>
-                  <div>{chargeback.customerInfo.email}</div>
+                  <div className="flex items-center gap-2">
+                    <span>{chargeback.customerInfo.email}</span>
+                    {customerUser && (
+                      <Badge variant="secondary" className="text-xs">
+                        Registered User
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
               {chargeback.customerInfo.customerId && (
@@ -307,6 +333,33 @@ export default function ChargebackDetailPage({ params }: Props) {
                   </label>
                   <div className="font-mono text-sm">
                     {chargeback.customerInfo.customerId}
+                  </div>
+                </div>
+              )}
+
+              {/* User Activity Section */}
+              {customerUser && (
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">
+                        User Activity
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        View audit logs and activity history for this customer
+                      </p>
+                    </div>
+                    <AuditLogViewer
+                      userId={customerUser._id}
+                      userName={customerUser.name}
+                      userEmail={customerUser.email}
+                      trigger={
+                        <Button variant="outline" size="sm">
+                          <Activity className="mr-2 h-4 w-4" />
+                          View Activity Log
+                        </Button>
+                      }
+                    />
                   </div>
                 </div>
               )}
@@ -606,6 +659,7 @@ export default function ChargebackDetailPage({ params }: Props) {
       {/* Chargeback Evidence Manager */}
       <div className="mt-8">
         <ChargebackEvidenceManager
+          customerUser={customerUser}
           chargebackId={chargeback._id}
           processorName={chargeback.processorName}
         />

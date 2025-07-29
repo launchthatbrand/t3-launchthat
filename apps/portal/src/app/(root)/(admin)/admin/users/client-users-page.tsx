@@ -1,33 +1,44 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-import { useQuery } from "convex/react";
-import { formatDistanceToNow } from "date-fns";
-import { Check, UserCog, X } from "lucide-react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-
+import { Check, UserCog, X } from "lucide-react";
 // Import EntityList components
 import type {
-  ColumnDefinition,
   EntityAction,
   FilterConfig,
 } from "~/components/shared/EntityList/types";
+import React, { useState } from "react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { ColumnDef } from "@tanstack/react-table";
+import { CopyText } from "@acme/ui/copy-text";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { Id } from "@/convex/_generated/dataModel";
+import { api } from "@/convex/_generated/api";
+import { formatDistanceToNow } from "date-fns";
+import { useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
 
 interface User {
   _id: Id<"users">;
   _creationTime: number;
   name?: string;
   email: string;
-  role: "admin" | "user";
+  role: "admin" | "user" | "customer";
+  username?: string;
   isActive?: boolean;
   tokenIdentifier?: string;
+  addresses?: Array<{
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    country: string;
+    fullName: string;
+    phoneNumber?: string;
+    postalCode: string;
+    stateOrProvince: string;
+  }>;
 }
 
 export default function ClientUsersPage() {
@@ -43,6 +54,7 @@ export default function ClientUsersPage() {
     api.users.listAllUsers,
     isMeAdmin ? {} : "skip",
   );
+
   const allUsers: User[] = allUsersResult ?? [];
 
   if (me && !isMeAdmin) {
@@ -58,28 +70,53 @@ export default function ClientUsersPage() {
   }
 
   // Define column configurations for EntityList
-  const columns: ColumnDefinition<User>[] = [
+  const columns: ColumnDef<User>[] = [
     {
       id: "user",
       header: "User",
       accessorKey: "name",
-      sortable: true,
-      cell: (user) => (
-        <div className="flex flex-col">
-          <span>{user.name ?? "Unnamed User"}</span>
-          {user.email && (
-            <span className="text-xs text-muted-foreground">{user.email}</span>
-          )}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const user = row.original;
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium">{user.name ?? "Unnamed User"}</span>
+            {user.username && (
+              <span className="text-xs text-blue-600">@{user.username}</span>
+            )}
+            {user.email && (
+              <span className="text-xs text-muted-foreground">
+                {user.email}
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      id: "email",
+      header: "Email",
+      accessorKey: "email",
+      cell: ({ row }) => {
+        const user = row.original;
+        return (
+          <div className="flex flex-col gap-1">
+            <CopyText value={user.email} className="max-w-fit">
+              <span className="font-mono text-sm">{user.email}</span>
+            </CopyText>
+            <CopyText value={user._id} className="max-w-fit">
+              <span className="text-xs text-muted-foreground">{user._id}</span>
+            </CopyText>
+          </div>
+        );
+      },
     },
     {
       id: "status",
       header: "Status",
       accessorKey: "isActive",
-      sortable: true,
-      cell: (user) =>
-        user.isActive !== false ? (
+      cell: ({ row }) => {
+        const user = row.original;
+        return user.isActive !== false ? (
           <Badge
             variant="outline"
             className="border-green-200 bg-green-50 text-green-700"
@@ -93,33 +130,65 @@ export default function ClientUsersPage() {
           >
             <X className="mr-1 h-3 w-3" /> Inactive
           </Badge>
-        ),
+        );
+      },
     },
     {
       id: "joined",
       header: "Joined",
       accessorKey: "_creationTime",
-      sortable: true,
-      cell: (user) => (
-        <span className="text-muted-foreground">
-          {user._creationTime
-            ? formatDistanceToNow(new Date(user._creationTime), {
-                addSuffix: true,
-              })
-            : "Unknown"}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const user = row.original;
+        return (
+          <span className="text-muted-foreground">
+            {user._creationTime
+              ? formatDistanceToNow(new Date(user._creationTime), {
+                  addSuffix: true,
+                })
+              : "Unknown"}
+          </span>
+        );
+      },
     },
     {
       id: "role",
       header: "Role",
       accessorKey: "role",
-      sortable: true,
-      cell: (user) => (
-        <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-          {user.role}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const user = row.original;
+        const roleConfig = {
+          admin: { variant: "default" as const, label: "Admin" },
+          user: { variant: "secondary" as const, label: "User" },
+          customer: { variant: "outline" as const, label: "Customer" },
+        };
+        const config = roleConfig[user.role] || roleConfig.user;
+        return <Badge variant={config.variant}>{config.label}</Badge>;
+      },
+    },
+    {
+      id: "address",
+      header: "Address",
+      accessorKey: "addresses",
+      cell: ({ row }) => {
+        const user = row.original;
+        if (!user.addresses || user.addresses.length === 0) {
+          return <span className="text-muted-foreground">No address</span>;
+        }
+        const address = user.addresses[0];
+        return (
+          <div className="flex flex-col">
+            <span className="text-sm">{address.fullName}</span>
+            <span className="text-xs text-muted-foreground">
+              {address.city}, {address.stateOrProvince} {address.postalCode}
+            </span>
+            {address.phoneNumber && (
+              <span className="text-xs text-muted-foreground">
+                {address.phoneNumber}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -130,6 +199,12 @@ export default function ClientUsersPage() {
       label: "Name",
       type: "text",
       field: "name",
+    },
+    {
+      id: "username",
+      label: "Username",
+      type: "text",
+      field: "username",
     },
     {
       id: "email",
@@ -145,6 +220,7 @@ export default function ClientUsersPage() {
       options: [
         { label: "Admin", value: "admin" },
         { label: "User", value: "user" },
+        { label: "Customer", value: "customer" },
       ],
     },
     {

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Activity,
   AlertCircle,
   AlertTriangle,
   CheckCircle,
@@ -47,6 +48,7 @@ import {
 } from "@acme/ui/select";
 import { useMutation, useQuery } from "convex/react";
 
+import { AuditLogViewer } from "./AuditLogViewer";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Checkbox } from "@acme/ui/checkbox";
@@ -63,11 +65,17 @@ type ChargebackEvidence = Doc<"chargebackEvidence">;
 interface ChargebackEvidenceManagerProps {
   chargebackId: Id<"chargebacks">;
   processorName?: string;
+  customerUser?: {
+    _id: Id<"users">;
+    name?: string;
+    email: string;
+  } | null;
 }
 
 export function ChargebackEvidenceManager({
   chargebackId,
   processorName = "Stripe",
+  customerUser,
 }: ChargebackEvidenceManagerProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedEvidence, setSelectedEvidence] = useState<string[]>([]);
@@ -286,8 +294,24 @@ export function ChargebackEvidenceManager({
                 }}
               >
                 <FileText className="mr-2 h-4 w-4" />
-                Generate Audit Log
+                Generate Audit Log Evidence
               </Button>
+
+              {/* View Audit Log Button */}
+              {customerUser && (
+                <AuditLogViewer
+                  userId={customerUser._id}
+                  userName={customerUser.name}
+                  userEmail={customerUser.email}
+                  trigger={
+                    <Button variant="outline" size="sm">
+                      <Activity className="mr-2 h-4 w-4" />
+                      View Customer Activity
+                    </Button>
+                  }
+                />
+              )}
+
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
                   <Button>

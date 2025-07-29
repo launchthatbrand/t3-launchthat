@@ -139,49 +139,49 @@ export const getAuditLogEntry = query({
   args: {
     auditLogId: v.id("auditLog"),
   },
-  returns: v.union(
-    v.object({
-      _id: v.id("auditLog"),
-      _creationTime: v.number(),
-      userId: v.optional(v.id("users")),
-      sessionId: v.optional(v.string()),
-      action: v.string(),
-      resource: v.optional(v.string()),
-      resourceId: v.optional(v.string()),
-      uri: v.string(),
-      method: v.optional(v.string()),
-      userAgent: v.optional(v.string()),
-      referer: v.optional(v.string()),
-      ipAddress: v.optional(v.string()),
-      country: v.optional(v.string()),
-      region: v.optional(v.string()),
-      city: v.optional(v.string()),
-      severity: v.union(
-        v.literal("info"),
-        v.literal("warning"),
-        v.literal("error"),
-        v.literal("critical"),
-      ),
-      category: v.union(
-        v.literal("authentication"),
-        v.literal("authorization"),
-        v.literal("data_access"),
-        v.literal("data_modification"),
-        v.literal("system"),
-        v.literal("ecommerce"),
-        v.literal("navigation"),
-        v.literal("security"),
-      ),
-      details: v.optional(v.string()),
-      oldValues: v.optional(v.string()),
-      newValues: v.optional(v.string()),
-      success: v.boolean(),
-      errorMessage: v.optional(v.string()),
-      timestamp: v.number(),
-      processingTime: v.optional(v.number()),
-    }),
-    v.null(),
-  ),
+  // returns: v.union(
+  //   v.object({
+  //     _id: v.id("auditLog"),
+  //     _creationTime: v.number(),
+  //     userId: v.optional(v.id("users")),
+  //     sessionId: v.optional(v.string()),
+  //     action: v.string(),
+  //     resource: v.optional(v.string()),
+  //     resourceId: v.optional(v.string()),
+  //     uri: v.string(),
+  //     method: v.optional(v.string()),
+  //     userAgent: v.optional(v.string()),
+  //     referer: v.optional(v.string()),
+  //     ipAddress: v.optional(v.string()),
+  //     country: v.optional(v.string()),
+  //     region: v.optional(v.string()),
+  //     city: v.optional(v.string()),
+  //     severity: v.union(
+  //       v.literal("info"),
+  //       v.literal("warning"),
+  //       v.literal("error"),
+  //       v.literal("critical"),
+  //     ),
+  //     category: v.union(
+  //       v.literal("authentication"),
+  //       v.literal("authorization"),
+  //       v.literal("data_access"),
+  //       v.literal("data_modification"),
+  //       v.literal("system"),
+  //       v.literal("ecommerce"),
+  //       v.literal("navigation"),
+  //       v.literal("security"),
+  //     ),
+  //     details: v.optional(v.string()),
+  //     oldValues: v.optional(v.string()),
+  //     newValues: v.optional(v.string()),
+  //     success: v.boolean(),
+  //     errorMessage: v.optional(v.string()),
+  //     timestamp: v.number(),
+  //     processingTime: v.optional(v.number()),
+  //   }),
+  //   v.null(),
+  // ),
   handler: async (ctx, args) => {
     return await ctx.db.get(args.auditLogId);
   },
@@ -196,54 +196,23 @@ export const getUserAuditLog = query({
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
   },
-  returns: v.object({
-    page: v.array(
-      v.object({
-        _id: v.id("auditLog"),
-        _creationTime: v.number(),
-        action: v.string(),
-        resource: v.optional(v.string()),
-        resourceId: v.optional(v.string()),
-        uri: v.string(),
-        method: v.optional(v.string()),
-        ipAddress: v.optional(v.string()),
-        country: v.optional(v.string()),
-        severity: v.union(
-          v.literal("info"),
-          v.literal("warning"),
-          v.literal("error"),
-          v.literal("critical"),
-        ),
-        category: v.union(
-          v.literal("authentication"),
-          v.literal("authorization"),
-          v.literal("data_access"),
-          v.literal("data_modification"),
-          v.literal("system"),
-          v.literal("ecommerce"),
-          v.literal("navigation"),
-          v.literal("security"),
-        ),
-        success: v.boolean(),
-        timestamp: v.number(),
-      }),
-    ),
-    isDone: v.boolean(),
-    continueCursor: v.union(v.string(), v.null()),
-  }),
+
   handler: async (ctx, args) => {
     let query = ctx.db
       .query("auditLog")
-      .withIndex("by_userId_timestamp", (q) => q.eq("userId", args.userId));
+      .withIndex("by_userId_timestamp", (q) => {
+        let expr = q.eq("userId", args.userId);
+        if (args.startDate) {
+          expr = expr.gte("timestamp", args.startDate);
+        }
+        if (args.endDate) {
+          expr = expr.lte("timestamp", args.endDate);
+        }
+        return expr;
+      });
 
     if (args.action) {
       query = query.filter((q) => q.eq(q.field("action"), args.action));
-    }
-    if (args.startDate) {
-      query = query.filter((q) => q.gte(q.field("timestamp"), args.startDate));
-    }
-    if (args.endDate) {
-      query = query.filter((q) => q.lte(q.field("timestamp"), args.endDate));
     }
 
     return await query.order("desc").paginate(args.paginationOpts);

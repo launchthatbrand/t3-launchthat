@@ -7,7 +7,13 @@ import * as schemaModule from "./schema";
  */
 
 // Re-export query functions
-export { getUserByClerkId, listUsers, getMe, getUserById } from "./queries";
+export {
+  getUserByClerkId,
+  getUserByEmail,
+  listUsers,
+  getMe,
+  getUserById,
+} from "./queries";
 
 // Re-export mutation functions
 export {
