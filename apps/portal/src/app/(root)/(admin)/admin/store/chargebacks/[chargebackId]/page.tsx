@@ -1,23 +1,5 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { api } from "@convex-config/_generated/api";
-import { Id } from "@convex-config/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
-import { format } from "date-fns";
-import {
-  AlertTriangle,
-  ArrowLeft,
-  Calendar,
-  CreditCard,
-  Edit,
-  ExternalLink,
-  FileText,
-  Trash2,
-  User,
-} from "lucide-react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,8 +11,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@acme/ui/alert-dialog";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Calendar,
+  CreditCard,
+  Edit,
+  ExternalLink,
+  FileText,
+  Trash2,
+  User,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
   Dialog,
@@ -39,38 +30,47 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import { Separator } from "@acme/ui/separator";
-import { toast } from "@acme/ui/toast";
+import React, { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
 
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { ChargebackEvidenceManager } from "~/components/admin/ChargebackEvidenceManager";
 import { ChargebackForm } from "~/components/admin/ChargebackForm";
+import { Id } from "@convex-config/_generated/dataModel";
+import { Separator } from "@acme/ui/separator";
+import { api } from "@convex-config/_generated/api";
+import { format } from "date-fns";
+import { toast } from "@acme/ui/toast";
+import { useRouter } from "next/navigation";
 
 interface Props {
-  params: {
+  params: Promise<{
     chargebackId: string;
-  };
+  }>;
 }
 
 export default function ChargebackDetailPage({ params }: Props) {
   const router = useRouter();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const chargebackId = params.chargebackId as Id<"chargebacks">;
+  // Unwrap the params Promise using React.use()
+  const resolvedParams = React.use(params);
+  const chargebackId = resolvedParams.chargebackId as Id<"chargebacks">;
 
   // Get chargeback details
-  const chargeback = useQuery(api.ecommerce.chargebacks.index.getChargeback, {
+  const chargeback = useQuery(api.ecommerce.getChargeback, {
     chargebackId,
   });
 
   // Get related order
   const order = useQuery(
-    api.ecommerce.orders.index.getOrder,
+    api.ecommerce.getOrder,
     chargeback ? { orderId: chargeback.orderId } : "skip",
   );
 
   // Delete mutation
-  const deleteChargeback = useMutation(
-    api.ecommerce.chargebacks.index.deleteChargeback,
-  );
+  const deleteChargeback = useMutation(api.ecommerce.deleteChargeback);
 
   if (chargeback === undefined) {
     return (
@@ -601,6 +601,14 @@ export default function ChargebackDetailPage({ params }: Props) {
             </Card>
           )}
         </div>
+      </div>
+
+      {/* Chargeback Evidence Manager */}
+      <div className="mt-8">
+        <ChargebackEvidenceManager
+          chargebackId={chargeback._id}
+          processorName={chargeback.processorName}
+        />
       </div>
     </div>
   );

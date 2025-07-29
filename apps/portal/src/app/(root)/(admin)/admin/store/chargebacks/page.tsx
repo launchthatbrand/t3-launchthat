@@ -33,10 +33,7 @@ export default function ChargebacksPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   // Get all chargebacks
-  const chargebacks = useQuery(
-    api.ecommerce.chargebacks.index.getChargebacks,
-    {},
-  );
+  const chargebacks = useQuery(api.ecommerce.getChargebacks, {});
 
   console.log("chargebacks", chargebacks);
 

@@ -1,75 +1,103 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
-// Define the chargebacks table
-const chargebacksTable = defineTable({
-  // Core chargeback details
-  chargebackId: v.string(), // Unique chargeback identifier from payment processor
-  orderId: v.id("orders"), // Link to the original order
-  transactionId: v.optional(v.string()), // Original transaction ID
-
-  // Chargeback information
-  amount: v.number(), // Chargeback amount in cents
-  currency: v.string(), // Currency code (e.g., "USD")
-  reasonCode: v.string(), // Chargeback reason code from card network
-  reasonDescription: v.string(), // Human-readable reason description
-
-  // Status and lifecycle
+export const chargebacksSchema = defineTable({
+  chargebackId: v.string(),
+  orderId: v.id("orders"),
+  transactionId: v.optional(v.string()),
+  amount: v.number(),
+  currency: v.string(),
+  reasonCode: v.string(),
+  reasonDescription: v.string(),
   status: v.union(
-    v.literal("received"), // Chargeback received
-    v.literal("under_review"), // Being reviewed
-    v.literal("accepted"), // Accepted the chargeback
-    v.literal("disputed"), // Disputed the chargeback
-    v.literal("won"), // Successfully disputed
-    v.literal("lost"), // Lost the dispute
-    v.literal("expired"), // Time to respond expired
+    v.literal("received"),
+    v.literal("under_review"),
+    v.literal("accepted"),
+    v.literal("disputed"),
+    v.literal("won"),
+    v.literal("lost"),
+    v.literal("expired"),
   ),
-
-  // Dispute information
-  disputeDeadline: v.optional(v.number()), // Deadline to respond to dispute
-  evidenceSubmitted: v.optional(v.boolean()), // Whether evidence was submitted
-  evidenceDetails: v.optional(v.string()), // Details about evidence submitted
-
-  // Case information
-  caseId: v.optional(v.string()), // Case ID from payment processor
-  processorName: v.string(), // Payment processor (e.g., "Stripe", "Authorize.Net")
-
-  // Financial impact
-  chargebackFee: v.optional(v.number()), // Fee charged by processor
-  refundAmount: v.optional(v.number()), // Amount refunded if applicable
-
-  // Customer information (snapshot)
+  disputeDeadline: v.optional(v.number()),
+  evidenceSubmitted: v.optional(v.boolean()),
+  evidenceDetails: v.optional(v.string()),
+  caseId: v.optional(v.string()),
+  processorName: v.string(),
+  chargebackFee: v.optional(v.number()),
+  refundAmount: v.optional(v.number()),
   customerInfo: v.object({
     email: v.string(),
     name: v.string(),
     customerId: v.optional(v.string()),
   }),
-
-  // Timestamps
-  chargebackDate: v.number(), // When chargeback was initiated
-  receivedDate: v.number(), // When we received notification
-  resolvedDate: v.optional(v.number()), // When chargeback was resolved
-
-  // Notes and communication
-  internalNotes: v.optional(v.string()), // Internal notes for team
-  customerCommunication: v.optional(v.string()), // Communication log with customer
-
-  // Risk assessment
-  riskScore: v.optional(v.number()), // Risk score (0-100)
-  previousChargebacks: v.optional(v.number()), // Number of previous chargebacks from this customer
-
-  // Metadata
-  metadata: v.optional(v.any()), // Additional processor-specific data
+  chargebackDate: v.number(),
+  receivedDate: v.number(),
+  resolvedDate: v.optional(v.number()),
+  internalNotes: v.optional(v.string()),
+  customerCommunication: v.optional(v.string()),
+  riskScore: v.optional(v.number()),
+  previousChargebacks: v.optional(v.number()),
+  metadata: v.optional(v.any()),
 })
-  .index("by_orderId", ["orderId"])
   .index("by_status", ["status"])
-  .index("by_chargebackId", ["chargebackId"])
+  .index("by_orderId", ["orderId"])
   .index("by_processorName", ["processorName"])
-  .index("by_customerEmail", ["customerInfo.email"])
-  .index("by_chargebackDate", ["chargebackDate"])
-  .index("by_receivedDate", ["receivedDate"]);
+  .index("by_chargebackDate", ["chargebackDate"]);
 
-// Export in the format expected by ecommerce/schema/index.ts
-export const chargebacksSchema = {
-  chargebacks: chargebacksTable,
+// New schema for chargeback evidence/documentation
+export const chargebackEvidenceSchema = defineTable({
+  chargebackId: v.id("chargebacks"),
+  documentType: v.union(
+    v.literal("receipt"),
+    v.literal("shipping_proof"),
+    v.literal("customer_communication"),
+    v.literal("refund_policy"),
+    v.literal("terms_of_service"),
+    v.literal("product_description"),
+    v.literal("customer_signature"),
+    v.literal("billing_statement"),
+    v.literal("transaction_history"),
+    v.literal("dispute_response"),
+    v.literal("other"),
+  ),
+  title: v.string(),
+  description: v.optional(v.string()),
+  fileStorageId: v.optional(v.id("_storage")), // For uploaded files
+  textContent: v.optional(v.string()), // For text-based evidence
+  url: v.optional(v.string()), // For external links
+  processorRelevance: v.optional(
+    v.object({
+      stripe: v.optional(v.boolean()),
+      authorizeNet: v.optional(v.boolean()),
+      paypal: v.optional(v.boolean()),
+      square: v.optional(v.boolean()),
+    }),
+  ),
+  submissionStatus: v.union(
+    v.literal("draft"),
+    v.literal("ready"),
+    v.literal("submitted"),
+    v.literal("accepted"),
+    v.literal("rejected"),
+  ),
+  submittedAt: v.optional(v.number()),
+  submittedBy: v.optional(v.string()), // User ID or email
+  importance: v.union(
+    v.literal("critical"),
+    v.literal("high"),
+    v.literal("medium"),
+    v.literal("low"),
+  ),
+  tags: v.optional(v.array(v.string())),
+  metadata: v.optional(v.any()),
+})
+  .index("by_chargebackId", ["chargebackId"])
+  .index("by_documentType", ["documentType"])
+  .index("by_submissionStatus", ["submissionStatus"])
+  .index("by_importance", ["importance"]);
+
+// Export both schemas in the format expected by ecommerce/schema/index.ts
+export const chargebacksSchemaExport = {
+  chargebacks: chargebacksSchema,
+  chargebackEvidence: chargebackEvidenceSchema,
 };

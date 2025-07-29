@@ -1,9 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { api } from "@convex-config/_generated/api";
-import { useMutation } from "convex/react";
 import {
+  Activity,
   AlertTriangle,
   Database,
   Package,
@@ -13,8 +11,6 @@ import {
   Shuffle,
   Users,
 } from "lucide-react";
-
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
   Dialog,
@@ -23,9 +19,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
+import React, { useState } from "react";
+
+import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
+import { api } from "@convex-config/_generated/api";
 import { toast } from "@acme/ui/toast";
+import { useMutation } from "convex/react";
 
 export default function MockDataPage() {
   const [orderQuantity, setOrderQuantity] = useState(10);
@@ -33,6 +34,7 @@ export default function MockDataPage() {
   const [isCreatingTransfer, setIsCreatingTransfer] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [isCreatingChargeback, setIsCreatingChargeback] = useState(false);
+  const [isCreatingAuditLogs, setIsCreatingAuditLogs] = useState(false);
   const [isMigrating, setIsMigrating] = useState(false);
 
   // Mock data creation mutations - using standard API notation
@@ -45,6 +47,9 @@ export default function MockDataPage() {
   const createMockUser = useMutation(api.users.mockData.createMockUser);
   const createMockChargeback = useMutation(
     api.ecommerce.chargebacks.mockData.createMockChargeback,
+  );
+  const createSampleAuditLogs = useMutation(
+    api.core.auditLog.createSampleAuditLogs,
   );
 
   // Migration mutation
@@ -155,6 +160,27 @@ export default function MockDataPage() {
       toast.error("Failed to migrate transfers");
     } finally {
       setIsMigrating(false);
+    }
+  };
+
+  const handleCreateSampleAuditLogs = async () => {
+    setIsCreatingAuditLogs(true);
+    try {
+      const result = await createSampleAuditLogs({});
+
+      if (result.success) {
+        toast.success(
+          result.message ||
+            `Successfully created ${result.count} sample audit log entries!`,
+        );
+      } else {
+        toast.error("Failed to create sample audit logs");
+      }
+    } catch (error) {
+      console.error("Error creating sample audit logs:", error);
+      toast.error("Failed to create sample audit logs");
+    } finally {
+      setIsCreatingAuditLogs(false);
     }
   };
 
@@ -470,6 +496,45 @@ export default function MockDataPage() {
             <p className="text-xs text-muted-foreground">
               Creates 1 order + 1 chargeback with realistic dispute data and
               proper database relationships.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Mock Audit Logs */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              Mock Audit Logs
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Generate 75 sample audit log entries with various actions, user
+              activities, and system events for testing audit functionality.
+            </p>
+
+            <Button
+              onClick={handleCreateSampleAuditLogs}
+              disabled={isCreatingAuditLogs}
+              className="w-full"
+            >
+              {isCreatingAuditLogs ? (
+                <>
+                  <Database className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Activity className="mr-2 h-4 w-4" />
+                  Create Sample Audit Logs
+                </>
+              )}
+            </Button>
+
+            <p className="text-xs text-muted-foreground">
+              Creates 75 audit log entries with realistic user actions, system
+              events, and security activities for comprehensive testing.
             </p>
           </CardContent>
         </Card>

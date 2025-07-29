@@ -46,14 +46,9 @@ export default function BalancesPage() {
   const [isAddAccountDialogOpen, setIsAddAccountDialogOpen] = useState(false);
 
   // Get real data from Convex
-  const storeBalance = useQuery(
-    api.ecommerce.balances.index.getStoreBalance,
-    {} ?? [],
-  );
-  const transfers =
-    useQuery(api.ecommerce.balances.index.getTransfers, {}) ?? [];
-  const bankAccounts =
-    useQuery(api.ecommerce.balances.index.getBankAccounts, {}) ?? [];
+  const storeBalance = useQuery(api.ecommerce.getStoreBalance, {});
+  const transfers = useQuery(api.ecommerce.getTransfers, {}) ?? [];
+  const bankAccounts = useQuery(api.ecommerce.getBankAccounts, {}) ?? [];
 
   // Format currency amount
   const formatAmount = (amount: number, currency = "USD") => {
@@ -424,7 +419,7 @@ export default function BalancesPage() {
         <CardContent>
           {bankAccounts.length > 0 ? (
             <div className="space-y-4">
-              {bankAccounts.map((account) => (
+              {bankAccounts.map((account: BankAccount) => (
                 <div
                   key={account._id}
                   className="flex items-center justify-between rounded-lg border p-4"
@@ -489,7 +484,7 @@ export default function BalancesPage() {
             </div>
           }
           initialSort={{
-            key: "initiatedAt",
+            id: "initiatedAt",
             direction: "desc",
           }}
         />

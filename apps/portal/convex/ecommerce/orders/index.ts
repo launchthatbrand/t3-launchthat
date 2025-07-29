@@ -13,9 +13,6 @@ export const getOrder = query({
     orderId: v.id("orders"),
   },
   handler: async (ctx, args) => {
-    // Check if user has permission to view orders
-    await requirePermission(ctx, "canViewOrders");
-
     // Get the authenticated user
     const user = await getAuthenticatedUser(ctx);
 
@@ -24,14 +21,27 @@ export const getOrder = query({
       return null;
     }
 
-    // If user is not an admin, ensure they own the order
-    if (!(await isAdmin(ctx))) {
+    // Check if user is admin first - admins can view any order
+    const userIsAdmin = await isAdmin(ctx);
+    if (userIsAdmin) {
+      return order;
+    }
+
+    // For non-admin users, check if they have the permission
+    try {
+      await requirePermission(ctx, "canViewOrders");
+      // If they have permission but are not admin, they can only view their own orders
       if (order.userId !== user._id) {
         throw new Error("Unauthorized access to order");
       }
+      return order;
+    } catch {
+      // If they don't have permission, check if it's their own order
+      if (order.userId === user._id) {
+        return order;
+      }
+      throw new Error("Unauthorized access to order");
     }
-
-    return order;
   },
 });
 

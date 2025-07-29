@@ -1,15 +1,7 @@
-interface DashboardShellProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-export function DashboardShell({
+export const DashboardShell = ({
   children,
-  className = "",
-}: DashboardShellProps) {
-  return (
-    <div className={`container mx-auto grid gap-8 py-8 ${className}`}>
-      {children}
-    </div>
-  );
-}
+}: {
+  children?: React.ReactNode;
+}) => {
+  return <div className="dashboard-shell">{children}</div>;
+};

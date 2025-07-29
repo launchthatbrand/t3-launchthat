@@ -1,11 +1,10 @@
-import { defineSchema } from "convex/server";
-
 import { balancesSchema } from "./balancesSchema";
 import { cartSchema } from "./cartSchema";
 import { categoriesSchema } from "./categoriesSchema";
-import { chargebacksSchema } from "./chargebacksSchema";
+import { chargebacksSchemaExport as chargebacksSchema } from "./chargebacksSchema";
 import { checkoutsSchema } from "./checkoutsSchema";
 import { couponsSchema } from "./couponsSchema";
+import { defineSchema } from "convex/server";
 import { ordersSchema } from "./ordersSchema";
 import { paymentMethodsSchema } from "./paymentMethodsSchema";
 import { productReviewsSchema } from "./productReviewsSchema";

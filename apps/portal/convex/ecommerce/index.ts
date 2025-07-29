@@ -8,7 +8,7 @@
 // Export all components from subdirectories
 // export * from "./cart";
 // export * from "./checkout";
-// export * from "./orders";
+export * from "./orders";
 // export * from "./products";
 // export * from "./variations";
 // export * from "./lib";
