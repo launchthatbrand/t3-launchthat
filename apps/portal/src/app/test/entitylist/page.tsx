@@ -266,33 +266,85 @@ export default function EntityListDemoPage() {
       }));
   };
 
-  // Handle PDF export with preview
-  const handleExportToPDF = () => {
-    if (!mockData?.length) {
-      toast.error("No data to export");
-      return;
-    }
+  // Custom attachment handler to demonstrate attachment workflow
+  const handleAttachToRecord = async (pdfBlob: Blob, filename: string) => {
+    // Simulate attachment to a record
+    console.log("Attaching PDF to record:", filename, pdfBlob.size, "bytes");
 
-    const pdfColumns = convertToPDFColumns(columns);
-    const filename = `audit_logs_${new Date().toISOString().split("T")[0]}.pdf`;
+    // Simulate API call delay
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    // Open preview dialog
-    openPreview({
-      title: "Audit Logs Export",
-      subtitle: "Complete audit trail with user activities and system events",
-      filename,
-      data: mockData,
-      columns: pdfColumns,
-      pageOrientation: "portrait", // Better for wide tables
-      includeMetadata: true,
-      customMetadata: {
-        "Export Date": new Date().toLocaleString(),
-        "Total Records": mockData.length.toString(),
-        "Exported By": "Admin User",
-        "Filter Applied": "All Records",
-      },
-    });
+    toast.success(`PDF "${filename}" attached to record successfully!`);
   };
+
+  // Demo of different export workflows
+  const exportWorkflows = [
+    {
+      title: "Standard Export (Save to Computer)",
+      description: "Opens preview with save button - typical EntityList usage",
+      action: () => {
+        const pdfColumns = convertToPDFColumns(columns);
+        openPreview({
+          title: "Demo Audit Logs",
+          subtitle: "Standard export workflow demonstration",
+          filename: `demo_standard_${new Date().toISOString().split("T")[0]}.pdf`,
+          data: mockData,
+          columns: pdfColumns,
+          // Default: shows save button, no custom actions
+        });
+      },
+    },
+    {
+      title: "Attachment Workflow (Custom Actions)",
+      description:
+        "Opens preview with custom attachment action - chargeback evidence usage",
+      action: () => {
+        const pdfColumns = convertToPDFColumns(columns);
+        openPreview({
+          title: "Demo Audit Logs",
+          subtitle: "Attachment workflow demonstration",
+          filename: `demo_attachment_${new Date().toISOString().split("T")[0]}.pdf`,
+          data: mockData,
+          columns: pdfColumns,
+          customActions: [
+            {
+              label: "Attach to Record",
+              variant: "primary",
+              icon: <Download className="h-4 w-4" />,
+              onClick: handleAttachToRecord,
+              disabled: false,
+            },
+          ],
+          showSaveButton: true, // Still allow saving alongside attachment
+        });
+      },
+    },
+    {
+      title: "Attachment Only (No Save)",
+      description:
+        "Preview with attachment action only - attachment-only scenarios",
+      action: () => {
+        const pdfColumns = convertToPDFColumns(columns);
+        openPreview({
+          title: "Demo Audit Logs",
+          subtitle: "Attachment-only workflow demonstration",
+          filename: `demo_attach_only_${new Date().toISOString().split("T")[0]}.pdf`,
+          data: mockData,
+          columns: pdfColumns,
+          customActions: [
+            {
+              label: "Attach as Evidence",
+              variant: "primary",
+              icon: <Download className="h-4 w-4" />,
+              onClick: handleAttachToRecord,
+              disabled: false,
+            },
+          ],
+          showSaveButton: false, // Hide save button - attachment only
+        });
+      },
+    },
+  ];
 
   // Define filter configurations
   const _filters: FilterConfig<MockAuditLog>[] = [
@@ -355,18 +407,19 @@ export default function EntityListDemoPage() {
   ];
 
   // Table actions with PDF export
-  const tableActions = [
+  const tableActions = exportWorkflows.map((workflow, index) => (
     <Button
-      key="export-pdf"
+      key={`export-${index}`}
       variant="outline"
-      onClick={handleExportToPDF}
-      disabled={isGenerating}
+      onClick={workflow.action}
+      disabled={isGenerating || !mockData?.length}
       className="flex items-center gap-2"
+      title={workflow.description}
     >
       <Download className="h-4 w-4" />
-      {isGenerating ? "Generating..." : "Export PDF"}
-    </Button>,
-  ];
+      {workflow.title}
+    </Button>
+  ));
 
   return (
     <div className="container mx-auto space-y-6 py-6">

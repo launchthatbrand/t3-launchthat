@@ -11,7 +11,7 @@ import {
   Info,
   XCircle,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Card, CardContent } from "@acme/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -19,20 +19,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import { Doc, Id } from "@convex-config/_generated/dataModel";
 import type {
   EntityAction,
   FilterConfig,
 } from "~/components/shared/EntityList/types";
 import React, { useState } from "react";
-import { convertToPDFColumns, usePDFExport } from "@acme/ui/pdf-export";
+import {
+  convertToPDFColumns,
+  usePDFExportWithPreview,
+} from "@acme/ui/pdf-export";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { CopyText } from "@acme/ui/copy-text";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
-import type { PDFColumn } from "@acme/ui/pdf-export";
+import { Id } from "@convex-config/_generated/dataModel";
 import { api } from "@convex-config/_generated/api";
 import { format } from "date-fns";
 import { toast } from "@acme/ui/toast";
@@ -45,6 +47,10 @@ interface AuditLogViewerProps {
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  // New: Callback for when PDF is generated
+  onPDFGenerated?: (pdfBlob: Blob, filename: string) => void;
+  // New: Custom button text for different contexts
+  exportButtonText?: string;
 }
 
 // Type for the audit log entries returned by getUserAuditLog
@@ -90,12 +96,14 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
   trigger,
   open,
   onOpenChange,
+  onPDFGenerated,
+  exportButtonText = "Export PDF",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   // Use controlled open state if provided, otherwise use internal state
-  const dialogOpen = open !== undefined ? open : isOpen;
-  const setDialogOpen = onOpenChange || setIsOpen;
+  const dialogOpen = open ?? isOpen;
+  const setDialogOpen = onOpenChange ?? setIsOpen;
 
   // Get paginated audit log data for this user
   const {
@@ -108,8 +116,8 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
     { initialNumItems: 25 },
   );
 
-  // PDF Export functionality
-  const { exportToPDF, isGenerating } = usePDFExport();
+  // PDF Export functionality with preview
+  const { openPreview, PreviewDialog, exportToPDF } = usePDFExportWithPreview();
 
   // Define columns for the audit log table
   const columns: ColumnDef<AuditLog>[] = [
@@ -219,7 +227,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
           navigation: { variant: "outline" as const, label: "Nav" },
           security: { variant: "destructive" as const, label: "Security" },
         };
-        const config = categoryConfig[category] || categoryConfig.system;
+        const config = categoryConfig[category] ?? categoryConfig.system;
         return <Badge variant={config.variant}>{config.label}</Badge>;
       },
     },
@@ -264,13 +272,13 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
       ],
     },
     {
-      id: "status",
+      id: "success",
       label: "Status",
       type: "select",
-      field: "status",
+      field: "success",
       options: [
-        { label: "Success", value: "success" },
-        { label: "Failure", value: "failure" },
+        { label: "Success", value: true },
+        { label: "Failure", value: false },
       ],
     },
     {
@@ -318,79 +326,59 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
     },
   ];
 
-  // PDF Export function
+  // PDF Export function with preview - ALWAYS show preview first
   const handleExportToPDF = async () => {
-    if (!auditLogData || auditLogData.length === 0) {
+    if (!auditLogData?.length) {
       toast.error("No audit log data to export");
       return;
     }
 
-    try {
-      // Create simplified PDF columns
-      const pdfColumns: PDFColumn[] = [
-        {
-          key: "timestamp",
-          header: "Timestamp",
-          getValue: (row: AuditLog) =>
-            format(new Date(row.timestamp), "MMM dd, yyyy h:mm:ss a"),
-        },
-        {
-          key: "action",
-          header: "Action",
-          getValue: (row: AuditLog) => row.action,
-        },
-        {
-          key: "category",
-          header: "Category",
-          getValue: (row: AuditLog) => row.category,
-        },
-        {
-          key: "uri",
-          header: "URI",
-          getValue: (row: AuditLog) => row.uri,
-        },
-        {
-          key: "method",
-          header: "Method",
-          getValue: (row: AuditLog) => row.method || "",
-        },
-        {
-          key: "ipAddress",
-          header: "IP Address",
-          getValue: (row: AuditLog) => row.ipAddress || "",
-        },
-        {
-          key: "success",
-          header: "Status",
-          getValue: (row: AuditLog) => (row.success ? "Success" : "Failed"),
-        },
-        {
-          key: "severity",
-          header: "Severity",
-          getValue: (row: AuditLog) => row.severity,
-        },
-      ];
+    const pdfColumns = convertToPDFColumns(columns);
+    const filename = `audit_log_${userName ?? userEmail ?? userId}_${new Date().toISOString().split("T")[0]}.pdf`;
 
-      await exportToPDF({
-        title: "User Audit Log",
-        subtitle: `Activity log for ${userName ?? userEmail ?? "user"}`,
-        filename: `audit_log_${userName ?? userEmail ?? userId}_${new Date().toISOString().split("T")[0]}.pdf`,
-        data: auditLogData,
-        columns: pdfColumns,
-        customMetadata: {
-          User: userName || userEmail || `ID: ${userId}`,
-          "Generated By": "Portal Admin",
-          "Total Records": auditLogData.length.toString(),
+    // Determine actions based on whether we have an attachment callback
+    const actions = [];
+
+    // If onPDFGenerated callback is provided, add attachment action
+    if (onPDFGenerated) {
+      actions.push({
+        label: "Attach as Evidence",
+        variant: "primary" as const,
+        icon: <Download className="h-4 w-4" />,
+        onClick: async (pdfBlob: Blob, filename: string) => {
+          try {
+            await onPDFGenerated(pdfBlob, filename);
+            toast.success("PDF attached successfully!");
+          } catch (error) {
+            console.error("PDF attachment error:", error);
+            toast.error("Failed to attach PDF. Please try again.");
+          }
         },
+        disabled: false,
       });
-
-      toast.success(
-        `PDF exported successfully! (${auditLogData.length} records)`,
-      );
-    } catch (error) {
-      console.error("PDF export error:", error);
-      toast.error("Failed to export PDF. Please try again.");
     }
+
+    // ALWAYS open preview dialog (with conditional actions and save button)
+    openPreview({
+      title: "User Audit Log",
+      subtitle: `Activity log for ${userName ?? userEmail ?? "user"}`,
+      filename,
+      data: auditLogData,
+      columns: pdfColumns,
+      pageOrientation: "portrait",
+      includeMetadata: true,
+      customMetadata: {
+        User: userName ?? userEmail ?? `ID: ${userId}`,
+        "Export Date": new Date().toLocaleString(),
+        "Total Records": auditLogData.length.toString(),
+        "Generated By": "Portal Admin",
+        "Filter Applied": "All Records",
+      },
+      // Custom actions for attachment scenarios
+      customActions: actions,
+      // Show save button unless we're in attachment-only mode
+      showSaveButton: !onPDFGenerated || actions.length === 0,
+    });
   };
 
   const DefaultTrigger = (
@@ -407,160 +395,165 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
         variant="outline"
         size="sm"
         onClick={handleExportToPDF}
-        disabled={isGenerating || !auditLogData || auditLogData.length === 0}
+        disabled={!auditLogData?.length}
       >
         <Download className="mr-2 h-4 w-4" />
-        {isGenerating ? "Generating..." : "Export PDF"}
+        {exportButtonText}
       </Button>
     </>
   );
 
   return (
-    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      <DialogTrigger asChild>{trigger || DefaultTrigger}</DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-7xl overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="flex items-center gap-2 text-2xl">
-                <Activity className="h-5 w-5" />
-                User Activity Audit Log
-                {userName && (
-                  <span className="text-base font-normal text-muted-foreground">
-                    - {userName}
-                  </span>
+    <>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogTrigger asChild>{trigger ?? DefaultTrigger}</DialogTrigger>
+        <DialogContent className="h-full max-h-[90vh] max-w-7xl overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="flex items-center gap-2 text-2xl">
+                  <Activity className="h-5 w-5" />
+                  User Activity Audit Log
+                  {userName && (
+                    <span className="text-base font-normal text-muted-foreground">
+                      - {userName}
+                    </span>
+                  )}
+                </DialogTitle>
+                {userEmail && (
+                  <p className="text-sm text-muted-foreground">{userEmail}</p>
                 )}
-              </DialogTitle>
-              {userEmail && (
-                <p className="text-sm text-muted-foreground">{userEmail}</p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Summary Statistics */}
+            {auditLogData?.length && (
+              <div className="sticky top-0 z-20 grid grid-cols-1 gap-4 bg-white md:grid-cols-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <Database className="h-4 w-4 text-blue-600" />
+                      <div>
+                        <p className="text-sm font-medium">Total Entries</p>
+                        <p className="text-2xl font-bold">
+                          {auditLogData.length}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <div>
+                        <p className="text-sm font-medium">Success</p>
+                        <p className="text-2xl font-bold">
+                          {
+                            auditLogData.filter((log) => log.success === true)
+                              .length
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-4 w-4 text-red-600" />
+                      <div>
+                        <p className="text-sm font-medium">Failures</p>
+                        <p className="text-2xl font-bold">
+                          {
+                            auditLogData.filter((log) => log.success === false)
+                              .length
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                      <div>
+                        <p className="text-sm font-medium">Warnings</p>
+                        <p className="text-2xl font-bold">
+                          {
+                            auditLogData.filter(
+                              (log) =>
+                                log.severity === "warning" ||
+                                log.severity === "error",
+                            ).length
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Audit Log Table */}
+            <div className="overflow-hidden">
+              <EntityList<AuditLog>
+                data={auditLogData ?? []}
+                columns={columns}
+                filters={filters}
+                isLoading={
+                  auditLogData === undefined ||
+                  paginationStatus === "LoadingFirstPage"
+                }
+                defaultViewMode="list"
+                viewModes={["list"]}
+                actions={tableActions}
+                entityActions={actions}
+                enableSearch={true}
+                emptyState={
+                  <div className="flex h-32 flex-col items-center justify-center">
+                    <Activity className="mb-2 h-8 w-8 text-muted-foreground" />
+                    <h3 className="text-lg font-medium">No Audit Logs Found</h3>
+                    <p className="text-muted-foreground">
+                      No activity has been logged for this user yet
+                    </p>
+                  </div>
+                }
+                initialSort={{
+                  id: "timestamp",
+                  direction: "desc",
+                }}
+              />
+
+              {/* Load More Button */}
+              {paginationStatus === "CanLoadMore" && (
+                <div className="flex justify-center border-t p-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => loadMore(25)}
+                    disabled={paginationStatus === "LoadingMore"}
+                  >
+                    {paginationStatus === "LoadingMore" ? (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
+                        Loading...
+                      </>
+                    ) : (
+                      "Load More"
+                    )}
+                  </Button>
+                </div>
               )}
             </div>
           </div>
-        </DialogHeader>
+        </DialogContent>
+      </Dialog>
 
-        <div className="space-y-4">
-          {/* Summary Statistics */}
-          {auditLogData && auditLogData.length > 0 && (
-            <div className="sticky top-0 z-20 grid grid-cols-1 gap-4 bg-white md:grid-cols-4">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <Database className="h-4 w-4 text-blue-600" />
-                    <div>
-                      <p className="text-sm font-medium">Total Entries</p>
-                      <p className="text-2xl font-bold">
-                        {auditLogData.length}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <div>
-                      <p className="text-sm font-medium">Success</p>
-                      <p className="text-2xl font-bold">
-                        {
-                          auditLogData.filter((log) => log.status === "success")
-                            .length
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <XCircle className="h-4 w-4 text-red-600" />
-                    <div>
-                      <p className="text-sm font-medium">Failures</p>
-                      <p className="text-2xl font-bold">
-                        {
-                          auditLogData.filter((log) => log.status === "failure")
-                            .length
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                    <div>
-                      <p className="text-sm font-medium">Warnings</p>
-                      <p className="text-2xl font-bold">
-                        {
-                          auditLogData.filter(
-                            (log) =>
-                              log.severity === "warning" ||
-                              log.severity === "error",
-                          ).length
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Audit Log Table */}
-          <div className="overflow-hidden">
-            <EntityList<AuditLog>
-              data={auditLogData || []}
-              columns={columns}
-              filters={filters}
-              isLoading={
-                auditLogData === undefined ||
-                paginationStatus === "LoadingFirstPage"
-              }
-              defaultViewMode="list"
-              viewModes={[""]}
-              actions={tableActions}
-              entityActions={actions}
-              enableSearch={true}
-              emptyState={
-                <div className="flex h-32 flex-col items-center justify-center">
-                  <Activity className="mb-2 h-8 w-8 text-muted-foreground" />
-                  <h3 className="text-lg font-medium">No Audit Logs Found</h3>
-                  <p className="text-muted-foreground">
-                    No activity has been logged for this user yet
-                  </p>
-                </div>
-              }
-              initialSort={{
-                id: "timestamp",
-                direction: "desc",
-              }}
-            />
-
-            {/* Load More Button */}
-            {paginationStatus === "CanLoadMore" && (
-              <div className="flex justify-center border-t p-4">
-                <Button
-                  variant="outline"
-                  onClick={() => loadMore(25)}
-                  disabled={paginationStatus === "LoadingMore"}
-                >
-                  {paginationStatus === "LoadingMore" ? (
-                    <>
-                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
-                      Loading...
-                    </>
-                  ) : (
-                    "Load More"
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+      {/* PDF Preview Dialog */}
+      <PreviewDialog />
+    </>
   );
 };

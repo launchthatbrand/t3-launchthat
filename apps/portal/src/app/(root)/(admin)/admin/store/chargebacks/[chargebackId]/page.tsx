@@ -9,6 +9,7 @@ import {
   Edit,
   ExternalLink,
   FileText,
+  Paperclip,
   Trash2,
   User,
 } from "lucide-react";
@@ -40,11 +41,13 @@ import { Button } from "@acme/ui/button";
 import { ChargebackEvidenceManager } from "~/components/admin/ChargebackEvidenceManager";
 import { ChargebackForm } from "~/components/admin/ChargebackForm";
 import { Id } from "@convex-config/_generated/dataModel";
+import { Label } from "@acme/ui/label";
 import Link from "next/link";
 import { Separator } from "@acme/ui/separator";
 import { api } from "@convex-config/_generated/api";
 import { format } from "date-fns";
 import { toast } from "@acme/ui/toast";
+import { useChargebackEvidence } from "~/hooks/useChargebackEvidence";
 import { useRouter } from "next/navigation";
 
 interface Props {
@@ -60,6 +63,10 @@ export default function ChargebackDetailPage({ params }: Props) {
   // Unwrap the params Promise using React.use()
   const resolvedParams = React.use(params);
   const chargebackId = resolvedParams.chargebackId as Id<"chargebacks">;
+
+  // Add the evidence hook
+  const { attachPDFEvidence, isUploading } =
+    useChargebackEvidence(chargebackId);
 
   // Get chargeback details
   const chargeback = useQuery(api.ecommerce.getChargeback, {
@@ -154,6 +161,19 @@ export default function ChargebackDetailPage({ params }: Props) {
     } catch (error) {
       toast.error("Failed to delete chargeback");
       console.error(error);
+    }
+  };
+
+  // Custom action for PDF attachment
+  const handleAttachPDF = async (pdfBlob: Blob, filename: string) => {
+    try {
+      await attachPDFEvidence(
+        pdfBlob,
+        filename,
+        `Audit log evidence for chargeback ${chargebackId}`,
+      );
+    } catch (error) {
+      // Error is already handled in the hook
     }
   };
 
@@ -655,6 +675,71 @@ export default function ChargebackDetailPage({ params }: Props) {
           )}
         </div>
       </div>
+
+      {/* Evidence Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Evidence & Documentation
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Existing evidence list */}
+
+          {/* Audit Log Viewer with PDF Attachment */}
+          <div className="flex flex-col gap-2">
+            <div className="text-sm font-medium">User Activity Evidence</div>
+            <p className="text-xs text-muted-foreground">
+              Generate and attach user activity audit logs as evidence for this
+              chargeback
+            </p>
+
+            {chargeback?.userId &&
+            chargeback.userId !== "placeholder_user_id" ? (
+              <AuditLogViewer
+                userId={chargeback.userId}
+                userName={chargeback.userName}
+                userEmail={chargeback.userEmail}
+                exportButtonText="Generate Evidence"
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <FileText className="mr-2 h-4 w-4" />
+                    View & Attach Audit Log
+                  </Button>
+                }
+                // This enables the preview with custom attachment action
+                onPDFGenerated={undefined} // We want preview mode, not direct attachment
+                customActions={[
+                  {
+                    label: "Attach to Chargeback",
+                    variant: "default",
+                    icon: <Paperclip className="h-4 w-4" />,
+                    onClick: handleAttachPDF,
+                    disabled: isUploading,
+                  },
+                ]}
+              />
+            ) : (
+              <div className="flex h-20 items-center justify-center rounded-lg border border-dashed">
+                <div className="text-center">
+                  <FileText className="mb-2 h-6 w-6 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    {!chargeback
+                      ? "Loading chargeback data..."
+                      : "No valid user associated with this chargeback"}
+                  </p>
+                  {chargeback && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Cannot generate audit log without a valid user ID
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Chargeback Evidence Manager */}
       <div className="mt-8">

@@ -16,6 +16,7 @@ import {
   View,
   pdf,
 } from "@react-pdf/renderer";
+import { Download, FileText } from "lucide-react";
 import React, { useState } from "react";
 
 import { Button } from "./button";
@@ -98,10 +99,10 @@ const styles = StyleSheet.create({
     lineHeight: 1.2,
   },
   footer: {
-    position: "absolute",
-    bottom: 30,
-    left: 30,
-    right: 30,
+    // position: "absolute",
+    // bottom: 30,
+    // left: 30,
+    // right: 30,
     textAlign: "center",
     fontSize: 8,
     color: "#9ca3af",
@@ -127,13 +128,29 @@ export interface PDFExportConfig {
   title: string;
   subtitle?: string;
   filename: string;
-  data: any[];
+  data: Record<string, unknown>[];
   columns: PDFColumn[];
   pageOrientation?: "portrait" | "landscape";
   enablePageBreaks?: boolean;
   headerOnEveryPage?: boolean;
   includeMetadata?: boolean;
   customMetadata?: Record<string, string>;
+  // New: Custom actions for the preview dialog
+  customActions?: {
+    label: string;
+    variant?:
+      | "primary"
+      | "destructive"
+      | "outline"
+      | "secondary"
+      | "ghost"
+      | "link";
+    icon?: React.ReactNode;
+    onClick: (pdfBlob: Blob, filename: string) => Promise<void> | void;
+    disabled?: boolean;
+  }[];
+  // New: Control whether to show the default "Save to Computer" button
+  showSaveButton?: boolean;
 }
 
 // Helper function to extract cell value
@@ -301,57 +318,130 @@ export function PDFDocument({
 }
 
 // PDF Preview Dialog Component
-interface PDFPreviewDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  config: PDFExportConfig;
-  onSave?: () => void;
-}
-
-export function PDFPreviewDialog({
+function PDFPreviewDialog({
   isOpen,
   onClose,
   config,
-  onSave,
-}: PDFPreviewDialogProps) {
-  const [isSaving, setIsSaving] = useState(false);
+  pdfBlob,
+  isGenerating,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  config: PDFExportConfig | null;
+  pdfBlob: Blob | null;
+  isGenerating: boolean;
+}) {
+  const [isActionLoading, setIsActionLoading] = useState<string | null>(null);
 
-  const handleSave = async () => {
-    if (!onSave) return;
+  const handleSave = () => {
+    if (!pdfBlob || !config) return;
 
-    setIsSaving(true);
+    setIsActionLoading("save");
     try {
-      await onSave();
-      onClose();
-    } catch (error) {
-      console.error("Error saving PDF:", error);
+      // Create download link
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = config.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } finally {
-      setIsSaving(false);
+      setIsActionLoading(null);
     }
   };
 
+  const handleCustomAction = async (
+    action: NonNullable<PDFExportConfig["customActions"]>[0],
+  ) => {
+    if (!pdfBlob || !config || action.disabled) return;
+
+    setIsActionLoading(action.label);
+    try {
+      await action.onClick(pdfBlob, config.filename);
+    } catch (error) {
+      console.error("Custom action error:", error);
+    } finally {
+      setIsActionLoading(null);
+    }
+  };
+
+  if (!config) return null;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="flex h-[90vh] max-w-[90vw] flex-col p-0">
-        <DialogHeader className="p-6 pb-0">
-          <DialogTitle>PDF Preview - {config.title}</DialogTitle>
+      <DialogContent className="flex h-full max-h-[90vh] max-w-6xl flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            PDF Preview - {config.title}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden bg-red-500 p-6 pt-2">
-          <div className="h-full w-full rounded-lg border bg-gray-50">
-            <PDFViewer width="100%" height="100%" className="rounded-lg">
-              <PDFDocument {...config} />
-            </PDFViewer>
-          </div>
+        <div className="min-h-0 flex-1">
+          {isGenerating ? (
+            <div className="flex h-64 items-center justify-center">
+              <div className="text-center">
+                <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900" />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Generating PDF preview...
+                </p>
+              </div>
+            </div>
+          ) : pdfBlob ? (
+            <div className="h-full w-full overflow-hidden rounded-md border">
+              <PDFViewer width="100%" height="100%" className="border-0">
+                <PDFDocument {...config} />
+              </PDFViewer>
+            </div>
+          ) : (
+            <div className="flex h-64 items-center justify-center">
+              <p className="text-sm text-muted-foreground">
+                Failed to generate PDF preview
+              </p>
+            </div>
+          )}
         </div>
 
-        <DialogFooter className="p-6 pt-0">
-          <Button variant="outline" onClick={onClose} disabled={isSaving}>
+        <DialogFooter className="flex gap-2">
+          <Button variant="outline" onClick={onClose}>
             Close
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save PDF"}
-          </Button>
+
+          {/* Custom Actions */}
+          {config.customActions?.map((action, index) => (
+            <Button
+              key={index}
+              variant={action.variant ?? "outline"}
+              onClick={() => handleCustomAction(action)}
+              disabled={
+                action.disabled || isActionLoading === action.label || !pdfBlob
+              }
+            >
+              {isActionLoading === action.label ? (
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
+              ) : (
+                action.icon && <span className="mr-2">{action.icon}</span>
+              )}
+              {action.label}
+            </Button>
+          ))}
+
+          {/* Default Save Button - show by default unless explicitly disabled */}
+          {(config.showSaveButton ?? true) && (
+            <Button
+              onClick={handleSave}
+              disabled={isActionLoading === "save" || !pdfBlob}
+            >
+              {isActionLoading === "save" ? (
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Save to Computer
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -362,6 +452,25 @@ export function PDFPreviewDialog({
 export function usePDFExport() {
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // Generate PDF blob without downloading
+  const generatePDFBlob = React.useCallback(async (config: PDFExportConfig) => {
+    setIsGenerating(true);
+
+    try {
+      const doc = <PDFDocument {...config} />;
+      const asPdf = pdf(doc);
+      const blob = await asPdf.toBlob();
+
+      return { success: true, blob };
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      return { success: false, error: error as Error };
+    } finally {
+      setIsGenerating(false);
+    }
+  }, []);
+
+  // Export PDF with download
   const exportToPDF = React.useCallback(async (config: PDFExportConfig) => {
     setIsGenerating(true);
 
@@ -380,7 +489,7 @@ export function usePDFExport() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      return { success: true };
+      return { success: true, blob };
     } catch (error) {
       console.error("PDF generation error:", error);
       return { success: false, error: error as Error };
@@ -414,6 +523,7 @@ export function usePDFExport() {
   }, []);
 
   return {
+    generatePDFBlob, // New: generate without download
     exportToPDF,
     previewPDF,
     isGenerating,
@@ -426,27 +536,35 @@ export function usePDFExportWithPreview() {
   const [previewConfig, setPreviewConfig] = useState<PDFExportConfig | null>(
     null,
   );
-  const { exportToPDF, isGenerating } = usePDFExport();
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const { generatePDFBlob, exportToPDF, isGenerating } = usePDFExport();
 
-  const openPreview = React.useCallback((config: PDFExportConfig) => {
-    setPreviewConfig(config);
-    setIsPreviewOpen(true);
-  }, []);
+  const openPreview = React.useCallback(
+    (config: PDFExportConfig) => {
+      setPreviewConfig(config);
+      setIsPreviewOpen(true);
+      setPdfBlob(null); // Reset blob
+
+      // Generate PDF blob for preview (without download)
+      void (async () => {
+        try {
+          const result = await generatePDFBlob(config);
+          if (result.success && result.blob) {
+            setPdfBlob(result.blob);
+          }
+        } catch (error) {
+          console.error("Failed to generate PDF preview:", error);
+        }
+      })();
+    },
+    [generatePDFBlob],
+  );
 
   const closePreview = React.useCallback(() => {
     setIsPreviewOpen(false);
     setPreviewConfig(null);
+    setPdfBlob(null);
   }, []);
-
-  const handleSave = React.useCallback(async () => {
-    if (!previewConfig) return;
-
-    const result = await exportToPDF(previewConfig);
-    if (result.success) {
-      closePreview();
-    }
-    return result;
-  }, [previewConfig, exportToPDF, closePreview]);
 
   const PreviewDialog = React.useCallback(() => {
     if (!previewConfig) return null;
@@ -456,16 +574,18 @@ export function usePDFExportWithPreview() {
         isOpen={isPreviewOpen}
         onClose={closePreview}
         config={previewConfig}
-        onSave={handleSave}
+        pdfBlob={pdfBlob}
+        isGenerating={isGenerating}
       />
     );
-  }, [isPreviewOpen, closePreview, previewConfig, handleSave]);
+  }, [isPreviewOpen, closePreview, previewConfig, pdfBlob, isGenerating]);
 
   return {
     openPreview,
     closePreview,
     isGenerating,
     PreviewDialog,
+    exportToPDF, // Add this for direct PDF generation
   };
 }
 
