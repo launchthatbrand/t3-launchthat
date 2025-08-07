@@ -119,7 +119,7 @@ function CheckoutsContent() {
     {},
   );
 
-  const contentTypes = useConvexQuery(api.cms.contentTypes.list, {
+  const contentTypes = useConvexQuery(api.core.contentTypes.list, {
     includeBuiltIn: true,
   });
 

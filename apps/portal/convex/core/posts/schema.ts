@@ -14,6 +14,7 @@ export const postsTable = defineTable({
     v.literal("published"),
     v.literal("draft"),
     v.literal("archived"),
+    v.literal(""), // Backwards compatibility
   ), // Specific status values instead of any string
   slug: v.string(), // URL slug for the post
   tags: v.optional(v.array(v.string())), // Tags for categorization

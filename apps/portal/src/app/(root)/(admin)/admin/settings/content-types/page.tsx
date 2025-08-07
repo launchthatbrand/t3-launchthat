@@ -48,7 +48,7 @@ import { Textarea } from "@acme/ui/textarea";
 import {
   useContentTypes,
   useCreateContentType,
-  useInitCmsSystem,
+  useInitSystem,
   useUpdateEntryCounts,
 } from "./_api/contentTypes";
 
@@ -197,9 +197,10 @@ export default function ContentTypesSettingsPage() {
   const [isInitializing, setIsInitializing] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const contentTypesQuery = useContentTypes();
+  const { data: contentTypesQuery, isLoading: contentTypesLoading } =
+    useContentTypes();
   const createContentType = useCreateContentType();
-  const initCmsSystem = useInitCmsSystem();
+  const initCmsSystem = useInitSystem();
   const updateEntryCounts = useUpdateEntryCounts();
 
   const handleCreateContentType = async () => {
@@ -451,7 +452,7 @@ export default function ContentTypesSettingsPage() {
 
           <Card>
             <CardContent className="p-6">
-              {contentTypesQuery === undefined ? (
+              {contentTypesLoading ? (
                 <div className="flex h-40 w-full items-center justify-center">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>

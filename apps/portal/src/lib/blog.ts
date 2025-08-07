@@ -1,183 +1,104 @@
-import type { Id } from "@/convex/_generated/dataModel";
-import { api } from "@/convex/_generated/api";
-import { Doc } from "@/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 
-export type PostStatus = "draft" | "published" | "archived";
+import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
 
-export interface Post {
-  _id: Id<"posts">;
-  _creationTime: number;
-  title: string;
-  content: string;
-  excerpt?: string;
-  tags?: string[];
-  status: PostStatus;
-  category: string;
-  slug: string;
+// Posts Types - extend with more post metadata
+export interface PostFilter {
+  status?: "published" | "draft" | "archived";
+  category?: string;
   authorId?: Id<"users">;
-  createdAt: number;
-  updatedAt?: number;
-  featuredImageUrl?: string;
-  featured?: boolean;
-  readTime?: string;
-  author?: {
-    _id: Id<"users">;
-    name: string;
-    imageUrl?: string;
-  };
+  limit?: number;
 }
 
-export interface PostFilters {
-  status?: PostStatus;
-  authorId?: Id<"users">;
+export interface CreatePostArgs {
+  title: string;
+  content?: string;
+  excerpt?: string;
+  slug: string;
+  status: "published" | "draft" | "archived";
   category?: string;
   tags?: string[];
-  featured?: boolean;
+  featuredImage?: string;
 }
 
-export interface PostFormData {
-  title: string;
-  content: string;
+export interface UpdatePostArgs {
+  id: Id<"posts">;
+  title?: string;
+  content?: string;
   excerpt?: string;
-  tags?: string[];
-  status: PostStatus;
-  category: string;
   slug?: string;
-  featuredImageUrl?: string;
-  featured?: boolean;
-  readTime?: string;
+  status?: "published" | "draft" | "archived";
+  category?: string;
+  tags?: string[];
+  featuredImage?: string;
 }
 
-export interface PostsQueryResult {
-  posts: Post[];
-  hasMore: boolean;
-  cursor: string | null;
-}
-
-export interface CategoryResult {
-  name: string;
-  count: number;
+export interface SearchPostArgs {
+  searchTerm: string;
+  limit?: number;
 }
 
 /**
- * Hook to get all blog posts with optional filtering
+ * Custom hooks for posts
  */
-export function useAllPosts(filters?: PostFilters) {
-  const result = useQuery(api.cms.queries.getAllPosts, { filters });
 
+// Query hooks
+export function useGetAllPosts(filters?: PostFilter) {
+  const result = useQuery(api.core.posts.getAllPosts, { filters });
   return {
-    data: result,
+    posts: result ?? [],
     isLoading: result === undefined,
   };
 }
 
-/**
- * Hook to get a post by ID
- */
-export function usePost(postId: Id<"posts"> | null) {
-  const result = useQuery(
-    api.cms.queries.getPostById,
-    postId ? { id: postId } : "skip",
-  );
+export function useGetPostById(id: Id<"posts"> | undefined) {
+  return useQuery(api.core.posts.getPostById, id ? { id } : "skip");
+}
 
+export function useGetPostBySlug(slug: string | undefined) {
+  return useQuery(api.core.posts.getPostBySlug, slug ? { slug } : "skip");
+}
+
+export function useSearchPosts(args: SearchPostArgs) {
+  return useQuery(api.core.posts.searchPosts, args);
+}
+
+export function useGetPostTags() {
+  const result = useQuery(api.core.posts.getPostTags, {});
   return {
-    data: result,
+    tags: result ?? [],
     isLoading: result === undefined,
   };
 }
 
-/**
- * Hook to get a post by slug
- */
-export function usePostBySlug(slug: string | null) {
-  const result = useQuery(
-    api.cms.queries.getPostBySlug,
-    slug ? { slug } : "skip",
-  );
-
+export function useGetPostCategories() {
+  const result = useQuery(api.core.posts.getPostCategories, {});
   return {
-    data: result,
+    categories: result ?? [],
     isLoading: result === undefined,
   };
 }
 
-/**
- * Hook to search posts
- */
-export function useSearchPosts(
-  searchTerm: string,
-  filters?: { status?: PostStatus; category?: string },
-) {
-  const result = useQuery(
-    api.cms.queries.searchPosts,
-    searchTerm ? { searchTerm, filters } : "skip",
-  );
-
-  return {
-    data: result,
-    isLoading: result === undefined,
-  };
-}
-
-/**
- * Hook to get all post tags
- */
-export function usePostTags() {
-  const result = useQuery(api.cms.queries.getPostTags, {});
-
-  return {
-    data: result,
-    isLoading: result === undefined,
-  };
-}
-
-/**
- * Hook to get all post categories
- */
-export function usePostCategories() {
-  const result = useQuery(api.cms.queries.getPostCategories, {});
-
-  return {
-    data: result || [],
-    isLoading: result === undefined,
-    mutate: () => {},
-  };
-}
-
-/**
- * Hook for creating a new post
- */
+// Mutation hooks
 export function useCreatePost() {
-  return useMutation(api.cms.mutations.createPost);
+  return useMutation(api.core.posts.createPost);
 }
 
-/**
- * Hook for updating an existing post
- */
 export function useUpdatePost() {
-  return useMutation(api.cms.mutations.updatePost);
+  return useMutation(api.core.posts.updatePost);
 }
 
-/**
- * Hook for deleting a post
- */
 export function useDeletePost() {
-  return useMutation(api.cms.mutations.deletePost);
+  return useMutation(api.core.posts.deletePost);
 }
 
-/**
- * Hook for updating a post's status
- */
 export function useUpdatePostStatus() {
-  return useMutation(api.cms.mutations.updatePostStatus);
+  return useMutation(api.core.posts.updatePostStatus);
 }
 
-/**
- * Hook for bulk updating post statuses
- */
 export function useBulkUpdatePostStatus() {
-  return useMutation(api.cms.mutations.bulkUpdatePostStatus);
+  return useMutation(api.core.posts.bulkUpdatePostStatus);
 }
 
 /**

@@ -3,91 +3,96 @@
  *
  * This module provides client functions to interact with the content types API.
  */
+import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 
 /**
  * Hook to get all content types
  */
-export function useContentTypes(includeBuiltIn = true) {
-  // Note: We don't check if the API exists - let Convex handle any errors
-  return useQuery(api.cms.contentTypes.list, { includeBuiltIn });
+export function useContentTypes(includeBuiltIn = false) {
+  const result = useQuery(api.core.contentTypes.queries.list, {
+    includeBuiltIn,
+  });
+  return {
+    data: result ?? [],
+    isLoading: result === undefined,
+  };
 }
 
 /**
- * Hook to get a specific content type by ID
+ * Hook to get a content type by ID
  */
-export function useContentType(id: Id<"contentTypes"> | null) {
-  return useQuery(api.cms.contentTypes.get, id ? { id } : "skip");
+export function useContentType(id: Id<"contentTypes"> | undefined) {
+  return useQuery(api.core.contentTypes.get, id ? { id } : "skip");
 }
 
 /**
- * Hook to get a specific content type by slug
+ * Hook to get a content type by slug
  */
-export function useContentTypeBySlug(slug: string | null) {
-  return useQuery(api.cms.contentTypes.getBySlug, slug ? { slug } : "skip");
+export function useContentTypeBySlug(slug: string | undefined) {
+  return useQuery(api.core.contentTypes.getBySlug, slug ? { slug } : "skip");
 }
 
 /**
- * Hook to create a new content type
+ * Hook for creating a content type
  */
 export function useCreateContentType() {
-  return useMutation(api.cms.contentTypes.create);
+  return useMutation(api.core.contentTypes.create);
 }
 
 /**
- * Hook to update a content type
+ * Hook for updating a content type
  */
 export function useUpdateContentType() {
-  return useMutation(api.cms.contentTypes.update);
+  return useMutation(api.core.contentTypes.update);
 }
 
 /**
- * Hook to delete a content type
+ * Hook for deleting a content type
  */
 export function useDeleteContentType() {
-  return useMutation(api.cms.contentTypes.remove);
+  return useMutation(api.core.contentTypes.remove);
 }
 
 /**
- * Hook to add a field to a content type
+ * Hook for adding a field to a content type
  */
-export function useAddField() {
-  return useMutation(api.cms.contentTypes.addField);
+export function useAddContentTypeField() {
+  return useMutation(api.core.contentTypes.addField);
 }
 
 /**
- * Hook to update a field
+ * Hook for updating a content type field
  */
-export function useUpdateField() {
-  return useMutation(api.cms.contentTypes.updateField);
+export function useUpdateContentTypeField() {
+  return useMutation(api.core.contentTypes.updateField);
 }
 
 /**
- * Hook to remove a field
+ * Hook for removing a field from a content type
  */
-export function useRemoveField() {
-  return useMutation(api.cms.contentTypes.removeField);
+export function useRemoveContentTypeField() {
+  return useMutation(api.core.contentTypes.mutations.removeField);
 }
 
 /**
- * Hook to initialize the CMS system with built-in content types
+ * Hook for initializing the CMS system
  */
-export function useInitCmsSystem() {
-  return useMutation(api.cms.init.index.initSystem);
+export function useInitSystem() {
+  return useMutation(api.core.contentTypes.mutations.initSystem);
 }
 
 /**
- * Hook to reset the CMS system (for development only)
+ * Hook for resetting the CMS system
  */
-export function useResetCmsSystem() {
-  return useMutation(api.cms.init.index.resetSystem);
+export function useResetSystem() {
+  return useMutation(api.core.contentTypes.mutations.resetSystem);
 }
 
 /**
- * Hook to update all content type entry counts
+ * Hook for updating entry counts
  */
 export function useUpdateEntryCounts() {
-  return useMutation(api.cms.contentTypes.updateEntryCounts);
+  return useMutation(api.core.contentTypes.updateEntryCounts);
 }

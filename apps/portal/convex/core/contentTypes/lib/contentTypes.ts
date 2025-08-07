@@ -3,9 +3,9 @@
  *
  * This module provides helper functions for working with content types in the CMS.
  */
-import { Id } from "../../_generated/dataModel";
-import { MutationCtx, QueryCtx } from "../../_generated/server";
-import { FIELD_TYPES } from "../schema/contentTypesSchema";
+import { Doc, Id } from "../../_generated/dataModel";
+import { QueryCtx } from "../../_generated/server";
+import { FIELD_TYPES } from "../schema";
 
 /**
  * Field definition interface

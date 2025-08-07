@@ -7,7 +7,6 @@ import { v } from "convex/values";
 
 import calendarSchema from "./calendar/schema";
 import { categoriesTable } from "./categories/schema";
-import cmsSchema from "./cms/schema";
 import contactsSchema from "./contacts/schema";
 import { auditLogSchema } from "./core/auditLog";
 import { coreSchema } from "./core/schema"; // This should be the result of defineSchema()
@@ -64,13 +63,10 @@ export default defineSchema({
   // Calendar tables
   ...calendarSchema.tables,
 
-  // CMS tables
-  ...cmsSchema.tables,
-
   // Contacts tables
   ...contactsSchema.tables,
 
-  // Core tables
+  // Core tables (includes former CMS tables)
   ...coreSchema.tables,
 
   // Downloads tables
