@@ -1,5 +1,15 @@
 "use client";
 
+import React, { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { UserMarketingTagsManager } from "@/components/admin/UserMarketingTagsManager";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQuery } from "convex/react";
+import { ArrowLeft, Loader2, Save, Trash } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import * as z from "zod";
 
 import { Alert, AlertDescription, AlertTitle } from "@acme/ui/alert";
@@ -14,7 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@acme/ui/alert-dialog";
-import { ArrowLeft, Loader2, Save, Trash } from "lucide-react";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -32,7 +42,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@acme/ui/form";
-import React, { useEffect, useState } from "react";
+import { Input } from "@acme/ui/input";
 import {
   Select,
   SelectContent,
@@ -40,18 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { useMutation, useQuery } from "convex/react";
-import { useParams, useRouter } from "next/navigation";
-
-import { Button } from "@acme/ui/button";
-import { Id } from "@/convex/_generated/dataModel";
-import { Input } from "@acme/ui/input";
 import { Skeleton } from "@acme/ui/skeleton";
-import { UserMarketingTagsManager } from "@/components/admin/UserMarketingTagsManager";
-import { api } from "@/convex/_generated/api";
-import { toast } from "sonner";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 
 // Define the form schema
 const userFormSchema = z.object({
@@ -78,7 +77,7 @@ export default function UserEditPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Get user by ID
-  const user = useQuery(api.users.getUserById, {
+  const user = useQuery(api.users.queries.getUserById, {
     userId: userId as Id<"users">,
   });
 

@@ -8,6 +8,14 @@ import {
   getUserPlan,
   verifyOrganizationAccess,
 } from "./helpers";
+import {
+  organizationInvitationValidator,
+  organizationMemberValidator,
+  organizationValidator,
+  organizationWithRoleValidator,
+  planLimitResultValidator,
+  planValidator,
+} from "./types";
 
 /**
  * Get all organizations the current user has access to
@@ -44,7 +52,7 @@ export const getById = query({
   args: {
     organizationId: v.id("organizations"),
   },
-  returns: v.union(v.any(), v.null()),
+  returns: v.union(organizationValidator, v.null()),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -98,7 +106,7 @@ export const getBySlug = query({
   args: {
     slug: v.string(),
   },
-  returns: v.union(v.any(), v.null()),
+  returns: v.union(organizationValidator, v.null()),
   handler: async (ctx, args) => {
     // No authentication required for public organizations
     return await getOrganizationBySlug(ctx, args.slug);
@@ -110,7 +118,7 @@ export const getBySlug = query({
  */
 export const getUserPlanDetails = query({
   args: {},
-  returns: v.union(v.any(), v.null()),
+  returns: v.union(planValidator, v.null()),
   handler: async (ctx, _args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -138,7 +146,7 @@ export const getUserPlanDetails = query({
  */
 export const getPlans = query({
   args: {},
-  returns: v.array(v.any()),
+  returns: v.array(planValidator),
   handler: async (ctx, _args) => {
     // No authentication required - plans are public data
     const plans = await ctx.db
@@ -156,7 +164,7 @@ export const getPlans = query({
  */
 export const canCreateOrganization = query({
   args: {},
-  returns: v.any(), // Use v.any() since we have different return shapes
+  returns: planLimitResultValidator,
   handler: async (ctx, _args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -237,7 +245,7 @@ export const searchOrganizations = query({
     query: v.string(),
     limit: v.optional(v.number()),
   },
-  returns: v.array(v.any()),
+  returns: v.array(organizationValidator),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -285,7 +293,7 @@ export const getOrganizationMembers = query({
   args: {
     organizationId: v.id("organizations"),
   },
-  returns: v.array(v.any()),
+  returns: v.array(organizationMemberValidator),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -347,7 +355,7 @@ export const getPendingInvitations = query({
   args: {
     organizationId: v.id("organizations"),
   },
-  returns: v.array(v.any()),
+  returns: v.array(organizationInvitationValidator),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -389,7 +397,7 @@ export const getInvitationByToken = query({
   args: {
     token: v.string(),
   },
-  returns: v.union(v.null(), v.any()),
+  returns: v.union(v.null(), organizationInvitationValidator),
   handler: async (ctx, args) => {
     const invitation = await ctx.db
       .query("organizationInvitations")

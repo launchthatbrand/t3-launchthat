@@ -88,7 +88,7 @@ export default function OrganizationUsersPage() {
   const members = useQuery(api.organizations.queries.getOrganizationMembers, {
     organizationId,
   });
-  const currentUser = useQuery(api.users.getMe);
+  const currentUser = useQuery(api.users.queries.getMe);
 
   // Mutations
   const removeUser = useMutation(api.organizations.mutations.removeUser);

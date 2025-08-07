@@ -1,0 +1,508 @@
+   8     const group = await convex.query(api.groups.queries.getGroupById, {
+   7   const plans = useQuery(api.organizations.queries.getPlans, {});
+   7   const data = useQuery(api.lms.courses.queries.getCourseStructureWithItems, {
+   7     useQuery(api.integrations.apps.queries.list, { showDisabled
+   6   const ensureUser = useMutation(api.users.createOrGetUser);
+   5   const isAdminResult = useQuery(api.accessControl.checkIsAdmin);
+   5         endpoint = "https
+   4   ensureUser
+   4   const group = useQuery(api.groups.queries.getGroupById, {
+   4   const event = useQuery(api.calendar.queries.getEventById, {
+   4   const contact = useQuery(api.contacts.queries.getContact, {
+   4     api.lms.contentAccess.index.getContentAccessRules,
+   4     api.ecommerce.categories.index.getProductCategories,
+   4     api.calendar.queries.getCalendars,
+   3   const updateUser = useMutation(api.users.updateUser);
+   3   const updateTask = useMutation(api.tasks.index.updateTask);
+   3   const updateGroup = useMutation(api.groups.mutations.updateGroup);
+   3   const productsQuery = useQuery(api.ecommerce.products.index.listProducts, {});
+   3   const product = useQuery(api.ecommerce.products.index.getProduct, {
+   3   const generateUploadUrl = useMutation(api.downloads.generateUploadUrl);
+   3   const deleteEvent = useMutation(api.calendar.crud.deleteEvent);
+   3   const currentUser = useQuery(api.users.queries.getMe, {});
+   3   const createFileDownload = useMutation(api.downloads.createFileDownload);
+   3     useQuery(api.ecommerce.categories.index.getProductCategories, {
+   3     api.users.marketingTags.index.getUserMarketingTags,
+   3     api.tasks.boards.listBoards,
+   3     api.socialfeed.queries.getFeedItem,
+   3     api.groups.queries.getGroupMembers,
+   3         api.notifications.mutations.createNotification,
+   2   const updateProduct = useMutation(api.ecommerce.products.index.updateProduct);
+   2   const updatePlan = useMutation(api.organizations.mutations.updatePlan);
+   2   const updateOrganization = useMutation(api.organizations.mutations.update);
+   2   const updateLesson = useMutation(api.lms.lessons.index.update);
+   2   const updateEvent = useMutation(api.calendar.crud.updateEvent);
+   2   const updateCourse = useMutation(api.lms.courses.index.updateCourse);
+   2   const updateContact = useMutation(api.contacts.crud.updateContact);
+   2   const tasks = useQuery(api.tasks.index.listTasksByBoard, {
+   2   const shareContent = useMutation(api.socialfeed.mutations.shareContent);
+   2   const scenarios = useQuery(api.integrations.scenarios.queries.list, {}) ?? [];
+   2   const removeReaction = useMutation(api.socialfeed.mutations.removeReaction);
+   2   const products = useQuery(api.ecommerce.products.index.listProducts, {}) as
+   2   const popularTopics = useQuery(api.socialfeed.queries.getTopics, {
+   2   const organization = useQuery(api.organizations.queries.getById, {
+   2   const moderateContent = useMutation(api.groupPosts.moderateContent);
+   2   const me = useQuery(api.users.getMe);
+   2   const leaveGroup = useMutation(api.groups.mutations.leaveGroup);
+   2   const groups = useQuery(api.groups.queries.listGroups, {
+   2   const group = useQuery(api.groups.queries.getGroupById, { groupId });
+   2   const deletePlan = useMutation(api.organizations.mutations.deletePlan);
+   2   const deleteContact = useMutation(api.contacts.crud.deleteContact);
+   2   const dashboardDataResult = useQuery(api.puckEditor.queries.getData, {
+   2   const createUser = useMutation(api.users.createOrGetUser);
+   2   const createTopic = useMutation(api.lms.topics.index.create);
+   2   const createQuiz = useMutation(api.lms.quizzes.index.create);
+   2   const createPlan = useMutation(api.organizations.mutations.createPlan);
+   2   const createOrganization = useMutation(api.organizations.mutations.create);
+   2   const createLesson = useMutation(api.lms.lessons.index.create);
+   2   const createHelpdeskArticle = useMutation(api.helpdesk.createHelpdeskArticle);
+   2   const createEvent = useMutation(api.calendar.crud.createEvent);
+   2   const createContact = useMutation(api.contacts.crud.createContact);
+   2   const createCategory = useMutation(api.categories.mutations.createCategory);
+   2   const createCalendar = useMutation(api.calendar.crud.createCalendar);
+   2   const createApp = useMutation(api.integrations.apps.mutations.create);
+   2   const course = useQuery(api.lms.courses.index.getCourse, {
+   2   const categories = useQuery(api.categories.queries.listCategoriesByPostType, {
+   2   const cart = useQuery(api.cart.getCart, {
+   2   const attachTopicToLesson = useMutation(api.lms.topics.index.attachToLesson);
+   2   const attachQuizToLesson = useMutation(api.lms.quizzes.index.attach);
+   2   const assignRole = useMutation(api.permissions.assignRole);
+   2   const article = useQuery(api.helpdesk.getHelpdeskArticleBySlug, {
+   2   const addReaction = useMutation(api.socialfeed.mutations.addReaction);
+   2   const addComment = useMutation(api.socialfeed.mutations.addComment);
+   2   // const vimeoVideos = useQuery(api.vimeo.queries.listVideos, {});
+   2     useQuery(api.socialfeed.queries.getComments, {
+   2     useQuery(api.ecommerce?.categories?.index?.getProductCategories, {}) ?? [];
+   2     api.vimeo.actions.getCachedVimeoVideos,
+   2     api.users.queries.listUsers,
+   2     api.users.mutations.createSystemUserIfNeeded,
+   2     api.users.marketingTags.index.removeMarketingTagFromUser,
+   2     api.users.marketingTags.index.listMarketingTags,
+   2     api.users.marketingTags.index.assignMarketingTagToUser,
+   2     api.users.getUserByClerkId,
+   2     api.organizations.queries.getById,
+   2     api.organizations.mutations.deleteOrganization,
+   2     api.notifications.preferences.getNotificationPreferences,
+   2     api.notifications.mutations.markNotificationAsRead,
+   2     api.lms.progress.index.isItemCompleted,
+   2     api.lms.progress.index.getLessonProgress,
+   2     api.lms.progress.index.getCourseProgressMeta,
+   2     api.lms.progress.index.getCourseProgressByLessons,
+   2     api.lms.courses.queries.getCourseStructureWithItems,
+   2     api.integrations.scenarios.queries.getById,
+   2     api.integrations.scenarios.mutations.create,
+   2     api.integrations.connections.mutations.test,
+   2     api.integrations.connections.mutations.create,
+   2     api.ecommerce.orders.index.getOrder,
+   2     api.ecommerce.checkout.customCheckouts.updateCustomCheckoutSessionInfo,
+   2     api.ecommerce.checkout.customCheckouts.getAllCustomCheckouts,
+   2     api.ecommerce.checkout.customCheckouts.deleteCustomCheckout,
+   2     api.ecommerce.checkout.customCheckouts.createCustomCheckoutSession,
+   2     api.ecommerce.checkout.customCheckouts.completeCustomCheckoutSession,
+   2     api.ecommerce.balances.index.getTransferWithOrders,
+   2     api.calendar.queries.getCalendarForEvent,
+   2     api.calendar.queries.getCalendarById,
+   2       queryFn = api.socialfeed.queries.getUniversalFeed;
+   1 export const useUpdateTask = () => useMutation(api.tasks.index.updateTask);
+   1 export const useReorderTasks = () => useMutation(api.tasks.index.reorderTasks);
+   1 export const useDeleteTask = () => useMutation(api.tasks.index.deleteTask);
+   1 export const useCreateTask = () => useMutation(api.tasks.index.createTask);
+   1 export const useCreateMenu = () => useMutation(api.cms.menus.createMenu);
+   1 export const useAddMenuItem = () => useMutation(api.cms.menus.addMenuItem);
+   1 // This depends on the actual return type of api.downloadsLibrary.getDownloadCategories
+   1 // Note
+   1 // and a query api.tasks.boards.listBoards
+   1   useMutation(api.cms.menus.reorderMenuItems);
+   1   useMutation(api.cms.menus.removeMenuItem);
+   1   return useQuery(api.tasks.index.listTasks, {});
+   1   return useQuery(api.tasks.index.getTask, taskId ? { taskId } 
+   1   return useQuery(api.cms.menus.listMenus, {});
+   1   return useQuery(api.cms.menus.getMenuItems, menuId ? { menuId } 
+   1   return useQuery(api.cms.menus.getMenu, menuId ? { menuId } 
+   1   return useQuery(api.cms.contentTypes.list, { includeBuiltIn });
+   1   return useQuery(api.cms.contentTypes.getBySlug, slug ? { slug } 
+   1   return useQuery(api.cms.contentTypes.get, id ? { id } 
+   1   return useMutation(api.cms.mutations.updatePostStatus);
+   1   return useMutation(api.cms.mutations.updatePost);
+   1   return useMutation(api.cms.mutations.deletePost);
+   1   return useMutation(api.cms.mutations.createPost);
+   1   return useMutation(api.cms.mutations.bulkUpdatePostStatus);
+   1   return useMutation(api.cms.init.index.resetSystem);
+   1   return useMutation(api.cms.init.index.initSystem);
+   1   return useMutation(api.cms.contentTypes.updateField);
+   1   return useMutation(api.cms.contentTypes.updateEntryCounts);
+   1   return useMutation(api.cms.contentTypes.update);
+   1   return useMutation(api.cms.contentTypes.removeField);
+   1   return useMutation(api.cms.contentTypes.remove);
+   1   return useMutation(api.cms.contentTypes.create);
+   1   return useMutation(api.cms.contentTypes.addField);
+   1   const userRoles = useQuery(api.roles.getUserRoles, {
+   1   const userCalendars = useQuery(api.calendar.queries.getUserCalendars, {});
+   1   const user = useQuery(api.users.getUserById, {
+   1   const user = useQuery(api.users.getUserByClerkId, { userId });
+   1   const upsertMeta = useMutation(api.media.index.upsertMediaMeta);
+   1   const updateTopicTitle = useMutation(api.lms.topics.index.update);
+   1   const updateTopic = useMutation(api.lms.topics.index.updateTopic);
+   1   const updateQuizTitle = useMutation(api.lms.quizzes.index.updateTitle);
+   1   const updateQuiz = useMutation(api.lms.quizzes.index.update);
+   1   const updateProduct = useMutation(api.ecommerce.products.updateProduct);
+   1   const updatePost = useMutation(api.socialfeed.mutations.updatePost);
+   1   const updatePost = useMutation(api.groupPosts.updateGroupPost);
+   1   const updatePage = useMutation(api.groups.mutations.updateGroupPage);
+   1   const updateOrderMutation = useMutation(api.ecommerce.orders.mutation.update);
+   1   const updateNode = useMutation(api.integrations.nodes.mutations.update);
+   1   const updateMemberRole = useMutation(api.groups.updateGroupMemberRole);
+   1   const updateHelpdeskArticle = useMutation(api.helpdesk.updateHelpdeskArticle);
+   1   const updateCourse = useMutation(api.lms.courses.mutations.updateCourse);
+   1   const updateComment = useMutation(api.socialfeed.mutations.updateComment);
+   1   const updateCategory = useMutation(api.categories.mutations.updateCategory); // You need to implement this mutation in Convex
+   1   const updateCategory = useMutation(api.categories.mutations.updateCategory);
+   1   const updateBoard = useMutation<typeof api.tasks.boards.updateBoard>(
+   1   const updateBankAccount = useMutation(api.ecommerce.updateBankAccount);
+   1   const unsaveItem = useMutation(api.socialfeed.mutations.unsaveItem);
+   1   const unfollow = useMutation(api.socialfeed.mutations.unfollowTopic);
+   1   const unblockUser = useMutation(api.socialfeed.mutations.addComment);
+   1   const triggerSync = useMutation(api.vimeo.mutations.triggerSync);
+   1   const triggerEnsureUser = useMutation(api.users.ensureUser);
+   1   const trendingContent = useQuery(api.socialfeed.queries.getTrendingContent, {
+   1   const transfers = useQuery(api.ecommerce.getTransfers, {}) ?? [];
+   1   const topics = useQuery(api.lms.topics.index.listTopics, queryParams);
+   1   const topic = useQuery(api.socialfeed.queries.getTopic, {
+   1   const topic = useQuery(api.lms.topics.index.getTopic, {
+   1   const testNodeAction = useAction(api.integrations.nodes.test.testNode);
+   1   const tags = useQuery(api.tags.index.listTags, {});
+   1   const tags = useQuery(api.contacts.queries.getTags, {
+   1   const systemUser = useQuery(api.users.queries.getSystemUser);
+   1   const storeOptions = useQuery(api.core.options.getStoreOptions, {});
+   1   const storeBalance = useQuery(api.ecommerce.getStoreBalance, {});
+   1   const stats = useQuery(api.groups.queries.getGroupStats, {
+   1   const startTopicProgress = useMutation(api.lms.progress.index.startItem);
+   1   const setBatchMutation = useMutation(api.core.options.setBatch);
+   1   const seedPlans = useMutation(api.organizations.seed.seedPlans);
+   1   const searchResults = useQuery(api.downloadsLibrary.searchAllDownloads, {
+   1   const scenario = useQuery(api.integrations.scenarios.queries.getById, {
+   1   const saveUserSettings = useMutation(api.socialfeed.mutations.addComment);
+   1   const saveSchema = useMutation(api.integrations.nodes.mutations.updateSchema);
+   1   const savePuckPage = useMutation(api.puckEditor.mutations.updateData);
+   1   const saveItem = useMutation(api.socialfeed.mutations.saveItem);
+   1   const rolesQuery = useQuery(api.roles.functions.getRoles);
+   1   const rolesData = useQuery(api.roles.getRoles) || [];
+   1   const roles = useQuery(api.roles.getAssignableRoles, {
+   1   const revokeRole = useMutation(api.permissions.revokeRole);
+   1   const result = useQuery(api.cms.queries.getPostTags, {});
+   1   const result = useQuery(api.cms.queries.getPostCategories, {});
+   1   const result = useQuery(api.cms.queries.getAllPosts, { filters });
+   1   const respondToRequest = useMutation(api.groups.respondToGroupRequest);
+   1   const respondToInvitation = useMutation(api.groups.respondToGroupInvitation);
+   1   const res = await fetch("https
+   1   const requestToJoin = useMutation(api.groups.mutations.joinGroup);
+   1   const requestsResult = useQuery(api.groups.listGroupJoinRequests, {
+   1   const reportContent = useMutation(api.socialfeed.mutations.addComment);
+   1   const removeUser = useMutation(api.organizations.mutations.removeUser);
+   1   const removeMemberMutation = useMutation(api.groups.removeGroupMember);
+   1   const removeMember = useMutation(api.groups.removeGroupMember);
+   1   const removeGuestCartMutation = useMutation(api.cart.removeFromGuestCart);
+   1   const removeCartMutation = useMutation(api.cart.removeFromCart);
+   1   const recentContent = useQuery(api.lms.courses.queries.getRecentContent, {
+   1   const quizzes = useQuery(api.lms.quizzes.index.listQuizzes, queryParams);
+   1   const quiz = useQuery(api.lms.quizzes.index.getQuiz, {
+   1   const queryResult = useQuery(api.contacts.queries.getContacts, {
+   1   const publicCalendars = useQuery(api.calendar.queries.getPublicCalendars, {});
+   1   const products = useQuery(api.ecommerce.products.index.listProducts, {
+   1   const products = useConvexQuery(api.ecommerce.products.getAllProducts, {});
+   1   const postsData = useQuery(api.groups.queries.getLatestGroupPosts, {
+   1   const posts = useQuery(api.posts.getAll);
+   1   const post = useQuery(api.socialfeed.queries.getFeedItem, {
+   1   const permissionsQuery = useQuery(api.permissions.functions.getPermissions);
+   1   const organizations = useQuery(api.organizations.queries.myOrganizations, {});
+   1   const ordersCount = useQuery(api.ecommerce.orders.getOrdersCount, {});
+   1   const notes = useQuery(api.ecommerce.orders.notes.getOrderNotes, {
+   1   const mergeGuestCart = useMutation(api.cart.mergeGuestCart);
+   1   const membersData = useQuery(api.groups.queries.getGroupMembers, {
+   1   const members = useQuery(api.organizations.queries.getOrganizationMembers, {
+   1   const markAsRead = useMutation(api.notifications.markNotificationAsRead);
+   1   const makeAdmin = useMutation(api.users.makeCurrentUserAdmin);
+   1   const logout = useMutation(api.auth.logout);
+   1   const linkOrderToEvent = useMutation(api.ecommerce.orders.linkCalendarEvent);
+   1   const linkedCourses = useQuery(api.lms.courses.queries.listCourses, {});
+   1   const lessons = useQuery(api.lms.lessons.index.listLessons, queryParams);
+   1   const lesson = useQuery(api.lms.lessons.index.getLesson, { lessonId });
+   1   const joinGroup = useMutation(api.groups.mutations.joinGroup);
+   1   const isAdminResult = useConvexQuery(api.accessControl.checkIsAdmin, {});
+   1   const inviteUsersMutation = useMutation(api.groups.inviteToGroup);
+   1   const invitationsResult = useQuery(api.groups.listGroupInvitationsByClerkId, {
+   1   const incrementViews = useMutation(api.helpdesk.incrementArticleViews);
+   1   const groupsQuery = useQuery(api.groups.index.listGroups, {
+   1   const groupsData = useQuery(api.groups.queries.listGroups, {
+   1   const groupQuery = useQuery(api.groups.queries.getGroupById, {
+   1   const getDownloadUrl = useMutation(api.downloads.generateDownloadUrl);
+   1   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+   1   const follow = useMutation(api.socialfeed.mutations.followTopic);
+   1   const feedItemsResult = useQuery(api.socialfeed.queries.getUniversalFeed, {
+   1   const feedItems = useQuery(api.socialfeed.queries.getUniversalFeed, {
+   1   const feedItem = useQuery(api.socialfeed.queries.getFeedItem, {
+   1   const exportContacts = useQuery(api.contacts.queries.exportContacts, {
+   1   const existingPlans = useQuery(api.organizations.queries.getPlans, {});
+   1   const existingPlan = useQuery(api.organizations.queries.getPlans, {});
+   1   const eventCalendars = useQuery(api.calendar.queries.getCalendarForEvent, {
+   1   const downloadsData = useQuery(api.downloadsLibrary.getAllDownloads, {}) as
+   1   const downloads = useQuery(api.downloads.listDownloads, {});
+   1   const deleteUser = useMutation(api.users.deleteUser);
+   1   const deleteTopic = useMutation(api.lms.topics.index.remove);
+   1   const deleteRoleMutation = useMutation(api.roles.functions.deleteRole);
+   1   const deleteQuiz = useMutation(api.lms.quizzes.index.remove);
+   1   const deletePost = useMutation(api.socialfeed.mutations.deletePost);
+   1   const deletePost = useMutation(api.posts.delete);
+   1   const deletePost = useMutation(api.groupPosts.deleteGroupPost);
+   1   const deleteNote = useMutation(api.ecommerce.orders.notes.deleteOrderNote);
+   1   const deleteNode = useMutation(api.integrations.nodes.mutations.remove);
+   1   const deleteLesson = useMutation(api.lms.lessons.index.remove);
+   1   const deleteDownload = useMutation(api.downloads.deleteDownload);
+   1   const deleteCourse = useMutation(api.lms.index.deleteCourse);
+   1   const deleteComment = useMutation(api.socialfeed.mutations.deleteComment);
+   1   const deleteChargeback = useMutation(api.ecommerce.deleteChargeback);
+   1   const deleteCategory = useMutation(api.categories.mutations.deleteCategory); // You need to implement this mutation in Convex
+   1   const deleteCategory = useMutation(api.categories.mutations.deleteCategory);
+   1   const deleteArticle = useMutation(api.helpdesk.deleteHelpdeskArticle);
+   1   const currentUser = useQuery(api.users.getMe);
+   1   const createTopic = useMutation(api.topics.create);
+   1   const createTask = useMutation(api.tasks.index.createTask);
+   1   const createTag = useMutation(api.tags.index.createTag);
+   1   const createProduct = useMutation(api.ecommerce.products.index.createProduct);
+   1   const createProduct = useMutation(api.ecommerce.products.createProduct);
+   1   const createPost = useMutation(api.socialfeed.mutations.createPost);
+   1   const createPost = useMutation(api.posts.create);
+   1   const createPost = useMutation(api.groups.posts.createGroupPost);
+   1   const createPage = useMutation(api.groups.mutations.createGroupPage);
+   1   const createNode = useMutation(api.integrations.nodes.mutations.create);
+   1   const createMockUser = useMutation(api.users.mockData.createMockUser);
+   1   const createGroup = useMutation(api.groups.createGroup);
+   1   const createEvent = useMutation(api.calendar.events.crud.createEvent);
+   1   const createCourse = useMutation(api.courses.createCourse);
+   1   const createComment = useMutation(api.groupPosts.createComment);
+   1   const createChargeback = useMutation(api.ecommerce.createChargeback);
+   1   const createBoard = useMutation<typeof api.tasks.boards.createBoard>(
+   1   const createBankAccount = useMutation(api.ecommerce.createBankAccount);
+   1   const courseStructure = useQuery(api.courses.getCourseStructure, {
+   1   const courses = useQuery(api.lms.index.listCourses, queryParams);
+   1   const courses = useQuery(api.lms.courses.queries.listPublishedCourses, {
+   1   const course = useQuery(api.lms.courses.queries.getCourse, {
+   1   const contentTypes = useConvexQuery(api.cms.contentTypes.list, {
+   1   const contactsResult = useQuery(api.contacts.queries.getContacts, {
+   1   const connection = useQuery(api.integrations.connections.queries.get, {
+   1   const completeTopic = useMutation(api.lms.progress.index.completeTopic);
+   1   const completeQuiz = useMutation(api.lms.progress.index.completeQuiz);
+   1   const completeLesson = useMutation(api.lms.progress.index.completeLesson);
+   1   const completeCourse = useMutation(api.lms.progress.index.completeCourse);
+   1   const commentsResult = useQuery(api.groupPosts.listPostComments, {
+   1   const clearCartMutation = useMutation(api.ecommerce.cart.index.clearCart);
+   1   const checkPermissionMutation = useQuery(api.permissions.checkPermission);
+   1   const chargebacks = useQuery(api.ecommerce.getChargebacks, {});
+   1   const chargeback = useQuery(api.ecommerce.getChargeback, {
+   1   const categoryData = useQuery(api.helpdesk.getHelpdeskCategories);
+   1   const categoriesData = useQuery(api.downloadsLibrary.getDownloadCategories, {
+   1   const categories = useQuery(api.ecommerce.getCategoryTree, {}) ?? [];
+   1   const categories = useQuery(api.downloadsLibrary.getDownloadCategories, {
+   1   const categories = useQuery(api.categories.queries.listCategories, {});
+   1   const cart = useQuery(api.ecommerce.cart.index.getCart, queryArgs);
+   1   const calendarEntries = useQuery(api.calendar.queries.getCalendarForEvent, {
+   1   const blockUser = useMutation(api.socialfeed.mutations.addComment);
+   1   const bankAccounts = useQuery(api.ecommerce.getBankAccounts, {}) ?? [];
+   1   const availableTags = useQuery(api.contacts.queries.getTags, {
+   1   const availableFileTypes = useQuery(api.downloads.getAvailableFileTypes);
+   1   const auditLogStats = useQuery(api.core.auditLog.getAuditLogStats, {});
+   1   const auditLogEntry = useQuery(api.core.getAuditLogEntry, {
+   1   const attendees = useQuery(api.calendar.queries.getEventAttendees, {
+   1   const attendees = useQuery(api.calendar.invitations.getEventAttendees, {
+   1   const articles = useQuery(api.helpdesk.getHelpdeskArticles, {
+   1   const allNodes = useQuery(api.integrations.nodes.queries.getAllNodes);
+   1   const addUser = useMutation(api.organizations.mutations.addUser);
+   1   const addToGuestCart = useMutation(api.cart.addToGuestCart);
+   1   const addToCartMutation = useMutation(api.ecommerce.cart.index.addToCart);
+   1   const addToCart = useMutation(api.cart.addToCart);
+   1   const addNote = useMutation(api.ecommerce.orders.notes.addOrderNote);
+   1   const addMember = useMutation(api.lms.enrollments.index.addMemberToCourse);
+   1   const { groups = [] } = useQuery(api.groups.queries.listGroups, {
+   1   const _categoriesData = useQuery(api.downloadsLibrary.getDownloadCategories, {
+   1   // const isAdminResult = useQuery(api.accessControl.checkIsAdmin);
+   1   // const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+   1   // const createLesson = useMutation(api.lessons.createLesson); // TEMPORARY - using existing for now
+   1   // const categories = useQuery(api.categories.queries.listCategoriesByPostType, {
+   1   //   api.media.queries.listMedia,
+   1   //   api.lms.progress.index.isItemCompleted,
+   1     window.location.href = `https
+   1     useQuery(api.integrations.connections.queries.listWithInternalApps, {}) ??
+   1     useQuery(api.integrations.connections.queries.list, {}) ?? [];
+   1     useQuery(api.groups.queries.getUpcomingGroupEvents, {
+   1     useQuery(api.groups.queries.getLatestGroupPosts, {
+   1     useQuery(api.groups.queries.getActiveGroupMembers, {
+   1     useQuery(api.ecommerce.products.index.listProducts, {
+   1     useQuery(api.ecommerce.categories.index.getProductCategories, {}) ?? [];
+   1     useQuery(api.ecommerce.categories.index.getCategoryTree, {
+   1     groupData = (await convex.query(api.groups.queries.getGroupById, {
+   1     debouncedInputValue && api.search?.globalSearch
+   1     const user = await convex.query(api.auth.getUserFromToken, {
+   1     api.users.queries.getUserById,
+   1     api.users.queries.getUserByClerkId,
+   1     api.users.marketingTags.index.userHasMarketingTags,
+   1     api.users.marketingTags.index.createMarketingTag,
+   1     api.users.listAllUsers,
+   1     api.users.getUserById,
+   1     api.users.getUserByEmail,
+   1     api.tasks.index.listTasksByBoard,
+   1     api.tasks.boards.updateBoard,
+   1     api.tasks.boards.getBoard,
+   1     api.tasks.boards.createBoard,
+   1     api.socialfeed.queries.searchHashtags,
+   1     api.socialfeed.queries.getUserSuggestions,
+   1     api.socialfeed.queries.getUserFollowedTopics,
+   1     api.socialfeed.queries.getTopicSuggestions,
+   1     api.socialfeed.queries.getRecommendedContent,
+   1     api.socialfeed.queries.checkTopicFollow,
+   1     api.socialfeed.mutations.markRecommendationAsSeen,
+   1     api.socialfeed.mutations.markRecommendationAsInteracted,
+   1     api.socialfeed.mutations.generateUserRecommendations,
+   1     api.seedPermissions.seedInitialRolesAndPermissions,
+   1     api.search?.globalSearch ?? "skip",
+   1     api.puckEditor.queries.getData,
+   1     api.permissionsUtils.hasPermission,
+   1     api.permissions.getUserPermissions,
+   1     api.permissions.functions.deletePermission,
+   1     api.permissions.checkPermission,
+   1     api.notifications.queries.listNotificationsByClerkId,
+   1     api.notifications.queries.getNotificationsByClerkId,
+   1     api.notifications.preferences.updateNotificationPreferences,
+   1     api.notifications.mutations.markAllNotificationsAsRead,
+   1     api.notifications.markAllNotificationsAsRead,
+   1     api.notifications.listNotifications,
+   1     api.notifications.createNotification as any,
+   1     api.media.queries.listMediaItemsWithUrl,
+   1     api.media.index.getImageById,
+   1     api.lms.topics.index.reorderTopicsInLesson,
+   1     api.lms.topics.index.removeTopicFromLesson,
+   1     api.lms.quizzes.index.removeQuizFromLesson,
+   1     api.lms.quizzes.index.getQuizzesByLesson,
+   1     api.lms.enrollments.index.removeMemberFromCourse,
+   1     api.lms.courses.queries.listCourseMembers,
+   1     api.lms.courses.queries.getRelatedContentByTagIds,
+   1     api.lms.courses.queries.getCourseMetadata,
+   1     api.lms.courses.queries.getCourse,
+   1     api.lms.courses.queries.getAvailableTopics,
+   1     api.lms.courses.queries.getAvailableQuizzes,
+   1     api.lms.courses.queries.getAvailableLessons,
+   1     api.lms.courses.index.reorderLessonsInCourse,
+   1     api.lms.courses.index.removeLessonFromCourseStructure,
+   1     api.lms.courses.index.addLessonToCourse,
+   1     api.lms.contentAccess.index.saveContentAccessRules,
+   1     api.lms.contentAccess.index.clearContentAccessRules,
+   1     api.integrations.scenarios.queries.getAllScenarios,
+   1     api.integrations.scenarios.mutations.updateStatus,
+   1     api.integrations.scenarios.mutations.update,
+   1     api.integrations.scenarios.mutations.remove,
+   1     api.integrations.connections.mutations.update,
+   1     api.integrations.connections.mutations.remove,
+   1     api.integrations.automationLogs.queries.getAutomationLogsByScenario,
+   1     api.integrations.automationLogs.queries.getAutomationLogById,
+   1     api.integrations.automationLogs.queries.getAllAutomationLogs,
+   1     api.integrations.automationLogs.mutations.logScenarioStart,
+   1     api.integrations.automationLogs.mutations.logScenarioComplete,
+   1     api.integrations.automationLogs.mutations.logNodeExecution,
+   1     api.integrations.actions.webhooks.testWebhook,
+   1     api.groups.updateGroupMemberRole,
+   1     api.groups.respondToJoinRequest as any,
+   1     api.groups.queries.listGroupJoinRequests as any,
+   1     api.groups.queries.getUserMembershipInGroup,
+   1     api.groups.queries.getUserGroups,
+   1     api.groups.queries.getLatestGroupPosts,
+   1     api.groups.queries.getGroupStats,
+   1     api.groups.queries.getGroupById,
+   1     api.groups.mutations.updateDashboardData,
+   1     api.groups.countPendingInvitationsByClerkId,
+   1     api.ecommerce.transfers.mockData.createMockTransfer,
+   1     api.ecommerce.products.uploads.saveProductImage,
+   1     api.ecommerce.products.uploads.generateUploadUrl,
+   1     api.ecommerce.products.uploads.deleteProductImage,
+   1     api.ecommerce.products.index.listProducts,
+   1     api.ecommerce.products.index.getProductCount,
+   1     api.ecommerce.products.index.getProduct,
+   1     api.ecommerce.orders.unlinkCalendarEvent,
+   1     api.ecommerce.orders.mockData.fixMockOrdersEmail,
+   1     api.ecommerce.orders.mockData.createMockOrders,
+   1     api.ecommerce.orders.index.listOrders,
+   1     api.ecommerce.orders.index.deleteOrder,
+   1     api.ecommerce.orders.index.createOrder,
+   1     api.ecommerce.orders.getOrder, // Assuming an getOrder query exists
+   1     api.ecommerce.getOrder,
+   1     api.ecommerce.checkout.updateShippingAddress as any,
+   1     api.ecommerce.checkout.updateBillingAddress,
+   1     api.ecommerce.checkout.processPayment as any,
+   1     api.ecommerce.checkout.initiateCheckout as any,
+   1     api.ecommerce.checkout.getCheckout,
+   1     api.ecommerce.checkout.customCheckouts.updateCustomCheckout,
+   1     api.ecommerce.checkout.customCheckouts.getCustomCheckoutBySlug,
+   1     api.ecommerce.checkout.customCheckouts.createCustomCheckoutFromContentType,
+   1     api.ecommerce.chargebacks.mockData.createMockChargeback,
+   1     api.ecommerce.chargebacks.evidence.getEvidenceSummary,
+   1     api.ecommerce.chargebacks.evidence.getChargebackEvidence,
+   1     api.ecommerce.chargebacks.evidence.generateUploadUrl,
+   1     api.ecommerce.chargebacks.evidence.deleteEvidence,
+   1     api.ecommerce.chargebacks.evidence.createEvidence,
+   1     api.ecommerce.categories.index.getCategoryTree,
+   1     api.ecommerce.categories.index.getCategoryCount,
+   1     api.ecommerce.cart.index.updateGuestCartItem,
+   1     api.ecommerce.cart.index.updateCartItem,
+   1     api.ecommerce.cart.index.removeFromGuestCart,
+   1     api.ecommerce.cart.index.removeFromCart,
+   1     api.ecommerce.cart.index.clearGuestCart,
+   1     api.ecommerce.cart.index.addToGuestCart,
+   1     api.ecommerce.balances.index.migrateAllTransfersToJunctionTable,
+   1     api.ecommerce.balances.index.getBankAccount,
+   1     api.ecommerce?.categories?.index?.updateCategory,
+   1     api.ecommerce?.categories?.index?.deleteCategory,
+   1     api.ecommerce?.categories?.index?.createCategory,
+   1     api.downloadsLibrary.getRecentDownloads,
+   1     api.downloadsLibrary.getDownloadRecommendations,
+   1     api.downloadsLibrary.getDownloadCategories,
+   1     api.downloadsLibrary.deleteDownloadCategory,
+   1     api.downloadsLibrary.createDownloadCategory,
+   1     api.downloads.getDownloadPreviewInfo,
+   1     api.downloads.generateMultipleDownloadUrls,
+   1     api.downloads.generateDownloadUrl,
+   1     api.core.auditLog.createSampleAuditLogs,
+   1     api.cms.queries.searchPosts,
+   1     api.cms.queries.getPostBySlug,
+   1     api.cms.queries.getPostById,
+   1     api.cart.getCart,
+   1     api.calendar.reminders.setEventReminders,
+   1     api.calendar.reminders.getEventReminderSettings,
+   1     api.calendar.queries.getAllEvents,
+   1     api.calendar.invitations.respondToEventInvitation,
+   1     api.calendar.events.queries.searchEvents,
+   1     api.calendar.events.queries.getEvent,
+   1     // const isAdmin = await convex.query(api.accessControl.checkIsAdmin);
+   1     _api.on("select", onSelect);
+   1       useQuery(api.socialfeed.queries.getCommentReplies, {
+   1       queryFn = api.socialfeed.queries.getUserProfileFeed;
+   1       queryFn = api.socialfeed.queries.getPersonalizedFeed;
+   1       queryFn = api.socialfeed.queries.getGroupFeed;
+   1       if (!api.search?.globalSearch && inputValue) {
+   1       dashboardData = await convex.query(api.puckEditor.queries.getData, {
+   1       const selectedIndex = _api.selectedScrollSnap();
+   1       api.notifications.index.listNotifications,
+   1       api.integrations.nodes.queries.listByScenario,
+   1       api.groups.queries.getUpcomingGroupEvents,
+   1       api.groups.queries.getLatestGroupPosts,
+   1       api.ecommerce.checkout.customCheckouts.getCustomCheckoutBySlug,
+   1       api.downloads.getGroupDownloads,
+   1       ? api.core.auditLog.getUserAuditLog
+   1       _api.selectedScrollSnap() !== currentSlide
+   1       _api.scrollTo(currentSlide);
+   1       _api.off("select", onSelect);
+   1         api.notifications.index.listNotifications,
+   1         // const userSettings = await convex.query(api.users.getSettings, { userId });
+   1         // const result = await convex.query(api.users.getBlockedUsers, { userId });
+   1           endpoint = "https
+   1           "https
+   1             "https
+   1               api.search?.globalSearch
+   1       

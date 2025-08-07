@@ -81,7 +81,7 @@ export function UserForm({
 }: UserFormProps) {
   // Queries - always call hooks in the same order
   const existingUser = useQuery(
-    api.users.getUserById,
+    api.users.queries.getUserById,
     userId ? { userId } : "skip",
   );
 

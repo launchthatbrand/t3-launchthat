@@ -1,0 +1,380 @@
+import { v } from "convex/values";
+
+import { mutation } from "../_generated/server";
+import {
+  notifyComment,
+  notifyReaction,
+  notifyShare,
+} from "../notifications/lib/feedNotifications";
+
+/**
+ * Create a new feed post
+ */
+export const createPost = mutation({
+  args: {
+    creatorId: v.id("users"),
+    content: v.string(),
+    mediaUrls: v.optional(v.array(v.string())),
+    visibility: v.union(
+      v.literal("public"),
+      v.literal("private"),
+      v.literal("group"),
+    ),
+    moduleType: v.optional(
+      v.union(
+        v.literal("blog"),
+        v.literal("course"),
+        v.literal("group"),
+        v.literal("event"),
+      ),
+    ),
+    moduleId: v.optional(v.string()),
+  },
+  returns: v.id("feedItems"),
+  handler: async (ctx, args) => {
+    // Validate that the user exists
+    const user = await ctx.db.get(args.creatorId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Check visibility and moduleId combination validity
+    if (
+      args.visibility === "group" &&
+      (!args.moduleType || args.moduleType !== "group")
+    ) {
+      throw new Error("Group visibility requires moduleType to be 'group'");
+    }
+
+    // Validate content
+    if (args.content.trim() === "") {
+      throw new Error("Content cannot be empty");
+    }
+
+    // Create the feed item
+    const feedItemId = await ctx.db.insert("feedItems", {
+      contentType: "post",
+      creatorId: args.creatorId,
+      content: args.content,
+      mediaUrls: args.mediaUrls,
+      visibility: args.visibility,
+      moduleType: args.moduleType,
+      moduleId: args.moduleId,
+    });
+
+    return feedItemId;
+  },
+});
+
+/**
+ * Update an existing post
+ */
+export const updatePost = mutation({
+  args: {
+    postId: v.id("feedItems"),
+    userId: v.id("users"),
+    content: v.optional(v.string()),
+    mediaUrls: v.optional(v.array(v.string())),
+    visibility: v.optional(
+      v.union(v.literal("public"), v.literal("private"), v.literal("group")),
+    ),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    // Validate the post exists
+    const post = await ctx.db.get(args.postId);
+    if (!post) {
+      throw new Error("Post not found");
+    }
+
+    // Verify user owns the post
+    if (post.creatorId !== args.userId) {
+      throw new Error("User does not have permission to update this post");
+    }
+
+    // Check if trying to change visibility to group without proper moduleType
+    if (
+      args.visibility === "group" &&
+      (!post.moduleType || post.moduleType !== "group")
+    ) {
+      throw new Error("Group visibility requires moduleType to be 'group'");
+    }
+
+    // Prepare the update object
+    const updateData: Partial<{
+      content: string;
+      mediaUrls: string[];
+      visibility: "public" | "private" | "group";
+    }> = {};
+
+    if (args.content !== undefined) {
+      if (args.content.trim() === "") {
+        throw new Error("Content cannot be empty");
+      }
+      updateData.content = args.content;
+    }
+
+    if (args.mediaUrls !== undefined) {
+      updateData.mediaUrls = args.mediaUrls;
+    }
+
+    if (args.visibility !== undefined) {
+      updateData.visibility = args.visibility;
+    }
+
+    // Apply the update
+    await ctx.db.patch(args.postId, updateData);
+
+    return true;
+  },
+});
+
+/**
+ * Delete a post (soft delete)
+ */
+export const deletePost = mutation({
+  args: {
+    postId: v.id("feedItems"),
+    userId: v.id("users"),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    // Validate the post exists
+    const post = await ctx.db.get(args.postId);
+    if (!post) {
+      throw new Error("Post not found");
+    }
+
+    // Verify user owns the post
+    if (post.creatorId !== args.userId) {
+      throw new Error("User does not have permission to delete this post");
+    }
+
+    // For soft delete, we'll add a field to mark the post as deleted
+    // rather than actually removing it from the database
+    await ctx.db.patch(args.postId, {
+      deleted: true,
+      deletedAt: Date.now(),
+    });
+
+    // Optional: Delete related comments and reactions
+    // This would require finding all comments for this post and marking them as deleted too
+    // For a more complex implementation, this could be moved to a separate background process
+
+    return true;
+  },
+});
+
+/**
+ * Share an existing feed item
+ */
+export const shareContent = mutation({
+  args: {
+    creatorId: v.id("users"),
+    originalContentId: v.id("feedItems"),
+    content: v.optional(v.string()),
+    visibility: v.union(
+      v.literal("public"),
+      v.literal("private"),
+      v.literal("group"),
+    ),
+    moduleType: v.optional(
+      v.union(
+        v.literal("blog"),
+        v.literal("course"),
+        v.literal("group"),
+        v.literal("event"),
+      ),
+    ),
+    moduleId: v.optional(v.string()),
+  },
+  returns: v.id("feedItems"),
+  handler: async (ctx, args) => {
+    // Validate that the user exists
+    const user = await ctx.db.get(args.creatorId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Validate that the original content exists
+    const originalContent = await ctx.db.get(args.originalContentId);
+    if (!originalContent) {
+      throw new Error("Original content not found");
+    }
+
+    // Check if the original content is deleted
+    if (originalContent.deleted) {
+      throw new Error("Cannot share deleted content");
+    }
+
+    // Check visibility and moduleId combination validity
+    if (
+      args.visibility === "group" &&
+      (!args.moduleType || args.moduleType !== "group")
+    ) {
+      throw new Error("Group visibility requires moduleType to be 'group'");
+    }
+
+    // Create the feed item as a share
+    const feedItemId = await ctx.db.insert("feedItems", {
+      contentType: "share",
+      creatorId: args.creatorId,
+      content: args.content ?? "",
+      originalContentId: args.originalContentId,
+      visibility: args.visibility,
+      moduleType: args.moduleType,
+      moduleId: args.moduleId,
+    });
+
+    // Send notification to the original content creator
+    await notifyShare(ctx, {
+      sharerId: args.creatorId,
+      originalContentId: args.originalContentId,
+      newShareId: feedItemId,
+    });
+
+    return feedItemId;
+  },
+});
+
+/**
+ * Add a reaction to a feed item
+ */
+export const addReaction = mutation({
+  args: {
+    userId: v.id("users"),
+    feedItemId: v.id("feedItems"),
+    reactionType: v.union(
+      v.literal("like"),
+      v.literal("love"),
+      v.literal("celebrate"),
+      v.literal("support"),
+      v.literal("insightful"),
+      v.literal("curious"),
+    ),
+  },
+  returns: v.id("reactions"),
+  handler: async (ctx, args) => {
+    // Validate that the user exists
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Validate that the feed item exists
+    const feedItem = await ctx.db.get(args.feedItemId);
+    if (!feedItem) {
+      throw new Error("Feed item not found");
+    }
+
+    // Check if the item is deleted
+    if (feedItem.deleted) {
+      throw new Error("Cannot react to deleted content");
+    }
+
+    // Check if the user has already reacted to this feed item
+    const existingReaction = await ctx.db
+      .query("reactions")
+      .withIndex("by_user_and_item", (q) =>
+        q.eq("userId", args.userId).eq("feedItemId", args.feedItemId),
+      )
+      .first();
+
+    // If a reaction already exists, update it
+    if (existingReaction) {
+      await ctx.db.patch(existingReaction._id, {
+        reactionType: args.reactionType,
+      });
+      
+      // We don't send a notification for reaction updates
+      return existingReaction._id;
+    }
+
+    // Otherwise, create a new reaction
+    const reactionId = await ctx.db.insert("reactions", {
+      userId: args.userId,
+      feedItemId: args.feedItemId,
+      reactionType: args.reactionType,
+    });
+
+    // Send notification to the post creator
+    await notifyReaction(ctx, {
+      reactorId: args.userId,
+      feedItemId: args.feedItemId,
+      reactionType: args.reactionType,
+    });
+
+    return reactionId;
+  },
+});
+
+/**
+ * Add a comment to a feed item
+ */
+export const addComment = mutation({
+  args: {
+    userId: v.id("users"),
+    feedItemId: v.id("feedItems"),
+    content: v.string(),
+    parentCommentId: v.optional(v.id("comments")),
+    mediaUrls: v.optional(v.array(v.string())),
+  },
+  returns: v.id("comments"),
+  handler: async (ctx, args) => {
+    // Validate that the user exists
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Validate that the feed item exists
+    const feedItem = await ctx.db.get(args.feedItemId);
+    if (!feedItem) {
+      throw new Error("Feed item not found");
+    }
+
+    // Check if the item is deleted
+    if (feedItem.deleted) {
+      throw new Error("Cannot comment on deleted content");
+    }
+
+    // Validate content
+    if (args.content.trim() === "") {
+      throw new Error("Comment content cannot be empty");
+    }
+
+    // If parentCommentId is provided, validate that it exists
+    if (args.parentCommentId) {
+      const parentComment = await ctx.db.get(args.parentCommentId);
+      if (!parentComment) {
+        throw new Error("Parent comment not found");
+      }
+
+      // Check if parent comment is deleted
+      if (parentComment.deleted) {
+        throw new Error("Cannot reply to a deleted comment");
+      }
+    }
+
+    // Create the comment
+    const commentId = await ctx.db.insert("comments", {
+      userId: args.userId,
+      feedItemId: args.feedItemId,
+      content: args.content,
+      parentCommentId: args.parentCommentId,
+      mediaUrls: args.mediaUrls,
+      updatedAt: Date.now(),
+    });
+
+    // Send notification
+    await notifyComment(ctx, {
+      commenterId: args.userId,
+      feedItemId: args.feedItemId,
+      commentId,
+      content: args.content,
+      parentCommentId: args.parentCommentId,
+    });
+
+    return commentId;
+  },
+}); 

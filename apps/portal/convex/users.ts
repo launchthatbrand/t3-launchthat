@@ -7,4 +7,3 @@
 
 // Re-export functions from the new location
 export * from "./users/index";
-export * from "./users/lib";

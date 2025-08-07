@@ -1,7 +1,8 @@
-import { query } from "../_generated/server";
-import { requireAdmin } from "./lib";
-import { throwForbidden } from "../shared/errors";
 import { v } from "convex/values";
+
+import { query } from "../_generated/server";
+import { throwForbidden } from "../shared/errors";
+import { requireAdmin } from "./helpers";
 
 /**
  * Get the system user for automated operations

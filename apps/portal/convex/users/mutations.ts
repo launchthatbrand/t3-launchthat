@@ -1,16 +1,16 @@
-import { MutationCtx, internalMutation, mutation } from "../_generated/server";
+import { v } from "convex/values";
+
+import type { UserRole } from "./schema/types";
+import { internal } from "../_generated/api";
+import { Id } from "../_generated/dataModel";
+import { internalMutation, mutation, MutationCtx } from "../_generated/server";
 import {
   logError,
   throwForbidden,
   throwNotFound,
   throwUnauthorized,
 } from "../shared/errors";
-
-import { Id } from "../_generated/dataModel";
-import type { UserRole } from "./schema/types";
-import { internal } from "../_generated/api";
-import { requireAdmin } from "./lib";
-import { v } from "convex/values";
+import { requireAdmin } from "./helpers";
 
 /**
  * Make the current authenticated user an admin

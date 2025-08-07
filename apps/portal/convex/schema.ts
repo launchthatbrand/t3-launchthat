@@ -24,7 +24,7 @@ import socialFeedSchema from "./socialfeed/schema";
 import { tagsTable } from "./tags/schema";
 import { taskBoardsSchema } from "./tasks/boards/schema";
 import { tasksSchema } from "./tasks/schema";
-import { usersSchema } from "./users/schema";
+import { schema as usersSchema } from "./users/schema";
 import { vimeoSchema } from "./vimeo/schema";
 
 // Import new schema modules

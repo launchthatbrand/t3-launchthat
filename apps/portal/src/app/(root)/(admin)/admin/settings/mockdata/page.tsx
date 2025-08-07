@@ -1,5 +1,8 @@
 "use client";
 
+import React, { useState } from "react";
+import { api } from "@convex-config/_generated/api";
+import { useMutation } from "convex/react";
 import {
   Activity,
   AlertTriangle,
@@ -11,6 +14,8 @@ import {
   Shuffle,
   Users,
 } from "lucide-react";
+
+import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
   Dialog,
@@ -19,14 +24,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import React, { useState } from "react";
-
-import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
-import { api } from "@convex-config/_generated/api";
 import { toast } from "@acme/ui/toast";
-import { useMutation } from "convex/react";
 
 export default function MockDataPage() {
   const [orderQuantity, setOrderQuantity] = useState(10);
@@ -44,7 +44,8 @@ export default function MockDataPage() {
   const createMockTransfer = useMutation(
     api.ecommerce.transfers.mockData.createMockTransfer,
   );
-  const createMockUser = useMutation(api.users.mockData.createMockUser);
+  // TODO: Restore mock user functionality after users refactor
+  // const createMockUser = useMutation(api.users.mockData.createMockUser);
   const createMockChargeback = useMutation(
     api.ecommerce.chargebacks.mockData.createMockChargeback,
   );

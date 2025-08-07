@@ -33,7 +33,7 @@ export default function CourseMembersPage() {
   );
 
   // Get current user info first
-  const me = useQuery(api.users.getMe);
+  const me = useQuery(api.users.queries.getMe);
 
   const isMeAdmin = me?.role === "admin";
 

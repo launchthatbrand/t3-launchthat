@@ -1,0 +1,1 @@
+export { lmsSchema } from "./lmsSchema";

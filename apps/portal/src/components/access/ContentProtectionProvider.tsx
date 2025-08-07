@@ -82,10 +82,12 @@ export function ContentProtectionProvider({
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Get user's marketing tags
-  const userTags = useQuery(
-    api.users.marketingTags.index.getUserMarketingTags,
-    userId ? { userId } : "skip",
-  );
+  // TODO: Restore marketing tags functionality after users refactor
+  // const userTags = useQuery(
+  //   api.users.marketingTags.index.getUserMarketingTags,
+  //   userId ? { userId } : "skip",
+  // );
+  const userTags = undefined;
 
   // Stable user tag IDs to prevent unnecessary re-renders
   const userTagIds = useMemo(

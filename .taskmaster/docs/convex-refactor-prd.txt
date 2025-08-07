@@ -1,0 +1,152 @@
+# Convex Folder Structure Refactoring PRD
+
+## Project Overview
+Refactor the existing Convex backend folder structure to align with Convex best practices, resolve TypeScript 'any' issues, and create a maintainable, scalable codebase.
+
+## Problem Statement
+The current Convex folder structure has multiple organizational inconsistencies:
+- Mixed organizational patterns (single files vs. folder-based)
+- Inconsistent file naming conventions
+- Legacy .old and .bak files cluttering the structure
+- Missing standard Convex patterns (queries.ts, mutations.ts, helpers.ts, schema.ts)
+- TypeScript inference issues causing 'any' types
+- Unclear API paths due to inconsistent structure
+- No index.ts re-exports (following Convex best practices)
+
+## Current Structure Issues
+1. **Mixed Patterns**: Some features use single files, others use folders inconsistently
+2. **Schema Confusion**: Multiple schema files with unclear hierarchy
+3. **Legacy Files**: .old and .bak files need cleanup
+4. **API Inconsistency**: Different call patterns across features
+5. **Type Safety**: TypeScript 'any' issues due to structural problems
+
+## Target Architecture
+
+### Standard Feature Folder Structure
+Each feature will follow this pattern:
+```
+feature/
+├── queries.ts      # Read operations
+├── mutations.ts    # Write operations
+├── helpers.ts      # Shared logic (optional)
+└── schema.ts       # Table definitions
+```
+
+### Root Level Structure
+```
+convex/
+├── schema.ts       # Combined schemas from all features
+├── http.ts         # HTTP endpoints
+├── auth.config.ts  # Auth configuration
+├── env.ts          # Environment variables
+└── [feature-folders]/
+```
+
+## Feature Modules to Refactor
+
+### Core Features
+1. **Users Management** - User profiles, authentication, permissions
+2. **Organizations** - Multi-tenant organization structure
+3. **LMS (Learning Management)** - Courses, lessons, topics, assignments
+4. **E-commerce** - Products, orders, cart, payments
+5. **Content Management** - Posts, media, categories, tags
+6. **Permissions & Roles** - Access control, role-based permissions
+7. **Notifications** - System notifications and alerts
+8. **Files & Media** - File storage and media management
+9. **Calendar & Events** - Scheduling and event management
+10. **Groups & Social** - User groups and social features
+
+## Technical Requirements
+
+### File Naming Conventions
+- Use descriptive, consistent naming
+- Follow TypeScript/JavaScript conventions
+- No special characters in folder names
+- Remove all .old and .bak files
+
+### Schema Organization
+- Individual schema.ts files per feature
+- Root schema.ts combines all feature schemas
+- No circular imports between schema and functions
+
+### Function Organization
+- queries.ts: All read operations for the feature
+- mutations.ts: All write operations for the feature
+- helpers.ts: Shared utility functions (when needed)
+- No index.ts files for re-exports
+
+### API Path Structure
+After refactoring, API calls will follow:
+- `api.users.queries.getUser`
+- `api.organizations.mutations.createOrg`
+- `api.lms.queries.getCourse`
+- `api.ecommerce.mutations.createOrder`
+
+## Implementation Strategy
+
+### Phase 1: Preparation & Cleanup
+- Analyze current file dependencies
+- Create backup of entire convex folder
+- Remove legacy .old and .bak files
+- Document current API usage patterns
+
+### Phase 2: Feature-by-Feature Migration
+For each feature:
+1. Create new folder structure with standard files
+2. Move existing logic to appropriate new files
+3. Mark old files with .bak extension
+4. Update schema imports in root schema.ts
+5. Test feature functionality
+
+### Phase 3: Application Updates
+For each feature migration:
+1. Identify all files using the old API paths
+2. Update imports and function calls
+3. Update TypeScript types
+4. Test affected components
+5. Remove .bak files after verification
+
+### Phase 4: Validation & Cleanup
+- Run full application tests
+- Verify TypeScript compilation without 'any' types
+- Remove all .bak files
+- Update documentation
+
+## Success Criteria
+
+### Technical Outcomes
+1. **Consistent Structure**: All features follow standard folder pattern
+2. **Type Safety**: No 'any' types in Convex API calls
+3. **Clean Organization**: Clear separation of concerns
+4. **Maintainable Code**: Easy to add new features following established patterns
+5. **Working Application**: All existing functionality preserved
+
+### Quality Metrics
+- TypeScript compilation with no 'any' type warnings
+- All existing API calls updated and functional
+- No legacy .old or .bak files remaining
+- Consistent API path patterns across all features
+- Improved developer experience with clear file organization
+
+## Risk Mitigation
+- Comprehensive testing after each feature migration
+- Incremental approach to minimize disruption
+- Backup strategy for rollback if needed
+- Clear documentation of changes for team
+
+## Deliverables
+1. Refactored Convex folder structure following best practices
+2. Updated application code using new API paths
+3. Consolidated schema.ts with all feature schemas
+4. Documentation of new structure and patterns
+5. Removal of all legacy files
+6. Type-safe Convex API throughout application
+
+## Technology Stack
+- Convex backend framework
+- TypeScript for type safety
+- Next.js frontend application
+- Existing feature modules and dependencies
+
+## Timeline Expectations
+This refactoring should be completed incrementally, feature by feature, to maintain application stability while improving code organization and type safety. 
