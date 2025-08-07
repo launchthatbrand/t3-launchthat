@@ -1,6 +1,6 @@
 export default function normalizeClassNames(
-  ...classNames: Array<typeof undefined | boolean | null | string>
-): Array<string> {
+  ...classNames: (typeof undefined | boolean | null | string)[]
+): string[] {
   const rval = []
   for (const className of classNames) {
     if (className && typeof className === 'string') {

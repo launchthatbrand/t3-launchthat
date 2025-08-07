@@ -1,7 +1,9 @@
 import { ConvexError, v } from "convex/values";
 
-import { Doc, Id } from "./_generated/dataModel";
-import { mutation, MutationCtx, query, QueryCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { Doc } from "./_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { requireUser } from "./auth";
 import {
   ACTIONS,
@@ -25,10 +27,10 @@ const permissionValidator = v.union(
   v.literal(ACTIONS.SHARE),
 );
 
-type ResourceWithUserId = {
+interface ResourceWithUserId {
   userId: string;
   [key: string]: any;
-};
+}
 
 // Helper function to validate resource ownership
 const validateResourceOwnership = async (

@@ -1,7 +1,59 @@
+import type { Doc, Id } from "../_generated/dataModel";
+
+import { query } from "../_generated/server";
 import { v } from "convex/values";
 
-import type { Doc, Id } from "../_generated/dataModel";
-import { query } from "../_generated/server";
+/**
+ * Get calendars for the currently authenticated user
+ */
+export const getUserCalendars = query({
+  args: {},
+  handler: async (ctx) => {
+    // Get current user from auth
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
+    // Find the Convex user from the auth identity
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("tokenIdentifier"), identity.tokenIdentifier))
+      .unique();
+
+    if (!user) {
+      return [];
+    }
+
+    // Get user's own calendars
+    const userCalendars = await ctx.db
+      .query("calendars")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("ownerType"), "user"),
+          q.eq(q.field("ownerId"), user._id),
+        ),
+      )
+      .collect();
+
+    // Get calendars the user has permissions for
+    const permissionedCalendarIds = await ctx.db
+      .query("calendarPermissions")
+      .filter((q) => q.eq(q.field("userId"), user._id))
+      .collect();
+
+    const permissionedCalendars = await Promise.all(
+      permissionedCalendarIds.map(async (permission) => {
+        return await ctx.db.get(permission.calendarId);
+      }),
+    );
+
+    // Filter out any null values (in case calendars were deleted)
+    const validPermissionedCalendars = permissionedCalendars.filter(Boolean);
+
+    return [...userCalendars, ...validPermissionedCalendars];
+  },
+});
 
 /**
  * Get calendars for a specific user

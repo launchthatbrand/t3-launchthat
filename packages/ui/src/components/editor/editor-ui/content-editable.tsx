@@ -1,7 +1,7 @@
-import { JSX } from 'react'
+import type { JSX } from 'react'
 import { ContentEditable as LexicalContentEditable } from '@lexical/react/LexicalContentEditable'
 
-type Props = {
+interface Props {
   placeholder: string
   className?: string
   placeholderClassName?: string

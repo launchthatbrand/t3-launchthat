@@ -84,14 +84,14 @@ export function PuckEditor({ children }: PuckEditorProps) {
   // Use the centralized page identifier utility
   const pageIdentifier = getPageIdentifier(pathname, effectiveGroupId);
 
-  console.log("[PuckEditor] Page identifier:", pageIdentifier);
+  // console.log("[PuckEditor] Page identifier:", pageIdentifier);
 
   // Fetch existing dashboard data if available from the new table
   const existingData = useQuery(
     api.puckEditor.queries.getData,
     pageIdentifier ? { pageIdentifier } : "skip",
   );
-  console.log("[PuckEditor] Existing data:", existingData);
+  // console.log("[PuckEditor] Existing data:", existingData);
 
   // Load existing data when available
   useEffect(() => {

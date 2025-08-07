@@ -1,24 +1,26 @@
 "use client";
 
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { ColumnDef } from "@tanstack/react-table";
+import { useQuery } from "convex/react";
+import { formatDistanceToNow } from "date-fns";
+import { Check, PencilIcon, Plus, UserCog, X } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Check, UserCog, X } from "lucide-react";
+import { CopyText } from "@acme/ui/copy-text";
+
 // Import EntityList components
 import type {
   EntityAction,
   FilterConfig,
 } from "~/components/shared/EntityList/types";
-import React, { useState } from "react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { ColumnDef } from "@tanstack/react-table";
-import { CopyText } from "@acme/ui/copy-text";
+import { UserForm } from "~/components/admin/UserForm";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
-import { Id } from "@/convex/_generated/dataModel";
-import { api } from "@/convex/_generated/api";
-import { formatDistanceToNow } from "date-fns";
-import { useQuery } from "convex/react";
-import { useRouter } from "next/navigation";
 
 interface User {
   _id: Id<"users">;
@@ -44,6 +46,10 @@ interface User {
 export default function ClientUsersPage() {
   const router = useRouter();
 
+  // State for user form
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<Id<"users"> | null>(null);
+
   // First get current user to confirm admin status
   const me = useQuery(api.users.getMe);
 
@@ -56,6 +62,11 @@ export default function ClientUsersPage() {
   );
 
   const allUsers: User[] = allUsersResult ?? [];
+
+  const handleFormSuccess = () => {
+    setIsFormOpen(false);
+    setEditingUserId(null);
+  };
 
   if (me && !isMeAdmin) {
     return (
@@ -234,6 +245,15 @@ export default function ClientUsersPage() {
   // Define entity actions
   const entityActions: EntityAction<User>[] = [
     {
+      id: "edit",
+      label: "Edit User",
+      icon: <PencilIcon className="h-4 w-4" />,
+      onClick: (user) => {
+        setEditingUserId(user._id);
+        setIsFormOpen(true);
+      },
+    },
+    {
       id: "view",
       label: "View Details",
       onClick: (user) => router.push(`/admin/users/${user._id}`),
@@ -243,6 +263,17 @@ export default function ClientUsersPage() {
 
   return (
     <div className="container mx-auto py-6">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">User Management</h1>
+          <p className="text-muted-foreground">Manage users and their roles</p>
+        </div>
+        <Button onClick={() => setIsFormOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add User
+        </Button>
+      </div>
+
       <EntityList<User>
         data={allUsers}
         columns={columns}
@@ -258,8 +289,21 @@ export default function ClientUsersPage() {
             <UserCog className="mb-4 h-12 w-12 text-muted-foreground" />
             <h3 className="text-lg font-medium">No Users Found</h3>
             <p className="text-muted-foreground">No users in the system yet</p>
+            <Button className="mt-4" onClick={() => setIsFormOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add First User
+            </Button>
           </div>
         }
+      />
+
+      {/* User Form Dialog */}
+      <UserForm
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        userId={editingUserId || undefined}
+        onSuccess={handleFormSuccess}
+        mode="dialog"
       />
     </div>
   );

@@ -1,8 +1,9 @@
 import React from "react";
+import type {
+  DragEndEvent} from "@dnd-kit/core";
 import {
   closestCenter,
   DndContext,
-  DragEndEvent,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -18,29 +19,29 @@ import {
 import { SortableLesson } from "./SortableLesson";
 
 // Define types to match SortableLesson component
-type TopicType = {
+interface TopicType {
   id: string;
   title: string;
   order: number;
   status: string;
   quizzes?: QuizType[];
-};
+}
 
-type QuizType = {
+interface QuizType {
   id: string;
   title: string;
   status: string;
-};
+}
 
-type LessonType = {
+interface LessonType {
   id: string;
   title: string;
   order: number;
   status: string;
   topics?: TopicType[];
-};
+}
 
-type LessonListProps = {
+interface LessonListProps {
   lessons: LessonType[];
   onReorder: (lessons: LessonType[]) => void;
   onRemove: (lessonId: string) => void;
@@ -52,7 +53,7 @@ type LessonListProps = {
   expandedItems: Record<string, boolean>;
   onToggleExpand: (type: "lesson" | "topic", itemId: string) => void;
   lessonsCollection: string;
-};
+}
 
 const LessonList: React.FC<LessonListProps> = ({
   lessons,

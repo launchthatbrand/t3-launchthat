@@ -1,12 +1,13 @@
-import {
+import type {
   DOMConversionMap,
   DOMConversionOutput,
   DOMExportOutput,
   EditorConfig,
-  ElementNode,
   LexicalEditor,
   LexicalNode,
-  SerializedElementNode,
+  SerializedElementNode} from "lexical";
+import {
+  ElementNode
 } from "lexical";
 import {
   domOnBeforeMatch,

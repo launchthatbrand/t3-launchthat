@@ -1,6 +1,7 @@
 import * as React from "react";
 
-import { JSX, useCallback, useState } from "react";
+import type { JSX} from "react";
+import { useCallback, useState } from "react";
 
 import { Button } from "../../../button";
 import { Checkbox } from "../../../checkbox";
@@ -11,10 +12,10 @@ import { Label } from "../../../label";
 import { Textarea } from "../../../textarea";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 
-type Props = {
+interface Props {
   initialEquation?: string;
   onConfirm: (equation: string, inline: boolean) => void;
-};
+}
 
 export default function KatexEquationAlterer({
   onConfirm,

@@ -8,29 +8,29 @@ import { DropZone } from "./DropZone";
 import { LessonItem } from "./LessonItem";
 import { SortableTopic } from "./SortableTopic";
 
-type LessonType = {
+interface LessonType {
   id: string;
   title: string;
   order: number;
   status: string;
   topics?: TopicType[];
-};
+}
 
-type TopicType = {
+interface TopicType {
   id: string;
   title: string;
   order: number;
   status: string;
   quizzes?: QuizType[];
-};
+}
 
-type QuizType = {
+interface QuizType {
   id: string;
   title: string;
   status: string;
-};
+}
 
-type SortableLessonProps = {
+interface SortableLessonProps {
   lesson: LessonType;
   isExpanded: boolean;
   onToggleExpand: () => void;
@@ -41,7 +41,7 @@ type SortableLessonProps = {
   onQuizTitleChange: (quizId: string, newTitle: string) => Promise<void>;
   expandedTopics: Record<string, boolean>;
   onToggleTopicExpand: (topicId: string) => void;
-};
+}
 
 export const SortableLesson: React.FC<SortableLessonProps> = ({
   lesson,

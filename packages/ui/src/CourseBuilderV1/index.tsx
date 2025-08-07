@@ -33,33 +33,33 @@ import { SortableLesson } from "./SortableLesson";
 import { TopicItem } from "./TopicItem";
 
 // Types for the course builder
-type LessonType = {
+interface LessonType {
   id: string;
   title: string;
   order: number;
   status: string;
   topics?: TopicType[];
-};
+}
 
-type TopicType = {
+interface TopicType {
   id: string;
   title: string;
   order: number;
   status: string;
   quizzes?: QuizType[];
-};
+}
 
-type QuizType = {
+interface QuizType {
   id: string;
   title: string;
   status: string;
-};
+}
 
-type CourseType = {
+interface CourseType {
   id: string;
   title: string;
   lessons?: LessonType[];
-};
+}
 
 type DragItemType = "lesson" | "topic" | "quiz";
 

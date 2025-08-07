@@ -1,4 +1,4 @@
-import { Email } from "../types";
+import type { Email } from "../types";
 
 // Simplified HTML content to avoid loading issues for now
 const truncatedEmailHtml = `

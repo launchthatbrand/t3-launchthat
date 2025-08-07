@@ -119,7 +119,7 @@ const noopAsyncWithArgs = async (..._args: unknown[]): Promise<void> => {
  *
  * Note: Not all callbacks are used in the minimal layout. They will be used as the component is built out.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 const CourseBuilder: React.FC<CourseBuilderProps> = ({
   // Destructure the restored props (even if not used directly below)
   courseStructure: _courseStructure,

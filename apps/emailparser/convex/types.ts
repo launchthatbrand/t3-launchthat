@@ -1,4 +1,4 @@
-import { ACTIONS, RESOURCE_TYPES } from "./constants";
+import type { ACTIONS, RESOURCE_TYPES } from "./constants";
 
 /**
  * Type for resource types

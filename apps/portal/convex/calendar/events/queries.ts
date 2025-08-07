@@ -1,15 +1,15 @@
-import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
-
 import type { Doc, Id } from "../../_generated/dataModel";
-import { api } from "../../_generated/api";
-import { query } from "../../_generated/server";
-import { timestampValidator } from "../../shared/validators";
 import { getAuthenticatedConvexId, hasCalendarAccess } from "../lib/authUtils";
 import {
   getCalendarViewDateRange,
   getRecurringEventInstances,
 } from "../lib/dateUtils";
+
+import { api } from "../../_generated/api";
+import { paginationOptsValidator } from "convex/server";
+import { query } from "../../_generated/server";
+import { timestampValidator } from "../../shared/validators";
 
 /**
  * Get a single event by ID
@@ -440,5 +440,54 @@ export const getEventCount = query({
 
     const results = await eventsQuery.collect();
     return results.length;
+  },
+});
+
+/**
+ * Search for events by title
+ */
+export const searchEvents = query({
+  args: {
+    searchTerm: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Get the authenticated user's Convex ID
+    const userId = await getAuthenticatedConvexId(ctx);
+
+    // Search for events using the search index
+    const searchResults = await ctx.db
+      .query("events")
+      .withSearchIndex(
+        "search_events",
+        (q) => q.search("title", args.searchTerm).eq("isCancelled", false), // Only show non-cancelled events
+      )
+      .take(args.limit ?? 10);
+
+    // Filter results to only include events the user has access to
+    const accessibleEvents = [];
+
+    for (const event of searchResults) {
+      // Check if user has access to this event through calendar permissions
+      const calendarEvents = await ctx.db
+        .query("calendarEvents")
+        .withIndex("by_event", (q) => q.eq("eventId", event._id))
+        .collect();
+
+      // Check access to any of the calendars this event belongs to
+      for (const calendarEvent of calendarEvents) {
+        const hasAccess = await hasCalendarAccess(
+          ctx,
+          calendarEvent.calendarId,
+          userId,
+        );
+        if (hasAccess) {
+          accessibleEvents.push(event);
+          break; // Found access through at least one calendar
+        }
+      }
+    }
+
+    return accessibleEvents;
   },
 });

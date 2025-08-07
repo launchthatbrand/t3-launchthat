@@ -10,7 +10,7 @@ import { Check } from "lucide-react";
 import { cn } from "@acme/ui";
 
 import type { Column } from "../../../types/board";
-import { ColumnType } from "../../../types/board";
+import type { ColumnType } from "../../../types/board";
 import AddColumnCombobox from "./AddColumnCombobox";
 import ColumnHeaderCell from "./ColumnHeaderCell";
 

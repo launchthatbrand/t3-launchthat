@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 
-import { Id } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { getUser, requireUser } from "./auth";
 
@@ -662,7 +662,7 @@ export const shareTemplate = mutation({
           q
             .eq("resourceType", "templates")
             .eq("resourceId", id)
-            .eq("sharedWithUserId", targetUserId as string),
+            .eq("sharedWithUserId", targetUserId!),
         )
         .first();
 

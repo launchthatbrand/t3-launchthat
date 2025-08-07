@@ -1,6 +1,5 @@
 "use client";
 
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Dialog,
   DialogHeader,
@@ -8,14 +7,22 @@ import {
   DialogTrigger,
   DialogContent as ShadcnDialogContent,
 } from "./dialog";
-import React, { createContext, useCallback, useContext, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { Badge } from "./badge";
 import { Button } from "./button";
+import { Check } from "lucide-react";
 import { Progress } from "./progress";
 import { cn } from "../@acme/utils";
+import { useMultiPageDialogStore } from "./multi-page-dialog-store";
 
-// Types for the multi-page dialog system
+// Types
 export interface MultiPageDialogStep<TData = Record<string, unknown>> {
   id: string;
   title: string;
@@ -42,6 +49,13 @@ export interface MultiPageDialogStepProps<TData = Record<string, unknown>> {
   isLastStep: boolean;
   currentStepIndex: number;
   totalSteps: number;
+  // Dynamic step management
+  addStep?: (step: MultiPageDialogStep<TData>, afterIndex?: number) => void;
+  removeStep?: (stepId: string) => void;
+  updateStep?: (
+    stepId: string,
+    updates: Partial<MultiPageDialogStep<TData>>,
+  ) => void;
 }
 
 export interface MultiPageDialogConfig<TData = Record<string, unknown>> {
@@ -55,9 +69,12 @@ export interface MultiPageDialogConfig<TData = Record<string, unknown>> {
   showProgress?: boolean;
   size?: "sm" | "md" | "lg" | "xl" | "full";
   closeOnComplete?: boolean;
+  disableOutsideClick?: boolean;
+  persistenceKey?: string; // Key for localStorage persistence
+  dynamicSteps?: boolean; // Enable dynamic step management
 }
 
-// Context for sharing state between components
+// Context type
 interface MultiPageDialogContextType<TData = Record<string, unknown>> {
   currentStepIndex: number;
   currentStep: MultiPageDialogStep<TData> | null;
@@ -71,11 +88,19 @@ interface MultiPageDialogContextType<TData = Record<string, unknown>> {
   setIsOpen: (open: boolean) => void;
   isProcessing: boolean;
   setIsProcessing: (processing: boolean) => void;
+  // Dynamic step management
+  addStep: (step: MultiPageDialogStep<TData>, afterIndex?: number) => void;
+  removeStep: (stepId: string) => void;
+  updateStep: (
+    stepId: string,
+    updates: Partial<MultiPageDialogStep<TData>>,
+  ) => void;
+  dynamicSteps: MultiPageDialogStep<TData>[];
 }
 
-const MultiPageDialogContext = createContext<MultiPageDialogContextType | null>(
-  null,
-);
+const MultiPageDialogContext = createContext<
+  MultiPageDialogContextType | undefined
+>(undefined);
 
 export const useMultiPageDialog = () => {
   const context = useContext(MultiPageDialogContext);
@@ -87,185 +112,179 @@ export const useMultiPageDialog = () => {
   return context;
 };
 
-// Step indicator component
 function StepIndicator() {
-  const { config, currentStepIndex } = useMultiPageDialog();
+  const { currentStepIndex, config, dynamicSteps } = useMultiPageDialog();
 
   if (!config.showStepIndicator) return null;
 
   return (
-    <div className="mb-6 flex items-center justify-center space-x-4">
-      {config.steps.map((step, index) => {
-        const isActive = index === currentStepIndex;
-        const isCompleted = index < currentStepIndex;
-        const isUpcoming = index > currentStepIndex;
-
-        return (
-          <div key={step.id} className="flex items-center">
-            <div className="flex flex-col items-center">
-              <div
-                className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors",
-                  isCompleted && "bg-primary text-primary-foreground",
-                  isActive &&
-                    "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2",
-                  isUpcoming &&
-                    "border-2 border-muted-foreground bg-muted text-muted-foreground",
-                )}
-              >
-                {isCompleted ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  <span>{index + 1}</span>
-                )}
-              </div>
-              <div className="mt-2 text-center">
-                <p
-                  className={cn(
-                    "text-xs font-medium",
-                    isActive && "text-primary",
-                    isCompleted && "text-primary",
-                    isUpcoming && "text-muted-foreground",
-                  )}
-                >
-                  {step.title}
-                </p>
-                {step.optional && (
-                  <Badge variant="secondary" className="mt-1 text-xs">
-                    Optional
-                  </Badge>
-                )}
-              </div>
-            </div>
-            {index < config.steps.length - 1 && (
-              <div
-                className={cn(
-                  "mx-4 mt-[-24px] h-0.5 w-12 transition-colors",
-                  index < currentStepIndex ? "bg-primary" : "bg-muted",
-                )}
-              />
+    <div className="flex items-center justify-center space-x-2">
+      {dynamicSteps.map((step, index) => (
+        <div key={step.id} className="flex items-center">
+          <div
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium",
+              index < currentStepIndex
+                ? "bg-primary text-primary-foreground"
+                : index === currentStepIndex
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground",
+            )}
+          >
+            {index < currentStepIndex ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              index + 1
             )}
           </div>
-        );
-      })}
+          {index < dynamicSteps.length - 1 && (
+            <div
+              className={cn(
+                "mx-2 h-0.5 w-8",
+                index < currentStepIndex ? "bg-primary" : "bg-muted",
+              )}
+            />
+          )}
+        </div>
+      ))}
     </div>
   );
 }
 
-// Progress bar component
 function ProgressBar() {
-  const { config, currentStepIndex } = useMultiPageDialog();
+  const { config, currentStepIndex, dynamicSteps } = useMultiPageDialog();
 
   if (!config.showProgress) return null;
 
-  const progress = ((currentStepIndex + 1) / config.steps.length) * 100;
+  const progress = ((currentStepIndex + 1) / dynamicSteps.length) * 100;
 
   return (
-    <div className="mb-6">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">
-          Step {currentStepIndex + 1} of {config.steps.length}
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm">
+        <span>
+          Step {currentStepIndex + 1} of {dynamicSteps.length}
         </span>
-        <span className="text-sm text-muted-foreground">
-          {Math.round(progress)}% Complete
-        </span>
+        <span>{Math.round(progress)}%</span>
       </div>
       <Progress value={progress} className="h-2" />
     </div>
   );
 }
 
-// Navigation component
 function DialogNavigation() {
   const {
     currentStep,
     currentStepIndex,
+    data,
     config,
     goNext,
     goPrevious,
     isProcessing,
     setIsProcessing,
     setIsOpen,
-    data,
+    dynamicSteps, // Add this to get dynamic steps
   } = useMultiPageDialog();
 
   const isFirstStep = currentStepIndex === 0;
-  const isLastStep = currentStepIndex === config.steps.length - 1;
+  const isLastStep = currentStepIndex === dynamicSteps.length - 1; // Use dynamicSteps instead of config.steps
 
   const handleComplete = async () => {
-    if (config.onComplete) {
-      setIsProcessing(true);
-      try {
-        await config.onComplete(data);
-        if (config.closeOnComplete !== false) {
-          setIsOpen(false);
+    if (!currentStep || isProcessing) return;
+
+    setIsProcessing(true);
+    try {
+      // Run validation if exists
+      if (currentStep.validation) {
+        const isValid = await currentStep.validation(data);
+        if (!isValid) {
+          setIsProcessing(false);
+          return;
         }
-      } catch (error: unknown) {
-        console.error(
-          "Error completing dialog:",
-          error instanceof Error ? error : new Error(String(error)),
-        );
-      } finally {
-        setIsProcessing(false);
       }
-    } else if (config.closeOnComplete !== false) {
-      setIsOpen(false);
+
+      // Run completion callback
+      if (config.onComplete) {
+        await config.onComplete(data);
+      }
+
+      // Close dialog if configured to do so
+      if (config.closeOnComplete !== false) {
+        setIsOpen(false);
+      }
+    } catch (error) {
+      console.error("Error completing dialog:", error);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleNext = async () => {
-    if (isLastStep) {
-      await handleComplete();
-    } else {
+    if (!currentStep || isProcessing) return;
+
+    setIsProcessing(true);
+    try {
+      // Run validation if exists
+      if (currentStep.validation) {
+        const isValid = await currentStep.validation(data);
+        if (!isValid) {
+          setIsProcessing(false);
+          return;
+        }
+      }
+
+      // Run onExit callback
+      if (currentStep.onExit) {
+        await currentStep.onExit(data);
+      }
+
+      // Move to next step
       goNext();
+    } catch (error) {
+      console.error("Error moving to next step:", error);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
+  const showNext = currentStep?.showNext !== false;
+  const showPrevious = currentStep?.showPrevious !== false && !isFirstStep;
+
   return (
-    <div className="flex items-center justify-between border-t pt-6">
+    <div className="flex justify-between pt-4">
       <div>
-        {!isFirstStep && currentStep?.showPrevious !== false && (
+        {showPrevious && (
           <Button
             variant="outline"
             onClick={goPrevious}
             disabled={isProcessing}
           >
-            <ChevronLeft className="mr-2 h-4 w-4" />
             {currentStep?.previousLabel ?? "Previous"}
           </Button>
         )}
       </div>
 
       <div className="flex gap-2">
-        <Button
-          variant="outline"
-          onClick={() => {
-            config.onCancel?.();
-            setIsOpen(false);
-          }}
-          disabled={isProcessing}
-        >
+        <Button variant="outline" onClick={() => setIsOpen(false)}>
           Cancel
         </Button>
-
-        {currentStep?.showNext !== false && (
-          <Button onClick={handleNext} disabled={isProcessing}>
-            {isProcessing ? (
-              <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
-            ) : isLastStep ? (
-              <Check className="mr-2 h-4 w-4" />
-            ) : (
-              <ChevronRight className="mr-2 h-4 w-4" />
-            )}
-            {isLastStep ? "Complete" : (currentStep?.nextLabel ?? "Next")}
+        {isLastStep ? (
+          <Button onClick={handleComplete} disabled={isProcessing}>
+            {isProcessing ? "Processing..." : "Complete"}
           </Button>
+        ) : (
+          showNext && (
+            <Button onClick={handleNext} disabled={isProcessing}>
+              {isProcessing
+                ? "Processing..."
+                : (currentStep?.nextLabel ?? "Next")}
+            </Button>
+          )
         )}
       </div>
     </div>
   );
 }
 
-// Main content component
 function StepContent() {
   const {
     currentStep,
@@ -276,43 +295,43 @@ function StepContent() {
     goPrevious,
     currentStepIndex,
     config,
+    addStep,
+    removeStep,
+    updateStep,
+    dynamicSteps,
   } = useMultiPageDialog();
 
   if (!currentStep) return null;
 
   const StepComponent = currentStep.component;
   const isFirstStep = currentStepIndex === 0;
-  const isLastStep = currentStepIndex === config.steps.length - 1;
+  const isLastStep = currentStepIndex === dynamicSteps.length - 1;
+
+  const stepProps = {
+    data,
+    updateData,
+    goToStep,
+    goNext,
+    goPrevious,
+    isFirstStep,
+    isLastStep,
+    currentStepIndex,
+    totalSteps: dynamicSteps.length,
+    // Only pass dynamic step functions if dynamicSteps is enabled
+    ...(config.dynamicSteps && {
+      addStep,
+      removeStep,
+      updateStep,
+    }),
+  };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold">{currentStep.title}</h3>
-        {currentStep.description && (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {currentStep.description}
-          </p>
-        )}
-      </div>
-
-      <div className="min-h-[200px]">
-        <StepComponent
-          data={data}
-          updateData={updateData}
-          goToStep={goToStep}
-          goNext={goNext}
-          goPrevious={goPrevious}
-          isFirstStep={isFirstStep}
-          isLastStep={isLastStep}
-          currentStepIndex={currentStepIndex}
-          totalSteps={config.steps.length}
-        />
-      </div>
+    <div className="flex-1">
+      <StepComponent {...stepProps} />
     </div>
   );
 }
 
-// Provider component
 function MultiPageDialogProvider({
   config,
   isOpen,
@@ -324,116 +343,175 @@ function MultiPageDialogProvider({
   setIsOpen: (open: boolean) => void;
   children: React.ReactNode;
 }) {
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [data, setData] = useState<Record<string, unknown>>(
-    config.initialData ?? {},
-  );
-  const [isProcessing, setIsProcessing] = useState(false);
+  const store = useMultiPageDialogStore();
+  const persistenceKey = config.persistenceKey ?? "default";
 
-  const currentStep = config.steps[currentStepIndex] ?? null;
+  // Dynamic steps state (local to this dialog instance)
+  const [dynamicSteps, setDynamicSteps] = useState<MultiPageDialogStep[]>(
+    config.steps,
+  );
+
+  // Initialize dialog when component mounts (only once)
+  useEffect(() => {
+    if (config.persistenceKey) {
+      store.initDialog(persistenceKey, config.initialData);
+    }
+  }, [persistenceKey, store, config.persistenceKey]); // Remove config.initialData dependency to avoid infinite loop
+
+  // Update dynamic steps when config.steps changes
+  useEffect(() => {
+    setDynamicSteps(config.steps);
+  }, [config.steps]);
+
+  // Get current state from store
+  const storeState = store.getDialogState(persistenceKey);
+  const currentStepIndex = isOpen ? storeState.currentStepIndex : 0;
+
+  // Memoize the data object to prevent unnecessary re-renders
+  const data = useMemo(() => {
+    return { ...config.initialData, ...storeState.data };
+  }, [config.initialData, storeState.data]);
+
+  const currentStep = dynamicSteps[currentStepIndex] ?? null;
 
   const updateData = useCallback(
     (updates: Partial<Record<string, unknown>>) => {
-      setData((prev) => ({ ...prev, ...updates }));
+      if (config.persistenceKey) {
+        store.updateData(persistenceKey, updates);
+      }
     },
-    [],
+    [persistenceKey, store, config.persistenceKey],
   );
 
   const goToStep = useCallback(
     (stepId: string) => {
-      const stepIndex = config.steps.findIndex((step) => step.id === stepId);
+      const stepIndex = dynamicSteps.findIndex((step) => step.id === stepId);
       if (stepIndex !== -1) {
-        setCurrentStepIndex(stepIndex);
+        store.setStep(persistenceKey, stepIndex);
       }
     },
-    [config.steps],
+    [persistenceKey, store, dynamicSteps],
   );
 
   const goNext = useCallback(async () => {
-    const step = config.steps[currentStepIndex];
+    if (currentStepIndex < dynamicSteps.length - 1) {
+      // Get the current step for validation
+      const currentStep = dynamicSteps[currentStepIndex];
 
-    // Validate current step if validation function exists
-    if (step?.validation) {
-      setIsProcessing(true);
-      try {
-        const isValid = await step.validation(data);
-        if (!isValid) {
-          setIsProcessing(false);
+      // Run validation if exists
+      if (currentStep?.validation) {
+        try {
+          const isValid = await currentStep.validation(data);
+          if (!isValid) {
+            console.log("🔍 VALIDATION FAILED: Step validation returned false");
+            return;
+          }
+          console.log("🔍 VALIDATION PASSED: Step validation succeeded");
+        } catch (error) {
+          console.error("🔍 VALIDATION ERROR:", error);
           return;
         }
-      } catch (error: unknown) {
-        console.error(
-          "Validation error:",
-          error instanceof Error ? error : new Error(String(error)),
-        );
-        setIsProcessing(false);
-        return;
       }
+
+      // If validation passes (or doesn't exist), move to next step
+      store.setStep(persistenceKey, currentStepIndex + 1);
     }
-
-    // Call onExit for current step
-    if (step?.onExit) {
-      try {
-        await step.onExit(data);
-      } catch (error: unknown) {
-        console.error(
-          "Step exit error:",
-          error instanceof Error ? error : new Error(String(error)),
-        );
-      }
-    }
-
-    const nextIndex = currentStepIndex + 1;
-    if (nextIndex < config.steps.length) {
-      setCurrentStepIndex(nextIndex);
-
-      // Call onEnter for next step
-      const nextStep = config.steps[nextIndex];
-      if (nextStep?.onEnter) {
-        try {
-          await nextStep.onEnter(data);
-        } catch (error: unknown) {
-          console.error(
-            "Step enter error:",
-            error instanceof Error ? error : new Error(String(error)),
-          );
-        }
-      }
-    }
-
-    setIsProcessing(false);
-  }, [currentStepIndex, config.steps, data]);
+  }, [persistenceKey, store, currentStepIndex, dynamicSteps, data]);
 
   const goPrevious = useCallback(() => {
-    const prevIndex = currentStepIndex - 1;
-    if (prevIndex >= 0) {
-      setCurrentStepIndex(prevIndex);
+    if (currentStepIndex > 0) {
+      store.setStep(persistenceKey, currentStepIndex - 1);
     }
-  }, [currentStepIndex]);
+  }, [persistenceKey, store, currentStepIndex]);
 
-  // Reset state when dialog opens/closes
-  React.useEffect(() => {
-    if (isOpen) {
-      setCurrentStepIndex(0);
-      setData(config.initialData ?? {});
-      setIsProcessing(false);
-    }
-  }, [isOpen, config.initialData]);
+  const handleSetIsOpen = useCallback(
+    (open: boolean) => {
+      setIsOpen(open);
+      if (!open && config.persistenceKey) {
+        // Don't clear dialog data immediately - let it persist for reopening
+        // store.clearDialog(persistenceKey);
+      }
+    },
+    [setIsOpen, config.persistenceKey],
+  );
 
-  const contextValue: MultiPageDialogContextType = {
-    currentStepIndex,
-    currentStep,
-    data,
-    config,
-    updateData,
-    goToStep,
-    goNext,
-    goPrevious,
-    isOpen,
-    setIsOpen,
-    isProcessing,
-    setIsProcessing,
-  };
+  const setProcessing = useCallback(
+    (processing: boolean) => {
+      if (config.persistenceKey) {
+        store.setProcessing(persistenceKey, processing);
+      }
+    },
+    [persistenceKey, store, config.persistenceKey],
+  );
+
+  // Dynamic step management functions
+  const addStep = useCallback(
+    (step: MultiPageDialogStep, afterIndex?: number) => {
+      setDynamicSteps((prev) => {
+        const newSteps = [...prev];
+        const insertIndex =
+          afterIndex !== undefined ? afterIndex + 1 : newSteps.length;
+        newSteps.splice(insertIndex, 0, step);
+        return newSteps;
+      });
+    },
+    [],
+  );
+
+  const removeStep = useCallback((stepId: string) => {
+    setDynamicSteps((prev) => prev.filter((step) => step.id !== stepId));
+  }, []);
+
+  const updateStep = useCallback(
+    (stepId: string, updates: Partial<MultiPageDialogStep>) => {
+      setDynamicSteps((prev) =>
+        prev.map((step) =>
+          step.id === stepId ? { ...step, ...updates } : step,
+        ),
+      );
+    },
+    [],
+  );
+
+  const contextValue = useMemo(
+    () => ({
+      currentStepIndex,
+      currentStep,
+      data,
+      config: { ...config, steps: dynamicSteps }, // Use dynamic steps in config
+      updateData,
+      goToStep,
+      goNext,
+      goPrevious,
+      isOpen,
+      setIsOpen: handleSetIsOpen,
+      isProcessing: storeState.isProcessing,
+      setIsProcessing: setProcessing,
+      // Dynamic step management
+      addStep,
+      removeStep,
+      updateStep,
+      dynamicSteps,
+    }),
+    [
+      currentStepIndex,
+      currentStep,
+      data,
+      config,
+      dynamicSteps,
+      updateData,
+      goToStep,
+      goNext,
+      goPrevious,
+      isOpen,
+      handleSetIsOpen,
+      storeState.isProcessing,
+      setProcessing,
+      addStep,
+      removeStep,
+      updateStep,
+    ],
+  );
 
   return (
     <MultiPageDialogContext.Provider value={contextValue}>
@@ -442,7 +520,6 @@ function MultiPageDialogProvider({
   );
 }
 
-// Main component
 export function MultiPageDialog({
   config,
   trigger,
@@ -455,9 +532,53 @@ export function MultiPageDialog({
   onOpenChange?: (open: boolean) => void;
 }) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const store = useMultiPageDialogStore();
 
   const isOpen = open ?? internalIsOpen;
-  const setIsOpen = onOpenChange ?? setInternalIsOpen;
+  const baseSetIsOpen = onOpenChange ?? setInternalIsOpen;
+
+  // Auto-restore dialog if persistence indicates it should be open
+  // But only if this dialog is not being controlled externally
+  useEffect(() => {
+    if (
+      config.persistenceKey &&
+      !isOpen &&
+      open === undefined &&
+      onOpenChange === undefined
+    ) {
+      const persistedState = store.getDialogState(config.persistenceKey);
+      // Check if there's persisted data (indicating user was in middle of flow)
+      // AND if the dialog wasn't explicitly closed (no wasExplicitlyClosed flag)
+      if (
+        Object.keys(persistedState.data).length > 0 &&
+        !persistedState.wasExplicitlyClosed
+      ) {
+        baseSetIsOpen(true);
+      }
+    }
+  }, [config.persistenceKey, isOpen, baseSetIsOpen, store, open, onOpenChange]);
+
+  // Custom close handler that clears persistence on explicit close
+  const handleOpenChange = (newOpen: boolean) => {
+    baseSetIsOpen(newOpen);
+
+    if (!newOpen && config.persistenceKey) {
+      // Mark that this dialog was explicitly closed by the user
+      store.setExplicitlyClosed(config.persistenceKey, true);
+    } else if (newOpen && config.persistenceKey) {
+      // Reset the explicitly closed flag when opening
+      store.setExplicitlyClosed(config.persistenceKey, false);
+    }
+  };
+
+  // Prevent closing on outside click if configured
+  const dialogOpenChange = config.disableOutsideClick
+    ? (open: boolean) => {
+        // Only allow closing via explicit actions (buttons)
+        if (!open) return;
+        handleOpenChange(open);
+      }
+    : handleOpenChange;
 
   const sizeClasses = {
     sm: "max-w-md",
@@ -471,13 +592,19 @@ export function MultiPageDialog({
     <MultiPageDialogProvider
       config={config}
       isOpen={isOpen}
-      setIsOpen={setIsOpen}
+      setIsOpen={handleOpenChange}
     >
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog open={isOpen} onOpenChange={dialogOpenChange}>
         {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
 
         <ShadcnDialogContent
-          className={cn("overflow-y-auto", sizeClasses[config.size ?? "xl"])}
+          className={cn(
+            "overflow-y-auto",
+            config.size === "full"
+              ? "h-[95vh] max-h-[95vh] w-[95vw] max-w-[95vw]"
+              : "h-full max-h-[90vh] w-full max-w-[90vw]",
+            sizeClasses[config.size ?? "lg"],
+          )}
         >
           <DialogHeader>
             <DialogTitle>{config.title}</DialogTitle>
@@ -491,11 +618,37 @@ export function MultiPageDialog({
           <div className="space-y-6">
             <StepIndicator />
             <ProgressBar />
-            <StepContent />
+            <StepContentWithHeader />
             <DialogNavigation />
           </div>
         </ShadcnDialogContent>
       </Dialog>
     </MultiPageDialogProvider>
+  );
+}
+
+// New component to show step content with dynamic header
+function StepContentWithHeader() {
+  const { currentStep } = useMultiPageDialog();
+
+  if (!currentStep) return null;
+
+  return (
+    <div className="space-y-4">
+      {/* Step Header */}
+      <div>
+        <h3 className="text-lg font-medium">{currentStep.title}</h3>
+        {currentStep.description && (
+          <p className="text-sm text-muted-foreground">
+            {currentStep.description}
+          </p>
+        )}
+      </div>
+
+      {/* Step Content */}
+      <div className="min-h-[200px]">
+        <StepContent />
+      </div>
+    </div>
   );
 }

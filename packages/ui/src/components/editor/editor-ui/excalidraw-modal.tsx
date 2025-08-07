@@ -23,7 +23,7 @@ const Excalidraw = dynamic(() => import("./excalidraw"), { ssr: false });
 
 export type ExcalidrawInitialElements = ExcalidrawInitialDataState["elements"];
 
-type Props = {
+interface Props {
   closeOnClickOutside?: boolean;
   /**
    * The initial set of elements to draw into the scene
@@ -57,7 +57,7 @@ type Props = {
     appState: Partial<AppState>,
     files: BinaryFiles,
   ) => void;
-};
+}
 
 export const useCallbackRefState = () => {
   const [refValue, setRefValue] =
@@ -112,15 +112,15 @@ export function ExcalidrawModal({
     };
 
     if (excaliDrawModelRef.current !== null) {
-      modalOverlayElement = excaliDrawModelRef.current?.parentElement;
+      modalOverlayElement = excaliDrawModelRef.current.parentElement;
       if (modalOverlayElement !== null) {
-        modalOverlayElement?.addEventListener("click", clickOutsideHandler);
+        modalOverlayElement.addEventListener("click", clickOutsideHandler);
       }
     }
 
     return () => {
       if (modalOverlayElement !== null) {
-        modalOverlayElement?.removeEventListener("click", clickOutsideHandler);
+        modalOverlayElement.removeEventListener("click", clickOutsideHandler);
       }
     };
   }, [closeOnClickOutside, onDelete]);

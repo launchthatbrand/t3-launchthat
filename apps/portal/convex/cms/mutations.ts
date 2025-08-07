@@ -1,7 +1,8 @@
 import { ConvexError, v } from "convex/values";
-
-import { mutation } from "../_generated/server";
 import { generateUniqueSlug, sanitizeSlug } from "../lib/slugs";
+
+import { api } from "../_generated/api";
+import { mutation } from "../_generated/server";
 
 /**
  * Create a new post with automatic slug generation
@@ -15,6 +16,7 @@ export const createPost = mutation({
     category: v.string(),
     excerpt: v.optional(v.string()),
     featuredImageUrl: v.optional(v.string()),
+    featuredImageId: v.optional(v.id("mediaItems")), // Link to media item
     featured: v.optional(v.boolean()),
     tags: v.optional(v.array(v.string())),
     customSlug: v.optional(v.string()), // Optional custom slug
@@ -47,6 +49,144 @@ export const createPost = mutation({
     });
 
     return postId;
+  },
+});
+
+/**
+ * Update post featured image using media item ID
+ */
+export const updatePostFeaturedImage = mutation({
+  args: {
+    postId: v.id("posts"),
+    mediaItemId: v.optional(v.id("mediaItems")),
+  },
+  returns: v.object({
+    postId: v.id("posts"),
+    featuredImageUrl: v.optional(v.string()),
+    featuredImageId: v.optional(v.id("mediaItems")),
+  }),
+  handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.postId);
+    if (!post) {
+      throw new ConvexError("Post not found");
+    }
+
+    let featuredImageUrl: string | undefined = undefined;
+
+    if (args.mediaItemId) {
+      // Get the media item and its URL
+      const mediaItem = await ctx.db.get(args.mediaItemId);
+      if (!mediaItem) {
+        throw new ConvexError("Media item not found");
+      }
+
+      if (mediaItem.storageId) {
+        featuredImageUrl =
+          (await ctx.storage.getUrl(mediaItem.storageId)) ?? undefined;
+      } else if (mediaItem.externalUrl) {
+        featuredImageUrl = mediaItem.externalUrl;
+      }
+    }
+
+    // Update the post
+    await ctx.db.patch(args.postId, {
+      featuredImageId: args.mediaItemId,
+      featuredImageUrl,
+      updatedAt: Date.now(),
+    });
+
+    return {
+      postId: args.postId,
+      featuredImageUrl,
+      featuredImageId: args.mediaItemId,
+    };
+  },
+});
+
+/**
+ * Create post with media upload in a single operation
+ */
+export const createPostWithMedia = mutation({
+  args: {
+    title: v.string(),
+    content: v.string(),
+    authorId: v.optional(v.id("users")),
+    status: v.optional(v.string()),
+    category: v.string(),
+    excerpt: v.optional(v.string()),
+    featured: v.optional(v.boolean()),
+    tags: v.optional(v.array(v.string())),
+    customSlug: v.optional(v.string()),
+    // Media data
+    featuredImageStorageId: v.optional(v.id("_storage")),
+    featuredImageTitle: v.optional(v.string()),
+    featuredImageAlt: v.optional(v.string()),
+  },
+  returns: v.object({
+    postId: v.id("posts"),
+    mediaItemId: v.optional(v.id("mediaItems")),
+    featuredImageUrl: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const {
+      featuredImageStorageId,
+      featuredImageTitle,
+      featuredImageAlt,
+      ...postArgs
+    } = args;
+
+    let mediaItemId: Id<"mediaItems"> | undefined = undefined;
+    let featuredImageUrl: string | undefined = undefined;
+
+    // Create media item if storage ID is provided
+    if (featuredImageStorageId) {
+      // Get URL for the uploaded file
+      featuredImageUrl =
+        (await ctx.storage.getUrl(featuredImageStorageId)) ?? undefined;
+
+      if (featuredImageUrl) {
+        // Create media item
+        mediaItemId = await ctx.db.insert("mediaItems", {
+          storageId: featuredImageStorageId,
+          title: featuredImageTitle,
+          alt: featuredImageAlt,
+          status: "published",
+          uploadedAt: Date.now(),
+        });
+      }
+    }
+
+    // Create the post with media references
+    const timestamp = Date.now();
+    const { title, customSlug, ...otherArgs } = postArgs;
+
+    // Generate slug
+    let slug;
+    if (customSlug) {
+      const sanitizedSlug = sanitizeSlug(customSlug);
+      slug = await generateUniqueSlug(ctx.db, "posts", sanitizedSlug);
+    } else {
+      slug = await generateUniqueSlug(ctx.db, "posts", title);
+    }
+
+    // Create the post directly
+    const postId = await ctx.db.insert("posts", {
+      title,
+      slug,
+      status: postArgs.status ?? "draft",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      readTime: calculateReadTime(postArgs.content ?? ""),
+      featuredImageId: mediaItemId,
+      featuredImageUrl,
+      ...otherArgs,
+    });
+
+    return {
+      postId,
+      mediaItemId,
+      featuredImageUrl,
+    };
   },
 });
 

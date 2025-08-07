@@ -1,8 +1,8 @@
 import { ConvexError } from "convex/values";
 
 import type { PermissionAction, ResourceType } from "./types";
-import { Id } from "./_generated/dataModel";
-import { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import type { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server";
 
 /**
  * Gets the authenticated user ID from the Convex auth context.

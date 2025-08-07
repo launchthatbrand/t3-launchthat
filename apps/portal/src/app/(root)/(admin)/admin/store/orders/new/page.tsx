@@ -1,19 +1,26 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { useMutation } from "convex/react";
+import { ArrowLeft } from "lucide-react";
+
+import { Button } from "@acme/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { toast } from "@acme/ui/toast";
+
 import type {
   OrderFormData,
   OrderLineItem,
 } from "~/components/admin/OrderForm";
-
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@acme/ui/button";
-import Link from "next/link";
+import AdminSinglePost, {
+  AdminSinglePostLayout,
+  AdminSinglePostMain,
+  AdminSinglePostSidebar,
+} from "~/components/admin/AdminSinglePostLayout";
 import { OrderForm } from "~/components/admin/OrderForm";
-import { api } from "@convex-config/_generated/api";
-import { toast } from "@acme/ui/toast";
-import { useMutation } from "convex/react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 
 export default function NewOrderPage() {
   const router = useRouter();
@@ -103,12 +110,57 @@ export default function NewOrderPage() {
         <h1 className="text-2xl font-bold">Create New Order</h1>
       </div>
 
-      <OrderForm
-        onSubmit={handleSubmit}
-        onCancel={handleCancel}
+      <AdminSinglePost
+        postType="order"
+        // postTitle={`Order ${orderId}`}
+        // postId={orderId}
         isSubmitting={isSubmitting}
-        submitButtonText="Create Order"
-      />
+        defaultTab="content"
+      >
+        {/* <AdminSinglePostHeader
+              showBackButton={true}
+              backUrl="/admin/store/orders"
+              showSaveButton={false} // Save is handled per section
+            /> */}
+
+        <AdminSinglePostLayout className="border-none shadow-none">
+          <AdminSinglePostMain className="ADMIN_SINGLE_POST_MAIN border-none shadow-none">
+            <OrderForm
+              onSubmit={handleSubmit}
+              onCancel={handleCancel}
+              isSubmitting={isSubmitting}
+              submitButtonText="Checkout Order"
+              components={["General", "LineItems", "Calendar"]}
+            />
+          </AdminSinglePostMain>
+
+          <AdminSinglePostSidebar className="flex flex-col gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Order Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4">
+                <Button variant="outline" className="w-full">
+                  Print Order
+                </Button>
+                <Button variant="outline" className="w-full">
+                  Export PDF
+                </Button>
+                <Button variant="outline" className="w-full">
+                  Send Email
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* <OrderNotes orderId={orderId} /> */}
+
+            {/* <CalendarEventLink
+                  orderId={orderId}
+                  orderNumber={order?.orderNumber}
+                /> */}
+          </AdminSinglePostSidebar>
+        </AdminSinglePostLayout>
+      </AdminSinglePost>
     </div>
   );
 }

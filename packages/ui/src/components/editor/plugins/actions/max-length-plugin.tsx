@@ -12,10 +12,11 @@ import { useEffect } from 'react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $trimTextContentFromAnchor } from '@lexical/selection'
 import { $restoreEditorState } from '@lexical/utils'
+import type {
+  EditorState} from 'lexical';
 import {
   $getSelection,
   $isRangeSelection,
-  EditorState,
   RootNode,
 } from 'lexical'
 

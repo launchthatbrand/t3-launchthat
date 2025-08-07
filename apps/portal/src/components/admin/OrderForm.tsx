@@ -7,11 +7,12 @@ import Image from "next/image";
 import { useAuth } from "@clerk/nextjs";
 import { api } from "@convex-config/_generated/api";
 import { useQuery } from "convex/react";
-import { Plus, Trash2 } from "lucide-react";
+import { Calendar, ListChecks, Plus, Trash2, Truck } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { DateTimePicker } from "@acme/ui/date-time-picker";
 import {
   Dialog,
   DialogContent,
@@ -27,78 +28,119 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
+import { Separator } from "@acme/ui/separator";
 import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
 
 import type { EntityAction } from "~/components/shared/EntityList/types";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { AddProductDialog } from "./AddProductDialog";
+import { AddShippingDialog } from "./AddShippingDialog";
+import { CalendarEventLink } from "./CalendarEventLink";
+import { OrderAddressSection } from "./OrderAddressSection";
 
-// Order line item interface
-export interface OrderLineItem {
-  id: string; // temporary ID for form management
-  productId: Id<"products">;
-  productSnapshot: {
-    name: string;
-    description: string;
-    price: number;
-    imageUrl?: string;
-  };
-  quantity: number;
-  price: number;
-  lineTotal: number;
+// Address data interface
+export interface AddressData {
+  fullName: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  stateOrProvince: string;
+  postalCode: string;
+  country: string;
+  phoneNumber: string;
 }
 
-// Order form data
+// Order form data interface
 export interface OrderFormData {
-  // Customer info
   userId?: Id<"users">;
   email: string;
   firstName: string;
   lastName: string;
   phone: string;
   company: string;
-
-  // Address configuration
   differentShippingAddress: boolean;
-
-  // Billing address (primary address)
-  billingAddress: {
-    fullName: string;
-    addressLine1: string;
-    addressLine2: string;
-    city: string;
-    stateOrProvince: string;
-    postalCode: string;
-    country: string;
-    phoneNumber: string;
-  };
-
-  // Shipping address (only used if differentShippingAddress is true)
-  shippingAddress: {
-    fullName: string;
-    addressLine1: string;
-    addressLine2: string;
-    city: string;
-    stateOrProvince: string;
-    postalCode: string;
-    country: string;
-    phoneNumber: string;
-  };
-
-  // Order details
+  billingAddress: AddressData;
+  shippingAddress: AddressData;
   paymentMethod: string;
   notes: string;
+  createdAt?: Date; // Changed to optional Date field
 
-  // Line items
+  // Product line items (now includes both products and shipping)
   lineItems: OrderLineItem[];
 }
 
+// Unified line item interface that can handle both products and shipping
+export interface OrderLineItem {
+  id: string; // temporary ID for form management
+  type: "product" | "shipping";
+
+  // Product-specific fields
+  productId?: Id<"products">;
+  productSnapshot?: {
+    name: string;
+    description: string;
+    price: number;
+    imageUrl?: string;
+  };
+
+  // Shipping-specific fields
+  shippingMethod?: string;
+  shippingDescription?: string;
+
+  // Common fields
+  quantity: number;
+  price: number;
+  lineTotal: number;
+
+  // Display fields (computed from product data or shipping info)
+  displayName: string;
+  displayDescription: string;
+  displayImageUrl?: string;
+}
+
+// Available component sections that can be enabled/disabled
+export type OrderFormComponent =
+  | "General"
+  | "User"
+  | "Shipping"
+  | "Payment"
+  | "Customer"
+  | "Calendar"
+  | "LineItems";
+
+/**
+ * OrderForm component with configurable sections
+ *
+ * Usage examples:
+ *
+ * // Show all components (default)
+ * <OrderForm
+ *   onSubmit={handleSubmit}
+ *   onCancel={handleCancel}
+ * />
+ *
+ * // Show only General and LineItems (no billing/shipping addresses)
+ * <OrderForm
+ *   onSubmit={handleSubmit}
+ *   onCancel={handleCancel}
+ *   components={["General", "LineItems"]}
+ * />
+ *
+ * // Show General, Customer, and LineItems (no addresses or calendar)
+ * <OrderForm
+ *   onSubmit={handleSubmit}
+ *   onCancel={handleCancel}
+ *   components={["General", "Customer", "LineItems"]}
+ * />
+ */
 interface OrderFormProps {
   orderId?: Id<"orders">; // If provided, we're editing an existing order
   onSubmit: (data: OrderFormData) => Promise<void>;
   onCancel: () => void;
   isSubmitting?: boolean;
   submitButtonText?: string;
+  components?: OrderFormComponent[]; // New prop to control which components are shown
 }
 
 export function OrderForm({
@@ -107,7 +149,21 @@ export function OrderForm({
   onCancel,
   isSubmitting = false,
   submitButtonText = "Create Order",
+  components = [
+    "General",
+    "Shipping",
+    "User",
+    "Payment",
+    "Customer",
+    "Calendar",
+    "LineItems",
+  ], // Default to all components
 }: OrderFormProps) {
+  // Helper function to check if a component should be rendered
+  const shouldShowComponent = (component: OrderFormComponent): boolean => {
+    return components.includes(component);
+  };
+
   // Fetch existing order if editing
   const existingOrder = useQuery(
     api.ecommerce.orders.index.getOrder,
@@ -124,8 +180,9 @@ export function OrderForm({
     isAuthLoaded ? {} : "skip",
   );
 
-  // Form state
+  // Initial form data
   const [formData, setFormData] = useState<OrderFormData>({
+    userId: undefined,
     email: "",
     firstName: "",
     lastName: "",
@@ -154,12 +211,15 @@ export function OrderForm({
     },
     paymentMethod: "credit_card",
     notes: "",
+    createdAt: undefined, // Initialize createdAt as undefined
     lineItems: [],
   });
 
   const [showAddProduct, setShowAddProduct] = useState(false);
+  const [showAddShipping, setShowAddShipping] = useState(false); // New state for shipping dialog
   const [showUserSelector, setShowUserSelector] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [isFormInitialized, setIsFormInitialized] = useState(false); // Flag to prevent form data overwrites
 
   // Handle user selection and prefill form data
   const handleUserSelect = (user: Doc<"users">) => {
@@ -201,7 +261,7 @@ export function OrderForm({
 
   // Populate form with existing order data if editing
   useEffect(() => {
-    if (existingOrder) {
+    if (existingOrder && !isFormInitialized) {
       setFormData({
         userId: existingOrder.userId,
         email: existingOrder.email || "",
@@ -232,9 +292,14 @@ export function OrderForm({
         },
         paymentMethod: existingOrder.paymentMethod || "credit_card",
         notes: existingOrder.notes || "",
-        lineItems:
-          existingOrder.items?.map((item, index) => ({
+        createdAt: existingOrder.createdAt
+          ? new Date(existingOrder.createdAt)
+          : undefined, // Populate createdAt as Date
+        lineItems: [
+          // Load product items
+          ...(existingOrder.items?.map((item, index) => ({
             id: `${item.productId}-${index}`,
+            type: "product" as const,
             productId: item.productId,
             productSnapshot: {
               name: item.productSnapshot?.name || "Unknown Product",
@@ -247,18 +312,49 @@ export function OrderForm({
             lineTotal:
               item.lineTotal ||
               item.quantity * (item.productSnapshot?.price || 0),
-          })) || [],
+            displayName: item.productSnapshot?.name || "Unknown Product",
+            displayDescription: item.productSnapshot?.description || "",
+            displayImageUrl: item.productSnapshot?.imageUrl,
+          })) || []),
+          // Load shipping as a line item if it exists
+          ...(existingOrder.shippingDetails
+            ? [
+                {
+                  id: `shipping-${Date.now()}`,
+                  type: "shipping" as const,
+                  shippingMethod: existingOrder.shippingDetails.method,
+                  shippingDescription:
+                    existingOrder.shippingDetails.description,
+                  quantity: 1,
+                  price: existingOrder.shippingDetails.cost,
+                  lineTotal: existingOrder.shippingDetails.cost,
+                  displayName: existingOrder.shippingDetails.method,
+                  displayDescription: existingOrder.shippingDetails.description,
+                },
+              ]
+            : []),
+        ],
       });
+      setIsFormInitialized(true); // Mark form as initialized
     }
-  }, [existingOrder]);
+  }, [existingOrder, isFormInitialized]);
 
-  // Calculate totals
-  const subtotal = formData.lineItems.reduce(
+  // Reset form initialization when orderId changes (switching between orders)
+  useEffect(() => {
+    setIsFormInitialized(false);
+  }, [orderId]);
+
+  // Calculate totals - products and shipping
+  const productSubtotal = formData.lineItems.reduce(
     (sum, item) => sum + item.lineTotal,
     0,
   );
-  //   const tax = subtotal * 0.08; // 8% tax rate - make this configurable
-  //   const shipping = subtotal > 100 ? 0 : 10; // Free shipping over $100
+
+  const shippingTotal = formData.lineItems
+    .filter((item) => item.type === "shipping")
+    .reduce((sum, item) => sum + item.lineTotal, 0);
+  const subtotal = productSubtotal + shippingTotal;
+  //   const tax = productSubtotal * 0.08; // 8% tax rate on products only - make this configurable
   const total = subtotal;
 
   // Handle form field changes
@@ -312,16 +408,13 @@ export function OrderForm({
   };
 
   // Add product to line items
-  const handleAddProduct = (
-    productId: Id<"products">,
-    quantity: number = 1,
-  ) => {
-    const product = productsQuery?.find((p) => p._id === productId);
+  const handleAddProduct = (product: any, quantity: number) => {
     if (!product) return;
 
     const newItem: OrderLineItem = {
       id: Math.random().toString(36).substr(2, 9),
-      productId,
+      type: "product",
+      productId: product._id,
       productSnapshot: {
         name: product.name,
         description: product.description || "",
@@ -331,13 +424,43 @@ export function OrderForm({
       quantity,
       price: product.price,
       lineTotal: product.price * quantity,
+      displayName: product.name,
+      displayDescription: product.description || "",
+      displayImageUrl: product.images?.[0]?.url,
     };
 
     setFormData((prev) => ({
       ...prev,
       lineItems: [...prev.lineItems, newItem],
     }));
+
     setShowAddProduct(false);
+  };
+
+  // Add shipping details to order
+  const handleAddShipping = (
+    shippingMethod: string,
+    description: string,
+    price: number,
+  ) => {
+    const newShippingItem: OrderLineItem = {
+      id: Math.random().toString(36).substr(2, 9),
+      type: "shipping",
+      shippingMethod,
+      shippingDescription: description,
+      quantity: 1, // Shipping always has quantity of 1
+      price: price,
+      lineTotal: price,
+      displayName: shippingMethod,
+      displayDescription: description,
+    };
+
+    setFormData((prev) => ({
+      ...prev,
+      lineItems: [...prev.lineItems, newShippingItem],
+    }));
+
+    setShowAddShipping(false);
   };
 
   // Update line item quantity
@@ -380,41 +503,59 @@ export function OrderForm({
   // EntityList configuration for line items
   const lineItemColumns: ColumnDef<OrderLineItem>[] = [
     {
-      id: "product",
+      id: "item",
       header: "Product",
       cell: ({ row }) => {
         const item = row.original;
         return (
           <div className="flex items-center gap-3">
-            {item.productSnapshot?.imageUrl && (
-              <Image
-                src={item.productSnapshot.imageUrl}
-                alt={item.productSnapshot.name}
-                width={40}
-                height={40}
-                className="h-10 w-10 rounded object-cover"
-              />
+            {/* Show appropriate icon for item type */}
+            {item.type === "shipping" ? (
+              <div className="flex h-10 w-10 items-center justify-center rounded bg-blue-100">
+                <Truck className="h-5 w-5 text-blue-600" />
+              </div>
+            ) : (
+              item.displayImageUrl && (
+                <Image
+                  src={item.displayImageUrl}
+                  alt={item.displayName}
+                  width={40}
+                  height={40}
+                  className="h-10 w-10 rounded object-cover"
+                />
+              )
             )}
             <div>
-              <div className="font-medium">{item.productSnapshot?.name}</div>
-              <div className="text-xs text-muted-foreground">
-                {item.productSnapshot?.description}
+              <div className="font-medium">{item.displayName}</div>
+              <div className="text-sm text-muted-foreground">
+                {item.displayDescription}
               </div>
             </div>
           </div>
         );
       },
     },
-    {
-      id: "price",
-      header: "Price",
-      cell: ({ row }) => `$${row.original.price.toFixed(2)}`,
-    },
+    // {
+    //   id: "price",
+    //   header: "Price",
+    //   cell: ({ row }) => `$${row.original.price.toFixed(2)}`,
+    // },
     {
       id: "quantity",
       header: "Quantity",
       cell: ({ row }) => {
         const item = row.original;
+
+        // Shipping items have fixed quantity of 1
+        if (item.type === "shipping") {
+          return (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">N/A</span>
+            </div>
+          );
+        }
+
+        // Product items have editable quantity
         return (
           <Input
             type="number"
@@ -428,11 +569,11 @@ export function OrderForm({
         );
       },
     },
-    {
-      id: "lineTotal",
-      header: "Total",
-      cell: ({ row }) => `$${row.original.lineTotal.toFixed(2)}`,
-    },
+    // {
+    //   id: "lineTotal",
+    //   header: "Total",
+    //   cell: ({ row }) => `$${row.original.lineTotal.toFixed(2)}`,
+    // },
   ];
 
   const lineItemActions: EntityAction<OrderLineItem>[] = [
@@ -457,709 +598,278 @@ export function OrderForm({
         Add Product
       </Button>
 
+      {/* <Button
+        type="button"
+        onClick={() => setShowAddShipping(true)}
+        className="gap-2"
+        size="sm"
+        variant="outline"
+      >
+        <Truck className="h-4 w-4" />
+        Add Shipping
+      </Button>
+
       <Button type="button" variant="outline" size="sm" className="text-xs">
         Apply coupon
       </Button>
       <Button type="button" variant="outline" size="sm" className="text-xs">
         Recalculate
-      </Button>
+      </Button> */}
     </>
   );
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Header - General, Billing, Shipping in Grid */}
-      <Card className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* General Section */}
-        <Card className="border-none shadow-none">
-          <CardHeader>
-            <CardTitle className="text-base">General</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Date created and Status */}
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="dateCreated">Date created:</Label>
-                <Input
-                  id="dateCreated"
-                  value={new Date().toISOString().split("T")[0]}
-                  disabled
-                  className="text-sm"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="status">Status:</Label>
-                <Select value="pending" disabled>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending payment</SelectItem>
-                    <SelectItem value="processing">Processing</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="customer">Customer:</Label>
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={formData.userId || "guest"}
-                    onValueChange={(value) => {
-                      if (value === "guest") {
-                        handleClearUser();
-                      } else {
-                        const user = usersQuery?.find((u) => u._id === value);
-                        if (user) handleUserSelect(user);
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex gap-8">
+          {/* Header - General, Billing, Shipping in Grid */}
+          {(shouldShowComponent("General") ||
+            shouldShowComponent("Customer") ||
+            shouldShowComponent("Shipping") ||
+            shouldShowComponent("Payment")) && (
+            <Card className="w-full border-none shadow-none">
+              <CardHeader className="p-0 pb-3">
+                <CardTitle className="py-1 text-base">General</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 p-0 font-normal">
+                {/* Basic Order Information */}
+                {shouldShowComponent("General") && (
+                  <div>
+                    <Label htmlFor="createdAt" className="font-normal">
+                      Created At
+                    </Label>
+                    <DateTimePicker
+                      value={formData.createdAt}
+                      onChange={(date) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          createdAt: date,
+                        }))
                       }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="guest">Guest</SelectItem>
-                      {usersQuery?.map((user) => (
-                        <SelectItem key={user._id} value={user._id}>
-                          {user.name || user.email}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Billing Section */}
-        <Card className="border-none shadow-none">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Billing</CardTitle>
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                className="h-auto p-0 text-xs text-blue-600"
-                onClick={() => {
-                  // TODO: Implement load billing address functionality
-                  toast.info(
-                    "Load billing address functionality to be implemented",
-                  );
-                }}
-              >
-                Load billing address
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label htmlFor="billingFirstName" className="text-xs">
-                  First name
-                </Label>
-                <Input
-                  id="billingFirstName"
-                  value={formData.firstName}
-                  onChange={(e) =>
-                    handleInputChange("firstName", e.target.value)
-                  }
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div>
-                <Label htmlFor="billingLastName" className="text-xs">
-                  Last name
-                </Label>
-                <Input
-                  id="billingLastName"
-                  value={formData.lastName}
-                  onChange={(e) =>
-                    handleInputChange("lastName", e.target.value)
-                  }
-                  className="h-8 text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="billingCompany" className="text-xs">
-                Company
-              </Label>
-              <Input
-                id="billingCompany"
-                value={formData.company}
-                onChange={(e) => handleInputChange("company", e.target.value)}
-                className="h-8 text-sm"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label htmlFor="billingAddressLine1" className="text-xs">
-                  Address line 1
-                </Label>
-                <Input
-                  id="billingAddressLine1"
-                  value={formData.billingAddress.addressLine1}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "billingAddress.addressLine1",
-                      e.target.value,
-                    )
-                  }
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div>
-                <Label htmlFor="billingAddressLine2" className="text-xs">
-                  Address line 2
-                </Label>
-                <Input
-                  id="billingAddressLine2"
-                  value={formData.billingAddress.addressLine2}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "billingAddress.addressLine2",
-                      e.target.value,
-                    )
-                  }
-                  className="h-8 text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label htmlFor="billingCity" className="text-xs">
-                  City
-                </Label>
-                <Input
-                  id="billingCity"
-                  value={formData.billingAddress.city}
-                  onChange={(e) =>
-                    handleInputChange("billingAddress.city", e.target.value)
-                  }
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div>
-                <Label htmlFor="billingPostalCode" className="text-xs">
-                  Postcode / ZIP
-                </Label>
-                <Input
-                  id="billingPostalCode"
-                  value={formData.billingAddress.postalCode}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "billingAddress.postalCode",
-                      e.target.value,
-                    )
-                  }
-                  className="h-8 text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label htmlFor="billingCountry" className="text-xs">
-                  Country / Region
-                </Label>
-                <Select
-                  value={formData.billingAddress.country}
-                  onValueChange={(value) =>
-                    handleInputChange("billingAddress.country", value)
-                  }
-                >
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="US">United States (US)</SelectItem>
-                    <SelectItem value="CA">Canada</SelectItem>
-                    <SelectItem value="GB">United Kingdom</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="billingState" className="text-xs">
-                  State / County
-                </Label>
-                <Select
-                  value={formData.billingAddress.stateOrProvince}
-                  onValueChange={(value) =>
-                    handleInputChange("billingAddress.stateOrProvince", value)
-                  }
-                >
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="Select an option..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CA">California</SelectItem>
-                    <SelectItem value="NY">New York</SelectItem>
-                    <SelectItem value="TX">Texas</SelectItem>
-                    <SelectItem value="FL">Florida</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label htmlFor="billingEmail" className="text-xs">
-                  Email address
-                </Label>
-                <Input
-                  id="billingEmail"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div>
-                <Label htmlFor="billingPhone" className="text-xs">
-                  Phone
-                </Label>
-                <Input
-                  id="billingPhone"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
-                  className="h-8 text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="paymentMethod" className="text-xs">
-                Payment method:
-              </Label>
-              <Select
-                value={formData.paymentMethod}
-                onValueChange={(value) =>
-                  handleInputChange("paymentMethod", value)
-                }
-              >
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="N/A">N/A</SelectItem>
-                  <SelectItem value="credit_card">Credit Card</SelectItem>
-                  <SelectItem value="paypal">PayPal</SelectItem>
-                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="transactionId" className="text-xs">
-                Transaction ID
-              </Label>
-              <Input
-                id="transactionId"
-                placeholder="Transaction ID"
-                className="h-8 text-sm"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Shipping Section */}
-        <Card className="border-none shadow-none">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Shipping</CardTitle>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="link"
-                  size="sm"
-                  className="h-auto p-0 text-xs text-blue-600"
-                  onClick={() => {
-                    // TODO: Implement load shipping address functionality
-                    toast.info(
-                      "Load shipping address functionality to be implemented",
-                    );
-                  }}
-                >
-                  Load shipping address
-                </Button>
-                <Button
-                  type="button"
-                  variant="link"
-                  size="sm"
-                  className="h-auto p-0 text-xs text-blue-600"
-                  onClick={() => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      shippingAddress: { ...prev.billingAddress },
-                    }));
-                    toast.success("Billing address copied to shipping");
-                  }}
-                >
-                  Copy billing address
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label htmlFor="shippingFirstName" className="text-xs">
-                  First name
-                </Label>
-                <Input
-                  id="shippingFirstName"
-                  value={formData.shippingAddress.fullName.split(" ")[0] || ""}
-                  onChange={(e) => {
-                    const lastName = formData.shippingAddress.fullName
-                      .split(" ")
-                      .slice(1)
-                      .join(" ");
-                    handleInputChange(
-                      "shippingAddress.fullName",
-                      `${e.target.value} ${lastName}`.trim(),
-                    );
-                  }}
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div>
-                <Label htmlFor="shippingLastName" className="text-xs">
-                  Last name
-                </Label>
-                <Input
-                  id="shippingLastName"
-                  value={
-                    formData.shippingAddress.fullName
-                      .split(" ")
-                      .slice(1)
-                      .join(" ") || ""
-                  }
-                  onChange={(e) => {
-                    const firstName =
-                      formData.shippingAddress.fullName.split(" ")[0] || "";
-                    handleInputChange(
-                      "shippingAddress.fullName",
-                      `${firstName} ${e.target.value}`.trim(),
-                    );
-                  }}
-                  className="h-8 text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="shippingCompany" className="text-xs">
-                Company
-              </Label>
-              <Input
-                id="shippingCompany"
-                value={formData.company}
-                onChange={(e) => handleInputChange("company", e.target.value)}
-                className="h-8 text-sm"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label htmlFor="shippingAddressLine1" className="text-xs">
-                  Address line 1
-                </Label>
-                <Input
-                  id="shippingAddressLine1"
-                  value={formData.shippingAddress.addressLine1}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "shippingAddress.addressLine1",
-                      e.target.value,
-                    )
-                  }
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div>
-                <Label htmlFor="shippingAddressLine2" className="text-xs">
-                  Address line 2
-                </Label>
-                <Input
-                  id="shippingAddressLine2"
-                  value={formData.shippingAddress.addressLine2}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "shippingAddress.addressLine2",
-                      e.target.value,
-                    )
-                  }
-                  className="h-8 text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label htmlFor="shippingCity" className="text-xs">
-                  City
-                </Label>
-                <Input
-                  id="shippingCity"
-                  value={formData.shippingAddress.city}
-                  onChange={(e) =>
-                    handleInputChange("shippingAddress.city", e.target.value)
-                  }
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div>
-                <Label htmlFor="shippingPostalCode" className="text-xs">
-                  Postcode / ZIP
-                </Label>
-                <Input
-                  id="shippingPostalCode"
-                  value={formData.shippingAddress.postalCode}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "shippingAddress.postalCode",
-                      e.target.value,
-                    )
-                  }
-                  className="h-8 text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label htmlFor="shippingCountry" className="text-xs">
-                  Country / Region
-                </Label>
-                <Select
-                  value={formData.shippingAddress.country}
-                  onValueChange={(value) =>
-                    handleInputChange("shippingAddress.country", value)
-                  }
-                >
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="US">United States (US)</SelectItem>
-                    <SelectItem value="CA">Canada</SelectItem>
-                    <SelectItem value="GB">United Kingdom</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="shippingState" className="text-xs">
-                  State / County
-                </Label>
-                <Select
-                  value={formData.shippingAddress.stateOrProvince}
-                  onValueChange={(value) =>
-                    handleInputChange("shippingAddress.stateOrProvince", value)
-                  }
-                >
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="Select an option..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CA">California</SelectItem>
-                    <SelectItem value="NY">New York</SelectItem>
-                    <SelectItem value="TX">Texas</SelectItem>
-                    <SelectItem value="FL">Florida</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="shippingPhone" className="text-xs">
-                Phone
-              </Label>
-              <Input
-                id="shippingPhone"
-                value={formData.shippingAddress.phoneNumber}
-                onChange={(e) =>
-                  handleInputChange(
-                    "shippingAddress.phoneNumber",
-                    e.target.value,
-                  )
-                }
-                className="h-8 text-sm"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="customerNote" className="text-xs">
-                Customer provided note:
-              </Label>
-              <Textarea
-                id="customerNote"
-                value={formData.notes}
-                onChange={(e) => handleInputChange("notes", e.target.value)}
-                placeholder="Customer notes about the order"
-                className="min-h-[60px] text-sm"
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </Card>
-
-      {/* Order Items Section */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h3 className="text-base font-medium">Line Items</h3>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <EntityList
-            data={formData.lineItems}
-            columns={lineItemColumns}
-            entityActions={lineItemActions}
-            actions={lineItemHeaderActions}
-            defaultViewMode="list"
-            viewModes={[""]}
-            emptyState="No items added to order"
-          />
-
-          {/* Order Totals */}
-          {formData.lineItems.length > 0 && (
-            <div className="mt-6 flex justify-end">
-              <div className="w-64 space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Items Subtotal:</span>
-                  <span>${subtotal.toFixed(2)}</span>
-                </div>
-
-                {/* Show shipping if available */}
-                {existingOrder?.shipping !== undefined &&
-                  existingOrder?.shipping !== null && (
-                    <div className="flex justify-between">
-                      <span>Shipping:</span>
-                      <span>
-                        {existingOrder.shipping === 0
-                          ? "FREE"
-                          : `$${existingOrder.shipping.toFixed(2)}`}
-                      </span>
-                    </div>
-                  )}
-
-                {/* Show tax if available */}
-                {existingOrder?.tax !== undefined &&
-                  existingOrder?.tax !== null && (
-                    <div className="flex justify-between">
-                      <span>Tax:</span>
-                      <span>${existingOrder.tax.toFixed(2)}</span>
-                    </div>
-                  )}
-
-                {/* Show discount if available */}
-                {existingOrder?.discount && (
-                  <div className="flex justify-between text-green-600">
-                    <span>Discount:</span>
-                    <span>-${existingOrder.discount.toFixed(2)}</span>
+                      placeholder="Select creation date and time"
+                    />
                   </div>
                 )}
 
-                <hr className="my-2" />
-                <div className="flex justify-between font-medium">
-                  <span>Order Total:</span>
-                  <span>${(existingOrder?.total || total).toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Form Actions */}
-      <div className="flex justify-end gap-4">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Processing..." : submitButtonText}
-        </Button>
-      </div>
-
-      {/* User Selection Dialog */}
-      <Dialog open={showUserSelector} onOpenChange={setShowUserSelector}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Select User</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              placeholder="Search users..."
-              value={userSearchTerm}
-              onChange={(e) => setUserSearchTerm(e.target.value)}
-            />
-            <div className="max-h-96 overflow-auto">
-              {usersQuery
-                ?.filter(
-                  (user) =>
-                    user.name
-                      ?.toLowerCase()
-                      .includes(userSearchTerm.toLowerCase()) ||
-                    user.email
-                      ?.toLowerCase()
-                      .includes(userSearchTerm.toLowerCase()),
-                )
-                .map((user) => (
-                  <div
-                    key={user._id}
-                    className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-gray-50"
-                    onClick={() => handleUserSelect(user)}
-                  >
-                    <div>
-                      <div className="font-medium">{user.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {user.email}
-                      </div>
-                    </div>
-                    <Badge variant="outline">{user.role || "user"}</Badge>
-                  </div>
-                ))}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Product Dialog */}
-      <Dialog open={showAddProduct} onOpenChange={setShowAddProduct}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Add Product</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="max-h-96 overflow-auto">
-              {productsQuery?.map((product) => (
-                <div
-                  key={product._id}
-                  className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-gray-50"
-                  onClick={() => handleAddProduct(product._id)}
-                >
+                {/* Customer Selection */}
+                {shouldShowComponent("Customer") && usersQuery && (
                   <div>
-                    <div className="font-medium">{product.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      SKU: {product.sku}
+                    <Label htmlFor="userId">
+                      Link to User Account (Optional)
+                    </Label>
+                    <Select
+                      value={formData.userId || ""}
+                      onValueChange={(value) => {
+                        const selectedUser = usersQuery.find(
+                          (user) => user._id === value,
+                        );
+                        setFormData((prev) => ({
+                          ...prev,
+                          userId: value ? (value as Id<"users">) : undefined,
+                          email: selectedUser?.email || prev.email,
+                          firstName: selectedUser?.firstName || prev.firstName,
+                          lastName: selectedUser?.lastName || prev.lastName,
+                          phone: selectedUser?.phone || prev.phone,
+                        }));
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select user (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none" key="no-user">
+                          No linked user
+                        </SelectItem>
+                        {usersQuery.map((user) => (
+                          <SelectItem key={user._id} value={user._id}>
+                            {user.firstName} {user.lastName} ({user.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {shouldShowComponent("Payment") && (
+                  <div>
+                    <Label htmlFor="paymentMethod">Payment Method</Label>
+                    <Select
+                      value={formData.paymentMethod}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          paymentMethod: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select payment method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="credit_card">Credit Card</SelectItem>
+                        <SelectItem value="paypal">PayPal</SelectItem>
+                        <SelectItem value="apple_pay">Apple Pay</SelectItem>
+                        <SelectItem value="google_pay">Google Pay</SelectItem>
+                        <SelectItem value="bank_transfer">
+                          Bank Transfer
+                        </SelectItem>
+                        <SelectItem value="crypto">Cryptocurrency</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {/* <div>
+                <Label htmlFor="notes">Order Notes</Label>
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  placeholder="Any special instructions or notes about this order..."
+                  value={formData.notes}
+                  onChange={handleInputChange}
+                  rows={3}
+                />
+              </div> */}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Billing and Shipping Section */}
+          {(shouldShowComponent("Shipping") ||
+            shouldShowComponent("Payment")) && (
+            <OrderAddressSection
+              formData={formData}
+              onInputChange={handleInputChange}
+              onFormDataChange={setFormData}
+              showShipping={shouldShowComponent("Shipping")}
+              showPayment={shouldShowComponent("Payment")}
+            />
+          )}
+        </div>
+
+        {/* Calendar Event Link */}
+        {shouldShowComponent("Calendar") && (
+          <CalendarEventLink
+            orderId={orderId}
+            currentEventId={existingOrder?.calendarEventId}
+            onEventLinked={(eventId) => {
+              // Update the order with the linked event
+              // This would require adding calendarEventId to the order schema and update mutation
+              toast.success("Calendar event linked successfully");
+            }}
+            onEventUnlinked={() => {
+              // Remove the event link from the order
+              toast.success("Calendar event unlinked successfully");
+            }}
+          />
+        )}
+
+        {/* Order Items Section */}
+        {shouldShowComponent("LineItems") && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ListChecks className="h-4 w-4" /> Order Items
+                </CardTitle>
+                <div className="flex gap-2">{lineItemHeaderActions}</div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {formData.lineItems.length > 0 ? (
+                <EntityList
+                  data={formData.lineItems}
+                  columns={lineItemColumns}
+                  entityActions={lineItemActions}
+                  viewModes={[""]}
+                  enableSearch={true}
+                  enableFooter={false}
+                />
+              ) : (
+                <div className="py-8 text-center">
+                  <p className="mb-4 text-muted-foreground">
+                    No items added to this order yet
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={() => setShowAddProduct(true)}
+                    className="gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Product
+                  </Button>
+                </div>
+              )}
+
+              {/* Order Totals */}
+              {formData.lineItems.length > 0 && (
+                <div className="mt-6 flex justify-end">
+                  <div className="w-64 space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Items Subtotal:</span>
+                      <span>${productSubtotal.toFixed(2)}</span>
+                    </div>
+
+                    {/* Show shipping if available */}
+                    {shippingTotal > 0 && (
+                      <div className="flex justify-between">
+                        <span>Shipping:</span>
+                        <span>${shippingTotal.toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    {/* Show tax if available */}
+                    {/* {existingOrder?.tax !== undefined &&
+                      existingOrder?.tax !== null && (
+                        <div className="flex justify-between">
+                          <span>Tax:</span>
+                          <span>${existingOrder.tax.toFixed(2)}</span>
+                        </div>
+                      )} */}
+
+                    {/* Show discount if available */}
+                    {/* {existingOrder?.discount && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Discount:</span>
+                        <span>-${existingOrder.discount.toFixed(2)}</span>
+                      </div>
+                    )} */}
+
+                    <Separator />
+                    <div className="flex justify-between font-semibold">
+                      <span>Total:</span>
+                      <span>${total.toFixed(2)}</span>
                     </div>
                   </div>
-                  <Badge variant="outline">${product.price.toFixed(2)}</Badge>
                 </div>
-              ))}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </form>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Submit Button */}
+        <div className="flex justify-end">
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Processing..." : submitButtonText}
+          </Button>
+        </div>
+      </form>
+
+      {/* Dialogs - outside the form to prevent nested form submission */}
+      <AddProductDialog
+        open={showAddProduct}
+        onOpenChange={setShowAddProduct}
+        onAddProduct={handleAddProduct}
+      />
+
+      {/* Add Shipping Dialog */}
+      <AddShippingDialog
+        open={showAddShipping}
+        onOpenChange={setShowAddShipping}
+        onAddShipping={handleAddShipping}
+      />
+    </div>
   );
 }

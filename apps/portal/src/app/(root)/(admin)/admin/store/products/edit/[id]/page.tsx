@@ -1,15 +1,16 @@
 "use client";
 
-import { ArrowLeft, Loader2 } from "lucide-react";
+import type { Id } from "@/convex/_generated/dataModel";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
-import type { Id } from "@/convex/_generated/dataModel";
-import ProductForm from "../../_components/ProductForm";
+
 import type { ProductFormData } from "../../_components/ProductForm";
-import { api } from "@/convex/_generated/api";
-import { useRouter } from "next/navigation";
+import ProductForm from "../../_components/ProductForm";
 
 export default function EditProductPage({
   params,
@@ -84,7 +85,7 @@ export default function EditProductPage({
 
   return (
     <div className="container p-6">
-      <div className="mb-6 flex items-center">
+      {/* <div className="mb-6 flex items-center">
         <Button
           variant="ghost"
           className="mr-2"
@@ -94,7 +95,7 @@ export default function EditProductPage({
           Back
         </Button>
         <h1 className="text-3xl font-bold">Edit Product</h1>
-      </div>
+      </div> */}
 
       <ProductForm
         initialData={typedProduct}

@@ -1,6 +1,13 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+import { ColumnDef } from "@tanstack/react-table";
+import { clsx } from "clsx";
+import { AlertCircle } from "lucide-react";
+
 import { Alert, AlertDescription, AlertTitle } from "@acme/ui/alert";
+import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+
 import type {
   EntityAction,
   EntityListProps,
@@ -10,16 +17,10 @@ import type {
   TabHookResult,
   ViewMode,
 } from "./types";
-import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
-import { useEffect, useMemo, useState } from "react";
-
-import { AlertCircle } from "lucide-react";
-import { ColumnDef } from "@tanstack/react-table";
 import { EntityListFilters } from "./EntityListFilters";
 import { EntityListHeader } from "./EntityListHeader";
 import { EntityListPagination } from "./EntityListPagination";
 import { EntityListView } from "./EntityListView";
-import { clsx } from "clsx";
 
 /**
  * EntityList is a universal component for displaying collections of data
@@ -58,6 +59,7 @@ export function EntityList<T extends object>({
   className,
   selectedId,
   enableSearch,
+  enableFooter,
 }: EntityListProps<T>) {
   // State for view mode
   const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
@@ -323,6 +325,7 @@ export function EntityList<T extends object>({
         onRowClick={onRowClick}
         emptyState={emptyState}
         entityActions={entityActions}
+        enableFooter={enableFooter}
         sortConfig={sorting}
         onSortChange={handleSortChange}
         selectedId={selectedId}

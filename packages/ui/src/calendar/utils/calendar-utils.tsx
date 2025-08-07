@@ -1,7 +1,7 @@
 "use client";
 
-import { ChangeEvent, Dispatch, SetStateAction } from "react";
-import { calendarRef } from "./data";
+import type { ChangeEvent, Dispatch, SetStateAction } from "react";
+import type { calendarRef } from "./data";
 
 export function generateDaysInMonth(daysInMonth: number) {
   const daysArray = [];

@@ -27,10 +27,10 @@ interface EntityCardProps extends React.HTMLAttributes<HTMLDivElement> {
   coverImage?: string;
   avatar?: string;
   avatarFallback?: string;
-  badges?: Array<{
+  badges?: {
     label: string;
     variant?: "default" | "secondary" | "destructive" | "outline";
-  }>;
+  }[];
   entityType: EntityType;
   showActions?: boolean;
   actions?: React.ReactNode;

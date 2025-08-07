@@ -25,11 +25,29 @@ export const usersTable = defineTable({
   image: v.optional(v.string()),
   // User addresses for shipping/billing
   addresses: v.optional(v.array(addressObject)),
-  // Add other user profile fields as needed
+
+  // Organization and billing fields
+  organizationId: v.optional(v.id("organizations")), // Made optional for multi-tenancy
+  planId: v.optional(v.id("plans")), // Current subscription plan
+  customerId: v.optional(v.string()), // External customer ID (Stripe, etc.)
+  subscriptionId: v.optional(v.string()), // External subscription ID
+  subscriptionStatus: v.optional(
+    v.union(
+      v.literal("active"),
+      v.literal("canceled"),
+      v.literal("incomplete"),
+      v.literal("incomplete_expired"),
+      v.literal("past_due"),
+      v.literal("trialing"),
+      v.literal("unpaid"),
+    ),
+  ),
 })
   .index("by_email", ["email"])
   .index("by_token", ["tokenIdentifier"])
-  .index("by_username", ["username"]);
+  .index("by_username", ["username"])
+  .index("by_plan", ["planId"])
+  .index("by_subscription_status", ["subscriptionStatus"]);
 
 // Marketing Tags table - separate from content tags
 export const marketingTagsTable = defineTable({

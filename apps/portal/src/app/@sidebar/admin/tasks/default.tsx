@@ -287,20 +287,20 @@ export default function DefaultSidebar() {
     },
     {
       title: "Integrations",
-      url: "/integrations",
+      url: "/admin/integrations",
       icon: Share2,
       items: [
         {
           title: "Apps",
-          url: "/integrations",
+          url: "/admin/integrations",
         },
         {
           title: "Connections",
-          url: "/integrations?tab=connections",
+          url: "/admin/integrations?tab=connections",
         },
         {
           title: "Scenarios",
-          url: "/integrations?tab=scenarios",
+          url: "/admin/integrations?tab=scenarios",
         },
       ],
     },

@@ -10,7 +10,7 @@ import {
 import { ScrollArea, ScrollBar } from "../../../../scroll-area";
 
 import { Button } from "../../../../button";
-import { JSX } from "react";
+import type { JSX } from "react";
 import { NotebookPenIcon } from "lucide-react";
 import { TreeView } from "@lexical/react/LexicalTreeView";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";

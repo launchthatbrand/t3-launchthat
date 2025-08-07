@@ -108,7 +108,7 @@ export function UpdateInlineImageDialog({
 }): JSX.Element {
   const editorState = activeEditor.getEditorState();
   const node = editorState.read(
-    () => $getNodeByKey(nodeKey) as InlineImageNode,
+    () => $getNodeByKey(nodeKey)!,
   );
   const [altText, setAltText] = useState(node.getAltText());
   const [showCaption, setShowCaption] = useState(node.getShowCaption());

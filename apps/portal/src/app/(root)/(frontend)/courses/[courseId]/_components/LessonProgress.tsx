@@ -1,18 +1,18 @@
 "use client";
 
+import React from "react";
+import { Id } from "@convex-config/_generated/dataModel";
 import { Award, CheckCircle, Circle, PlayCircle } from "lucide-react";
+
+import { cn } from "@acme/ui";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@acme/ui/hover-card";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { Id } from "@convex-config/_generated/dataModel";
 import { Progress } from "@acme/ui/progress";
-import React from "react";
-import { cn } from "@acme/ui";
 
 interface Milestone {
   id: string | Id<"quizzes">;
@@ -119,7 +119,7 @@ export const LessonProgress = ({
   const currentProgress = lessonProgress.percentComplete;
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("TEST space-y-4", className)}>
       {/* Progress Bar with Milestones */}
       <div className="relative flex w-full items-center">
         <Progress value={currentProgress} className="h-3 w-full bg-muted" />

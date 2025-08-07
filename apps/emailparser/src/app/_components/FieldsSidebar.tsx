@@ -1,10 +1,11 @@
 "use client";
 
-import { FC, useEffect, useRef, useState } from "react";
+import type { FC} from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 
 import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { useEmailParserStore } from "../../store";
 
 // Define types for our data

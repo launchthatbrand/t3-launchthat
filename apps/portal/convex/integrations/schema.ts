@@ -5,6 +5,7 @@ import { defineSchema } from "convex/server";
 
 import {
   appsTable,
+  automationLogsTable,
   connectionsTable,
   nodeConnectionsTable,
   nodesTable,
@@ -27,4 +28,7 @@ export default defineSchema({
   // Nodes tables
   nodes: nodesTable,
   nodeConnections: nodeConnectionsTable,
+
+  // Automation logs table
+  automationLogs: automationLogsTable,
 });

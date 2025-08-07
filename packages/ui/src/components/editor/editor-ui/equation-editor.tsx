@@ -1,8 +1,8 @@
-import type { Ref, RefObject, JSX } from 'react'
+import type { Ref, RefObject, JSX , ChangeEvent} from 'react'
 import * as React from 'react'
-import { ChangeEvent, forwardRef } from 'react'
+import { forwardRef } from 'react'
 
-type BaseEquationEditorProps = {
+interface BaseEquationEditorProps {
   equation: string
   inline: boolean
   setEquation: (equation: string) => void

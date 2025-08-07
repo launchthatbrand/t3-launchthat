@@ -8,28 +8,28 @@ import { DropZone } from "./DropZone";
 import { SortableQuiz } from "./SortableQuiz";
 import { TopicItem } from "./TopicItem";
 
-type TopicType = {
+interface TopicType {
   id: string;
   title: string;
   order: number;
   status: string;
   quizzes?: QuizType[];
-};
+}
 
-type QuizType = {
+interface QuizType {
   id: string;
   title: string;
   status: string;
-};
+}
 
-type SortableTopicProps = {
+interface SortableTopicProps {
   topic: TopicType;
   isExpanded: boolean;
   onToggleExpand: () => void;
   onTitleChange: (newTitle: string) => Promise<void>;
   onAddQuiz: () => Promise<void>;
   onQuizTitleChange: (quizId: string, newTitle: string) => Promise<void>;
-};
+}
 
 export const SortableTopic: React.FC<SortableTopicProps> = ({
   topic,

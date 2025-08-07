@@ -79,13 +79,13 @@ function TableHoverActionsContainer({
             return;
           }
 
-          tableDOMElement = editor.getElementByKey(table?.getKey());
+          tableDOMElement = editor.getElementByKey(table.getKey());
 
           if (tableDOMElement) {
             const rowCount = table.getChildrenSize();
             const colCount = (
-              (table as TableNode).getChildAtIndex(0) as TableRowNode
-            )?.getChildrenSize();
+              (table).getChildAtIndex(0)!
+            ).getChildrenSize();
 
             const rowIndex = $getTableRowIndexFromTableCellNode(maybeTableCell);
             const colIndex =

@@ -133,7 +133,7 @@ export default function GmailConnectionPage() {
   const requiredGmailScopes = requiredGmailScopesQuery ?? [];
 
   // Safely use the mutation without TypeScript errors
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const updateSyncPreferencesMutation = useMutation(
     api.gmail.updateSyncPreferences as any,
   );
@@ -761,7 +761,7 @@ export default function GmailConnectionPage() {
                       Login Method
                     </span>
                     <span className="block text-sm">
-                      {user?.primaryEmailAddress?.verification?.strategy ||
+                      {user?.primaryEmailAddress?.verification.strategy ||
                         "Unknown"}
                     </span>
                   </div>

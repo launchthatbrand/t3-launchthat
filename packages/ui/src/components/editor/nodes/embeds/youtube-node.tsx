@@ -1,10 +1,11 @@
 import * as React from 'react'
-import { JSX } from 'react'
+import type { JSX } from 'react'
 
 import { BlockWithAlignableContents } from '@lexical/react/LexicalBlockWithAlignableContents'
+import type {
+  SerializedDecoratorBlockNode} from '@lexical/react/LexicalDecoratorBlockNode';
 import {
-  DecoratorBlockNode,
-  SerializedDecoratorBlockNode,
+  DecoratorBlockNode
 } from '@lexical/react/LexicalDecoratorBlockNode'
 import type {
   DOMConversionMap,
@@ -144,8 +145,8 @@ export class YouTubeNode extends DecoratorBlockNode {
   }
 
   getTextContent(
-    _includeInert?: boolean | undefined,
-    _includeDirectionless?: false | undefined
+    _includeInert?: boolean  ,
+    _includeDirectionless?: false  
   ): string {
     return `https://www.youtube.com/watch?v=${this.__id}`
   }

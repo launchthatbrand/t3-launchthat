@@ -20,48 +20,45 @@ import {
   ExternalLink,
   Eye,
   FileText,
-  MessageCircle,
-  Package,
   Plus,
   Send,
-  Shield,
   Star,
   Trash2,
-  User,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@acme/ui/dialog";
-import { Doc, Id } from "@convex-config/_generated/dataModel";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@acme/ui/form";
+import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import React, { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 
-import { AuditLogViewer } from "./AuditLogViewer";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
+import { ChargebackEvidenceWizard } from "./ChargebackEvidenceWizard";
 import { Checkbox } from "@acme/ui/checkbox";
-import { Input } from "@acme/ui/input";
 import { Separator } from "@acme/ui/separator";
-import { Textarea } from "@acme/ui/textarea";
 import { api } from "@convex-config/_generated/api";
 import { format } from "date-fns";
 import { toast } from "@acme/ui/toast";
-import { useChargebackEvidence } from "~/hooks/useChargebackEvidence";
-import { useForm } from "react-hook-form";
 
 type ChargebackEvidence = Doc<"chargebackEvidence">;
+
+// Type definitions for configuration objects
+type DocumentTypeConfig = {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+};
+
+type StatusConfig = {
+  variant: "secondary" | "outline" | "destructive" | "default";
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+type ImportanceConfig = {
+  variant: "destructive" | "outline" | "secondary" | "default";
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
 
 interface ChargebackEvidenceManagerProps {
   chargebackId: Id<"chargebacks">;
@@ -72,460 +69,13 @@ interface ChargebackEvidenceManagerProps {
   } | null;
 }
 
-// Add Evidence Dialog Component with seamless step transitions
-interface AddEvidenceDialogProps {
-  chargebackId: Id<"chargebacks">;
-  onEvidenceAdded: () => void;
-  customerUser?: {
-    _id: Id<"users">;
-    name?: string;
-    email: string;
-  } | null;
-}
-
-type DocumentType = "audit_log" | "communication" | "shipping";
-
-interface EvidenceFormData {
-  title: string;
-  description: string;
-  importance: "low" | "medium" | "high";
-  tags: string;
-  textContent?: string;
-  notes?: string;
-}
-
-const AddEvidenceDialog: React.FC<AddEvidenceDialogProps> = ({
-  chargebackId,
-  onEvidenceAdded,
-  customerUser,
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [step, setStep] = useState<"select" | "form" | "audit">("select");
-  const [selectedDocType, setSelectedDocType] = useState<DocumentType | null>(
-    null,
-  );
-  const { attachPDFEvidence, isUploading } =
-    useChargebackEvidence(chargebackId);
-
-  const form = useForm<EvidenceFormData>({
-    defaultValues: {
-      importance: "medium",
-      tags: "",
-    },
-  });
-
-  // Reset dialog state when closed
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    if (!open) {
-      setStep("select");
-      setSelectedDocType(null);
-      form.reset();
-    }
-  };
-
-  // Document type selection cards
-  const documentTypes = [
-    {
-      type: "audit_log" as DocumentType,
-      title: "Add Audit Log",
-      description: "User activity and system audit logs",
-      icon: <Shield className="h-8 w-8 text-blue-600" />,
-      bgColor: "bg-blue-50",
-      borderColor: "border-blue-200",
-    },
-    {
-      type: "communication" as DocumentType,
-      title: "Add Customer Communication",
-      description: "Emails, chat logs, and customer interactions",
-      icon: <MessageCircle className="h-8 w-8 text-green-600" />,
-      bgColor: "bg-green-50",
-      borderColor: "border-green-200",
-    },
-    {
-      type: "shipping" as DocumentType,
-      title: "Add Shipping Proof",
-      description: "Tracking info, delivery confirmations, receipts",
-      icon: <Package className="h-8 w-8 text-orange-600" />,
-      bgColor: "bg-orange-50",
-      borderColor: "border-orange-200",
-    },
-  ];
-
-  const handleDocTypeSelect = (docType: DocumentType) => {
-    setSelectedDocType(docType);
-
-    if (docType === "audit_log") {
-      setStep("audit");
-    } else {
-      form.setValue("title", getDefaultTitle(docType));
-      form.setValue("tags", getDefaultTags(docType));
-      setStep("form");
-    }
-  };
-
-  const getDefaultTitle = (docType: DocumentType): string => {
-    switch (docType) {
-      case "communication":
-        return "Customer Communication Record";
-      case "shipping":
-        return "Shipping and Delivery Proof";
-      default:
-        return "";
-    }
-  };
-
-  const getDefaultTags = (docType: DocumentType): string => {
-    switch (docType) {
-      case "communication":
-        return "customer_service, communication, support";
-      case "shipping":
-        return "shipping, delivery, tracking, logistics";
-      case "audit_log":
-        return "audit_log, user_activity, system";
-      default:
-        return "";
-    }
-  };
-
-  // Handle audit log PDF attachment (called from embedded audit log viewer)
-  const handleAuditLogAttachment = async (pdfBlob: Blob, filename: string) => {
-    try {
-      await attachPDFEvidence(
-        pdfBlob,
-        filename,
-        "User activity audit log for chargeback evidence",
-      );
-      toast.success("Audit log evidence attached successfully!");
-      onEvidenceAdded();
-      handleOpenChange(false);
-    } catch (error) {
-      console.error("Failed to attach audit log:", error);
-      toast.error("Failed to attach audit log evidence");
-    }
-  };
-
-  const handleFormSubmit = (data: EvidenceFormData) => {
-    // Handle form submission for communication and shipping evidence
-    console.log("Form data:", data, "Document type:", selectedDocType);
-    // TODO: Implement file upload and evidence creation
-    toast.success("Evidence form submitted! (File upload not yet implemented)");
-    onEvidenceAdded();
-    handleOpenChange(false);
-  };
-
-  const renderStepContent = () => {
-    switch (step) {
-      case "select":
-        return (
-          <div className="space-y-6">
-            <p className="text-muted-foreground">
-              Choose the type of evidence you want to add to this chargeback
-              case.
-            </p>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {documentTypes.map((docType) => (
-                <Card
-                  key={docType.type}
-                  className={`cursor-pointer transition-all hover:shadow-md ${docType.bgColor} ${docType.borderColor} border-2`}
-                  onClick={() => handleDocTypeSelect(docType.type)}
-                >
-                  <CardHeader className="pb-2 text-center">
-                    <div className="mb-2 flex justify-center">
-                      {docType.icon}
-                    </div>
-                    <CardTitle className="text-lg">{docType.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-center">
-                    <p className="text-sm text-muted-foreground">
-                      {docType.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        );
-
-      case "audit":
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium">User Audit Log</h3>
-                <p className="text-muted-foreground">
-                  Generate and attach user activity audit logs as evidence.
-                </p>
-              </div>
-              <Button variant="outline" onClick={() => setStep("select")}>
-                Back to Selection
-              </Button>
-            </div>
-
-            {/* Embedded User selection for audit log */}
-            {customerUser ? (
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <User className="h-5 w-5" />
-                      Customer User
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">
-                          {customerUser.name ?? customerUser.email}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {customerUser.email}
-                        </p>
-                      </div>
-                      <Badge variant="outline">Customer</Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Embedded Audit Log Viewer without separate dialog */}
-                <div className="rounded-lg border">
-                  <AuditLogViewer
-                    userId={customerUser._id}
-                    userName={customerUser.name}
-                    userEmail={customerUser.email}
-                    exportButtonText="Attach as Evidence"
-                    onPDFGenerated={handleAuditLogAttachment}
-                    // No trigger needed - we'll embed the content directly
-                    trigger={<div />}
-                    open={true}
-                    onOpenChange={() => {}} // Prevent closing
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-                <p className="text-sm text-yellow-800">
-                  <strong>Note:</strong> No customer user associated with this
-                  chargeback. Audit log attachment requires a valid user.
-                </p>
-              </div>
-            )}
-          </div>
-        );
-
-      case "form":
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium">
-                  {selectedDocType === "communication"
-                    ? "Customer Communication Evidence"
-                    : "Shipping Evidence"}
-                </h3>
-                <p className="text-muted-foreground">
-                  Fill in the details for your{" "}
-                  {selectedDocType === "communication"
-                    ? "customer communication"
-                    : "shipping"}{" "}
-                  evidence.
-                </p>
-              </div>
-              <Button variant="outline" onClick={() => setStep("select")}>
-                Back to Selection
-              </Button>
-            </div>
-
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(handleFormSubmit)}
-                className="space-y-6"
-              >
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Title</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter evidence title" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Describe this evidence and its relevance to the chargeback"
-                          {...field}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                {/* Conditional fields based on document type */}
-                {selectedDocType === "communication" && (
-                  <div className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="textContent"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Communication Content</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Paste email content, chat logs, or communication details here"
-                              rows={6}
-                              {...field}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                )}
-
-                {selectedDocType === "shipping" && (
-                  <div className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="textContent"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tracking & Delivery Information</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Enter tracking numbers, delivery confirmations, shipping details, etc."
-                              rows={4}
-                              {...field}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="importance"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Importance</FormLabel>
-                        <FormControl>
-                          <select
-                            {...field}
-                            className="w-full rounded-md border border-input bg-background px-3 py-2"
-                          >
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                          </select>
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="tags"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tags (comma-separated)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="tag1, tag2, tag3" {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Additional Notes</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Any additional context or notes about this evidence"
-                          {...field}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex justify-end space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setStep("select")}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isUploading}>
-                    {isUploading ? "Adding Evidence..." : "Add Evidence"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  const getDialogTitle = () => {
-    switch (step) {
-      case "select":
-        return "Add Evidence - Select Document Type";
-      case "audit":
-        return "Add Evidence - User Audit Log";
-      case "form":
-        return `Add Evidence - ${selectedDocType === "communication" ? "Customer Communication" : "Shipping Proof"}`;
-      default:
-        return "Add Evidence";
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Evidence
-        </Button>
-      </DialogTrigger>
-
-      <DialogContent className="max-h-[95vh] max-w-6xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{getDialogTitle()}</DialogTitle>
-        </DialogHeader>
-
-        <div className="min-h-[400px]">{renderStepContent()}</div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
 export function ChargebackEvidenceManager({
   chargebackId,
   customerUser,
 }: ChargebackEvidenceManagerProps) {
   const [selectedEvidence, setSelectedEvidence] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [isEvidenceWizardOpen, setIsEvidenceWizardOpen] = useState(false);
 
   // Queries with proper error handling
   const evidence = useQuery(
@@ -539,15 +89,12 @@ export function ChargebackEvidenceManager({
   );
 
   // Mutations
-  const submitEvidence = useMutation(
-    api.ecommerce.chargebacks.evidence.submitEvidence,
-  );
   const deleteEvidence = useMutation(
     api.ecommerce.chargebacks.evidence.deleteEvidence,
   );
 
   // Document type configurations
-  const documentTypes = {
+  const documentTypes: Record<string, DocumentTypeConfig> = {
     receipt: {
       label: "Receipt/Invoice",
       icon: FileText,
@@ -611,7 +158,7 @@ export function ChargebackEvidenceManager({
   } as const;
 
   // Status configurations
-  const statusConfig = {
+  const statusConfig: Record<string, StatusConfig> = {
     draft: { variant: "secondary" as const, label: "Draft", icon: Edit },
     ready: { variant: "outline" as const, label: "Ready", icon: CheckCircle },
     submitted: { variant: "outline" as const, label: "Submitted", icon: Send },
@@ -628,7 +175,7 @@ export function ChargebackEvidenceManager({
   };
 
   // Importance configurations
-  const importanceConfig = {
+  const importanceConfig: Record<string, ImportanceConfig> = {
     critical: {
       variant: "destructive" as const,
       label: "Critical",
@@ -655,6 +202,12 @@ export function ChargebackEvidenceManager({
       return `/api/files/${evidence.fileStorageId}`;
     }
     return null;
+  };
+
+  const handleEvidenceAdded = () => {
+    // Close the wizard dialog and refresh evidence list
+    setIsEvidenceWizardOpen(false);
+    window.location.reload(); // TODO: Implement proper refresh without page reload
   };
 
   if (!evidence || !evidenceSummary) {
@@ -688,14 +241,10 @@ export function ChargebackEvidenceManager({
               </p>
             </div>
 
-            <AddEvidenceDialog
-              chargebackId={chargebackId}
-              customerUser={customerUser}
-              onEvidenceAdded={() => {
-                // Refresh evidence list
-                window.location.reload(); // TODO: Implement proper refresh
-              }}
-            />
+            <Button onClick={() => setIsEvidenceWizardOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Evidence
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -767,13 +316,12 @@ export function ChargebackEvidenceManager({
               <p className="text-muted-foreground">
                 Start building your case by adding evidence documents
               </p>
-              <AddEvidenceDialog
-                chargebackId={chargebackId}
-                customerUser={customerUser}
-                onEvidenceAdded={() => {
-                  window.location.reload();
-                }}
-              />
+              <div className="mt-4">
+                <Button onClick={() => setIsEvidenceWizardOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Evidence
+                </Button>
+              </div>
             </div>
           ) : viewMode === "grid" ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -826,6 +374,15 @@ export function ChargebackEvidenceManager({
           )}
         </CardContent>
       </Card>
+
+      {/* Single Evidence Wizard Dialog */}
+      <ChargebackEvidenceWizard
+        chargebackId={chargebackId}
+        customerUser={customerUser}
+        onEvidenceAdded={handleEvidenceAdded}
+        open={isEvidenceWizardOpen}
+        onOpenChange={setIsEvidenceWizardOpen}
+      />
     </div>
   );
 }
@@ -842,16 +399,17 @@ function EvidenceCard({
   downloadUrl,
 }: {
   evidence: ChargebackEvidence;
-  documentTypes: typeof documentTypes;
-  statusConfig: typeof statusConfig;
-  importanceConfig: typeof importanceConfig;
+  documentTypes: Record<string, DocumentTypeConfig>;
+  statusConfig: Record<string, StatusConfig>;
+  importanceConfig: Record<string, ImportanceConfig>;
   isSelected: boolean;
   onSelect: (selected: boolean) => void;
   onDelete: () => void;
   downloadUrl: string | null;
 }) {
   const docType =
-    documentTypes[evidence.documentType as keyof typeof documentTypes];
+    documentTypes[evidence.documentType as keyof typeof documentTypes] ??
+    documentTypes.other!;
   const IconComponent = docType.icon;
 
   return (
@@ -867,7 +425,11 @@ function EvidenceCard({
             </div>
           </div>
           <div className="flex gap-1">
-            <Badge variant={importanceConfig[evidence.importance].variant}>
+            <Badge
+              variant={
+                importanceConfig[evidence.importance]?.variant ?? "outline"
+              }
+            >
               {evidence.importance}
             </Badge>
           </div>
@@ -879,8 +441,13 @@ function EvidenceCard({
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center justify-between">
-          <Badge variant={statusConfig[evidence.submissionStatus].variant}>
-            {statusConfig[evidence.submissionStatus].label}
+          <Badge
+            variant={
+              statusConfig[evidence.submissionStatus]?.variant ?? "outline"
+            }
+          >
+            {statusConfig[evidence.submissionStatus]?.label ??
+              evidence.submissionStatus}
           </Badge>
           <div className="text-xs text-muted-foreground">
             {format(new Date(evidence._creationTime), "MMM dd")}
@@ -960,16 +527,17 @@ function EvidenceListItem({
   downloadUrl,
 }: {
   evidence: ChargebackEvidence;
-  documentTypes: typeof documentTypes;
-  statusConfig: typeof statusConfig;
-  importanceConfig: typeof importanceConfig;
+  documentTypes: Record<string, DocumentTypeConfig>;
+  statusConfig: Record<string, StatusConfig>;
+  importanceConfig: Record<string, ImportanceConfig>;
   isSelected: boolean;
   onSelect: (selected: boolean) => void;
   onDelete: () => void;
   downloadUrl: string | null;
 }) {
   const docType =
-    documentTypes[evidence.documentType as keyof typeof documentTypes];
+    documentTypes[evidence.documentType as keyof typeof documentTypes] ??
+    documentTypes.other!;
   const IconComponent = docType.icon;
 
   return (
@@ -989,11 +557,20 @@ function EvidenceListItem({
         </div>
 
         <div className="flex items-center gap-2">
-          <Badge variant={importanceConfig[evidence.importance].variant}>
+          <Badge
+            variant={
+              importanceConfig[evidence.importance]?.variant ?? "outline"
+            }
+          >
             {evidence.importance}
           </Badge>
-          <Badge variant={statusConfig[evidence.submissionStatus].variant}>
-            {statusConfig[evidence.submissionStatus].label}
+          <Badge
+            variant={
+              statusConfig[evidence.submissionStatus]?.variant ?? "outline"
+            }
+          >
+            {statusConfig[evidence.submissionStatus]?.label ??
+              evidence.submissionStatus}
           </Badge>
           <div className="text-xs text-muted-foreground">
             {format(new Date(evidence._creationTime), "MMM dd, yyyy")}

@@ -7,7 +7,8 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { JSX, useEffect } from "react";
+import type { JSX} from "react";
+import { useEffect } from "react";
 
 import { useReport } from "../editor-hooks/use-report";
 
@@ -36,7 +37,7 @@ export function TypingPerfPlugin(): JSX.Element | null {
     let start = 0;
     let timerId: ReturnType<typeof setTimeout> | null;
     let keyPressTimerId: ReturnType<typeof setTimeout> | null;
-    let log: Array<DOMHighResTimeStamp> = [];
+    let log: DOMHighResTimeStamp[] = [];
     let invalidatingEvent = false;
 
     const measureEventEnd = function logKeyPress() {

@@ -1,13 +1,25 @@
 "use client";
 
-import * as React from "react";
-
 import type {
   ColumnDef,
   ColumnFiltersState,
   SortingState,
   VisibilityState,
 } from "@tanstack/react-table";
+import * as React from "react";
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  Table as TanstackTable,
+  useReactTable,
+} from "@tanstack/react-table";
+import { Loader2 } from "lucide-react";
+
+import { Button } from "@acme/ui/button";
+import { Skeleton } from "@acme/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -16,21 +28,10 @@ import {
   TableHeader,
   TableRow,
 } from "@acme/ui/table";
-import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
 
-import { Button } from "@acme/ui/button";
-import { EmptyState } from "../../EmptyState";
 import type { EntityListViewProps } from "./types";
+import { EmptyState } from "../../EmptyState";
 import { GridView } from "./GridView";
-import { Loader2 } from "lucide-react";
-import { Skeleton } from "@acme/ui/skeleton";
 
 export function EntityListView<T extends object>({
   data,
@@ -42,6 +43,7 @@ export function EntityListView<T extends object>({
   selectedId,
   emptyState,
   entityActions,
+  enableFooter = true,
   sortConfig,
   onSortChange,
   itemRender,
@@ -62,11 +64,11 @@ export function EntityListView<T extends object>({
     if (entityActions && entityActions.length > 0) {
       cols.push({
         id: "actions",
-        header: "Actions",
+        header: () => <div className="text-right">Actions</div>,
         enableHiding: false,
         enableSorting: false,
         cell: ({ row }) => (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             {entityActions.map((action, index) => (
               <button
                 key={index}
@@ -232,30 +234,7 @@ export function EntityListView<T extends object>({
             </TableBody>
           </Table>
         </div>
-        <div className="flex items-center justify-end space-x-2 py-4">
-          <div className="flex-1 text-sm text-muted-foreground">
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {table.getFilteredRowModel().rows.length} row(s) selected.
-          </div>
-          <div className="space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+        {enableFooter && <EntityListFooter table={table} />}
       </div>
     );
   }
@@ -272,3 +251,36 @@ export function EntityListView<T extends object>({
     />
   );
 }
+
+export const EntityListFooter = <T extends object>({
+  table,
+}: {
+  table: TanstackTable<T>;
+}) => {
+  return (
+    <div className="flex items-center justify-end space-x-2 py-4">
+      <div className="flex-1 text-sm text-muted-foreground">
+        {table.getFilteredSelectedRowModel().rows.length} of{" "}
+        {table.getFilteredRowModel().rows.length} row(s) selected.
+      </div>
+      <div className="space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+};

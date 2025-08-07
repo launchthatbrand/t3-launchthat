@@ -12,7 +12,8 @@ import {
 } from "lexical";
 import { $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
 import { Command, CommandItem, CommandList } from "../../../command";
-import { JSX, useCallback, useMemo } from "react";
+import type { JSX} from "react";
+import { useCallback, useMemo } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../popover";
 
 /**
@@ -199,7 +200,7 @@ export function ContextMenuPlugin(): JSX.Element {
                 <PopoverTrigger
                   ref={setMenuRef}
                   style={{
-                    marginLeft: anchorElementRef.current?.style.width,
+                    marginLeft: anchorElementRef.current.style.width,
                     userSelect: "none",
                   }}
                 />

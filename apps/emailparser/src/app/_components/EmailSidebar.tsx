@@ -1,10 +1,11 @@
 "use client";
 
-import { FC, useCallback, useEffect, useRef, useState } from "react";
+import type { FC} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 
 import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { useEmailParserStore } from "../../store";
 
 // Import formatDate function

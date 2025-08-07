@@ -123,7 +123,7 @@ export const useCourseBuilderDnd = ({
         setIsAttaching(true);
         try {
           // Optimistic UI update
-          setLessons((prev) => [...prev, item as LessonWithTopics]);
+          setLessons((prev) => [...prev, item]);
           await onAttachLesson(lessonId, courseId, lessons.length);
           toast.success("Lesson attached successfully!");
         } catch (error) {
@@ -140,7 +140,7 @@ export const useCourseBuilderDnd = ({
       // Case 2: Sidebar Topic -> Lesson Drop Zone
       if (
         activeDataLocal.type === "sidebarTopic" &&
-        overData?.type === "topicDropZone"
+        overData.type === "topicDropZone"
       ) {
         console.log("[DragEnd] Matched Case 2: Attach Sidebar Topic to Lesson");
         const itemFromEvent = active.data.current?.item as
@@ -150,7 +150,7 @@ export const useCourseBuilderDnd = ({
         const topicId = itemFromEvent._id;
 
         // Primarily rely on the drop zone's data for the target lesson ID
-        const targetLessonId = overData?.lessonId as Id<"lessons"> | undefined;
+        const targetLessonId = overData.lessonId;
 
         if (targetLessonId) {
           const targetLesson = lessons.find((l) => l._id === targetLessonId);
@@ -256,7 +256,7 @@ export const useCourseBuilderDnd = ({
         }
 
         // Case 3b: Drop onto a Topic Zone
-        if (overData?.type === "topic") {
+        if (overData.type === "topic") {
           console.log(
             "[DragEnd] Matched Case 3b: Attach/Reorder Quiz on Topic",
           );
@@ -395,9 +395,9 @@ export const useCourseBuilderDnd = ({
         !overIdStr.startsWith("sidebar-")
       ) {
         const isActiveLesson = activeDataLocal.type === "lesson";
-        const isOverLesson = overData?.type === "lesson"; // Optional chain needed
+        const isOverLesson = overData.type === "lesson"; // Optional chain needed
         const isActiveTopic = activeDataLocal.type === "topic";
-        const isOverTopic = overData?.type === "topic"; // Optional chain needed
+        const isOverTopic = overData.type === "topic"; // Optional chain needed
 
         // Reordering Lessons
         if (isActiveLesson && isOverLesson) {

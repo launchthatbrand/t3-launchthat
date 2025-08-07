@@ -8,7 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Period, display12HourValue, setDateByType } from "./time-picker-utils";
+import type { Period} from "./time-picker-utils";
+import { display12HourValue, setDateByType } from "./time-picker-utils";
 
 export interface PeriodSelectorProps {
   period: Period;

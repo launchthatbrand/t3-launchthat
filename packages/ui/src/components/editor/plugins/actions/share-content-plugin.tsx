@@ -1,7 +1,8 @@
 "use client";
 
+import type {
+  SerializedDocument} from "@lexical/file";
 import {
-  SerializedDocument,
   editorStateFromSerializedDocument,
   serializedDocumentFromEditorState,
 } from "@lexical/file";

@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { add, format } from "date-fns";
-import { type Locale, enUS } from "date-fns/locale";
+import {  enUS } from "date-fns/locale";
+import type {Locale} from "date-fns/locale";
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -52,7 +53,7 @@ function isValidMinuteOrSecond(value: string) {
   return /^[0-5][0-9]$/.test(value);
 }
 
-type GetValidNumberConfig = { max: number; min?: number; loop?: boolean };
+interface GetValidNumberConfig { max: number; min?: number; loop?: boolean }
 
 function getValidNumber(
   value: string,
@@ -89,11 +90,11 @@ function getValidMinuteOrSecond(value: string) {
   return getValidNumber(value, { max: 59 });
 }
 
-type GetValidArrowNumberConfig = {
+interface GetValidArrowNumberConfig {
   min: number;
   max: number;
   step: number;
-};
+}
 
 function getValidArrowNumber(
   value: string,
@@ -618,7 +619,7 @@ const TimePicker = React.forwardRef<TimePickerRef, TimePickerProps>(
           onDateChange={onChange}
           ref={hourRef}
           period={period}
-          onRightFocus={() => minuteRef?.current?.focus()}
+          onRightFocus={() => minuteRef.current?.focus()}
         />
         {(granularity === "minute" || granularity === "second") && (
           <>
@@ -628,8 +629,8 @@ const TimePicker = React.forwardRef<TimePickerRef, TimePickerProps>(
               date={date}
               onDateChange={onChange}
               ref={minuteRef}
-              onLeftFocus={() => hourRef?.current?.focus()}
-              onRightFocus={() => secondRef?.current?.focus()}
+              onLeftFocus={() => hourRef.current?.focus()}
+              onRightFocus={() => secondRef.current?.focus()}
             />
           </>
         )}
@@ -641,8 +642,8 @@ const TimePicker = React.forwardRef<TimePickerRef, TimePickerProps>(
               date={date}
               onDateChange={onChange}
               ref={secondRef}
-              onLeftFocus={() => minuteRef?.current?.focus()}
-              onRightFocus={() => periodRef?.current?.focus()}
+              onLeftFocus={() => minuteRef.current?.focus()}
+              onRightFocus={() => periodRef.current?.focus()}
             />
           </>
         )}
@@ -654,14 +655,14 @@ const TimePicker = React.forwardRef<TimePickerRef, TimePickerProps>(
               date={date}
               onDateChange={(date) => {
                 onChange?.(date);
-                if (date && date?.getHours() >= 12) {
+                if (date && date.getHours() >= 12) {
                   setPeriod("PM");
                 } else {
                   setPeriod("AM");
                 }
               }}
               ref={periodRef}
-              onLeftFocus={() => secondRef?.current?.focus()}
+              onLeftFocus={() => secondRef.current?.focus()}
             />
           </div>
         )}

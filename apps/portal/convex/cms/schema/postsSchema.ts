@@ -1,4 +1,5 @@
 import { defineSchema, defineTable } from "convex/server";
+
 import { v } from "convex/values";
 
 /**
@@ -16,6 +17,7 @@ export const postsTable = defineTable({
   category: v.string(), // Category of the post
   excerpt: v.optional(v.string()), // Short description of the post
   featuredImageUrl: v.optional(v.string()), // URL to a featured image
+  featuredImageId: v.optional(v.id("mediaItems")), // Link to media item
   featured: v.optional(v.boolean()), // Whether the post is featured
   readTime: v.optional(v.string()), // Estimated reading time
 })

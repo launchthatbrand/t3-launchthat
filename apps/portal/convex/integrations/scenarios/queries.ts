@@ -167,3 +167,29 @@ export const get = query({
     };
   },
 });
+
+/**
+ * Get all scenarios (for admin/global views)
+ */
+export const getAllScenarios = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("scenarios"),
+      _creationTime: v.number(),
+      name: v.string(),
+      description: v.string(),
+      status: v.string(),
+      schedule: v.optional(v.string()),
+      lastExecutedAt: v.optional(v.number()),
+      lastExecutionResult: v.optional(v.string()),
+      lastExecutionError: v.optional(v.string()),
+      ownerId: v.id("users"),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx) => {
+    return await ctx.db.query("scenarios").collect();
+  },
+});

@@ -16,7 +16,8 @@ import {
  *
  */
 // import './index.css';
-import { JSX, useEffect, useRef, useState } from "react";
+import type { JSX} from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { $getNearestNodeFromDOMNode } from "lexical";
 import { CopyButton } from "../editor-ui/code-button";

@@ -1,12 +1,14 @@
 "use client";
 
-import { FC, useCallback, useEffect, useRef, useState } from "react";
+import type { FC} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { v4 as uuidv4 } from "uuid";
 
 import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
-import { Highlight, useEmailParserStore } from "../../store";
+import type { Id } from "../../../convex/_generated/dataModel";
+import type { Highlight} from "../../store";
+import { useEmailParserStore } from "../../store";
 import { sanitizeHtml } from "../../utils/emailLoader";
 
 export const EmailContent: FC = () => {

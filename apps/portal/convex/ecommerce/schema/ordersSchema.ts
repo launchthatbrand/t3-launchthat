@@ -83,6 +83,19 @@ export const ordersTable = defineTable({
   subtotal: v.number(), // Sum of line totals
   tax: v.optional(v.number()),
   shipping: v.optional(v.number()),
+
+  // Shipping details
+  shippingDetails: v.optional(
+    v.union(
+      v.object({
+        method: v.string(), // e.g., "Standard Shipping", "Express Shipping"
+        description: v.string(), // e.g., "5-7 business days"
+        cost: v.number(), // Should match the shipping field above
+      }),
+      v.null(), // Allow null to clear shipping details
+    ),
+  ),
+
   discount: v.optional(v.number()),
   total: v.number(), // Final total including tax, shipping, discounts
 
@@ -149,6 +162,23 @@ export const ordersTable = defineTable({
   // Additional information
   notes: v.optional(v.string()), // Customer notes
   adminNotes: v.optional(v.string()), // Internal/admin notes
+
+  // Order notes (timestamped admin notes)
+  orderNotes: v.optional(
+    v.array(
+      v.object({
+        id: v.string(), // Unique identifier for the note
+        content: v.string(), // Note content
+        authorId: v.optional(v.id("users")), // Who added the note
+        authorName: v.optional(v.string()), // Author display name
+        createdAt: v.number(), // Timestamp when note was added
+        isPrivate: v.optional(v.boolean()), // Whether note is private to admins
+      }),
+    ),
+  ),
+
+  // Calendar integration
+  calendarEventId: v.optional(v.id("events")), // Linked calendar event
 
   // Coupons and discounts
   couponCode: v.optional(v.string()),

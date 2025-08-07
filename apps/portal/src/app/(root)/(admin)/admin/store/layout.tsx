@@ -1,101 +1,235 @@
 "use client";
 
-import { ReactNode } from "react";
-import Link from "next/link";
+import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { ClipboardList, PieChart, Settings, Users } from "lucide-react";
 
-import { cn } from "@acme/ui";
-import { Separator } from "@acme/ui/separator";
+import {
+  AdminLayout,
+  AdminLayoutContent,
+  AdminLayoutHeader,
+  ORDER_TABS,
+  STORE_TABS,
+} from "~/components/admin/AdminLayout";
+import { NavigationContext } from "~/components/admin/NavigationContext";
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
-export default function AdminOrdersLayout({ children }: AdminLayoutProps) {
+export default function AdminStoreLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const baseUrl = "/admin/store";
+  const ordersUrl = "/admin/store/orders";
+  const productsUrl = "/admin/store/products";
 
-  const navItems = [
-    {
-      title: "Orders",
-      href: "/admin/orders",
-      icon: ClipboardList,
-      active: pathname === "/admin/orders",
-    },
-    {
-      title: "Analytics",
-      href: "/admin/orders/analytics",
-      icon: PieChart,
-      active: pathname === "/admin/orders/analytics",
-    },
-    {
-      title: "Settings",
-      href: "/admin/orders/settings",
-      icon: Settings,
-      active: pathname === "/admin/orders/settings",
-    },
-  ];
+  // Check if we're on a specific order page (has an ORDER_ID)
+  const isSpecificOrderPage = () => {
+    const orderIdPattern = new RegExp(`^${ordersUrl}/[^/]+$`);
+    return orderIdPattern.test(pathname);
+  };
+
+  // Check if we're on a specific product page (has an PRODUCT_ID)
+  const isSpecificProductPage = () => {
+    // More specific pattern that excludes /categories and /tags
+    const productIdPattern = new RegExp(
+      `^${productsUrl}/(?!categories|tags)[^/]+$`,
+    );
+    return productIdPattern.test(pathname);
+  };
+
+  // Get page configuration based on current route
+  const getPageConfig = () => {
+    // Handle specific routes FIRST before generic patterns
+
+    // Product Categories (must come before general products check)
+    if (pathname.startsWith(`${baseUrl}/products/categories`)) {
+      return {
+        title: "Product Categories",
+        description: "Organize your products with categories",
+        showTabs: true,
+        activeTab: "categories",
+        tabs: STORE_TABS,
+        navigationContext: NavigationContext.SECTION_LEVEL,
+      };
+    }
+
+    // Product Tags (must come before general products check)
+    if (pathname.startsWith(`${baseUrl}/products/tags`)) {
+      return {
+        title: "Product Tags",
+        description: "Manage product tags and labels",
+        showTabs: true,
+        activeTab: "tags",
+        tabs: STORE_TABS,
+        navigationContext: NavigationContext.SECTION_LEVEL,
+      };
+    }
+
+    // Specific Order Page
+    if (isSpecificOrderPage()) {
+      const orderId = pathname.split(`${ordersUrl}/`)[1];
+      return {
+        title: `Order ${orderId}`,
+        description: `View and manage order details for ${orderId}`,
+        showTabs: true,
+        activeTab: "details", // Default to details tab for order pages
+        tabs: ORDER_TABS, // Use order-specific tabs with client navigation
+        navigationContext: NavigationContext.ENTITY_LEVEL,
+      };
+    }
+
+    const PRODUCT_TABS = [
+      {
+        label: "Details",
+        value: "details",
+        navigationContext: NavigationContext.ENTITY_LEVEL,
+      },
+      {
+        label: "Media",
+        value: "media",
+        navigationContext: NavigationContext.ENTITY_LEVEL,
+      },
+      {
+        label: "SEO",
+        value: "seo",
+        navigationContext: NavigationContext.ENTITY_LEVEL,
+      },
+    ];
+
+    // Specific Product Page
+    if (isSpecificProductPage()) {
+      const productId = pathname.split(`${productsUrl}/`)[1];
+      return {
+        title: `Product ${productId}`,
+        description: `View and manage product details for ${productId}`,
+        showTabs: true,
+        activeTab: "details",
+        tabs: PRODUCT_TABS,
+        navigationContext: NavigationContext.ENTITY_LEVEL,
+      };
+    }
+
+    // Default configurations for other pages - all use STORE_TABS with server navigation
+    if (pathname === baseUrl) {
+      return {
+        title: "Store Dashboard",
+        description: "Overview of your store performance and metrics",
+        showTabs: true,
+        activeTab: "dashboard",
+        tabs: STORE_TABS,
+        navigationContext: NavigationContext.SECTION_LEVEL,
+      };
+    }
+
+    if (pathname.startsWith(`${baseUrl}/orders`)) {
+      return {
+        title: "Order Management",
+        description: "Manage and track all store orders",
+        showTabs: true,
+        activeTab: "orders",
+        tabs: STORE_TABS,
+        navigationContext: NavigationContext.SECTION_LEVEL,
+      };
+    }
+
+    if (pathname.startsWith(`${baseUrl}/products`)) {
+      return {
+        title: "Product Management",
+        description: "Add, edit, and manage your store products",
+        showTabs: true,
+        activeTab: "products",
+        tabs: STORE_TABS,
+        navigationContext: NavigationContext.SECTION_LEVEL,
+      };
+    }
+
+    if (pathname.startsWith(`${baseUrl}/chargebacks`)) {
+      return {
+        title: "Chargeback Management",
+        description: "Handle and resolve payment chargebacks",
+        showTabs: true,
+        activeTab: "chargebacks",
+        tabs: STORE_TABS,
+        navigationContext: NavigationContext.SECTION_LEVEL,
+      };
+    }
+
+    if (pathname.startsWith(`${baseUrl}/balances`)) {
+      return {
+        title: "Account Balances",
+        description: "View your account balances and payouts",
+        showTabs: true,
+        activeTab: "balances",
+        tabs: STORE_TABS,
+        navigationContext: NavigationContext.SECTION_LEVEL,
+      };
+    }
+
+    const SETTINGS_TABS = [
+      {
+        label: "General",
+        value: "general",
+        navigationContext: NavigationContext.SECTION_LEVEL,
+      },
+      {
+        label: "Payment",
+        value: "payment",
+        navigationContext: NavigationContext.SECTION_LEVEL,
+      },
+      {
+        label: "Shipping",
+        value: "shipping",
+        navigationContext: NavigationContext.SECTION_LEVEL,
+      },
+      {
+        label: "Tax",
+        value: "tax",
+        navigationContext: NavigationContext.SECTION_LEVEL,
+      },
+      {
+        label: "Notifications",
+        value: "notifications",
+        navigationContext: NavigationContext.SECTION_LEVEL,
+      },
+    ];
+
+    if (pathname.startsWith(`${baseUrl}/settings`)) {
+      return {
+        title: "Store Settings",
+        description: "Manage your store settings",
+        showTabs: true,
+        activeTab: "general",
+        tabs: SETTINGS_TABS,
+        navigationContext: NavigationContext.SECTION_LEVEL,
+      };
+    }
+
+    // Fallback
+    return {
+      title: "Store Management",
+      description: "Manage your store orders, products, and settings",
+      showTabs: true,
+      activeTab: "dashboard",
+      tabs: STORE_TABS,
+      navigationContext: NavigationContext.SECTION_LEVEL,
+    };
+  };
+
+  const pageConfig = getPageConfig();
 
   return (
-    <div className="space-y-6 p-6 pb-16">
-      <div className="mb-8 border-b">
-        <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-          <Link
-            href={`${baseUrl}`}
-            className={`whitespace-nowrap border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${pathname === `${baseUrl}/courses` ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-primary"}`}
-          >
-            Dashboard
-          </Link>
-          <Link
-            href={`${baseUrl}/orders`}
-            className={`whitespace-nowrap border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${pathname.startsWith(`${baseUrl}/lessons`) ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-primary"}`}
-          >
-            Orders
-          </Link>
-          <Link
-            href={`${baseUrl}/products`}
-            className={`whitespace-nowrap border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${pathname.startsWith(`${baseUrl}/topics`) ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-primary"}`}
-          >
-            Products
-          </Link>
-          <Link
-            href={`${baseUrl}/products/categories`}
-            className={`whitespace-nowrap border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${pathname.startsWith(`${baseUrl}/quizzes`) ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-primary"}`}
-          >
-            Product Categories
-          </Link>
-          <Link
-            href={`${baseUrl}/products/tags`}
-            className={`whitespace-nowrap border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${pathname.startsWith(`${baseUrl}/quizzes`) ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-primary"}`}
-          >
-            Product Tags
-          </Link>
-          <Link
-            href={`${baseUrl}/chargebacks`}
-            className={`whitespace-nowrap border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${pathname.startsWith(`${baseUrl}/quizzes`) ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-primary"}`}
-          >
-            Chargebacks
-          </Link>
-
-          <Link
-            href={`${baseUrl}/balances`}
-            className={`whitespace-nowrap border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${pathname.startsWith(`${baseUrl}/quizzes`) ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-primary"}`}
-          >
-            Balances
-          </Link>
-        </nav>
-      </div>
-      <div className="space-y-0.5">
-        <h1 className="text-2xl font-bold">Order Management</h1>
-        <p className="text-muted-foreground">
-          Manage your store orders, customers, and settings
-        </p>
-      </div>
-      <Separator className="my-6" />
-      <div className="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
-        {children}
-      </div>
-    </div>
+    <AdminLayout
+      title={pageConfig.title}
+      description={pageConfig.description}
+      showTabs={pageConfig.showTabs}
+      activeTab={pageConfig.activeTab}
+      tabs={pageConfig.tabs}
+      baseUrl={baseUrl}
+      pathname={pathname} // Enable auto-detection
+      forceNavigationContext={pageConfig.navigationContext} // Override detection if needed
+    >
+      <AdminLayoutHeader />
+      <AdminLayoutContent>{children}</AdminLayoutContent>
+    </AdminLayout>
   );
 }

@@ -33,12 +33,12 @@ export function ComponentPickerMenuPlugin({
   baseOptions = [],
   dynamicOptionsFn,
 }: {
-  baseOptions?: Array<ComponentPickerOption>;
+  baseOptions?: ComponentPickerOption[];
   dynamicOptionsFn?: ({
     queryString,
   }: {
     queryString: string;
-  }) => Array<ComponentPickerOption>;
+  }) => ComponentPickerOption[];
 }): JSX.Element {
   const [editor] = useLexicalComposerContext();
   const [modal, showModal] = useEditorModal();

@@ -1,8 +1,9 @@
 import React, { useCallback, useState } from "react";
+import type {
+  DragEndEvent} from "@dnd-kit/core";
 import {
   closestCenter,
   DndContext,
-  DragEndEvent,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -19,21 +20,21 @@ import { useConfig } from "@payloadcms/ui";
 import { AddTopicButton } from "./AddTopicButton";
 import { SortableTopic } from "./SortableTopic";
 
-type TopicType = {
+interface TopicType {
   id: string;
   title: string;
   order: number;
   status: string;
   quizzes?: QuizType[];
-};
+}
 
-type QuizType = {
+interface QuizType {
   id: string;
   title: string;
   status: string;
-};
+}
 
-type TopicListProps = {
+interface TopicListProps {
   topics: TopicType[];
   lessonId: string;
   onAddTopic: () => void;
@@ -42,7 +43,7 @@ type TopicListProps = {
   onQuizTitleChange: (quizId: string, newTitle: string) => Promise<void>;
   expandedItems: Record<string, boolean>;
   onToggleExpand: (type: "topic", itemId: string) => void;
-};
+}
 
 export const TopicList: React.FC<TopicListProps> = ({
   topics,

@@ -1,4 +1,4 @@
-import { LexicalEditor } from "lexical"
+import type { LexicalEditor } from "lexical"
 import { MenuOption } from "@lexical/react/LexicalTypeaheadMenuPlugin"
 
 export class ComponentPickerOption extends MenuOption {
@@ -7,7 +7,7 @@ export class ComponentPickerOption extends MenuOption {
   // Icon for display
   icon?: JSX.Element
   // For extra searching.
-  keywords: Array<string>
+  keywords: string[]
   // TBD
   keyboardShortcut?: string
   // What happens when you select this option?
@@ -17,7 +17,7 @@ export class ComponentPickerOption extends MenuOption {
     title: string,
     options: {
       icon?: JSX.Element
-      keywords?: Array<string>
+      keywords?: string[]
       keyboardShortcut?: string
       onSelect: (queryString: string, editor: LexicalEditor, showModal: (title: string, showModal: (onClose: () => void) => JSX.Element) => void) => void
     }

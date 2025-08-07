@@ -100,8 +100,8 @@ export function EventEditForm({
       id: event?.id,
       title: event?.title,
       description: event?.description,
-      start: event?.start as Date,
-      end: event?.end as Date,
+      start: event?.start!,
+      end: event?.end!,
       color: event?.backgroundColor,
     });
   }, [form, event]);

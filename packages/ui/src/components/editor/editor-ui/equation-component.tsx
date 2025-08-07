@@ -20,11 +20,11 @@ import { mergeRegister } from "@lexical/utils";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 
-type EquationComponentProps = {
+interface EquationComponentProps {
   equation: string;
   inline: boolean;
   nodeKey: NodeKey;
-};
+}
 
 export default function EquationComponent({
   equation,

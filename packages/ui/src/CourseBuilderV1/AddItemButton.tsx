@@ -1,9 +1,9 @@
 import React from "react";
 
-type AddItemButtonProps = {
+interface AddItemButtonProps {
   label: string;
   onClick: () => void;
-};
+}
 
 export const AddItemButton: React.FC<AddItemButtonProps> = ({
   label,

@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Suspense, JSX } from 'react'
+import type { JSX } from 'react';
+import { Suspense } from 'react'
 
 import type {
   DOMConversionMap,
@@ -187,7 +188,7 @@ export class ExcalidrawNode extends DecoratorNode<JSX.Element> {
 }
 
 export function $createExcalidrawNode(
-  data: string = '[]',
+  data = '[]',
   width: Dimension = 'inherit',
   height: Dimension = 'inherit'
 ): ExcalidrawNode {

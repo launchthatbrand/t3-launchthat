@@ -43,7 +43,7 @@ export type NotificationType =
   | "reminder";
 
 // Context for notification management
-type NotificationsContextType = {
+interface NotificationsContextType {
   notifications: Notification[];
   unreadCount: number;
   addNotification: (
@@ -53,7 +53,7 @@ type NotificationsContextType = {
   markAllAsRead: () => void;
   removeNotification: (id: string) => void;
   clearAllNotifications: () => void;
-};
+}
 
 const NotificationsContext = React.createContext<
   NotificationsContextType | undefined

@@ -1,5 +1,5 @@
-import { ColumnDef } from "@tanstack/react-table";
 import { ReactNode } from "react";
+import { ColumnDef } from "@tanstack/react-table";
 
 /**
  * Possible view modes for the EntityList
@@ -122,6 +122,9 @@ export interface EntityListProps<T extends object> {
 
   /** Whether search is enabled */
   enableSearch?: boolean;
+
+  /** Whether to show the footer */
+  enableFooter?: boolean;
 
   /** Column configurations */
   columns: ColumnDef<T>[];
@@ -318,6 +321,9 @@ export interface EntityListViewProps<T extends object> {
 
   /** Custom item renderer (optional) */
   itemRender?: (item: T) => ReactNode;
+
+  /** Whether to show the footer */
+  enableFooter?: boolean;
 }
 
 /**

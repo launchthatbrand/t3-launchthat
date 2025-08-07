@@ -1,9 +1,10 @@
 "use client";
 
 import { $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
+import type {
+  BaseSelection} from "lexical";
 import {
   $isRangeSelection,
-  BaseSelection,
   COMMAND_PRIORITY_NORMAL,
   KEY_MODIFIER_COMMAND,
 } from "lexical";

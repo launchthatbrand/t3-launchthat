@@ -6,10 +6,10 @@ import { useForm } from "react-hook-form";
 
 import { api } from "../../../convex/_generated/api";
 
-type ThreadFormValues = {
+interface ThreadFormValues {
   threadId: string;
   senderEmail: string;
-};
+}
 
 export function GmailThreadViewer() {
   const { user } = useUser();

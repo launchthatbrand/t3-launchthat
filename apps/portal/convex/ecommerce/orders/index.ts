@@ -1,9 +1,10 @@
-import { mutation, query } from "../../_generated/server";
+import { v } from "convex/values";
 
-import { getAuthenticatedUser } from "../../lib/permissions/userAuth";
+import { internal } from "../../_generated/api";
+import { mutation, query } from "../../_generated/server";
 import { isAdmin } from "../../lib/permissions/hasPermission";
 import { requirePermission } from "../../lib/permissions/requirePermission";
-import { v } from "convex/values";
+import { getAuthenticatedUser } from "../../lib/permissions/userAuth";
 
 /**
  * Get a single order by its ID, ensuring user owns it or is admin
@@ -431,6 +432,38 @@ export const createOrder = mutation({
       }
     }
 
+    // Trigger order created webhook events (fire and forget)
+    ctx.scheduler.runAfter(
+      0,
+      internal.integrations.triggers.orderEvents.triggerOrderCreated,
+      {
+        orderId: newOrderId,
+        orderData: {
+          _id: newOrderId,
+          orderId,
+          userId: args.userId || userId,
+          email: args.email,
+          customerInfo: args.customerInfo,
+          items: args.items,
+          shippingAddress: args.shippingAddress,
+          billingAddress: args.billingAddress || args.shippingAddress,
+          subtotal: args.subtotal,
+          tax: args.tax || 0,
+          shipping: args.shipping || 0,
+          discount: args.discount || 0,
+          total: args.total,
+          paymentMethod: args.paymentMethod,
+          paymentStatus: "pending",
+          status: "pending",
+          couponCode: args.couponCode,
+          discounts: args.discounts,
+          notes: args.notes,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      },
+    );
+
     return { orderId: newOrderId, orderNumber: orderId };
   },
 });
@@ -497,3 +530,18 @@ export const deleteOrder = mutation({
     return { success: true };
   },
 });
+
+// Export calendar linking functions
+export {
+  linkCalendarEvent,
+  unlinkCalendarEvent,
+  getOrdersByCalendarEvent,
+} from "./calendar";
+
+// Export order notes functions
+export {
+  addOrderNote,
+  updateOrderNote,
+  deleteOrderNote,
+  getOrderNotes,
+} from "./notes";

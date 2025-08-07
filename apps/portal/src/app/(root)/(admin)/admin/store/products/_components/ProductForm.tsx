@@ -18,9 +18,11 @@ import {
 
 import { Button } from "@acme/ui/button";
 import { Checkbox } from "@acme/ui/checkbox";
+import { FeaturedImagesUpload } from "./FeaturedImagesUpload";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
+import type { ProductImage } from "./FeaturedImagesUpload";
 import { Textarea } from "@acme/ui/textarea";
 
 // Define product data interfaces
@@ -35,17 +37,13 @@ export interface ProductFormData {
   stockStatus?: "in_stock" | "out_of_stock";
   inventoryLevel?: number;
   primaryCategoryId: Id<"productCategories">;
-  categoryIds: Id<"productCategories">[];
+  categoryIds?: Id<"productCategories">[];
   status: "draft" | "active" | "archived";
   isVisible: boolean;
   isDigital: boolean;
   hasVariants: boolean;
-  images: {
-    url: string;
-    alt?: string;
-    position?: number;
-    isPrimary?: boolean;
-  }[];
+  featuredImages?: ProductImage[];
+  images?: ProductImage[]; // For backward compatibility with backend
   taxable: boolean;
   isFeatured: boolean;
   tags?: string[];
@@ -106,6 +104,9 @@ export default function ProductForm({
     inStock: true,
   });
 
+  // Featured images state
+  const [featuredImages, setFeaturedImages] = useState<ProductImage[]>([]);
+
   // Load initial data if provided
   useEffect(() => {
     if (initialData) {
@@ -140,6 +141,14 @@ export default function ProductForm({
         stockQuantity: initialData.stockQuantity ?? 0,
         inStock: hasStockQuantity ? (initialData.stockQuantity ?? 0) > 0 : true,
       });
+
+      // Initialize featured images from either featuredImages or images field
+      if (initialData.featuredImages) {
+        setFeaturedImages(initialData.featuredImages);
+      } else if (initialData.images) {
+        // Map existing images to featuredImages for backward compatibility
+        setFeaturedImages(initialData.images);
+      }
     }
   }, [initialData]);
 
@@ -178,15 +187,27 @@ export default function ProductForm({
     });
   };
 
+  // Featured images handlers
+  const handleImageAdded = (image: ProductImage) => {
+    setFeaturedImages((prev) => [...prev, image]);
+  };
+
+  const handleImageRemoved = (index: number) => {
+    setFeaturedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleImageUpdated = (
+    index: number,
+    updatedImage: Partial<ProductImage>,
+  ) => {
+    setFeaturedImages((prev) =>
+      prev.map((img, i) => (i === index ? { ...img, ...updatedImage } : img)),
+    );
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Ensure we have a valid category ID
-    if (!formData.primaryCategoryId) {
-      alert("Please select a category");
-      return;
-    }
 
     // Ensure we have a valid status
     if (!["draft", "active", "archived"].includes(formData.status)) {
@@ -224,7 +245,7 @@ export default function ProductForm({
       isVisible: formData.isVisible,
       isDigital: formData.isDigital,
       hasVariants: formData.hasVariants,
-      images: initialData?.images ?? [],
+      images: featuredImages, // Map featuredImages to images for backend compatibility
       taxable: formData.taxable,
       isFeatured: formData.isFeatured,
       tags: initialData?.tags ?? [],
@@ -471,6 +492,26 @@ export default function ProductForm({
           </CardContent>
         </Card>
       </div>
+
+      {/* Featured Images Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Featured Images</CardTitle>
+          <CardDescription>
+            Upload product images. The first image will be used as the primary
+            product image.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FeaturedImagesUpload
+            images={featuredImages}
+            onImageAdded={handleImageAdded}
+            onImageRemoved={handleImageRemoved}
+            onImageUpdated={handleImageUpdated}
+            maxFiles={5}
+          />
+        </CardContent>
+      </Card>
 
       <div className="mt-6 flex justify-end space-x-4">
         <Button type="submit" disabled={isSubmitting}>

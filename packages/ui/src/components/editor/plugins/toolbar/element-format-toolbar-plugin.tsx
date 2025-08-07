@@ -26,13 +26,11 @@ import { useState } from "react";
 import { useToolbarContext } from "../../context/toolbar-context";
 import { useUpdateToolbarHandler } from "../../editor-hooks/use-update-toolbar";
 
-const ELEMENT_FORMAT_OPTIONS: {
-  [key in Exclude<ElementFormatType, "start" | "end" | "">]: {
+const ELEMENT_FORMAT_OPTIONS: Record<Exclude<ElementFormatType, "start" | "end" | "">, {
     icon: React.ReactNode;
     iconRTL: string;
     name: string;
-  };
-} = {
+  }> = {
   left: {
     icon: <AlignLeftIcon className="size-4" />,
     iconRTL: "left-align",

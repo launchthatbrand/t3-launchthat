@@ -16,7 +16,7 @@ import { createPortal } from "react-dom";
 import { useEffect } from "react";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 
-const emojis: Map<string, [string, string]> = new Map([
+const emojis = new Map<string, [string, string]>([
   [":)", ["emoji happysmile", "🙂"]],
   [":D", ["emoji veryhappysmile", "😀"]],
   [":(", ["emoji unhappysmile", "🙁"]],

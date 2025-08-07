@@ -7,14 +7,14 @@ import { Card, CardContent } from "@acme/ui/components/card";
 import { classNames } from "../../../lib/utils";
 import { EditableTitle } from "./EditableTitle";
 
-type QuizItemProps = {
+interface QuizItemProps {
   title: string;
   status: string;
   isDragging?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   onTitleChange?: (newTitle: string) => void;
   parentType?: "lesson" | "topic" | "course";
-};
+}
 
 // Helper function to get appropriate badge variant based on status
 const getStatusVariant = (

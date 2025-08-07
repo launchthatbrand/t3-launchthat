@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { NextPage } from "next";
+import type { NextPage } from "next";
 import { useMutation, useQuery } from "convex/react";
 import { toast, Toaster } from "sonner";
 
@@ -9,7 +9,7 @@ import { AuthRequired } from "../_components/AuthRequired";
 import { LoadingIndicator } from "../_components/LoadingIndicator";
 import { TemplateBuilder } from "../_components/TemplateBuilder";
 import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 interface Template {
   _id: Id<"templates">;

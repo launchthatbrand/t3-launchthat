@@ -80,7 +80,7 @@ const LessonSidebar = () => {
         <div className="sticky top-6 flex w-full flex-col gap-4 overflow-hidden">
           <Card className="overflow-hidden">
             <CardHeader className="py-3">
-              <CardTitle className="text-lg">Lesson Progress</CardTitle>
+              <CardTitle className="text-md">Lesson Progress</CardTitle>
               {lessonProgress && (
                 <div className="text-sm text-muted-foreground">
                   {lessonProgress.topicsCompleted} of{" "}
@@ -100,7 +100,7 @@ const LessonSidebar = () => {
               />
             </CardContent>
           </Card>
-          <Card className="overflow-hidden">
+          {/* <Card className="overflow-hidden">
             <CardHeader className="py-3">
               <CardTitle className="text-lg">Related Content</CardTitle>
             </CardHeader>
@@ -114,8 +114,8 @@ const LessonSidebar = () => {
                 course={data.course}
               />
             </CardContent>
-          </Card>
-          <Card className="overflow-hidden">
+          </Card> */}
+          {/* <Card className="overflow-hidden">
             <CardHeader className="py-3">
               <CardTitle className="text-lg">Recent Content</CardTitle>
             </CardHeader>
@@ -129,7 +129,7 @@ const LessonSidebar = () => {
                 course={data.course}
               />
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
       ) : (
         <Card className="sticky top-3 w-full overflow-hidden">

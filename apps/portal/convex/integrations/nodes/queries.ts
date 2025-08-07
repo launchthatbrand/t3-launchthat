@@ -245,3 +245,30 @@ export const getConnections = query({
     };
   },
 });
+
+/**
+ * Get all nodes (for admin/global views)
+ */
+export const getAllNodes = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("nodes"),
+      _creationTime: v.number(),
+      scenarioId: v.id("scenarios"),
+      type: v.string(),
+      label: v.string(),
+      config: v.string(),
+      position: v.string(),
+      order: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+      outputSchema: v.optional(v.string()),
+      inputMapping: v.optional(v.string()),
+      sampleData: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx) => {
+    return await ctx.db.query("nodes").collect();
+  },
+});

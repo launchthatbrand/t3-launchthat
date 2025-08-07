@@ -1,5 +1,6 @@
+import type {
+  CustomEmbedConfig} from "../../plugins/embeds/auto-embed-plugin";
 import {
-  CustomEmbedConfig,
   EmbedConfigs,
 } from "../../plugins/embeds/auto-embed-plugin";
 
@@ -13,7 +14,7 @@ export function EmbedsPickerPlugin({
 }) {
   const embedConfig = EmbedConfigs.find(
     (config) => config.type === embed,
-  ) as CustomEmbedConfig;
+  )!;
 
   return new ComponentPickerOption(`Embed ${embedConfig.contentName}`, {
     icon: embedConfig.icon,

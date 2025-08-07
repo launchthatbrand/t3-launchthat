@@ -27,10 +27,10 @@ import type { JSX } from "react";
 import KatexEquationAlterer from "../editor-ui/katex-equation-alterer";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 
-type CommandPayload = {
+interface CommandPayload {
   equation: string;
   inline: boolean;
-};
+}
 
 export const INSERT_EQUATION_COMMAND: LexicalCommand<CommandPayload> =
   createCommand("INSERT_EQUATION_COMMAND");

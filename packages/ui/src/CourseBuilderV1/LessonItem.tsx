@@ -8,7 +8,7 @@ import { Card, CardContent } from "@acme/ui/components/card";
 import { classNames } from "../../../lib/utils";
 import { EditableTitle } from "./EditableTitle";
 
-type LessonItemProps = {
+interface LessonItemProps {
   title: string;
   status: string;
   isExpanded?: boolean;
@@ -18,7 +18,7 @@ type LessonItemProps = {
   onTitleChange?: (newTitle: string) => void;
   id?: string;
   topicCount?: number;
-};
+}
 
 export const LessonItem: React.FC<LessonItemProps> = ({
   title,

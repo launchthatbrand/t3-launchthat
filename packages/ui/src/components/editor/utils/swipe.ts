@@ -1,6 +1,6 @@
 type Force = [number, number]
 type Listener = (force: Force, e: TouchEvent) => void
-type ElementValues = {
+interface ElementValues {
   start: null | Force
   listeners: Set<Listener>
   handleTouchstart: (e: TouchEvent) => void

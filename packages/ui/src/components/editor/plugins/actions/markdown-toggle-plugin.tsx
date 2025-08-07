@@ -1,9 +1,10 @@
 "use client";
 
+import type {
+  Transformer} from "@lexical/markdown";
 import {
   $convertFromMarkdownString,
-  $convertToMarkdownString,
-  Transformer,
+  $convertToMarkdownString
 } from "@lexical/markdown";
 import { $createCodeNode, $isCodeNode } from "@lexical/code";
 import { $createTextNode, $getRoot } from "lexical";
@@ -18,7 +19,7 @@ export function MarkdownTogglePlugin({
   transformers,
 }: {
   shouldPreserveNewLinesInMarkdown: boolean;
-  transformers: Array<Transformer>;
+  transformers: Transformer[];
 }) {
   const [editor] = useLexicalComposerContext();
 

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { TimePickerInput } from "./time-picker-input";
 import { TimePeriodSelect } from "./period-select";
-import { Period } from "./time-picker-utils";
+import type { Period } from "./time-picker-utils";
 
 interface TimePickerProps {
   date: Date | undefined;

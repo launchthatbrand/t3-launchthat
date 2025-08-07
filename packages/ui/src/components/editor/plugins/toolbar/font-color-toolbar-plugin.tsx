@@ -1,6 +1,7 @@
 "use client";
 
-import { $getSelection, $isRangeSelection, BaseSelection } from "lexical";
+import type { BaseSelection } from "lexical";
+import { $getSelection, $isRangeSelection } from "lexical";
 import {
   $getSelectionStyleValueForProperty,
   $patchStyleText,

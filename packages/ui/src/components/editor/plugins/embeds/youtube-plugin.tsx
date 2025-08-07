@@ -4,9 +4,10 @@ import {
   $createYouTubeNode,
   YouTubeNode,
 } from "../../nodes/embeds/youtube-node";
+import type {
+  LexicalCommand} from "lexical";
 import {
   COMMAND_PRIORITY_EDITOR,
-  LexicalCommand,
   createCommand,
 } from "lexical";
 /**
@@ -16,7 +17,8 @@ import {
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { JSX, useEffect } from "react";
+import type { JSX} from "react";
+import { useEffect } from "react";
 
 import { $insertNodeToNearestRoot } from "@lexical/utils";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";

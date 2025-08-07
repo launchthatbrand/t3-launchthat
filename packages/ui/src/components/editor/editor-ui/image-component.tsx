@@ -253,7 +253,7 @@ export default function ImageComponent({
         ) {
           editor.dispatchCommand(
             RIGHT_CLICK_IMAGE_COMMAND,
-            event as MouseEvent,
+            event,
           );
         }
       });

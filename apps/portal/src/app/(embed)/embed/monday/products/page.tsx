@@ -1,23 +1,22 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { useConvexAuth, useQuery } from "convex/react";
-import { Edit, Eye, Package, PlusCircle } from "lucide-react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { toast } from "@acme/ui/toast";
-
-import type { Id } from "../../../../../../convex/_generated/dataModel";
 import type {
   ColumnDefinition,
   EntityAction,
   FilterConfig,
 } from "~/components/shared/EntityList/types";
+import { Edit, Eye, Package, PlusCircle } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useConvexAuth, useQuery } from "convex/react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
+import type { Id } from "../../../../../../convex/_generated/dataModel";
+import Link from "next/link";
+import { api } from "@/convex/_generated/api";
+import { toast } from "@acme/ui/toast";
+import { useRouter } from "next/navigation";
 
 interface ProductItem {
   _id: string;
@@ -290,7 +289,7 @@ function ProductsContent({ router }: { router: ReturnType<typeof useRouter> }) {
       label: "Edit",
       icon: <Edit className="h-4 w-4" />,
       onClick: (product) => {
-        router.push(`/admin/products/edit/${product._id}`);
+        router.push(`/admin/store/products/${product._id}`);
       },
       variant: "outline",
     },
@@ -308,7 +307,7 @@ function ProductsContent({ router }: { router: ReturnType<typeof useRouter> }) {
   // Header actions
   const headerActions = (
     <Button asChild>
-      <Link href="/admin/products/create">
+      <Link href="/admin/store/products/create">
         <PlusCircle className="mr-2 h-4 w-4" />
         Add Product
       </Link>
@@ -336,7 +335,7 @@ function ProductsContent({ router }: { router: ReturnType<typeof useRouter> }) {
               Get started by adding your first product
             </p>
             <Button asChild variant="outline">
-              <Link href="/admin/products/create">
+              <Link href="/admin/store/products/create">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add Product
               </Link>

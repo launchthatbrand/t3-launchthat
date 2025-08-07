@@ -1,4 +1,5 @@
-import { CallExpression, Node, SyntaxKind } from "ts-morph";
+import type { CallExpression} from "ts-morph";
+import { Node, SyntaxKind } from "ts-morph";
 
 import type { ParsedValidatorResult } from "./types";
 
@@ -46,7 +47,7 @@ export const parseValidatorNode = (
 
   // Now parse the (potentially unwrapped) validator node
   if (Node.isCallExpression(currentNode)) {
-    const callExpr = currentNode as CallExpression;
+    const callExpr = currentNode;
     const expression = callExpr.getExpression();
 
     if (Node.isPropertyAccessExpression(expression)) {

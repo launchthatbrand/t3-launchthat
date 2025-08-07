@@ -1,6 +1,7 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import type { ReactNode} from "react";
+import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 
 interface AuthConnectorProps {

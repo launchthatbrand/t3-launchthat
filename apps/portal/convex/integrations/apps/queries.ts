@@ -20,6 +20,7 @@ export const list = query({
       configTemplate: v.string(),
       iconUrl: v.optional(v.string()),
       isEnabled: v.boolean(),
+      isInternal: v.optional(v.boolean()), // Add the isInternal field
       createdAt: v.number(),
       updatedAt: v.number(),
     }),
@@ -55,6 +56,7 @@ export const get = query({
       configTemplate: v.string(),
       iconUrl: v.optional(v.string()),
       isEnabled: v.boolean(),
+      isInternal: v.optional(v.boolean()), // Add the isInternal field
       createdAt: v.number(),
       updatedAt: v.number(),
     }),

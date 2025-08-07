@@ -20,6 +20,6 @@
     "isolatedModules": true,
     "noEmit": true
   },
-  "include": ["./**/*"],
+  "include": ["./**/*", "../src/app/(root)/(admin)/admin/integrations/logs"],
   "exclude": ["./_generated"]
 }

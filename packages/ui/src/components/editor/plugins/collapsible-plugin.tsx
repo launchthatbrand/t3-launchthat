@@ -15,19 +15,20 @@ import {
   $isCollapsibleTitleNode,
   CollapsibleTitleNode,
 } from "../nodes/collapsible-title-node";
+import type {
+  ElementNode,
+  LexicalNode} from "lexical";
 import {
   $createParagraphNode,
   $getSelection,
   $isRangeSelection,
   COMMAND_PRIORITY_LOW,
   DELETE_CHARACTER_COMMAND,
-  ElementNode,
   INSERT_PARAGRAPH_COMMAND,
   KEY_ARROW_DOWN_COMMAND,
   KEY_ARROW_LEFT_COMMAND,
   KEY_ARROW_RIGHT_COMMAND,
   KEY_ARROW_UP_COMMAND,
-  LexicalNode,
   createCommand,
 } from "lexical";
 import {

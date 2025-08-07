@@ -2,9 +2,10 @@ import { Input } from "@/components/ui/input";
 
 import { cn } from "@/lib/utils";
 import React from "react";
-import {
+import type {
   Period,
-  TimePickerType,
+  TimePickerType} from "./time-picker-utils";
+import {
   getArrowByType,
   getDateByType,
   setDateByType,

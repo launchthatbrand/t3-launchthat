@@ -1,5 +1,5 @@
-import FullCalendar from "@fullcalendar/react";
-import { RefObject } from "react";
+import type FullCalendar from "@fullcalendar/react";
+import type { RefObject } from "react";
 
 export type calendarRef = RefObject<FullCalendar | null>;
 

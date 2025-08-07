@@ -21,11 +21,18 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   const url = new URL(req.url);
   const isEmbed = isEmbedRoute(req);
 
+  // Create a single response object and set pathname header
+  const response = NextResponse.next({
+    request: {
+      headers: new Headers(req.headers),
+    },
+  });
+
+  // Set pathname header for use in components
+  response.headers.set("x-pathname", req.nextUrl.pathname);
+
   // For embed routes, we need to allow iframe embedding
   if (isEmbed) {
-    // Process the request as normal, but we'll add CORS and frame-ancestor headers
-    const response = NextResponse.next();
-
     // Set headers to allow embedding in iframes
     response.headers.set(
       "Content-Security-Policy",
@@ -78,7 +85,7 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   }
 
   // Allow access to public routes or routes the user is authorized for
-  return NextResponse.next();
+  return response;
 });
 
 export const config = {

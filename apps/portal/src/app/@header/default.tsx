@@ -41,7 +41,13 @@ export default function HeaderLayout({
 }
 
 const TopHeader = () => {
-  return <AppHeader appName="Wall Street Academy" sidebarToggle={true} />;
+  return (
+    <AppHeader
+      appName="WallStreet Academy"
+      sidebarToggle={true}
+      image="https://app.wsatraining.com/wp-content/uploads/2018/03/wsa_logo-01.png"
+    />
+  );
 };
 
 const MainHeader = () => {
@@ -229,7 +235,7 @@ const Breadcrumbs = () => {
   };
 
   return (
-    <Breadcrumb className="flex items-center bg-gray-100 px-6 py-2">
+    <Breadcrumb className="hidden items-center bg-gray-100 px-6 py-2 md:flex">
       <BreadcrumbList>{getBreadcrumbItems()}</BreadcrumbList>
     </Breadcrumb>
   );

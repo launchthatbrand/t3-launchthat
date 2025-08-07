@@ -5,6 +5,7 @@ import React from "react";
 import { useParams } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
 import { useQuery } from "convex/react";
+import { ChevronRight } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
@@ -20,9 +21,13 @@ import { CourseProgress } from "./CourseProgress";
 const CourseHeader = () => {
   const params = useParams();
   const { convexId: userId } = useConvexUser();
-  const { courseId } = params as {
+  const { courseId, lessonId } = params as {
     courseId: string;
+    lessonId?: string;
+    topicId?: string;
   };
+
+  console.log("[CourseHeader] params", params);
 
   const data = useQuery(api.lms.courses.queries.getCourseStructureWithItems, {
     courseId: courseId as Id<"courses">,
@@ -46,22 +51,26 @@ const CourseHeader = () => {
 
   const course = data?.course;
 
+  const lesson = data?.attachedLessons.find((l) => l._id === lessonId);
+
   return (
     <Card className="z-20 flex flex-col rounded-none rounded-b-2xl bg-primary">
       <CardContent className="p-0">
-        <CardHeader className="flex flex-col gap-6 p-6">
+        <CardHeader className="flex flex-col gap-2 p-4 md:gap-6 md:p-6">
           {/* Course Title and Badge */}
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center">
-              <CardTitle className="text-3xl font-bold text-white md:text-4xl">
+            <div className="flex justify-between gap-4 md:flex-row md:items-center md:justify-start">
+              <CardTitle className="flex items-center gap-3 text-lg font-bold text-white md:text-4xl">
                 {course?.title ?? <Skeleton className="h-8 w-60 bg-white/30" />}
+                <ChevronRight className="h-4 w-4" />
+                {lesson?.title ?? <Skeleton className="h-8 w-60 bg-white/30" />}
+                {/* <Badge
+                    variant="outline"
+                    className="absolute w-fit -translate-y-1/2 bg-white text-[0.7rem] text-primary"
+                  >
+                    Course
+                  </Badge> */}
               </CardTitle>
-              <Badge
-                variant="outline"
-                className="text-md w-fit bg-white text-primary"
-              >
-                Course
-              </Badge>
             </div>
 
             {/* Complete Course Button */}
@@ -88,8 +97,10 @@ const CourseHeader = () => {
           <Separator className="bg-white/20" />
 
           {/* Course Progress */}
-          <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
-            <h3 className="text-lg font-semibold text-white">Your Progress</h3>
+          <div className="rounded-xl bg-white/10 p-2 backdrop-blur-sm md:p-4">
+            <h3 className="text-md font-semibold text-white md:text-lg">
+              Your Progress
+            </h3>
             <CourseProgress
               courseProgressByLessons={courseProgressByLessons}
               lessons={data?.attachedLessons}

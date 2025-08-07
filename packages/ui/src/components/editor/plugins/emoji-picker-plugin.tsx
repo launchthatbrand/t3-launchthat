@@ -9,11 +9,12 @@
  */
 import * as React from "react";
 
+import type {
+  TextNode} from "lexical";
 import {
   $createTextNode,
   $getSelection,
-  $isRangeSelection,
-  TextNode,
+  $isRangeSelection
 } from "lexical";
 import {
   Command,
@@ -39,13 +40,13 @@ const LexicalTypeaheadMenuPlugin = dynamic(
 class EmojiOption extends MenuOption {
   title: string;
   emoji: string;
-  keywords: Array<string>;
+  keywords: string[];
 
   constructor(
     title: string,
     emoji: string,
     options: {
-      keywords?: Array<string>;
+      keywords?: string[];
     },
   ) {
     super(title);
@@ -55,23 +56,23 @@ class EmojiOption extends MenuOption {
   }
 }
 
-type Emoji = {
+interface Emoji {
   emoji: string;
   description: string;
   category: string;
-  aliases: Array<string>;
-  tags: Array<string>;
+  aliases: string[];
+  tags: string[];
   unicode_version: string;
   ios_version: string;
   skin_tones?: boolean;
-};
+}
 
 const MAX_EMOJI_SUGGESTION_COUNT = 10;
 
 export function EmojiPickerPlugin() {
   const [editor] = useLexicalComposerContext();
   const [queryString, setQueryString] = useState<string | null>(null);
-  const [emojis, setEmojis] = useState<Array<Emoji>>([]);
+  const [emojis, setEmojis] = useState<Emoji[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   useEffect(() => {
     import("../utils/emoji-list").then((file) => setEmojis(file.default));
@@ -94,7 +95,7 @@ export function EmojiPickerPlugin() {
     minLength: 0,
   });
 
-  const options: Array<EmojiOption> = useMemo(() => {
+  const options: EmojiOption[] = useMemo(() => {
     return emojiOptions
       .filter((option: EmojiOption) => {
         return queryString != null

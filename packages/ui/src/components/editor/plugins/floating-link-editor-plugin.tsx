@@ -29,7 +29,8 @@ import { Check, Pencil, Trash, X } from "lucide-react";
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { Dispatch, JSX, useCallback, useEffect, useRef, useState } from "react";
+import type { Dispatch, JSX} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "../../../button";
 import { Input } from "../../../input";

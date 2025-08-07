@@ -35,7 +35,7 @@ export default async function CourseLayout({
     <div>
       <CourseSidebarProvider className="flex-col gap-3">
         <CourseHeader params={resolvedParams} />
-        <div className="sticky top-0 flex flex-col gap-3 p-2 md:flex-row md:gap-0">
+        <div className="sticky top-0 flex flex-col gap-3 p-0 md:flex-row md:gap-0 md:p-2">
           <CoursesSidebar
             variant="floating"
             collapsible="icon"

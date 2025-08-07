@@ -1,127 +1,132 @@
 "use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "./dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog";
 import {
   Document,
-  PDFViewer,
+  Font,
+  PDFDownloadLink,
   Page,
   StyleSheet,
   Text,
   View,
   pdf,
 } from "@react-pdf/renderer";
-import { Download, FileText } from "lucide-react";
-import React, { useState } from "react";
+import { Download, FileText, Loader2 } from "lucide-react";
+import React, { useCallback, useRef, useState } from "react";
 
+import { Badge } from "./badge";
 import { Button } from "./button";
+import { cn } from "../@acme/utils";
+
+// Register fonts for PDF
+Font.register({
+  family: "Inter",
+  fonts: [
+    {
+      src: "https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyeMZs.woff2",
+      fontWeight: 400,
+    },
+    {
+      src: "https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuFuYeZs.woff2",
+      fontWeight: 600,
+    },
+  ],
+});
 
 // PDF Styles
 const styles = StyleSheet.create({
   page: {
-    flexDirection: "column",
-    backgroundColor: "#ffffff",
+    fontFamily: "Inter",
+    fontSize: 10,
     padding: 30,
-    fontFamily: "Helvetica",
+    backgroundColor: "#FFFFFF",
   },
   header: {
     marginBottom: 20,
-    borderBottom: 1,
-    borderColor: "#e5e7eb",
+    borderBottom: "1px solid #E5E7EB",
     paddingBottom: 10,
-    // Fixed header that appears on all pages
-    // position: "absolute",
-    // top: 30,
-    // left: 30,
-    // right: 30,
   },
   title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 5,
-    color: "#1f2937",
+    fontSize: 18,
+    fontWeight: 600,
+    marginBottom: 4,
+    color: "#111827",
   },
   subtitle: {
     fontSize: 12,
-    color: "#6b7280",
+    color: "#6B7280",
     marginBottom: 10,
   },
   metadata: {
-    fontSize: 10,
-    color: "#9ca3af",
-    marginBottom: 5,
+    marginBottom: 20,
+    padding: 10,
+    backgroundColor: "#F9FAFB",
+    borderRadius: 4,
   },
-  content: {
-    // marginTop: 120, // Space for fixed header
-    flex: 1,
-  },
-  tableContainer: {
-    // Remove fixed positioning to allow proper flow
-  },
-  tableHeaderRow: {
+  metadataRow: {
     flexDirection: "row",
-    backgroundColor: "#f9fafb",
-    borderBottom: 1,
-    borderColor: "#e5e7eb",
-    padding: 8,
-    fontWeight: "bold",
+    marginBottom: 3,
+  },
+  metadataLabel: {
+    width: 120,
+    fontWeight: 600,
+    color: "#374151",
+  },
+  metadataValue: {
+    flex: 1,
+    color: "#6B7280",
+  },
+  table: {
+    marginBottom: 20,
+  },
+  tableHeader: {
+    flexDirection: "row",
+    backgroundColor: "#F3F4F6",
+    borderBottom: "1px solid #D1D5DB",
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  tableHeaderCell: {
+    fontWeight: 600,
+    color: "#374151",
+    fontSize: 9,
+    textAlign: "left",
   },
   tableRow: {
     flexDirection: "row",
-    borderBottom: 1,
-    borderColor: "#f3f4f6",
-    padding: 8,
-    minHeight: 40,
-    // CRITICAL: Prevent row breaking across pages
-    wrap: false,
-    orphans: 1,
-    widows: 1,
-    minPresenceAhead: 25,
-  },
-  tableCol: {
-    flex: 1,
-    justifyContent: "center",
+    borderBottom: "0.5px solid #E5E7EB",
+    paddingVertical: 6,
     paddingHorizontal: 4,
-  },
-  tableHeader: {
-    fontSize: 10,
-    fontWeight: "bold",
-    color: "#374151",
+    minHeight: 24,
   },
   tableCell: {
-    fontSize: 9,
-    color: "#4b5563",
-    lineHeight: 1.2,
+    fontSize: 8,
+    color: "#111827",
+    textAlign: "left",
+    flexWrap: "wrap",
+    paddingRight: 4,
   },
   footer: {
-    // position: "absolute",
-    // bottom: 30,
-    // left: 30,
-    // right: 30,
+    position: "absolute",
+    bottom: 30,
+    left: 30,
+    right: 30,
     textAlign: "center",
-    fontSize: 8,
-    color: "#9ca3af",
-    borderTop: 1,
-    borderColor: "#e5e7eb",
+    borderTop: "1px solid #E5E7EB",
     paddingTop: 10,
   },
   pageNumber: {
     fontSize: 8,
-    color: "#9ca3af",
+    color: "#6B7280",
   },
 });
 
-// Types
+// Types with proper generics
 export interface PDFColumn {
   key: string;
   header: string;
   width?: string;
-  getValue?: (row: any) => string;
+  getValue?: (row: Record<string, unknown>) => string;
 }
 
 export interface PDFExportConfig {
@@ -135,7 +140,7 @@ export interface PDFExportConfig {
   headerOnEveryPage?: boolean;
   includeMetadata?: boolean;
   customMetadata?: Record<string, string>;
-  // New: Custom actions for the preview dialog
+  // Custom actions for the preview dialog
   customActions?: {
     label: string;
     variant?:
@@ -149,29 +154,39 @@ export interface PDFExportConfig {
     onClick: (pdfBlob: Blob, filename: string) => Promise<void> | void;
     disabled?: boolean;
   }[];
-  // New: Control whether to show the default "Save to Computer" button
+  // Control whether to show the default "Save to Computer" button
   showSaveButton?: boolean;
 }
 
-// Helper function to extract cell value
+// Helper function to get cell value safely
 const getCellValue = (
   row: Record<string, unknown>,
   column: PDFColumn,
 ): string => {
   if (column.getValue) {
-    return column.getValue(row) ?? "";
+    const result = column.getValue(row);
+    return result ?? "";
   }
   const value = row[column.key];
   if (value == null) return "";
 
-  // Handle different data types better
-  if (typeof value === "object") {
-    // Safe object stringification
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return "[Complex Object]";
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return String(value);
+  }
+
+  // For complex objects, attempt to extract meaningful content
+  if (typeof value === "object" && value !== null) {
+    // If it has a toString method that's not the default Object.prototype.toString
+    if (value.toString !== Object.prototype.toString) {
+      return value.toString();
     }
+    // Try to extract a name, title, or label property
+    const obj = value as Record<string, unknown>;
+    return String(obj.name ?? obj.title ?? obj.label ?? obj.id ?? "[Object]");
   }
 
   return String(value);
@@ -180,20 +195,23 @@ const getCellValue = (
 // Table Header Component - can be reused across pages
 function TableHeader({ columns }: { columns: PDFColumn[] }) {
   return (
-    <View style={styles.tableHeaderRow}>
-      {columns.map((column, index) => (
-        <View
-          key={index}
-          style={[styles.tableCol, column.width ? { width: column.width } : {}]}
+    <View style={styles.tableHeader}>
+      {columns.map((column) => (
+        <Text
+          key={column.key}
+          style={[
+            styles.tableHeaderCell,
+            { width: column.width ?? `${100 / columns.length}%` },
+          ]}
         >
-          <Text style={styles.tableHeader}>{column.header}</Text>
-        </View>
+          {column.header}
+        </Text>
       ))}
     </View>
   );
 }
 
-// Table Row Component with proper breaking
+// Table Row Component
 function TableRow({
   row,
   columns,
@@ -205,19 +223,22 @@ function TableRow({
 }) {
   return (
     <View style={styles.tableRow}>
-      {columns.map((column, colIndex) => (
-        <View
-          key={colIndex}
-          style={[styles.tableCol, column.width ? { width: column.width } : {}]}
+      {columns.map((column) => (
+        <Text
+          key={column.key}
+          style={[
+            styles.tableCell,
+            { width: column.width ?? `${100 / columns.length}%` },
+          ]}
         >
-          <Text style={styles.tableCell}>{getCellValue(row, column)}</Text>
-        </View>
+          {getCellValue(row, column)}
+        </Text>
       ))}
     </View>
   );
 }
 
-// Group rows to prevent orphaned single rows
+// Table Row Group for better performance with large datasets
 function TableRowGroup({
   rows,
   columns,
@@ -228,7 +249,7 @@ function TableRowGroup({
   startIndex: number;
 }) {
   return (
-    <View wrap={true}>
+    <View>
       {rows.map((row, index) => (
         <TableRow
           key={startIndex + index}
@@ -241,7 +262,7 @@ function TableRowGroup({
   );
 }
 
-// Main PDF Document Component
+// PDF Document Component
 export function PDFDocument({
   title,
   subtitle,
@@ -251,16 +272,8 @@ export function PDFDocument({
   includeMetadata = true,
   customMetadata,
 }: PDFExportConfig) {
-  const currentDate = new Date().toLocaleDateString();
-  const totalRecords = data.length;
-
-  // Group rows into small sections for better page break control
-  const rowGroups: Record<string, unknown>[][] = [];
-  const groupSize = 5; // Small groups for better page control
-
-  for (let i = 0; i < data.length; i += groupSize) {
-    rowGroups.push(data.slice(i, i + groupSize));
-  }
+  const rowsPerPage = 25; // Adjust based on your needs
+  const pageCount = Math.ceil(data.length / rowsPerPage);
 
   return (
     <Document>
@@ -269,38 +282,37 @@ export function PDFDocument({
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
           {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-
-          {includeMetadata && (
-            <View>
-              <Text style={styles.metadata}>
-                Generated on: {currentDate} • Total Records: {totalRecords}
-              </Text>
-              {customMetadata &&
-                Object.entries(customMetadata).map(([key, value]) => (
-                  <Text key={key} style={styles.metadata}>
-                    {key}: {value}
-                  </Text>
-                ))}
-            </View>
-          )}
         </View>
 
-        {/* Table Content */}
-        <View style={styles.content}>
-          <View style={styles.tableContainer}>
-            {/* Table Header */}
-            <TableHeader columns={columns} />
-
-            {/* Table Rows in Groups */}
-            {rowGroups.map((group, groupIndex) => (
-              <TableRowGroup
-                key={groupIndex}
-                rows={group}
-                columns={columns}
-                startIndex={groupIndex * groupSize}
-              />
+        {/* Metadata */}
+        {includeMetadata && customMetadata && (
+          <View style={styles.metadata}>
+            {Object.entries(customMetadata).map(([key, value]) => (
+              <View key={key} style={styles.metadataRow}>
+                <Text style={styles.metadataLabel}>{key}:</Text>
+                <Text style={styles.metadataValue}>{value}</Text>
+              </View>
             ))}
           </View>
+        )}
+
+        {/* Table */}
+        <View style={styles.table}>
+          <TableHeader columns={columns} />
+          {Array.from({ length: pageCount }, (_, pageIndex) => {
+            const startIndex = pageIndex * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, data.length);
+            const pageRows = data.slice(startIndex, endIndex);
+
+            return (
+              <TableRowGroup
+                key={pageIndex}
+                rows={pageRows}
+                columns={columns}
+                startIndex={startIndex}
+              />
+            );
+          })}
         </View>
 
         {/* Footer */}
@@ -317,20 +329,28 @@ export function PDFDocument({
   );
 }
 
-// PDF Preview Dialog Component
-function PDFPreviewDialog({
-  isOpen,
-  onClose,
+// Separated PDF Preview Component (can be used in multi-page dialogs)
+export interface PDFPreviewProps {
+  config: PDFExportConfig;
+  pdfBlob: Blob | null;
+  isGenerating: boolean;
+  onCustomAction?: (
+    action: NonNullable<PDFExportConfig["customActions"]>[0],
+  ) => Promise<void>;
+  onSave?: () => void;
+  showActions?: boolean;
+  className?: string;
+}
+
+export function PDFPreview({
   config,
   pdfBlob,
   isGenerating,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  config: PDFExportConfig | null;
-  pdfBlob: Blob | null;
-  isGenerating: boolean;
-}) {
+  onCustomAction,
+  onSave,
+  showActions = true,
+  className,
+}: PDFPreviewProps) {
   const [isActionLoading, setIsActionLoading] = useState<string | null>(null);
 
   const handleSave = () => {
@@ -347,6 +367,10 @@ function PDFPreviewDialog({
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+
+      onSave?.();
+    } catch (error) {
+      console.error("Error saving PDF:", error);
     } finally {
       setIsActionLoading(null);
     }
@@ -355,11 +379,13 @@ function PDFPreviewDialog({
   const handleCustomAction = async (
     action: NonNullable<PDFExportConfig["customActions"]>[0],
   ) => {
-    if (!pdfBlob || !config || action.disabled) return;
+    console.log("handleCustomAction", action);
+    if (!pdfBlob || !config) return;
 
     setIsActionLoading(action.label);
     try {
       await action.onClick(pdfBlob, config.filename);
+      onCustomAction?.(action);
     } catch (error) {
       console.error("Custom action error:", error);
     } finally {
@@ -370,114 +396,170 @@ function PDFPreviewDialog({
   if (!config) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="flex h-full max-h-[90vh] max-w-6xl flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            PDF Preview - {config.title}
-          </DialogTitle>
-        </DialogHeader>
+    <div className={cn("space-y-4", className)}>
+      {/* PDF Preview Area */}
+      <div className="rounded-lg border bg-gray-50 p-8">
+        <div className="mx-auto max-w-2xl space-y-4">
+          {/* Preview Header */}
+          <div className="text-center">
+            <FileText className="mx-auto h-16 w-16 text-gray-400" />
+            <h3 className="mt-4 text-lg font-medium text-gray-900">
+              {config.title}
+            </h3>
+            {config.subtitle && (
+              <p className="mt-1 text-sm text-gray-500">{config.subtitle}</p>
+            )}
+          </div>
 
-        <div className="min-h-0 flex-1">
-          {isGenerating ? (
-            <div className="flex h-64 items-center justify-center">
-              <div className="text-center">
-                <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900" />
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Generating PDF preview...
-                </p>
+          {/* PDF Stats */}
+          <div className="flex justify-center space-x-8 border-t border-gray-200 pt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">
+                {config.data.length}
               </div>
+              <div className="text-sm text-gray-500">Records</div>
             </div>
-          ) : pdfBlob ? (
-            <div className="h-full w-full overflow-hidden rounded-md border">
-              <PDFViewer width="100%" height="100%" className="border-0">
-                <PDFDocument {...config} />
-              </PDFViewer>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">
+                {config.columns.length}
+              </div>
+              <div className="text-sm text-gray-500">Columns</div>
             </div>
-          ) : (
-            <div className="flex h-64 items-center justify-center">
-              <p className="text-sm text-muted-foreground">
-                Failed to generate PDF preview
-              </p>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">
+                {Math.ceil(config.data.length / 25)}
+              </div>
+              <div className="text-sm text-gray-500">Pages</div>
+            </div>
+          </div>
+
+          {/* Generation Status */}
+          {isGenerating && (
+            <div className="flex items-center justify-center space-x-2 rounded-lg bg-blue-50 p-4">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+              <span className="text-sm font-medium text-blue-900">
+                Generating PDF...
+              </span>
+            </div>
+          )}
+
+          {/* Ready Status */}
+          {pdfBlob && !isGenerating && (
+            <div className="rounded-lg bg-green-50 p-4 text-center">
+              <span className="text-sm font-medium text-green-900">
+                ✓ PDF ready for download ({(pdfBlob.size / 1024).toFixed(1)} KB)
+              </span>
             </div>
           )}
         </div>
+      </div>
 
-        <DialogFooter className="flex gap-2">
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
-
+      {/* Actions */}
+      {showActions && (
+        <div className="flex flex-wrap justify-center gap-3">
           {/* Custom Actions */}
-          {config.customActions?.map((action, index) => (
+          {config.customActions?.map((action) => (
             <Button
-              key={index}
+              key={action.label}
               variant={action.variant ?? "outline"}
               onClick={() => handleCustomAction(action)}
               disabled={
-                action.disabled || isActionLoading === action.label || !pdfBlob
+                (action.disabled ?? false) ||
+                isActionLoading === action.label ||
+                !pdfBlob
               }
             >
               {isActionLoading === action.label ? (
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
               ) : (
-                action.icon && <span className="mr-2">{action.icon}</span>
+                <>
+                  {action.icon && <span className="mr-2">{action.icon}</span>}
+                  {action.label}
+                </>
               )}
-              {action.label}
             </Button>
           ))}
 
-          {/* Default Save Button - show by default unless explicitly disabled */}
+          {/* Default Save Button */}
           {(config.showSaveButton ?? true) && (
             <Button
+              variant="default"
               onClick={handleSave}
-              disabled={isActionLoading === "save" || !pdfBlob}
+              disabled={!pdfBlob || isActionLoading === "save"}
             >
               {isActionLoading === "save" ? (
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
               ) : (
-                <Download className="mr-2 h-4 w-4" />
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Save to Computer
+                </>
               )}
-              Save to Computer
             </Button>
           )}
-        </DialogFooter>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Standalone PDF Preview Dialog Component
+function PDFPreviewDialog({
+  isOpen,
+  onClose,
+  config,
+  pdfBlob,
+  isGenerating,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  config: PDFExportConfig | null;
+  pdfBlob: Blob | null;
+  isGenerating: boolean;
+}) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            PDF Export Preview
+            {config && (
+              <Badge variant="outline" className="ml-2">
+                {config.filename}
+              </Badge>
+            )}
+          </DialogTitle>
+        </DialogHeader>
+
+        {config && (
+          <PDFPreview
+            config={config}
+            pdfBlob={pdfBlob}
+            isGenerating={isGenerating}
+            onSave={onClose}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
 }
 
-// Hook for PDF export functionality
+// Basic PDF Export Hook (no preview)
 export function usePDFExport() {
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Generate PDF blob without downloading
-  const generatePDFBlob = React.useCallback(async (config: PDFExportConfig) => {
+  const exportToPDF = useCallback(async (config: PDFExportConfig) => {
     setIsGenerating(true);
-
     try {
       const doc = <PDFDocument {...config} />;
-      const asPdf = pdf(doc);
-      const blob = await asPdf.toBlob();
-
-      return { success: true, blob };
-    } catch (error) {
-      console.error("PDF generation error:", error);
-      return { success: false, error: error as Error };
-    } finally {
-      setIsGenerating(false);
-    }
-  }, []);
-
-  // Export PDF with download
-  const exportToPDF = React.useCallback(async (config: PDFExportConfig) => {
-    setIsGenerating(true);
-
-    try {
-      const doc = <PDFDocument {...config} />;
-      const asPdf = pdf(doc);
-      const blob = await asPdf.toBlob();
+      const blob = await pdf(doc).toBlob();
 
       // Create download link
       const url = URL.createObjectURL(blob);
@@ -489,107 +571,66 @@ export function usePDFExport() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      return { success: true, blob };
+      return blob;
     } catch (error) {
       console.error("PDF generation error:", error);
-      return { success: false, error: error as Error };
+      throw error;
     } finally {
       setIsGenerating(false);
     }
   }, []);
 
-  const previewPDF = React.useCallback(async (config: PDFExportConfig) => {
-    setIsGenerating(true);
-
-    try {
-      const doc = <PDFDocument {...config} />;
-      const asPdf = pdf(doc);
-      const blob = await asPdf.toBlob();
-
-      // Open in new tab
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
-
-      // Clean up URL after a delay
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-      return { success: true };
-    } catch (error) {
-      console.error("PDF preview error:", error);
-      return { success: false, error: error as Error };
-    } finally {
-      setIsGenerating(false);
-    }
-  }, []);
-
-  return {
-    generatePDFBlob, // New: generate without download
-    exportToPDF,
-    previewPDF,
-    isGenerating,
-  };
+  return { exportToPDF, isGenerating };
 }
 
-// Hook for PDF export with preview dialog
+// PDF Export Hook with Preview Dialog
 export function usePDFExportWithPreview() {
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [previewConfig, setPreviewConfig] = useState<PDFExportConfig | null>(
-    null,
-  );
+  const [isOpen, setIsOpen] = useState(false);
+  const [config, setConfig] = useState<PDFExportConfig | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
-  const { generatePDFBlob, exportToPDF, isGenerating } = usePDFExport();
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const openPreview = React.useCallback(
-    (config: PDFExportConfig) => {
-      setPreviewConfig(config);
-      setIsPreviewOpen(true);
-      setPdfBlob(null); // Reset blob
-
-      // Generate PDF blob for preview (without download)
-      void (async () => {
-        try {
-          const result = await generatePDFBlob(config);
-          if (result.success && result.blob) {
-            setPdfBlob(result.blob);
-          }
-        } catch (error) {
-          console.error("Failed to generate PDF preview:", error);
-        }
-      })();
-    },
-    [generatePDFBlob],
-  );
-
-  const closePreview = React.useCallback(() => {
-    setIsPreviewOpen(false);
-    setPreviewConfig(null);
+  const openPreview = useCallback(async (exportConfig: PDFExportConfig) => {
+    setConfig(exportConfig);
+    setIsOpen(true);
+    setIsGenerating(true);
     setPdfBlob(null);
+
+    try {
+      const doc = <PDFDocument {...exportConfig} />;
+      const blob = await pdf(doc).toBlob();
+      setPdfBlob(blob);
+    } catch (error) {
+      console.error("PDF generation error:", error);
+    } finally {
+      setIsGenerating(false);
+    }
   }, []);
 
-  const PreviewDialog = React.useCallback(() => {
-    if (!previewConfig) return null;
+  const closePreview = useCallback(() => {
+    setIsOpen(false);
+    setConfig(null);
+    setPdfBlob(null);
+    setIsGenerating(false);
+  }, []);
 
-    return (
+  const PreviewDialog = useCallback(
+    () => (
       <PDFPreviewDialog
-        isOpen={isPreviewOpen}
+        isOpen={isOpen}
         onClose={closePreview}
-        config={previewConfig}
+        config={config}
         pdfBlob={pdfBlob}
         isGenerating={isGenerating}
       />
-    );
-  }, [isPreviewOpen, closePreview, previewConfig, pdfBlob, isGenerating]);
+    ),
+    [isOpen, closePreview, config, pdfBlob, isGenerating],
+  );
 
-  return {
-    openPreview,
-    closePreview,
-    isGenerating,
-    PreviewDialog,
-    exportToPDF, // Add this for direct PDF generation
-  };
+  return { openPreview, closePreview, PreviewDialog, isGenerating };
 }
 
-// Export button component
+// Simple PDF Export Button Component
 interface PDFExportButtonProps {
   config: PDFExportConfig;
   variant?: "download" | "preview";
@@ -609,35 +650,32 @@ export function PDFExportButton({
   onSuccess,
   onError,
 }: PDFExportButtonProps) {
-  const { exportToPDF, previewPDF, isGenerating } = usePDFExport();
+  const { exportToPDF, isGenerating } = usePDFExport();
 
   const handleClick = async () => {
-    const result =
-      variant === "download"
-        ? await exportToPDF(config)
-        : await previewPDF(config);
-
-    if (result.success) {
+    try {
+      await exportToPDF(config);
       onSuccess?.();
-    } else if (result.error) {
-      onError?.(result.error);
+    } catch (error) {
+      onError?.(error as Error);
     }
   };
 
   return (
     <button
       onClick={handleClick}
-      disabled={disabled || isGenerating}
+      disabled={(disabled ?? false) || isGenerating}
       className={className}
     >
       {isGenerating
         ? "Generating..."
-        : children || `${variant === "download" ? "Download" : "Preview"} PDF`}
+        : (children ??
+          `${variant === "download" ? "Download" : "Preview"} PDF`)}
     </button>
   );
 }
 
-// Enhanced Export button with preview dialog
+// PDF Export Button with Preview Dialog
 interface PDFExportWithPreviewButtonProps {
   config: PDFExportConfig;
   children?: React.ReactNode;
@@ -655,7 +693,7 @@ export function PDFExportWithPreviewButton({
   onSuccess,
   onError,
 }: PDFExportWithPreviewButtonProps) {
-  const { openPreview, isGenerating, PreviewDialog } =
+  const { openPreview, PreviewDialog, isGenerating } =
     usePDFExportWithPreview();
 
   const handleClick = () => {
@@ -671,26 +709,42 @@ export function PDFExportWithPreviewButton({
     <>
       <button
         onClick={handleClick}
-        disabled={disabled || isGenerating}
+        disabled={(disabled ?? false) || isGenerating}
         className={className}
       >
-        {isGenerating ? "Generating..." : children || "Export PDF"}
+        {isGenerating ? "Generating..." : (children ?? "Export PDF")}
       </button>
       <PreviewDialog />
     </>
   );
 }
 
-// Helper function to convert EntityList columns to PDF columns
-export function convertToPDFColumns(entityListColumns: any[]): PDFColumn[] {
+// Helper function to convert EntityList columns to PDF columns with proper typing
+interface EntityListColumn {
+  accessorKey?: string;
+  header?: string | React.ReactNode;
+  id?: string;
+  cell?: unknown;
+}
+
+export function convertToPDFColumns(
+  entityListColumns: EntityListColumn[],
+): PDFColumn[] {
   return entityListColumns
-    .filter((col) => col.accessorKey) // Only include columns with accessor keys
+    .filter((col): col is EntityListColumn & { accessorKey: string } =>
+      Boolean(col.accessorKey),
+    )
     .map((col) => ({
       key: col.accessorKey,
       header:
-        typeof col.header === "string" ? col.header : col.id || col.accessorKey,
+        typeof col.header === "string"
+          ? col.header
+          : (col.id ?? col.accessorKey),
       getValue: col.cell
         ? undefined
-        : (row: any) => row[col.accessorKey]?.toString() || "",
+        : (row: Record<string, unknown>) => {
+            const value = row[col.accessorKey];
+            return value?.toString() ?? "";
+          },
     }));
 }

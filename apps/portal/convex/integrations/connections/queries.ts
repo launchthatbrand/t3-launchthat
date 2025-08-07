@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 
+import { api } from "../../_generated/api";
 import { Doc, Id } from "../../_generated/dataModel";
 import { internalQuery, query } from "../../_generated/server";
 
@@ -177,5 +178,87 @@ export const getConnectionByAppAndOwner = internalQuery({
         q.eq("appId", args.appId).eq("ownerId", args.ownerId),
       )
       .unique();
+  },
+});
+
+/**
+ * List connections with automatic inclusion of internal app connections
+ * This ensures internal apps show up with their default connections
+ */
+export const listWithInternalApps = query({
+  args: {
+    appId: v.optional(v.id("apps")),
+    status: v.optional(v.string()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("connections"),
+      _creationTime: v.number(),
+      appId: v.id("apps"),
+      name: v.string(),
+      status: v.string(),
+      credentials: v.string(),
+      config: v.optional(v.string()),
+      lastCheckedAt: v.optional(v.number()),
+      lastError: v.optional(v.string()),
+      ownerId: v.union(v.id("users"), v.string()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+      app: v.optional(
+        v.object({
+          _id: v.id("apps"),
+          name: v.string(),
+          description: v.string(),
+          authType: v.string(),
+        }),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    // Get all connections using the existing logic
+    const regularConnections = await ctx.runQuery(
+      api.integrations.connections.queries.list,
+      args,
+    );
+
+    // Get all internal apps that might not have connections yet
+    const internalApps = await ctx.db
+      .query("apps")
+      .filter((q) => q.eq(q.field("isInternal"), true))
+      .collect();
+
+    const result = [...regularConnections];
+
+    // For each internal app, ensure it has a connection in the result
+    for (const app of internalApps) {
+      // Skip if we already have a connection for this app in the results
+      const hasConnection = result.some((conn) => conn.appId === app._id);
+
+      if (!hasConnection) {
+        // Create a synthetic connection for display purposes
+        const syntheticConnection = {
+          _id: `${app._id}_default` as any, // Synthetic ID
+          _creationTime: app._creationTime,
+          appId: app._id,
+          name: `${app.name} (Default)`,
+          status: "connected",
+          credentials: JSON.stringify({ type: "internal" }),
+          config: JSON.stringify({ isDefault: true }),
+          ownerId: "system",
+          createdAt: app.createdAt,
+          updatedAt: app.updatedAt,
+          app: {
+            _id: app._id,
+            name: app.name,
+            description: app.description,
+            authType: app.authType,
+          },
+        };
+
+        result.push(syntheticConnection as any);
+      }
+    }
+
+    return result;
   },
 });

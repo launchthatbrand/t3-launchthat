@@ -137,7 +137,7 @@ export default function TopicPage() {
 
   return (
     <Card className="border-none shadow-none">
-      <CardContent className="p-6">
+      <CardContent className="p-0 md:p-6">
         {/* Protect the video content specifically */}
         <ProtectedContent
           contentType="topic"
@@ -165,16 +165,16 @@ export default function TopicPage() {
         </ProtectedContent>
 
         {/* Navigation and comments remain unprotected */}
-        <Carousel className="w-full">
+        <Carousel className="w-full px-4">
           <CarouselContent className="flex-wrap p-0">
             <CarouselItem
-              className="group basis-1/2 cursor-pointer md:basis-1/4 lg:basis-1/5"
+              className="group basis-1/2 cursor-pointer md:basis-1/4"
               onClick={() => handleVideoNavigation(previousTopic?._id ?? "")}
             >
               <OverlayCard item={previousTopic} badgeText="Previous" />
             </CarouselItem>
 
-            <CarouselItem className="order-first mb-5 flex basis-full cursor-default flex-col items-stretch gap-3 transition-all duration-300 md:order-none md:basis-1/2 lg:basis-3/5">
+            <CarouselItem className="order-first mb-5 flex basis-full cursor-default flex-col items-stretch gap-3 transition-all duration-300 md:order-none md:basis-1/2">
               <CompleteContentButton
                 contentType="topic"
                 courseId={courseId as Id<"courses">}
@@ -194,17 +194,17 @@ export default function TopicPage() {
 
             {nextTopic && (
               <CarouselItem
-                className="group basis-1/2 cursor-pointer md:basis-1/4 lg:basis-1/5"
+                className="group basis-1/2 cursor-pointer md:basis-1/4"
                 onClick={() => handleVideoNavigation(nextTopic._id)}
               >
                 <OverlayCard item={nextTopic} badgeText="Next" />
               </CarouselItem>
             )}
           </CarouselContent>
-          <CarouselPrevious className="absolute -left-4 top-1/2 -translate-y-1/2 transform">
+          <CarouselPrevious className="absolute -left-0 top-1/2 -translate-y-1/2 transform">
             <ChevronLeft className="h-4 w-4" />
           </CarouselPrevious>
-          <CarouselNext className="absolute -right-4 top-1/2 -translate-y-1/2 transform">
+          <CarouselNext className="absolute -right-0 top-1/2 -translate-y-1/2 transform">
             <ChevronRight className="h-4 w-4" />
           </CarouselNext>
         </Carousel>
@@ -256,12 +256,12 @@ export const OverlayCard = ({
         {badgeText && (
           <Badge
             variant="outline"
-            className="mb-2 bg-white transition-opacity duration-300 group-hover:opacity-0"
+            className="mb-2 bg-white text-[.5rem] transition-opacity duration-300 group-hover:opacity-0"
           >
             {badgeText}
           </Badge>
         )}
-        <p className="font-semibold transition-opacity duration-300 group-hover:opacity-0">
+        <p className="text-sm font-semibold transition-opacity duration-300 group-hover:opacity-0 md:text-xs">
           {item.title}
         </p>
       </div>

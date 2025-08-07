@@ -105,6 +105,10 @@ export const createProduct = mutation({
         alt: v.optional(v.string()),
         position: v.optional(v.number()),
         isPrimary: v.optional(v.boolean()),
+        // Additional fields from media upload system
+        name: v.optional(v.string()),
+        size: v.optional(v.number()),
+        storageId: v.optional(v.id("_storage")),
       }),
     ),
     taxable: v.boolean(),
@@ -211,6 +215,10 @@ export const updateProduct = mutation({
         alt: v.optional(v.string()),
         position: v.optional(v.number()),
         isPrimary: v.optional(v.boolean()),
+        // Additional fields from media upload system
+        name: v.optional(v.string()),
+        size: v.optional(v.number()),
+        storageId: v.optional(v.id("_storage")),
       }),
     ),
     taxable: v.boolean(),

@@ -13,7 +13,8 @@ import { GeistSans } from "geist/font/sans";
 // Import the Providers component
 // import { Providers } from "~/app/providers";
 // import { InvitationBadge } from "~/components/groups/InvitationBadge";
-import { Button, cn, NavItem, SidebarInset, SiteHeader } from "@acme/ui";
+import type { NavItem} from "@acme/ui";
+import { Button, cn, SidebarInset, SiteHeader } from "@acme/ui";
 import StandardLayout from "@acme/ui/layout/StandardLayout";
 import { AppSidebar } from "@acme/ui/sidebar-layout/app-sidebar";
 

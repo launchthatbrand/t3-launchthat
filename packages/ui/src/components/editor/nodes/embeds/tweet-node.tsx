@@ -1,10 +1,12 @@
 import * as React from 'react'
-import { useCallback, useEffect, useRef, useState, JSX } from 'react'
+import type { JSX } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { BlockWithAlignableContents } from '@lexical/react/LexicalBlockWithAlignableContents'
+import type {
+  SerializedDecoratorBlockNode} from '@lexical/react/LexicalDecoratorBlockNode';
 import {
-  DecoratorBlockNode,
-  SerializedDecoratorBlockNode,
+  DecoratorBlockNode
 } from '@lexical/react/LexicalDecoratorBlockNode'
 import type {
   DOMConversionMap,
@@ -86,7 +88,7 @@ function TweetComponent({
         const script = document.createElement('script')
         script.src = WIDGET_SCRIPT_URL
         script.async = true
-        document.body?.appendChild(script)
+        document.body.appendChild(script)
         script.onload = createTweet
         if (onError) {
           script.onerror = onError as OnErrorEventHandler
@@ -181,8 +183,8 @@ export class TweetNode extends DecoratorBlockNode {
   }
 
   getTextContent(
-    _includeInert?: boolean | undefined,
-    _includeDirectionless?: false | undefined
+    _includeInert?: boolean  ,
+    _includeDirectionless?: false  
   ): string {
     return `https://x.com/i/web/status/${this.__id}`
   }

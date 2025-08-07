@@ -23,7 +23,8 @@ import {
  *
  */
 import type { BaseSelection, NodeKey } from "lexical";
-import { JSX, useCallback, useEffect } from "react";
+import type { JSX} from "react";
+import { useCallback, useEffect } from "react";
 
 import { $isAtNodeEnd } from "@lexical/selection";
 import { addSwipeRightListener } from "../utils/swipe";
@@ -31,10 +32,10 @@ import { mergeRegister } from "@lexical/utils";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useSharedAutocompleteContext } from "../context/shared-autocomplete-context";
 
-type SearchPromise = {
+interface SearchPromise {
   dismiss: () => void;
   promise: Promise<null | string>;
-};
+}
 
 export const uuid = Math.random()
   .toString(36)
@@ -243,7 +244,7 @@ class AutocompleteServer {
     const dismiss = () => {
       isDismissed = true;
     };
-    const promise: Promise<null | string> = new Promise((resolve, reject) => {
+    const promise = new Promise<null | string>((resolve, reject) => {
       setTimeout(() => {
         if (isDismissed) {
           // TODO cache result

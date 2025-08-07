@@ -1137,7 +1137,7 @@ export const getEmailStats = query({
         for (const labelId of args.labelIds) {
           // Count emails with this label
           const count = emails.filter(
-            (email) => email.labels && email.labels.includes(labelId),
+            (email) => email.labels?.includes(labelId),
           ).length;
           emailsByLabel[labelId] = count;
         }
@@ -1327,10 +1327,10 @@ export const fetchAndProcessThreadEmail = internalAction({
 });
 
 declare namespace Convex {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  export type Validator<T, O extends boolean, F extends boolean> = {
+   
+  export interface Validator<T, O extends boolean, F extends boolean> {
     __type: T;
     __optional: O;
     __fieldPaths: F;
-  };
+  }
 }

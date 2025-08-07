@@ -14,7 +14,7 @@ export const appsTable = defineTable({
   // Description of what the app does and what features it supports
   description: v.string(),
 
-  // Type of authentication required (oauth, apiKey, usernamePassword)
+  // Type of authentication required (oauth, apiKey, usernamePassword, internal, none)
   authType: v.string(),
 
   // JSON template for app-specific configuration options
@@ -25,6 +25,9 @@ export const appsTable = defineTable({
 
   // Whether this app is enabled and available for users
   isEnabled: v.boolean(),
+
+  // Whether this is an internal/built-in app that doesn't require external connections
+  isInternal: v.optional(v.boolean()),
 
   // Creation timestamp
   createdAt: v.number(),

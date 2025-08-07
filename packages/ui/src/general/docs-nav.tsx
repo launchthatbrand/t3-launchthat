@@ -3,9 +3,9 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type DocsConfig } from "@/config/docs";
+import type {DocsConfig} from "@/config/docs";
 import { cn } from "@/lib/utils";
-import { SidebarNavItem } from "types/nav";
+import type { SidebarNavItem } from "types/nav";
 
 export function DocsNav({ config }: { config: DocsConfig }) {
   const pathname = usePathname();
@@ -40,7 +40,7 @@ function DocsNavItems({
   items: SidebarNavItem[];
   pathname: string | null;
 }) {
-  return items?.length ? (
+  return items.length ? (
     <div className="grid grid-flow-row auto-rows-max gap-0.5 text-sm">
       {items.map((item, index) =>
         item.href && !item.disabled ? (
@@ -84,7 +84,7 @@ function DocNavItem({
       if (itemRect.bottom > containerRect.bottom) {
         sidebarContainer.scrollTo({
           top:
-            navItemRef.current.offsetTop - sidebarContainer?.clientHeight / 2,
+            navItemRef.current.offsetTop - sidebarContainer.clientHeight / 2,
           behavior: "smooth",
         });
       }

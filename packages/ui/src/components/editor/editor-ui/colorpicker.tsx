@@ -6,7 +6,7 @@ import { Button } from "../../../button";
 import { HexColorPicker } from "react-colorful";
 import { Input } from "../../../input";
 
-type Props = {
+interface Props {
   disabled?: boolean;
   icon?: React.ReactNode;
   label?: string;
@@ -14,7 +14,7 @@ type Props = {
   stopCloseOnClickSelf?: boolean;
   color: string;
   onChange?: (color: string, skipHistoryStack: boolean) => void;
-};
+}
 
 export default function ColorPicker({
   disabled = false,
@@ -42,7 +42,7 @@ export default function ColorPicker({
           maxLength={7}
           onChange={(e) => {
             e.stopPropagation();
-            onChange?.(e?.currentTarget?.value, false);
+            onChange?.(e.currentTarget.value, false);
           }}
           value={color}
         />

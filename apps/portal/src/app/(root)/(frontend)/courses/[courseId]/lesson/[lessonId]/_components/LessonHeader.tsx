@@ -61,39 +61,27 @@ const LessonHeader = () => {
   // if (!lesson) return <div>Lesson not found.</div>;
   return (
     <header className="sticky top-0 z-10 flex shrink-0 flex-col">
-      {lessonId && (
-        <div className="flex gap-2 rounded-none rounded-tr-xl bg-primary p-3">
-          <div className="flex flex-1 items-center gap-2">
-            <CourseSidebarTrigger className="-ml-1 text-white" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
-            {lesson?.title ? (
-              <h1 className="text-2xl font-bold text-white">{lesson?.title}</h1>
-            ) : (
-              <Skeleton className="h-8 w-32 bg-white/30" />
-            )}
-          </div>
-          <Badge variant="outline" className="text-md bg-white">
-            {lessonId ? "Lesson" : "Course"}
-          </Badge>
-        </div>
-      )}
       {topicId && (
-        <Card className="overflow-hidden rounded-l-none rounded-t-none">
+        <Card className="overflow-hidden rounded-b-none md:rounded-l-none md:rounded-r-none md:rounded-r-xl">
           <Accordion
             type="single"
             collapsible
             defaultValue="item-1"
-            className="sticky top-14 z-20"
+            className="sticky top-14 z-20 p-0"
           >
-            <AccordionItem value="item-1">
-              <CardHeader className="sticky:shadow-lg sticky top-14 z-10 flex flex-col justify-between gap-3 space-y-0 bg-white p-4">
-                <div className="flex flex-row items-center justify-between gap-2">
-                  <CardTitle className="flex gap-2 text-xl font-bold">
-                    {topic?.title || <Skeleton className="h-8 w-32" />}
-                  </CardTitle>
+            <AccordionItem value="item-1 p-0">
+              <CardHeader className="sticky:shadow-lg top-14 z-10 flex flex-col justify-between gap-3 space-y-0 bg-primary p-3 lg:sticky">
+                <div className="flex flex-row items-center justify-between gap-2 bg-primary">
+                  <div className="flex flex-row items-center justify-between gap-2">
+                    <CourseSidebarTrigger className="-ml-1 text-white" />
+                    <Separator
+                      orientation="vertical"
+                      className="mr-2 data-[orientation=vertical]:h-4"
+                    />
+                    <CardTitle className="flex gap-2 text-2xl font-bold text-white">
+                      {topic?.title || <Skeleton className="h-8 w-32" />}
+                    </CardTitle>{" "}
+                  </div>
                   <Badge
                     variant="outline"
                     className={cn("text-md flex gap-3", {

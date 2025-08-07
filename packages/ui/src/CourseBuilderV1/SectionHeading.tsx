@@ -5,12 +5,12 @@ import { Button } from "@acme/ui/components/button";
 
 import { classNames } from "../../../lib/utils";
 
-type SectionHeadingProps = {
+interface SectionHeadingProps {
   title: string;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
-};
+}
 
 export const SectionHeading: React.FC<SectionHeadingProps> = ({
   title,

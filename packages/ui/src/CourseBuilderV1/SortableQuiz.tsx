@@ -4,17 +4,17 @@ import { CSS } from "@dnd-kit/utilities";
 
 import { QuizItem } from "./QuizItem";
 
-type QuizType = {
+interface QuizType {
   id: string;
   title: string;
   status: string;
-};
+}
 
-type SortableQuizProps = {
+interface SortableQuizProps {
   quiz: QuizType;
   onTitleChange: (newTitle: string) => Promise<void>;
   parentType: "topic";
-};
+}
 
 export const SortableQuiz: React.FC<SortableQuizProps> = ({
   quiz,

@@ -1,29 +1,28 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-import { useQuery } from "convex/react";
-import { Pencil, PlusCircle } from "lucide-react";
-
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@acme/ui/accordion";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-
 // Import EntityList components
 import type {
   ColumnDefinition,
   EntityAction,
   FilterConfig,
 } from "~/components/shared/EntityList/types";
+import { Pencil, PlusCircle } from "lucide-react";
+import React, { useState } from "react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { Id } from "@/convex/_generated/dataModel";
+import { api } from "@/convex/_generated/api";
+import { useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
 
 // Update to use enhanced product interface
 interface EnhancedProduct {
@@ -79,7 +78,7 @@ export default function ProductCatalogPage() {
 
   // Handle navigation to product creation page
   const handleAddProduct = () => {
-    router.push("/admin/products/create");
+    router.push("/admin/store/products/create");
   };
 
   // Pre-filter products by selected category from sidebar
@@ -204,7 +203,7 @@ export default function ProductCatalogPage() {
       id: "edit",
       label: "Edit",
       onClick: (product) => {
-        router.push(`/admin/products/edit/${product._id}`);
+        router.push(`/admin/store/products/${product._id}`);
       },
       variant: "secondary",
       icon: <Pencil className="mr-2 h-4 w-4" />,

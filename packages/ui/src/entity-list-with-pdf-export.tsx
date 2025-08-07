@@ -1,9 +1,10 @@
 "use client";
 
-import { PDFColumn, usePDFExport } from "./pdf-export";
+import type { PDFColumn} from "./pdf-export";
+import { usePDFExport } from "./pdf-export";
 
 import { Button } from "./button";
-import { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import { Download } from "lucide-react";
 import React from "react";
 import { toast } from "./toast";
@@ -174,7 +175,7 @@ export function EntityListWithPDFExport<T>({
   const { exportToPDF, isGenerating } = usePDFExport();
 
   const handleExportToPDF = async () => {
-    if (!data?.length) {
+    if (!data.length) {
       toast.error("No data to export");
       return;
     }
@@ -220,8 +221,8 @@ export function EntityListWithPDFExport<T>({
       variant="outline"
       size="sm"
       onClick={handleExportToPDF}
-      disabled={isGenerating || !data?.length}
-      title={`Export ${data?.length ?? 0} records to PDF`}
+      disabled={isGenerating || !data.length}
+      title={`Export ${data.length ?? 0} records to PDF`}
     >
       <Download className="mr-2 h-4 w-4" />
       {isGenerating ? "Generating..." : "Export PDF"}
@@ -289,7 +290,7 @@ export function useEntityListPDFExport<T>({
   const { exportToPDF, isGenerating } = usePDFExport();
 
   const handleExportToPDF = async () => {
-    if (!data?.length) {
+    if (!data.length) {
       toast.error("No data to export");
       return;
     }
@@ -334,8 +335,8 @@ export function useEntityListPDFExport<T>({
       variant="outline"
       size="sm"
       onClick={handleExportToPDF}
-      disabled={isGenerating || !data?.length}
-      title={`Export ${data?.length ?? 0} records to PDF`}
+      disabled={isGenerating || !data.length}
+      title={`Export ${data.length ?? 0} records to PDF`}
     >
       <Download className="mr-2 h-4 w-4" />
       {isGenerating ? "Generating..." : "Export PDF"}

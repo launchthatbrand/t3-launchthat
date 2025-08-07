@@ -28,7 +28,7 @@ import { PollNode } from "../../editor/nodes/poll-node";
 import { TweetNode } from "../../editor/nodes/embeds/tweet-node";
 import { YouTubeNode } from "../../editor/nodes/embeds/youtube-node";
 
-export const nodes: ReadonlyArray<Klass<LexicalNode> | LexicalNodeReplacement> =
+export const nodes: readonly (Klass<LexicalNode> | LexicalNodeReplacement)[] =
   [
     HeadingNode,
     ParagraphNode,

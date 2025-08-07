@@ -3,12 +3,13 @@
 
 // Import new modular calendar schema
 import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
-import { auditLogSchema } from "./core/auditLog";
 import calendarSchema from "./calendar/schema";
 import { categoriesTable } from "./categories/schema";
 import cmsSchema from "./cms/schema";
 import contactsSchema from "./contacts/schema";
+import { auditLogSchema } from "./core/auditLog";
 import { coreSchema } from "./core/schema"; // This should be the result of defineSchema()
 import { downloadsSchema } from "./downloads/schema";
 import ecommerceSchema from "./ecommerce/schema";
@@ -17,13 +18,13 @@ import integrationsSchema from "./integrations/schema";
 import { lmsSchema } from "./lms/schema";
 import { mediaSchema } from "./media/schema";
 import { notificationsSchema } from "./notifications/schema";
+import { organizationsSchema } from "./organizations/schema";
 import { puckEditorTable } from "./puckEditor/schema";
 import socialFeedSchema from "./socialfeed/schema";
 import { tagsTable } from "./tags/schema";
 import { taskBoardsSchema } from "./tasks/boards/schema";
 import { tasksSchema } from "./tasks/schema";
 import { usersSchema } from "./users/schema";
-import { v } from "convex/values";
 import { vimeoSchema } from "./vimeo/schema";
 
 // Import new schema modules
@@ -89,6 +90,9 @@ export default defineSchema({
 
   // Notifications tables
   ...notificationsSchema.tables,
+
+  // Organizations tables (multi-tenancy)
+  ...organizationsSchema.tables,
 
   // Social Feed tables
   ...socialFeedSchema.tables,

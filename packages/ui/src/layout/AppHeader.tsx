@@ -50,10 +50,12 @@ function AppHeader({
   appName,
   sidebarToggle,
   className,
+  image,
 }: {
   appName: string;
   sidebarToggle: boolean;
   className?: string;
+  image?: string;
 }) {
   return (
     // <header
@@ -81,7 +83,7 @@ function AppHeader({
     //       </SignedIn> */}
     //   </div>
     // </header>
-    <header className="group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 flex h-12 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear">
+    <header className="group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 flex h-14 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         {sidebarToggle ? <SidebarTriggerWrapper className="-ml-1" /> : null}
         <Separator
@@ -90,7 +92,7 @@ function AppHeader({
         />
         <div className="flex flex-1 items-center justify-between gap-2">
           <Link href="/" className="flex items-center gap-2">
-            <Logo appName={appName} />
+            <Logo appName={appName} image={image} />
           </Link>
           <NavUser className="!ml-auto" />
           {/* <SignedOut>

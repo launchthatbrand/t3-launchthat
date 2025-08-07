@@ -57,7 +57,7 @@ export function BlockFormatDropDown({
             ? element.getTag()
             : element.getType();
           if (type in blockTypeToBlockName) {
-            setBlockType(type as keyof typeof blockTypeToBlockName);
+            setBlockType(type);
           }
         }
       }
@@ -70,7 +70,7 @@ export function BlockFormatDropDown({
     <Select
       value={blockType}
       onValueChange={(value) => {
-        setBlockType(value as keyof typeof blockTypeToBlockName);
+        setBlockType(value);
       }}
     >
       <SelectTrigger className="h-8 w-min gap-1">

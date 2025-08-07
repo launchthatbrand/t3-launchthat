@@ -4,6 +4,8 @@ import { v } from "convex/values";
 // Define a unified product schema that's compatible with both older and newer code
 // Renamed from unifiedProductsTable to productsTable for consistency
 export const productsTable = defineTable({
+  organizationId: v.optional(v.id("organizations")), // Made optional for multi-tenancy
+
   // Basic product info (from ecommerceSchema)
   name: v.string(),
   description: v.optional(v.string()),
@@ -64,7 +66,23 @@ export const productsTable = defineTable({
       alt: v.optional(v.string()),
       position: v.optional(v.number()), // For ordering
       isPrimary: v.optional(v.boolean()),
+      // Additional fields from media upload system
+      name: v.optional(v.string()),
+      size: v.optional(v.number()),
+      storageId: v.optional(v.id("_storage")),
     }),
+  ),
+
+  // Enhanced media support - link to media items
+  mediaItems: v.optional(
+    v.array(
+      v.object({
+        mediaItemId: v.id("mediaItems"),
+        alt: v.optional(v.string()),
+        position: v.optional(v.number()),
+        isPrimary: v.optional(v.boolean()),
+      }),
+    ),
   ),
 
   // Status and visibility
@@ -86,6 +104,10 @@ export const productsTable = defineTable({
   createdAt: v.number(),
   updatedAt: v.number(),
 })
+  .index("by_organization", ["organizationId"])
+  .index("by_organization_status", ["organizationId", "status"])
+  .index("by_organization_visible", ["organizationId", "isVisible"])
+  .index("by_organization_featured", ["organizationId", "isFeatured"])
   .index("by_primary_category", ["primaryCategoryId"])
   .index("by_status", ["status"])
   .index("by_visible", ["isVisible"])
@@ -100,6 +122,7 @@ export const productsTable = defineTable({
   .searchIndex("search_products_name", {
     searchField: "name",
     filterFields: [
+      "organizationId",
       "status",
       "isVisible",
       "primaryCategoryId",
@@ -110,6 +133,7 @@ export const productsTable = defineTable({
   .searchIndex("search_products_description", {
     searchField: "description",
     filterFields: [
+      "organizationId",
       "status",
       "isVisible",
       "primaryCategoryId",
@@ -122,21 +146,42 @@ export const productsTable = defineTable({
 // Based on previous logs, productVariantsTable was defined in the main schema.ts and moved here.
 // It was: defineTable({ productId: v.id("products"), attributes: v.any(), stock: v.number() })
 export const productVariantsTable = defineTable({
+  organizationId: v.optional(v.id("organizations")), // Made optional for multi-tenancy
   productId: v.id("products"),
-  attributes: v.any(), // e.g., { color: "Red", size: "M" }
+  name: v.string(), // e.g., "Small", "Medium", "Large" or "Red", "Blue"
   sku: v.optional(v.string()),
-  stockQuantity: v.number(),
-  price: v.optional(v.number()), // Variant-specific price, overrides main product price if set
-  salePrice: v.optional(v.number()),
+  priceInCents: v.number(), // Override product price
+  compareAtPriceInCents: v.optional(v.number()),
+
+  // Inventory tracking
+  trackQuantity: v.optional(v.boolean()),
+  quantity: v.optional(v.number()),
+  allowBackorder: v.optional(v.boolean()),
+
+  // Physical properties
   weight: v.optional(v.number()),
-  images: v.optional(
-    v.array(v.object({ url: v.string(), alt: v.optional(v.string()) })),
+  requiresShipping: v.optional(v.boolean()),
+
+  // Variant attributes (dynamic key-value pairs)
+  attributes: v.optional(
+    v.array(
+      v.object({
+        name: v.string(), // e.g., "Size", "Color"
+        value: v.string(), // e.g., "Large", "Red"
+      }),
+    ),
   ),
-  isPublished: v.optional(v.boolean()),
+
+  // Status
+  isActive: v.optional(v.boolean()),
+
+  // Timestamps
   createdAt: v.number(),
   updatedAt: v.number(),
 })
+  .index("by_organization", ["organizationId"])
   .index("by_product", ["productId"])
+  .index("by_organization_product", ["organizationId", "productId"])
   .index("by_sku", ["sku"]);
 
 // Export schema

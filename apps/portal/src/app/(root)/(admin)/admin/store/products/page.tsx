@@ -303,7 +303,7 @@ function ProductsContent({ router }: { router: ReturnType<typeof useRouter> }) {
       label: "Edit",
       icon: <Edit className="h-4 w-4" />,
       onClick: (product) => {
-        router.push(`/admin/products/edit/${product._id}`);
+        router.push(`/admin/store/products/${product._id}`);
       },
       variant: "outline",
     },
@@ -321,7 +321,7 @@ function ProductsContent({ router }: { router: ReturnType<typeof useRouter> }) {
   // Header actions
   const headerActions = (
     <Button asChild>
-      <Link href="/admin/products/create">
+      <Link href="/admin/store/products/create">
         <PlusCircle className="mr-2 h-4 w-4" />
         Add Product
       </Link>
@@ -349,7 +349,7 @@ function ProductsContent({ router }: { router: ReturnType<typeof useRouter> }) {
               Get started by adding your first product
             </p>
             <Button asChild variant="outline">
-              <Link href="/admin/products/create">
+              <Link href="/admin/store/products/create">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add Product
               </Link>

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { api } from "../../_generated/api";
+import { api, internal } from "../../_generated/api";
 import { mutation } from "../../_generated/server";
 
 // Helper function to create a single mock order
@@ -276,6 +276,16 @@ export const createMockOrder = mutation({
 
       // Insert the order
       const newOrderId = await ctx.db.insert("orders", orderData);
+
+      // Trigger order created webhook events (fire and forget)
+      ctx.scheduler.runAfter(
+        0,
+        internal.integrations.triggers.orderEvents.triggerOrderCreated,
+        {
+          orderId: newOrderId,
+          orderData: { ...orderData, _id: newOrderId },
+        },
+      );
 
       return {
         success: true,

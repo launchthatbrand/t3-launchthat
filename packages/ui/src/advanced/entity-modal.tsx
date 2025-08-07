@@ -141,7 +141,7 @@ export function EntityModal({
         side={
           position === "top" || position === "bottom"
             ? position
-            : (position as "right" | "left")
+            : (position)
         }
         className={cn(
           sheetSizeClassMap[size],

@@ -53,16 +53,13 @@ interface Template {
   updatedAt: number;
 }
 
-interface ParsedData {
-  [key: string]:
-    | string
+type ParsedData = Record<string, | string
     | number
     | boolean
     | string[]
     | null
     | { amount: number; currency: string }
-    | null;
-}
+     >;
 
 /**
  * Extract structured data from email content based on templates

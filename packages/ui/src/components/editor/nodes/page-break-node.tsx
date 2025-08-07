@@ -1,22 +1,24 @@
-import { useCallback, useEffect, JSX } from 'react'
+import type { JSX } from 'react';
+import { useCallback, useEffect } from 'react'
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useLexicalNodeSelection } from '@lexical/react/useLexicalNodeSelection'
 import { mergeRegister } from '@lexical/utils'
+import type {
+  DOMConversionMap,
+  DOMConversionOutput,
+  LexicalNode,
+  NodeKey,
+  SerializedLexicalNode} from 'lexical';
 import {
   $getSelection,
   $isNodeSelection,
   CLICK_COMMAND,
   COMMAND_PRIORITY_HIGH,
   COMMAND_PRIORITY_LOW,
-  DOMConversionMap,
-  DOMConversionOutput,
   DecoratorNode,
   KEY_BACKSPACE_COMMAND,
-  KEY_DELETE_COMMAND,
-  LexicalNode,
-  NodeKey,
-  SerializedLexicalNode,
+  KEY_DELETE_COMMAND
 } from 'lexical'
 
 export type SerializedPageBreakNode = SerializedLexicalNode

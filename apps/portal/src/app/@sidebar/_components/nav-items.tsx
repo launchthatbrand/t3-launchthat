@@ -32,23 +32,28 @@ export const navItems = [
     ],
   },
   {
-    title: "Courses",
-    url: "/admin/courses",
+    title: "LMS",
+    url: "/admin/lms",
     icon: Users,
     items: [
       {
+        title: "Courses",
+        url: "/admin/lms/courses",
+        icon: BookOpen,
+      },
+      {
         title: "Lessons",
-        url: "/admin/lessons",
+        url: "/admin/lms/lessons",
         icon: BookOpen,
       },
       {
         title: "Topics",
-        url: "/admin/topics",
+        url: "/admin/lms/topics",
         icon: BookOpen,
       },
       {
         title: "Quizzes",
-        url: "/admin/quizzes",
+        url: "/admin/lms/quizzes",
         icon: BookOpen,
       },
     ],
@@ -150,6 +155,11 @@ export const navItems = [
         url: "/admin/store/balances",
         icon: BookOpen,
       },
+      {
+        title: "Settings",
+        url: "/admin/store/settings",
+        icon: BookOpen,
+      },
     ],
   },
   {
@@ -244,24 +254,36 @@ export const navItems = [
         title: "Roles",
         url: "/admin/settings/roles",
       },
+      {
+        title: "Plans",
+        url: "/admin/settings/plans",
+      },
+      {
+        title: "Organizations",
+        url: "/admin/settings/organizations",
+      },
     ],
   },
   {
     title: "Integrations",
-    url: "/integrations",
+    url: "/admin/integrations",
     icon: Share2,
     items: [
       {
         title: "Apps",
-        url: "/integrations",
+        url: "/admin/integrations",
       },
       {
         title: "Connections",
-        url: "/integrations?tab=connections",
+        url: "/admin/integrations?tab=connections",
       },
       {
         title: "Scenarios",
-        url: "/integrations?tab=scenarios",
+        url: "/admin/integrations?tab=scenarios",
+      },
+      {
+        title: "Logs",
+        url: "/admin/integrations/logs",
       },
     ],
   },

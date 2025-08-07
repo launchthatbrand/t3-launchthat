@@ -17,13 +17,14 @@ import {
   X,
 } from "lucide-react";
 import type { Board, Item } from "../../../types/board";
-import {
-  DndContext,
+import type {
   DragEndEvent,
   DragOverEvent,
-  DragOverlay,
   DragStartEvent,
-  Modifier,
+  Modifier} from "@dnd-kit/core";
+import {
+  DndContext,
+  DragOverlay,
   PointerSensor,
   closestCenter,
   useSensor,

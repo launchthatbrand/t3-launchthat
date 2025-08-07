@@ -1,8 +1,9 @@
-import {
+import type {
   CallExpression,
+  ObjectLiteralExpression} from "ts-morph";
+import {
   Identifier,
   Node,
-  ObjectLiteralExpression,
   Project,
   PropertyAssignment,
   SyntaxKind,

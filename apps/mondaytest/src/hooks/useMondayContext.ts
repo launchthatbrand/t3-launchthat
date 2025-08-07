@@ -127,7 +127,7 @@ export function useMondayIntegration(): {
           "context",
         )) as MondayContextResponse;
 
-        if (contextResponse?.data) {
+        if (contextResponse.data) {
           const currentContext = contextResponse.data;
           setMondayContext(currentContext);
           setIsInMonday(true); // Assume in Monday if context is successfully retrieved

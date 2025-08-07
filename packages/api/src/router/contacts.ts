@@ -66,7 +66,7 @@ const ContactFilterSchema = z.object({
 // Helper function to create and initialize Convex client with auth
 const getConvexClient = async (token: string | null | undefined) => {
   const convex = new ConvexHttpClient(
-    process.env.NEXT_PUBLIC_CONVEX_URL as string,
+    process.env.NEXT_PUBLIC_CONVEX_URL!,
   );
 
   // Set auth token if available
@@ -82,7 +82,7 @@ export const contactsRouter = {
   create: protectedProcedure
     .input(ContactSchema)
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
+      if (!ctx.session.user) {
         throw new Error("Not authenticated");
       }
 
@@ -109,7 +109,7 @@ export const contactsRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
+      if (!ctx.session.user) {
         throw new Error("Not authenticated");
       }
 
@@ -131,7 +131,7 @@ export const contactsRouter = {
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
+      if (!ctx.session.user) {
         throw new Error("Not authenticated");
       }
 
@@ -152,7 +152,7 @@ export const contactsRouter = {
   getById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
+      if (!ctx.session.user) {
         throw new Error("Not authenticated");
       }
 
@@ -178,7 +178,7 @@ export const contactsRouter = {
       }),
     )
     .query(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
+      if (!ctx.session.user) {
         throw new Error("Not authenticated");
       }
 
@@ -206,7 +206,7 @@ export const contactsRouter = {
       }),
     )
     .query(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
+      if (!ctx.session.user) {
         throw new Error("Not authenticated");
       }
 
@@ -235,7 +235,7 @@ export const contactsRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
+      if (!ctx.session.user) {
         throw new Error("Not authenticated");
       }
 
@@ -262,7 +262,7 @@ export const contactsRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
+      if (!ctx.session.user) {
         throw new Error("Not authenticated");
       }
 
@@ -285,7 +285,7 @@ export const contactsRouter = {
   createOrganization: protectedProcedure
     .input(OrganizationSchema)
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
+      if (!ctx.session.user) {
         throw new Error("Not authenticated");
       }
 
@@ -312,7 +312,7 @@ export const contactsRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
+      if (!ctx.session.user) {
         throw new Error("Not authenticated");
       }
 
@@ -334,7 +334,7 @@ export const contactsRouter = {
   deleteOrganization: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
+      if (!ctx.session.user) {
         throw new Error("Not authenticated");
       }
 
@@ -362,7 +362,7 @@ export const contactsRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
+      if (!ctx.session.user) {
         throw new Error("Not authenticated");
       }
 
@@ -393,7 +393,7 @@ export const contactsRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
+      if (!ctx.session.user) {
         throw new Error("Not authenticated");
       }
 
@@ -429,7 +429,7 @@ export const contactsRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
+      if (!ctx.session.user) {
         throw new Error("Not authenticated");
       }
 
@@ -457,7 +457,7 @@ export const contactsRouter = {
       }),
     )
     .query(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
+      if (!ctx.session.user) {
         throw new Error("Not authenticated");
       }
 
@@ -479,7 +479,7 @@ export const contactsRouter = {
 
   // Dashboard and statistics
   getContactStats: protectedProcedure.query(async ({ ctx }) => {
-    if (!ctx.session?.user) {
+    if (!ctx.session.user) {
       throw new Error("Not authenticated");
     }
 

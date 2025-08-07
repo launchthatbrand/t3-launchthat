@@ -8,7 +8,7 @@ import { Card, CardContent } from "@acme/ui/components/card";
 import { classNames } from "../../../lib/utils";
 import { EditableTitle } from "./EditableTitle";
 
-type TopicItemProps = {
+interface TopicItemProps {
   title: string;
   status: string;
   isDragging?: boolean;
@@ -17,7 +17,7 @@ type TopicItemProps = {
   quizCount?: number;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
-};
+}
 
 // Helper function to get appropriate badge variant based on status
 const getStatusVariant = (
