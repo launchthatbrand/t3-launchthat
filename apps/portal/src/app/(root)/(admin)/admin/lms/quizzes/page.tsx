@@ -92,8 +92,8 @@ export default function AdminQuizzesPage() {
     return params;
   }, [debouncedSearchTitle]);
 
-  const quizzes = useQuery(api.lms.quizzes.index.listQuizzes, queryParams);
-  const deleteQuiz = useMutation(api.lms.quizzes.index.remove);
+  const quizzes = useQuery(api.lms.quizzes.queries.listQuizzes, queryParams);
+  const deleteQuiz = useMutation(api.lms.quizzes.mutations.remove);
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [quizToDelete, setQuizToDelete] = React.useState<QuizData | null>(null);

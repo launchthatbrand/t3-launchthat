@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 
+import { Doc } from "../../_generated/dataModel";
 import { mutation } from "../../_generated/server";
 import { requirePermission } from "../../lib/permissions/requirePermission";
 
@@ -96,7 +97,7 @@ export const update = mutation({
     }
 
     // Prepare the update object with only the fields that were provided
-    const updateData: any = {
+    const updateData: Partial<Doc<"orders">> = {
       updatedAt: Date.now(),
     };
 

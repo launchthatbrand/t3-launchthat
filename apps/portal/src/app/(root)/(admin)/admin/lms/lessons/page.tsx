@@ -96,8 +96,8 @@ export default function AdminLessonsPage() {
     return params;
   }, [debouncedSearchTitle, activeFilters]);
 
-  const lessons = useQuery(api.lms.lessons.index.listLessons, queryParams);
-  const deleteLesson = useMutation(api.lms.lessons.index.remove);
+  const lessons = useQuery(api.lms.lessons.queries.listLessons, queryParams);
+  const deleteLesson = useMutation(api.lms.lessons.mutations.remove);
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [lessonToDelete, setLessonToDelete] = React.useState<LessonData | null>(

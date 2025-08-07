@@ -5,5 +5,7 @@
  * All topics functionality has been moved to the lms/topics directory.
  */
 
-// Re-export from new location to maintain backward compatibility
-export * from "./lms/topics";
+// Re-export from new modular structure
+export * from "./lms/topics/queries";
+export * from "./lms/topics/mutations";
+export * from "./lms/topics/helpers";

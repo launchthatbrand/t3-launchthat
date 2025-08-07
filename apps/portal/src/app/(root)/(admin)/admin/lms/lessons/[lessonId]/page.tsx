@@ -13,9 +13,9 @@ export default function AdminLessonEditPage() {
   const params = useParams();
   const { lessonId } = params as { lessonId: string };
 
-  const lesson = useQuery(api.lms.lessons.index.getLesson, { lessonId });
+  const lesson = useQuery(api.lms.lessons.queries.getLesson, { lessonId });
 
-  const updateLesson = useMutation(api.lms.lessons.index.update);
+  const updateLesson = useMutation(api.lms.lessons.mutations.update);
 
   const handleSubmit = async (values: LessonFormValues) => {
     await updateLesson({

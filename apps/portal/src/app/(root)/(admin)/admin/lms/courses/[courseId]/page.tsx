@@ -28,11 +28,11 @@ export default function EditCoursePage() {
   const courseIdTyped = params.courseId as unknown as Id<"courses">;
 
   // Fetch course details
-  const course = useQuery(api.lms.courses.index.getCourse, {
+  const course = useQuery(api.lms.courses.queries.getCourse, {
     courseId: courseIdTyped,
   });
 
-  const updateCourse = useMutation(api.lms.courses.index.updateCourse);
+  const updateCourse = useMutation(api.lms.courses.mutations.updateCourse);
 
   if (course === undefined) {
     return <div>Loading course details...</div>;

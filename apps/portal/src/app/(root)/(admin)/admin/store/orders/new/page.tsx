@@ -27,9 +27,7 @@ export default function NewOrderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Create order mutation
-  const createOrderMutation = useMutation(
-    api.ecommerce.orders.index.createOrder,
-  );
+  const createOrder = useMutation(api.ecommerce.mutations.createOrder);
 
   // Handle order submission
   const handleSubmit = async (formData: OrderFormData) => {
@@ -83,7 +81,7 @@ export default function NewOrderPage() {
         notes: formData.notes,
       };
 
-      const result = await createOrderMutation(orderData);
+      const result = await createOrder(orderData);
       toast.success("Order created successfully!");
       router.push(`/admin/orders/${result.orderId}`);
     } catch (error) {

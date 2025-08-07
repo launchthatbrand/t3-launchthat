@@ -1,23 +1,23 @@
 "use client";
 
+import React from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { Id } from "@convex-config/_generated/dataModel";
+import { useQuery } from "convex/react";
 import { ArrowLeft, Package, ShoppingCart } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Id } from "@convex-config/_generated/dataModel";
-import Link from "next/link";
-import React from "react";
-import { api } from "@convex-config/_generated/api";
-import { useParams } from "next/navigation";
-import { useQuery } from "convex/react";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
 export default function ProductPage() {
   const params = useParams();
   const productId = params.productId as string;
 
   // Get product information
-  const product = useQuery(api.ecommerce.products.index.getProduct, {
+  const product = useQuery(api.ecommerce.queries.getProduct, {
     productId: productId as Id<"products">,
   });
 

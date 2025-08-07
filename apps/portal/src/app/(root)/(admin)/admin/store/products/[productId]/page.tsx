@@ -60,14 +60,14 @@ export default function EditProductPage({
   const productId = unwrappedParams.productId as Id<"products">;
 
   // Convex mutations and queries
-  const updateProduct = useMutation(api.ecommerce.products.index.updateProduct);
-  const product = useQuery(api.ecommerce.products.index.getProduct, {
+  const updateProduct = useMutation(api.ecommerce.mutations.updateProduct);
+  const product = useQuery(api.ecommerce.queries.getProduct, {
     productId,
   });
 
   // Get categories for the select dropdown
   const categories =
-    useQuery(api.ecommerce.categories.index.getProductCategories, {
+    useQuery(api.ecommerce.queries.getProductCategories, {
       isActive: true,
     }) ?? [];
 

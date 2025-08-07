@@ -5,5 +5,6 @@
  * All orders functionality has been moved to the ecommerce/orders/ directory.
  */
 
-// Re-export all functions from the new location
-export * from "./ecommerce/orders";
+// Re-export all functions from the new modular structure
+export * from "./ecommerce/orders/queries";
+export * from "./ecommerce/orders/mutations";

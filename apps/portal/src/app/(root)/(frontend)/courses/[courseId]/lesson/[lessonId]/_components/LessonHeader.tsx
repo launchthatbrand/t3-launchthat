@@ -44,7 +44,7 @@ const LessonHeader = () => {
   const topic = data?.attachedTopics.find((t) => t._id === topicId);
 
   const isCompleted = useQuery(
-    api.lms.progress.index.isItemCompleted,
+    api.lms.progress.queries.isItemCompleted,
     userId && topicId
       ? {
           userId,

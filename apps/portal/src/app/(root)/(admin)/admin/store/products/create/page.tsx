@@ -14,11 +14,11 @@ import ProductForm, { ProductFormData } from "../_components/ProductForm";
 export default function CreateProductPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const createProduct = useMutation(api.ecommerce.products.index.createProduct);
+  const createProduct = useMutation(api.ecommerce.mutations.createProduct);
 
-  // Get categories for the select dropdown
+  // Fetch categories for the form
   const categories =
-    useQuery(api.ecommerce.categories.index.getProductCategories, {
+    useQuery(api.ecommerce.queries.getProductCategories, {
       isActive: true,
     }) ?? [];
 

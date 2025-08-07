@@ -1,15 +1,16 @@
 "use client";
 
-import { AlertCircle, Check, Clock, Loader2 } from "lucide-react";
 import React, { useState } from "react";
+import { api } from "@convex-config/_generated/api";
+import { Id } from "@convex-config/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
+import { AlertCircle, Check, Clock, Loader2 } from "lucide-react";
 
+import { cn } from "@acme/ui";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Id } from "@convex-config/_generated/dataModel";
-import { api } from "@convex-config/_generated/api";
-import { cn } from "@acme/ui";
 import { toast } from "@acme/ui/toast";
+
 import { useConvexUser } from "~/hooks/useConvexUser";
 
 type ContentType = "course" | "lesson" | "topic" | "quiz";
@@ -53,40 +54,37 @@ export function CompleteContentButton({
   const { convexId: userId, isLoading: isAuthLoading } = useConvexUser();
 
   // Mutations for different content types
-  const completeCourse = useMutation(api.lms.progress.index.completeCourse);
-  const completeLesson = useMutation(api.lms.progress.index.completeLesson);
-  const completeTopic = useMutation(api.lms.progress.index.completeTopic);
-  const completeQuiz = useMutation(api.lms.progress.index.completeQuiz);
+  const completeCourse = useMutation(api.lms.progress.mutations.completeCourse);
+  const completeLesson = useMutation(api.lms.progress.mutations.completeLesson);
+  const completeTopic = useMutation(api.lms.progress.mutations.completeTopic);
+  const completeQuiz = useMutation(api.lms.progress.mutations.completeQuiz);
 
-  // Check if content is already completed
-  const isCompleted = useQuery(
-    api.lms.progress.index.isItemCompleted,
-    userId && contentId
+  const isItemCompleted = useQuery(
+    api.lms.progress.queries.isItemCompleted,
+    userId
       ? {
-          userId,
+          userId: userId as Id<"users">,
           itemId: contentId,
-          courseId, // Now this will work since we made courseId optional
-        }
-      : "skip",
-  );
-
-  // Get course progress for display
-  const courseProgress = useQuery(
-    api.lms.progress.index.getCourseProgressMeta,
-    userId && showProgress
-      ? {
-          userId,
           courseId,
         }
       : "skip",
   );
 
-  // Get lesson progress for lesson-specific display
-  const lessonProgress = useQuery(
-    api.lms.progress.index.getLessonProgress,
-    userId && contentType === "lesson" && contentId && showProgress
+  const courseProgress = useQuery(
+    api.lms.progress.queries.getCourseProgressMeta,
+    userId
       ? {
-          userId,
+          userId: userId as Id<"users">,
+          courseId,
+        }
+      : "skip",
+  );
+
+  const lessonProgress = useQuery(
+    api.lms.progress.queries.getLessonProgress,
+    userId && contentType === "lesson"
+      ? {
+          userId: userId as Id<"users">,
           courseId,
           lessonId: contentId as Id<"lessons">,
         }
@@ -183,10 +181,10 @@ export function CompleteContentButton({
   };
 
   // Determine if already completed
-  const alreadyCompleted =
+  const isCompleted =
     contentType === "course"
       ? courseProgress?.status === "completed"
-      : isCompleted;
+      : isItemCompleted;
 
   // Get button text and icon
   const getButtonContent = () => {
@@ -199,7 +197,7 @@ export function CompleteContentButton({
       );
     }
 
-    if (alreadyCompleted) {
+    if (isCompleted) {
       return (
         <>
           <Check className="mr-2 h-4 w-4" />
@@ -237,11 +235,11 @@ export function CompleteContentButton({
     <div className="flex w-full flex-col gap-2">
       <Button
         onClick={handleComplete}
-        disabled={isLoading || alreadyCompleted}
-        variant={alreadyCompleted ? "outline" : variant}
+        disabled={isLoading || isCompleted}
+        variant={isCompleted ? "outline" : variant}
         size={size}
         className={cn(
-          alreadyCompleted && "h-32 border-green-500 text-green-600",
+          isCompleted && "h-32 border-green-500 text-green-600",
           className,
         )}
       >

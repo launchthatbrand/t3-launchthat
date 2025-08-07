@@ -1,6 +1,6 @@
-import { mutation, query } from "../../_generated/server";
-
 import { v } from "convex/values";
+
+import { mutation, query } from "../../_generated/server";
 
 // Get all evidence for a specific chargeback
 export const getChargebackEvidence = query({
@@ -57,7 +57,9 @@ export const getChargebackEvidence = query({
         v.literal("low"),
       ),
       tags: v.optional(v.array(v.string())),
-      metadata: v.optional(v.any()),
+      metadata: v.optional(
+        v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
+      ),
     }),
   ),
   handler: async (ctx, args) => {
@@ -139,7 +141,9 @@ export const getEvidence = query({
         v.literal("low"),
       ),
       tags: v.optional(v.array(v.string())),
-      metadata: v.optional(v.any()),
+      metadata: v.optional(
+        v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
+      ),
     }),
   ),
   handler: async (ctx, args) => {
@@ -185,7 +189,9 @@ export const createEvidence = mutation({
     ),
     tags: v.optional(v.array(v.string())),
     submittedBy: v.optional(v.string()),
-    metadata: v.optional(v.any()),
+    metadata: v.optional(
+      v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
+    ),
   },
   returns: v.id("chargebackEvidence"),
   handler: async (ctx, args) => {
@@ -232,7 +238,9 @@ export const updateEvidence = mutation({
       ),
     ),
     tags: v.optional(v.array(v.string())),
-    metadata: v.optional(v.any()),
+    metadata: v.optional(
+      v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
+    ),
   },
   returns: v.null(),
   handler: async (ctx, args) => {

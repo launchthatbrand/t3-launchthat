@@ -74,26 +74,28 @@ export default function CourseBuilder() {
 
   // Mutations
   const addLessonToCourse = useMutation(
-    api.lms.courses.index.addLessonToCourse,
+    api.lms.courses.mutations.addLessonToCourse,
   );
   const removeLessonFromCourseStructure = useMutation(
-    api.lms.courses.index.removeLessonFromCourseStructure,
+    api.lms.courses.mutations.removeLessonFromCourseStructure,
   );
   const reorderLessonsInCourse = useMutation(
-    api.lms.courses.index.reorderLessonsInCourse,
+    api.lms.courses.mutations.reorderLessonsInCourse,
   );
-  const createTopic = useMutation(api.lms.topics.index.create);
-  const attachTopicToLesson = useMutation(api.lms.topics.index.attachToLesson);
+  const createTopic = useMutation(api.lms.topics.mutations.create);
+  const attachTopicToLesson = useMutation(
+    api.lms.topics.mutations.attachToLesson,
+  );
   const removeTopicFromLesson = useMutation(
-    api.lms.topics.index.removeTopicFromLesson,
+    api.lms.topics.mutations.removeTopicFromLesson,
   );
-  const createQuiz = useMutation(api.lms.quizzes.index.create);
-  const attachQuizToLesson = useMutation(api.lms.quizzes.index.attach);
+  const createQuiz = useMutation(api.lms.quizzes.mutations.create);
+  const attachQuizToLesson = useMutation(api.lms.quizzes.mutations.attach);
   const removeQuizFromLesson = useMutation(
-    api.lms.quizzes.index.removeQuizFromLesson,
+    api.lms.quizzes.mutations.removeQuizFromLesson,
   );
   const reorderTopicsInLesson = useMutation(
-    api.lms.topics.index.reorderTopicsInLesson,
+    api.lms.topics.mutations.reorderTopicsInLesson,
   );
 
   const [selectedLesson, setSelectedLesson] = useState<Id<"lessons"> | null>(

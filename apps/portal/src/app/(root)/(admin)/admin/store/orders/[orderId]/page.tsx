@@ -56,10 +56,9 @@ export default function OrderDetailPage() {
   const pluginTabs = usePluginTabs([], hookContext);
 
   // Queries and mutations - MUST be called before any conditional returns
-  const order = useQuery(
-    api.ecommerce.orders.index.getOrder,
-    orderId ? { orderId: orderId } : "skip",
-  );
+  const order = useQuery(api.ecommerce.queries.getOrder, {
+    orderId: orderId,
+  });
   const updateOrderMutation = useMutation(api.ecommerce.orders.mutation.update);
 
   // Check authentication state

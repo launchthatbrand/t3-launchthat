@@ -35,7 +35,7 @@ const CourseHeader = () => {
 
   // Get course progress for the user
   const courseProgressByLessons = useQuery(
-    api.lms.progress.index.getCourseProgressByLessons,
+    api.lms.progress.queries.getCourseProgressByLessons,
     userId
       ? {
           userId,

@@ -14,7 +14,7 @@ const LessonCreatePage: React.FC = () => {
     { value: "advanced", label: "Advanced" },
   ];
 
-  const createLesson = useMutation(api.lms.lessons.index.create);
+  const createLesson = useMutation(api.lms.lessons.mutations.create);
 
   const handleSubmit = async (values: LessonFormValues) => {
     await createLesson({

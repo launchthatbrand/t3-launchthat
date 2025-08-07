@@ -44,15 +44,12 @@ export default function OrdersAdminPage() {
   const currentUser = useQuery(api.users.queries.getMe, {});
 
   // Fetch orders - only when auth is loaded to prevent permission errors on hard refresh
-  const ordersQuery = useQuery(
-    api.ecommerce.orders.index.listOrders,
-    isAuthLoaded ? {} : "skip",
+  const orders = useQuery(
+    api.ecommerce.queries.listOrders,
+    organizationId ? { organizationId } : {},
   );
 
-  // Mutation for deleting orders
-  const deleteOrderMutation = useMutation(
-    api.ecommerce.orders.index.deleteOrder,
-  );
+  const deleteOrder = useMutation(api.ecommerce.mutations.deleteOrder);
 
   // Helper functions
   const formatPrice = (price: number) => {

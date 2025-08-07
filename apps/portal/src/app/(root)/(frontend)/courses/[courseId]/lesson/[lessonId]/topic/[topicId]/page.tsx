@@ -56,7 +56,7 @@ export default function TopicPage() {
 
   // // Check if this topic is completed for the current user
   // const isCompleted = useQuery(
-  //   api.lms.progress.index.isItemCompleted,
+  //   api.lms.progress.isItemCompleted,
   //   userId
   //     ? {
   //         userId,
@@ -67,7 +67,7 @@ export default function TopicPage() {
 
   // Get course progress for the user
   const _courseProgress = useQuery(
-    api.lms.progress.index.getCourseProgressMeta,
+    api.lms.progress.queries.getCourseProgressMeta,
     userId
       ? {
           userId,
@@ -77,8 +77,8 @@ export default function TopicPage() {
   );
 
   // Mutations
-  const updateTopicTitle = useMutation(api.lms.topics.index.update);
-  const startTopicProgress = useMutation(api.lms.progress.index.startItem);
+  const updateTopicTitle = useMutation(api.lms.topics.mutations.update);
+  const startTopicProgress = useMutation(api.lms.progress.mutations.startItem);
 
   // Start tracking progress when component loads
   React.useEffect(() => {

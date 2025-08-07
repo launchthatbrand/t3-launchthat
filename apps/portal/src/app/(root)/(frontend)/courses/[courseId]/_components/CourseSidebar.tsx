@@ -77,7 +77,7 @@ export function CoursesSidebar(
 
   // Get course progress for completion indicators
   const courseProgress = useQuery(
-    api.lms.progress.index.getCourseProgressByLessons,
+    api.lms.progress.queries.getCourseProgressByLessons,
     userId && courseId
       ? {
           userId,

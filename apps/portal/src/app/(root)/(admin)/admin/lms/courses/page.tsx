@@ -86,13 +86,13 @@ export default function AdminCoursesPage() {
 
   // Apply filters to the query parameters
   const queryParams = React.useMemo(() => {
-    const params: { searchTitle: string; isPublished?: boolean } = {
-      searchTitle: debouncedSearchTitle,
-    };
+    const params: any = {};
 
     // Map active filters to query parameters
     if (activeFilters.title && typeof activeFilters.title === "string") {
-      params.searchTitle = activeFilters.title;
+      params.searchTerm = activeFilters.title;
+    } else if (debouncedSearchTitle) {
+      params.searchTerm = debouncedSearchTitle;
     }
 
     if (activeFilters.isPublished !== undefined) {
@@ -102,8 +102,36 @@ export default function AdminCoursesPage() {
     return params;
   }, [debouncedSearchTitle, activeFilters]);
 
-  const courses = useQuery(api.lms.index.listCourses, queryParams);
-  const deleteCourse = useMutation(api.lms.index.deleteCourse);
+  // Use searchCourses when there's a search term, otherwise use listCourses with pagination
+  const hasSearch =
+    queryParams.searchTerm && queryParams.searchTerm.trim() !== "";
+
+  const searchResults = useQuery(
+    api.lms.courses.queries.searchCourses,
+    hasSearch
+      ? {
+          searchTerm: queryParams.searchTerm,
+          isPublished: queryParams.isPublished,
+          limit: 50,
+        }
+      : "skip",
+  );
+
+  const listResults = useQuery(
+    api.lms.courses.queries.listCourses,
+    !hasSearch
+      ? {
+          paginationOpts: { numItems: 50, cursor: null },
+          isPublished: queryParams.isPublished,
+        }
+      : "skip",
+  );
+
+  // Use whichever query is active and normalize the data format
+  const coursesData = hasSearch ? searchResults : listResults?.page;
+  const courses = coursesData || [];
+
+  const deleteCourse = useMutation(api.lms.courses.mutations.deleteCourse);
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [courseToDelete, setCourseToDelete] = React.useState<CourseData | null>(

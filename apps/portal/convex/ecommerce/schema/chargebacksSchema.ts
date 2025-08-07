@@ -37,7 +37,9 @@ export const chargebacksSchema = defineTable({
   customerCommunication: v.optional(v.string()),
   riskScore: v.optional(v.number()),
   previousChargebacks: v.optional(v.number()),
-  metadata: v.optional(v.any()),
+  metadata: v.optional(
+    v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
+  ),
 })
   .index("by_status", ["status"])
   .index("by_orderId", ["orderId"])
@@ -89,7 +91,9 @@ export const chargebackEvidenceSchema = defineTable({
     v.literal("low"),
   ),
   tags: v.optional(v.array(v.string())),
-  metadata: v.optional(v.any()),
+  metadata: v.optional(
+    v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
+  ),
 })
   .index("by_chargebackId", ["chargebackId"])
   .index("by_documentType", ["documentType"])

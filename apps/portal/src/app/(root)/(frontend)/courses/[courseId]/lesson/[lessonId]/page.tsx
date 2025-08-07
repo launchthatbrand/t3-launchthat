@@ -83,7 +83,7 @@ export default function LessonPage() {
     courseId,
   });
 
-  const updateLesson = useMutation(api.lms.lessons.index.update);
+  const updateLesson = useMutation(api.lms.lessons.mutations.update);
 
   // Now we can do conditional checks after all hooks are called
   if (data === undefined) return <div>Loading...</div>;

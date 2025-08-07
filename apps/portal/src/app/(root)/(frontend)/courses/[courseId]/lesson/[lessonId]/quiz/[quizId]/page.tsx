@@ -29,7 +29,7 @@ export default function QuizPage() {
   const quiz = data.attachedQuizzes.find((q) => q._id === quizId);
   if (!quiz) return <div>Quiz not found.</div>;
 
-  const updateQuizTitle = useMutation(api.lms.quizzes.index.updateTitle);
+  const updateQuizTitle = useMutation(api.lms.quizzes.mutations.updateTitle);
 
   const [answers, setAnswers] = React.useState<Record<string, string>>({});
   const [submitted, setSubmitted] = React.useState(false);

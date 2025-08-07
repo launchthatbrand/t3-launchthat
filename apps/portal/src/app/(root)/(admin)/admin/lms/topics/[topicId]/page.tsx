@@ -1,5 +1,30 @@
 "use client";
 
+import type { Doc, Id } from "@convex-config/_generated/dataModel";
+import React, { useState } from "react";
+import { useParams } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { useMutation, useQuery } from "convex/react";
+import { Clock, Eye, EyeOff, PlusCircle } from "lucide-react";
+import { toast } from "sonner";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { MultiSelect } from "@acme/ui/components/multi-select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@acme/ui/dialog";
+import { Label } from "@acme/ui/label";
+import { Separator } from "@acme/ui/separator";
+import { Switch } from "@acme/ui/switch";
+
+import type { TopicFormValues } from "../_components/TopicFormContent";
 import {
   AdminSinglePost,
   AdminSinglePostHeader,
@@ -14,31 +39,7 @@ import {
   SEOTabContent,
   VimeoTabContent,
 } from "~/components/admin/AdminSinglePostLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Clock, Eye, EyeOff, PlusCircle } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@acme/ui/dialog";
-import type { Doc, Id } from "@convex-config/_generated/dataModel";
-import React, { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { Label } from "@acme/ui/label";
-import { MultiSelect } from "@acme/ui/components/multi-select";
-import { Separator } from "@acme/ui/separator";
-import { Switch } from "@acme/ui/switch";
 import { TopicFormContent } from "../_components/TopicFormContent";
-import type { TopicFormValues } from "../_components/TopicFormContent";
-import { api } from "@convex-config/_generated/api";
-import { toast } from "sonner";
-import { useParams } from "next/navigation";
 
 // Categories - using static for now, replace with API call later
 const categories = [
@@ -66,12 +67,12 @@ export default function AdminTopicEditPage() {
   const [featuredImages, setFeaturedImages] = useState<any[]>([]);
 
   // Convex queries and mutations
-  const topic = useQuery(api.lms.topics.index.getTopic, {
-    id: topicId as Id<"topics">,
+  const topic = useQuery(api.lms.topics.queries.getTopic, {
+    topicId,
   });
   const tags = useQuery(api.tags.index.listTags, {});
   const createTag = useMutation(api.tags.index.createTag);
-  const updateTopic = useMutation(api.lms.topics.index.updateTopic);
+  const updateTopic = useMutation(api.lms.topics.mutations.updateTopic);
 
   // Initialize data when topic loads
   React.useEffect(() => {

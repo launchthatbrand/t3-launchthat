@@ -51,8 +51,8 @@ export const CreateQuizDialog: React.FC<CreateQuizDialogProps> = ({
     defaultValues: { title: "" },
   });
 
-  const createQuiz = useMutation(api.lms.quizzes.index.create);
-  const attachQuizToLesson = useMutation(api.lms.quizzes.index.attach);
+  const createQuiz = useMutation(api.lms.quizzes.mutations.create);
+  const attachQuizToLesson = useMutation(api.lms.quizzes.mutations.attach);
 
   const handleSubmit = async (values: CreateQuizFormValues) => {
     setIsSubmitting(true);

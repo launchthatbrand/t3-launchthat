@@ -92,9 +92,9 @@ export default function AdminTopicsPage() {
     return params;
   }, [debouncedSearchTitle]);
 
-  const topics = useQuery(api.lms.topics.index.listTopics, queryParams);
+  const topics = useQuery(api.lms.topics.queries.listTopics, queryParams);
   console.log("topics", topics);
-  const deleteTopic = useMutation(api.lms.topics.index.remove);
+  const deleteTopic = useMutation(api.lms.topics.mutations.remove);
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [topicToDelete, setTopicToDelete] = React.useState<TopicData | null>(

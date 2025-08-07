@@ -60,19 +60,17 @@ export default function StoreFrontPage() {
     useState<Id<"productCategories"> | null>(null);
 
   // Fetch products - only get visible and active products
-  const products =
-    useQuery(api.ecommerce.products.index.listProducts, {
-      isVisible: true,
-      status: "active",
-      categoryId: selectedCategoryId ?? undefined,
-    }) ?? [];
+  const products = useQuery(api.ecommerce.queries.listProducts, {
+    isVisible: true,
+    status: "active",
+    categoryId: selectedCategoryId ?? undefined,
+  });
 
   // Fetch categories for the sidebar - only get visible categories
-  const categories =
-    useQuery(api.ecommerce.categories.index.getCategoryTree, {
-      isVisible: true,
-      isActive: true,
-    }) ?? [];
+  const categories = useQuery(api.ecommerce.queries.getCategoryTree, {
+    isVisible: true,
+    isActive: true,
+  });
 
   // Format price from cents to dollars for display
   const formatPrice = (price: number) => {

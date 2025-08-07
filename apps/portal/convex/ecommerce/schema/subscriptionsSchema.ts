@@ -59,7 +59,9 @@ export const subscriptionsTable = defineTable({
   updatedAt: v.number(),
 
   // Metadata
-  metadata: v.optional(v.any()), // For storing additional provider-specific data
+  metadata: v.optional(
+    v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
+  ), // For storing additional provider-specific data
 })
   .index("by_user", ["userId"])
   .index("by_product", ["productId"])

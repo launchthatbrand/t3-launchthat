@@ -60,36 +60,35 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
   //   api.users.marketingTags.index.listMarketingTags,
   // );
   const marketingTags = undefined;
-  const existingRules = useQuery(
-    api.lms.contentAccess.index.getContentAccessRules,
+  const currentRules = useQuery(
+    api.lms.contentAccess.queries.getContentAccessRules,
     {
       contentType,
       contentId,
     },
   );
 
-  // Mutations
-  const saveAccessRules = useMutation(
-    api.lms.contentAccess.index.saveContentAccessRules,
+  const saveRules = useMutation(
+    api.lms.contentAccess.mutations.saveContentAccessRules,
   );
-  const clearAccessRules = useMutation(
-    api.lms.contentAccess.index.clearContentAccessRules,
+  const clearRules = useMutation(
+    api.lms.contentAccess.mutations.clearContentAccessRules,
   );
 
   // Load existing rules when data is available
   useEffect(() => {
-    if (existingRules) {
+    if (currentRules) {
       setAccessRules({
-        requiredTags: existingRules.requiredTags,
-        excludedTags: existingRules.excludedTags,
-        isPublic: existingRules.isPublic ?? false,
+        requiredTags: currentRules.requiredTags,
+        excludedTags: currentRules.excludedTags,
+        isPublic: currentRules.isPublic ?? false,
       });
     }
-  }, [existingRules]);
+  }, [currentRules]);
 
   const handleSave = async () => {
     try {
-      await saveAccessRules({
+      await saveRules({
         contentType,
         contentId,
         requiredTags: accessRules.requiredTags,
@@ -105,7 +104,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
 
   const handleClear = async () => {
     try {
-      await clearAccessRules({ contentType, contentId });
+      await clearRules({ contentType, contentId });
       setAccessRules({
         requiredTags: { mode: "some", tagIds: [] },
         excludedTags: { mode: "some", tagIds: [] },

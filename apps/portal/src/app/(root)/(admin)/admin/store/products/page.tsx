@@ -1,21 +1,22 @@
 "use client";
 
+import type { ColumnDef } from "@tanstack/react-table";
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { api } from "@/convex/_generated/api";
+import { useConvexAuth, useQuery } from "convex/react";
 import { Edit, Eye, Package, PlusCircle } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { toast } from "@acme/ui/toast";
+
 import type {
   EntityAction,
   FilterConfig,
 } from "~/components/shared/EntityList/types";
-import React, { useEffect, useState } from "react";
-import { useConvexAuth, useQuery } from "convex/react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import type { ColumnDef } from "@tanstack/react-table";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
-import Link from "next/link";
-import { api } from "@/convex/_generated/api";
-import { toast } from "@acme/ui/toast";
-import { useRouter } from "next/navigation";
 
 interface ProductItem {
   _id: string;
@@ -113,13 +114,13 @@ function ProductsContent({ router }: { router: ReturnType<typeof useRouter> }) {
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch products from Convex
-  const products = useQuery(api.ecommerce.products.index.listProducts, {}) as
+  const products = useQuery(api.ecommerce.queries.listProducts, {}) as
     | ProductItem[]
     | undefined;
 
   // Fetch categories for filters
-  const _categories = useQuery(
-    api.ecommerce.categories.index.getProductCategories,
+  const categoriesQuery = useQuery(
+    api.ecommerce.queries.getProductCategories,
     {},
   );
 

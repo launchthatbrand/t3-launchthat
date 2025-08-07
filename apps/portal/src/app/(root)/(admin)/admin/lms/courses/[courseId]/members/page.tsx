@@ -44,9 +44,11 @@ export default function CourseMembersPage() {
   );
 
   // Mutations
-  const addMember = useMutation(api.lms.enrollments.index.addMemberToCourse);
+  const addMember = useMutation(
+    api.lms.enrollments.mutations.addMemberToCourse,
+  );
   const removeMember = useMutation(
-    api.lms.enrollments.index.removeMemberFromCourse,
+    api.lms.enrollments.mutations.removeMemberFromCourse,
   );
 
   if (members === undefined) return <div>Loading members...</div>;

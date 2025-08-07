@@ -17,6 +17,7 @@ import RelatedContent from "./RelatedContent";
 
 const LessonSidebar = () => {
   const params = useParams();
+  const router = useRouter();
   const { convexId: userId } = useConvexUser();
   const { courseId, lessonId, topicId } = params as {
     courseId: string;
@@ -30,21 +31,24 @@ const LessonSidebar = () => {
     courseId: courseId as Id<"courses">,
   });
 
-  // Get real lesson progress data
+  // Find the lesson from the data (if available)
+  const lesson = data?.attachedLessons.find((l) => l._id === lessonId);
+
+  // Get real lesson progress data - conditional on lesson and userId being available
   const lessonProgress = useQuery(
-    api.lms.progress.index.getLessonProgress,
-    userId && lessonId
+    api.lms.progress.queries.getLessonProgress,
+    lesson && userId
       ? {
-          userId,
-          courseId: courseId as Id<"courses">,
-          lessonId: lessonId as Id<"lessons">,
+          userId: userId as Id<"users">,
+          courseId,
+          lessonId: lesson._id,
         }
       : "skip",
   );
 
-  // Get quizzes for this lesson to use as milestone markers
-  const lessonQuizzes = useQuery(
-    api.lms.quizzes.index.getQuizzesByLesson,
+  // Get all quizzes for this lesson
+  const quizzes = useQuery(
+    api.lms.quizzes.queries.getQuizzesByLesson,
     lessonId
       ? {
           lessonId: lessonId as Id<"lessons">,
@@ -55,7 +59,6 @@ const LessonSidebar = () => {
   if (data === undefined) return <div>Loading...</div>;
   if (data === null) return <div>Course not found.</div>;
 
-  const lesson = data.attachedLessons.find((l) => l._id === lessonId);
   if (!lesson) return <div>Lesson not found.</div>;
 
   const topic = data.attachedTopics.find((t) => t._id === topicId);
@@ -94,7 +97,7 @@ const LessonSidebar = () => {
             <CardContent className="flex flex-col gap-4 p-6">
               <LessonProgress
                 lessonProgress={lessonProgress}
-                quizzes={lessonQuizzes}
+                quizzes={quizzes}
                 userId={userId}
                 _courseId={courseId as Id<"courses">}
               />

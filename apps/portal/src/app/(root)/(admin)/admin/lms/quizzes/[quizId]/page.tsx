@@ -13,10 +13,11 @@ export default function AdminQuizEditPage() {
   const params = useParams();
   const { quizId } = params as { quizId: string };
 
-  const quiz = useQuery(api.lms.quizzes.index.getQuiz, {
-    quizId: quizId as Id<"quizzes">,
+  const quiz = useQuery(api.lms.quizzes.queries.getQuiz, {
+    quizId,
   });
-  const updateQuiz = useMutation(api.lms.quizzes.index.update);
+
+  const updateQuiz = useMutation(api.lms.quizzes.mutations.update);
 
   const handleSubmit = async (values: QuizFormValues) => {
     try {

@@ -1,5 +1,18 @@
 "use client";
 
+import type { Id } from "@convex-config/_generated/dataModel";
+import React, { useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { ContentAccess } from "@/components/admin/ContentAccess";
+import { LinkedProduct } from "@/components/admin/LinkedProduct";
+import { CourseForm, CourseFormValues } from "@/components/CourseForm";
+import { api } from "@convex-config/_generated/api";
+import { useMutation, useQuery } from "convex/react";
+import { ChevronLeft } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -8,22 +21,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { CourseForm, CourseFormValues } from "@/components/CourseForm";
-import React, { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-import { useMutation, useQuery } from "convex/react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { ChevronLeft } from "lucide-react";
-import { ContentAccess } from "@/components/admin/ContentAccess";
-import type { Id } from "@convex-config/_generated/dataModel";
-import Link from "next/link";
-import { LinkedProduct } from "@/components/admin/LinkedProduct";
 import { Separator } from "@acme/ui/separator";
-import { api } from "@convex-config/_generated/api";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { toast } from "@acme/ui/toast";
-import { useParams } from "next/navigation";
 
 export default function EditCoursePage() {
   const params = useParams();
@@ -31,11 +31,11 @@ export default function EditCoursePage() {
   const [activeTab, setActiveTab] = useState("details");
 
   // Fetch course details
-  const course = useQuery(api.lms.courses.index.getCourse, {
+  const course = useQuery(api.lms.courses.queries.getCourse, {
     courseId: courseIdTyped,
   });
 
-  const updateCourse = useMutation(api.lms.courses.index.updateCourse);
+  const updateCourse = useMutation(api.lms.courses.mutations.updateCourse);
 
   if (course === undefined) {
     return <div>Loading course details...</div>;

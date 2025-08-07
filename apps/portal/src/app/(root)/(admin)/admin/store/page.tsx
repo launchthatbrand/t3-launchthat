@@ -16,15 +16,14 @@ import {
 
 export default function ProductsAdminPage() {
   // Fetch product count
-  const productCountQuery = useQuery(
-    api.ecommerce.products.index.getProductCount,
-  );
+  const productCountQuery = useQuery(api.ecommerce.queries.getProductCount, {});
   const productCount =
     typeof productCountQuery === "number" ? productCountQuery : 0;
 
   // Fetch category count
   const categoryCountQuery = useQuery(
-    api.ecommerce.categories.index.getCategoryCount,
+    api.ecommerce.queries.getCategoryCount,
+    {},
   );
   const categoryCount =
     typeof categoryCountQuery === "number" ? categoryCountQuery : 0;

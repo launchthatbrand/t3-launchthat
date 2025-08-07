@@ -57,8 +57,10 @@ export const CreateTopicDialog: React.FC<CreateTopicDialogProps> = ({
     defaultValues: { title: "", contentType: "text", content: "" },
   });
 
-  const createTopic = useMutation(api.lms.topics.index.create);
-  const attachTopicToLesson = useMutation(api.lms.topics.index.attachToLesson);
+  const createTopic = useMutation(api.lms.topics.mutations.create);
+  const attachTopicToLesson = useMutation(
+    api.lms.topics.mutations.attachToLesson,
+  );
 
   const handleSubmit = async (values: CreateTopicFormValues) => {
     setIsSubmitting(true);

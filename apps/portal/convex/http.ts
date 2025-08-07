@@ -153,7 +153,7 @@ http.route({
     try {
       const json = await req.json();
       const lessonId = await ctx.runMutation(
-        api.lms.lessons.index.createViaWebhook,
+        api.lms.lessons.mutations.createViaWebhook,
         json,
       );
       return new Response(JSON.stringify({ lessonId }), {
