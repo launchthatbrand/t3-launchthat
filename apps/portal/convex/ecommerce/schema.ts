@@ -1,30 +1,55 @@
-/**
- * Ecommerce Schema
- *
- * This file consolidates all schema definitions from ecommerce subdirectories
- */
+import { defineSchema } from "convex/server";
 
-// Import and re-export the main ecommerce schema as default
-import ecommerceSchemaDefault from "./schema/index";
+import { balancesSchema } from "./balances/schema";
+import { cartSchema } from "./cart/schema";
+import { categoriesSchema } from "./categories/schema";
+import { chargebacksSchemaExport as chargebacksSchema } from "./chargebacks/schema";
+import { checkoutsSchema } from "./checkout/schema";
+import { couponsSchema } from "./coupons/schema";
+import { ordersSchema } from "./orders/schema";
+import { paymentMethodsSchema } from "./payments/schema";
+import { productReviewsSchema } from "./productReviews/schema";
+import { productsSchema } from "./products/schema";
+import { shippingMethodsSchema } from "./shippingMethods/schema";
+import { subscriptionsSchema } from "./subscriptions/schema";
+import { taxRatesSchema } from "./taxRates/schema";
+import { transactionsSchema } from "./transactions/schema";
+import { wishlistSchema } from "./wishlist/schema";
 
-export default ecommerceSchemaDefault;
+// Export as a proper Convex schema using defineSchema
+export default defineSchema({
+  ...cartSchema,
+  ...productsSchema,
+  ...categoriesSchema,
+  ...ordersSchema,
+  ...transactionsSchema,
+  ...subscriptionsSchema,
+  ...wishlistSchema,
+  ...productReviewsSchema,
+  ...paymentMethodsSchema,
+  ...shippingMethodsSchema,
+  ...taxRatesSchema,
+  ...couponsSchema,
+  ...checkoutsSchema,
+  ...chargebacksSchema,
+  ...balancesSchema,
+});
 
-// Re-export the main ecommerce schema with a named export too
-export { default as ecommerceSchema } from "./schema/index";
-
-// Re-export individual schema components for specific usage
-export * from "./schema/cartSchema";
-export * from "./schema/ordersSchema";
-export * from "./schema/productsSchema";
-export * from "./schema/categoriesSchema";
-export * from "./schema/balancesSchema";
-export * from "./schema/chargebacksSchema";
-export * from "./schema/checkoutsSchema";
-export * from "./schema/couponsSchema";
-export * from "./schema/paymentMethodsSchema";
-export * from "./schema/productReviewsSchema";
-export * from "./schema/shippingMethodsSchema";
-export * from "./schema/subscriptionsSchema";
-export * from "./schema/taxRatesSchema";
-export * from "./schema/transactionsSchema";
-export * from "./schema/wishlistSchema";
+// Keep the original export for backward compatibility
+// export const ecommerceSchema = {
+//   ...cartSchema,
+//   ...productsSchema,
+//   ...categoriesSchema,
+//   ...ordersSchema,
+//   ...transactionsSchema,
+//   ...subscriptionsSchema,
+//   ...wishlistSchema,
+//   ...productReviewsSchema,
+//   ...paymentMethodsSchema,
+//   ...shippingMethodsSchema,
+//   ...taxRatesSchema,
+//   ...couponsSchema,
+//   ...checkoutsSchema,
+//   ...chargebacksSchema,
+//   ...balancesSchema,
+// };

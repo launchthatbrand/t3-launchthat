@@ -5,6 +5,13 @@
  */
 import { v } from "convex/values";
 
+import type {
+  ContentTypeField,
+  ContentTypeFieldArgs,
+  FieldOptions,
+  FieldUiConfig,
+  FieldValidationRules,
+} from "./types";
 import { Id } from "../_generated/dataModel";
 import { mutation, query } from "../_generated/server";
 import {
@@ -16,6 +23,61 @@ import {
   updateFieldCount,
   validateField,
 } from "./lib/contentTypes";
+
+// Define reusable field value validators
+const fieldDefaultValue = v.optional(
+  v.union(v.string(), v.number(), v.boolean(), v.null()),
+);
+
+const fieldValidationRules = v.optional(
+  v.record(
+    v.string(),
+    v.union(
+      v.string(),
+      v.number(),
+      v.boolean(),
+      v.array(v.union(v.string(), v.number())),
+      v.object({
+        min: v.optional(v.number()),
+        max: v.optional(v.number()),
+        pattern: v.optional(v.string()),
+        required: v.optional(v.boolean()),
+        message: v.optional(v.string()),
+      }),
+    ),
+  ),
+);
+
+const fieldOptions = v.optional(
+  v.array(
+    v.object({
+      label: v.string(),
+      value: v.union(v.string(), v.number()),
+      description: v.optional(v.string()),
+      disabled: v.optional(v.boolean()),
+    }),
+  ),
+);
+
+const fieldUiConfig = v.optional(
+  v.record(
+    v.string(),
+    v.union(
+      v.string(),
+      v.number(),
+      v.boolean(),
+      v.object({
+        component: v.optional(v.string()),
+        props: v.optional(
+          v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
+        ),
+        layout: v.optional(v.string()),
+        validation: v.optional(v.boolean()),
+        helpText: v.optional(v.string()),
+      }),
+    ),
+  ),
+);
 
 /**
  * List all content types
@@ -96,12 +158,12 @@ export const get = query({
         required: v.boolean(),
         searchable: v.optional(v.boolean()),
         filterable: v.optional(v.boolean()),
-        defaultValue: v.optional(v.any()),
-        validationRules: v.optional(v.any()),
-        options: v.optional(v.any()),
+        defaultValue: fieldDefaultValue,
+        validationRules: fieldValidationRules,
+        options: fieldOptions,
         isSystem: v.boolean(),
         isBuiltIn: v.boolean(),
-        uiConfig: v.optional(v.any()),
+        uiConfig: fieldUiConfig,
         order: v.number(),
         createdAt: v.number(),
         updatedAt: v.optional(v.number()),
@@ -161,12 +223,12 @@ export const getBySlug = query({
         required: v.boolean(),
         searchable: v.optional(v.boolean()),
         filterable: v.optional(v.boolean()),
-        defaultValue: v.optional(v.any()),
-        validationRules: v.optional(v.any()),
-        options: v.optional(v.any()),
+        defaultValue: fieldDefaultValue,
+        validationRules: fieldValidationRules,
+        options: fieldOptions,
         isSystem: v.boolean(),
         isBuiltIn: v.boolean(),
-        uiConfig: v.optional(v.any()),
+        uiConfig: fieldUiConfig,
         order: v.number(),
         createdAt: v.number(),
         updatedAt: v.optional(v.number()),
@@ -341,15 +403,31 @@ export const addField = mutation({
     field: v.object({
       name: v.string(),
       key: v.string(),
-      type: v.string(),
+      type: v.union(
+        v.literal("text"),
+        v.literal("textarea"),
+        v.literal("number"),
+        v.literal("boolean"),
+        v.literal("date"),
+        v.literal("datetime"),
+        v.literal("select"),
+        v.literal("multiselect"),
+        v.literal("relation"),
+        v.literal("file"),
+        v.literal("image"),
+        v.literal("richtext"),
+        v.literal("json"),
+        v.literal("array"),
+        v.string(), // Allow custom types as fallback
+      ), // Specific field types with fallback for extensibility
       description: v.optional(v.string()),
       required: v.optional(v.boolean()),
       searchable: v.optional(v.boolean()),
       filterable: v.optional(v.boolean()),
-      defaultValue: v.optional(v.any()),
-      validationRules: v.optional(v.any()),
-      options: v.optional(v.any()),
-      uiConfig: v.optional(v.any()),
+      defaultValue: fieldDefaultValue,
+      validationRules: fieldValidationRules,
+      options: fieldOptions,
+      uiConfig: fieldUiConfig,
       order: v.optional(v.number()),
     }),
   },
@@ -425,10 +503,10 @@ export const updateField = mutation({
       required: v.optional(v.boolean()),
       searchable: v.optional(v.boolean()),
       filterable: v.optional(v.boolean()),
-      defaultValue: v.optional(v.any()),
-      validationRules: v.optional(v.any()),
-      options: v.optional(v.any()),
-      uiConfig: v.optional(v.any()),
+      defaultValue: fieldDefaultValue,
+      validationRules: fieldValidationRules,
+      options: fieldOptions,
+      uiConfig: fieldUiConfig,
       order: v.optional(v.number()),
     }),
   },

@@ -16,7 +16,9 @@ export async function generateNotificationContent(
     sourceDownloadId?: Id<"downloads">;
     title?: string;
     message?: string;
-    [key: string]: any;
+    // Use record-like structure for additional notification data instead of any
+    metadata?: Record<string, string | number | boolean | null>;
+    data?: Record<string, string | number | boolean | string[] | number[]>;
   },
 ): Promise<string> {
   const { type } = args;

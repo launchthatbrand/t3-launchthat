@@ -1,20 +1,30 @@
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 
-import { query } from "../_generated/server";
+import { Doc, Id } from "../_generated/dataModel";
+import { query, QueryCtx } from "../_generated/server";
 import { getUserById } from "../users";
+
+// Define a flexible post type using v.record() concepts for dynamic properties
+type FlexiblePost = {
+  _id: Id<"posts">;
+  authorId?: Id<"users">;
+  // Using record-like structure for additional dynamic properties
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | null
+    | Id<any>
+    | string[]
+    | number[]
+    | undefined;
+} | null;
 
 /**
  * Helper function to add author information to a post
  */
-async function addAuthorToPost(
-  ctx: any,
-  post: {
-    _id: any;
-    authorId?: any;
-    [key: string]: any;
-  } | null,
-) {
+async function addAuthorToPost(ctx: QueryCtx, post: FlexiblePost) {
   if (!post) return null;
 
   let author = null;
@@ -28,7 +38,7 @@ async function addAuthorToPost(
       ? {
           _id: author._id,
           name: author.name,
-          imageUrl: author.imageUrl,
+          imageUrl: (author as any).imageUrl || null, // Temporary any for imageUrl access
         }
       : null,
   };
@@ -42,7 +52,13 @@ export const getAllPosts = query({
     paginationOpts: v.optional(paginationOptsValidator),
     filters: v.optional(
       v.object({
-        status: v.optional(v.string()),
+        status: v.optional(
+          v.union(
+            v.literal("published"),
+            v.literal("draft"),
+            v.literal("archived"),
+          ),
+        ),
         authorId: v.optional(v.id("users")),
         category: v.optional(v.string()),
         tags: v.optional(v.array(v.string())),
@@ -180,7 +196,13 @@ export const searchPosts = query({
     paginationOpts: v.optional(paginationOptsValidator),
     filters: v.optional(
       v.object({
-        status: v.optional(v.string()),
+        status: v.optional(
+          v.union(
+            v.literal("published"),
+            v.literal("draft"),
+            v.literal("archived"),
+          ),
+        ),
         category: v.optional(v.string()),
       }),
     ),

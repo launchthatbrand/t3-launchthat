@@ -1,8 +1,8 @@
 import { ConvexError, v } from "convex/values";
-import { generateUniqueSlug, sanitizeSlug } from "../lib/slugs";
 
 import { api } from "../_generated/api";
 import { mutation } from "../_generated/server";
+import { generateUniqueSlug, sanitizeSlug } from "../lib/slugs";
 
 /**
  * Create a new post with automatic slug generation
@@ -12,7 +12,13 @@ export const createPost = mutation({
     title: v.string(),
     content: v.string(),
     authorId: v.optional(v.id("users")),
-    status: v.optional(v.string()), // "published", "draft", or "archived"
+    status: v.optional(
+      v.union(
+        v.literal("published"),
+        v.literal("draft"),
+        v.literal("archived"),
+      ),
+    ), // Specific status values instead of any string
     category: v.string(),
     excerpt: v.optional(v.string()),
     featuredImageUrl: v.optional(v.string()),
@@ -111,7 +117,13 @@ export const createPostWithMedia = mutation({
     title: v.string(),
     content: v.string(),
     authorId: v.optional(v.id("users")),
-    status: v.optional(v.string()),
+    status: v.optional(
+      v.union(
+        v.literal("published"),
+        v.literal("draft"),
+        v.literal("archived"),
+      ),
+    ),
     category: v.string(),
     excerpt: v.optional(v.string()),
     featured: v.optional(v.boolean()),
@@ -212,7 +224,13 @@ export const updatePost = mutation({
     content: v.optional(v.string()),
     excerpt: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
-    status: v.optional(v.string()),
+    status: v.optional(
+      v.union(
+        v.literal("published"),
+        v.literal("draft"),
+        v.literal("archived"),
+      ),
+    ),
     category: v.optional(v.string()),
     featuredImageUrl: v.optional(v.string()),
     slug: v.optional(v.string()),

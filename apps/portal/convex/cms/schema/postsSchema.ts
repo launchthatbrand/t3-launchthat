@@ -1,5 +1,4 @@
 import { defineSchema, defineTable } from "convex/server";
-
 import { v } from "convex/values";
 
 /**
@@ -11,7 +10,11 @@ export const postsTable = defineTable({
   authorId: v.optional(v.id("users")),
   createdAt: v.number(), // Added timestamp
   updatedAt: v.optional(v.number()),
-  status: v.string(), // "published", "draft", or "archived"
+  status: v.union(
+    v.literal("published"),
+    v.literal("draft"),
+    v.literal("archived"),
+  ), // Specific status values instead of any string
   slug: v.string(), // URL slug for the post
   tags: v.optional(v.array(v.string())), // Tags for categorization
   category: v.string(), // Category of the post
