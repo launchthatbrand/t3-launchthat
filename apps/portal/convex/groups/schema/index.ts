@@ -1,6 +1,5 @@
 /**
- * Export types from the groups schema
+ * Export groups schema only (avoid re-exporting types here to prevent schema <-> _generated cycle)
  */
 
-export * from "./types";
 export { groupsSchema } from "./groupsSchema";

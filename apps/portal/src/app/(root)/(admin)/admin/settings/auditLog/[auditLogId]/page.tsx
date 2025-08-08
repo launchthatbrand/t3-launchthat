@@ -1,5 +1,12 @@
 "use client";
 
+import React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { Id } from "@convex-config/_generated/dataModel";
+import { useQuery } from "convex/react";
+import { format } from "date-fns";
 import {
   AlertCircle,
   AlertTriangle,
@@ -17,18 +24,11 @@ import {
   User,
   XCircle,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Id } from "@convex-config/_generated/dataModel";
-import Link from "next/link";
-import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Separator } from "@acme/ui/separator";
-import { api } from "@convex-config/_generated/api";
-import { format } from "date-fns";
-import { useQuery } from "convex/react";
-import { useRouter } from "next/navigation";
 
 interface Props {
   params: Promise<{
@@ -42,9 +42,12 @@ export default function AuditLogDetailPage({ params }: Props) {
   const auditLogId = resolvedParams.auditLogId as Id<"auditLog">;
 
   // Get audit log entry
-  const auditLogEntry = useQuery(api.core.getAuditLogEntry, {
-    auditLogId,
-  });
+  const auditLogEntry = useQuery(
+    api["core/auditLog/queries"].getAuditLogEntryById,
+    {
+      id: auditLogId,
+    },
+  );
 
   // Format date/time
   const formatDateTime = (timestamp: number) => {

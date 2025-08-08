@@ -73,7 +73,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 enableSystem
               >
                 <EditorModeDetector />
-                <PuckEditor>{children}</PuckEditor>
+                {/* <PuckEditor> */}
+                {children}
+                {/* </PuckEditor>  */}
                 <div className="absolute bottom-4 right-4">
                   <ThemeToggle />
                 </div>

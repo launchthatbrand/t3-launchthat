@@ -958,41 +958,314 @@
       {
         "id": 10,
         "title": "Refactor Permissions & Roles Feature",
-        "description": "Migrate the Permissions & Roles feature to the new folder structure and resolve any TypeScript 'any' issues.",
-        "details": "Create a 'permissions' folder. Migrate existing logic to appropriate files. Update schema imports. Use TypeScript enums for role types and bitwise operations for efficient permission checks. Implement Convex's `v` function for schema validation. Consider implementing RBAC (Role-Based Access Control) using a library like CASL (v6.3.0 or later).",
-        "testStrategy": "Develop comprehensive unit tests for all permission and role functions. Test role assignment, permission checks, and access control logic. Verify TypeScript compilation with no 'any' type warnings.",
-        "priority": "high",
+        "description": "Migrate the Permissions & Roles feature to the new folder structure and resolve any TypeScript 'any' issues, following the successful pattern established with the auditLog refactoring.",
+        "status": "done",
         "dependencies": [
           9
         ],
-        "status": "pending",
-        "subtasks": []
+        "priority": "high",
+        "details": "Create a 'permissions' folder under 'apps/portal/convex/core/'. Split the existing logic into 'mutations.ts', 'queries.ts', and 'schema.ts' files. Update schema imports and table names to follow the plural naming convention (e.g., 'permissions', 'roles'). Use TypeScript enums for role types and bitwise operations for efficient permission checks. Implement Convex's `v` function for schema validation. Follow the simplified schema pattern established in the auditLog refactoring.",
+        "testStrategy": "Develop comprehensive unit tests for all permission and role functions. Test role assignment, permission checks, and access control logic. Verify TypeScript compilation with no 'any' type warnings. Ensure all functions remain accessible through the updated API paths (api.core.permissions.*).",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "",
+            "description": "Create directory structure for permissions module",
+            "status": "done",
+            "dependencies": [],
+            "details": "Create 'apps/portal/convex/core/permissions/' directory with mutations.ts, queries.ts, and schema.ts files",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "",
+            "description": "Update schema definitions",
+            "status": "done",
+            "dependencies": [],
+            "details": "Rename tables to follow plural naming convention (e.g., from 'permission' to 'permissions'). Simplify schema to include only core fields. Update schema.ts to export table definitions properly.",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "",
+            "description": "Refactor mutation functions",
+            "status": "done",
+            "dependencies": [],
+            "details": "Successfully migrated all permission and role mutation functions to permissions/mutations.ts including: createRole, updateRole, deleteRole, assignUserRole, removeUserRole, grantUserPermission, revokeUserPermission. Added proper TypeScript types and validators following Convex patterns.",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "",
+            "description": "Refactor query functions",
+            "status": "done",
+            "dependencies": [],
+            "details": "Successfully migrated all permission and role query functions to permissions/queries.ts including: getAllPermissions, getRoles, getAssignableRoles, getRole, getRolePermissions, checkPermission, getUserPermissions, getUserRoles, getUsersWithRole. Fixed index usage (using by_token instead of incorrect by_tokenIdentifier).",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "",
+            "description": "Implement TypeScript enums for role types",
+            "status": "done",
+            "dependencies": [],
+            "details": "Replaced string literals and 'any' types with proper TypeScript types for role definitions. Improved type safety by removing all 'any' types where possible and using proper Convex validators.",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "",
+            "description": "Implement bitwise operations for permission checks",
+            "status": "done",
+            "dependencies": [],
+            "details": "Refactored permission checking logic to use efficient bitwise operations. Established permission level hierarchy for better access control.",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "",
+            "description": "Update core.ts exports",
+            "status": "done",
+            "dependencies": [],
+            "details": "Update core.ts to export from the new structure. Ensure all functions are accessible via api.core.permissions.mutations.* and api.core.permissions.queries.*",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "",
+            "description": "Remove old permissions files",
+            "status": "done",
+            "dependencies": [],
+            "details": "After successful deployment, remove the old permissions and roles files.",
+            "testStrategy": ""
+          },
+          {
+            "id": 9,
+            "title": "",
+            "description": "Write unit tests",
+            "status": "done",
+            "dependencies": [],
+            "details": "Created comprehensive tests for all refactored permission and role functions. Verified proper functionality of the new permission system.",
+            "testStrategy": ""
+          },
+          {
+            "id": 10,
+            "title": "",
+            "description": "Verify deployment",
+            "status": "done",
+            "dependencies": [],
+            "details": "Successfully deployed changes and verified that all permission and role functionality works correctly with the new structure. Confirmed all tables follow the new naming convention: permissions, roles, userPermissions, rolePermissions, userRoles, permissionAuditLog.",
+            "testStrategy": ""
+          },
+          {
+            "id": 11,
+            "title": "",
+            "description": "Update frontend references",
+            "status": "done",
+            "dependencies": [],
+            "details": "Some frontend pages may need updating to use the new API structure fully. Review all frontend components that interact with permissions and update any remaining references to the old API paths.",
+            "testStrategy": "Verify that all frontend components correctly use the new API paths and that no console errors appear related to permissions."
+          },
+          {
+            "id": 12,
+            "title": "",
+            "description": "Enhance permission level types",
+            "status": "done",
+            "dependencies": [],
+            "details": "Add more granular TypeScript types for permission levels to improve type safety and developer experience.",
+            "testStrategy": "Verify that the enhanced types provide better autocomplete suggestions and catch potential type errors during development."
+          },
+          {
+            "id": 13,
+            "title": "",
+            "description": "Optimize bitwise operations",
+            "status": "done",
+            "dependencies": [],
+            "details": "Further enhance the permission level hierarchy and bitwise operations for more efficient permission checks.",
+            "testStrategy": "Benchmark permission check operations before and after optimization to verify performance improvements."
+          }
+        ]
       },
       {
         "id": 11,
         "title": "Refactor Notifications Feature",
         "description": "Migrate the Notifications feature to the new folder structure and resolve any TypeScript 'any' issues.",
-        "details": "Create a 'notifications' folder. Move existing logic to appropriate files. Update schema imports. Use TypeScript discriminated unions for different notification types. Implement Convex's `v` function for schema validation. Consider integrating a real-time notification system using Convex's real-time capabilities.",
-        "testStrategy": "Create unit tests for all notification functions. Test notification creation, delivery, and user preferences. Verify real-time updates. Ensure TypeScript compilation with no 'any' type warnings.",
-        "priority": "medium",
+        "status": "done",
         "dependencies": [
           10
         ],
-        "status": "pending",
-        "subtasks": []
+        "priority": "medium",
+        "details": "The notifications module has been successfully refactored with a focus on type safety improvements rather than structural changes, as the existing structure was already well-designed. The module remains at the top level (`convex/notifications/`) rather than moving to `convex/core/` because it's a feature module, not core infrastructure, and follows the established pattern where core = basic functionality and top-level = domain features.",
+        "testStrategy": "Create unit tests for all notification functions. Test notification creation, delivery, and user preferences. Verify real-time updates. Ensure TypeScript compilation with no 'any' type warnings.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Eliminate TypeScript 'any' Issues",
+            "description": "Replaced `v.any()` usage in `actionData` field with proper discriminated unions. Created strongly typed action data validators for all notification types. No more implicit any types in the notifications module.",
+            "status": "completed",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement Discriminated Union Types",
+            "description": "Created seven strongly typed discriminated unions for different notification categories: friendActionData, groupActionData, eventActionData, contentActionData, commerceActionData, socialActionData, and systemActionData.",
+            "status": "completed",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Enhance Schema Validation",
+            "description": "All action data now uses proper Convex `v` function validation. Each notification type has its own strongly typed action data structure. Maintained backward compatibility with existing notification data.",
+            "status": "completed",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Preserve Real-Time Capabilities",
+            "description": "Existing real-time notification system using Convex's built-in reactivity maintained. All queries and mutations continue to work with live updates. Notification preferences and filtering systems preserved.",
+            "status": "completed",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Improve Type Safety",
+            "description": "Notification action data is now fully type-safe. Each notification type has its own specific data structure. Better IDE support and compile-time error checking.",
+            "status": "completed",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Document Technical Implementation",
+            "description": "Schema Location: `apps/portal/convex/notifications/schema/notificationsSchema.ts`. Type Definitions: Comprehensive discriminated unions for 7 different notification categories. Validation: All using Convex's `v` function with proper type safety.",
+            "status": "completed",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Assess Structure and Make Decision on Directory Migration",
+            "description": "Assessed the existing structure and determined no directory migration was needed as the notifications module was already well-structured with proper organization in notifications/mutations.ts, notifications/queries.ts, notifications/schema/, notifications/lib/, and notifications/preferences.ts.",
+            "status": "completed",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 12,
         "title": "Refactor Files & Media Feature",
         "description": "Migrate the Files & Media feature to the new folder structure and resolve any TypeScript 'any' issues.",
-        "details": "Create a 'files' folder. Migrate existing logic to appropriate files. Update schema imports. Use TypeScript generics for file types. Implement Convex's `v` function for schema validation. Integrate with Convex's file storage system for efficient file handling. Consider using sharp (v0.32.1 or later) for image processing if needed.",
-        "testStrategy": "Develop unit tests for all file and media functions. Test file upload, retrieval, and deletion. Verify media processing operations. Ensure TypeScript compilation with no 'any' type warnings.",
-        "priority": "medium",
+        "status": "done",
         "dependencies": [
           11
         ],
-        "status": "pending",
-        "subtasks": []
+        "priority": "medium",
+        "details": "Create a 'files' folder in the core module. Implement a comprehensive file management system with proper TypeScript types, schema validation, and security features. Maintain the existing media module as a separate feature module due to its different focus and already excellent structure.",
+        "testStrategy": "Develop unit tests for all file and media functions. Test file upload, retrieval, deletion, sharing, and access control. Verify search and filtering capabilities. Ensure TypeScript compilation with no 'any' type warnings.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Core Files Module Structure",
+            "description": "Create the directory structure for the files module in the core folder with appropriate files for schema, types, mutations, and queries.",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement File Schema",
+            "description": "Create schema.ts with three tables: files, fileAccessLogs, and fileShares. Define appropriate fields and indexes for efficient querying.",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Develop TypeScript Type System",
+            "description": "Create types.ts with comprehensive file type configurations, validation utilities, and security functions. Implement file categories and size limits.",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement File Mutations",
+            "description": "Create mutations.ts with functions for file upload, metadata management, sharing, and access control.",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Implement File Queries",
+            "description": "Create queries.ts with functions for file retrieval, search, and access logging with pagination support.",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Implement Advanced File Management Features",
+            "description": "Add support for file versioning, access control levels, file sharing with permissions, and access logging.",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Integrate Schema and Exports",
+            "description": "Add files tables to main core/schema.ts and update core.ts exports to enable api.core.files.* access. Create files/index.ts for backward compatibility.",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "Assess Media Module",
+            "description": "Evaluate the existing media module structure and determine if refactoring is needed.",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 9,
+            "title": "Implement Security Features",
+            "description": "Add filename sanitization, path traversal prevention, and access controls to ensure secure file operations.",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 10,
+            "title": "Optimize Performance and Scalability",
+            "description": "Implement efficient indexes, pagination support, and search optimization for scalable file management.",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 13,
@@ -1004,8 +1277,63 @@
         "dependencies": [
           12
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Analyze current Calendar & Events structure",
+            "description": "Review the existing Calendar & Events code to understand the current implementation, identify files that need to be migrated, and note any 'any' types that need to be replaced.",
+            "dependencies": [],
+            "details": "Map out the current file structure and dependencies. Document all instances of implicit 'any' types. Identify which functions need to be updated to the new Convex function syntax with validators. Note any date operations that could benefit from date-fns.",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Create new folder structure for Calendar & Events",
+            "description": "Set up the new folder structure following the core-first approach where applicable, with proper separation of concerns.",
+            "dependencies": [
+              "13.1"
+            ],
+            "details": "Create a 'calendar' folder in the Convex directory. Set up the standard files: queries.ts, mutations.ts, helpers.ts, and schema.ts. If any functionality should be in core, create appropriate files in the core directory. Ensure the structure follows the established pattern from other refactored features.",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Migrate and refactor Calendar & Events code",
+            "description": "Move existing code to the new structure while updating to use the new Convex function syntax with validators and removing any implicit 'any' types.",
+            "dependencies": [
+              "13.2"
+            ],
+            "details": "Migrate functions to appropriate files (queries.ts, mutations.ts). Update all functions to use the new Convex function syntax with proper validators. Replace all implicit 'any' types with proper TypeScript interfaces and types. Align schema imports to follow the project standards. Implement date-fns for date operations where appropriate.",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Update frontend calls to new API paths",
+            "description": "Identify and update all frontend components that interact with Calendar & Events functions to use the new API paths.",
+            "dependencies": [
+              "13.3"
+            ],
+            "details": "Search through frontend code for all references to Calendar & Events Convex functions. Update import paths and function calls to match the new structure. Ensure type safety in all frontend interactions with the Calendar & Events API.",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Test and validate the refactored Calendar & Events feature",
+            "description": "Run comprehensive tests to ensure the refactored code works correctly and meets all requirements.",
+            "dependencies": [
+              "13.3",
+              "13.4"
+            ],
+            "details": "Run 'convex dev' to validate the refactored code. Test all Calendar & Events functionality to ensure it works as expected after refactoring. Verify that TypeScript compilation succeeds with no 'any' type warnings. Test event creation, scheduling, recurring events, and date calculations. Document any issues found and fix them.",
+            "status": "done",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 14,
@@ -1160,11 +1488,25 @@
         ],
         "status": "pending",
         "subtasks": []
+      },
+      {
+        "id": 21,
+        "title": "Implement listPublishedCourses Function in LMS Module",
+        "description": "Fix the missing listPublishedCourses function in the LMS module to support the frontend course listing page with search functionality.",
+        "details": "1. Create or update the `listPublishedCourses` function in the `convex/lms/courses/queries.ts` file.\n2. The function should:\n   - Accept parameters for pagination (limit, cursor)\n   - Accept an optional search parameter to filter courses by title or description\n   - Return only courses with a 'published' status\n   - Include relevant course metadata (title, description, instructor, duration, etc.)\n   - Sort results by a relevant field (e.g., publication date, popularity)\n\nExample implementation:\n```typescript\nexport const listPublishedCourses = query({\n  args: {\n    searchTerm: v.optional(v.string()),\n    limit: v.optional(v.number()),\n    cursor: v.optional(v.string())\n  },\n  handler: async (ctx, args) => {\n    const { searchTerm, limit = 10, cursor } = args;\n    \n    // Build the query to filter for published courses\n    let courseQuery = q.eq(q.field(\"status\"), \"published\");\n    \n    // Add search functionality if a search term is provided\n    if (searchTerm) {\n      const searchRegex = new RegExp(searchTerm, \"i\");\n      courseQuery = q.and(\n        courseQuery,\n        q.or(\n          q.matches(q.field(\"title\"), searchRegex),\n          q.matches(q.field(\"description\"), searchRegex)\n        )\n      );\n    }\n    \n    // Execute the query with pagination\n    const courses = await ctx.db\n      .query(\"courses\")\n      .filter(courseQuery)\n      .order(\"desc\", q.field(\"publishedAt\"))\n      .paginate({ limit, cursor });\n    \n    // Return the courses with pagination info\n    return courses;\n  }\n});\n```\n\n3. Ensure the function follows Convex best practices for query optimization and error handling.\n4. Update any type definitions in the LMS module to support this function.\n5. Verify the function signature matches what the frontend is expecting.",
+        "testStrategy": "1. Write unit tests for the `listPublishedCourses` function:\n   - Test with no search term to verify all published courses are returned\n   - Test with a search term to verify filtering works correctly\n   - Test pagination by requesting multiple pages of results\n   - Test edge cases (empty search, no published courses, etc.)\n\n2. Integration testing:\n   - Connect the frontend course listing page to the new API endpoint\n   - Verify courses display correctly on the frontend\n   - Test the search functionality from the UI\n   - Verify pagination controls work as expected\n\n3. Performance testing:\n   - Test with a large dataset to ensure query performance is acceptable\n   - Verify that only necessary data is being returned to optimize payload size\n\n4. Error handling:\n   - Test with invalid parameters to ensure proper error responses\n   - Verify that appropriate HTTP status codes are returned for different error scenarios",
+        "status": "pending",
+        "dependencies": [
+          16,
+          17
+        ],
+        "priority": "medium",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-08-07T03:15:32.116Z",
-      "updated": "2025-08-07T16:03:11.468Z",
+      "updated": "2025-08-07T22:59:51.441Z",
       "description": "Tasks for convex-refactor context"
     }
   }

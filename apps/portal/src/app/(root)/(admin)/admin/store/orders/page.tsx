@@ -7,25 +7,26 @@
 //   HeaderAction,
 // } from "@/components/ui/EntityList";
 import type { Doc, Id } from "@convex-config/_generated/dataModel";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth, useOrganization } from "@clerk/nextjs";
+import { api } from "@convex-config/_generated/api";
+import { useMutation, useQuery } from "convex/react";
+import { Eye, Filter, Package, PlusCircle, Trash2 } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Card } from "@acme/ui/card";
+import { toast } from "@acme/ui/toast";
+
 import type {
   EntityAction,
   FilterConfig,
   FilterValue,
 } from "~/components/shared/EntityList/types";
-import { Eye, Filter, Package, PlusCircle, Trash2 } from "lucide-react";
-import { useMutation, useQuery } from "convex/react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { Card } from "@acme/ui/card";
-import type { ColumnDef } from "@tanstack/react-table";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
-import Link from "next/link";
-import { api } from "@convex-config/_generated/api";
-import { toast } from "@acme/ui/toast";
-import { useAuth } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 
 // Order type for EntityList
 type OrderData = Doc<"orders"> & {
@@ -40,16 +41,19 @@ export default function OrdersAdminPage() {
   const [orderToDelete, setOrderToDelete] = useState<OrderData | null>(null);
   const { isLoaded: isAuthLoaded } = useAuth();
 
+  const { organization } = useOrganization();
+  const organizationId = organization?.id as Id<"organizations">;
+
   // Check current user's role
   const currentUser = useQuery(api.users.queries.getMe, {});
 
   // Fetch orders - only when auth is loaded to prevent permission errors on hard refresh
   const orders = useQuery(
-    api.ecommerce.queries.listOrders,
+    api.ecommerce.orders.queries.listOrders,
     organizationId ? { organizationId } : {},
   );
 
-  const deleteOrder = useMutation(api.ecommerce.mutations.deleteOrder);
+  const deleteOrder = useMutation(api.ecommerce.orders.mutations.deleteOrder);
 
   // Helper functions
   const formatPrice = (price: number) => {
@@ -68,12 +72,12 @@ export default function OrdersAdminPage() {
   };
 
   // Transform orders data for EntityList
-  const orders: OrderData[] = (ordersQuery ?? []).map((order) => ({
-    ...order,
-    formattedTotal: formatPrice(order.total),
-    formattedDate: formatDate(order._creationTime),
-    customerName: `${order.customerInfo.firstName} ${order.customerInfo.lastName}`,
-  }));
+  // const orders: OrderData[] = (ordersQuery ?? []).map((order) => ({
+  //   ...order,
+  //   formattedTotal: formatPrice(order.total),
+  //   formattedDate: formatDate(order._creationTime),
+  //   customerName: `${order.customerInfo.firstName} ${order.customerInfo.lastName}`,
+  // }));
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
@@ -297,7 +301,7 @@ export default function OrdersAdminPage() {
         data={orders}
         columns={columns}
         filters={filters}
-        isLoading={ordersQuery === undefined}
+        isLoading={orders === undefined}
         title="Orders Management"
         description="Manage customer orders, track status, and handle fulfillment"
         defaultViewMode="list"

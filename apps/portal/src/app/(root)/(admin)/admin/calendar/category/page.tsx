@@ -96,10 +96,12 @@ function AuthenticatedCategoryPage({
   ensureUser,
   router,
 }: {
-  ensureUser: ReturnType<typeof useMutation<typeof api.users.createOrGetUser>>;
+  ensureUser: ReturnType<
+    typeof useMutation<typeof api.users.mutations.createOrGetUser>
+  >;
   router: ReturnType<typeof useRouter>;
 }) {
-  const isAdminResult = useQuery(api.accessControl.checkIsAdmin);
+  const isAdminResult = useQuery(api.core.accessControl.queries.checkIsAdmin);
 
   useEffect(() => {
     ensureUser().catch((error) => {

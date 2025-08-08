@@ -9,8 +9,6 @@ import { ReminderSettings } from "@/components/calendar/ReminderSettings";
 import { RSVPButtons } from "@/components/calendar/RSVPButtons";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { api } from "@/convex/_generated/api";
-import { Doc, Id } from "../../../convex/_generated/dataModel";
-import { UserIdType, TimestampType } from "../../../convex/shared/validators";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { format } from "date-fns";
@@ -46,6 +44,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@acme/ui/dialog";
+
+import { Doc, Id } from "../../../convex/_generated/dataModel";
+import { TimestampType, UserIdType } from "../../../convex/shared/validators";
 
 export default function EventDetailsPage({
   params,
@@ -90,7 +91,7 @@ export default function EventDetailsPage({
   );
 
   // Delete mutation
-  const deleteEvent = useMutation(api.calendar.crud.deleteEvent);
+  const deleteEvent = useMutation(api.calendar.events.crud.deleteEvent);
 
   // Handle event deletion
   const handleDelete = async () => {

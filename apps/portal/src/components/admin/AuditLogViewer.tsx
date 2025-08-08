@@ -354,8 +354,8 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
   // Determine which API to call and what args to use
   const apiEndpoint =
     apiQuery === "getUserAuditLog"
-      ? api.core.auditLog.getUserAuditLog
-      : api.core.auditLog.getAuditLogEntries;
+      ? api.core.auditLog.queries.getUserAuditLog
+      : api.core.auditLog.queries.getAuditLogEntries;
 
   const finalArgs = userId ? { userId, ...queryArgs } : (queryArgs ?? {});
 

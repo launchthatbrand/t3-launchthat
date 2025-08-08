@@ -109,8 +109,8 @@ export function EditEventDialog({
   userId,
 }: EditEventDialogProps) {
   const router = useRouter();
-  const updateEvent = useMutation(api.calendar.crud.updateEvent);
-  const deleteEvent = useMutation(api.calendar.crud.deleteEvent);
+  const updateEvent = useMutation(api.calendar.events.crud.updateEvent);
+  const deleteEvent = useMutation(api.calendar.events.crud.deleteEvent);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 

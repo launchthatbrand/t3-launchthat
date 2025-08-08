@@ -76,7 +76,7 @@ function AuthenticatedProductsPage({
 }: {
   router: ReturnType<typeof useRouter>;
 }) {
-  const isAdminResult = useQuery(api.accessControl.checkIsAdmin);
+  const isAdminResult = useQuery(api.core.accessControl.queries.checkIsAdmin);
 
   useEffect(() => {
     if (isAdminResult === false) {
@@ -114,15 +114,9 @@ function ProductsContent({ router }: { router: ReturnType<typeof useRouter> }) {
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch products from Convex
-  const products = useQuery(api.ecommerce.queries.listProducts, {}) as
+  const products = useQuery(api.ecommerce.products.queries.listProducts, {}) as
     | ProductItem[]
     | undefined;
-
-  // Fetch categories for filters
-  const categoriesQuery = useQuery(
-    api.ecommerce.queries.getProductCategories,
-    {},
-  );
 
   // Format price from cents to dollars for display
   const formatPrice = (price: number) => {

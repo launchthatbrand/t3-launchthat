@@ -1,19 +1,20 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Edit, Plus, Shield, Trash2, Users } from "lucide-react";
+import type { Doc } from "@convex-config/_generated/dataModel";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
 import { useMutation, useQuery } from "convex/react";
+import { Edit, Plus, Shield, Trash2, Users } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import type { ColumnDef } from "@tanstack/react-table";
-import type { Doc } from "@convex-config/_generated/dataModel";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { toast } from "@acme/ui/toast";
+
 import type { EntityAction } from "~/components/shared/EntityList/types";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
-import { api } from "@convex-config/_generated/api";
-import { toast } from "@acme/ui/toast";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 
 // Define the data structure for roles
 type RoleData = Doc<"roles"> & {
@@ -25,8 +26,10 @@ export default function RolesAdminPage() {
   const router = useRouter();
 
   // Queries
-  const rolesQuery = useQuery(api.roles.functions.getRoles);
-  const deleteRoleMutation = useMutation(api.roles.functions.deleteRole);
+  const rolesQuery = useQuery(api["core/permissions/queries"].getRoles);
+  const deleteRoleMutation = useMutation(
+    api["core/permissions/mutations"].deleteRole,
+  );
 
   // Transform roles data for EntityList
   const roles: RoleData[] = (rolesQuery ?? []).map((role) => ({

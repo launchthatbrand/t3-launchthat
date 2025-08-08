@@ -68,7 +68,7 @@ export default function EventDetailsPage() {
   );
 
   // Delete event mutation
-  const deleteEvent = useMutation(api.calendar.crud.deleteEvent);
+  const deleteEvent = useMutation(api.calendar.events.crud.deleteEvent);
 
   const handleDeleteEvent = async () => {
     if (!event) return;

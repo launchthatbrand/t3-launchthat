@@ -1,15 +1,15 @@
+import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
+
 import type { Doc, Id } from "../../_generated/dataModel";
+import { api } from "../../_generated/api";
+import { query } from "../../_generated/server";
+import { timestampValidator } from "../../shared/validators";
 import { getAuthenticatedConvexId, hasCalendarAccess } from "../lib/authUtils";
 import {
   getCalendarViewDateRange,
   getRecurringEventInstances,
 } from "../lib/dateUtils";
-
-import { api } from "../../_generated/api";
-import { paginationOptsValidator } from "convex/server";
-import { query } from "../../_generated/server";
-import { timestampValidator } from "../../shared/validators";
 
 /**
  * Get a single event by ID
@@ -315,6 +315,16 @@ interface CalendarEventInterface extends Doc<"events"> {
   };
 }
 
+// Explicit type to avoid circular inference when calling getEventsInDateRange
+interface EventsInDateRangeResponse {
+  events: (Doc<"events"> & {
+    isRecurringInstance?: boolean;
+    originalEventId?: Id<"events">;
+  })[];
+  hasMore: boolean;
+  cursor: string | null;
+}
+
 /**
  * Get events for a specific calendar view (day, week, month, year)
  */
@@ -358,12 +368,10 @@ export const getCalendarViewEvents = query({
     ctx,
     args,
   ): Promise<
-    Array<
-      Doc<"events"> & {
-        isRecurringInstance?: boolean;
-        originalEventId?: Id<"events">;
-      }
-    >
+    (Doc<"events"> & {
+      isRecurringInstance?: boolean;
+      originalEventId?: Id<"events">;
+    })[]
   > => {
     // Convert viewDate to Date object
     const viewDate = new Date(args.viewDate);
@@ -372,7 +380,7 @@ export const getCalendarViewEvents = query({
     const dateRange = getCalendarViewDateRange(viewDate, args.viewType);
 
     // Get events for the date range using the API reference
-    const events = await ctx.runQuery(
+    const result: EventsInDateRangeResponse = await ctx.runQuery(
       api.calendar.events.queries.getEventsInDateRange,
       {
         startDate: dateRange.start,
@@ -382,7 +390,7 @@ export const getCalendarViewEvents = query({
       },
     );
 
-    return events;
+    return result.events;
   },
 });
 

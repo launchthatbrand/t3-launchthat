@@ -4,6 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { Edit, Plus, PlusCircle, Trash } from "lucide-react";
 import { useDebounce } from "use-debounce";
@@ -33,9 +34,7 @@ import {
   AdminLayoutMain,
   AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
-import { DetachableFilters } from "~/components/shared/EntityList/DetachableFilters";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
-import { api } from "../../../../../../../convex/_generated/api";
 
 type CourseData = Doc<"courses">;
 
@@ -86,7 +85,10 @@ export default function AdminCoursesPage() {
 
   // Apply filters to the query parameters
   const queryParams = React.useMemo(() => {
-    const params: any = {};
+    const params: {
+      searchTerm?: string;
+      isPublished?: boolean;
+    } = {};
 
     // Map active filters to query parameters
     if (activeFilters.title && typeof activeFilters.title === "string") {
@@ -103,14 +105,17 @@ export default function AdminCoursesPage() {
   }, [debouncedSearchTitle, activeFilters]);
 
   // Use searchCourses when there's a search term, otherwise use listCourses with pagination
-  const hasSearch =
-    queryParams.searchTerm && queryParams.searchTerm.trim() !== "";
+  const normalizedSearchTerm =
+    typeof queryParams.searchTerm === "string"
+      ? queryParams.searchTerm.trim()
+      : "";
+  const hasSearch = normalizedSearchTerm.length > 0;
 
   const searchResults = useQuery(
     api.lms.courses.queries.searchCourses,
     hasSearch
       ? {
-          searchTerm: queryParams.searchTerm,
+          searchTerm: normalizedSearchTerm,
           isPublished: queryParams.isPublished,
           limit: 50,
         }
@@ -129,7 +134,7 @@ export default function AdminCoursesPage() {
 
   // Use whichever query is active and normalize the data format
   const coursesData = hasSearch ? searchResults : listResults?.page;
-  const courses = coursesData || [];
+  const courses: CourseData[] = coursesData ?? [];
 
   const deleteCourse = useMutation(api.lms.courses.mutations.deleteCourse);
 
@@ -146,7 +151,7 @@ export default function AdminCoursesPage() {
   const handleConfirmDelete = async () => {
     if (courseToDelete) {
       try {
-        await deleteCourse({ courseId: courseToDelete._id });
+        await deleteCourse({ id: courseToDelete._id });
         console.log("Course deleted:", courseToDelete._id);
         setCourseToDelete(null);
       } catch (error) {
@@ -284,7 +289,7 @@ export default function AdminCoursesPage() {
           title="Course Management"
           description="Manage your courses here."
           defaultViewMode="list"
-          viewModes={[""]}
+          viewModes={["list"]}
           entityActions={entityActions}
           actions={headerActions}
           emptyState={

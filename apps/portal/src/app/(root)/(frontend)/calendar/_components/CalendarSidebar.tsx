@@ -1,12 +1,13 @@
 "use client";
 
 import React from "react";
-import { Doc, Id } from "../../../convex/_generated/dataModel";
-import { UserIdType, TimestampType } from "../../../convex/shared/validators";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Checkbox } from "@acme/ui/checkbox";
 import { Label } from "@acme/ui/label";
+import { TimestampType, UserIdType } from "@acme/validators";
+
+import { Doc, Id } from "../../../convex/_generated/dataModel";
 
 interface CalendarSidebarProps {
   calendars: Doc<"calendars">[];

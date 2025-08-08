@@ -45,7 +45,7 @@ export interface SearchPostArgs {
 
 // Query hooks
 export function useGetAllPosts(filters?: PostFilter) {
-  const result = useQuery(api.core.posts.getAllPosts, { filters });
+  const result = useQuery(api.core.posts.queries.getAllPosts, { filters });
   return {
     posts: result ?? [],
     isLoading: result === undefined,
@@ -53,19 +53,22 @@ export function useGetAllPosts(filters?: PostFilter) {
 }
 
 export function useGetPostById(id: Id<"posts"> | undefined) {
-  return useQuery(api.core.posts.getPostById, id ? { id } : "skip");
+  return useQuery(api.core.posts.queries.getPostById, id ? { id } : "skip");
 }
 
 export function useGetPostBySlug(slug: string | undefined) {
-  return useQuery(api.core.posts.getPostBySlug, slug ? { slug } : "skip");
+  return useQuery(
+    api.core.posts.queries.getPostBySlug,
+    slug ? { slug } : "skip",
+  );
 }
 
 export function useSearchPosts(args: SearchPostArgs) {
-  return useQuery(api.core.posts.searchPosts, args);
+  return useQuery(api.core.posts.queries.searchPosts, args);
 }
 
 export function useGetPostTags() {
-  const result = useQuery(api.core.posts.getPostTags, {});
+  const result = useQuery(api.core.posts.queries.getPostTags, {});
   return {
     tags: result ?? [],
     isLoading: result === undefined,
@@ -73,7 +76,7 @@ export function useGetPostTags() {
 }
 
 export function useGetPostCategories() {
-  const result = useQuery(api.core.posts.getPostCategories, {});
+  const result = useQuery(api.core.posts.queries.getPostCategories, {});
   return {
     categories: result ?? [],
     isLoading: result === undefined,
@@ -82,23 +85,23 @@ export function useGetPostCategories() {
 
 // Mutation hooks
 export function useCreatePost() {
-  return useMutation(api.core.posts.createPost);
+  return useMutation(api.core.posts.mutations.createPost);
 }
 
 export function useUpdatePost() {
-  return useMutation(api.core.posts.updatePost);
+  return useMutation(api.core.posts.mutations.updatePost);
 }
 
 export function useDeletePost() {
-  return useMutation(api.core.posts.deletePost);
+  return useMutation(api.core.posts.mutations.deletePost);
 }
 
 export function useUpdatePostStatus() {
-  return useMutation(api.core.posts.updatePostStatus);
+  return useMutation(api.core.posts.mutations.updatePostStatus);
 }
 
 export function useBulkUpdatePostStatus() {
-  return useMutation(api.core.posts.bulkUpdatePostStatus);
+  return useMutation(api.core.posts.mutations.bulkUpdatePostStatus);
 }
 
 /**

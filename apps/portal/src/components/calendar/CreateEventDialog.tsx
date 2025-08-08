@@ -3,8 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
-import { Doc, Id } from "../../../convex/_generated/dataModel";
-import { UserIdType, TimestampType } from "../../../convex/shared/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "convex/react";
 import { format } from "date-fns";
@@ -42,7 +40,9 @@ import {
   SelectValue,
 } from "@acme/ui/select";
 import { Textarea } from "@acme/ui/textarea";
+import { TimestampType, UserIdType } from "@acme/validators";
 
+import { Doc, Id } from "../../../convex/_generated/dataModel";
 import { RecurrenceSelector } from "./RecurrenceSelector";
 
 const formSchema = z.object({
@@ -108,7 +108,7 @@ export function CreateEventDialog({
   userId,
 }: CreateEventDialogProps) {
   const router = useRouter();
-  const createEvent = useMutation(api.calendar.crud.createEvent);
+  const createEvent = useMutation(api.calendar.events.crud.createEvent);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const initialCalendarId =

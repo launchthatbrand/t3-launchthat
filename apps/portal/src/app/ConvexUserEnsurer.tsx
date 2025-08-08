@@ -6,8 +6,7 @@ import { useConvexAuth, useMutation } from "convex/react";
 
 export function ConvexUserEnsurer() {
   const { isAuthenticated } = useConvexAuth();
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  const triggerEnsureUser = useMutation(api.users.ensureUser);
+  const triggerEnsureUser = useMutation(api.users.mutations.createOrGetUser);
 
   useEffect(() => {
     if (isAuthenticated) {

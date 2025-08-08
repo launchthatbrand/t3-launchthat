@@ -77,7 +77,7 @@ export default function CreateDownloadPage() {
   const [categoriesError, setCategoriesError] = useState<Error | null>(null);
 
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const ensureUser = useMutation(api.users.createOrGetUser);
+  const ensureUser = useMutation(api.users.mutations.createOrGetUser);
 
   // useQuery will return `undefined` while loading.
   // If the query throws an error server-side, useQuery might re-throw it client-side or return undefined.

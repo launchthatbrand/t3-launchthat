@@ -1,22 +1,23 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import type { Doc } from "@convex-config/_generated/dataModel";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { useMutation, useQuery } from "convex/react";
 import { Edit, Key, Lock, Plus, Shield, Trash2 } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { toast } from "@acme/ui/toast";
+
 import type {
   EntityAction,
   FilterConfig,
 } from "~/components/shared/EntityList/types";
-import { useMutation, useQuery } from "convex/react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import type { ColumnDef } from "@tanstack/react-table";
-import type { Doc } from "@convex-config/_generated/dataModel";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
-import { api } from "@convex-config/_generated/api";
-import { toast } from "@acme/ui/toast";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 
 // Define the data structure for permissions
 type PermissionData = Doc<"permissions"> & {
@@ -28,10 +29,8 @@ export default function PermissionsAdminPage() {
   const [searchTerm, setSearchTerm] = useState("");
 
   // Queries
-  const permissionsQuery = useQuery(api.permissions.functions.getPermissions);
-  const deletePermissionMutation = useMutation(
-    api.permissions.functions.deletePermission,
-  );
+  const permissionsQuery = useQuery(api.core.getAllPermissions);
+  const deletePermissionMutation = useMutation(api.core.revokeUserPermission);
 
   // Transform permissions data for EntityList
   const permissions: PermissionData[] = (permissionsQuery ?? []).map(

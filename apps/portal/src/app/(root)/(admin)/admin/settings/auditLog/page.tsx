@@ -1,5 +1,10 @@
 "use client";
 
+import React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { useQuery } from "convex/react";
 import {
   Activity,
   AlertTriangle,
@@ -7,21 +12,17 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-import {
-  AuditLogTable,
-  auditLogFilters,
-  createAuditLogColumns,
-} from "~/components/admin/AuditLogViewer";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
 import type { AuditLog } from "~/components/admin/AuditLogViewer";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import Link from "next/link";
-import React from "react";
-import { api } from "@convex-config/_generated/api";
-import { useQuery } from "convex/react";
-import { useRouter } from "next/navigation";
+import {
+  auditLogFilters,
+  AuditLogTable,
+  createAuditLogColumns,
+} from "~/components/admin/AuditLogViewer";
 
 // Import shared utilities from AuditLogViewer
 
@@ -29,7 +30,10 @@ export default function AuditLogPage() {
   const router = useRouter();
 
   // Get audit log statistics
-  const auditLogStats = useQuery(api.core.auditLog.getAuditLogStats, {});
+  const auditLogStats = useQuery(
+    api["core/auditLog/queries"].getAuditLogStats,
+    {},
+  );
 
   // Show loading state
   if (auditLogStats === undefined) {

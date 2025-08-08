@@ -1,10 +1,11 @@
 "use client";
 
-import { Badge } from "@acme/ui/badge";
-import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
+import { Id } from "@/convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+
+import { Badge } from "@acme/ui/badge";
 
 export function InvitationBadge() {
   const { user } = useUser();
@@ -13,7 +14,7 @@ export function InvitationBadge() {
   // Direct approach: query the count using the clerk ID directly
   // Modify the countPendingInvitations function to accept clerkId instead of userId
   const pendingCount = useQuery(
-    api.groups.countPendingInvitationsByClerkId,
+    api.groups.queries.countPendingInvitationsByClerkId,
     clerkId ? { clerkId } : "skip",
   );
 

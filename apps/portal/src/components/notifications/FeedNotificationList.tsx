@@ -9,8 +9,18 @@ import { ScrollArea } from "@acme/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 import type { Notification } from "./types";
-import { groupNotificationsByType } from "../../../convex/notifications/lib/formatters";
+// Local helper to avoid importing server-only convex code from client
 import { FeedNotificationCard } from "./FeedNotificationCard";
+
+const groupNotificationsByType = (notifications: Notification[]) =>
+  notifications.reduce(
+    (acc, n) => {
+      const t = n.type as string;
+      (acc[t] ||= []).push(n);
+      return acc;
+    },
+    {} as Record<string, Notification[]>,
+  );
 
 interface FeedNotificationListProps {
   notifications: Notification[];

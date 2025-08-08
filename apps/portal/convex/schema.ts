@@ -5,26 +5,27 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-import calendarSchema from "./calendar/schema";
-import { categoriesTable } from "./categories/schema";
-import contactsSchema from "./contacts/schema";
-import { auditLogSchema } from "./core/auditLog";
-import { coreSchema } from "./core/schema"; // This should be the result of defineSchema()
-import { downloadsSchema } from "./downloads/schema";
+import { calendarSchema } from "./calendar/schema/calendarSchema";
+// import { categoriesTable } from "./categories/schema";
+// import contactsSchema from "./contacts/schema";
+// import { auditLogsTable } from "./core/auditLog/schema";
+// import { coreSchema } from "./core/schema"; // This should be the result of defineSchema()
+// import { downloadsSchema } from "./downloads/schema";
 import ecommerceSchema from "./ecommerce/schema";
-import { groupsSchema } from "./groups/schema";
-import integrationsSchema from "./integrations/schema";
+// import { groupsSchema } from "./groups/schema";
+// import integrationsSchema from "./integrations/schema";
 import { lmsSchema } from "./lms/schema";
-import { mediaSchema } from "./media/schema";
-import { notificationsSchema } from "./notifications/schema";
-import { organizationsSchema } from "./organizations/schema";
-import { puckEditorTable } from "./puckEditor/schema";
-import socialFeedSchema from "./socialfeed/schema";
-import { tagsTable } from "./tags/schema";
-import { taskBoardsSchema } from "./tasks/boards/schema";
-import { tasksSchema } from "./tasks/schema";
+// import { mediaSchema } from "./media/schema";
+// import { notificationsSchema } from "./notifications/schema";
+// import { organizationsSchema } from "./organizations/schema";
+// import { puckEditorTable } from "./puckEditor/schema";
+// import socialFeedSchema from "./socialfeed/schema";
+// import { tagsTable } from "./tags/schema";
+// import { taskBoardsSchema } from "./tasks/boards/schema";
+// import { tasksSchema } from "./tasks/schema";
 import { schema as usersSchema } from "./users/schema";
-import { vimeoSchema } from "./vimeo/schema";
+
+// import { vimeoSchema } from "./vimeo/schema";
 
 // Import new schema modules
 // import { groupsSchema } from "./groupsSchema"; // REMOVE THIS
@@ -61,43 +62,43 @@ const {
 // Define the main schema that includes all tables
 export default defineSchema({
   // Calendar tables
-  ...calendarSchema.tables,
+  ...calendarSchema,
 
-  // Contacts tables
-  ...contactsSchema.tables,
+  // // Contacts tables
+  // ...contactsSchema.tables,
 
-  // Core tables (includes former CMS tables)
-  ...coreSchema.tables,
+  // // Core tables (includes former CMS tables)
+  // ...coreSchema.tables,
 
-  // Downloads tables
-  ...downloadsSchema.tables,
+  // // Downloads tables
+  // ...downloadsSchema.tables,
 
-  // Ecommerce tables
-  ...ecommerceSchema.tables,
+  // // Ecommerce tables
+  // ...ecommerceSchema.tables,
 
-  // Groups tables
-  ...groupsSchema.tables,
+  // // Groups tables
+  // ...groupsSchema.tables,
 
-  // Integrations tables
-  ...integrationsSchema.tables,
+  // // Integrations tables
+  // ...integrationsSchema.tables,
 
-  // LMS tables
+  // // LMS tables
   ...lmsSchema.tables,
 
-  // Notifications tables
-  ...notificationsSchema.tables,
+  // // Notifications tables
+  // ...notificationsSchema.tables,
 
-  // Organizations tables (multi-tenancy)
-  ...organizationsSchema.tables,
+  // // Organizations tables (multi-tenancy)
+  // ...organizationsSchema.tables,
 
-  // Social Feed tables
-  ...socialFeedSchema.tables,
+  // // Social Feed tables
+  // ...socialFeedSchema.tables,
 
   // Users tables
   ...usersSchema.tables,
 
   // Vimeo videos
-  ...vimeoSchema.tables,
+  // ...vimeoSchema.tables,
 
   // Media Items table (metadata for Convex storage files)
   // mediaItems: defineTable({
@@ -116,10 +117,10 @@ export default defineSchema({
   // }),
 
   // Categories table
-  categories: categoriesTable,
+  // categories: categoriesTable,
 
   // Global Tags table
-  tags: tagsTable,
+  // tags: tagsTable,
 
   // ...unifiedProductSchema, // REMOVE THIS SPREAD
 
@@ -127,42 +128,42 @@ export default defineSchema({
   // checkoutSessions: checkoutSessionsTable, // REMOVE - now in newModularEcommerceSchema
   // orders: ordersTable, // REMOVE - now in newModularEcommerceSchema
 
-  helpdeskArticles: defineTable({
-    title: v.string(),
-    slug: v.string(),
-    category: v.string(),
-    summary: v.string(),
-    content: v.string(),
-    author: v.id("users"),
-    authorName: v.string(),
-    published: v.boolean(),
-    featured: v.boolean(),
-    lastUpdated: v.number(),
-    views: v.number(),
-    tags: v.array(v.string()), // This can be updated to v.array(v.id("tags")) later
-  })
-    .index("by_slug", ["slug"])
-    .index("by_category", ["category"])
-    .index("by_author", ["author"])
-    .index("by_featured", ["featured"])
-    .searchIndex("search_title", { searchField: "title" })
-    .searchIndex("search_content", { searchField: "content" }),
+  // helpdeskArticles: defineTable({
+  //   title: v.string(),
+  //   slug: v.string(),
+  //   category: v.string(),
+  //   summary: v.string(),
+  //   content: v.string(),
+  //   author: v.id("users"),
+  //   authorName: v.string(),
+  //   published: v.boolean(),
+  //   featured: v.boolean(),
+  //   lastUpdated: v.number(),
+  //   views: v.number(),
+  //   tags: v.array(v.string()), // This can be updated to v.array(v.id("tags")) later
+  // })
+  //   .index("by_slug", ["slug"])
+  //   .index("by_category", ["category"])
+  //   .index("by_author", ["author"])
+  //   .index("by_featured", ["featured"])
+  //   .searchIndex("search_title", { searchField: "title" })
+  //   .searchIndex("search_content", { searchField: "content" }),
 
-  // Add the groupDashboards table to the schema
-  groupDashboards: defineTable({
-    groupId: v.id("groups"),
-    data: v.any(), // Store the Puck Data object
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_group", ["groupId"]),
+  // // Add the groupDashboards table to the schema
+  // groupDashboards: defineTable({
+  //   groupId: v.id("groups"),
+  //   data: v.any(), // Store the Puck Data object
+  //   createdAt: v.number(),
+  //   updatedAt: v.number(),
+  // }).index("by_group", ["groupId"]),
 
-  puckEditor: puckEditorTable,
+  // puckEditor: puckEditorTable,
 
-  // Audit Log table
-  auditLog: auditLogSchema,
+  // // Audit Log table
+  // auditLogs: auditLogsTable,
 
-  // Tasks table (moved to modular schema)
-  ...tasksSchema,
-  ...taskBoardsSchema,
-  ...mediaSchema.tables,
+  // // Tasks table (moved to modular schema)
+  // ...tasksSchema,
+  // ...taskBoardsSchema,
+  // ...mediaSchema.tables,
 });
