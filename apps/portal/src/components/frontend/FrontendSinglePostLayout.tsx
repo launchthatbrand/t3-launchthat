@@ -16,10 +16,7 @@ export const FrontendSinglePostLayout = React.forwardRef<
   FrontendSinglePostLayoutProps
 >(({ children, className }, ref) => {
   return (
-    <div
-      ref={ref}
-      className={`container grid gap-10 md:grid-cols-12 ${className ?? ""}`}
-    >
+    <div ref={ref} className={`container flex gap-10 ${className ?? ""}`}>
       {children}
     </div>
   );
@@ -144,7 +141,7 @@ export const FrontendSinglePostMain = React.forwardRef<
   FrontendSinglePostMainProps
 >(({ children, className }, ref) => {
   return (
-    <div ref={ref} className={`md:col-span-8 lg:col-span-9`}>
+    <div ref={ref} className={`${className ?? ""} w-full`}>
       <div
         className={`prose prose-neutral dark:prose-invert max-w-none ${className ?? ""}`}
       >
@@ -165,10 +162,7 @@ export const FrontendSinglePostSidebar = React.forwardRef<
   FrontendSinglePostSidebarProps
 >(({ children, className }, ref) => {
   return (
-    <aside
-      ref={ref}
-      className={`md:col-span-4 lg:col-span-3 ${className ?? ""}`}
-    >
+    <aside ref={ref} className={`md:w-1/4 ${className ?? ""}`}>
       <div className="sticky top-5 space-y-6">{children}</div>
     </aside>
   );

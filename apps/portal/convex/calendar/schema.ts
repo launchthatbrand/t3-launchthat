@@ -1,5 +1,9 @@
-import { defineTable } from "convex/server";
+import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+
+import { eventAttendeesTable } from "./attendees/schema";
+import { calendarEventsTable } from "./events/schema";
+import { calendarPermissionsTable } from "./permissions/schema";
 
 export const calendarsTable = defineTable({
   name: v.string(),
@@ -32,3 +36,10 @@ export const calendarsTable = defineTable({
   .index("by_group", ["groupId"])
   .index("by_course", ["courseId"])
   .index("by_organization", ["organizationId"]);
+
+export default defineSchema({
+  eventAttendees: eventAttendeesTable,
+  calendars: calendarsTable,
+  calendarEvents: calendarEventsTable,
+  calendarPermissions: calendarPermissionsTable,
+});

@@ -1,3 +1,11 @@
+import React, { useState } from "react";
+import { api } from "@convex-config/_generated/api";
+import { Id } from "@convex-config/_generated/dataModel";
+import { useMutation, useQuery } from "convex/react";
+import { ExternalLink, Package, Unlink } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -5,8 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { ExternalLink, Package, Unlink } from "lucide-react";
-import React, { useState } from "react";
+import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -14,13 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { useMutation, useQuery } from "convex/react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { Id } from "@convex-config/_generated/dataModel";
-import { Label } from "@acme/ui/label";
-import { api } from "@convex-config/_generated/api";
 import { toast } from "@acme/ui/toast";
 
 export interface LinkedProductProps {
@@ -44,7 +44,7 @@ export const LinkedProduct: React.FC<LinkedProductProps> = ({
   const [isLoading, setIsLoading] = useState(false);
 
   // Get all available products
-  const products = useQuery(api.ecommerce.products.index.listProducts, {
+  const products = useQuery(api.ecommerce.products.queries.listProducts, {
     isVisible: true,
     status: "active",
   });

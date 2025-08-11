@@ -153,28 +153,37 @@ export function Plugins() {
     <div className="relative">
       <ToolbarPlugin>
         {({ blockType }) => (
-          <div className="vertical-align-middle sticky top-0 z-10 flex gap-2 overflow-auto border-b p-1">
-            <HistoryToolbarPlugin />
-            <Separator orientation="vertical" className="h-8" />
-            <BlockFormatDropDown>
-              <FormatParagraph />
-              <FormatHeading levels={["h1", "h2", "h3"]} />
-              <FormatNumberedList />
-              <FormatBulletedList />
-              <FormatCheckList />
-              <FormatCodeBlock />
-              <FormatQuote />
-            </BlockFormatDropDown>
-            {blockType === "code" ? (
-              <CodeLanguageToolbarPlugin />
-            ) : (
-              <>
-                <FontFamilyToolbarPlugin />
-                <FontSizeToolbarPlugin />
-                <Separator orientation="vertical" className="h-8" />
-                <FontFormatToolbarPlugin format="bold" />
-                <FontFormatToolbarPlugin format="italic" />
-                <FontFormatToolbarPlugin format="underline" />
+          <div className="vertical-align-middle sticky top-0 z-10 border-b p-1">
+            {/* Row 1 */}
+            <div className="flex flex-wrap items-center gap-2 overflow-auto">
+              <HistoryToolbarPlugin />
+              <Separator orientation="vertical" className="h-8" />
+              <BlockFormatDropDown>
+                <FormatParagraph />
+                <FormatHeading levels={["h1", "h2", "h3"]} />
+                <FormatNumberedList />
+                <FormatBulletedList />
+                <FormatCheckList />
+                <FormatCodeBlock />
+                <FormatQuote />
+              </BlockFormatDropDown>
+              {blockType === "code" ? (
+                <CodeLanguageToolbarPlugin />
+              ) : (
+                <>
+                  <FontFamilyToolbarPlugin />
+                  <FontSizeToolbarPlugin />
+                  <Separator orientation="vertical" className="h-8" />
+                  <FontFormatToolbarPlugin format="bold" />
+                  <FontFormatToolbarPlugin format="italic" />
+                  <FontFormatToolbarPlugin format="underline" />
+                </>
+              )}
+            </div>
+
+            {/* Row 2 (hidden for code blocks) */}
+            {blockType !== "code" && (
+              <div className="mt-1 flex flex-wrap items-center gap-2 overflow-auto">
                 <FontFormatToolbarPlugin format="strikethrough" />
                 <Separator orientation="vertical" className="h-8" />
                 <SubSuperToolbarPlugin />
@@ -200,7 +209,7 @@ export function Plugins() {
                   <InsertColumnsLayout />
                   <InsertEmbeds />
                 </BlockInsertPlugin>
-              </>
+              </div>
             )}
           </div>
         )}

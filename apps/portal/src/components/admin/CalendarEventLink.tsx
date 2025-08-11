@@ -1,6 +1,14 @@
 "use client";
 
+import type { Doc, Id } from "@convex-config/_generated/dataModel";
+import React, { useState } from "react";
+import { api } from "@convex-config/_generated/api";
+import { useMutation, useQuery } from "convex/react";
+import { format } from "date-fns";
 import { Calendar, Link, Plus, Search, Unlink, X } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
   Dialog,
@@ -9,8 +17,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import type { Doc, Id } from "@convex-config/_generated/dataModel";
-import React, { useState } from "react";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -18,17 +26,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { useMutation, useQuery } from "convex/react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
 import { Textarea } from "@acme/ui/textarea";
-import { api } from "@convex-config/_generated/api";
-import { cn } from "~/lib/utils";
-import { format } from "date-fns";
 import { toast } from "@acme/ui/toast";
+
+import { cn } from "~/lib/utils";
 
 interface CalendarEventLinkProps {
   orderId: Id<"orders">;
@@ -69,9 +70,11 @@ export function CalendarEventLink({
   const userCalendars = useQuery(api.calendar.queries.getUserCalendars, {});
 
   // Mutations
-  const linkOrderToEvent = useMutation(api.ecommerce.orders.linkCalendarEvent);
+  const linkOrderToEvent = useMutation(
+    api.calendar.events.orders.linkCalendarEvent,
+  );
   const unlinkOrderFromEvent = useMutation(
-    api.ecommerce.orders.unlinkCalendarEvent,
+    api.calendar.events.orders.unlinkCalendarEvent,
   );
   const createEvent = useMutation(api.calendar.events.crud.createEvent);
 

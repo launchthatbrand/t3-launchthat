@@ -1,11 +1,11 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader } from "@acme/ui/card";
+import { Card, CardContent } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
@@ -25,6 +25,7 @@ interface AdminPostContextValue {
   setActiveTab: (tab: string) => void;
   isSubmitting: boolean;
   onSave?: () => Promise<void> | void;
+  registerSaveHandler: (fn: () => Promise<void> | void) => void;
   postType: string;
   postTitle?: string;
   postId?: string;
@@ -73,12 +74,18 @@ const AdminSinglePost = React.forwardRef<HTMLDivElement, AdminSinglePostProps>(
     ref,
   ) => {
     const [activeTab, setActiveTab] = useState(defaultTab);
+    const saveHandlerRef = useRef<(() => Promise<void> | void) | undefined>(
+      onSave,
+    );
 
     const contextValue: AdminPostContextValue = {
       activeTab,
       setActiveTab,
       isSubmitting,
-      onSave,
+      onSave: () => saveHandlerRef.current?.(),
+      registerSaveHandler: (fn) => {
+        saveHandlerRef.current = fn;
+      },
       postType,
       postTitle,
       postId: postId ?? "",
@@ -148,7 +155,7 @@ const AdminSinglePostHeader = React.forwardRef<
     return (
       <div
         ref={ref}
-        className={`mb-6 flex items-center justify-between bg-primary/10 ${className}`}
+        className={`mb-6 flex items-center justify-between bg-slate-300 ${className}`}
         {...props}
       >
         <div className="container flex flex-col items-start gap-4">
@@ -326,7 +333,7 @@ const AdminSinglePostTabs = React.forwardRef<
 });
 AdminSinglePostTabs.displayName = "AdminSinglePostTabs";
 
-// Tabs List
+// Tab List
 interface AdminSinglePostTabsListProps {
   children: React.ReactNode;
   className?: string;
@@ -548,14 +555,14 @@ const SEOTabContent = React.forwardRef<HTMLDivElement, SEOTabContentProps>(
           <h3 className="text-sm font-medium">SEO Preview</h3>
           <div className="rounded-md border p-4">
             <div className="text-blue-600 hover:underline">
-              {metaTitle ?? "Page Title"}
+              {metaTitle || "Page Title"}
             </div>
             <div className="text-sm text-green-700">
               {urlPreview}
-              {slug ?? "page-slug"}
+              {slug || "page-slug"}
             </div>
             <div className="mt-1 text-sm text-gray-600">
-              {metaDescription ??
+              {metaDescription ||
                 "This is where your page description will appear in search results..."}
             </div>
           </div>

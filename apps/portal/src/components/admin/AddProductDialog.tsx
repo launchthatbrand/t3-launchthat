@@ -54,9 +54,12 @@ export function AddProductDialog({
   const [quantityMap, setQuantityMap] = useState<Record<string, number>>({});
 
   // Fetch products and categories with proper error handling
-  const productsQuery = useQuery(api.ecommerce.products.index.listProducts, {});
+  const productsQuery = useQuery(
+    api.ecommerce.products.queries.listProducts,
+    {},
+  );
   const categoriesQuery = useQuery(
-    api.ecommerce.categories.index.getProductCategories,
+    api.ecommerce.categories.queries.getProductCategories,
     {},
   );
 
