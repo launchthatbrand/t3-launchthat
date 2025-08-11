@@ -166,12 +166,15 @@ export function OrderForm({
 
   // Fetch existing order if editing
   const existingOrder = useQuery(
-    api.ecommerce.orders.index.getOrder,
+    api.ecommerce.orders.queries.getOrder,
     orderId ? { orderId } : "skip",
   );
 
   // Fetch products for line item selection
-  const productsQuery = useQuery(api.ecommerce.products.index.listProducts, {});
+  const productsQuery = useQuery(
+    api.ecommerce.products.queries.listProducts,
+    {},
+  );
 
   // Fetch users for selection - only when auth is ready
   const { isLoaded: isAuthLoaded } = useAuth();

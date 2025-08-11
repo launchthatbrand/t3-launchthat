@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
-import { Id } from "../_generated/dataModel";
-import { mutation } from "../_generated/server";
+import type { Id } from "../../_generated/dataModel";
+import { mutation } from "../../_generated/server";
 
 /**
  * Add a user to an event as an attendee
@@ -56,7 +56,7 @@ export const addEventAttendee = mutation({
       externalName: args.externalName,
     });
 
-    return attendeeId;
+    return attendeeId as Id<"eventAttendees">;
   },
 });
 

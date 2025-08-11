@@ -109,8 +109,8 @@ export const editorTheme: EditorThemeClasses = {
     "EditorTheme__tableRowStriping m-0 border-t p-0 even:bg-muted",
   tableSelected: "EditorTheme__tableSelected ring-2 ring-primary ring-offset-2",
   tableSelection: "EditorTheme__tableSelection bg-transparent",
-  layoutItem: "border border-dashed px-4 py-2",
-  layoutContainer: "grid gap-2.5 my-2.5 mx-0",
+  layoutItem: "border px-4 py-2 shadow-lg rounded-lg",
+  layoutContainer: "grid gap-4 my-2.5 mx-0",
   autocomplete: "text-muted-foreground",
   blockCursor: "",
   embedBlock: {

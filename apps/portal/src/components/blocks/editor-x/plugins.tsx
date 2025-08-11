@@ -137,7 +137,7 @@ const SpeechToTextPlugin = dynamic(
 );
 
 export const placeholder = "Press / for commands...";
-const maxLength = 1500;
+const maxLength = 15000;
 
 export function Plugins() {
   const [floatingAnchorElem, setFloatingAnchorElem] =

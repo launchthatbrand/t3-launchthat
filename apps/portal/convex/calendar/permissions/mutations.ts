@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { mutation } from "../_generated/server";
+import { mutation } from "../../_generated/server";
 
 /**
  * Share a calendar with another user

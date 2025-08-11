@@ -64,7 +64,6 @@ function EditPostPage() {
             : undefined,
       });
       toast.success("The post has been successfully updated.");
-      router.push("/admin/posts");
     } catch (error) {
       console.error("Error updating post:", error);
       toast.error("There was an error updating the post.");

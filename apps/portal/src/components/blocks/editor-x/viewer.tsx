@@ -8,12 +8,15 @@ import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 
 import { ContentEditable } from "~/components/editor/editor-ui/content-editable";
 import { editorTheme } from "~/components/editor/themes/editor-theme";
+import { cn } from "~/lib/utils";
 import { nodes } from "./nodes";
 
 export function EditorViewer({
   editorSerializedState,
+  className,
 }: {
   editorSerializedState?: SerializedEditorState | object;
+  className?: string;
 }) {
   const initialConfig: InitialConfigType = {
     namespace: "EditorViewer",
@@ -27,7 +30,7 @@ export function EditorViewer({
   };
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-background">
+    <div className={cn("overflow-hidden bg-background", className)}>
       <LexicalComposer initialConfig={initialConfig}>
         <RichTextPlugin
           contentEditable={
