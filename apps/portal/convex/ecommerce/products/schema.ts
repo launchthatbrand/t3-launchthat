@@ -20,8 +20,8 @@ export const productsTable = defineTable({
   shortDescription: v.optional(v.string()),
 
   // Categorization
-  primaryCategoryId: v.id("productCategories"), // Main category
-  categoryIds: v.array(v.id("productCategories")), // All categories this product belongs to
+
+  categoryIds: v.optional(v.array(v.id("productCategories"))), // All categories this product belongs to
 
   // Pricing (enhanced) - price is the main field, priceInCents kept for backward compatibility
   price: v.number(), // Main price field - supports decimals (e.g., 9.99, 0.13, 999)
@@ -108,7 +108,6 @@ export const productsTable = defineTable({
   .index("by_organization_status", ["organizationId", "status"])
   .index("by_organization_visible", ["organizationId", "isVisible"])
   .index("by_organization_featured", ["organizationId", "isFeatured"])
-  .index("by_primary_category", ["primaryCategoryId"])
   .index("by_status", ["status"])
   .index("by_visible", ["isVisible"])
   .index("by_featured", ["isFeatured"])
@@ -125,7 +124,6 @@ export const productsTable = defineTable({
       "organizationId",
       "status",
       "isVisible",
-      "primaryCategoryId",
       "isFeatured",
       "isDigital",
     ],
@@ -136,7 +134,6 @@ export const productsTable = defineTable({
       "organizationId",
       "status",
       "isVisible",
-      "primaryCategoryId",
       "isFeatured",
       "isDigital",
     ],

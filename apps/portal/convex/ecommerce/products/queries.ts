@@ -11,7 +11,7 @@ export const listProducts = query({
     status: v.optional(
       v.union(v.literal("draft"), v.literal("active"), v.literal("archived")),
     ),
-    categoryId: v.optional(v.id("productCategories")),
+    categoryId: v.optional(v.id("categories")),
   },
   handler: async (ctx, args) => {
     let productsQuery = ctx.db.query("products");

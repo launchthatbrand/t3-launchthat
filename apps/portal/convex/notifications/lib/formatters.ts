@@ -1,5 +1,5 @@
-import { Doc, Id } from "../../_generated/dataModel";
-import { MutationCtx, QueryCtx } from "../../_generated/server";
+import type { Doc, Id } from "../../_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import { getNotificationTypeDisplayName } from "./preferences";
 
 /**
@@ -38,7 +38,7 @@ export async function generateNotificationContent(
   if (args.sourceGroupId) {
     const group = await ctx.db.get(args.sourceGroupId);
     if (group) {
-      groupName = group.name || "a group";
+      groupName = group.name ?? "a group";
     }
   }
 

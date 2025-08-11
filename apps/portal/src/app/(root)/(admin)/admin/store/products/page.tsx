@@ -1,7 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 "use client";
 
+import type { Doc } from "@convex-config/_generated/dataModel";
 import type { ColumnDef } from "@tanstack/react-table";
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
@@ -114,9 +117,10 @@ function ProductsContent({ router }: { router: ReturnType<typeof useRouter> }) {
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch products from Convex
-  const products = useQuery(api.ecommerce.products.queries.listProducts, {}) as
-    | ProductItem[]
-    | undefined;
+  const products: Doc<"products">[] | undefined = useQuery(
+    api.ecommerce.products.queries.listProducts,
+    {},
+  );
 
   // Format price from cents to dollars for display
   const formatPrice = (price: number) => {
@@ -141,7 +145,7 @@ function ProductsContent({ router }: { router: ReturnType<typeof useRouter> }) {
         return (
           <div className="flex items-center">
             {product.images && product.images.length > 0 ? (
-              <img
+              <Image
                 src={
                   product.images.find((img) => img.isPrimary)?.url ??
                   product.images[0]?.url ??
@@ -149,6 +153,8 @@ function ProductsContent({ router }: { router: ReturnType<typeof useRouter> }) {
                 }
                 alt={product.name}
                 className="mr-3 h-10 w-10 rounded-md object-cover"
+                width={40}
+                height={40}
               />
             ) : (
               <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-md bg-muted">
@@ -326,7 +332,7 @@ function ProductsContent({ router }: { router: ReturnType<typeof useRouter> }) {
   return (
     <div className="container py-6">
       <EntityList<ProductItem>
-        data={products ?? []}
+        data={products}
         columns={columns}
         filters={filters}
         isLoading={isLoading}

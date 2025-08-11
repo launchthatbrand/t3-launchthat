@@ -3,7 +3,7 @@
  *
  * Shared utility functions for the users feature.
  */
-import { Doc, Id } from "../_generated/dataModel";
+import type { Doc } from "../_generated/dataModel";
 
 /**
  * Format user for display
@@ -31,14 +31,14 @@ export function getUserFullName(user: Doc<"users">): string {
   if (user.firstName && user.lastName) {
     return `${user.firstName} ${user.lastName}`;
   }
-  return user.name || user.username || user.email || "Unnamed User";
+  return (user.name ?? user.username ?? user.email) || "Unnamed User";
 }
 
 /**
  * Get user's display name for mentions
  */
 export function getUserDisplayName(user: Doc<"users">): string {
-  return user.username || user.name || `user-${user._id}`;
+  return user.username ?? user.name ?? `user-${user._id}`;
 }
 
 /**
@@ -100,16 +100,16 @@ export function getSubscriptionStatusText(user: Doc<"users">): string {
 /**
  * Format user's address for display
  */
-export function formatAddress(address: Doc<"users">["addresses"][0]): string {
+export function formatAddress(address: Doc<"users">["addresses"]): string {
   if (!address) return "";
 
   const parts = [
-    address.addressLine1,
-    address.addressLine2,
-    address.city,
-    address.stateOrProvince,
-    address.postalCode,
-    address.country,
+    address[0]?.addressLine1,
+    address[0]?.addressLine2,
+    address[0]?.city,
+    address[0]?.stateOrProvince,
+    address[0]?.postalCode,
+    address[0]?.country,
   ].filter(Boolean);
 
   return parts.join(", ");

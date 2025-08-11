@@ -1,101 +1,68 @@
 "use client";
 
 import type { Id } from "@/convex/_generated/dataModel";
-import type { Post, PostFormData, PostStatus } from "@/lib/blog";
-import React, { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { usePost, usePostCategories, useUpdatePost } from "@/lib/blog";
+import { api } from "@/convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
 import { ChevronLeft } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
 import { toast } from "@acme/ui/toast";
 
-import PostForm from "../_components/PostForm";
-
-interface ApiPost {
-  _id: Id<"posts">;
-  _creationTime: number;
-  title: string;
-  content: string;
-  status?: string;
-  category?: string;
-  slug?: string;
-  createdAt?: number;
-  excerpt?: string;
-  tags?: string[];
-  authorId?: Id<"users">;
-  updatedAt?: number;
-  featuredImageUrl?: string;
-  featured?: boolean;
-  readTime?: string;
-  author?: {
-    _id: Id<"users">;
-    name: string;
-    imageUrl?: string;
-  } | null;
-}
-
-function apiPostToPost(apiPost: ApiPost | null): Post | null {
-  if (!apiPost) return null;
-
-  let status: PostStatus = "draft";
-  if (
-    apiPost.status &&
-    ["draft", "published", "archived"].includes(apiPost.status)
-  ) {
-    status = apiPost.status as PostStatus;
-  }
-
-  return {
-    _id: apiPost._id,
-    _creationTime: apiPost._creationTime,
-    title: apiPost.title,
-    content: apiPost.content,
-    status,
-    category: apiPost.category ?? "Uncategorized",
-    slug: apiPost.slug ?? "",
-    createdAt: apiPost.createdAt ?? apiPost._creationTime,
-    excerpt: apiPost.excerpt,
-    tags: apiPost.tags ?? [],
-    authorId: apiPost.authorId,
-    updatedAt: apiPost.updatedAt,
-    featuredImageUrl: apiPost.featuredImageUrl,
-    featured: apiPost.featured ?? false,
-    readTime: apiPost.readTime,
-    author: apiPost.author ?? undefined,
-  };
-}
+import type { PostFormData } from "~/components/admin/PostForm";
+import { PostForm } from "~/components/admin/PostForm";
 
 function EditPostPage() {
   const params = useParams();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const postId = params.id as Id<"posts">;
-  const { data: apiPost, isLoading: isPostLoading } = usePost(postId);
-  const updatePost = useUpdatePost();
-  const post = apiPostToPost(apiPost as ApiPost | null);
-  const { data: categoriesData } = usePostCategories();
 
-  const categoryOptions = React.useMemo(
-    () =>
-      categoriesData?.map((category) => ({
-        value: category.name.toLowerCase(),
-        label: category.name,
-      })) ?? [
-        { value: "tutorials", label: "Tutorials" },
-        { value: "news", label: "News" },
-        { value: "devops", label: "DevOps" },
-        { value: "development", label: "Development" },
-        { value: "case-studies", label: "Case Studies" },
-      ],
-    [categoriesData],
+  const post = useQuery(
+    api.core.posts.queries.getPostById,
+    postId ? { id: postId } : "skip",
   );
+  const { name: _ignore } = { name: "categories-not-used-here" };
+
+  const updatePost = useMutation(api.core.posts.mutations.updatePost);
+
+  const initialData: PostFormData | undefined = useMemo(() => {
+    if (!post) return undefined;
+    return {
+      title: post.title ?? "",
+      slug: post.slug ?? "",
+      status: (post.status as PostFormData["status"]) ?? "draft",
+      authorId: post.authorId,
+      category: post.category ?? "",
+      tags: post.tags ?? [],
+      excerpt: post.excerpt ?? "",
+      content: post.content ?? "",
+      featuredImageUrl: (post as any).featuredImage ?? "",
+      featured: (post as any).featured ?? false,
+      readTime: (post as any).readTime ?? "",
+    };
+  }, [post]);
 
   const handleSubmit = async (data: PostFormData) => {
     try {
       setIsSubmitting(true);
-      await updatePost({ id: postId, ...data });
+      await updatePost({
+        id: postId,
+        title: data.title,
+        content: data.content,
+        slug: data.slug,
+        status: data.status,
+        category:
+          data.category && data.category.length ? data.category : undefined,
+        tags: data.tags && data.tags.length ? data.tags : undefined,
+        excerpt: data.excerpt && data.excerpt.length ? data.excerpt : undefined,
+        featuredImage:
+          data.featuredImageUrl && data.featuredImageUrl.length
+            ? data.featuredImageUrl
+            : undefined,
+      });
       toast.success("The post has been successfully updated.");
       router.push("/admin/posts");
     } catch (error) {
@@ -106,7 +73,7 @@ function EditPostPage() {
     }
   };
 
-  if (isPostLoading) {
+  if (post === undefined) {
     return <div>Loading post...</div>;
   }
   if (!post) {
@@ -129,11 +96,11 @@ function EditPostPage() {
         </p>
       </div>
       <PostForm
-        initialData={post}
+        initial={initialData}
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
-        categories={categoryOptions}
         submitButtonText="Save Changes"
+        onCancel={() => router.back()}
       />
     </div>
   );

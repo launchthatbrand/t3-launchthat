@@ -9,10 +9,10 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
-import {
-  contentAccessLogTable,
-  contentAccessRulesTable,
-} from "./contentAccess/schema";
+// import {
+//   contentAccessLogTable,
+//   contentAccessRulesTable,
+// } from "./contentAccess/schema";
 
 // --- Courses Table ---
 export const coursesTable = defineTable({
@@ -262,7 +262,7 @@ export const lmsSchema = {
     courseProgress: courseProgressTable,
     lessonProgress: lessonProgressTable,
     quizResponses: quizResponsesTable,
-    contentAccessRules: contentAccessRulesTable,
-    contentAccessLog: contentAccessLogTable,
+    // contentAccessRules: contentAccessRulesTable,
+    // contentAccessLog: contentAccessLogTable,
   },
 };

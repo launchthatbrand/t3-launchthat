@@ -1,6 +1,12 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { Doc } from "@convex-config/_generated/dataModel";
+import { ColumnDef } from "@tanstack/react-table";
+import { useQuery } from "convex/react";
+import { format } from "date-fns";
 import {
   CheckCircle,
   Clock,
@@ -12,6 +18,10 @@ import {
   TrendingUp,
   XCircle,
 } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -19,22 +29,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
+
 import type {
   EntityAction,
   FilterConfig,
 } from "~/components/shared/EntityList/types";
-import React, { useState } from "react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { ColumnDef } from "@tanstack/react-table";
-import { Doc } from "@convex-config/_generated/dataModel";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
 import { PaymentMethodForm } from "~/components/admin/PaymentMethodForm";
-import { api } from "@convex-config/_generated/api";
-import { format } from "date-fns";
-import { useQuery } from "convex/react";
-import { useRouter } from "next/navigation";
+import { EntityList } from "~/components/shared/EntityList/EntityList";
 
 // Real types from Convex API
 type StoreBalance = Doc<"storeBalances">;
@@ -46,9 +47,10 @@ export default function BalancesPage() {
   const [isAddAccountDialogOpen, setIsAddAccountDialogOpen] = useState(false);
 
   // Get real data from Convex
-  const storeBalance = useQuery(api.ecommerce.getStoreBalance, {});
-  const transfers = useQuery(api.ecommerce.getTransfers, {}) ?? [];
-  const bankAccounts = useQuery(api.ecommerce.getBankAccounts, {}) ?? [];
+  const storeBalance = useQuery(api.ecommerce.queries.getStoreBalance, {});
+  const transfers = useQuery(api.ecommerce.queries.getTransfers, {}) ?? [];
+  const bankAccounts =
+    useQuery(api.ecommerce.queries.getBankAccounts, {}) ?? [];
 
   // Format currency amount
   const formatAmount = (amount: number, currency = "USD") => {

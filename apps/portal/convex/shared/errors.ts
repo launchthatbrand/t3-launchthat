@@ -212,6 +212,7 @@ export function formatError(error: unknown): ErrorResponse {
         typeof data.code === "string" && isValidErrorCode(data.code)
           ? data.code
           : "internal",
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       message: data.message ?? error.message ?? "Unknown error",
       details: data.details,
     };

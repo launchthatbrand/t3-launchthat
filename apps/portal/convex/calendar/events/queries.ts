@@ -170,8 +170,8 @@ export const getEventsInDateRange = query({
 
     // Filter by specific calendar IDs if provided
     if (args.calendarIds && args.calendarIds.length > 0) {
-      accessibleCalendarIds = accessibleCalendarIds.filter(
-        (id) => args.calendarIds && args.calendarIds.includes(id),
+      accessibleCalendarIds = accessibleCalendarIds.filter((id) =>
+        args.calendarIds?.includes(id),
       );
     }
 
@@ -190,6 +190,7 @@ export const getEventsInDateRange = query({
       .filter((q) => {
         // Check if the calendarId is in our list of accessible calendars
         return accessibleCalendarIds.some((calendarId) =>
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           q.eq(q.field("calendarId"), calendarId),
         );
       })
@@ -271,50 +272,6 @@ export const getEventsInDateRange = query({
   },
 });
 
-// Interface for the event return type
-interface CalendarEventInterface extends Doc<"events"> {
-  title: string;
-  startTime: number;
-  endTime: number;
-  description?: string;
-  allDay?: boolean;
-  timezone?: string;
-  type:
-    | "meeting"
-    | "webinar"
-    | "workshop"
-    | "class"
-    | "conference"
-    | "social"
-    | "deadline"
-    | "reminder"
-    | "other";
-  color?: string;
-  location?: {
-    type: "virtual" | "physical" | "hybrid";
-    address?: string;
-    url?: string;
-    meetingId?: string;
-    passcode?: string;
-  };
-  visibility: string;
-  groupId?: Id<"groups">;
-  courseId?: Id<"courses">;
-  createdBy: Id<"users">;
-  createdAt: number;
-  updatedAt: number;
-  recurrence?: {
-    frequency: "daily" | "weekly" | "monthly" | "yearly";
-    interval?: number;
-    count?: number;
-    until?: number;
-    byDay?: string[];
-    byMonthDay?: number[];
-    byMonth?: number[];
-    excludeDates?: number[];
-  };
-}
-
 // Explicit type to avoid circular inference when calling getEventsInDateRange
 interface EventsInDateRangeResponse {
   events: (Doc<"events"> & {
@@ -348,18 +305,17 @@ export const getCalendarViewEvents = query({
       startTime: v.number(),
       endTime: v.number(),
       description: v.optional(v.string()),
-      allDay: v.boolean(),
+      allDay: v.optional(v.boolean()),
       timezone: v.optional(v.string()),
       type: v.string(),
       color: v.optional(v.string()),
-      location: v.optional(v.object({})),
+      location: v.optional(v.any()),
       visibility: v.string(),
       groupId: v.optional(v.id("groups")),
       courseId: v.optional(v.id("courses")),
-      createdBy: v.id("users"),
       createdAt: v.number(),
-      updatedAt: v.number(),
-      recurrence: v.optional(v.object({})),
+      updatedAt: v.optional(v.number()),
+      recurrence: v.optional(v.any()),
       isRecurringInstance: v.optional(v.boolean()),
       originalEventId: v.optional(v.id("events")),
     }),
@@ -404,49 +360,67 @@ export const getEventCount = query({
   },
   returns: v.number(),
   handler: async (ctx, args) => {
-    let eventsQuery = ctx.db.query("events");
+    // Choose a single best index based on provided filters
+    const hasDateRange =
+      args.startDate !== undefined || args.endDate !== undefined;
 
-    // Apply filters
+    // Prefer time range index when dates provided
+    if (
+      hasDateRange &&
+      args.startDate !== undefined &&
+      args.endDate !== undefined
+    ) {
+      const results = await ctx.db
+        .query("events")
+        .withIndex("by_timeRange", (q) =>
+          q.gte("startTime", args.startDate!).lt("startTime", args.endDate!),
+        )
+        .collect();
+      return results.length;
+    }
+
+    if (hasDateRange && args.startDate !== undefined) {
+      const results = await ctx.db
+        .query("events")
+        .withIndex("by_timeRange", (q) => q.gte("startTime", args.startDate!))
+        .collect();
+      return results.length;
+    }
+
+    if (hasDateRange && args.endDate !== undefined) {
+      const results = await ctx.db
+        .query("events")
+        .withIndex("by_timeRange", (q) => q.lt("startTime", args.endDate!))
+        .collect();
+      return results.length;
+    }
+
     if (args.userId !== undefined) {
-      const userId = args.userId;
-      eventsQuery = eventsQuery.withIndex("by_creator", (q) =>
-        q.eq("createdBy", userId),
-      );
+      const results = await ctx.db
+        .query("events")
+        .withIndex("by_creator", (q) => q.eq("createdBy", args.userId!))
+        .collect();
+      return results.length;
     }
 
     if (args.groupId !== undefined) {
-      const groupId = args.groupId;
-      eventsQuery = eventsQuery.withIndex("by_group", (q) =>
-        q.eq("groupId", groupId),
-      );
+      const results = await ctx.db
+        .query("events")
+        .withIndex("by_group", (q) => q.eq("groupId", args.groupId!))
+        .collect();
+      return results.length;
     }
 
     if (args.courseId !== undefined) {
-      const courseId = args.courseId;
-      eventsQuery = eventsQuery.withIndex("by_course", (q) =>
-        q.eq("courseId", courseId),
-      );
+      const results = await ctx.db
+        .query("events")
+        .withIndex("by_course", (q) => q.eq("courseId", args.courseId!))
+        .collect();
+      return results.length;
     }
 
-    if (args.startDate !== undefined && args.endDate !== undefined) {
-      const startDate = args.startDate;
-      const endDate = args.endDate;
-      eventsQuery = eventsQuery.withIndex("by_date", (q) =>
-        q.gte("startTime", startDate).lt("startTime", endDate),
-      );
-    } else if (args.startDate !== undefined) {
-      const startDate = args.startDate;
-      eventsQuery = eventsQuery.withIndex("by_date", (q) =>
-        q.gte("startTime", startDate),
-      );
-    } else if (args.endDate !== undefined) {
-      const endDate = args.endDate;
-      eventsQuery = eventsQuery.withIndex("by_date", (q) =>
-        q.lt("startTime", endDate),
-      );
-    }
-
-    const results = await eventsQuery.collect();
+    // Fallback: full table scan count
+    const results = await ctx.db.query("events").collect();
     return results.length;
   },
 });

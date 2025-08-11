@@ -1,7 +1,7 @@
 import { ActionCache } from "@convex-dev/action-cache";
 import { v } from "convex/values";
 
-import { components, internal } from "../_generated/api";
+import { internal } from "../_generated/api";
 import { action, internalAction } from "../_generated/server";
 import { env } from "../../../portal/src/env";
 
@@ -244,8 +244,8 @@ export const getCachedVimeoVideos = action({
 });
 
 // ActionCache instance for 5 minute caching
-const cache = new ActionCache(components.actionCache, {
-  action: internal.vimeo.actions.fetchVimeoVideos,
-  name: "vimeoVideos",
-  ttl: 1000 * 60 * 1, // 5 minutes
-});
+// const cache = new ActionCache(components.actionCache, {
+//   action: internal.vimeo.actions.fetchVimeoVideos,
+//   name: "vimeoVideos",
+//   ttl: 1000 * 60 * 1, // 5 minutes
+// });

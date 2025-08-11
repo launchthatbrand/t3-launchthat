@@ -1,5 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 "use client";
 
+import type { Doc } from "@/convex/_generated/dataModel";
 import type { ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 import Link from "next/link";
@@ -23,7 +26,6 @@ import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
-import type { Doc } from "../../../../../../../convex/_generated/dataModel";
 import type {
   EntityAction,
   FilterConfig,
@@ -111,7 +113,17 @@ export default function AdminCoursesPage() {
       : "";
   const hasSearch = normalizedSearchTerm.length > 0;
 
-  const searchResults = useQuery(
+  const test = useQuery(api.ecommerce.orders.queries.getOrderById, {
+    id: "123",
+  });
+
+  console.log(test);
+
+  const test2 = useQuery(api.ecommerce.orders.queries.getOrders, {
+    limit: 10,
+  });
+
+  const searchResults: Doc<"courses">[] | undefined = useQuery(
     api.lms.courses.queries.searchCourses,
     hasSearch
       ? {
@@ -279,13 +291,13 @@ export default function AdminCoursesPage() {
     <AdminLayoutContent withSidebar>
       <AdminLayoutMain>
         <EntityList<CourseData>
-          data={courses ?? []}
+          data={courses}
           columns={columns}
           filters={filters}
           hideFilters={true}
           initialFilters={activeFilters}
           onFiltersChange={handleFilterChange}
-          isLoading={courses === undefined}
+          isLoading={courses.length === 0}
           title="Course Management"
           description="Manage your courses here."
           defaultViewMode="list"

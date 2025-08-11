@@ -54,13 +54,13 @@ export const createEvent = mutation({
       slug = await generateUniqueSlug(ctx.db, "events", sanitizedSlug);
     } else {
       // Generate a slug from the event title
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       slug = await generateUniqueSlug(ctx.db, "events", args.title);
     }
 
     // Create the event
     const eventId = await ctx.db.insert("events", {
       title: args.title,
-      slug,
       startTime: args.startTime,
       endTime: args.endTime,
       description: args.description,

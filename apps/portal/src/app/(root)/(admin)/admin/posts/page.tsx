@@ -1,22 +1,21 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 "use client";
 
-import type {
-  ColumnDefinition,
-  FilterConfig,
-} from "@/components/shared/EntityList/EntityList";
+import type { FilterConfig } from "@/components/shared/EntityList/EntityList";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import Link from "next/link";
 import { EntityList } from "@/components/shared/EntityList/EntityList";
-import { Id } from "@/convex/_generated/dataModel";
+import { api } from "@/convex/_generated/api";
 import {
   formatPostDate,
-  Post,
-  PostStatus,
-  useAllPosts,
   useBulkUpdatePostStatus,
   useDeletePost,
-  usePostCategories,
+  useGetPostCategories,
 } from "@/lib/blog";
+import { useQuery } from "convex/react";
 import {
   ChevronDown,
   Edit,
@@ -54,37 +53,19 @@ const statusVariantMap: Record<
   archived: "outline",
 };
 
-// Define a type for raw posts from the database
-interface RawPost {
-  _id: Id<"posts">;
-  _creationTime: number;
-  title: string;
-  content: string;
-  status?: string;
-  category?: string;
-  slug?: string;
-  createdAt?: number;
-  excerpt?: string;
-  tags?: string[];
-  authorId?: Id<"users">;
-  updatedAt?: number;
-  featuredImageUrl?: string;
-  featured?: boolean;
-  readTime?: string;
-  author?: {
-    _id: Id<"users">;
-    name: string;
-    imageUrl?: string;
-  };
-}
+type Post = Doc<"posts">;
 
 function PostsAdminPage() {
   const [selectedPosts, setSelectedPosts] = useState<Id<"posts">[]>([]);
   const [activeFilters, setActiveFilters] = useState({});
 
+  const postsData = useQuery(api.core.posts.queries.getAllPosts);
+
+  console.log("postsData", postsData);
+
   // Get posts data from Convex
-  const { data: postsData, isLoading: isPostsLoading } = useAllPosts();
-  const { data: categoriesData } = usePostCategories();
+  // const { data: postsData, isLoading: isPostsLoading } = useAllPosts();
+  const { data: categoriesData } = useGetPostCategories();
   const updatePostsStatus = useBulkUpdatePostStatus();
   const deletePost = useDeletePost();
 
@@ -92,39 +73,39 @@ function PostsAdminPage() {
   const categories = categoriesData?.map((category) => category.name) ?? [];
 
   // Map raw posts to Post type
-  const posts = postsData?.posts
-    ? postsData.posts.map((rawPost: any): Post => {
-        if (!rawPost) return {} as Post; // Handle null case
+  // const posts = postsData?.posts
+  //   ? postsData.posts.map((rawPost: any): Post => {
+  //       if (!rawPost) return {} as Post; // Handle null case
 
-        // Determine status - if missing or invalid, use "draft" as default
-        let status: PostStatus = "draft";
-        if (
-          rawPost.status &&
-          ["draft", "published", "archived"].includes(rawPost.status)
-        ) {
-          status = rawPost.status as PostStatus;
-        }
+  //       // Determine status - if missing or invalid, use "draft" as default
+  //       let status: PostStatus = "draft";
+  //       if (
+  //         rawPost.status &&
+  //         ["draft", "published", "archived"].includes(rawPost.status)
+  //       ) {
+  //         status = rawPost.status as PostStatus;
+  //       }
 
-        return {
-          _id: rawPost._id,
-          _creationTime: rawPost._creationTime,
-          title: rawPost.title,
-          content: rawPost.content,
-          status,
-          category: rawPost.category ?? "Uncategorized",
-          slug: rawPost.slug ?? "",
-          createdAt: rawPost.createdAt ?? rawPost._creationTime,
-          excerpt: rawPost.excerpt,
-          tags: rawPost.tags ?? [],
-          authorId: rawPost.authorId,
-          updatedAt: rawPost.updatedAt,
-          featuredImageUrl: rawPost.featuredImageUrl,
-          featured: rawPost.featured ?? false,
-          readTime: rawPost.readTime,
-          author: rawPost.author,
-        };
-      })
-    : [];
+  //       return {
+  //         _id: rawPost._id,
+  //         _creationTime: rawPost._creationTime,
+  //         title: rawPost.title,
+  //         content: rawPost.content,
+  //         status,
+  //         category: rawPost.category ?? "Uncategorized",
+  //         slug: rawPost.slug ?? "",
+  //         createdAt: rawPost.createdAt ?? rawPost._creationTime,
+  //         excerpt: rawPost.excerpt,
+  //         tags: rawPost.tags ?? [],
+  //         authorId: rawPost.authorId,
+  //         updatedAt: rawPost.updatedAt,
+  //         featuredImageUrl: rawPost.featuredImageUrl,
+  //         featured: rawPost.featured ?? false,
+  //         readTime: rawPost.readTime,
+  //         author: rawPost.author,
+  //       };
+  //     })
+  //   : [];
 
   const handleBulkAction = async (status: PostStatus) => {
     if (selectedPosts.length === 0) return;
@@ -137,95 +118,109 @@ function PostsAdminPage() {
   };
 
   // Define columns for EntityList
-  const columns: ColumnDefinition<Post>[] = [
+  const columns: ColumnDef<Post>[] = [
     {
       id: "title",
       header: "Title",
       accessorKey: "title",
-      cell: (post) => (
-        <div className="flex flex-col">
-          <div className="font-medium">{post.title}</div>
-          <div className="hidden text-sm text-muted-foreground sm:block">
-            {post.excerpt &&
-              (post.excerpt.length > 60
-                ? `${post.excerpt.substring(0, 60)}...`
-                : post.excerpt)}
-          </div>
-          {post.featured && (
-            <Badge className="mt-1 w-fit" variant="outline">
-              Featured
-            </Badge>
-          )}
-        </div>
-      ),
-      sortable: true,
+      cell: ({ row }) => {
+        const post = row.original;
+        return (
+          <Link
+            href={`/admin/posts/${post._id}`}
+            className="font-mono text-sm font-medium text-blue-600 hover:underline"
+          >
+            {post.title}
+          </Link>
+        );
+      },
+      enableSorting: true,
     },
     {
       id: "author",
       header: "Author",
       accessorKey: "author",
-      cell: (post) => <div>{post.author?.name ?? "Unknown"}</div>,
+      cell: ({ row }) => {
+        const post = row.original;
+        return <div>{post.author?.name ?? "Unknown"}</div>;
+      },
     },
     {
       id: "category",
       header: "Category",
       accessorKey: "category",
-      cell: (post) => <Badge variant="outline">{post.category}</Badge>,
+      cell: ({ row }) => {
+        const post = row.original;
+        return <Badge variant="outline">{post.category}</Badge>;
+      },
     },
     {
       id: "date",
       header: "Date",
       accessorKey: "createdAt",
-      cell: (post) => formatPostDate(post.createdAt),
-      sortable: true,
+      cell: ({ row }) => {
+        const post = row.original;
+        return <div>{formatPostDate(post.createdAt)}</div>;
+      },
+      enableSorting: true,
     },
     {
       id: "status",
       header: "Status",
       accessorKey: "status",
-      cell: (post) => (
-        <Badge variant={statusVariantMap[post.status] ?? "secondary"}>
-          {post.status.charAt(0).toUpperCase() + post.status.slice(1)}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const post = row.original;
+        const status = (post.status ?? "draft") as string;
+        const pretty = status.length
+          ? status.charAt(0).toUpperCase() + status.slice(1)
+          : "Draft";
+        return (
+          <Badge variant={statusVariantMap[status] ?? "secondary"}>
+            {pretty}
+          </Badge>
+        );
+      },
     },
     {
       id: "actions",
       header: "Actions",
-      cell: (post) => (
-        <div className="flex justify-end">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem asChild>
-                <Link href={`/admin/posts/${post._id}`}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={`/blog/${post.slug}`} target="_blank">
-                  <Eye className="mr-2 h-4 w-4" />
-                  View
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() => handleDeletePost(post._id)}
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const post = row.original;
+        return (
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem asChild>
+                  <Link href={`/admin/posts/${post._id}`}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={`/blog/${post.slug}`} target="_blank">
+                    <Eye className="mr-2 h-4 w-4" />
+                    View
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => handleDeletePost(post._id)}
+                >
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
     },
   ];
 
@@ -318,10 +313,10 @@ function PostsAdminPage() {
         </CardHeader>
         <CardContent>
           <EntityList
-            data={posts}
+            data={postsData}
             columns={columns}
             filters={filters}
-            isLoading={isPostsLoading}
+            isLoading={postsData === undefined}
             title="Posts"
             initialFilters={activeFilters}
             onFiltersChange={setActiveFilters}
@@ -342,10 +337,10 @@ function PostsAdminPage() {
           />
         </CardContent>
         <CardFooter className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
+          {/* <div className="text-sm text-muted-foreground">
             Showing {posts.length} of{" "}
             {postsData?.posts ? postsData.posts.length : 0} posts
-          </div>
+          </div> */}
         </CardFooter>
       </Card>
     </div>

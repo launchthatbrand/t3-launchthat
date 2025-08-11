@@ -58,7 +58,8 @@ export const createSearchFilter = (
     return fields.some((field) => {
       const fieldValue =
         item[field] !== undefined && item[field] !== null
-          ? String(item[field])
+          ? // eslint-disable-next-line @typescript-eslint/no-base-to-string
+            String(item[field])
           : "";
       const normalizedField = normalizeSearchText(fieldValue);
 
@@ -97,7 +98,8 @@ export const scoreSearchResult = (
       fieldName = fieldDef;
     } else {
       fieldName = fieldDef.field;
-      weight = fieldDef.weight !== undefined ? fieldDef.weight : 1.0;
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      weight = fieldDef.weight ?? 1.0;
     }
 
     const fieldValue =

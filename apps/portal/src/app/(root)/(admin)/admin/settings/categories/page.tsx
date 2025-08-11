@@ -1,10 +1,11 @@
 "use client";
 
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import React, { useState } from "react";
 import { EntityList } from "@/components/shared/EntityList/EntityList";
 import { api } from "@/convex/_generated/api";
-import { Doc, Id } from "@/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
+import { toast } from "sonner";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
@@ -21,10 +22,16 @@ const POST_TYPE_OPTIONS = [
 ];
 
 const CategoriesPage = () => {
-  const categories = useQuery(api.categories.queries.listCategories, {});
-  const createCategory = useMutation(api.categories.mutations.createCategory);
-  const deleteCategory = useMutation(api.categories.mutations.deleteCategory); // You need to implement this mutation in Convex
-  const updateCategory = useMutation(api.categories.mutations.updateCategory); // You need to implement this mutation in Convex
+  const categories = useQuery(api.core.categories.queries.getCategories, {});
+  const createCategory = useMutation(
+    api.core.categories.mutations.createCategory,
+  );
+  const deleteCategory = useMutation(
+    api.core.categories.mutations.deleteCategory,
+  ); // You need to implement this mutation in Convex
+  const updateCategory = useMutation(
+    api.core.categories.mutations.updateCategory,
+  ); // You need to implement this mutation in Convex
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -48,8 +55,8 @@ const CategoriesPage = () => {
   const handleEdit = (item: Doc<"categories">) => {
     setForm({
       name: item.name,
-      description: item.description || "",
-      postTypes: item.postTypes || [],
+      description: item.description ?? "",
+      postTypes: item.postTypes ?? [],
     });
     setEditId(item._id);
     setError(null);
@@ -63,9 +70,9 @@ const CategoriesPage = () => {
       return;
     setDeleteLoadingId(item._id);
     try {
-      await deleteCategory({ categoryId: item._id });
-    } catch (err: any) {
-      alert(err.message || "Failed to delete category");
+      await deleteCategory({ id: item._id });
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to delete category");
     } finally {
       setDeleteLoadingId(null);
     }
@@ -93,7 +100,7 @@ const CategoriesPage = () => {
     try {
       if (editId) {
         await updateCategory({
-          categoryId: editId,
+          id: editId,
           name: form.name,
           description: form.description || undefined,
           postTypes: form.postTypes,
@@ -106,8 +113,9 @@ const CategoriesPage = () => {
         });
       }
       setOpen(false);
-    } catch (err: any) {
-      setError(err.message || "Failed to save category");
+      toast.success("Category saved successfully");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save category");
     } finally {
       setLoading(false);
     }
@@ -125,7 +133,7 @@ const CategoriesPage = () => {
       accessorKey: "description",
       cell: (item: Doc<"categories">) => (
         <span className="max-w-xs truncate">
-          {item.description || (
+          {item.description ?? (
             <span className="text-muted-foreground">N/A</span>
           )}
         </span>
@@ -137,9 +145,7 @@ const CategoriesPage = () => {
       accessorKey: "postTypes",
       cell: (item: Doc<"categories">) => (
         <div className="flex flex-wrap gap-1">
-          {item.postTypes.map((type) => (
-            <Badge key={type}>{type}</Badge>
-          ))}
+          {item.postTypes?.map((type) => <Badge key={type}>{type}</Badge>)}
         </div>
       ),
     },
@@ -187,7 +193,6 @@ const CategoriesPage = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               name="name"
-              label="Name"
               placeholder="Category name"
               value={form.name}
               onChange={handleChange}
@@ -195,7 +200,6 @@ const CategoriesPage = () => {
             />
             <Textarea
               name="description"
-              label="Description"
               placeholder="Description (optional)"
               value={form.description}
               onChange={handleChange}
@@ -208,7 +212,7 @@ const CategoriesPage = () => {
                     key={type}
                     type="button"
                     variant={
-                      form.postTypes.includes(type) ? "default" : "outline"
+                      form.postTypes.includes(type) ? "primary" : "outline"
                     }
                     className="px-3 py-1"
                     onClick={() => handlePostTypeToggle(type)}
