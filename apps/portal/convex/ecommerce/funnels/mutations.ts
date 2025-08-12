@@ -1,13 +1,13 @@
-import { v } from "convex/values";
-
-import type { Id } from "../../_generated/dataModel";
-import { mutation } from "../../_generated/server";
 import {
   requireAdmin,
   requireAuthentication,
 } from "../../lib/permissions/requirePermission";
+
+import type { Id } from "../../_generated/dataModel";
 import { getAuthenticatedUser } from "../../lib/permissions/userAuth";
 import { getFunnelCheckoutBySlugInternal } from "./queries";
+import { mutation } from "../../_generated/server";
+import { v } from "convex/values";
 
 /**
  * Create a funnel session for a funnel slug
@@ -477,6 +477,7 @@ export const updateFunnelStep = mutation({
         checkoutLayout: v.optional(
           v.union(v.literal("one_step"), v.literal("two_step")),
         ),
+        uiPosition: v.optional(v.object({ x: v.number(), y: v.number() })),
       }),
     ),
   },

@@ -1,10 +1,10 @@
+import type { Doc, Id } from "../../_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../../_generated/server";
+
+import { query } from "../../_generated/server";
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { v } from "convex/values";
-
-import type { Doc, Id } from "../../_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "../../_generated/server";
-import { query } from "../../_generated/server";
 
 /**
  * Helper: fetch the funnelCheckout step for a funnel
@@ -205,11 +205,15 @@ export const getFunnelEdges = query({
       .query("funnelEdges")
       .withIndex("by_funnelId", (q) => q.eq("funnelId", args.funnelId))
       .collect();
-    return edges.map((e) => ({
-      _id: e._id as Id<"funnelEdges">,
-      source: e.source as Id<"funnelSteps">,
-      target: e.target as Id<"funnelSteps">,
-      label: e.label,
-    }));
+    return edges
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((e) => ({
+        _id: e._id as Id<"funnelEdges">,
+        source: e.source as Id<"funnelSteps">,
+        target: e.target as Id<"funnelSteps">,
+        label: e.label,
+        order: e.order ?? 0,
+        branch: e.branch,
+      }));
   },
 });

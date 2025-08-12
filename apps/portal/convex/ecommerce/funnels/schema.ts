@@ -52,6 +52,7 @@ export const funnelsSchema = {
         allowCoupons: v.optional(v.boolean()),
         successUrl: v.optional(v.string()),
         cancelUrl: v.optional(v.string()),
+        uiPosition: v.optional(v.object({ x: v.number(), y: v.number() })),
       }),
     ),
     createdAt: v.number(),
@@ -94,7 +95,8 @@ export const funnelsSchema = {
 
     // Status
     status: v.string(), // active | completed | abandoned | expired
-    currentStep: v.string(), // information | shipping | payment | completed
+    currentStep: v.string(), // information | shipping | payment | completed (within checkout)
+    currentStepId: v.optional(v.id("funnelSteps")), // pointer to current funnel step
 
     // System
     userId: v.optional(v.id("users")),
@@ -104,4 +106,18 @@ export const funnelsSchema = {
   })
     .index("by_funnelId", ["funnelId"]) // For fetching sessions of a funnel
     .index("by_status", ["status"]),
+
+  // Add the missing edges table used by queries/mutations
+  funnelEdges: defineTable({
+    funnelId: v.id("funnels"),
+    source: v.id("funnelSteps"),
+    target: v.id("funnelSteps"),
+    label: v.optional(v.string()),
+    order: v.optional(v.number()), // lower first
+    branch: v.optional(v.string()), // e.g., default | accept | decline
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_funnelId", ["funnelId"])
+    .index("by_source", ["source"]),
 };
