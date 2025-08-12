@@ -135,6 +135,11 @@ export const navItems = [
         icon: BookOpen,
       },
       {
+        title: "Funnels",
+        url: "/admin/store/funnels",
+        icon: BookOpen,
+      },
+      {
         title: "Categories",
         url: "/admin/store/products/categories",
         icon: BookOpen,

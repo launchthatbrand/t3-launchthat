@@ -1,8 +1,10 @@
 "use client";
 
-import type { Id } from "@/convex/_generated/dataModel";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 // Import the AddToCartButton component
 import { AddToCartButton } from "@/components/cart";
 import { api } from "@/convex/_generated/api";
@@ -52,6 +54,8 @@ interface CategoryWithChildren {
   children: CategoryWithChildren[];
 }
 
+type Product = Doc<"products">;
+
 export default function StoreFrontPage() {
   const [_activeFilters, setActiveFilters] = useState<
     Record<string, FilterValue>
@@ -60,17 +64,18 @@ export default function StoreFrontPage() {
     useState<Id<"productCategories"> | null>(null);
 
   // Fetch products - only get visible and active products
-  const products = useQuery(api.ecommerce.queries.listProducts, {
+  const products = useQuery(api.ecommerce.products.queries.listProducts, {
     isVisible: true,
-    status: "active",
-    categoryId: selectedCategoryId ?? undefined,
+    // categoryId: selectedCategoryId ?? undefined,
   });
 
+  console.log("products", products);
+
   // Fetch categories for the sidebar - only get visible categories
-  const categories = useQuery(api.ecommerce.queries.getCategoryTree, {
-    isVisible: true,
-    isActive: true,
-  });
+  // const categories = useQuery(api.ecommerce.queries.getCategoryTree, {
+  //   isVisible: true,
+  //   isActive: true,
+  // });
 
   // Format price from cents to dollars for display
   const formatPrice = (price: number) => {
@@ -78,49 +83,58 @@ export default function StoreFrontPage() {
   };
 
   // Prepare categories for filter options
-  const categoryOptions = (categories as CategoryWithChildren[]).flatMap(
-    (category) => {
-      // Start with the top-level category
-      const options = [{ label: category.name, value: category._id }];
+  // const categoryOptions = (categories as CategoryWithChildren[]).flatMap(
+  //   (category) => {
+  //     // Start with the top-level category
+  //     const options = [{ label: category.name, value: category._id }];
 
-      // Add child categories (flat structure for simplicity)
-      category.children.forEach((child) => {
-        options.push({
-          label: `${category.name} > ${child.name}`,
-          value: child._id,
-        });
-      });
+  //     // Add child categories (flat structure for simplicity)
+  //     category.children.forEach((child) => {
+  //       options.push({
+  //         label: `${category.name} > ${child.name}`,
+  //         value: child._id,
+  //       });
+  //     });
 
-      return options;
-    },
-  );
+  //     return options;
+  //   },
+  // );
 
   // Define column configurations for EntityList
-  const columns: ColumnDefinition<EnhancedProduct>[] = [
+  const columns: ColumnDef<Product>[] = [
     {
       id: "name",
       header: "Product",
       accessorKey: "name",
-      sortable: true,
-      cell: (product) => (
-        <div className="flex items-center gap-3">
-          <div className="relative h-10 w-10 overflow-hidden rounded-md">
-            {product.images.length > 0 ? (
-              <Image
-                src={product.images[0]?.url ?? ""}
-                alt={product.images[0]?.alt ?? product.name}
-                fill
-                className="object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-500">
-                No image
-              </div>
-            )}
+      enableSorting: true,
+      // sortable: true,
+      cell: ({ row }) => {
+        const product = row.original;
+        return (
+          <div className="flex items-center gap-3">
+            <div className="relative h-10 w-10 overflow-hidden rounded-md">
+              {product.images.length > 0 ? (
+                <Image
+                  src={product.images[0]?.url ?? ""}
+                  alt={product.images[0]?.alt ?? product.name}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-500">
+                  No image
+                </div>
+              )}
+            </div>
+            <Link
+              href={`/store/product/${product._id}`}
+              className="font-medium"
+            >
+              {product.name}
+            </Link>
           </div>
-          <div className="font-medium">{product.name}</div>
-        </div>
-      ),
+        );
+      },
     },
     {
       id: "price",
@@ -171,13 +185,13 @@ export default function StoreFrontPage() {
       type: "number",
       field: "price",
     },
-    {
-      id: "category",
-      label: "Category",
-      type: "select",
-      field: "primaryCategoryId",
-      options: categoryOptions,
-    },
+    // {
+    //   id: "category",
+    //   label: "Category",
+    //   type: "select",
+    //   field: "primaryCategoryId",
+    //   options: categoryOptions,
+    // },
   ];
 
   // Define entity actions for the EntityList

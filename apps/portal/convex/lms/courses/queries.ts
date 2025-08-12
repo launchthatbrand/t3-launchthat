@@ -1,3 +1,4 @@
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 
 import type { Doc } from "../../_generated/dataModel";
@@ -7,8 +8,8 @@ import type { Doc } from "../../_generated/dataModel";
  * Contains all read operations for the courses feature.
  */
 import { query } from "../../_generated/server";
+
 // Import shared validators
-import { paginationOptsValidator } from "../../shared/validators";
 
 /**
  * Get a single course by ID
@@ -43,53 +44,58 @@ export const getCourseById = query({
 // /**
 //  * List all courses with pagination
 //  */
-// export const listCourses = query({
-//   args: {
-//     paginationOpts: paginationOptsValidator,
-//     organizationId: v.optional(v.id("organizations")),
-//     isPublished: v.optional(v.boolean()),
-//   },
-//   returns: v.any(), // Use any for pagination result to avoid validation mismatches
-//   handler: async (ctx, args) => {
-//     if (args.organizationId && args.isPublished !== undefined) {
-//       // Use the combined index when both filters are present
-//       return await ctx.db
-//         .query("courses")
-//         .withIndex("by_organization_published", (q) =>
-//           q
-//             .eq("organizationId", args.organizationId)
-//             .eq("isPublished", args.isPublished),
-//         )
-//         .paginate(args.paginationOpts);
-//     } else if (args.organizationId) {
-//       // Use organization index and filter by isPublished if needed
-//       let query = ctx.db
-//         .query("courses")
-//         .withIndex("by_organization", (q) =>
-//           q.eq("organizationId", args.organizationId),
-//         );
+export const listCourses = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    organizationId: v.optional(v.id("organizations")),
+    isPublished: v.optional(v.boolean()),
+    productId: v.optional(v.id("products")),
+  },
+  returns: v.any(), // Use any for pagination result to avoid validation mismatches
+  handler: async (ctx, args) => {
+    // Query by product directly when provided
+    if (args.productId) {
+      return await ctx.db
+        .query("courses")
+        .withIndex("by_productId", (q) => q.eq("productId", args.productId!))
+        .paginate(args.paginationOpts);
+    }
 
-//       if (args.isPublished !== undefined) {
-//         query = query.filter((q) =>
-//           q.eq(q.field("isPublished"), args.isPublished),
-//         );
-//       }
+    if (args.organizationId && args.isPublished !== undefined) {
+      // Use the combined index when both filters are present
+      return await ctx.db
+        .query("courses")
+        .withIndex("by_organization_published", (q) =>
+          q
+            .eq("organizationId", args.organizationId!)
+            .eq("isPublished", args.isPublished!),
+        )
+        .paginate(args.paginationOpts);
+    } else if (args.organizationId) {
+      // Use organization index and filter by isPublished if needed
+      let q = ctx.db
+        .query("courses")
+        .withIndex("by_organization", (q) =>
+          q.eq("organizationId", args.organizationId!),
+        );
 
-//       return await query.paginate(args.paginationOpts);
-//     } else {
-//       // No organization filter, use table scan with filter if needed
-//       let query = ctx.db.query("courses");
+      if (args.isPublished !== undefined) {
+        q = q.filter((q) => q.eq(q.field("isPublished"), args.isPublished!));
+      }
 
-//       if (args.isPublished !== undefined) {
-//         query = query.filter((q) =>
-//           q.eq(q.field("isPublished"), args.isPublished),
-//         );
-//       }
+      return await q.paginate(args.paginationOpts);
+    } else {
+      // No organization filter, use table scan with filter if needed
+      let q = ctx.db.query("courses");
 
-//       return await query.paginate(args.paginationOpts);
-//     }
-//   },
-// });
+      if (args.isPublished !== undefined) {
+        q = q.filter((q) => q.eq(q.field("isPublished"), args.isPublished!));
+      }
+
+      return await q.paginate(args.paginationOpts);
+    }
+  },
+});
 
 // /**
 //  * Search courses by title

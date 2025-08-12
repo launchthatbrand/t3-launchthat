@@ -66,9 +66,10 @@ import type * as ecommerce_chargebacks_evidence from "../ecommerce/chargebacks/e
 import type * as ecommerce_chargebacks_mockData from "../ecommerce/chargebacks/mockData.js";
 import type * as ecommerce_chargebacks_mutations from "../ecommerce/chargebacks/mutations.js";
 import type * as ecommerce_chargebacks_queries from "../ecommerce/chargebacks/queries.js";
-import type * as ecommerce_checkout_customCheckouts from "../ecommerce/checkout/customCheckouts.js";
 import type * as ecommerce_checkout_mutations from "../ecommerce/checkout/mutations.js";
 import type * as ecommerce_checkout_queries from "../ecommerce/checkout/queries.js";
+import type * as ecommerce_funnels_mutations from "../ecommerce/funnels/mutations.js";
+import type * as ecommerce_funnels_queries from "../ecommerce/funnels/queries.js";
 import type * as ecommerce_lib_index from "../ecommerce/lib/index.js";
 import type * as ecommerce_lib_permissions from "../ecommerce/lib/permissions.js";
 import type * as ecommerce_lib_pricing from "../ecommerce/lib/pricing.js";
@@ -249,9 +250,10 @@ declare const fullApi: ApiFromModules<{
   "ecommerce/chargebacks/mockData": typeof ecommerce_chargebacks_mockData;
   "ecommerce/chargebacks/mutations": typeof ecommerce_chargebacks_mutations;
   "ecommerce/chargebacks/queries": typeof ecommerce_chargebacks_queries;
-  "ecommerce/checkout/customCheckouts": typeof ecommerce_checkout_customCheckouts;
   "ecommerce/checkout/mutations": typeof ecommerce_checkout_mutations;
   "ecommerce/checkout/queries": typeof ecommerce_checkout_queries;
+  "ecommerce/funnels/mutations": typeof ecommerce_funnels_mutations;
+  "ecommerce/funnels/queries": typeof ecommerce_funnels_queries;
   "ecommerce/lib/index": typeof ecommerce_lib_index;
   "ecommerce/lib/permissions": typeof ecommerce_lib_permissions;
   "ecommerce/lib/pricing": typeof ecommerce_lib_pricing;

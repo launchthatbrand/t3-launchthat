@@ -1,5 +1,10 @@
 "use client";
 
+import type { Doc, Id } from "@convex-config/_generated/dataModel";
+import React from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { formatPrice } from "@convex-config/ecommerce/lib";
 import {
   ArrowRight,
   MoveRight,
@@ -9,6 +14,8 @@ import {
   ShoppingCart,
   Trash,
 } from "lucide-react";
+
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -16,42 +23,52 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-
-import { Button } from "@acme/ui/button";
-import Image from "next/image";
-import Link from "next/link";
-import React from "react";
 import { Separator } from "@acme/ui/separator";
 import { Skeleton } from "@acme/ui/skeleton";
-import { formatPrice } from "@convex-config/ecommerce/lib";
+
 import { useCart } from "~/hooks/useCart";
 
 export default function CartPage() {
-  const {
-    cartItems,
-    savedItems,
-    cartSummary,
-    removeFromCart,
-    updateCartItem,
-    clearCart,
-    isAuthenticated,
-  } = useCart();
+  const cartCtx = useCart();
+  const cartItems: Doc<"cartItems">[] = (cartCtx.cartItems ??
+    []) as Doc<"cartItems">[];
+  const savedItems: Doc<"cartItems">[] = (cartCtx.savedItems ??
+    []) as Doc<"cartItems">[];
+  const cartSummary =
+    cartCtx.cartSummary ??
+    ({
+      itemCount: 0,
+      subtotal: 0,
+      estimatedTax: 0,
+      estimatedShipping: 0,
+      updatedAt: Date.now(),
+    } as const);
 
-  const isCartLoading = cartItems === undefined;
+  console.log("CART ITEMS", cartItems);
+  const { removeFromCart, updateCartItem, clearCart } = cartCtx;
+
+  const isCartLoading = cartCtx.cartItems === undefined;
 
   // Handle quantity updates
-  const handleQuantityChange = async (itemId: string, quantity: number) => {
+  const handleQuantityChange = async (
+    itemId: Id<"cartItems">,
+    quantity: number,
+  ) => {
     if (quantity <= 0) {
-      await removeFromCart(itemId as any);
+      await removeFromCart(itemId);
     } else {
-      await updateCartItem(itemId as any, { quantity });
+      await updateCartItem(itemId, { quantity });
     }
   };
 
   // Handle item removal
-  const handleRemoveItem = async (itemId: string) => {
-    await removeFromCart(itemId as any);
+  const handleRemoveItem = async (itemId: Id<"cartItems">) => {
+    await removeFromCart(itemId);
   };
+
+  // Handle save for later / move to cart (stubs)
+  const handleSaveForLater = async (_itemId: Id<"cartItems">) => {};
+  const handleMoveToCart = async (_itemId: Id<"cartItems">) => {};
 
   // Handle clear cart
   const handleClearCart = async () => {
@@ -224,7 +241,7 @@ export default function CartPage() {
 }
 
 interface CartItemCardProps {
-  item: any;
+  item: Doc<"cartItems">;
   onQuantityChange: (quantity: number) => void;
   onRemove: () => void;
   onSaveForLater: () => void;
@@ -306,7 +323,7 @@ function CartItemCard({
 }
 
 interface SavedItemCardProps {
-  item: any;
+  item: Doc<"cartItems">;
   onRemove: () => void;
   onMoveToCart: () => void;
 }

@@ -1,6 +1,7 @@
 import { defineSchema } from "convex/server";
 
 import calendarSchema from "./calendar/schema";
+import { optionsSchema } from "./core/options/schema";
 import { postsSchema } from "./core/schema/postsSchema";
 import ecommerceSchema from "./ecommerce/schema";
 import { lmsSchema } from "./lms/schema";
@@ -38,4 +39,7 @@ export default defineSchema({
 
   // Posts
   ...postsSchema.tables,
+
+  // Core options (site/store settings)
+  ...optionsSchema.tables,
 });

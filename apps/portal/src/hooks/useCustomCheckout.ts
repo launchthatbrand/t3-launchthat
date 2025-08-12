@@ -6,34 +6,36 @@ import { toast } from "sonner";
 import { useConvexMutation, useConvexQuery } from "./convex";
 
 /**
- * Hook for working with custom checkouts
+ * Hook for working with funnels (custom checkouts)
  */
 export function useCustomCheckout() {
   const router = useRouter();
 
   // Mutations
   const createCheckoutSession = useConvexMutation(
-    api.ecommerce.checkout.customCheckouts.createCustomCheckoutSession,
+    api.ecommerce.funnels.mutations.createCustomCheckoutSession,
   );
   const updateCheckoutInfo = useConvexMutation(
-    api.ecommerce.checkout.customCheckouts.updateCustomCheckoutSessionInfo,
+    api.ecommerce.funnels.mutations.updateCustomCheckoutSessionInfo,
   );
   const completeCheckout = useConvexMutation(
-    api.ecommerce.checkout.customCheckouts.completeCustomCheckoutSession,
+    api.ecommerce.funnels.mutations.completeCustomCheckoutSession,
   );
 
   /**
-   * Fetch a custom checkout by slug
+   * Fetch a funnel by slug
    */
   const getCheckoutBySlug = useCallback((slug: string) => {
     return useConvexQuery(
-      api.ecommerce.checkout.customCheckouts.getCustomCheckoutBySlug,
-      { slug },
+      api.ecommerce.funnels.queries.getCustomCheckoutBySlug,
+      {
+        slug,
+      },
     );
   }, []);
 
   /**
-   * Initialize a custom checkout session
+   * Initialize a funnel checkout session
    */
   const initializeCheckout = useCallback(
     async (

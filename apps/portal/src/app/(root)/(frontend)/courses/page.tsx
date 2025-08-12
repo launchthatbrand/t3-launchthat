@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { api } from "@convex-config/_generated/api";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery, useQuery } from "convex/react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
@@ -11,12 +11,18 @@ import { Input } from "@acme/ui/input";
 export default function FrontendCoursesPage() {
   const [search, setSearch] = useState("");
 
-  const courses = useQuery(api.lms.courses.queries.listPublishedCourses, {
-    searchTitle: search.length ? search : undefined,
-  });
+  const courses = usePaginatedQuery(
+    api.lms.courses.queries.listCourses,
+    {
+      isPublished: true,
+    },
+    {
+      initialNumItems: 20,
+    },
+  );
 
-  if (courses === undefined) return <div>Loading courses...</div>;
-  if (courses.length === 0) return <div>No courses available.</div>;
+  if (courses.results === undefined) return <div>Loading courses...</div>;
+  if (courses.results.length === 0) return <div>No courses available.</div>;
 
   return (
     <div className="container py-8">
@@ -29,7 +35,7 @@ export default function FrontendCoursesPage() {
         />
       </div>
       <div className="grid gap-6 md:grid-cols-3">
-        {courses.map((course) => (
+        {courses.results?.map((course) => (
           <Card key={course._id} className="transition-shadow hover:shadow-lg">
             <Link href={`/courses/${course._id}`} className="block h-full">
               <CardHeader>

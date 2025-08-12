@@ -2,19 +2,18 @@ import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 /**
- * Custom Checkouts Schema
- *
- * This schema defines custom checkout configurations that can be created
- * via the CMS. Each checkout can have its own set of products and field requirements.
+ * Deprecated: Custom Checkouts Schema
+ * This file previously held checkout-related tables. The funnels system
+ * supersedes it. Keeping for reference if needed, but not included in aggregates.
  */
 
-export const checkoutsSchema = {
+export const legacyCheckoutSchema = {
   /**
    * Custom checkout configurations
    */
-  customCheckouts: defineTable({
+  funnels: defineTable({
     // Reference to the content type
-    contentTypeId: v.id("contentTypes"),
+    contentTypeId: v.optional(v.id("contentTypes")),
 
     // Basic info
     title: v.string(),

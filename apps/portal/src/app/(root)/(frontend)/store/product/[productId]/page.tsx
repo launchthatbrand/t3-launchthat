@@ -1,28 +1,45 @@
 "use client";
 
+import type { Id } from "@convex-config/_generated/dataModel";
 import React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
-import { Id } from "@convex-config/_generated/dataModel";
-import { useQuery } from "convex/react";
+import { useSessionId } from "convex-helpers/react/sessions";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { ArrowLeft, Package, ShoppingCart } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
+import { useConvexUser } from "~/hooks/useConvexUser";
+
 export default function ProductPage() {
   const params = useParams();
   const productId = params.productId as string;
 
+  const [sessionId] = useSessionId();
+  const { convexId: userId } = useConvexUser();
+
   // Get product information
-  const product = useQuery(api.ecommerce.queries.getProduct, {
+  const product = useQuery(api.ecommerce.products.queries.getProductById, {
     productId: productId as Id<"products">,
   });
 
   // Get linked courses for this product
-  const linkedCourses = useQuery(api.lms.courses.queries.listCourses, {});
+  const linkedCourses = usePaginatedQuery(
+    api.lms.courses.queries.listCourses,
+    {
+      productId: productId as Id<"products">,
+      paginationOpts: { cursor: null, numItems: 20 },
+    },
+    { initialNumItems: 20 },
+  );
+
+  // Add to cart mutation
+  const addToCart = useMutation(api.ecommerce.cart.mutations.addToCart);
 
   if (product === undefined) {
     return (
@@ -58,7 +75,35 @@ export default function ProductPage() {
 
   // Find courses linked to this product
   const relatedCourses =
-    linkedCourses?.filter((course) => course.productId === productId) ?? [];
+    linkedCourses.results?.filter((course) => course.productId === productId) ??
+    [];
+
+  const getGuestId = (): string | undefined => {
+    // Prefer Convex session id
+    if (sessionId) return sessionId;
+    if (typeof window === "undefined") return undefined;
+    // Fallback to localStorage to preserve carts if convex session isn't available yet
+    let gid = localStorage.getItem("guest_session_id") ?? undefined;
+    if (!gid) {
+      gid = crypto.randomUUID();
+      localStorage.setItem("guest_session_id", gid);
+    }
+    return gid;
+  };
+
+  const handlePurchase = async () => {
+    try {
+      await addToCart({
+        productId: product._id as Id<"products">,
+        quantity: 1,
+        userId: userId || undefined,
+        guestSessionId: userId ? undefined : getGuestId(),
+      });
+      toast.success("Added to cart");
+    } catch {
+      toast.error("Failed to add to cart");
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -135,7 +180,7 @@ export default function ProductPage() {
                 <p className="text-sm text-gray-600">One-time payment</p>
               </div>
 
-              <Button className="w-full" size="lg">
+              <Button className="w-full" size="lg" onClick={handlePurchase}>
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 Purchase Now
               </Button>

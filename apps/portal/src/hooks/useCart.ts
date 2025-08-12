@@ -1,11 +1,11 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
-
 import type { Id } from "@convex-config/_generated/dataModel";
 import { api } from "@convex-config/_generated/api";
-import { useConvexUser } from "./useConvexUser";
 import { useSessionId } from "convex-helpers/react/sessions";
+import { useMutation, useQuery } from "convex/react";
+
+import { useConvexUser } from "./useConvexUser";
 
 /**
  * Enhanced cart hook using Convex session management
@@ -22,38 +22,24 @@ export const useCart = () => {
       ? { guestSessionId: sessionId }
       : "skip";
 
-  const cart = useQuery(api.ecommerce.cart.index.getCart, queryArgs);
+  const cart = useQuery(api.ecommerce.cart.queries.getCart, queryArgs);
 
-  // Mutations for authenticated users
-  const addToCartMutation = useMutation(api.ecommerce.cart.index.addToCart);
+  // Mutations
+  const addToCartMutation = useMutation(api.ecommerce.cart.mutations.addToCart);
   const removeFromCartMutation = useMutation(
-    api.ecommerce.cart.index.removeFromCart,
+    api.ecommerce.cart.mutations.removeFromCart,
   );
   const updateCartItemMutation = useMutation(
-    api.ecommerce.cart.index.updateCartItem,
+    api.ecommerce.cart.mutations.updateCartItemQuantity,
   );
-  const clearCartMutation = useMutation(api.ecommerce.cart.index.clearCart);
-
-  // Mutations for guest users
-  const addToGuestCartMutation = useMutation(
-    api.ecommerce.cart.index.addToGuestCart,
-  );
-  const removeFromGuestCartMutation = useMutation(
-    api.ecommerce.cart.index.removeFromGuestCart,
-  );
-  const updateGuestCartItemMutation = useMutation(
-    api.ecommerce.cart.index.updateGuestCartItem,
-  );
-  const clearGuestCartMutation = useMutation(
-    api.ecommerce.cart.index.clearGuestCart,
-  );
+  const clearCartMutation = useMutation(api.ecommerce.cart.mutations.clearCart);
 
   // Helper functions
   const addToCart = async (productId: Id<"products">, quantity = 1) => {
     if (userId) {
       return await addToCartMutation({ userId, productId, quantity });
     } else if (sessionId) {
-      return await addToGuestCartMutation({
+      return await addToCartMutation({
         guestSessionId: sessionId,
         productId,
         quantity,
@@ -67,7 +53,7 @@ export const useCart = () => {
     if (userId) {
       return await removeFromCartMutation({ userId, cartItemId });
     } else if (sessionId) {
-      return await removeFromGuestCartMutation({
+      return await removeFromCartMutation({
         guestSessionId: sessionId,
         cartItemId,
       });
@@ -81,12 +67,16 @@ export const useCart = () => {
     updates: { quantity?: number },
   ) => {
     if (userId) {
-      return await updateCartItemMutation({ userId, cartItemId, updates });
-    } else if (sessionId) {
-      return await updateGuestCartItemMutation({
-        guestSessionId: sessionId,
+      return await updateCartItemMutation({
         cartItemId,
-        updates,
+        quantity: updates.quantity ?? 1,
+        userId,
+      });
+    } else if (sessionId) {
+      return await updateCartItemMutation({
+        cartItemId,
+        quantity: updates.quantity ?? 1,
+        guestSessionId: sessionId,
       });
     } else {
       throw new Error("Unable to update cart item: no session available");
@@ -97,7 +87,7 @@ export const useCart = () => {
     if (userId) {
       return await clearCartMutation({ userId });
     } else if (sessionId) {
-      return await clearGuestCartMutation({ guestSessionId: sessionId });
+      return await clearCartMutation({ guestSessionId: sessionId });
     } else {
       throw new Error("Unable to clear cart: no session available");
     }

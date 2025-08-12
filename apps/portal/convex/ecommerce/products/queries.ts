@@ -58,7 +58,7 @@ export const listProducts = query({
 /**
  * Get a single product by ID
  */
-export const getProduct = query({
+export const getProductById = query({
   args: { productId: v.id("products") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.productId);

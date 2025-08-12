@@ -32,6 +32,7 @@ export const coursesTable = defineTable({
 })
   .index("by_organization", ["organizationId"])
   .index("by_organization_published", ["organizationId", "isPublished"])
+  .index("by_productId", ["productId"]) // Added to support querying courses by productId
   // Add a search index on the title field
   .searchIndex("search_title", {
     searchField: "title",

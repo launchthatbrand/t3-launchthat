@@ -23,7 +23,7 @@ import {
   FormMessage,
 } from "@acme/ui/form";
 import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
+// import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -277,7 +277,7 @@ export function PostForm({
                   <FormLabel>Tags (comma separated)</FormLabel>
                   <FormControl>
                     <Input
-                      value={(field.value ?? []).join(", ")}
+                      value={(field.value || []).join(", ")}
                       onChange={(e) =>
                         field.onChange(
                           e.target.value

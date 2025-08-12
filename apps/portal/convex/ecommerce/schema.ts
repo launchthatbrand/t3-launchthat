@@ -4,8 +4,8 @@ import { balancesSchema } from "./balances/schema";
 import { cartSchema } from "./cart/schema";
 import { categoriesSchema } from "./categories/schema";
 import { chargebacksSchemaExport as chargebacksSchema } from "./chargebacks/schema";
-import { checkoutsSchema } from "./checkout/schema";
 import { couponsSchema } from "./coupons/schema";
+import { funnelsSchema } from "./funnels/schema";
 import { ordersSchema } from "./orders/schema";
 import { paymentMethodsSchema } from "./payments/schema";
 import { productReviewsSchema } from "./productReviews/schema";
@@ -30,7 +30,7 @@ export default defineSchema({
   ...shippingMethodsSchema,
   ...taxRatesSchema,
   ...couponsSchema,
-  ...checkoutsSchema,
+  ...funnelsSchema,
   ...chargebacksSchema,
   ...balancesSchema,
 });

@@ -68,6 +68,7 @@
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
     "@trpc/tanstack-react-query": "catalog:",
+    "@xyflow/react": "^12.8.2",
     "authorizenet": "^1.0.9",
     "canvas": "^2.11.2",
     "class-variance-authority": "^0.7.1",
