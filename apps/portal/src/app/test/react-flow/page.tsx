@@ -44,11 +44,15 @@ import {
 import { stratify, tree } from "d3-hierarchy";
 
 import { FunnelCheckoutForm } from "../../(root)/(admin)/admin/store/funnels/[id]/steps/_components/FunnelCheckoutForm";
+import { GearIcon } from "@radix-ui/react-icons";
 import type { Id } from "@/convex/_generated/dataModel";
+import NodeWithContextMenu from "./NodeWithContextMenu";
+import PlusEdgeWithPopover from "./PlusEdgeWithPopover";
 
 const NODE_W = 180;
 const NODE_H = 40;
 const VERTICAL_GAP = 50;
+const BRANCH_X_OFFSET = 220;
 
 // Scenario config model
 type LinearKind = "start" | "checkout" | "order_confirmation" | "upsell";
@@ -58,6 +62,7 @@ type RouterMode = "ab" | "basic";
 interface RouterRouteConfig {
   id: string;
   percentage?: number; // used when mode === "ab"
+  nodes: NodeConfig[]; // route-local sequence
 }
 interface RouterConfig {
   mode: RouterMode;
@@ -147,34 +152,10 @@ interface ToolbarData {
   kind?: RouterKind;
 }
 
-function NodeWithToolbar({ id, data, selected: _selected }: NodeProps) {
-  const d = data as unknown as ToolbarData;
-  const isFirst = id === "1";
-  return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <div className="rounded border bg-white px-3 py-2 shadow-sm transition-opacity transition-transform duration-300 ease-out">
-          <div className="text-sm">{d.label}</div>
-          {!isFirst && <Handle type="target" position={Position.Top} />}
-          <Handle type="source" position={Position.Bottom} />
-        </div>
-      </ContextMenuTrigger>
-      <ContextMenuContent>
-        {d.onAddRoute && (
-          <>
-            <ContextMenuItem onClick={() => d.onAddRoute?.(String(id))}>
-              Add route
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-          </>
-        )}
-
-        <ContextMenuItem onClick={() => d.onDelete?.(String(id))}>
-          Delete
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
-  );
+function NodeWithToolbar(props: NodeProps) {
+  // Delegate to extracted component
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return <NodeWithContextMenu {...(props as any)} />;
 }
 
 interface CreateData {
@@ -244,89 +225,7 @@ function CreateNode({ id, data }: NodeProps) {
 }
 
 function PlusEdge(props: EdgeProps) {
-  const {
-    id,
-    source,
-    target,
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-    markerEnd,
-    data,
-  } = props;
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-  });
-  const d = data as unknown as {
-    onInsert?: (src: string, tgt: string, kind: RouterKind) => void;
-  };
-
-  const handlePick = (kind: RouterKind) => {
-    d.onInsert?.(String(source), String(target), kind);
-  };
-
-  return (
-    <>
-      <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} />
-      <EdgeLabelRenderer>
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className="rounded-sm border bg-white px-2 py-1 text-xs shadow"
-              style={{
-                position: "absolute",
-                transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-                pointerEvents: "all",
-              }}
-            >
-              +
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-56 p-2">
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                className="xy-theme__button"
-                onClick={() => handlePick("checkout")}
-              >
-                Checkout
-              </button>
-              <button
-                type="button"
-                className="xy-theme__button"
-                onClick={() => handlePick("order_confirmation")}
-              >
-                Order Confirmation
-              </button>
-              <button
-                type="button"
-                className="xy-theme__button"
-                onClick={() => handlePick("upsell")}
-              >
-                Upsell
-              </button>
-              <button
-                type="button"
-                className="xy-theme__button"
-                onClick={() => handlePick("router")}
-              >
-                Router
-              </button>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </EdgeLabelRenderer>
-    </>
-  );
+  return <PlusEdgeWithPopover {...props} />;
 }
 
 const initialNodesBase: Node[] = [
@@ -397,6 +296,47 @@ export default function ReactFlowPage() {
   const [_scenario, setScenario] = React.useState<ScenarioConfig>({
     nodes: [],
   });
+  const rebuildRef = useRef<((s: ScenarioConfig) => void) | null>(null);
+  const routeSettingsRef = useRef<
+    ((routerId: string, routeId: string, percentage: number) => void) | null
+  >(null);
+  const suppressRouterClickRef = useRef<Set<string>>(new Set());
+
+  const attachInsert = useCallback(
+    (es: Edge[]) =>
+      es.map((e) => ({
+        ...e,
+        data: {
+          ...(e.data ?? {}),
+          onInsert: (src: string, tgt: string, kind: RouterKind) =>
+            insertRef.current?.(src, tgt, kind),
+        },
+      })),
+    [insertRef],
+  );
+  const setRoutePercentage = useCallback(
+    (routerId: string, routeId: string, percentage: number) => {
+      setScenario((prev) => {
+        const idx = prev.nodes.findIndex((n) => n.id === routerId);
+        if (idx < 0) return prev;
+        const router = prev.nodes[idx];
+        if (!router.router) return prev;
+        const routes = router.router.routes.map((r) =>
+          r.id === routeId ? { ...r, percentage } : r,
+        );
+        const updated: ScenarioConfig = {
+          nodes: prev.nodes.map((n, i) =>
+            i === idx
+              ? { ...router, router: { ...router.router!, routes } }
+              : n,
+          ),
+        };
+        setTimeout(() => rebuildRef.current?.(updated), 0);
+        return updated;
+      });
+    },
+    [setScenario],
+  );
 
   // sheet state
   const [sheetOpen, setSheetOpen] = React.useState(false);
@@ -414,9 +354,13 @@ export default function ReactFlowPage() {
   const rebuildFromScenario = useCallback(
     (s: ScenarioConfig) => {
       const ordered = [...s.nodes].sort((a, b) => a.position - b.position);
-      const newNodes: Node[] = ordered.map((cfg, idx) => {
+      const newNodes: Node[] = [];
+      const newEdges: Edge[] = [];
+
+      // Place main chain nodes
+      ordered.forEach((cfg, idx) => {
         const isRouter = cfg.kind === "router";
-        return {
+        newNodes.push({
           id: cfg.id,
           type: "node-with-toolbar",
           position: { x: 0, y: idx * (NODE_H + VERTICAL_GAP) },
@@ -434,45 +378,154 @@ export default function ReactFlowPage() {
               },
           width: NODE_W,
           height: NODE_H,
-        } as Node;
-      });
-      // trailing create node
-      const lastId =
-        ordered.length > 0 ? ordered[ordered.length - 1].id : undefined;
-      const createId = `create-${lastId ?? "root"}`;
-      newNodes.push({
-        id: createId,
-        type: "createNode",
-        position: { x: 0, y: ordered.length * (NODE_H + VERTICAL_GAP) },
-        data: { prevId: lastId, onCreate: handleCreate },
-        width: NODE_W,
-        height: NODE_H,
-        style: { opacity: 1 },
-      } as Node);
+        } as Node);
 
-      const newEdges: Edge[] = [];
-      for (let i = 0; i < ordered.length - 1; i++) {
-        const aNode = ordered[i];
-        const bNode = ordered[i + 1];
-        if (!aNode || !bNode) continue;
+        // connect previous main node
+        if (idx > 0) {
+          const prev = ordered[idx - 1];
+          if (prev && prev.kind !== "router") {
+            newEdges.push({
+              id: `e${prev.id}-${cfg.id}`,
+              type: "plus",
+              source: prev.id,
+              target: cfg.id,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              data: {
+                onInsert: (src: string, tgt: string, kind: RouterKind) =>
+                  insertRef.current?.(src, tgt, kind),
+              },
+            });
+          }
+        }
+
+        // Render router branches side-by-side
+        if (isRouter && cfg.router) {
+          const routes = cfg.router.routes;
+          const baseY = (idx + 1) * (NODE_H + VERTICAL_GAP);
+          routes.forEach((route, rIdx) => {
+            const x = (rIdx - (routes.length - 1) / 2) * BRANCH_X_OFFSET;
+            // render route nodes
+            if (route.nodes.length > 0) {
+              route.nodes.forEach((rn, j) => {
+                const y = baseY + j * (NODE_H + VERTICAL_GAP);
+                newNodes.push({
+                  id: rn.id,
+                  type: "node-with-toolbar",
+                  position: { x, y },
+                  data: {
+                    label: rn.label,
+                    kind: rn.kind,
+                    onDelete: (rid: string) => removeNode(rid),
+                  },
+                  width: NODE_W,
+                  height: NODE_H,
+                } as Node);
+                if (j === 0) {
+                  // edge: router -> first route node
+                  newEdges.push({
+                    id: `e${cfg.id}-${rn.id}`,
+                    type: "plus",
+                    source: cfg.id,
+                    target: rn.id,
+                    markerEnd: { type: MarkerType.ArrowClosed },
+                    data: {
+                      isRouteConfigEdge: true,
+                      routerId: cfg.id,
+                      routeId: route.id,
+                      setRoutePercentage: (
+                        rid: string,
+                        rtid: string,
+                        pct: number,
+                      ) => routeSettingsRef.current?.(rid, rtid, pct),
+                    },
+                  });
+                } else {
+                  const prevRouteNode = route.nodes[j - 1];
+                  if (prevRouteNode) {
+                    newEdges.push({
+                      id: `e${prevRouteNode.id}-${rn.id}`,
+                      type: "plus",
+                      source: prevRouteNode.id,
+                      target: rn.id,
+                      markerEnd: { type: MarkerType.ArrowClosed },
+                      data: {
+                        onInsert: (
+                          _s: string,
+                          _t: string,
+                          kind: RouterKind,
+                        ) => {
+                          insertRouteNode(cfg.id, route.id, j, kind);
+                        },
+                      },
+                    });
+                  }
+                }
+              });
+            }
+            // trailing create for each route
+            const createRouteId = `create-route-${cfg.id}-${route.id}`;
+            const yCreate =
+              baseY + route.nodes.length * (NODE_H + VERTICAL_GAP);
+            newNodes.push({
+              id: createRouteId,
+              type: "createNode",
+              position: { x, y: yCreate },
+              data: {
+                prevId: `${cfg.id}:${route.id}`,
+                onCreate: (key: string, _createId: string, kind: RouterKind) =>
+                  handleCreateRoute(key, kind),
+              },
+              width: NODE_W,
+              height: NODE_H,
+              style: { opacity: 1 },
+            } as Node);
+            const srcForCreate =
+              route.nodes.length > 0
+                ? route.nodes[route.nodes.length - 1].id
+                : cfg.id;
+            newEdges.push({
+              id: `e${srcForCreate}-${createRouteId}`,
+              type: "plus",
+              source: srcForCreate,
+              target: createRouteId,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              data: {
+                onInsert: (_s: string, _t: string, kind: RouterKind) =>
+                  insertRouteNode(cfg.id, route.id, route.nodes.length, kind),
+              },
+            });
+          });
+        }
+      });
+
+      // trailing create node for main chain
+      const last = ordered.length > 0 ? ordered[ordered.length - 1] : undefined;
+      if (!last) {
+        const createId = `create-root`;
+        newNodes.push({
+          id: createId,
+          type: "createNode",
+          position: { x: 0, y: 0 },
+          data: { prevId: undefined, onCreate: handleCreate },
+          width: NODE_W,
+          height: NODE_H,
+          style: { opacity: 1 },
+        } as Node);
+      } else if (last.kind !== "router") {
+        const createId = `create-${last.id}`;
+        newNodes.push({
+          id: createId,
+          type: "createNode",
+          position: { x: 0, y: ordered.length * (NODE_H + VERTICAL_GAP) },
+          data: { prevId: last.id, onCreate: handleCreate },
+          width: NODE_W,
+          height: NODE_H,
+          style: { opacity: 1 },
+        } as Node);
         newEdges.push({
-          id: `e${aNode.id}-${bNode.id}`,
+          id: `e${last.id}-${createId}`,
           type: "plus",
-          source: aNode.id,
-          target: bNode.id,
-          markerEnd: { type: MarkerType.ArrowClosed },
-          data: {
-            onInsert: (src: string, tgt: string, kind: RouterKind) =>
-              insertRef.current?.(src, tgt, kind),
-          },
-        });
-      }
-      // last -> create (only if there is at least one node)
-      if (lastId) {
-        newEdges.push({
-          id: `e${lastId}-${createId}`,
-          type: "plus",
-          source: lastId,
+          source: last.id,
           target: createId,
           markerEnd: { type: MarkerType.ArrowClosed },
           data: {
@@ -493,17 +546,84 @@ export default function ReactFlowPage() {
     [setNodes, setEdges],
   );
 
-  const attachInsert = useCallback(
-    (es: Edge[]) =>
-      es.map((e) => ({
-        ...e,
-        data: {
-          ...(e.data ?? {}),
-          onInsert: (src: string, tgt: string, kind: RouterKind) =>
-            insertRef.current?.(src, tgt, kind),
-        },
-      })),
-    [insertRef],
+  useEffect(() => {
+    rebuildRef.current = rebuildFromScenario;
+  }, [rebuildFromScenario]);
+
+  useEffect(() => {
+    routeSettingsRef.current = setRoutePercentage;
+  }, [setRoutePercentage]);
+
+  const insertRouteNode = useCallback(
+    (routerId: string, routeId: string, insertAt: number, kind: RouterKind) => {
+      setScenario((prev) => {
+        const idx = prev.nodes.findIndex((n) => n.id === routerId);
+        if (idx < 0) return prev;
+        const routerNode = prev.nodes[idx];
+        if (!routerNode || routerNode.kind !== "router" || !routerNode.router)
+          return prev;
+        const routes = routerNode.router.routes.map((r) =>
+          r.id === routeId
+            ? {
+                ...r,
+                nodes: [
+                  ...r.nodes.slice(0, insertAt),
+                  {
+                    id: `r-${routeId}-${Date.now()}`,
+                    kind: kind === "router" ? "router" : (kind as LinearKind),
+                    label:
+                      kind === "checkout"
+                        ? "Checkout"
+                        : kind === "order_confirmation"
+                          ? "Order Confirmation"
+                          : kind === "upsell"
+                            ? "Upsell"
+                            : "Router",
+                    position: insertAt,
+                    router:
+                      kind === "router"
+                        ? {
+                            mode: "ab",
+                            routes: [
+                              {
+                                id: `sub-${Date.now()}-A`,
+                                percentage: 50,
+                                nodes: [],
+                              },
+                              {
+                                id: `sub-${Date.now()}-B`,
+                                percentage: 50,
+                                nodes: [],
+                              },
+                            ],
+                          }
+                        : null,
+                  },
+                  ...r.nodes.slice(insertAt),
+                ],
+              }
+            : r,
+        );
+        const updated: ScenarioConfig = {
+          nodes: prev.nodes.map((n, i) =>
+            i === idx
+              ? { ...routerNode, router: { ...routerNode.router!, routes } }
+              : n,
+          ),
+        };
+        setTimeout(() => rebuildFromScenario(updated), 0);
+        return updated;
+      });
+    },
+    [rebuildFromScenario],
+  );
+
+  const handleCreateRoute = useCallback(
+    (routeKey: string, kind: RouterKind) => {
+      const [routerId, routeId] = routeKey.split(":");
+      insertRouteNode(routerId, routeId, Number.POSITIVE_INFINITY, kind);
+    },
+    [insertRouteNode],
   );
 
   const removeNode = useCallback(
@@ -556,8 +676,8 @@ export default function ReactFlowPage() {
               ? {
                   mode: "ab",
                   routes: [
-                    { id: `${newId}-A`, percentage: 50 },
-                    { id: `${newId}-B`, percentage: 50 },
+                    { id: `${newId}-A`, percentage: 50, nodes: [] },
+                    { id: `${newId}-B`, percentage: 50, nodes: [] },
                   ],
                 }
               : null,
@@ -574,6 +694,7 @@ export default function ReactFlowPage() {
         setTimeout(() => rebuildFromScenario(updated), 0);
         return updated;
       });
+      if (kind === "router") suppressRouterClickRef.current.add(newId);
     },
     [rebuildFromScenario, setScenario],
   );
@@ -600,8 +721,8 @@ export default function ReactFlowPage() {
               ? {
                   mode: "ab",
                   routes: [
-                    { id: `${createId}-A`, percentage: 50 },
-                    { id: `${createId}-B`, percentage: 50 },
+                    { id: `${createId}-A`, percentage: 50, nodes: [] },
+                    { id: `${createId}-B`, percentage: 50, nodes: [] },
                   ],
                 }
               : null,
@@ -610,6 +731,7 @@ export default function ReactFlowPage() {
         setTimeout(() => rebuildFromScenario(updated), 0);
         return updated;
       });
+      if (kind === "router") suppressRouterClickRef.current.add(createId);
     },
     [rebuildFromScenario, setScenario],
   );
@@ -637,6 +759,7 @@ export default function ReactFlowPage() {
                   current.mode === "ab"
                     ? Math.floor(100 / (current.routes.length + 1))
                     : undefined,
+                nodes: [],
               },
             ],
           },
@@ -706,6 +829,8 @@ export default function ReactFlowPage() {
         onNodeClick={(_, node) => {
           const kd = (node.data as { kind?: RouterKind } | undefined)?.kind;
           if (!kd) return; // create node or unknown type → let popover handle
+          // Do not auto-add a route on router click; use context menu instead
+          if (kd === "router") return;
           setEditingNodeId(String(node.id));
           setEditingKind(kd);
           setSheetOpen(true);
