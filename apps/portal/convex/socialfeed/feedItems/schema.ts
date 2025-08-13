@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Define the Feed Items table
@@ -59,8 +59,6 @@ export const feedItemsTable = defineTable({
   });
 
 // Export the schema
-export const feedItemsSchema = defineSchema({
+export const feedItemsSchema = {
   feedItems: feedItemsTable,
-});
-
-export default feedItemsSchema;
+};

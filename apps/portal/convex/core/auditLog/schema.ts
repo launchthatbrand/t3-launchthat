@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export const auditLogsTable = defineTable({
@@ -16,6 +16,6 @@ export const auditLogsTable = defineTable({
   .index("by_userId", ["userId"])
   .index("by_timestamp", ["timestamp"]);
 
-export const auditLogSchema = defineSchema({
+export const auditLogSchema = {
   auditLogs: auditLogsTable,
-});
+};

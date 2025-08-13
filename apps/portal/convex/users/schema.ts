@@ -6,6 +6,8 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
+import { userSettingsTable } from "./settings/schema";
+
 // Address object definition (for user addresses)
 const addressObject = v.object({
   fullName: v.string(),
@@ -126,8 +128,7 @@ export const usersTable = defineTable({
   .index("by_created_at", ["createdAt"]);
 
 // Export for use in main schema.ts
-export const schema = {
-  tables: {
-    users: usersTable,
-  },
+export const usersSchema = {
+  users: usersTable,
+  userSettings: userSettingsTable,
 };

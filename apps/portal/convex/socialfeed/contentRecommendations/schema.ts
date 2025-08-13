@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Define the Content Recommendations table
@@ -44,8 +44,6 @@ export const contentRecommendationsTable = defineTable({
   .index("by_unseen", ["userId", "seen"]); // For finding recommendations the user hasn't seen
 
 // Export the schema
-export const contentRecommendationsSchema = defineSchema({
+export const contentRecommendationsSchema = {
   contentRecommendations: contentRecommendationsTable,
-});
-
-export default contentRecommendationsSchema;
+};

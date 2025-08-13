@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Table for Vimeo videos that have been synced into the portal media library
@@ -19,6 +19,6 @@ export const vimeoVideosTable = defineTable({
   .index("by_videoId", ["videoId"]) // to quickly upsert based on Vimeo id
   .index("by_connection", ["connectionId"]);
 
-export const vimeoSchema = defineSchema({
+export const vimeoSchema = {
   vimeoVideos: vimeoVideosTable,
-});
+};

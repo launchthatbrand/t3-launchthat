@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Define validator for hashtag responses
@@ -56,8 +56,6 @@ export const hashtagsTable = defineTable({
   .index("by_recentEngagement", ["recentEngagement"]); // For trending topics
 
 // Export the schema
-export const hashtagsSchema = defineSchema({
+export const hashtagsSchema = {
   hashtags: hashtagsTable,
-});
-
-export default hashtagsSchema;
+};

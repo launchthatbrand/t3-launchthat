@@ -97,8 +97,11 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
   const mediaItems = useQuery(
     api.media.queries.listMediaItemsWithUrl,
     selectedCategory && selectedCategory !== "all" && activeCategory
-      ? { categoryId: activeCategory._id }
-      : {},
+      ? {
+          paginationOpts: { numItems: 50, cursor: null },
+          categoryIds: [activeCategory._id],
+        }
+      : { paginationOpts: { numItems: 50, cursor: null } },
   );
 
   // Suppress potential type generation mismatch using any cast
@@ -186,8 +189,9 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
   const isVimeoTab = filters.category === "vimeo";
   console.log("[MediaPage] isVimeoTab", isVimeoTab);
-  const entityListData = isVimeoTab ? (vimeoVideos ?? []) : (mediaItems ?? []);
-  console.log("[MediaPage] entityListData", entityListData);
+  const dataPage = mediaItems ? mediaItems.page : undefined;
+  const items: MediaItem[] = (dataPage as unknown as MediaItem[]) ?? [];
+  console.log("[MediaPage] entityListData", items);
 
   const vimeoTabHook = {
     id: "vimeo",
@@ -220,7 +224,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
       ) : (
         <Tabs value={selectedCategory ?? "all"} onValueChange={handleTabChange}>
           <EntityList
-            data={entityListData}
+            data={items}
             columns={columns}
             className="mt-6"
             defaultViewMode="grid"

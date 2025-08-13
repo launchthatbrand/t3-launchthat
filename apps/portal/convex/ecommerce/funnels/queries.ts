@@ -1,10 +1,8 @@
+import { v } from "convex/values";
+
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
-
 import { query } from "../../_generated/server";
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { v } from "convex/values";
 
 /**
  * Helper: fetch the funnelCheckout step for a funnel
@@ -13,10 +11,10 @@ async function getFunnelCheckoutStep(
   ctx: QueryCtx | MutationCtx,
   funnelId: Id<"funnels">,
 ): Promise<Doc<"funnelSteps"> | null> {
-  const steps = (await ctx.db
+  const steps = await ctx.db
     .query("funnelSteps")
     .withIndex("by_funnelId", (q) => q.eq("funnelId", funnelId))
-    .collect()) as Doc<"funnelSteps">[];
+    .collect();
   const checkoutStep = steps
     .filter((s) => s.type === "funnelCheckout")
     .sort((a, b) => a.position - b.position)[0];
@@ -32,10 +30,10 @@ export async function getFunnelCheckoutBySlugInternal(
   slug: string,
 ) {
   // First, try funnel slug
-  let funnel = (await ctx.db
+  let funnel = await ctx.db
     .query("funnels")
     .withIndex("by_slug", (q) => q.eq("slug", slug))
-    .first()) as Doc<"funnels"> | null;
+    .first();
 
   let checkoutStep: Doc<"funnelSteps"> | null = null;
 
@@ -43,10 +41,10 @@ export async function getFunnelCheckoutBySlugInternal(
     checkoutStep = await getFunnelCheckoutStep(ctx, funnel._id);
   } else {
     // Fallback: try step slug → resolve its parent funnel
-    const step = (await ctx.db
+    const step = await ctx.db
       .query("funnelSteps")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
-      .first()) as Doc<"funnelSteps"> | null;
+      .first();
 
     if (!step) return null;
     funnel = await ctx.db.get(step.funnelId);
@@ -57,7 +55,6 @@ export async function getFunnelCheckoutBySlugInternal(
         : await getFunnelCheckoutStep(ctx, step.funnelId);
   }
 
-  if (!funnel) return null;
   if (!checkoutStep) return null;
 
   const productIds: Id<"products">[] = checkoutStep.config?.productIds ?? [];
@@ -68,13 +65,13 @@ export async function getFunnelCheckoutBySlugInternal(
     description?: string;
   }[] = [];
   for (const productId of productIds) {
-    const product = (await ctx.db.get(productId)) as Doc<"products"> | null;
+    const product = await ctx.db.get(productId);
     if (product && product.status === "active") {
       products.push({
         _id: product._id,
         price: product.price,
-        name: product.name as any,
-        description: product.description as any,
+        name: product.name,
+        description: product.description,
       });
     }
   }
@@ -134,15 +131,16 @@ export const getAllFunnels = query({
   handler: async (ctx, args) => {
     let funnels: Doc<"funnels">[] = [];
     if (args.status) {
-      funnels = (await ctx.db
+      funnels = await ctx.db
         .query("funnels")
-        .withIndex("by_status", (qi) => qi.eq("status", args.status as string))
-        .collect()) as Doc<"funnels">[];
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        .withIndex("by_status", (qi) => qi.eq("status", args.status!))
+        .collect();
     } else {
-      funnels = (await ctx.db.query("funnels").collect()) as Doc<"funnels">[];
+      funnels = await ctx.db.query("funnels").collect();
     }
 
-    const result: Array<{
+    const result: {
       _id: Id<"funnels">;
       title: string;
       slug: string;
@@ -152,7 +150,7 @@ export const getAllFunnels = query({
       collectName?: boolean;
       collectPhone?: boolean;
       collectShippingAddress?: boolean;
-    }> = [];
+    }[] = [];
 
     for (const f of funnels) {
       const co = await getFunnelCheckoutStep(ctx, f._id);

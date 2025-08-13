@@ -7,7 +7,7 @@ import { query } from "../../_generated/server";
  */
 export const getPaymentMethods = query({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     return await ctx.db.query("paymentMethods").collect();
   },
 });
@@ -19,7 +19,7 @@ export const getPayment = query({
   args: {
     paymentId: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: (ctx, args) => {
     // Simplified placeholder
     return {
       paymentId: args.paymentId,

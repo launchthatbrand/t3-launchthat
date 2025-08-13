@@ -1,50 +1,51 @@
 import { defineSchema } from "convex/server";
 
-import calendarSchema from "./calendar/schema";
-import { optionsSchema } from "./core/options/schema";
-import { postsSchema } from "./core/schema/postsSchema";
-import ecommerceSchema from "./ecommerce/schema";
+import { calendarSchema } from "./calendar/schema";
+import { postsSchema } from "./core/posts/schema";
+import { coreSchema } from "./core/schema";
+import { ecommerceSchema } from "./ecommerce/schema";
+import { integrationsSchema } from "./integrations/schema";
 // Add integrations schema
-import integrationsSchema from "./integrations/schema";
+// import { integrationsSchema } from "./integrations/schema";
 import { lmsSchema } from "./lms/schema";
 import { notificationsSchema } from "./notifications/schema";
-import socialFeedSchema from "./socialfeed/schema";
+import { socialFeedSchema } from "./socialfeed/schema";
 import { tasksSchema } from "./tasks/schema";
-import { schema as usersSchema } from "./users/schema";
+import { usersSchema } from "./users/schema";
 import { vimeoSchema } from "./vimeo/schema";
 
 // Define the main schema that includes all tables
 export default defineSchema({
   // Calendar tables
-  ...calendarSchema.tables,
+  ...calendarSchema,
 
   // Ecommerce tables
-  ...ecommerceSchema.tables,
+  ...ecommerceSchema,
+
+  // Integrations tables
+  ...integrationsSchema,
 
   // LMS tables
-  ...lmsSchema.tables,
+  ...lmsSchema,
 
   // Notifications tables
-  ...notificationsSchema.tables,
+  ...notificationsSchema,
 
   // Social Feed tables
-  ...socialFeedSchema.tables,
+  ...socialFeedSchema,
 
   // Users tables
-  ...usersSchema.tables,
+  ...usersSchema,
 
   // Vimeo videos
-  ...vimeoSchema.tables,
+  ...vimeoSchema,
 
   // Tasks
   ...tasksSchema,
 
   // Posts
-  ...postsSchema.tables,
+  ...postsSchema,
 
   // Core options (site/store settings)
-  ...optionsSchema.tables,
-
-  // Integrations (apps, connections, scenarios, nodes, nodeConnections, logs)
-  ...integrationsSchema.tables,
+  ...coreSchema,
 });

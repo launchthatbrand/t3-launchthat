@@ -13,6 +13,12 @@ export default function CreateNode({ id, data }: NodeProps) {
   const handlePick = (kind: RouterKind) => {
     if (typeof d.prevId === "string") d.onCreate?.(d.prevId, String(id), kind);
   };
+  const kinds: RouterKind[] = d.allowedKinds ?? [
+    "checkout",
+    "order_confirmation",
+    "upsell",
+    "router",
+  ];
   return (
     <div className="rounded border-2 border-dashed bg-white px-3 py-2 text-sm shadow-sm transition-opacity transition-transform duration-300 ease-out">
       <div className="flex items-center gap-2">
@@ -30,34 +36,42 @@ export default function CreateNode({ id, data }: NodeProps) {
           </PopoverTrigger>
           <PopoverContent align="start" className="w-56 p-2">
             <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                className="xy-theme__button"
-                onClick={() => handlePick("checkout")}
-              >
-                Checkout
-              </button>
-              <button
-                type="button"
-                className="xy-theme__button"
-                onClick={() => handlePick("order_confirmation")}
-              >
-                Order Confirmation
-              </button>
-              <button
-                type="button"
-                className="xy-theme__button"
-                onClick={() => handlePick("upsell")}
-              >
-                Upsell
-              </button>
-              <button
-                type="button"
-                className="xy-theme__button"
-                onClick={() => handlePick("router")}
-              >
-                Router
-              </button>
+              {kinds.includes("checkout") && (
+                <button
+                  type="button"
+                  className="xy-theme__button"
+                  onClick={() => handlePick("checkout")}
+                >
+                  Checkout
+                </button>
+              )}
+              {kinds.includes("order_confirmation") && (
+                <button
+                  type="button"
+                  className="xy-theme__button"
+                  onClick={() => handlePick("order_confirmation")}
+                >
+                  Order Confirmation
+                </button>
+              )}
+              {kinds.includes("upsell") && (
+                <button
+                  type="button"
+                  className="xy-theme__button"
+                  onClick={() => handlePick("upsell")}
+                >
+                  Upsell
+                </button>
+              )}
+              {kinds.includes("router") && (
+                <button
+                  type="button"
+                  className="xy-theme__button"
+                  onClick={() => handlePick("router")}
+                >
+                  Router
+                </button>
+              )}
             </div>
           </PopoverContent>
         </Popover>

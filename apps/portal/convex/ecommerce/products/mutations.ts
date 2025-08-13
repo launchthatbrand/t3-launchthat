@@ -208,8 +208,6 @@ export const updateProduct = mutation({
       updates.stockStatus = updateData.stockStatus;
     if (updateData.stockQuantity !== undefined)
       updates.stockQuantity = updateData.stockQuantity;
-    if (updateData.primaryCategoryId !== undefined)
-      updates.primaryCategoryId = updateData.primaryCategoryId;
     if (updateData.categoryIds !== undefined)
       updates.categoryIds = updateData.categoryIds;
     if (updateData.status !== undefined) {

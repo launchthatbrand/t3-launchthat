@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Define the Trending Content metrics table
@@ -40,8 +40,6 @@ export const trendingContentTable = defineTable({
   .index("by_lastUpdated", ["lastUpdated"]); // For finding recently updated trending metrics
 
 // Export the schema
-export const trendingContentSchema = defineSchema({
+export const trendingContentSchema = {
   trendingContent: trendingContentTable,
-});
-
-export default trendingContentSchema;
+};

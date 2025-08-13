@@ -9,7 +9,7 @@
         "testStrategy": "1. Unit test schema validation with various combinations of scenarioType and slug\n2. Test uniqueness constraint on slug field\n3. Verify existing scenarios can be queried without errors after schema change\n4. Test that default value for scenarioType works correctly",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -20,7 +20,7 @@
         "testStrategy": "1. Unit test schema validation with isSystem flag\n2. Test that existing nodes can be queried without errors after schema change\n3. Verify default values work correctly\n4. Test that lockedProperties array can store and retrieve property names correctly",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -31,7 +31,7 @@
         "testStrategy": "1. Unit test schema validation with the new fields\n2. Test that existing connections can be queried without errors\n3. Verify that the new fields can be properly set and retrieved\n4. Test edge cases like empty strings and zero values",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -46,7 +46,7 @@
           2,
           3
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -61,7 +61,7 @@
           2,
           4
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -76,7 +76,7 @@
           4,
           5
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -89,7 +89,7 @@
         "dependencies": [
           3
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -103,7 +103,7 @@
           1,
           4
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -120,7 +120,7 @@
           4,
           8
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -176,8 +176,223 @@
     ],
     "metadata": {
       "created": "2025-08-13T05:59:43.527Z",
-      "updated": "2025-08-13T05:59:43.527Z",
+      "updated": "2025-08-13T06:15:07.310Z",
       "description": "Tasks for master context"
+    }
+  },
+  "feature-convex-remediation": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Consolidate HTTP Routers",
+        "description": "Remove the duplicate HTTP router from core/media/http.ts and ensure all routes are properly registered in the main http.ts file.",
+        "details": "1. Open `convex/core/media/http.ts`\n2. Remove the `httpRouter()` instantiation and default export\n3. Export only the handler functions directly\n4. Ensure all handlers have proper names and are exported individually\n5. Open `convex/http.ts`\n6. Import all handlers from `core/media/http.ts`\n7. Register each handler with the appropriate route path\n8. Verify route paths match the previous configuration\n9. Test that all routes are accessible through the main router",
+        "testStrategy": "1. Manually verify through the Convex dashboard that all HTTP routes are correctly registered\n2. Test each endpoint to ensure it responds with the correct CORS headers\n3. Compare route paths before and after changes to ensure consistency\n4. Verify no duplicate routes exist in the router",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Standardize Generated Imports",
+        "description": "Replace all non-standard @convex-config/_generated/* imports with the standard ./_generated/* pattern across all Convex files.",
+        "details": "1. Use a search tool to find all instances of `@convex-config/_generated` in the `apps/portal/convex` directory\n2. For each file with non-standard imports:\n   a. Replace `@convex-config/_generated/api` with `./_generated/api`\n   b. Replace `@convex-config/_generated/server` with `./_generated/server`\n   c. Replace any other `@convex-config/_generated/*` paths with `./_generated/*`\n3. Verify imports resolve correctly after changes\n4. Run TypeScript compiler to ensure no type errors are introduced",
+        "testStrategy": "1. Run TypeScript compiler to verify imports resolve correctly\n2. Run ESLint to check for any import-related issues\n3. Verify the application builds successfully\n4. Manually test affected functionality to ensure imports are working properly",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Remove Unused Imports",
+        "description": "Identify and remove unused imports across all Convex files, particularly the 'api' import in core/media/queries.ts.",
+        "details": "1. Run ESLint with the 'unused-imports' rule enabled\n2. Focus on `core/media/queries.ts` to remove the unused `api` import\n3. For each file with unused imports:\n   a. Remove the import if it's completely unused\n   b. Modify the import to include only used components\n4. Preserve function validators and other necessary imports\n5. Re-run ESLint to verify all unused imports are removed",
+        "testStrategy": "1. Run ESLint to verify no unused import warnings remain\n2. Verify the application builds successfully\n3. Run tests to ensure functionality is preserved\n4. Manually test affected components to ensure they work as expected",
+        "priority": "medium",
+        "dependencies": [
+          2
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Add Pagination Support to List Endpoints",
+        "description": "Modify list endpoints to accept pagination options and return paginated results instead of using .collect() for unbounded arrays.",
+        "details": "1. Create or identify the `paginationOptsValidator` in a common utilities file\n2. For each list endpoint that uses `.collect()`:\n   a. Add `paginationOpts` to the function arguments using the validator\n   b. Replace `.collect()` with `.paginate(args.paginationOpts)`\n   c. Update the return type to include `{page: T[], isDone: boolean, continueCursor: string | null}`\n3. Example implementation:\n```typescript\n// Before\nexport const listItems = query(async (ctx) => {\n  return await ctx.db.query(\"items\").collect();\n});\n\n// After\nexport const listItems = query({\n  args: { paginationOpts: paginationOptsValidator },\n  handler: async (ctx, args) => {\n    return await ctx.db.query(\"items\").paginate(args.paginationOpts);\n  }\n});\n```",
+        "testStrategy": "1. Test each modified endpoint with various pagination parameters\n2. Verify the returned structure includes `page`, `isDone`, and `continueCursor`\n3. Test pagination by following cursors through multiple pages\n4. Verify all items are eventually returned when paginating through all pages\n5. Test edge cases like empty collections and single-page results",
+        "priority": "high",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Add Required Indexes to Schema",
+        "description": "Identify and add necessary indexes in schema.ts to support indexed queries and eliminate table scans.",
+        "details": "1. Review all queries that will be modified to use `withIndex`\n2. For each query, identify the fields used in filters and sort conditions\n3. Open `schema.ts` and locate the relevant table definitions\n4. Add indexes for each filter/sort combination:\n```typescript\n// Example: Adding an index for filtering by status and sorting by createdAt\ndefine(\"mediaItems\", {\n  // ... existing fields\n  status: v.string(),\n  createdAt: v.number(),\n  // ... other fields\n}).index(\"by_status_createdAt\", [\"status\", \"createdAt\"]);\n```\n5. For compound indexes, ensure the most selective field is first\n6. Add indexes for common query patterns (tenant/channel filtering, status filtering, etc.)",
+        "testStrategy": "1. Use the Convex dashboard to verify indexes are created\n2. Test queries that use these indexes to ensure they're being utilized\n3. Check query performance before and after index addition\n4. Verify no table scans are occurring for indexed queries using the Convex dashboard",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Refactor Queries to Use withIndex",
+        "description": "Replace table scans and in-memory filters with proper indexed queries using withIndex() to improve performance.",
+        "details": "1. Identify all queries that perform table scans or use `.collect()` followed by filtering\n2. For each query, determine the appropriate index to use based on the filter conditions\n3. Refactor the query to use `withIndex()` and apply filters at the database level:\n```typescript\n// Before\nconst items = await ctx.db.query(\"items\").collect();\nreturn items.filter(item => item.status === \"active\");\n\n// After\nreturn await ctx.db\n  .query(\"items\")\n  .withIndex(\"by_status\", q => q.eq(\"status\", \"active\"))\n  .paginate(args.paginationOpts);\n```\n4. Ensure all filter conditions are applied using the query builder rather than in-memory filtering\n5. Update return types and documentation to reflect the changes",
+        "testStrategy": "1. Test each refactored query with various filter combinations\n2. Verify results match the previous implementation\n3. Check query performance in the Convex dashboard\n4. Verify no table scans are occurring\n5. Test with large datasets to ensure performance improvements",
+        "priority": "high",
+        "dependencies": [
+          4,
+          5
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Refactor listMediaItemsWithUrl Query",
+        "description": "Refactor the listMediaItemsWithUrl query to use withIndex and pagination, resolving status/category filters server-side via indexes.",
+        "details": "1. Open `core/media/queries.ts` and locate the `listMediaItemsWithUrl` function\n2. Add `paginationOpts` to the function arguments\n3. Identify the filters used (status, category, etc.)\n4. Ensure appropriate indexes exist in the schema for these filters\n5. Refactor the query to use `withIndex()` for filtering:\n```typescript\nexport const listMediaItemsWithUrl = query({\n  args: {\n    status: v.optional(v.string()),\n    category: v.optional(v.string()),\n    paginationOpts: paginationOptsValidator\n  },\n  handler: async (ctx, args) => {\n    let q = ctx.db.query(\"mediaItems\");\n    \n    if (args.status) {\n      q = q.withIndex(\"by_status\", q => q.eq(\"status\", args.status));\n    } else if (args.category) {\n      q = q.withIndex(\"by_category\", q => q.eq(\"category\", args.category));\n    }\n    \n    const results = await q.paginate(args.paginationOpts);\n    \n    // Add URLs to the media items\n    const page = await Promise.all(\n      results.page.map(async (item) => {\n        const url = await ctx.storage.getUrl(item.storageId);\n        return { ...item, url };\n      })\n    );\n    \n    return { ...results, page };\n  }\n});\n```\n6. Update any internal callers of this function to handle the paginated response",
+        "testStrategy": "1. Test the function with various filter combinations\n2. Verify pagination works correctly\n3. Ensure URLs are correctly added to all media items\n4. Test with large datasets to verify performance\n5. Compare results with the previous implementation to ensure consistency",
+        "priority": "high",
+        "dependencies": [
+          5,
+          6
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Refactor listMedia Query",
+        "description": "Refactor the listMedia query to use pagination and proper indexing for efficient querying.",
+        "details": "1. Open `core/media/queries.ts` and locate the `listMedia` function\n2. Add `paginationOpts` to the function arguments\n3. Identify any filters used in this query\n4. Ensure appropriate indexes exist in the schema\n5. Refactor the query to use `withIndex()` and pagination:\n```typescript\nexport const listMedia = query({\n  args: {\n    // Existing args\n    paginationOpts: paginationOptsValidator\n  },\n  handler: async (ctx, args) => {\n    let q = ctx.db.query(\"mediaItems\");\n    \n    // Apply appropriate indexes based on filters\n    if (args.someFilter) {\n      q = q.withIndex(\"by_someFilter\", q => q.eq(\"someFilter\", args.someFilter));\n    }\n    \n    return await q.paginate(args.paginationOpts);\n  }\n});\n```\n6. Update any internal callers to handle the paginated response",
+        "testStrategy": "1. Test the function with various filter combinations\n2. Verify pagination works correctly\n3. Test with large datasets to verify performance\n4. Compare results with the previous implementation to ensure consistency\n5. Verify through the Convex dashboard that no table scans are occurring",
+        "priority": "high",
+        "dependencies": [
+          5,
+          6
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Add Search Index for Media Items",
+        "description": "Add a search index to the mediaItems table in schema.ts to support text search on title, caption, and alt text.",
+        "details": "1. Open `schema.ts` and locate the `mediaItems` table definition\n2. Add a search index for the relevant text fields:\n```typescript\ndefine(\"mediaItems\", {\n  // ... existing fields\n  title: v.string(),\n  caption: v.optional(v.string()),\n  alt: v.optional(v.string()),\n  // ... other fields\n})\n.index(\"by_status\", [\"status\"])\n// ... other indexes\n.searchIndex(\"search\", {\n  searchField: \"text\",\n  filterFields: [\"tenantId\", \"channelId\", \"status\"],\n  vectorize: {\n    title: \"text\",\n    caption: \"text\",\n    alt: \"text\"\n  }\n});\n```\n3. Ensure the `filterFields` include any fields commonly used to filter search results\n4. The `vectorize` object should include all text fields that should be searchable",
+        "testStrategy": "1. Verify the search index is created in the Convex dashboard\n2. Test basic search functionality to ensure the index is working\n3. Test search with various filter combinations\n4. Verify search results are relevant to the search terms\n5. Test with special characters and edge cases",
+        "priority": "high",
+        "dependencies": [
+          5
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Implement searchMedia with withSearchIndex",
+        "description": "Implement or refactor the searchMedia function to use withSearchIndex for efficient text search across media items.",
+        "details": "1. Open `core/media/queries.ts` and locate or create the `searchMedia` function\n2. Implement the function using `withSearchIndex`:\n```typescript\nexport const searchMedia = query({\n  args: {\n    query: v.string(),\n    tenantId: v.optional(v.string()),\n    channelId: v.optional(v.string()),\n    status: v.optional(v.string()),\n    paginationOpts: paginationOptsValidator\n  },\n  handler: async (ctx, args) => {\n    let q = ctx.db\n      .query(\"mediaItems\")\n      .withSearchIndex(\"search\", q => \n        q.search(\"text\", args.query)\n      );\n    \n    // Apply filters if provided\n    if (args.tenantId) {\n      q = q.filter(q => q.eq(\"tenantId\", args.tenantId));\n    }\n    if (args.channelId) {\n      q = q.filter(q => q.eq(\"channelId\", args.channelId));\n    }\n    if (args.status) {\n      q = q.filter(q => q.eq(\"status\", args.status));\n    }\n    \n    const results = await q.paginate(args.paginationOpts);\n    \n    // Add URLs to the media items if needed\n    const page = await Promise.all(\n      results.page.map(async (item) => {\n        const url = await ctx.storage.getUrl(item.storageId);\n        return { ...item, url };\n      })\n    );\n    \n    return { ...results, page };\n  }\n});\n```\n3. Ensure the function handles empty search queries appropriately\n4. Add proper error handling for search failures",
+        "testStrategy": "1. Test search with various query terms\n2. Test search with different filter combinations\n3. Verify pagination works correctly for search results\n4. Test with empty search queries\n5. Verify search results are relevant to the search terms\n6. Test performance with large datasets",
+        "priority": "high",
+        "dependencies": [
+          9
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Ensure Consistent Media Item URL Generation",
+        "description": "Ensure getMediaById returns URLs consistently with getMediaItem and other media retrieval functions.",
+        "details": "1. Open `core/media/queries.ts` and locate both `getMediaById` and `getMediaItem` functions\n2. Compare how URLs are generated in both functions\n3. Standardize the URL generation approach:\n```typescript\n// Example standardized approach\nasync function addUrlToMediaItem(ctx, item) {\n  if (!item) return null;\n  const url = await ctx.storage.getUrl(item.storageId);\n  return { ...item, url };\n}\n\nexport const getMediaById = query({\n  args: { id: v.id(\"mediaItems\") },\n  handler: async (ctx, args) => {\n    const item = await ctx.db.get(args.id);\n    return addUrlToMediaItem(ctx, item);\n  }\n});\n\nexport const getMediaItem = query({\n  // ...\n  handler: async (ctx, args) => {\n    // ...\n    return addUrlToMediaItem(ctx, item);\n  }\n});\n```\n4. Apply the same URL generation pattern to all media retrieval functions\n5. Ensure consistent field naming and structure in returned objects",
+        "testStrategy": "1. Test both functions with the same media item ID\n2. Compare the returned objects to ensure they have the same structure\n3. Verify URLs are correctly generated in all cases\n4. Test with various media types (images, videos, etc.)\n5. Test with non-existent IDs to ensure consistent error handling",
+        "priority": "medium",
+        "dependencies": [
+          7,
+          8
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Update Internal Callers of Modified Functions",
+        "description": "Identify and update any internal Convex functions that call the modified queries to handle the new pagination and return structures.",
+        "details": "1. Search for all internal usages of the modified functions (listMediaItemsWithUrl, listMedia, etc.)\n2. For each caller, update the code to handle paginated results:\n```typescript\n// Before\nconst items = await ctx.runQuery(api.core.media.queries.listMedia, {});\n\n// After\nconst paginationOpts = { numItems: 100 };\nconst result = await ctx.runQuery(api.core.media.queries.listMedia, { paginationOpts });\nconst items = result.page;\n```\n3. If the caller needs all items, implement pagination handling:\n```typescript\nasync function getAllItems(ctx, queryFn, args) {\n  let allItems = [];\n  let continueCursor = null;\n  let isDone = false;\n  \n  while (!isDone) {\n    const result = await ctx.runQuery(queryFn, {\n      ...args,\n      paginationOpts: { numItems: 100, cursor: continueCursor }\n    });\n    \n    allItems = [...allItems, ...result.page];\n    continueCursor = result.continueCursor;\n    isDone = result.isDone;\n  }\n  \n  return allItems;\n}\n```\n4. Update any code that expects specific return structures from the modified functions",
+        "testStrategy": "1. Identify all callers through code search\n2. Test each updated caller with various inputs\n3. Verify pagination is handled correctly\n4. Test with large result sets to ensure all items are retrieved\n5. Verify the application functions correctly after updates",
+        "priority": "medium",
+        "dependencies": [
+          7,
+          8,
+          10,
+          11
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Add 'use node' Directive to Node-dependent Actions",
+        "description": "Identify actions that use Node built-ins and add the 'use node' directive to those files.",
+        "details": "1. Search for all action files in the `convex/` directory\n2. For each action file, check if it uses Node.js built-ins or APIs\n   - Look for imports like `fs`, `path`, `http`, etc.\n   - Look for usage of Node-specific globals\n3. For files that use Node APIs, add the directive at the top of the file:\n```typescript\n\"use node\";\n\n// Rest of the file...\n```\n4. Ensure the directive is the first line of the file, before any imports or comments\n5. Verify that the actions still work correctly after adding the directive",
+        "testStrategy": "1. Test each modified action to ensure it still functions correctly\n2. Verify the Convex deployment succeeds with the added directives\n3. Check for any runtime errors related to Node.js APIs\n4. Test the actions with various inputs to ensure all code paths work",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Remove Legacy Files",
+        "description": "Remove the legacy convex.config.ts.old file and any other deprecated files from the convex directory.",
+        "details": "1. Delete `convex/convex.config.ts.old`\n2. Search for other potential legacy files in the `convex/` directory\n   - Look for files with `.old`, `.bak`, or similar extensions\n   - Look for files that are no longer imported or used\n3. For each identified file, verify it's safe to delete by checking for any imports or references\n4. Delete confirmed legacy files\n5. Update any documentation that might reference these files",
+        "testStrategy": "1. Verify the application builds successfully after file removal\n2. Run tests to ensure no functionality is broken\n3. Check for any build errors that might indicate the files were still being used\n4. Deploy to a test environment to verify everything works correctly",
+        "priority": "low",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Final Linting and Verification",
+        "description": "Run linting tools on the entire convex directory to ensure all code meets standards and best practices.",
+        "details": "1. Run ESLint on the entire `convex/` directory:\n```bash\nnpx eslint apps/portal/convex --fix\n```\n2. Address any remaining lint issues:\n   - Fix unused imports\n   - Fix formatting issues\n   - Address any other lint warnings or errors\n3. Run TypeScript compiler to check for type errors:\n```bash\nnpx tsc --noEmit\n```\n4. Verify all acceptance criteria from the PRD:\n   - Only `convex/http.ts` creates and exports the router\n   - No `@convex-config/_generated/*` imports remain\n   - All modified queries use `withIndex` or `withSearchIndex`\n   - List endpoints accept `paginationOpts` and return paginated results\n   - Search endpoints use `withSearchIndex`\n   - `convex.config.ts.old` removed\n   - ESLint reports 0 new issues\n   - Actions using Node built-ins have `\"use node\";`",
+        "testStrategy": "1. Run automated tests to verify functionality\n2. Manually test key features affected by the changes\n3. Verify through the Convex dashboard that queries are using indexes properly\n4. Test pagination and search functionality\n5. Verify HTTP endpoints are correctly registered and accessible\n6. Deploy to a test environment for final verification",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14
+        ],
+        "status": "done",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-13T19:45:28.876Z",
+      "updated": "2025-08-13T21:19:57.548Z",
+      "description": "Tasks for feature-convex-remediation context"
     }
   }
 }

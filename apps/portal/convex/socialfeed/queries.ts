@@ -1,10 +1,11 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 
-import { Doc, Id } from "../_generated/dataModel";
-import { query, QueryCtx } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { QueryCtx } from "../_generated/server";
+import { query } from "../_generated/server";
+import { hashtagResponseValidator } from "./hashtags/schema";
 import { findSimilarUsers } from "./lib/recommendationEngine";
-import { hashtagResponseValidator } from "./schema/hashtagsSchema";
 
 // Define a common user model based on observed properties for internal use
 interface EnrichedUser {
@@ -49,11 +50,6 @@ const commentReturnType = v.object({
   }),
   repliesCount: v.number(),
 });
-
-type EnrichedComment = Doc<"comments"> & {
-  user: EnrichedUser;
-  repliesCount: number;
-};
 
 // Helper function to enrich comments with user data and replies count
 async function enrichComments(ctx: QueryCtx, page: Doc<"comments">[]) {
@@ -436,7 +432,7 @@ export const getHashtagFeed = query({
 
     const { page, continueCursor, isDone } = await ctx.db
       .query("feedItems")
-      .withIndex("by_hashtag", (q) => q.eq("hashtags", tag))
+      .withIndex("by_hashtag", (q) => q.eq("hashtags", [tag]))
       .order("desc")
       .paginate(args.paginationOpts);
 

@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Define the Topic Follows table to track users following topics
@@ -23,8 +23,6 @@ export const topicFollowsTable = defineTable({
   .index("by_user_and_topic", ["userId", "topicId"]); // For checking if a user follows a specific topic
 
 // Export the schema
-export const topicFollowsSchema = defineSchema({
+export const topicFollowsSchema = {
   topicFollows: topicFollowsTable,
-});
-
-export default topicFollowsSchema;
+};

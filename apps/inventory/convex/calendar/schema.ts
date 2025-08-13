@@ -1,43 +1,39 @@
-import { defineSchema, defineTable } from "convex/server";
+import {, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 /**
  * Defining the schema for the calendar module
  */
-export default defineSchema({
+
+const calendarsTable = defineTable({
+  name: v.string(),
+  description: v.optional(v.string()),
+  color: v.optional(v.string()),
+  isPublic: v.boolean(),
+  isDefault: v.optional(v.boolean()),
+});
+
+const calendarPermissionsTable = defineTable({
+  userId: v.id("users"),
+  calendarId: v.id("calendars"),
+  permissionType: v.union(
+    v.literal("read"),
+    v.literal("write"),
+    v.literal("admin"),
+  ),
+  grantedBy: v.id("users"),
+  grantedAt: v.number(),
+})
+  .index("by_user", ["userId"])
+  .index("by_calendar", ["calendarId"])
+  .index("by_calendar_user", ["calendarId", "userId"]),
+
+
+export const calendarSchema = {
   // Calendar definition
-  calendars: defineTable({
-    name: v.string(),
-    description: v.optional(v.string()),
-    color: v.optional(v.string()),
-    isPublic: v.boolean(),
-    isDefault: v.optional(v.boolean()),
-    ownerId: v.id("users"),
-    ownerType: v.optional(v.string()),
-    groupId: v.optional(v.id("groups")),
-    courseId: v.optional(v.id("courses")),
-    createdAt: v.number(),
-    updatedAt: v.optional(v.number()),
-  })
-    .index("by_owner", ["ownerId"])
-    .index("by_group", ["groupId"])
-    .index("by_course", ["courseId"]),
 
   // Calendar permissions (who can access which calendars)
-  calendarPermissions: defineTable({
-    userId: v.id("users"),
-    calendarId: v.id("calendars"),
-    permissionType: v.union(
-      v.literal("read"),
-      v.literal("write"),
-      v.literal("admin"),
-    ),
-    grantedBy: v.id("users"),
-    grantedAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_calendar", ["calendarId"])
-    .index("by_calendar_user", ["calendarId", "userId"]),
+
 
   // Events
   events: defineTable({

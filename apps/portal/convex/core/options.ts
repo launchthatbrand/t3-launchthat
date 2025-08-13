@@ -58,9 +58,9 @@ export const getStoreOptions = query({
       .collect();
 
     // Convert to key-value object
-    const result: Record<string, any> = {};
+    const result: Record<string, unknown> = {};
     for (const option of options) {
-      result[option.metaKey] = option.metaValue;
+      result[option.metaKey] = option.metaValue as unknown;
     }
 
     return result;
@@ -94,7 +94,7 @@ export const set = mutation({
     if (existing) {
       // Update existing option
       await ctx.db.patch(existing._id, {
-        metaValue: args.metaValue,
+        metaValue: args.metaValue as unknown,
         updatedAt: now,
         updatedBy: userId,
       });
@@ -103,7 +103,7 @@ export const set = mutation({
       // Create new option
       return await ctx.db.insert("options", {
         metaKey: args.metaKey,
-        metaValue: args.metaValue,
+        metaValue: args.metaValue as unknown,
         type: args.type,
         orgId: args.orgId,
         createdAt: now,
@@ -148,7 +148,7 @@ export const setBatch = mutation({
       if (existing) {
         // Update existing option
         await ctx.db.patch(existing._id, {
-          metaValue: option.metaValue,
+          metaValue: option.metaValue as unknown,
           updatedAt: now,
           updatedBy: userId,
         });
@@ -157,7 +157,7 @@ export const setBatch = mutation({
         // Create new option
         const id = await ctx.db.insert("options", {
           metaKey: option.metaKey,
-          metaValue: option.metaValue,
+          metaValue: option.metaValue as unknown,
           type: args.type,
           orgId: args.orgId,
           createdAt: now,

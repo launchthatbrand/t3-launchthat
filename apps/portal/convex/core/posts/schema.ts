@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 /**
@@ -6,22 +6,16 @@ import { v } from "convex/values";
  */
 export const postsTable = defineTable({
   title: v.string(),
-  content: v.string(),
+  content: v.optional(v.string()),
   authorId: v.optional(v.id("users")),
-  createdAt: v.number(), // Added timestamp
+  createdAt: v.optional(v.number()), // Consider adding timestamps
   updatedAt: v.optional(v.number()),
-  status: v.union(
-    v.literal("published"),
-    v.literal("draft"),
-    v.literal("archived"),
-    v.literal(""), // Backwards compatibility
-  ), // Specific status values instead of any string
-  slug: v.string(), // URL slug for the post
+  status: v.optional(v.string()), // "published", "draft", or "archived"
+  slug: v.optional(v.string()), // URL slug for the post
   tags: v.optional(v.array(v.string())), // Tags for categorization
-  category: v.string(), // Category of the post
+  category: v.optional(v.string()), // Category of the post
   excerpt: v.optional(v.string()), // Short description of the post
   featuredImageUrl: v.optional(v.string()), // URL to a featured image
-  featuredImageId: v.optional(v.id("mediaItems")), // Link to media item
   featured: v.optional(v.boolean()), // Whether the post is featured
   readTime: v.optional(v.string()), // Estimated reading time
 })
@@ -31,6 +25,6 @@ export const postsTable = defineTable({
   .index("by_category", ["category"])
   .index("by_featured", ["featured"]);
 
-export const postsSchema = defineSchema({
+export const postsSchema = {
   posts: postsTable,
-});
+};

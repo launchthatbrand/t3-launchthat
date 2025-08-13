@@ -15,14 +15,13 @@ export const categoriesTable = defineTable({
   metadata: v.optional(
     v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
   ),
-  createdAt: v.number(),
-  updatedAt: v.number(),
+  createdAt: v.optional(v.number()),
+  updatedAt: v.optional(v.number()),
 })
   .index("by_slug", ["slug"])
-  .index("by_parent", ["parentId"]);
+  .index("by_parent", ["parentId"])
+  .index("by_postTypes", ["postTypes"]);
 
 export const categoriesSchema = {
-  tables: {
-    categories: categoriesTable,
-  },
+  categories: categoriesTable,
 };

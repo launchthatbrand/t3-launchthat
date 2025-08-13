@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Define the Comments table
@@ -55,8 +55,6 @@ export const commentsTable = defineTable({
   .index("by_mentioned_user", ["mentionedUserIds"]); // Enable querying by mentioned user
 
 // Export the schema
-export const commentsSchema = defineSchema({
+export const commentsSchema = {
   comments: commentsTable,
-});
-
-export default commentsSchema;
+};

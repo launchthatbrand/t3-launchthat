@@ -9,7 +9,7 @@ export const getCheckoutSession = query({
   args: {
     sessionId: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: (_ctx, args) => {
     // Simplified placeholder
     return {
       sessionId: args.sessionId,

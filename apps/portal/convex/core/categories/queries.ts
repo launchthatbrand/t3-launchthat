@@ -19,8 +19,9 @@ export const getCategories = query({
       metadata: v.optional(
         v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
       ),
-      createdAt: v.number(),
-      updatedAt: v.number(),
+      createdAt: v.optional(v.number()),
+      updatedAt: v.optional(v.number()),
+      postTypes: v.optional(v.array(v.string())),
     }),
   ),
   handler: async (ctx) => {
@@ -82,8 +83,9 @@ export const getCategoryBySlug = query({
       metadata: v.optional(
         v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
       ),
-      createdAt: v.number(),
-      updatedAt: v.number(),
+      createdAt: v.optional(v.number()),
+      updatedAt: v.optional(v.number()),
+      postTypes: v.optional(v.array(v.string())),
     }),
     v.null(),
   ),
@@ -113,8 +115,9 @@ export const getCategoryById = query({
       metadata: v.optional(
         v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
       ),
-      createdAt: v.number(),
-      updatedAt: v.number(),
+      createdAt: v.optional(v.number()),
+      updatedAt: v.optional(v.number()),
+      postTypes: v.optional(v.array(v.string())),
     }),
     v.null(),
   ),
@@ -140,8 +143,9 @@ export const getChildCategories = query({
       metadata: v.optional(
         v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
       ),
-      createdAt: v.number(),
-      updatedAt: v.number(),
+      createdAt: v.optional(v.number()),
+      updatedAt: v.optional(v.number()),
+      postTypes: v.optional(v.array(v.string())),
     }),
   ),
   handler: async (ctx, args) => {

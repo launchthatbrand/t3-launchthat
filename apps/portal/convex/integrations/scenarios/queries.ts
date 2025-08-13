@@ -9,6 +9,10 @@ export const list = query({
   args: {
     status: v.optional(v.string()),
     ownerId: v.optional(v.id("users")),
+    // New: optional filter by scenario type
+    scenarioType: v.optional(
+      v.union(v.literal("general"), v.literal("checkout")),
+    ),
   },
   returns: v.array(
     v.object({
@@ -24,6 +28,11 @@ export const list = query({
       ownerId: v.id("users"),
       createdAt: v.number(),
       updatedAt: v.number(),
+      // Include optional fields used by specialized UIs
+      slug: v.optional(v.string()),
+      scenarioType: v.optional(
+        v.union(v.literal("general"), v.literal("checkout")),
+      ),
     }),
   ),
   handler: async (ctx, args) => {
@@ -33,13 +42,44 @@ export const list = query({
     // Apply filters based on provided arguments
     let filteredScenarios;
 
-    if (args.status !== undefined && args.ownerId !== undefined) {
-      // Both status and ownerId provided
+    if (
+      args.status !== undefined &&
+      args.ownerId !== undefined &&
+      args.scenarioType !== undefined
+    ) {
       filteredScenarios = await baseQuery
         .filter((q) =>
           q.and(
             q.eq(q.field("status"), args.status),
             q.eq(q.field("ownerId"), args.ownerId),
+            q.eq(q.field("scenarioType"), args.scenarioType),
+          ),
+        )
+        .collect();
+    } else if (args.status !== undefined && args.ownerId !== undefined) {
+      filteredScenarios = await baseQuery
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("status"), args.status),
+            q.eq(q.field("ownerId"), args.ownerId),
+          ),
+        )
+        .collect();
+    } else if (args.status !== undefined && args.scenarioType !== undefined) {
+      filteredScenarios = await baseQuery
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("status"), args.status),
+            q.eq(q.field("scenarioType"), args.scenarioType),
+          ),
+        )
+        .collect();
+    } else if (args.ownerId !== undefined && args.scenarioType !== undefined) {
+      filteredScenarios = await baseQuery
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("ownerId"), args.ownerId),
+            q.eq(q.field("scenarioType"), args.scenarioType),
           ),
         )
         .collect();
@@ -52,6 +92,11 @@ export const list = query({
       // Only ownerId provided
       filteredScenarios = await baseQuery
         .filter((q) => q.eq(q.field("ownerId"), args.ownerId))
+        .collect();
+    } else if (args.scenarioType !== undefined) {
+      // Only scenarioType provided
+      filteredScenarios = await baseQuery
+        .filter((q) => q.eq(q.field("scenarioType"), args.scenarioType))
         .collect();
     } else {
       // No filters provided
@@ -87,7 +132,8 @@ export const getById = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const scenario = await ctx.db.get(args.id);
+    return scenario ?? null;
   },
 });
 
@@ -160,12 +206,19 @@ export const get = query({
       .withIndex("by_scenario", (q) => q.eq("scenarioId", args.id))
       .collect();
 
+    const srec = scenario as unknown as Record<string, unknown>;
     const normalizedScenario = {
       ...scenario,
-      description: (scenario as any).description ?? "",
-      status: (scenario as any).status ?? "draft",
-      createdAt: (scenario as any).createdAt ?? scenario._creationTime,
-      updatedAt: (scenario as any).updatedAt ?? scenario._creationTime,
+      description: typeof srec.description === "string" ? srec.description : "",
+      status: typeof srec.status === "string" ? srec.status : "draft",
+      createdAt:
+        typeof srec.createdAt === "number"
+          ? srec.createdAt
+          : scenario._creationTime,
+      updatedAt:
+        typeof srec.updatedAt === "number"
+          ? srec.updatedAt
+          : scenario._creationTime,
     } as typeof scenario & {
       createdAt: number;
       updatedAt: number;
@@ -173,30 +226,44 @@ export const get = query({
       status: string;
     };
 
-    const normalizedNodes = nodes.map((n) => ({
-      ...n,
-      config:
-        typeof (n as any).config === "string"
-          ? (n as any).config
-          : JSON.stringify((n as any).config ?? {}),
-      position:
-        typeof (n as any).position === "string"
-          ? (n as any).position
-          : JSON.stringify((n as any).position ?? { x: 0, y: 0 }),
-      createdAt: (n as any).createdAt ?? n._creationTime,
-      updatedAt: (n as any).updatedAt ?? n._creationTime,
-    }));
+    const normalizedNodes = nodes.map((n) => {
+      const nrec = n as unknown as Record<string, unknown>;
+      return {
+        ...n,
+        config:
+          typeof nrec.config === "string"
+            ? nrec.config
+            : JSON.stringify(nrec.config ?? {}),
+        position:
+          typeof nrec.position === "string"
+            ? nrec.position
+            : JSON.stringify(
+                nrec.position ?? {
+                  x: 0,
+                  y: 0,
+                },
+              ),
+        createdAt:
+          typeof nrec.createdAt === "number" ? nrec.createdAt : n._creationTime,
+        updatedAt:
+          typeof nrec.updatedAt === "number" ? nrec.updatedAt : n._creationTime,
+      };
+    });
 
-    const normalizedConnections = connections.map((c) => ({
-      ...c,
-      mapping:
-        typeof (c as any).mapping === "string" ||
-        (c as any).mapping === undefined
-          ? (c as any).mapping
-          : JSON.stringify((c as any).mapping),
-      createdAt: (c as any).createdAt ?? c._creationTime,
-      updatedAt: (c as any).updatedAt ?? c._creationTime,
-    }));
+    const normalizedConnections = connections.map((c) => {
+      const crec = c as unknown as Record<string, unknown>;
+      return {
+        ...c,
+        mapping:
+          typeof crec.mapping === "string" || crec.mapping === undefined
+            ? crec.mapping
+            : JSON.stringify(crec.mapping),
+        createdAt:
+          typeof crec.createdAt === "number" ? crec.createdAt : c._creationTime,
+        updatedAt:
+          typeof crec.updatedAt === "number" ? crec.updatedAt : c._creationTime,
+      };
+    });
 
     return {
       ...normalizedScenario,
@@ -249,5 +316,38 @@ export const getAllScenarios = query({
   ),
   handler: async (ctx) => {
     return await ctx.db.query("scenarios").collect();
+  },
+});
+
+/**
+ * Get a scenario by slug (primarily for checkout scenarios)
+ */
+export const getBySlug = query({
+  args: {
+    slug: v.string(),
+  },
+  returns: v.union(
+    v.object({
+      _id: v.id("scenarios"),
+      _creationTime: v.number(),
+      name: v.string(),
+      description: v.string(),
+      status: v.string(),
+      schedule: v.optional(v.string()),
+      lastExecutedAt: v.optional(v.number()),
+      lastExecutionResult: v.optional(v.string()),
+      lastExecutionError: v.optional(v.string()),
+      ownerId: v.id("users"),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const scenario = await ctx.db
+      .query("scenarios")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .first();
+    return scenario ?? null;
   },
 });

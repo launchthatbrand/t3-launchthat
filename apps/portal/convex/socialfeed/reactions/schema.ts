@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Define the Reactions table
@@ -26,8 +26,6 @@ export const reactionsTable = defineTable({
   .index("by_user_and_item", ["userId", "feedItemId"]);
 
 // Export the schema
-export const reactionsSchema = defineSchema({
+export const reactionsSchema = {
   reactions: reactionsTable,
-});
-
-export default reactionsSchema;
+};

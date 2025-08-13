@@ -49,7 +49,7 @@ export const createPost = mutation({
       status: args.status,
       category: args.category,
       tags: args.tags,
-      featuredImage: args.featuredImage,
+      featuredImageUrl: args.featuredImage,
       authorId,
       createdAt: Date.now(),
     });

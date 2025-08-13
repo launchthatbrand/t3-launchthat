@@ -27,7 +27,7 @@ export const inviteToEvent = mutation({
       throw new Error("Event not found");
     }
 
-    const results: Array<{ userId: string; status: string; attendeeId: any }> =
+    const results: { userId: string; status: string; attendeeId: unknown }[] =
       [];
     const invitedAt = Date.now();
 

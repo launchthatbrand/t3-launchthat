@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export const menusTable = defineTable({
@@ -24,7 +24,7 @@ export const menuItemsTable = defineTable({
   .index("by_parent", ["parentId"])
   .index("by_menu_parent_order", ["menuId", "parentId", "order"]);
 
-export const menusSchema = defineSchema({
+export const menusSchema = {
   menus: menusTable,
   menuItems: menuItemsTable,
-});
+};

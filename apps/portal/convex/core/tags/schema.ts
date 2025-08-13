@@ -10,7 +10,5 @@ export const tagsTable = defineTable({
   .index("by_slug", ["slug"]);
 
 export const tagsSchema = {
-  tables: {
-    tags: tagsTable,
-  },
+  tags: tagsTable,
 };

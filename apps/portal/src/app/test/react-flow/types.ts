@@ -6,11 +6,13 @@ export interface ToolbarData {
   onDelete?: (id: string) => void;
   onAddRoute?: (id: string) => void;
   kind?: RouterKind;
+  isSystem?: boolean;
 }
 
 export interface CreateData {
   prevId?: string;
   onCreate?: (prevId: string, createId: string, kind: RouterKind) => void;
+  allowedKinds?: RouterKind[];
 }
 
 export interface RouteEdgeData {

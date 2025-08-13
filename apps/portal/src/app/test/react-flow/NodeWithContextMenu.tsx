@@ -1,5 +1,8 @@
 "use client";
 
+import type { NodeProps } from "@xyflow/react";
+import { Handle, Position } from "@xyflow/react";
+
 import {
   ContextMenu,
   ContextMenuContent,
@@ -7,14 +10,13 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@acme/ui/context-menu";
-import { Handle, Position } from "@xyflow/react";
 
-import type { NodeProps } from "@xyflow/react";
 import type { ToolbarData } from "./types";
 
 export default function NodeWithContextMenu({ id, data }: NodeProps) {
   const d = data as unknown as ToolbarData;
   const isFirst = id === "1";
+  const canDelete = !d.isSystem;
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -33,9 +35,11 @@ export default function NodeWithContextMenu({ id, data }: NodeProps) {
             <ContextMenuSeparator />
           </>
         )}
-        <ContextMenuItem onClick={() => d.onDelete?.(String(id))}>
-          Delete
-        </ContextMenuItem>
+        {canDelete && (
+          <ContextMenuItem onClick={() => d.onDelete?.(String(id))}>
+            Delete
+          </ContextMenuItem>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   );

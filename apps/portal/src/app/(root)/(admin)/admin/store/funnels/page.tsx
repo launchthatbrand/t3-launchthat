@@ -32,7 +32,7 @@ function AuthenticatedFunnelsPage() {
   const isAdminResult = useConvexQuery(
     api.core.accessControl.queries.checkIsAdmin,
     {},
-  ) as boolean | undefined;
+  );
 
   if (isAdminResult === undefined) {
     return (
@@ -58,53 +58,48 @@ function AuthenticatedFunnelsPage() {
   return <FunnelsContent />;
 }
 
-interface FunnelListItem {
-  _id: Id<"funnels">;
-  title: string;
-  slug: string;
+interface CheckoutScenarioListItem {
+  _id: Id<"scenarios">;
+  name: string;
+  slug?: string;
   status: string;
-  productIds: Id<"products">[];
-  collectEmail?: boolean;
-  collectName?: boolean;
-  collectPhone?: boolean;
-  collectShippingAddress?: boolean;
 }
 
 function FunnelsContent() {
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const funnels = useConvexQuery(
-    api.ecommerce.funnels.queries.getAllFunnels,
-    {},
-  ) as FunnelListItem[] | undefined | null;
+  // Fetch scenarios of type checkout
+  const scenarios = useConvexQuery(api.integrations.scenarios.queries.list, {
+    scenarioType: "checkout",
+  }) as CheckoutScenarioListItem[] | undefined | null;
 
   // Mutations
-  const deleteCustomCheckout = useConvexMutation(
-    api.ecommerce.funnels.mutations.deleteCustomCheckout,
+  const deleteScenario = useConvexMutation(
+    api.integrations.scenarios.mutations.remove,
   );
 
-  const handleDeleteCheckout = async (id: Id<"funnels">) => {
-    if (confirm("Are you sure you want to delete this funnel?")) {
+  const handleDelete = async (id: Id<"scenarios">) => {
+    if (confirm("Are you sure you want to delete this checkout flow?")) {
       try {
-        await deleteCustomCheckout({ id });
-        toast.success("Funnel deleted successfully");
+        await deleteScenario({ id });
+        toast.success("Checkout flow deleted successfully");
       } catch (error) {
-        console.error("Failed to delete funnel:", error);
-        toast.error("Failed to delete funnel", {
+        console.error("Failed to delete checkout flow:", error);
+        toast.error("Failed to delete checkout flow", {
           description: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
   };
 
-  const columns: ColumnDef<FunnelListItem>[] = [
+  const columns: ColumnDef<CheckoutScenarioListItem>[] = [
     {
-      id: "title",
-      header: "Title",
-      accessorKey: "title",
+      id: "name",
+      header: "Name",
+      accessorKey: "name",
       cell: ({ row }) => (
-        <span className="font-medium">{row.original.title}</span>
+        <span className="font-medium">{row.original.name}</span>
       ),
     },
     {
@@ -113,41 +108,8 @@ function FunnelsContent() {
       accessorKey: "slug",
       cell: ({ row }) => (
         <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm">
-          {row.original.slug}
+          {row.original.slug ?? "—"}
         </code>
-      ),
-    },
-    {
-      id: "products",
-      header: "Products",
-      cell: ({ row }) => row.original.productIds.length,
-    },
-    {
-      id: "fields",
-      header: "Fields",
-      cell: ({ row }) => (
-        <div className="flex flex-wrap gap-1">
-          {row.original.collectEmail && (
-            <Badge variant="outline" className="text-xs">
-              Email
-            </Badge>
-          )}
-          {row.original.collectName && (
-            <Badge variant="outline" className="text-xs">
-              Name
-            </Badge>
-          )}
-          {row.original.collectPhone && (
-            <Badge variant="outline" className="text-xs">
-              Phone
-            </Badge>
-          )}
-          {row.original.collectShippingAddress && (
-            <Badge variant="outline" className="text-xs">
-              Shipping
-            </Badge>
-          )}
-        </div>
       ),
     },
     {
@@ -175,8 +137,8 @@ function FunnelsContent() {
       id: "edit",
       label: "Edit",
       icon: <Edit className="h-4 w-4" />,
-      onClick: (item: FunnelListItem) => {
-        router.push(`/admin/store/funnels/${item._id}`);
+      onClick: (item: CheckoutScenarioListItem) => {
+        router.push(`/admin/integrations/scenarios/${item._id}`);
       },
       variant: "ghost" as const,
     },
@@ -184,8 +146,8 @@ function FunnelsContent() {
       id: "delete",
       label: "Delete",
       icon: <Trash className="h-4 w-4" />,
-      onClick: (item: FunnelListItem) => {
-        void handleDeleteCheckout(item._id);
+      onClick: (item: CheckoutScenarioListItem) => {
+        void handleDelete(item._id);
       },
       variant: "ghost" as const,
     },
@@ -219,11 +181,11 @@ function FunnelsContent() {
     <div className="container py-6">
       <Card>
         <CardContent className="p-6">
-          <EntityList<FunnelListItem>
-            title="All Funnels"
-            description="Create and manage funnels with bundled products and custom fields"
-            data={Array.isArray(funnels) ? funnels : []}
-            isLoading={funnels === undefined}
+          <EntityList<CheckoutScenarioListItem>
+            title="All Checkout Flows"
+            description="Create and manage checkout flows (scenarios of type 'checkout')"
+            data={Array.isArray(scenarios) ? scenarios : []}
+            isLoading={scenarios === undefined}
             columns={columns}
             entityActions={entityActions}
             actions={createActions}

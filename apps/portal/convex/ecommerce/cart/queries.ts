@@ -13,6 +13,75 @@ export const getCart = query({
     // Back-compat for older callers
     sessionId: v.optional(v.string()),
   },
+  returns: v.object({
+    items: v.array(
+      v.object({
+        _id: v.id("cartItems"),
+        _creationTime: v.number(),
+        userId: v.optional(v.string()),
+        guestSessionId: v.optional(v.string()),
+        productId: v.id("products"),
+        variationId: v.optional(v.id("productVariants")),
+        quantity: v.number(),
+        price: v.number(),
+        savedForLater: v.boolean(),
+        productSnapshot: v.object({
+          name: v.string(),
+          description: v.optional(v.string()),
+          sku: v.optional(v.string()),
+          image: v.optional(v.string()),
+          slug: v.optional(v.string()),
+        }),
+        variationSnapshot: v.optional(
+          v.object({
+            name: v.string(),
+            attributes: v.record(v.string(), v.string()),
+          }),
+        ),
+        addedAt: v.number(),
+        updatedAt: v.number(),
+      }),
+    ),
+    savedItems: v.array(
+      v.object({
+        _id: v.id("cartItems"),
+        _creationTime: v.number(),
+        userId: v.optional(v.string()),
+        guestSessionId: v.optional(v.string()),
+        productId: v.id("products"),
+        variationId: v.optional(v.id("productVariants")),
+        quantity: v.number(),
+        price: v.number(),
+        savedForLater: v.boolean(),
+        productSnapshot: v.object({
+          name: v.string(),
+          description: v.optional(v.string()),
+          sku: v.optional(v.string()),
+          image: v.optional(v.string()),
+          slug: v.optional(v.string()),
+        }),
+        variationSnapshot: v.optional(
+          v.object({
+            name: v.string(),
+            attributes: v.record(v.string(), v.string()),
+          }),
+        ),
+        addedAt: v.number(),
+        updatedAt: v.number(),
+      }),
+    ),
+    summary: v.object({
+      _id: v.optional(v.id("cartSummary")),
+      _creationTime: v.optional(v.number()),
+      userId: v.optional(v.string()),
+      guestSessionId: v.optional(v.string()),
+      itemCount: v.number(),
+      subtotal: v.number(),
+      estimatedTax: v.number(),
+      estimatedShipping: v.number(),
+      updatedAt: v.number(),
+    }),
+  }),
   handler: async (ctx, args) => {
     const isUser = !!args.userId;
     const guestId = args.guestSessionId ?? args.sessionId;
@@ -74,7 +143,8 @@ export const getCart = query({
       summary: summary ?? {
         itemCount: items.length,
         subtotal: items.reduce(
-          (acc, item) => acc + item.price * item.quantity,
+          (acc: number, item: Doc<"cartItems">) =>
+            acc + item.price * item.quantity,
           0,
         ),
         estimatedTax: 0,

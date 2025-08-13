@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Define permission types for better type safety
@@ -141,10 +141,10 @@ export const permissionAuditLogTable = defineTable({
   .index("by_target_user", ["targetUserId"])
   .index("by_target_role", ["targetRoleId"]);
 
-export const permissionsSchema = defineSchema({
+export const permissionsSchema = {
   permissions: permissionsTable,
   rolePermissions: rolePermissionsTable,
   userRoles: userRolesTable,
   userPermissions: userPermissionsTable,
   permissionAuditLog: permissionAuditLogTable,
-});
+};

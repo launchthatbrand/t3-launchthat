@@ -36,9 +36,6 @@ export const listProducts = query({
     if (args.categoryId !== undefined) {
       const categoryIdString = args.categoryId as string;
       return allFilteredProducts.filter((product) => {
-        // Check primaryCategoryId match
-        const primaryMatch = product.primaryCategoryId === categoryIdString;
-
         // Check if category is in categoryIds array
         let categoryIdsMatch = false;
         if (Array.isArray(product.categoryIds)) {
@@ -47,7 +44,7 @@ export const listProducts = query({
           );
         }
 
-        return primaryMatch || categoryIdsMatch;
+        return categoryIdsMatch;
       });
     }
 

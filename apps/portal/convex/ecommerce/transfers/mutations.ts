@@ -10,7 +10,7 @@ export const createTransfer = mutation({
     amount: v.number(),
     bankAccountId: v.id("bankAccounts"),
   },
-  handler: async (ctx, args) => {
+  handler: () => {
     // Simplified placeholder
     return {
       transferId: `transfer_${Date.now()}`,

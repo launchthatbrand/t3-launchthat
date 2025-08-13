@@ -11,7 +11,7 @@ export const processPayment = mutation({
     paymentMethodId: v.string(),
     orderId: v.id("orders"),
   },
-  handler: async (ctx, args) => {
+  handler: () => {
     // Simplified placeholder
     return {
       success: true,
@@ -29,7 +29,7 @@ export const refundPayment = mutation({
     paymentId: v.string(),
     amount: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: () => {
     // Simplified placeholder
     return {
       success: true,

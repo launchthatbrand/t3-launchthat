@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 
-import { Id } from "../_generated/dataModel";
-import { mutation, MutationCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
+import { mutation } from "../_generated/server";
 import {
   notifyComment,
   notifyFollowers,

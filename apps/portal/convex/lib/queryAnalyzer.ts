@@ -1,9 +1,10 @@
+"use node";
+
 /**
  * Query Analyzer utility
  *
  * Provides functions for measuring and analyzing query performance
  */
-
 import { v } from "convex/values";
 
 import { internalAction } from "../_generated/server";

@@ -9,7 +9,11 @@ import { query } from "../_generated/server";
 export const getNotificationsByClerkId = query({
   args: {
     clerkId: v.string(),
-    filters: v.optional(v.object({})),
+    filters: v.optional(
+      v.object({
+        type: v.optional(v.string()),
+      }),
+    ),
     paginationOpts: v.optional(paginationOptsValidator),
   },
   handler: async (ctx, args) => {
@@ -26,8 +30,8 @@ export const getNotificationsByClerkId = query({
       .withIndex("by_user", (x) => x.eq("userId", user._id));
 
     // Optional single-type filter
-    if (args.filters && (args.filters as any).type) {
-      const type = (args.filters as any).type as string;
+    if (args.filters?.type) {
+      const type = args.filters.type;
       q = ctx.db
         .query("notifications")
         .withIndex("by_user_type", (x) =>

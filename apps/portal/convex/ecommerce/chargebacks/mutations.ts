@@ -35,7 +35,7 @@ export const addChargebackEvidence = mutation({
     chargebackId: v.id("chargebacks"),
     evidence: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: (ctx, args) => {
     // Simplified - in real implementation this would create evidence records
     return { success: true, evidence: args.evidence };
   },

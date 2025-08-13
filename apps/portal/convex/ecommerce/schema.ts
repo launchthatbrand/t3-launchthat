@@ -1,5 +1,3 @@
-import { defineSchema } from "convex/server";
-
 import { balancesSchema } from "./balances/schema";
 import { cartSchema } from "./cart/schema";
 import { categoriesSchema } from "./categories/schema";
@@ -16,8 +14,7 @@ import { taxRatesSchema } from "./taxRates/schema";
 import { transactionsSchema } from "./transactions/schema";
 import { wishlistSchema } from "./wishlist/schema";
 
-// Export as a proper Convex schema using defineSchema
-export default defineSchema({
+export const ecommerceSchema = {
   ...cartSchema,
   ...productsSchema,
   ...categoriesSchema,
@@ -33,7 +30,7 @@ export default defineSchema({
   ...funnelsSchema,
   ...chargebacksSchema,
   ...balancesSchema,
-});
+};
 
 // Keep the original export for backward compatibility
 // export const ecommerceSchema = {

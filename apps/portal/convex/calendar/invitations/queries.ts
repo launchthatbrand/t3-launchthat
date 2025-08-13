@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 
+import type { Doc, Id } from "../../_generated/dataModel";
 import { query } from "../../_generated/server";
 
 /**
@@ -71,7 +72,15 @@ export const getUserEvents = query({
 
     if (eventIds.length === 0) return [];
 
-    const events: any[] = [];
+    const events: (Doc<"events"> & {
+      attendeeStatus?:
+        | "invited"
+        | "accepted"
+        | "declined"
+        | "tentative"
+        | "waitlisted";
+      attendeeId?: Id<"eventAttendees">;
+    })[] = [];
     for (const eventId of eventIds) {
       const event = await ctx.db.get(eventId);
       if (!event) continue;

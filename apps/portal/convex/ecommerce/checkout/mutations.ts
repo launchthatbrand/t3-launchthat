@@ -14,7 +14,7 @@ export const createCheckoutSession = mutation({
       }),
     ),
   },
-  handler: async (ctx, args) => {
+  handler: () => {
     // Simplified placeholder
     return {
       sessionId: `checkout_${Date.now()}`,
@@ -31,7 +31,7 @@ export const completeCheckout = mutation({
     sessionId: v.string(),
     paymentMethodId: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: () => {
     // Simplified placeholder
     return {
       success: true,

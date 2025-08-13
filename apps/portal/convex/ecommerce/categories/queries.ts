@@ -167,7 +167,6 @@ export const getCategoryBySlug = query({
  */
 export const getCategoryBreadcrumbs = query({
   args: { categoryId: v.id("productCategories") },
-  returns: v.array(v.any()),
   handler: async (ctx, args) => {
     const category = await ctx.db.get(args.categoryId);
     if (!category) return [];

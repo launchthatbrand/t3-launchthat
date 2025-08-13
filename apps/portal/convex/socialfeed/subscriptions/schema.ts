@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Define the Feed Subscriptions table
@@ -29,8 +29,6 @@ export const subscriptionsTable = defineTable({
   .index("by_user_follow", ["userId", "followType", "followId"]);
 
 // Export the schema
-export const subscriptionsSchema = defineSchema({
+export const subscriptionsSchema = {
   subscriptions: subscriptionsTable,
-});
-
-export default subscriptionsSchema;
+};

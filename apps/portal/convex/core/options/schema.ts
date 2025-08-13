@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export const optionsTable = defineTable({
@@ -16,6 +16,6 @@ export const optionsTable = defineTable({
   .index("by_org_key_type", ["orgId", "metaKey", "type"])
   .index("by_type", ["type"]);
 
-export const optionsSchema = defineSchema({
+export const optionsSchema = {
   options: optionsTable,
-});
+};

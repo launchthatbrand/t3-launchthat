@@ -7,7 +7,7 @@ import { query } from "../../_generated/server";
  */
 export const getTransfers = query({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     return await ctx.db.query("transfers").order("desc").collect();
   },
 });

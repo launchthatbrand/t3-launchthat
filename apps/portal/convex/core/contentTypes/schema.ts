@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Define reusable field value validators to match contentTypes.ts
@@ -174,10 +174,10 @@ export const contentTypeFieldsTable = defineTable({
 /**
  * Content schema combining content types and fields
  */
-export const contentTypesSchema = defineSchema({
+export const contentTypesSchema = {
   contentTypes: contentTypesTable,
   contentTypeFields: contentTypeFieldsTable,
-});
+};
 
 /**
  * Field types available for content type fields

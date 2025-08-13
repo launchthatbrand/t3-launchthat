@@ -1,9 +1,6 @@
 import { v } from "convex/values";
 
-import type {
-  PermissionKey,
-  PermissionScope,
-} from "../schema/permissionsSchema";
+import type { PermissionKey, PermissionScope } from "./schema";
 import { query } from "../../_generated/server";
 import { hasPermission } from "../lib/permissions";
 

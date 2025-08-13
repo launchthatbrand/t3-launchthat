@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 
 import type { Doc, Id } from "../../_generated/dataModel";
-import { api } from "../../_generated/api";
+import type { QueryCtx } from "../../_generated/server";
 import { query } from "../../_generated/server";
 import { timestampValidator } from "../../shared/validators";
 import { getAuthenticatedConvexId, hasCalendarAccess } from "../lib/authUtils";
@@ -121,9 +122,117 @@ export const getCalendarEvents = query({
   },
 });
 
-/**
- * Get events for a specific date range across all accessible calendars
- */
+// Shared loader to avoid calling another Convex function
+async function loadEventsInDateRange(
+  ctx: QueryCtx,
+  args: {
+    startDate: number;
+    endDate: number;
+    calendarIds?: Id<"calendars">[];
+    includeRecurrences?: boolean;
+    paginationOpts?: { numItems?: number; cursor?: string | null };
+  },
+): Promise<EventsInDateRangeResponse> {
+  const userId = await getAuthenticatedConvexId(ctx);
+
+  const [userCalendars, calendarPermissions, publicCalendars] =
+    await Promise.all([
+      ctx.db
+        .query("calendars")
+        .filter((q) => q.eq(q.field("ownerId"), userId))
+        .collect(),
+      ctx.db
+        .query("calendarPermissions")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect(),
+      ctx.db
+        .query("calendars")
+        .filter((q) => q.eq(q.field("isPublic"), true))
+        .collect(),
+    ]);
+
+  let accessibleCalendarIds = [
+    ...userCalendars.map((c) => c._id),
+    ...calendarPermissions.map((p) => p.calendarId),
+    ...publicCalendars.map((c) => c._id),
+  ];
+  accessibleCalendarIds = [...new Set(accessibleCalendarIds)];
+
+  if (args.calendarIds && args.calendarIds.length > 0) {
+    accessibleCalendarIds = accessibleCalendarIds.filter((id) =>
+      args.calendarIds?.includes(id),
+    );
+  }
+
+  if (accessibleCalendarIds.length === 0) {
+    return { events: [], hasMore: false, cursor: null };
+  }
+
+  const calendarEvents = await ctx.db
+    .query("calendarEvents")
+    .filter((q) =>
+      accessibleCalendarIds.some((calendarId) =>
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        q.eq(q.field("calendarId"), calendarId),
+      ),
+    )
+    .collect();
+
+  const eventIds = [...new Set(calendarEvents.map((ce) => ce.eventId))];
+  const eventsResults = await Promise.all(eventIds.map((id) => ctx.db.get(id)));
+
+  const validEvents = eventsResults.filter(
+    (event): event is NonNullable<typeof event> =>
+      event !== null &&
+      event.startTime <= args.endDate &&
+      event.endTime >= args.startDate,
+  );
+
+  if (args.includeRecurrences) {
+    const allInstances = validEvents.flatMap((event) =>
+      getRecurringEventInstances(event, args.startDate, args.endDate).map(
+        (inst) => ({
+          ...event,
+          startTime: inst.startTime,
+          endTime: inst.endTime,
+          isRecurringInstance: true,
+          originalEventId: event._id,
+        }),
+      ),
+    );
+
+    allInstances.sort((a, b) => a.startTime - b.startTime);
+
+    if (args.paginationOpts) {
+      const startIndex = args.paginationOpts.cursor
+        ? parseInt(args.paginationOpts.cursor)
+        : 0;
+      const endIndex = startIndex + (args.paginationOpts.numItems ?? 20);
+      const page = allInstances.slice(startIndex, endIndex);
+      const nextCursor =
+        endIndex < allInstances.length ? endIndex.toString() : null;
+      return { events: page, hasMore: nextCursor !== null, cursor: nextCursor };
+    }
+
+    return { events: allInstances, hasMore: false, cursor: null };
+  }
+
+  validEvents.sort((a, b) => a.startTime - b.startTime);
+
+  if (args.paginationOpts) {
+    const startIndex = args.paginationOpts.cursor
+      ? parseInt(args.paginationOpts.cursor)
+      : 0;
+    const endIndex = startIndex + (args.paginationOpts.numItems ?? 20);
+    const page = validEvents.slice(startIndex, endIndex);
+    const nextCursor =
+      endIndex < validEvents.length ? endIndex.toString() : null;
+    return { events: page, hasMore: nextCursor !== null, cursor: nextCursor };
+  }
+
+  return { events: validEvents, hasMore: false, cursor: null };
+}
+
 export const getEventsInDateRange = query({
   args: {
     startDate: timestampValidator,
@@ -133,142 +242,7 @@ export const getEventsInDateRange = query({
     paginationOpts: v.optional(paginationOptsValidator),
   },
   handler: async (ctx, args) => {
-    // Get the authenticated user's Convex ID
-    const userId = await getAuthenticatedConvexId(ctx);
-
-    // Get all accessible calendars (combining user's own, shared, and public)
-    const [userCalendars, calendarPermissions, publicCalendars] =
-      await Promise.all([
-        // User's own calendars
-        ctx.db
-          .query("calendars")
-          .filter((q) => q.eq(q.field("ownerId"), userId))
-          .collect(),
-
-        // Calendars shared with user
-        ctx.db
-          .query("calendarPermissions")
-          .withIndex("by_user", (q) => q.eq("userId", userId))
-          .collect(),
-
-        // Public calendars
-        ctx.db
-          .query("calendars")
-          .filter((q) => q.eq(q.field("isPublic"), true))
-          .collect(),
-      ]);
-
-    // Combine all calendar IDs the user has access to
-    let accessibleCalendarIds = [
-      ...userCalendars.map((c) => c._id),
-      ...calendarPermissions.map((p) => p.calendarId),
-      ...publicCalendars.map((c) => c._id),
-    ];
-
-    // Remove duplicates
-    accessibleCalendarIds = [...new Set(accessibleCalendarIds)];
-
-    // Filter by specific calendar IDs if provided
-    if (args.calendarIds && args.calendarIds.length > 0) {
-      accessibleCalendarIds = accessibleCalendarIds.filter((id) =>
-        args.calendarIds?.includes(id),
-      );
-    }
-
-    // If there are no accessible calendars, return empty results
-    if (accessibleCalendarIds.length === 0) {
-      return {
-        events: [],
-        hasMore: false,
-        cursor: null,
-      };
-    }
-
-    // Get all calendar-event mappings for these calendars in a single query
-    const calendarEvents = await ctx.db
-      .query("calendarEvents")
-      .filter((q) => {
-        // Check if the calendarId is in our list of accessible calendars
-        return accessibleCalendarIds.some((calendarId) =>
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          q.eq(q.field("calendarId"), calendarId),
-        );
-      })
-      .collect();
-
-    // Extract event IDs
-    const eventIds = [...new Set(calendarEvents.map((ce) => ce.eventId))];
-
-    // Batch fetch all events
-    const eventPromises = eventIds.map((id) => ctx.db.get(id));
-    const eventsResults = await Promise.all(eventPromises);
-
-    // Filter for valid events in the requested date range
-    const validEvents = eventsResults.filter(
-      (event): event is NonNullable<typeof event> =>
-        event !== null &&
-        event.startTime <= args.endDate &&
-        event.endTime >= args.startDate,
-    );
-
-    // Include recurring event instances if requested
-    if (args.includeRecurrences) {
-      const allInstances = validEvents.flatMap((event) =>
-        getRecurringEventInstances(event, args.startDate, args.endDate),
-      );
-
-      // Sort by start time
-      allInstances.sort((a, b) => a.startTime - b.startTime);
-
-      // Handle pagination if opts provided
-      if (args.paginationOpts) {
-        const startIndex = args.paginationOpts.cursor
-          ? parseInt(args.paginationOpts.cursor)
-          : 0;
-        const endIndex = startIndex + (args.paginationOpts.numItems || 20);
-        const page = allInstances.slice(startIndex, endIndex);
-        const nextCursor =
-          endIndex < allInstances.length ? endIndex.toString() : null;
-
-        return {
-          events: page,
-          hasMore: nextCursor !== null,
-          cursor: nextCursor,
-        };
-      }
-
-      return {
-        events: allInstances,
-        hasMore: false,
-        cursor: null,
-      };
-    }
-
-    // Sort by start time
-    validEvents.sort((a, b) => a.startTime - b.startTime);
-
-    // Handle pagination if opts provided
-    if (args.paginationOpts) {
-      const startIndex = args.paginationOpts.cursor
-        ? parseInt(args.paginationOpts.cursor)
-        : 0;
-      const endIndex = startIndex + (args.paginationOpts.numItems || 20);
-      const page = validEvents.slice(startIndex, endIndex);
-      const nextCursor =
-        endIndex < validEvents.length ? endIndex.toString() : null;
-
-      return {
-        events: page,
-        hasMore: nextCursor !== null,
-        cursor: nextCursor,
-      };
-    }
-
-    return {
-      events: validEvents,
-      hasMore: false,
-      cursor: null,
-    };
+    return await loadEventsInDateRange(ctx, args);
   },
 });
 
@@ -329,22 +303,15 @@ export const getCalendarViewEvents = query({
       originalEventId?: Id<"events">;
     })[]
   > => {
-    // Convert viewDate to Date object
     const viewDate = new Date(args.viewDate);
-
-    // Get date range for the specified view
     const dateRange = getCalendarViewDateRange(viewDate, args.viewType);
 
-    // Get events for the date range using the API reference
-    const result: EventsInDateRangeResponse = await ctx.runQuery(
-      api.calendar.events.queries.getEventsInDateRange,
-      {
-        startDate: dateRange.start,
-        endDate: dateRange.end,
-        calendarIds: args.calendarIds,
-        includeRecurrences: args.includeRecurrences ?? true,
-      },
-    );
+    const result = await loadEventsInDateRange(ctx, {
+      startDate: dateRange.start,
+      endDate: dateRange.end,
+      calendarIds: args.calendarIds,
+      includeRecurrences: args.includeRecurrences ?? true,
+    });
 
     return result.events;
   },
@@ -406,7 +373,7 @@ export const getEventCount = query({
     if (args.groupId !== undefined) {
       const results = await ctx.db
         .query("events")
-        .withIndex("by_group", (q) => q.eq("groupId", args.groupId!))
+        .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
         .collect();
       return results.length;
     }
@@ -414,7 +381,7 @@ export const getEventCount = query({
     if (args.courseId !== undefined) {
       const results = await ctx.db
         .query("events")
-        .withIndex("by_course", (q) => q.eq("courseId", args.courseId!))
+        .withIndex("by_course", (q) => q.eq("courseId", args.courseId))
         .collect();
       return results.length;
     }

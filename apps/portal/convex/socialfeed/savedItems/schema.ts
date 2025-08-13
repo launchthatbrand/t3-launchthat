@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Define the Saved Items table
@@ -22,8 +22,6 @@ export const savedItemsTable = defineTable({
   .index("by_user_and_collection", ["userId", "collectionName"]);
 
 // Export the schema
-export const savedItemsSchema = defineSchema({
+export const savedItemsSchema = {
   savedItems: savedItemsTable,
-});
-
-export default savedItemsSchema;
+};

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 
+import type { Doc } from "../../_generated/dataModel";
 import { mutation } from "../../_generated/server";
 import { updateCartSummary, updateGuestCartSummary } from "./cartUtils";
 
@@ -38,7 +39,7 @@ export const addToCart = mutation({
           : 0;
 
     // Try to find existing item for upsert
-    let existing: { _id: any; quantity: number } | null = null;
+    let existing: Doc<"cartItems"> | null = null;
     if (args.userId) {
       existing = await ctx.db
         .query("cartItems")
@@ -47,7 +48,7 @@ export const addToCart = mutation({
         )
         .first();
     } else if (args.guestSessionId) {
-      const candidates = await ctx.db
+      const candidates: Doc<"cartItems">[] = await ctx.db
         .query("cartItems")
         .withIndex("by_guest_saved", (q) =>
           q

@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 import { mutation } from "../../_generated/server";
 
@@ -20,7 +20,11 @@ export const createJunctionTableEntries = mutation({
 
     // Insert all junction entries
     for (const entry of junctionEntries) {
-      await ctx.db.insert("transferOrders", entry);
+      await ctx.db.insert("transferOrders", {
+        ...entry,
+        orderAmount: 0,
+        processedAt: 0,
+      });
     }
 
     return { success: true, entriesCreated: junctionEntries.length };
@@ -44,7 +48,11 @@ export const addOrdersToTransfer = mutation({
     }));
 
     for (const entry of junctionEntries) {
-      await ctx.db.insert("transferOrders", entry);
+      await ctx.db.insert("transferOrders", {
+        ...entry,
+        orderAmount: 0,
+        processedAt: 0,
+      });
     }
 
     return { success: true };
@@ -91,18 +99,47 @@ export const createBankAccount = mutation({
     isDefault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError({
+        code: "unauthorized",
+        message: "You must be signed in to create a bank account",
+      });
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .first();
+
+    if (!user) {
+      throw new ConvexError({ code: "not_found", message: "User not found" });
+    }
+
+    const now = Date.now();
     const bankAccount = {
-      ...args,
-      isDefault: args.isDefault ?? false,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      accountName: args.accountHolderName,
+      bankName: args.bankName,
+      accountNumber: args.accountNumber,
+      routingNumber: args.routingNumber,
+      accountType: args.accountType,
       address: {
         street1: "",
+        street2: "",
         city: "",
         state: "",
         postalCode: "",
         country: "US",
       },
+      status: "pending_verification" as const,
+      isDefault: args.isDefault ?? false,
+      paymentProcessor: "Stripe",
+      providerAccountId: undefined,
+      createdBy: user._id,
+      createdAt: now,
+      updatedAt: now,
     };
 
     const id = await ctx.db.insert("bankAccounts", bankAccount);
@@ -143,12 +180,43 @@ export const createTransfer = mutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError({
+        code: "unauthorized",
+        message: "You must be signed in to create a transfer",
+      });
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .first();
+
+    if (!user) {
+      throw new ConvexError({ code: "not_found", message: "User not found" });
+    }
+
+    const now = Date.now();
+    const transferId = `tr_${now}`;
     const transfer = {
-      ...args,
+      transferId,
+      amount: args.amount,
+      currency: args.currency,
+      bankAccountId: args.bankAccountId,
+      paymentProcessor: "Stripe",
       status: "pending" as const,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      initiatedBy: "system" as any, // Simplified for now
+      initiatedAt: now,
+      expectedArrival: undefined as number | undefined,
+      completedAt: undefined as number | undefined,
+      fees: undefined as number | undefined,
+      description: args.description,
+      failureReason: undefined as string | undefined,
+      initiatedBy: user._id,
+      notes: undefined as string | undefined,
+      processorTransferId: undefined as string | undefined,
     };
 
     const id = await ctx.db.insert("transfers", transfer);
@@ -165,6 +233,7 @@ export const updateStoreBalance = mutation({
     operation: v.union(v.literal("add"), v.literal("subtract")),
   },
   handler: async (ctx, args) => {
+    await Promise.resolve();
     // This would typically update balance in a payments processor
     // For now, just return success
     return {

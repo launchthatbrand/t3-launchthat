@@ -39,8 +39,6 @@ export const notificationPreferencesTable = defineTable({
 
 // Export schema aggregate for main schema composition
 export const notificationsSchema = {
-  tables: {
-    notifications: notificationsTable,
-    notificationPreferences: notificationPreferencesTable,
-  },
+  notifications: notificationsTable,
+  notificationPreferences: notificationPreferencesTable,
 };
