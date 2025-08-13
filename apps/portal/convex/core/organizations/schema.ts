@@ -161,10 +161,10 @@ export const organizationSettingsTable = defineTable({
   .index("by_category", ["category"]);
 
 // Export schema
-export const organizationsSchema = defineSchema({
+export const organizationsSchema = {
   plans: plansTable,
   organizations: organizationsTable,
   userOrganizations: userOrganizationsTable,
   organizationInvitations: organizationInvitationsTable,
   organizationSettings: organizationSettingsTable,
-});
+};

@@ -1,7 +1,5 @@
-import { v } from "convex/values";
-
-import type { Id } from "../_generated/dataModel";
-import type { ActionCtx, MutationCtx, QueryCtx } from "../_generated/server";
+import type { Id } from "../../_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../../_generated/server";
 
 /**
  * Verify that a user has access to an organization with a specific role
@@ -10,7 +8,7 @@ export const verifyOrganizationAccess = async (
   ctx: MutationCtx | QueryCtx,
   organizationId: Id<"organizations">,
   userId: Id<"users">,
-  requiredRoles?: Array<"owner" | "admin" | "editor" | "viewer" | "student">,
+  requiredRoles?: ("owner" | "admin" | "editor" | "viewer" | "student")[],
 ) => {
   const membership = await ctx.db
     .query("userOrganizations")
@@ -39,7 +37,7 @@ export const verifyOrganizationAccess = async (
 export const getUserOrganizations = async (
   ctx: QueryCtx,
   userId: Id<"users">,
-  activeOnly: boolean = true,
+  activeOnly = true,
 ) => {
   const memberships = await ctx.db
     .query("userOrganizations")
@@ -133,7 +131,7 @@ export const generateOrganizationSlug = async (
   name: string,
 ): Promise<string> => {
   // Convert to lowercase, replace spaces and special chars with hyphens
-  let baseSlug = name
+  const baseSlug = name
     .toLowerCase()
     .replace(/[^a-z0-9\-]/g, "-")
     .replace(/-+/g, "-")

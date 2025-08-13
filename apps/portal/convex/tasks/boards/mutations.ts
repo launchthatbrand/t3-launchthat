@@ -1,6 +1,6 @@
-import type { Id } from "../../_generated/dataModel";
-import { mutation } from "../../_generated/server";
 import { v } from "convex/values";
+
+import { mutation } from "../../_generated/server";
 
 export const createBoard = mutation({
   args: { name: v.string() },

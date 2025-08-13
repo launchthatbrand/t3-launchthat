@@ -39,6 +39,7 @@ async function processMentionsAndHashtags(
 
   while ((mentionMatch = mentionRegex.exec(text)) !== null) {
     const username = mentionMatch[1];
+    if (!username) continue;
     mentions.push(username);
 
     try {
@@ -71,7 +72,9 @@ async function processMentionsAndHashtags(
   let hashtagMatch;
 
   while ((hashtagMatch = hashtagRegex.exec(text)) !== null) {
-    const tag = hashtagMatch[1].toLowerCase();
+    const rawTag = hashtagMatch[1];
+    if (!rawTag) continue;
+    const tag = rawTag.toLowerCase();
     hashtags.push(tag);
 
     try {
@@ -495,7 +498,8 @@ export const addComment = mutation({
     // Create the comment first to get its ID for mention notifications
     const commentId = await ctx.db.insert("comments", {
       userId: args.userId,
-      feedItemId: args.feedItemId,
+      parentId: args.feedItemId,
+      parentType: "feedItem",
       content: args.content,
       parentCommentId: args.parentCommentId,
       mediaUrls: args.mediaUrls,

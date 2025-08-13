@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { Doc } from "../_generated/dataModel";
+import type { Doc } from "../_generated/dataModel";
 import { mutation, query } from "../_generated/server";
 import { throwInvalidInput, throwNotFound } from "../shared/errors";
 import {

@@ -56,7 +56,7 @@ export const listCourses = query({
     if (args.productId) {
       return await ctx.db
         .query("courses")
-        .withIndex("by_productId", (q) => q.eq("productId", args.productId!))
+        .withIndex("by_productId", (q) => q.eq("productId", args.productId))
         .paginate(args.paginationOpts);
     }
 
@@ -66,8 +66,8 @@ export const listCourses = query({
         .query("courses")
         .withIndex("by_organization_published", (q) =>
           q
-            .eq("organizationId", args.organizationId!)
-            .eq("isPublished", args.isPublished!),
+            .eq("organizationId", args.organizationId)
+            .eq("isPublished", args.isPublished),
         )
         .paginate(args.paginationOpts);
     } else if (args.organizationId) {
@@ -75,11 +75,11 @@ export const listCourses = query({
       let q = ctx.db
         .query("courses")
         .withIndex("by_organization", (q) =>
-          q.eq("organizationId", args.organizationId!),
+          q.eq("organizationId", args.organizationId),
         );
 
       if (args.isPublished !== undefined) {
-        q = q.filter((q) => q.eq(q.field("isPublished"), args.isPublished!));
+        q = q.filter((q) => q.eq(q.field("isPublished"), args.isPublished));
       }
 
       return await q.paginate(args.paginationOpts);
@@ -88,7 +88,7 @@ export const listCourses = query({
       let q = ctx.db.query("courses");
 
       if (args.isPublished !== undefined) {
-        q = q.filter((q) => q.eq(q.field("isPublished"), args.isPublished!));
+        q = q.filter((q) => q.eq(q.field("isPublished"), args.isPublished));
       }
 
       return await q.paginate(args.paginationOpts);

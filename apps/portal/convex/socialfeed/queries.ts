@@ -481,7 +481,7 @@ export const getComments = query({
   }),
   handler: async (ctx, args) => {
     // Build base query
-    let queryBuilder = ctx.db
+    const queryBuilder = ctx.db
       .query("comments")
       .withIndex("by_parent", (q) =>
         q.eq("parentId", args.parentId).eq("parentType", args.parentType),
@@ -489,15 +489,13 @@ export const getComments = query({
       .filter((q) => q.eq(q.field("parentCommentId"), undefined)); // Only top-level comments
 
     // Apply sorting
-    if (args.sortOrder === "oldest") {
-      queryBuilder = queryBuilder.order("asc");
-    } else {
-      // Default to newest
-      queryBuilder = queryBuilder.order("desc");
-    }
+    const orderedQuery =
+      args.sortOrder === "oldest"
+        ? queryBuilder.order("asc")
+        : queryBuilder.order("desc");
 
     // Paginate and enrich results
-    const { page, continueCursor, isDone } = await queryBuilder.paginate(
+    const { page, continueCursor, isDone } = await orderedQuery.paginate(
       args.paginationOpts,
     );
 
@@ -522,16 +520,16 @@ export const getReplies = query({
   }),
   handler: async (ctx, args) => {
     // Build base query
-    let queryBuilder = ctx.db
+    const queryBuilder = ctx.db
       .query("comments")
       .withIndex("by_parentCommentId", (q) =>
         q.eq("parentCommentId", args.parentCommentId),
       );
 
     // Apply sorting
-    queryBuilder = queryBuilder.order("asc"); // Replies are always oldest first
+    const orderedQuery = queryBuilder.order("asc"); // Replies are always oldest first
 
-    const { page, continueCursor, isDone } = await queryBuilder.paginate(
+    const { page, continueCursor, isDone } = await orderedQuery.paginate(
       args.paginationOpts,
     );
 
@@ -561,7 +559,7 @@ export const searchUsersForMentions = query({
     const users = await ctx.db
       .query("users")
       .withSearchIndex("search_name_username", (q) =>
-        q.search("name", args.query).search("username", args.query),
+        q.search("name", args.query),
       )
       .take(args.limit ?? 10);
 
@@ -589,18 +587,12 @@ export const getRecommendedContent = query({
   handler: async (ctx, args) => {
     const recommendations = await findSimilarUsers(ctx, args.userId);
 
-    if (!recommendations) {
-      return { page: [], continueCursor: null, isDone: true };
-    }
-
     const { page, continueCursor, isDone } = await ctx.db
       .query("feedItems")
       .filter((q) =>
         q.or(
           // Include posts from similar users
-          ...recommendations.similarUserIds.map((id) =>
-            q.eq(q.field("creatorId"), id),
-          ),
+          ...recommendations.map((id) => q.eq(q.field("creatorId"), id)),
           // Include popular public posts
           q.eq(q.field("visibility"), "public"),
         ),
@@ -643,15 +635,15 @@ export const getTopics = query({
       const searchLower = args.query.toLowerCase();
       topicsQuery = topicsQuery.filter((q) =>
         q.or(
-          q.contains(q.lower(q.field("tag")), searchLower),
-          q.contains(q.lower(q.field("description") ?? ""), searchLower),
+          q.eq(q.field("tag"), searchLower),
+          q.eq(q.field("description"), searchLower),
         ),
       );
     }
 
     // Get topics sorted by follower count (popularity)
     const { page } = await topicsQuery
-      .order("desc", (q) => q.field("followerCount") ?? 0)
+      .order("desc")
       .paginate(args.paginationOpts);
 
     return page;
@@ -672,7 +664,7 @@ export const getUserFollowedTopics = query({
     const { page } = await ctx.db
       .query("topicFollows")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .order("desc", (q) => q.field("followedAt"))
+      .order("desc")
       .paginate(args.paginationOpts);
 
     // Early return if no follows
@@ -687,7 +679,7 @@ export const getUserFollowedTopics = query({
     );
 
     // Filter out null items
-    return topics.filter((topic) => topic !== null) as Doc<"hashtags">[];
+    return topics.filter((topic) => topic !== null);
   },
 });
 
@@ -728,7 +720,7 @@ export const getTopicSuggestions = query({
     // Extract hashtags from engaged content
     const engagedHashtags = new Set<string>();
     engagedContent.forEach((content) => {
-      if (content && content.hashtags) {
+      if (content?.hashtags) {
         content.hashtags.forEach((tag) => engagedHashtags.add(tag));
       }
     });
@@ -767,18 +759,22 @@ export const getTopicSuggestions = query({
 
     // First, add topics from content the user engaged with
     if (engagedHashtags.size > 0) {
-      const engagedTopics = await ctx.db
-        .query("hashtags")
-        .withIndex("by_isTopic", (q) => q.eq("isTopic", true))
-        .filter((q) =>
-          q.and(
-            q.not(followedTopicIds.has(q.field("_id").toString())),
-            engagedHashtags.has(q.field("tag")),
-          ),
-        )
-        .take(limit);
+      const engagedTopicDocs = await Promise.all(
+        Array.from(engagedHashtags).map(async (tag) =>
+          ctx.db
+            .query("hashtags")
+            .withIndex("by_tag", (q) => q.eq("tag", tag))
+            .first(),
+        ),
+      );
 
-      suggestions.push(...engagedTopics);
+      const engagedTopicFiltered = engagedTopicDocs
+        .filter((t): t is NonNullable<typeof t> => !!t)
+        .filter((t) => t.isTopic === true)
+        .filter((t) => !followedTopicIds.has(t._id.toString()))
+        .slice(0, limit);
+
+      suggestions.push(...engagedTopicFiltered);
     }
 
     // Next, add topics followed by similar users
@@ -791,9 +787,10 @@ export const getTopicSuggestions = query({
           .map(async (id) => await ctx.db.get(id as unknown as Id<"hashtags">)),
       );
 
-      suggestions.push(
-        ...(similarUserTopics.filter((t) => t !== null) as Doc<"hashtags">[]),
+      const similarUserTopicsFiltered = similarUserTopics.filter(
+        (t): t is NonNullable<typeof t> => t !== null,
       );
+      suggestions.push(...similarUserTopicsFiltered);
     }
 
     // Finally, add popular topics if we still need more
@@ -879,11 +876,11 @@ export const getRecommendedHashtags = query({
       .filter((q) =>
         q.or(
           q.eq(q.field("creatorId"), args.userId),
-          q.or(
-            followedUserIds.length > 0
-              ? q.in(q.field("creatorId"), followedUserIds as Id<"users">[])
-              : q.eq(q.field("creatorId"), args.userId),
-          ),
+          ...(followedUserIds.length > 0
+            ? followedUserIds.map((id) =>
+                q.eq(q.field("creatorId"), id as unknown as Id<"users">),
+              )
+            : []),
         ),
       )
       .collect();
@@ -907,11 +904,11 @@ export const getRecommendedHashtags = query({
 
     // Fetch full hashtag documents for the recommended names
     const recommendedHashtagDocs = await Promise.all(
-      recommendedHashtagNames.map(async (hashtagName) => {
+      recommendedHashtagNames.map(async (tagName) => {
         const hashtagDoc = await ctx.db
           .query("hashtags")
-          .withIndex("by_hashtag", (q) => q.eq("hashtag", hashtagName))
-          .unique();
+          .withIndex("by_tag", (q) => q.eq("tag", tagName))
+          .first();
         return hashtagDoc;
       }),
     );

@@ -1,7 +1,6 @@
 import { v } from "convex/values";
 
-import type { Id } from "../_generated/dataModel";
-import { query } from "../_generated/server";
+import { query } from "../../_generated/server";
 import {
   getOrganizationBySlug,
   getUserOrganizations,
@@ -12,7 +11,6 @@ import {
   organizationInvitationValidator,
   organizationMemberValidator,
   organizationValidator,
-  organizationWithRoleValidator,
   planLimitResultValidator,
   planValidator,
 } from "./types";

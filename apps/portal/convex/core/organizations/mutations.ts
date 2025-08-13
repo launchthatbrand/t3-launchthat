@@ -1,8 +1,8 @@
+import type { Id } from "@convex-config/_generated/dataModel";
 import { v } from "convex/values";
 
-import type { Id } from "../_generated/dataModel";
-import { mutation } from "../_generated/server";
-import { getAuthenticatedUserId } from "../lib/permissions/userAuth";
+import { mutation } from "../../_generated/server";
+import { getAuthenticatedUserId } from "../../lib/permissions/userAuth";
 import {
   checkOrganizationLimit,
   generateInvitationToken,
@@ -62,7 +62,7 @@ export const create = mutation({
 
     // Add owner to organization
     await ctx.db.insert("userOrganizations", {
-      userId: userId as Id<"users">,
+      userId,
       organizationId,
       role: "owner",
       isActive: true,
@@ -111,7 +111,7 @@ export const update = mutation({
       ]);
     }
 
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       updatedAt: Date.now(),
     };
 
@@ -665,7 +665,7 @@ export const updatePlan = mutation({
       throw new Error("Plan not found");
     }
 
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       updatedAt: Date.now(),
     };
 

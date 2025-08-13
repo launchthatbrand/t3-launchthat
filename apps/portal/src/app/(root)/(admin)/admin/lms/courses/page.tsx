@@ -113,16 +113,6 @@ export default function AdminCoursesPage() {
       : "";
   const hasSearch = normalizedSearchTerm.length > 0;
 
-  const test = useQuery(api.ecommerce.orders.queries.getOrderById, {
-    id: "123",
-  });
-
-  console.log(test);
-
-  const test2 = useQuery(api.ecommerce.orders.queries.getOrders, {
-    limit: 10,
-  });
-
   const searchResults: Doc<"courses">[] | undefined = useQuery(
     api.lms.courses.queries.searchCourses,
     hasSearch

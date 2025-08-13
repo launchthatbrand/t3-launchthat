@@ -1,10 +1,9 @@
 import { v } from "convex/values";
 
-import { Id } from "../_generated/dataModel";
+import type { Id } from "../_generated/dataModel";
 import { mutation } from "../_generated/server";
 import { throwNotFound } from "../shared/errors";
 import {
-  NotificationType,
   notificationTypeValidator,
   userIdValidator,
 } from "../shared/validators";
@@ -97,7 +96,7 @@ export const createNotification = mutation({
     let isNotificationDisabled = false;
 
     // Check preferences if they exist
-    if (preferencesDoc && preferencesDoc.appPreferences) {
+    if (preferencesDoc?.appPreferences) {
       // Type-safe access to notification preferences
       const appPrefs = preferencesDoc.appPreferences;
       const notificationType = args.type;

@@ -125,7 +125,11 @@ export const usersTable = defineTable({
   .index("by_status", ["status"])
   .index("by_role", ["role"])
   .index("by_last_active", ["lastActiveAt"])
-  .index("by_created_at", ["createdAt"]);
+  .index("by_created_at", ["createdAt"])
+  .searchIndex("search_name_username", {
+    searchField: "name",
+    filterFields: ["name", "username"],
+  });
 
 // Export for use in main schema.ts
 export const usersSchema = {

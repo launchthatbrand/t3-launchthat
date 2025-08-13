@@ -18,13 +18,11 @@ import { Eye, Filter, Package, PlusCircle, Trash2 } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card } from "@acme/ui/card";
 import { toast } from "@acme/ui/toast";
 
 import type {
   EntityAction,
   FilterConfig,
-  FilterValue,
 } from "~/components/shared/EntityList/types";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
 

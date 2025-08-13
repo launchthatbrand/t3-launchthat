@@ -37,7 +37,8 @@ export const listTasks = query({
 // --- Get Task Query ---
 export const getTask = query({
   args: { taskId: v.id("tasks") },
-  returns: v.optional(
+  returns: v.union(
+    v.null(),
     v.object({
       _id: v.id("tasks"),
       _creationTime: v.number(),
@@ -59,7 +60,7 @@ export const getTask = query({
   ),
   handler: async (ctx, args) => {
     const task = await ctx.db.get(args.taskId);
-    return task ?? undefined;
+    return task ?? null;
   },
 });
 

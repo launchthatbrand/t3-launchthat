@@ -5,7 +5,6 @@ import { v } from "convex/values";
 
 import { internal } from "../_generated/api";
 import { action, internalAction } from "../_generated/server";
-import { env } from "../../../portal/src/env";
 
 interface VimeoApiVideo {
   uri: string; // e.g. "/videos/123456"

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { mutation } from "../_generated/server";
+import { mutation } from "../../_generated/server";
 
 /**
  * Seed initial plans data
@@ -9,7 +9,7 @@ import { mutation } from "../_generated/server";
 export const seedPlans = mutation({
   args: {},
   returns: v.array(v.id("plans")),
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     // Check if plans already exist
     const existingPlans = await ctx.db.query("plans").collect();
     if (existingPlans.length > 0) {
@@ -169,9 +169,9 @@ export const createDefaultOrganization = mutation({
 
     // Generate a default organization name and slug
     const orgName = `${args.userName}'s Organization`;
-    let baseSlug = args.userName
+    const baseSlug = args.userName
       .toLowerCase()
-      .replace(/[^a-z0-9\-]/g, "-")
+      .replace(/[^a-z0-9-]/g, "-")
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "");
 
@@ -241,7 +241,7 @@ export const updatePlan = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       updatedAt: Date.now(),
     };
 

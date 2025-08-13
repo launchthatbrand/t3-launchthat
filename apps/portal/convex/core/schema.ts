@@ -4,6 +4,7 @@ import { contentTypesSchema } from "./contentTypes/schema";
 import { mediaSchema } from "./media/schema";
 import { menusSchema } from "./menus/schema";
 import { optionsSchema } from "./options/schema";
+import { organizationsSchema } from "./organizations/schema";
 import { permissionsSchema } from "./permissions/schema";
 import { postsSchema } from "./posts/schema";
 import { rolesSchema } from "./roles/schema";
@@ -16,6 +17,7 @@ export const coreSchema = {
   ...mediaSchema,
   ...menusSchema,
   ...optionsSchema,
+  ...organizationsSchema,
   ...permissionsSchema,
   ...postsSchema,
   ...rolesSchema,
