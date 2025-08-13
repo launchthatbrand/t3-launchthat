@@ -1,103 +1,133 @@
-# Taskmaster – Admin Task Management System PRD
 
-## Overview
-Taskmaster is an admin-facing task management system for internal use. It enables users to create, view, update, and delete tasks, assign due dates (including recurring rules), and visualize tasks on a calendar. The system should leverage existing campaign calendar components for consistency and efficiency.
 
----
+### PRD: Unify Store Funnels into Centralized Scenarios with Types and Constraints
 
-## Goals
-- Provide a robust CRUD interface for managing tasks.
-- Allow tasks to have due dates and support recurring schedules.
-- Display all tasks with dates on a calendar, reusing campaign calendar UI.
-- Ensure a seamless, modern admin experience using existing design systems and component libraries.
+Overview
+- Replace dedicated ecommerce funnels with a unified scenarios system.
+- Introduce scenario types with policy-driven constraints.
+- Reuse a single React Flow builder across contexts with type-specific behavior.
+- Preserve slug-addressable checkout flows and sessions.
 
----
+Goals
+- Centralize all flow modeling in `scenarios/nodes/nodeConnections`.
+- Add `scenarioType` to support special flows like ecommerce checkout.
+- Enforce required, non-deletable seeded nodes for checkout flows.
+- Provide new checkout runtime APIs replacing funnels.
+- Migrate existing funnels to scenarios with zero user-visible regression.
 
-## Features & Requirements
+Non-Goals
+- Payment provider changes.
+- Visual redesign of the flow editor beyond constraints and affordances.
+- New product/cart logic beyond current behavior.
 
-### 1. Task CRUD
-- **Create**: Admins can create new tasks with the following fields:
-  - Title (string, required)
-  - Description (string, optional)
-  - Due Date (date, optional)
-  - Recurring (boolean, optional)
-  - Recurrence Rule (string, optional, e.g., daily/weekly/monthly or RRULE)
-  - Status (enum: pending, completed, cancelled; default: pending)
-- **Read**: List all tasks in a table or list view, sortable by date/status.
-- **Update**: Edit any field of an existing task.
-- **Delete**: Remove a task (with confirmation).
+Current State
+- Store funnels at:
+  - `apps/portal/convex/ecommerce/funnels/{schema,queries,mutations}.ts`
+  - Tables: `funnels`, `funnelSteps`, `funnelEdges`, `funnelSessions`
+- Integrations builder at:
+  - `apps/portal/convex/integrations/{scenarios,nodes,connections}/...`
+  - Tables: `scenarios`, `nodes`, `nodeConnections`
+- React Flow builder in `apps/portal/src/app/test/react-flow/*` and funnels admin pages.
 
-### 2. Task Dates & Recurrence
-- **Due Date**: Tasks can have a single due date (date picker).
-- **Recurring Tasks**:
-  - Toggle to mark a task as recurring.
-  - Select recurrence pattern (daily, weekly, monthly, or custom RRULE).
-  - Recurring tasks should be expanded into individual events on the calendar view.
+High-Level Requirements
+- Scenario Types
+  - Add `scenarioType` to `scenarios`: `"general" | "checkout"`.
+  - For `"checkout"` scenarios, add `slug` (unique), used for public checkout routes.
+- Preseeded Nodes for Checkout
+  - On create, seed at least 2 nodes: `checkout` and `order_confirmation`, both `isSystem: true` (non-deletable).
+  - Default positions reasonable; UI allows repositioning.
+- Constraints & Policies
+  - Checkout type:
+    - Required nodes: at least 1 `checkout` and 1 `order_confirmation`.
+    - Allowed node types: `checkout`, `order_confirmation`, `upsell`, `router`, plus safe transforms if needed.
+    - Prevent deletion of `isSystem` nodes; prevent updates violating required minimums.
+  - General type: no required nodes; no type restriction (existing behavior).
+- Node Connections
+  - Extend `nodeConnections` to include `label`, `branch`, `order` (funnels parity).
+- Runtime Checkout APIs (Scenarios-based)
+  - Provide new `checkouts` queries/mutations that mirror funnels runtime behavior and read from scenarios:
+    - `getCheckoutBySlug(slug)`
+    - `createCheckoutSession({ checkoutSlug, ... })`
+    - `updateCheckoutSessionInfo(...)`
+    - `completeCheckoutSession(...)`
+    - `getCheckoutSession(sessionId)`
+    - `setCheckoutSessionItems(sessionId, productIds)`
 
-### 3. Calendar Integration
-- **Calendar View**:
-  - Display all tasks with due dates on a calendar.
-  - Use the same calendar component as the campaign calendar for UI/UX consistency.
-  - Clicking a calendar event opens the task details/edit modal.
-  - Recurring tasks are shown on all relevant dates.
-- **Filtering**:
-  - Option to filter calendar by status (pending/completed/cancelled).
-  - Option to show/hide recurring tasks.
+Data Model Changes (Convex)
+- `scenarios` (apps/portal/convex/integrations/schema/scenariosSchema.ts)
+  - Add: `scenarioType: "general" | "checkout"`
+  - Add: `slug?: string` (unique index `by_slug`) for checkout scenarios
+- `nodes` (apps/portal/convex/integrations/schema/nodesSchema.ts)
+  - Add: `isSystem?: boolean` (non-deletable when true)
+  - Add: `lockedProperties?: string[]` (optional, for future UI locking)
+- `nodeConnections` (apps/portal/convex/integrations/schema/nodesSchema.ts)
+  - Add: `label?: string`, `branch?: string`, `order?: number`
+- Optional: Internal `apps` entries for “Checkout” and “Order Confirmation” (using `apps.isInternal: true`).
 
-### 4. UI/UX
-- Use Shadcn UI components for forms, modals, tables, etc.
-- Use React Hook Form + zod for form validation.
-- Use React Query (convex/react) for data fetching and mutations.
-- Ensure accessibility and responsive design.
-- Maintain visual consistency with the admin/campaign calendar.
+APIs (Convex)
+- Scenarios
+  - `integrations/scenarios/mutations.create`:
+    - New args: `scenarioType`, `slug?`
+    - If `checkout`: seed `checkout` and `order_confirmation` nodes with `isSystem: true`
+  - `integrations/scenarios/queries.list`: add optional `scenarioType` filter
+  - `integrations/scenarios/queries.getBySlug(slug)`: checkout-type lookup
+  - `integrations/scenarios/mutations.update/remove`: enforce policy checks
+- Nodes
+  - `integrations/nodes/mutations.create`:
+    - Validate `type` allowed for the scenario type
+  - `integrations/nodes/mutations.remove`:
+    - Block deletion of `isSystem` nodes
+    - Enforce required minimums (checkout/order_confirmation)
+  - `integrations/nodes/mutations.update`: allow unless violating constraints
+- Connections
+  - `integrations/nodes/mutations.createConnection/updateConnection`: accept optional `label/branch/order`
+- Checkouts (new, scenarios-backed)
+  - `ecommerce/checkouts/queries.ts`:
+    - `getCheckoutBySlug(slug)` resolves checkout scenario and checkout node config; fetches products
+    - `getCheckoutSession(sessionId)`
+  - `ecommerce/checkouts/mutations.ts`:
+    - `createCheckoutSession`, `updateCheckoutSessionInfo`, `completeCheckoutSession`, `setCheckoutSessionItems`
 
-### 5. Backend
-- Use Convex for data storage and API.
-- Define a `tasks` table with the following fields:
-  - id (Convex id)
-  - title
-  - description
-  - dueDate
-  - isRecurring
-  - recurrenceRule
-  - status
-  - createdAt
-  - updatedAt
-- Implement Convex queries and mutations for all CRUD operations.
+UI/UX
+- Admin
+  - Replace funnels admin pages with a “Checkout Scenarios” view using `scenarios` of type `checkout`.
+  - “Create Checkout Flow” button calls `scenarios.create({ scenarioType: "checkout", slug, ... })`.
+  - React Flow editor reused; hide delete button for `isSystem` nodes; filter palette by allowed types.
+- Frontend
+  - Replace `api.ecommerce.funnels.*` with new `api.ecommerce.checkouts.*` endpoints.
+  - Routes continue to use `slug`.
+  - Maintain existing layout flags via checkout node config.
 
----
+Migration Plan
+- Phase 1: Add schema extensions and policies (no behavior change).
+- Phase 2: Implement seeding on scenario create; node deletion/creation constraints.
+- Phase 3: Implement checkouts runtime APIs; dual-run with funnels.
+- Phase 4: Data migration action:
+  - funnels → scenarios
+  - funnelSteps → nodes (map types: funnelCheckout→checkout; order_confirmation→order_confirmation; landing→landing; upsell→upsell)
+  - funnelEdges → nodeConnections (copy label/order/branch)
+  - funnelSessions: add `scenarioId` or move to `checkoutSessions`
+- Phase 5: Switch UI to scenarios-based checkouts; verify parity.
+- Phase 6: Remove funnels code and tables.
 
-## Non-Goals
-- No user assignment or multi-user collaboration in this phase.
-- No notifications or reminders.
-- No external integrations.
+Acceptance Criteria
+- Creating a checkout scenario seeds `checkout` and `order_confirmation` nodes with `isSystem: true`.
+- Deleting a seeded node is blocked in both UI and backend.
+- Adding a node of a disallowed type to a checkout scenario is blocked.
+- `getCheckoutBySlug` mirrors `getFunnelCheckoutBySlug` response shape.
+- Frontend checkout flows work unchanged after switch.
+- Admin can list/create/edit checkout scenarios via unified builder.
+- Node connections support `label/branch/order`.
+- Migration runs without data loss; counts and mapping preserved.
 
----
+Security & Permissions
+- Preserve existing admin/auth checks from funnels.
+- Ensure new endpoints match current permission model.
 
-## Success Criteria
-- Admins can create, edit, and delete tasks with all required fields.
-- Tasks with due dates appear on the calendar.
-- Recurring tasks are correctly expanded and displayed on the calendar.
-- The UI is consistent with the rest of the admin panel and campaign calendar.
-- All forms are validated and accessible.
+Risks
+- Slug collisions during migration.
+- Session continuity if switching table names.
 
----
-
-## Milestones
-1. **Backend**
-   - Convex schema and CRUD API for tasks.
-2. **Frontend**
-   - Task list/table UI with CRUD.
-   - Task form modal/drawer.
-   - Calendar view with campaign calendar integration.
-   - Recurrence rule support and expansion logic.
-3. **Polish**
-   - Filtering, accessibility, and responsive design.
-   - QA and bugfixes.
-
----
-
-## References
-- Campaign calendar component (for calendar UI)
-- Shadcn UI documentation
-- Convex documentation 
+Mitigations
+- Enforce unique `by_slug`.
+- Prefer adding `scenarioId` to existing `funnelSessions` for compatibility before creating new tables. 

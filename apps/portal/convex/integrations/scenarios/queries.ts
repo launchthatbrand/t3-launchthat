@@ -160,10 +160,68 @@ export const get = query({
       .withIndex("by_scenario", (q) => q.eq("scenarioId", args.id))
       .collect();
 
-    return {
+    const normalizedScenario = {
       ...scenario,
-      nodes,
-      connections,
+      description: (scenario as any).description ?? "",
+      status: (scenario as any).status ?? "draft",
+      createdAt: (scenario as any).createdAt ?? scenario._creationTime,
+      updatedAt: (scenario as any).updatedAt ?? scenario._creationTime,
+    } as typeof scenario & {
+      createdAt: number;
+      updatedAt: number;
+      description: string;
+      status: string;
+    };
+
+    const normalizedNodes = nodes.map((n) => ({
+      ...n,
+      config:
+        typeof (n as any).config === "string"
+          ? (n as any).config
+          : JSON.stringify((n as any).config ?? {}),
+      position:
+        typeof (n as any).position === "string"
+          ? (n as any).position
+          : JSON.stringify((n as any).position ?? { x: 0, y: 0 }),
+      createdAt: (n as any).createdAt ?? n._creationTime,
+      updatedAt: (n as any).updatedAt ?? n._creationTime,
+    }));
+
+    const normalizedConnections = connections.map((c) => ({
+      ...c,
+      mapping:
+        typeof (c as any).mapping === "string" ||
+        (c as any).mapping === undefined
+          ? (c as any).mapping
+          : JSON.stringify((c as any).mapping),
+      createdAt: (c as any).createdAt ?? c._creationTime,
+      updatedAt: (c as any).updatedAt ?? c._creationTime,
+    }));
+
+    return {
+      ...normalizedScenario,
+      nodes: normalizedNodes.map((n) => ({
+        _id: n._id,
+        _creationTime: n._creationTime,
+        scenarioId: n.scenarioId,
+        type: n.type,
+        label: n.label,
+        config: n.config,
+        position: n.position,
+        order: n.order,
+        createdAt: n.createdAt,
+        updatedAt: n.updatedAt,
+      })),
+      connections: normalizedConnections.map((c) => ({
+        _id: c._id,
+        _creationTime: c._creationTime,
+        scenarioId: c.scenarioId,
+        sourceNodeId: c.sourceNodeId,
+        targetNodeId: c.targetNodeId,
+        mapping: c.mapping,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+      })),
     };
   },
 });

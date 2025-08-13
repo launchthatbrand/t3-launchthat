@@ -1,12 +1,11 @@
 "use client";
 
+import type { Id } from "@convex-config/_generated/dataModel";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
 import { useMutation } from "convex/react";
 import { Loader2 } from "lucide-react";
-
-import { api } from "../../../../../../convex/_generated/api";
-import { Id } from "../../../../../../convex/_generated/dataModel";
 
 export default function NewScenarioPage() {
   const router = useRouter();

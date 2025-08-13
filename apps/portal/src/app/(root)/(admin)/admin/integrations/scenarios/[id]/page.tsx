@@ -21,6 +21,7 @@ import { Activity, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@acme/ui";
 
 import { ScenarioForm } from "../components/ScenarioForm";
+import ScenarioGraph from "../components/ScenarioGraph";
 import { ScenarioHelp } from "../components/ScenarioHelp";
 
 export default function ScenarioPage() {
@@ -113,11 +114,14 @@ export default function ScenarioPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <div className="md:col-span-2">
+        <div className="space-y-6 md:col-span-2">
           <ScenarioForm
             scenarioId={scenarioId}
             isCreatingMode={isCreatingMode}
           />
+
+          {/* Graph editor (only show when not creating, or show empty canvas later) */}
+          {!isCreatingMode && <ScenarioGraph scenarioId={scenarioId} />}
         </div>
 
         <div>

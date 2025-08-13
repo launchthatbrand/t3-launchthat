@@ -2,20 +2,7 @@
 
 import "@xyflow/react/dist/style.css";
 
-import {
-  Background,
-  BaseEdge,
-  Controls,
-  EdgeLabelRenderer,
-  Handle,
-  MarkerType,
-  Position,
-  ReactFlow,
-  addEdge,
-  getBezierPath,
-  useEdgesState,
-  useNodesState,
-} from "@xyflow/react";
+import type { Id } from "@/convex/_generated/dataModel";
 import type {
   Connection,
   Edge,
@@ -24,16 +11,17 @@ import type {
   NodeProps,
   ReactFlowInstance,
 } from "@xyflow/react";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "@acme/ui/context-menu";
-import type { HierarchyNode, HierarchyPointNode } from "d3-hierarchy";
-import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
 import React, { useCallback, useEffect, useRef } from "react";
+import {
+  addEdge,
+  Background,
+  Controls,
+  MarkerType,
+  ReactFlow,
+  useEdgesState,
+  useNodesState,
+} from "@xyflow/react";
+
 import {
   Sheet,
   SheetContent,
@@ -41,243 +29,48 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@acme/ui";
-import { stratify, tree } from "d3-hierarchy";
 
+import type { RouterKind } from "./types";
 import { FunnelCheckoutForm } from "../../(root)/(admin)/admin/store/funnels/[id]/steps/_components/FunnelCheckoutForm";
-import { GearIcon } from "@radix-ui/react-icons";
-import type { Id } from "@/convex/_generated/dataModel";
+import { BRANCH_X_OFFSET, NODE_H, NODE_W, VERTICAL_GAP } from "./constants";
+import CreateNode from "./CreateNode";
+import { initialEdges, initialNodesBase } from "./initialData";
+import { layoutTopBottom } from "./layoutUtil";
 import NodeWithContextMenu from "./NodeWithContextMenu";
 import PlusEdgeWithPopover from "./PlusEdgeWithPopover";
 
-const NODE_W = 180;
-const NODE_H = 40;
-const VERTICAL_GAP = 50;
-const BRANCH_X_OFFSET = 220;
-
 // Scenario config model
-type LinearKind = "start" | "checkout" | "order_confirmation" | "upsell";
-type NodeKind = LinearKind | "router";
+export type LinearKind = "start" | "checkout" | "order_confirmation" | "upsell";
+export type NodeKind = LinearKind | "router";
 
-type RouterMode = "ab" | "basic";
-interface RouterRouteConfig {
+export type RouterMode = "ab" | "basic";
+export interface RouterRouteConfig {
   id: string;
   percentage?: number; // used when mode === "ab"
   nodes: NodeConfig[]; // route-local sequence
 }
-interface RouterConfig {
+export interface RouterConfig {
   mode: RouterMode;
   routes: RouterRouteConfig[];
 }
-interface NodeConfig {
+export interface NodeConfig {
   id: string;
   kind: NodeKind;
   label: string;
   position: number; // linear index within main scenario
   router?: RouterConfig | null;
 }
-interface ScenarioConfig {
+export interface ScenarioConfig {
   nodes: NodeConfig[]; // ordered by position ascending
 }
 
-interface Datum {
-  id: string;
-  parentId: string | null;
-}
-
-type CreateKind = "checkout" | "order_confirmation" | "upsell";
-// include router as a creatable type
-type RouterKind = CreateKind | "router";
-
-function layoutTB(nodes: Node[], edges: Edge[]) {
-  // build parent map (first incoming edge = parent)
-  const parentById: Record<string, string | null> = {};
-  const nodeIds = new Set(nodes.map((n) => String(n.id)));
-  for (const id of nodeIds) parentById[id] = null;
-  for (const e of edges) {
-    const tgt = String(e.target);
-    const src = String(e.source);
-    if (nodeIds.has(tgt) && parentById[tgt] === null) {
-      parentById[tgt] = src;
-    }
-  }
-
-  const data: Datum[] = Array.from(nodeIds).map((id) => ({
-    id,
-    parentId: parentById[id] ?? null,
-  }));
-
-  // If there are multiple roots, d3.stratify will throw.
-  // For this test page we assume a single chain/root.
-  let root: HierarchyNode<Datum> | undefined;
-  try {
-    root = stratify<Datum>()
-      .id((d) => d.id)
-      .parentId((d) => d.parentId ?? undefined)(data);
-  } catch {
-    // Fallback: position by insertion order
-    const laid = nodes.map(
-      (n, idx) =>
-        ({
-          ...n,
-          position: { x: 0, y: idx * (NODE_H + VERTICAL_GAP) },
-          sourcePosition: Position.Bottom,
-          targetPosition: Position.Top,
-        }) as Node,
-    );
-    return { nodes: laid, edges };
-  }
-
-  // root is defined if no error was thrown above
-
-  const treeLayout = tree<Datum>().nodeSize([0, NODE_H + VERTICAL_GAP]);
-  const laidRoot: HierarchyPointNode<Datum> = treeLayout(root);
-
-  const idToNode = new Map<string, Node>(nodes.map((n) => [String(n.id), n]));
-  for (const d of laidRoot.descendants()) {
-    const nid = d.data.id;
-    const n = idToNode.get(nid);
-    if (!n) continue;
-    n.position = { x: d.x, y: d.y };
-    n.sourcePosition = Position.Bottom;
-    n.targetPosition = Position.Top;
-  }
-
-  return { nodes: Array.from(idToNode.values()), edges };
-}
-
-interface ToolbarData {
-  label: string;
-  onDelete?: (id: string) => void;
-  onAddRoute?: (id: string) => void;
-  kind?: RouterKind;
-}
-
 function NodeWithToolbar(props: NodeProps) {
-  // Delegate to extracted component
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <NodeWithContextMenu {...(props as any)} />;
-}
-
-interface CreateData {
-  prevId?: string;
-  onCreate?: (prevId: string, createId: string, kind: RouterKind) => void;
-}
-
-function CreateNode({ id, data }: NodeProps) {
-  const d = data as unknown as CreateData;
-  const disabled = d.prevId == null;
-  const handlePick = (kind: RouterKind) => {
-    if (typeof d.prevId === "string") d.onCreate?.(d.prevId, String(id), kind);
-  };
-  return (
-    <div className="rounded border-2 border-dashed bg-white px-3 py-2 text-sm shadow-sm transition-opacity transition-transform duration-300 ease-out">
-      <div className="flex items-center gap-2">
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className="rounded-sm border bg-white px-2 py-1 text-xs shadow"
-              disabled={disabled}
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              +
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-56 p-2">
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                className="xy-theme__button"
-                onClick={() => handlePick("checkout")}
-              >
-                Checkout
-              </button>
-              <button
-                type="button"
-                className="xy-theme__button"
-                onClick={() => handlePick("order_confirmation")}
-              >
-                Order Confirmation
-              </button>
-              <button
-                type="button"
-                className="xy-theme__button"
-                onClick={() => handlePick("upsell")}
-              >
-                Upsell
-              </button>
-              <button
-                type="button"
-                className="xy-theme__button"
-                onClick={() => handlePick("router")}
-              >
-                Router
-              </button>
-            </div>
-          </PopoverContent>
-        </Popover>
-        <span>Add next step</span>
-      </div>
-      <Handle type="target" position={Position.Top} />
-    </div>
-  );
+  return <NodeWithContextMenu {...(props as unknown as NodeProps)} />;
 }
 
 function PlusEdge(props: EdgeProps) {
   return <PlusEdgeWithPopover {...props} />;
 }
-
-const initialNodesBase: Node[] = [
-  {
-    id: "1",
-    type: "node-with-toolbar",
-    position: { x: 0, y: 0 },
-    data: { label: "Start" },
-  },
-  {
-    id: "2",
-    type: "node-with-toolbar",
-    position: { x: 0, y: 0 },
-    data: { label: "Checkout", kind: "checkout" },
-  },
-  {
-    id: "3",
-    type: "node-with-toolbar",
-    position: { x: 0, y: 0 },
-    data: { label: "Order Confirmation", kind: "order_confirmation" },
-  },
-  {
-    id: "create",
-    type: "createNode",
-    position: { x: 0, y: 0 },
-    data: {},
-  },
-];
-
-const initialEdges: Edge[] = [
-  {
-    id: "e1-2",
-    type: "plus",
-    source: "1",
-    target: "2",
-    markerEnd: { type: MarkerType.ArrowClosed },
-  },
-  {
-    id: "e2-3",
-    type: "plus",
-    source: "2",
-    target: "3",
-    markerEnd: { type: MarkerType.ArrowClosed },
-  },
-  {
-    id: "e3-create",
-    type: "plus",
-    source: "3",
-    target: "create",
-    markerEnd: { type: MarkerType.ArrowClosed },
-  },
-];
 
 const nodeTypes = {
   "node-with-toolbar": NodeWithToolbar,
@@ -319,16 +112,18 @@ export default function ReactFlowPage() {
       setScenario((prev) => {
         const idx = prev.nodes.findIndex((n) => n.id === routerId);
         if (idx < 0) return prev;
-        const router = prev.nodes[idx];
-        if (!router.router) return prev;
-        const routes = router.router.routes.map((r) =>
+        const routerNode = prev.nodes[idx];
+        if (!routerNode || !routerNode.router) return prev;
+        const routes = routerNode.router.routes.map((r) =>
           r.id === routeId ? { ...r, percentage } : r,
         );
+        const newRouter: RouterConfig = {
+          mode: routerNode.router.mode,
+          routes,
+        };
         const updated: ScenarioConfig = {
           nodes: prev.nodes.map((n, i) =>
-            i === idx
-              ? { ...router, router: { ...router.router!, routes } }
-              : n,
+            i === idx ? { ...routerNode, router: newRouter } : n,
           ),
         };
         setTimeout(() => rebuildRef.current?.(updated), 0);
@@ -345,7 +140,7 @@ export default function ReactFlowPage() {
 
   const applyLayout = useCallback(() => {
     setNodes((ns) => {
-      const { nodes: laid } = layoutTB(ns, edges);
+      const { nodes: laid } = layoutTopBottom(ns, edges);
       return laid;
     });
   }, [edges, setNodes]);
@@ -364,7 +159,7 @@ export default function ReactFlowPage() {
           id: cfg.id,
           type: "node-with-toolbar",
           position: { x: 0, y: idx * (NODE_H + VERTICAL_GAP) },
-          data: isRouter
+          data: (isRouter
             ? {
                 label: cfg.label,
                 kind: "router",
@@ -375,7 +170,7 @@ export default function ReactFlowPage() {
                 label: cfg.label,
                 kind: cfg.kind,
                 onDelete: (rid: string) => removeNode(rid),
-              },
+              }) as unknown as Record<string, unknown>,
           width: NODE_W,
           height: NODE_H,
         } as Node);
@@ -416,7 +211,7 @@ export default function ReactFlowPage() {
                     label: rn.label,
                     kind: rn.kind,
                     onDelete: (rid: string) => removeNode(rid),
-                  },
+                  } as unknown as Record<string, unknown>,
                   width: NODE_W,
                   height: NODE_H,
                 } as Node);
@@ -474,7 +269,7 @@ export default function ReactFlowPage() {
                 prevId: `${cfg.id}:${route.id}`,
                 onCreate: (key: string, _createId: string, kind: RouterKind) =>
                   handleCreateRoute(key, kind),
-              },
+              } as unknown as Record<string, unknown>,
               width: NODE_W,
               height: NODE_H,
               style: { opacity: 1 },
@@ -506,7 +301,10 @@ export default function ReactFlowPage() {
           id: createId,
           type: "createNode",
           position: { x: 0, y: 0 },
-          data: { prevId: undefined, onCreate: handleCreate },
+          data: {
+            prevId: undefined,
+            onCreate: handleCreate,
+          } as unknown as Record<string, unknown>,
           width: NODE_W,
           height: NODE_H,
           style: { opacity: 1 },
@@ -517,7 +315,10 @@ export default function ReactFlowPage() {
           id: createId,
           type: "createNode",
           position: { x: 0, y: ordered.length * (NODE_H + VERTICAL_GAP) },
-          data: { prevId: last.id, onCreate: handleCreate },
+          data: {
+            prevId: last.id,
+            onCreate: handleCreate,
+          } as unknown as Record<string, unknown>,
           width: NODE_W,
           height: NODE_H,
           style: { opacity: 1 },
@@ -607,7 +408,10 @@ export default function ReactFlowPage() {
         const updated: ScenarioConfig = {
           nodes: prev.nodes.map((n, i) =>
             i === idx
-              ? { ...routerNode, router: { ...routerNode.router!, routes } }
+              ? {
+                  ...routerNode,
+                  router: { mode: routerNode.router.mode, routes },
+                }
               : n,
           ),
         };
@@ -620,7 +424,8 @@ export default function ReactFlowPage() {
 
   const handleCreateRoute = useCallback(
     (routeKey: string, kind: RouterKind) => {
-      const [routerId, routeId] = routeKey.split(":");
+      const [routerId = "", routeId = ""] = routeKey.split(":");
+      if (!routerId || !routeId) return;
       insertRouteNode(routerId, routeId, Number.POSITIVE_INFINITY, kind);
     },
     [insertRouteNode],
@@ -700,7 +505,7 @@ export default function ReactFlowPage() {
   );
 
   const handleCreate = useCallback(
-    (prevId: string, createId: string, kind: RouterKind) => {
+    (_prevId: string, createId: string, kind: RouterKind) => {
       const label =
         kind === "checkout"
           ? "Checkout"
@@ -736,52 +541,12 @@ export default function ReactFlowPage() {
     [rebuildFromScenario, setScenario],
   );
 
-  const handleAddRoute: (routerId: string) => void = useCallback(
-    (routerId) => {
-      setScenario((prev) => {
-        const idx = prev.nodes.findIndex((n) => n.id === routerId);
-        if (idx < 0) return prev;
-        const node = prev.nodes[idx]!;
-        const current = node.router ?? {
-          mode: "ab",
-          routes: [] as RouterRouteConfig[],
-        };
-        const nextRouteId = `${routerId}-R${current.routes.length + 1}`;
-        const updatedNode: NodeConfig = {
-          ...node,
-          router: {
-            mode: current.mode,
-            routes: [
-              ...current.routes,
-              {
-                id: nextRouteId,
-                percentage:
-                  current.mode === "ab"
-                    ? Math.floor(100 / (current.routes.length + 1))
-                    : undefined,
-                nodes: [],
-              },
-            ],
-          },
-        };
-        const updated: ScenarioConfig = {
-          nodes: prev.nodes.map((n, i) => (i === idx ? updatedNode : n)),
-        };
-        // router config does not change linear layout; just refresh graph
-        setTimeout(() => rebuildFromScenario(updated), 0);
-        return updated;
-      });
-    },
-    [rebuildFromScenario, setScenario],
-  );
-
   useEffect(() => {
     insertRef.current = handleInsertBetween;
   }, [handleInsertBetween]);
 
   // seed nodes with actions once and apply initial layout
   useEffect(() => {
-    // initialize scenario from initialNodesBase (exclude the trailing create)
     const linear = initialNodesBase
       .filter((n) => n.type !== "createNode")
       .map((n, idx) => ({
@@ -829,7 +594,6 @@ export default function ReactFlowPage() {
         onNodeClick={(_, node) => {
           const kd = (node.data as { kind?: RouterKind } | undefined)?.kind;
           if (!kd) return; // create node or unknown type → let popover handle
-          // Do not auto-add a route on router click; use context menu instead
           if (kd === "router") return;
           setEditingNodeId(String(node.id));
           setEditingKind(kd);

@@ -4,6 +4,8 @@ import calendarSchema from "./calendar/schema";
 import { optionsSchema } from "./core/options/schema";
 import { postsSchema } from "./core/schema/postsSchema";
 import ecommerceSchema from "./ecommerce/schema";
+// Add integrations schema
+import integrationsSchema from "./integrations/schema";
 import { lmsSchema } from "./lms/schema";
 import { notificationsSchema } from "./notifications/schema";
 import socialFeedSchema from "./socialfeed/schema";
@@ -42,4 +44,7 @@ export default defineSchema({
 
   // Core options (site/store settings)
   ...optionsSchema.tables,
+
+  // Integrations (apps, connections, scenarios, nodes, nodeConnections, logs)
+  ...integrationsSchema.tables,
 });

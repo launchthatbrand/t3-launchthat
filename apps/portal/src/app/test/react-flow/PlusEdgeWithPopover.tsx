@@ -1,11 +1,12 @@
 "use client";
 
-import { BaseEdge, EdgeLabelRenderer, getBezierPath } from "@xyflow/react";
-import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
-import type { RouteEdgeData, RouterKind } from "./types";
-
 import type { EdgeProps } from "@xyflow/react";
 import { GearIcon } from "@radix-ui/react-icons";
+import { BaseEdge, EdgeLabelRenderer, getBezierPath } from "@xyflow/react";
+
+import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
+
+import type { RouteEdgeData, RouterKind } from "./types";
 
 export default function PlusEdgeWithPopover(props: EdgeProps) {
   const {
@@ -29,7 +30,7 @@ export default function PlusEdgeWithPopover(props: EdgeProps) {
     sourcePosition,
     targetPosition,
   });
-  const d = data as unknown as RouteEdgeData;
+  const d = (data ?? {}) as unknown as RouteEdgeData;
   const handlePick = (kind: RouterKind) =>
     d.onInsert?.(String(source), String(target), kind);
   const isConfig = Boolean(

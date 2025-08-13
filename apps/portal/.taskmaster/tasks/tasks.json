@@ -1,0 +1,183 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Extend Scenarios Schema with Type and Slug",
+        "description": "Update the scenarios schema to include scenarioType and slug fields to support the new unified approach.",
+        "details": "Modify `apps/portal/convex/integrations/schema/scenariosSchema.ts` to add:\n1. `scenarioType: z.enum(['general', 'checkout']).default('general')`\n2. `slug: z.string().optional()` with a unique index `by_slug` for checkout scenarios\n3. Update any related type definitions\n4. Ensure backward compatibility with existing scenarios by defaulting to 'general' type\n\nExample schema update:\n```typescript\nexport const scenariosSchema = defineSchema({\n  // existing fields...\n  scenarioType: v.union(v.literal('general'), v.literal('checkout')),\n  slug: v.optional(v.string()),\n});\n\n// Add unique index\nexport const scenarioIndexes = {\n  // existing indexes...\n  by_slug: defineIndex(\"scenarios\", [\"slug\"]),\n};\n```",
+        "testStrategy": "1. Unit test schema validation with various combinations of scenarioType and slug\n2. Test uniqueness constraint on slug field\n3. Verify existing scenarios can be queried without errors after schema change\n4. Test that default value for scenarioType works correctly",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Extend Nodes Schema with System Flag",
+        "description": "Update the nodes schema to include isSystem flag and lockedProperties array to support non-deletable nodes and property locking.",
+        "details": "Modify `apps/portal/convex/integrations/schema/nodesSchema.ts` to add:\n1. `isSystem: z.boolean().optional().default(false)` to mark nodes that cannot be deleted\n2. `lockedProperties: z.array(z.string()).optional()` to specify which properties cannot be modified\n\nExample schema update:\n```typescript\nexport const nodesSchema = defineSchema({\n  // existing fields...\n  isSystem: v.optional(v.boolean()),\n  lockedProperties: v.optional(v.array(v.string())),\n});\n```\n\nEnsure all existing queries and mutations continue to work with these new fields.",
+        "testStrategy": "1. Unit test schema validation with isSystem flag\n2. Test that existing nodes can be queried without errors after schema change\n3. Verify default values work correctly\n4. Test that lockedProperties array can store and retrieve property names correctly",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Extend NodeConnections Schema",
+        "description": "Update the nodeConnections schema to include label, branch, and order fields to match the functionality of funnelEdges.",
+        "details": "Modify `apps/portal/convex/integrations/schema/nodesSchema.ts` to add to nodeConnections:\n1. `label: z.string().optional()` for connection labels\n2. `branch: z.string().optional()` for branch information\n3. `order: z.number().optional()` for ordering connections\n\nExample schema update:\n```typescript\nexport const nodeConnectionsSchema = defineSchema({\n  // existing fields...\n  label: v.optional(v.string()),\n  branch: v.optional(v.string()),\n  order: v.optional(v.number()),\n});\n```\n\nUpdate any related type definitions and ensure backward compatibility with existing connections.",
+        "testStrategy": "1. Unit test schema validation with the new fields\n2. Test that existing connections can be queried without errors\n3. Verify that the new fields can be properly set and retrieved\n4. Test edge cases like empty strings and zero values",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement Scenario Creation with Type Support",
+        "description": "Update the scenario creation mutation to support scenarioType and automatically seed required nodes for checkout scenarios.",
+        "details": "Modify `apps/portal/convex/integrations/scenarios/mutations.ts` to:\n1. Accept new parameters: `scenarioType` and optional `slug`\n2. For checkout scenarios, validate slug is provided and unique\n3. After scenario creation, if type is 'checkout', seed required nodes:\n   - Create 'checkout' node with `isSystem: true`\n   - Create 'order_confirmation' node with `isSystem: true`\n   - Position nodes reasonably in the flow\n\nExample implementation:\n```typescript\nexport const create = mutation({\n  args: {\n    // existing args...\n    scenarioType: v.union(v.literal('general'), v.literal('checkout')),\n    slug: v.optional(v.string()),\n  },\n  handler: async (ctx, args) => {\n    // Validate slug for checkout scenarios\n    if (args.scenarioType === 'checkout') {\n      if (!args.slug) throw new Error('Slug is required for checkout scenarios');\n      \n      // Check slug uniqueness\n      const existing = await ctx.db\n        .query('scenarios')\n        .withIndex('by_slug', q => q.eq('slug', args.slug))\n        .first();\n      if (existing) throw new Error('Scenario with this slug already exists');\n    }\n    \n    // Create scenario\n    const scenarioId = await ctx.db.insert('scenarios', {\n      // existing fields...\n      scenarioType: args.scenarioType,\n      slug: args.slug,\n    });\n    \n    // Seed required nodes for checkout scenarios\n    if (args.scenarioType === 'checkout') {\n      // Create checkout node\n      const checkoutNodeId = await ctx.db.insert('nodes', {\n        scenarioId,\n        type: 'checkout',\n        isSystem: true,\n        position: { x: 100, y: 100 },\n        // other required fields\n      });\n      \n      // Create order confirmation node\n      const confirmationNodeId = await ctx.db.insert('nodes', {\n        scenarioId,\n        type: 'order_confirmation',\n        isSystem: true,\n        position: { x: 400, y: 100 },\n        // other required fields\n      });\n      \n      // Connect nodes\n      await ctx.db.insert('nodeConnections', {\n        scenarioId,\n        sourceId: checkoutNodeId,\n        targetId: confirmationNodeId,\n        order: 0,\n      });\n    }\n    \n    return scenarioId;\n  },\n});\n```",
+        "testStrategy": "1. Test creating general scenarios works as before\n2. Test creating checkout scenarios with and without slug\n3. Verify seeded nodes are created correctly for checkout scenarios\n4. Test slug uniqueness validation\n5. Verify node positions and connections are set correctly\n6. Test error handling for invalid inputs",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Implement Node Creation with Type Constraints",
+        "description": "Update node creation mutation to enforce type constraints based on scenario type.",
+        "details": "Modify `apps/portal/convex/integrations/nodes/mutations.ts` to:\n1. Fetch the scenario type when creating a node\n2. For checkout scenarios, validate that the node type is allowed: 'checkout', 'order_confirmation', 'upsell', 'router', or any safe transforms\n3. Reject creation of disallowed node types\n\nExample implementation:\n```typescript\nexport const create = mutation({\n  args: {\n    // existing args...\n    type: v.string(),\n    scenarioId: v.id('scenarios'),\n  },\n  handler: async (ctx, args) => {\n    // Get scenario to check type\n    const scenario = await ctx.db.get(args.scenarioId);\n    if (!scenario) throw new Error('Scenario not found');\n    \n    // Enforce type constraints for checkout scenarios\n    if (scenario.scenarioType === 'checkout') {\n      const allowedTypes = ['checkout', 'order_confirmation', 'upsell', 'router'];\n      // Add any safe transform types here\n      \n      if (!allowedTypes.includes(args.type)) {\n        throw new Error(`Node type '${args.type}' is not allowed in checkout scenarios`);\n      }\n    }\n    \n    // Create the node\n    return ctx.db.insert('nodes', {\n      // existing fields...\n      scenarioId: args.scenarioId,\n      type: args.type,\n    });\n  },\n});\n```",
+        "testStrategy": "1. Test creating allowed node types in checkout scenarios\n2. Test creating disallowed node types in checkout scenarios\n3. Verify error messages are clear and helpful\n4. Test that general scenarios allow any node type\n5. Test edge cases like empty or invalid node types",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          2,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement Node Deletion with System Protection",
+        "description": "Update node deletion mutation to prevent removal of system nodes and enforce required minimums for checkout scenarios.",
+        "details": "Modify `apps/portal/convex/integrations/nodes/mutations.ts` to:\n1. Check if the node has `isSystem: true` and block deletion if true\n2. For checkout scenarios, ensure deletion won't violate required minimums:\n   - At least 1 'checkout' node\n   - At least 1 'order_confirmation' node\n\nExample implementation:\n```typescript\nexport const remove = mutation({\n  args: {\n    id: v.id('nodes'),\n  },\n  handler: async (ctx, args) => {\n    // Get the node\n    const node = await ctx.db.get(args.id);\n    if (!node) throw new Error('Node not found');\n    \n    // Block deletion of system nodes\n    if (node.isSystem) {\n      throw new Error('System nodes cannot be deleted');\n    }\n    \n    // Get the scenario\n    const scenario = await ctx.db.get(node.scenarioId);\n    if (!scenario) throw new Error('Scenario not found');\n    \n    // For checkout scenarios, enforce required minimums\n    if (scenario.scenarioType === 'checkout') {\n      // Count nodes of the same type\n      const nodesOfSameType = await ctx.db\n        .query('nodes')\n        .withIndex('by_scenario_and_type', q => \n          q.eq('scenarioId', node.scenarioId).eq('type', node.type)\n        )\n        .collect();\n      \n      // Check if we're trying to delete the last node of a required type\n      if (\n        (node.type === 'checkout' && nodesOfSameType.length <= 1) ||\n        (node.type === 'order_confirmation' && nodesOfSameType.length <= 1)\n      ) {\n        throw new Error(`Cannot delete the last ${node.type} node in a checkout scenario`);\n      }\n    }\n    \n    // Delete connections first\n    const connections = await ctx.db\n      .query('nodeConnections')\n      .withIndex('by_node', q => \n        q.eq('sourceId', args.id).or(q.eq('targetId', args.id))\n      )\n      .collect();\n    \n    for (const connection of connections) {\n      await ctx.db.delete(connection._id);\n    }\n    \n    // Delete the node\n    return ctx.db.delete(args.id);\n  },\n});\n```",
+        "testStrategy": "1. Test deleting non-system nodes works correctly\n2. Test deleting system nodes is properly blocked\n3. Test deleting the last checkout node in a checkout scenario is blocked\n4. Test deleting the last order_confirmation node is blocked\n5. Verify connections are properly cleaned up on successful deletion\n6. Test error messages are clear and helpful",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Implement Node Connection Mutations with Extended Fields",
+        "description": "Update node connection mutations to support the new label, branch, and order fields.",
+        "details": "Modify `apps/portal/convex/integrations/nodes/mutations.ts` to:\n1. Update `createConnection` to accept optional label, branch, and order parameters\n2. Update `updateConnection` to allow modifying these fields\n\nExample implementation:\n```typescript\nexport const createConnection = mutation({\n  args: {\n    // existing args...\n    sourceId: v.id('nodes'),\n    targetId: v.id('nodes'),\n    scenarioId: v.id('scenarios'),\n    label: v.optional(v.string()),\n    branch: v.optional(v.string()),\n    order: v.optional(v.number()),\n  },\n  handler: async (ctx, args) => {\n    // Create the connection with new fields\n    return ctx.db.insert('nodeConnections', {\n      sourceId: args.sourceId,\n      targetId: args.targetId,\n      scenarioId: args.scenarioId,\n      label: args.label,\n      branch: args.branch,\n      order: args.order,\n    });\n  },\n});\n\nexport const updateConnection = mutation({\n  args: {\n    id: v.id('nodeConnections'),\n    label: v.optional(v.string()),\n    branch: v.optional(v.string()),\n    order: v.optional(v.number()),\n    // other existing args...\n  },\n  handler: async (ctx, args) => {\n    const { id, ...updates } = args;\n    \n    // Get existing connection\n    const connection = await ctx.db.get(id);\n    if (!connection) throw new Error('Connection not found');\n    \n    // Update with new fields\n    return ctx.db.patch(id, updates);\n  },\n});\n```",
+        "testStrategy": "1. Test creating connections with and without the new fields\n2. Test updating connections to add/modify/remove the new fields\n3. Verify the fields are stored and retrieved correctly\n4. Test edge cases like empty strings and zero values\n5. Test that existing code using connections still works",
+        "priority": "medium",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Implement Scenario Queries with Type Filtering",
+        "description": "Update scenario queries to support filtering by scenarioType and implement getBySlug for checkout scenarios.",
+        "details": "Modify `apps/portal/convex/integrations/scenarios/queries.ts` to:\n1. Add optional scenarioType filter to the list query\n2. Implement getBySlug query for checkout scenarios\n\nExample implementation:\n```typescript\nexport const list = query({\n  args: {\n    // existing args...\n    scenarioType: v.optional(v.union(v.literal('general'), v.literal('checkout'))),\n  },\n  handler: async (ctx, args) => {\n    let q = ctx.db.query('scenarios');\n    \n    // Apply filters\n    if (args.scenarioType) {\n      q = q.filter(q => q.eq('scenarioType', args.scenarioType));\n    }\n    \n    // Apply other existing filters...\n    \n    return q.collect();\n  },\n});\n\nexport const getBySlug = query({\n  args: {\n    slug: v.string(),\n  },\n  handler: async (ctx, args) => {\n    return ctx.db\n      .query('scenarios')\n      .withIndex('by_slug', q => q.eq('slug', args.slug))\n      .first();\n  },\n});\n```",
+        "testStrategy": "1. Test listing scenarios with and without type filter\n2. Test getBySlug with existing and non-existing slugs\n3. Verify that only checkout scenarios have slugs\n4. Test performance with large numbers of scenarios\n5. Test error handling for invalid inputs",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Implement Checkout Runtime APIs",
+        "description": "Create new checkout APIs that mirror the existing funnel runtime behavior but use the scenarios system.",
+        "details": "Create new files in `apps/portal/convex/ecommerce/checkouts/` with:\n\n1. `queries.ts`:\n```typescript\nexport const getCheckoutBySlug = query({\n  args: { slug: v.string() },\n  handler: async (ctx, args) => {\n    // Get scenario by slug\n    const scenario = await ctx.db\n      .query('scenarios')\n      .withIndex('by_slug', q => q.eq('slug', args.slug))\n      .filter(q => q.eq('scenarioType', 'checkout'))\n      .first();\n    if (!scenario) return null;\n    \n    // Get checkout node\n    const checkoutNode = await ctx.db\n      .query('nodes')\n      .withIndex('by_scenario_and_type', q => \n        q.eq('scenarioId', scenario._id).eq('type', 'checkout')\n      )\n      .first();\n    if (!checkoutNode) return null;\n    \n    // Get products and other data as needed\n    // Format response to match getFunnelCheckoutBySlug shape\n    \n    return {\n      id: scenario._id,\n      slug: scenario.slug,\n      name: scenario.name,\n      config: checkoutNode.config || {},\n      // other fields to match funnel response\n    };\n  },\n});\n\nexport const getCheckoutSession = query({\n  args: { sessionId: v.string() },\n  handler: async (ctx, args) => {\n    // Get session by ID\n    // Format to match existing API\n    // ...\n  },\n});\n```\n\n2. `mutations.ts`:\n```typescript\nexport const createCheckoutSession = mutation({\n  args: {\n    checkoutSlug: v.string(),\n    // other args from existing API\n  },\n  handler: async (ctx, args) => {\n    // Get scenario by slug\n    const scenario = await ctx.db\n      .query('scenarios')\n      .withIndex('by_slug', q => q.eq('slug', args.checkoutSlug))\n      .filter(q => q.eq('scenarioType', 'checkout'))\n      .first();\n    if (!scenario) throw new Error('Checkout not found');\n    \n    // Create session\n    // Store reference to scenario\n    // Return session ID\n    // ...\n  },\n});\n\nexport const updateCheckoutSessionInfo = mutation({\n  // Mirror existing API but use scenarios\n  // ...\n});\n\nexport const completeCheckoutSession = mutation({\n  // Mirror existing API but use scenarios\n  // ...\n});\n\nexport const setCheckoutSessionItems = mutation({\n  // Mirror existing API but use scenarios\n  // ...\n});\n```\n\nEnsure all APIs maintain the same response shape and behavior as the existing funnel APIs to enable seamless migration.",
+        "testStrategy": "1. Compare responses from new APIs with existing funnel APIs to ensure format matches\n2. Test full checkout flow using the new APIs\n3. Test error handling and edge cases\n4. Verify session creation, updates, and completion work correctly\n5. Test with various product configurations\n6. Benchmark performance against existing APIs",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2,
+          3,
+          4,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Update React Flow Editor for Scenario Types",
+        "description": "Modify the React Flow editor to support scenario types and enforce constraints based on type.",
+        "details": "Update the React Flow editor in `apps/portal/src/app/test/react-flow/*` to:\n\n1. Pass scenarioType to the editor\n2. For checkout scenarios:\n   - Hide delete button for isSystem nodes\n   - Filter node palette to only show allowed types\n   - Show visual indicators for required nodes\n   - Support the new connection fields (label, branch, order)\n\nExample changes:\n```typescript\n// In the editor component\nconst ScenarioEditor = ({ scenarioId, scenarioType }) => {\n  // Existing code...\n  \n  // Filter node types based on scenario type\n  const availableNodeTypes = useMemo(() => {\n    if (scenarioType === 'checkout') {\n      return ['checkout', 'order_confirmation', 'upsell', 'router'];\n    }\n    return allNodeTypes; // All types for general scenarios\n  }, [scenarioType]);\n  \n  // Custom node renderer that respects isSystem\n  const renderNode = useCallback((node) => {\n    const isSystemNode = node.data?.isSystem;\n    \n    return (\n      <NodeComponent\n        {...node}\n        showDeleteButton={!isSystemNode}\n        highlightRequired={scenarioType === 'checkout' && \n          (node.type === 'checkout' || node.type === 'order_confirmation')}\n      />\n    );\n  }, [scenarioType]);\n  \n  // Handle connection creation with new fields\n  const handleCreateConnection = useCallback((source, target) => {\n    // Add support for label, branch, order\n    // ...\n  }, []);\n  \n  return (\n    <ReactFlow\n      nodes={nodes}\n      edges={edges}\n      nodeTypes={availableNodeTypes}\n      // other props...\n    />\n  );\n};\n```\n\nUpdate the admin pages to pass the scenario type to the editor and handle the new fields in the UI.",
+        "testStrategy": "1. Test UI with both general and checkout scenarios\n2. Verify system nodes cannot be deleted in the UI\n3. Test that only allowed node types appear in the palette for checkout scenarios\n4. Test creating and editing connections with the new fields\n5. Verify visual indicators for required nodes\n6. Test error handling and user feedback",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Create Data Migration Script",
+        "description": "Develop a migration script to convert existing funnels to scenarios with the checkout type.",
+        "details": "Create a migration script in `apps/portal/scripts/migrate-funnels-to-scenarios.ts` that:\n\n1. Reads all existing funnels\n2. For each funnel:\n   - Creates a checkout scenario with the same name and slug\n   - Maps funnel steps to nodes with appropriate types\n   - Maps funnel edges to node connections with label/order/branch\n   - Updates funnel sessions to reference the new scenario\n\nExample implementation:\n```typescript\nimport { api } from '../convex/_generated/api';\nimport { ConvexClient } from 'convex/browser';\n\nasync function migrateFunnelsToScenarios() {\n  const client = new ConvexClient(process.env.CONVEX_URL);\n  await client.login(); // Authenticate as needed\n  \n  // Get all funnels\n  const funnels = await client.query(api.ecommerce.funnels.queries.list);\n  \n  console.log(`Migrating ${funnels.length} funnels to scenarios...`);\n  \n  for (const funnel of funnels) {\n    console.log(`Migrating funnel: ${funnel.name} (${funnel.slug})`);\n    \n    // Create checkout scenario\n    const scenarioId = await client.mutation(api.integrations.scenarios.mutations.create, {\n      name: funnel.name,\n      description: funnel.description || '',\n      scenarioType: 'checkout',\n      slug: funnel.slug,\n    });\n    \n    // Get funnel steps\n    const steps = await client.query(api.ecommerce.funnels.queries.getSteps, { funnelId: funnel._id });\n    \n    // Map of old step IDs to new node IDs\n    const stepToNodeMap = new Map();\n    \n    // Create nodes for each step\n    for (const step of steps) {\n      // Map funnel step types to node types\n      const nodeType = mapStepTypeToNodeType(step.type);\n      \n      const nodeId = await client.mutation(api.integrations.nodes.mutations.create, {\n        scenarioId,\n        type: nodeType,\n        position: step.position,\n        config: step.config,\n        // Don't set isSystem here as the create mutation will handle it\n      });\n      \n      stepToNodeMap.set(step._id, nodeId);\n    }\n    \n    // Get funnel edges\n    const edges = await client.query(api.ecommerce.funnels.queries.getEdges, { funnelId: funnel._id });\n    \n    // Create connections for each edge\n    for (const edge of edges) {\n      const sourceNodeId = stepToNodeMap.get(edge.sourceId);\n      const targetNodeId = stepToNodeMap.get(edge.targetId);\n      \n      if (sourceNodeId && targetNodeId) {\n        await client.mutation(api.integrations.nodes.mutations.createConnection, {\n          scenarioId,\n          sourceId: sourceNodeId,\n          targetId: targetNodeId,\n          label: edge.label,\n          branch: edge.branch,\n          order: edge.order,\n        });\n      }\n    }\n    \n    // Update funnel sessions to reference the new scenario\n    // This depends on the approach taken (dual tables or adding scenarioId)\n    // ...\n    \n    console.log(`Migration complete for funnel: ${funnel.name}`);\n  }\n  \n  console.log('All funnels migrated successfully!');\n}\n\n// Helper to map funnel step types to node types\nfunction mapStepTypeToNodeType(stepType) {\n  const mapping = {\n    'funnelCheckout': 'checkout',\n    'order_confirmation': 'order_confirmation',\n    'landing': 'landing',\n    'upsell': 'upsell',\n    // Add other mappings as needed\n  };\n  \n  return mapping[stepType] || stepType;\n}\n\n// Run the migration\nmigrateFunnelsToScenarios().catch(console.error);\n```",
+        "testStrategy": "1. Test on a staging environment with production data copy first\n2. Verify counts match: funnels = checkout scenarios, steps = nodes, edges = connections\n3. Test a complete checkout flow using a migrated scenario\n4. Verify all configurations and properties are preserved\n5. Check that sessions continue to work after migration\n6. Create rollback plan and test it\n7. Monitor for errors during migration",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          2,
+          3,
+          4,
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Update Frontend to Use New Checkout APIs",
+        "description": "Update the frontend checkout flow to use the new scenarios-based checkout APIs instead of funnel APIs.",
+        "details": "Update frontend code to:\n\n1. Replace all calls to funnel APIs with the new checkout APIs:\n   - `api.ecommerce.funnels.getCheckoutBySlug` → `api.ecommerce.checkouts.getCheckoutBySlug`\n   - `api.ecommerce.funnels.createCheckoutSession` → `api.ecommerce.checkouts.createCheckoutSession`\n   - And so on for all other API calls\n\n2. Update any type definitions or interfaces to match the new API responses\n\n3. Keep the same URL routes and patterns using the slug\n\nExample changes:\n```typescript\n// Before\nconst checkout = await convex.query(api.ecommerce.funnels.queries.getCheckoutBySlug, {\n  slug: params.slug,\n});\n\n// After\nconst checkout = await convex.query(api.ecommerce.checkouts.queries.getCheckoutBySlug, {\n  slug: params.slug,\n});\n\n// Before\nconst sessionId = await convex.mutation(api.ecommerce.funnels.mutations.createCheckoutSession, {\n  checkoutSlug: params.slug,\n  // other params\n});\n\n// After\nconst sessionId = await convex.mutation(api.ecommerce.checkouts.mutations.createCheckoutSession, {\n  checkoutSlug: params.slug,\n  // other params\n});\n```\n\nImplement a dual-run period where both APIs are called and responses are compared to ensure parity before fully switching over.",
+        "testStrategy": "1. Test the complete checkout flow with the new APIs\n2. Compare responses between old and new APIs during dual-run\n3. Test all edge cases and error scenarios\n4. Verify that the user experience is unchanged\n5. Test performance and loading times\n6. Implement feature flags to easily switch between old and new implementations\n7. Test on all supported browsers and devices",
+        "priority": "high",
+        "dependencies": [
+          9,
+          11
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-13T05:59:43.527Z",
+      "updated": "2025-08-13T05:59:43.527Z",
+      "description": "Tasks for master context"
+    }
+  }
+}
