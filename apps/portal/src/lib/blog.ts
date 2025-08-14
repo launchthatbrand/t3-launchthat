@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "convex/react";
 
+import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { api } from "../../convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
 
 // Posts Types - extend with more post metadata
 export interface PostFilter {
@@ -77,10 +77,7 @@ export function useGetPostTags() {
 
 export function useGetPostCategories() {
   const result = useQuery(api.core.posts.queries.getPostCategories, {});
-  return {
-    categories: result ?? [],
-    isLoading: result === undefined,
-  };
+  return result;
 }
 
 // Mutation hooks
@@ -107,7 +104,8 @@ export function useBulkUpdatePostStatus() {
 /**
  * Format a date for display
  */
-export function formatPostDate(date: number): string {
+export function formatPostDate(date: number | undefined): string {
+  if (!date) return "";
   return new Date(date).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 "use client";
 
 import type { FilterConfig } from "@/components/shared/EntityList/EntityList";
@@ -13,7 +11,6 @@ import {
   formatPostDate,
   useBulkUpdatePostStatus,
   useDeletePost,
-  useGetPostCategories,
 } from "@/lib/blog";
 import { useQuery } from "convex/react";
 import {
@@ -43,6 +40,8 @@ import {
   DropdownMenuTrigger,
 } from "@acme/ui/dropdown-menu";
 
+import type { PostStatus } from "~/components/admin/PostStatusForm";
+
 // Map status to badge variants
 const statusVariantMap: Record<
   string,
@@ -59,18 +58,27 @@ function PostsAdminPage() {
   const [selectedPosts, setSelectedPosts] = useState<Id<"posts">[]>([]);
   const [activeFilters, setActiveFilters] = useState({});
 
-  const postsData = useQuery(api.core.posts.queries.getAllPosts);
+  const postsData = useQuery(api.core.posts.queries.getAllPosts, {});
 
   console.log("postsData", postsData);
 
   // Get posts data from Convex
   // const { data: postsData, isLoading: isPostsLoading } = useAllPosts();
-  const { data: categoriesData } = useGetPostCategories();
+  const categoriesData = useQuery(api.core.posts.queries.getPostCategories, {});
   const updatePostsStatus = useBulkUpdatePostStatus();
   const deletePost = useDeletePost();
 
   // Get unique categories from the data
-  const categories = categoriesData?.map((category) => category.name) ?? [];
+  const categoriesRaw = categoriesData ?? [];
+  const categoryOptions = categoriesRaw
+    .map((item) => {
+      const name =
+        typeof item === "string"
+          ? item
+          : ((item as { name?: string }).name ?? "");
+      return name ? { label: name, value: name } : null;
+    })
+    .filter((o): o is { label: string; value: string } => o !== null);
 
   // Map raw posts to Post type
   // const posts = postsData?.posts
@@ -142,7 +150,7 @@ function PostsAdminPage() {
       accessorKey: "author",
       cell: ({ row }) => {
         const post = row.original;
-        return <div>{post.author?.name ?? "Unknown"}</div>;
+        return <div>{post.authorId ?? "Unknown"}</div>;
       },
     },
     {
@@ -170,7 +178,7 @@ function PostsAdminPage() {
       accessorKey: "status",
       cell: ({ row }) => {
         const post = row.original;
-        const status = (post.status ?? "draft") as string;
+        const status = post.status ?? "draft";
         const pretty = status.length
           ? status.charAt(0).toUpperCase() + status.slice(1)
           : "Draft";
@@ -245,10 +253,7 @@ function PostsAdminPage() {
       field: "category",
       options: [
         { label: "All Categories", value: "all" },
-        ...categories.map((category) => ({
-          label: category,
-          value: category,
-        })),
+        ...(categoryOptions.length > 0 ? categoryOptions : []),
       ],
     },
   ];
@@ -313,7 +318,7 @@ function PostsAdminPage() {
         </CardHeader>
         <CardContent>
           <EntityList
-            data={postsData}
+            data={postsData ?? []}
             columns={columns}
             filters={filters}
             isLoading={postsData === undefined}

@@ -1,19 +1,20 @@
 "use client";
 
-import { Id } from "@convex-config/_generated/dataModel";
-import { LinkedProduct } from "~/components/admin/LinkedProduct";
 import React from "react";
-import { api } from "@convex-config/_generated/api";
 import { useParams } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { Id } from "@convex-config/_generated/dataModel";
 import { useQuery } from "convex/react";
+
+import { LinkedProduct } from "~/components/admin/LinkedProduct";
 
 export default function LinkedProductPage() {
   const params = useParams();
   const courseId = params.courseId as string;
 
   // Get current course data to check for existing productId
-  const course = useQuery(api.lms.courses.queries.getCourse, {
-    courseId: courseId as Id<"courses">,
+  const course = useQuery(api.lms.courses.queries.getCourseById, {
+    id: courseId as Id<"courses">,
   });
 
   if (!course) {

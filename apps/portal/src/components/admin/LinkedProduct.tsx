@@ -1,6 +1,4 @@
 import React, { useState } from "react";
-import { api } from "@convex-config/_generated/api";
-import { Id } from "@convex-config/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { ExternalLink, Package, Unlink } from "lucide-react";
 
@@ -22,6 +20,9 @@ import {
   SelectValue,
 } from "@acme/ui/select";
 import { toast } from "@acme/ui/toast";
+
+import type { Id } from "../../../convex/_generated/dataModel";
+import { api } from "../../../convex/_generated/api";
 
 export interface LinkedProductProps {
   contentType: "course" | "lesson" | "topic";
@@ -51,7 +52,7 @@ export const LinkedProduct: React.FC<LinkedProductProps> = ({
 
   // Get the currently linked product details
   const linkedProduct = useQuery(
-    api.ecommerce.products.index.getProduct,
+    api.ecommerce.products.queries.getProductById,
     currentProductId
       ? { productId: currentProductId as Id<"products"> }
       : "skip",

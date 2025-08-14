@@ -129,15 +129,10 @@ export const getPostTags = query({
 export const getPostCategories = query({
   args: {},
   handler: async (ctx) => {
-    const posts = await ctx.db.query("posts").collect();
-    const categoriesSet = new Set<string>();
-
-    posts.forEach((post) => {
-      if (post.category) {
-        categoriesSet.add(post.category);
-      }
-    });
-
-    return Array.from(categoriesSet).sort();
+    const postCategories = await ctx.db
+      .query("categories")
+      .withIndex("by_postTypes", (q) => q.eq("postTypes", ["post"]))
+      .collect();
+    return postCategories;
   },
 });

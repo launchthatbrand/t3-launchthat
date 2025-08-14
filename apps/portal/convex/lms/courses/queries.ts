@@ -8,8 +8,8 @@ import type { Doc } from "../../_generated/dataModel";
  * Contains all read operations for the courses feature.
  */
 import { query } from "../../_generated/server";
-
 // Import shared validators
+import { quizQuestionValidator } from "../quizzes/schema";
 
 /**
  * Get a single course by ID
@@ -76,9 +76,55 @@ export const getCourseMetadata = query({
   },
 });
 
-// /**
-//  * List all courses with pagination
-//  */
+/**
+ * Get quizzes available to attach to a course (not currently attached).
+ */
+export const getAvailableQuizzes = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("quizzes"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      isPublished: v.optional(v.boolean()),
+      lessonId: v.optional(v.id("lessons")),
+      topicId: v.optional(v.id("topics")),
+      courseId: v.optional(v.id("courses")),
+      order: v.optional(v.number()),
+      questions: v.optional(v.array(quizQuestionValidator)),
+    }),
+  ),
+  handler: async (ctx) => {
+    const quizzes = await ctx.db
+      .query("quizzes")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lessonId"), undefined),
+          q.eq(q.field("topicId"), undefined),
+          q.eq(q.field("courseId"), undefined),
+        ),
+      )
+      .collect();
+
+    return quizzes.map((q) => ({
+      _id: q._id,
+      _creationTime: q._creationTime,
+      title: q.title,
+      description: q.description,
+      isPublished: q.isPublished,
+      lessonId: q.lessonId,
+      topicId: q.topicId,
+      courseId: q.courseId,
+      order: q.order,
+      questions: q.questions,
+    }));
+  },
+});
+
+/**
+ * List all courses with pagination
+ */
 export const listCourses = query({
   args: {
     paginationOpts: paginationOptsValidator,
@@ -351,5 +397,183 @@ export const getCourseStructureWithItems = query({
       attachedTopics,
       attachedQuizzes,
     };
+  },
+});
+
+/**
+ * Get lessons available to attach to a course (not currently attached).
+ */
+export const getAvailableLessons = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("lessons"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      content: v.optional(v.string()),
+      excerpt: v.optional(v.string()),
+      categories: v.optional(v.array(v.string())),
+      tagIds: v.optional(v.array(v.id("tags"))),
+      featuredImage: v.optional(v.string()),
+      featuredMedia: v.optional(
+        v.union(
+          v.object({
+            type: v.literal("convex"),
+            mediaItemId: v.id("mediaItems"),
+          }),
+          v.object({
+            type: v.literal("vimeo"),
+            vimeoId: v.string(),
+            vimeoUrl: v.string(),
+          }),
+          v.string(),
+        ),
+      ),
+      isPublished: v.optional(v.boolean()),
+      menuOrder: v.optional(v.number()),
+      courseId: v.optional(v.id("courses")),
+    }),
+  ),
+  handler: async (ctx) => {
+    const lessons = await ctx.db
+      .query("lessons")
+      .filter((q) => q.eq(q.field("courseId"), undefined))
+      .collect();
+
+    return lessons.map((l) => ({
+      _id: l._id,
+      _creationTime: l._creationTime,
+      title: l.title,
+      description: l.description,
+      content: l.content,
+      excerpt: l.excerpt,
+      categories: l.categories,
+      tagIds: l.tagIds,
+      featuredImage: l.featuredImage,
+      featuredMedia: l.featuredMedia,
+      isPublished: l.isPublished,
+      menuOrder: l.menuOrder,
+      courseId: l.courseId,
+    }));
+  },
+});
+
+/**
+ * Get topics available to attach to a lesson/course (not currently attached).
+ */
+export const getAvailableTopics = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("topics"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      excerpt: v.optional(v.string()),
+      categories: v.optional(v.array(v.string())),
+      tagIds: v.optional(v.array(v.id("tags"))),
+      wp_id: v.optional(v.float64()),
+      featuredImage: v.optional(v.string()),
+      featuredMedia: v.optional(
+        v.union(
+          v.object({
+            type: v.literal("convex"),
+            mediaItemId: v.id("mediaItems"),
+          }),
+          v.object({
+            type: v.literal("vimeo"),
+            vimeoId: v.string(),
+            vimeoUrl: v.string(),
+          }),
+          v.string(),
+        ),
+      ),
+      contentType: v.optional(
+        v.union(v.literal("text"), v.literal("video"), v.literal("quiz")),
+      ),
+      content: v.optional(v.string()),
+      order: v.optional(v.number()),
+      menuOrder: v.optional(v.number()),
+      isPublished: v.optional(v.boolean()),
+      lessonId: v.optional(v.id("lessons")),
+    }),
+  ),
+  handler: async (ctx) => {
+    const topics = await ctx.db
+      .query("topics")
+      .filter((q) => q.eq(q.field("lessonId"), undefined))
+      .collect();
+
+    return topics.map((t) => ({
+      _id: t._id,
+      _creationTime: t._creationTime,
+      title: t.title,
+      description: t.description,
+      excerpt: t.excerpt,
+      categories: t.categories,
+      tagIds: t.tagIds,
+      wp_id: t.wp_id,
+      featuredImage: t.featuredImage,
+      featuredMedia: t.featuredMedia,
+      contentType: t.contentType,
+      content: t.content,
+      order: t.order,
+      menuOrder: t.menuOrder,
+      isPublished: t.isPublished,
+      lessonId: t.lessonId,
+    }));
+  },
+});
+
+/**
+ * List members (enrolled users) of a course
+ */
+export const listCourseMembers = query({
+  args: { courseId: v.id("courses") },
+  returns: v.array(
+    v.object({
+      _id: v.id("users"),
+      name: v.optional(v.string()),
+      email: v.string(),
+      image: v.optional(v.string()),
+      enrolledAt: v.optional(v.number()),
+      status: v.optional(
+        v.union(
+          v.literal("active"),
+          v.literal("completed"),
+          v.literal("suspended"),
+          v.literal("cancelled"),
+        ),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    // Find enrollments for the course
+    const enrollments = await ctx.db
+      .query("courseEnrollments")
+      .withIndex("by_course", (q) => q.eq("courseId", args.courseId))
+      .collect();
+
+    if (enrollments.length === 0) return [];
+
+    // Load user docs in parallel and map with enrollment metadata
+    const users = await Promise.all(
+      enrollments.map(async (en) => {
+        const user = await ctx.db.get(en.userId);
+        return user
+          ? {
+              _id: user._id,
+              name: user.name ?? undefined,
+              email: user.email,
+              image: user.image ?? undefined,
+              enrolledAt: en.enrolledAt ?? en.enrollmentDate,
+              status: en.status,
+            }
+          : null;
+      }),
+    );
+
+    return users.filter((u): u is NonNullable<typeof u> => u !== null);
   },
 });
