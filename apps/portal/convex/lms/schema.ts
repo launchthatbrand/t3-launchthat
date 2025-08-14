@@ -7,6 +7,7 @@
  * This includes courses, lessons, topics, quizzes, enrollments, progress tracking, and content access control.
  */
 
+import { contentAccessRulesSchema } from "./contentAccess/schema";
 import { courseEnrollmentSchema } from "./courses/enrollment/schema";
 import { courseSchema } from "./courses/schema";
 import { lessonSchema } from "./lessons/schema";
@@ -20,6 +21,7 @@ export const lmsSchema = {
   ...lessonSchema,
   ...topicSchema,
   ...quizSchema,
+  ...contentAccessRulesSchema,
   ...courseEnrollmentSchema,
   ...lmsProgressSchema,
 };

@@ -1,14 +1,14 @@
 "use client";
 
+import { ReactNode } from "react";
+import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { Id } from "@convex-config/_generated/dataModel";
+import { useQuery } from "convex/react";
+import { ChevronLeft } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
-import { ChevronLeft } from "lucide-react";
-import { Id } from "@convex-config/_generated/dataModel";
-import Link from "next/link";
-import { ReactNode } from "react";
-import { api } from "@convex-config/_generated/api";
-import { useQuery } from "convex/react";
 
 interface CourseAdminLayoutProps {
   children: ReactNode;
@@ -21,12 +21,12 @@ export default function CourseAdminLayout({
   const pathname = usePathname();
   const courseId = params.courseId as string | undefined;
 
-  const baseUrl = `/admin/courses/${courseId ?? ""}`;
+  const baseUrl = `/admin/lms/courses/${courseId ?? ""}`;
 
   // Always call the hook; when courseId is undefined we pass "skip" so the query is not executed
   const course = useQuery(
     api.lms.courses.queries.getCourseMetadata,
-    courseId ? { courseId: courseId as Id<"courses"> } : "skip",
+    courseId ? { id: courseId as Id<"courses"> } : "skip",
   );
 
   if (!courseId) {
@@ -42,7 +42,7 @@ export default function CourseAdminLayout({
       {/* Heading & Tabs */}
       <h1 className="mb-2 text-3xl font-bold">{course?.title}</h1>
       <Button variant="outline" size="icon" asChild className="w-auto p-2">
-        <Link href="/admin/courses" className="flex items-center gap-2">
+        <Link href="/admin/lms/courses" className="flex items-center gap-2">
           <ChevronLeft className="h-4 w-4" />
           Back to Courses
         </Link>

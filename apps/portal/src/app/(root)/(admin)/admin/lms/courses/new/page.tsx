@@ -44,7 +44,7 @@ export default function CreateCoursePage() {
       // toast.success("Course created successfully!"); // Optional success toast
 
       // Redirect back to the courses list page
-      router.push("/admin/courses");
+      router.push("/admin/lms/courses");
       // Optionally, trigger a re-fetch or rely on Convex's real-time updates
       // router.refresh(); // Could be used if not relying solely on real-time
     } catch (error) {

@@ -35,6 +35,7 @@ export const topicsTable = defineTable({
 })
   .index("by_lesson", ["lessonId"])
   .index("by_lessonId_order", ["lessonId", "order"])
+  .index("by_lessonId_menuOrder", ["lessonId", "menuOrder"])
   .index("by_organization", ["organizationId"])
   .searchIndex("search_content", {
     searchField: "content",

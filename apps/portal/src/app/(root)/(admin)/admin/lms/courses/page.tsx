@@ -173,7 +173,7 @@ export default function AdminCoursesPage() {
         const course = row.original;
         return (
           <Link
-            href={`/admin/courses/${course._id}`}
+            href={`/admin/lms/courses/${course._id}`}
             className="font-medium hover:underline"
           >
             {course.title}
@@ -233,7 +233,7 @@ export default function AdminCoursesPage() {
       id: "view",
       label: "View",
       onClick: (course) => {
-        router.push(`/admin/courses/${course._id}`);
+        router.push(`/admin/lms/courses/${course._id}`);
       },
       variant: "outline",
       icon: <Plus className="mr-2 h-4 w-4" />,
@@ -242,7 +242,7 @@ export default function AdminCoursesPage() {
       id: "edit",
       label: "Edit",
       onClick: (course) => {
-        router.push(`/admin/courses/${course._id}/edit`);
+        router.push(`/admin/lms/courses/${course._id}/edit`);
       },
       variant: "secondary",
       icon: <Edit className="mr-2 h-4 w-4" />,
@@ -259,7 +259,7 @@ export default function AdminCoursesPage() {
   // Custom actions for the EntityList header
   const headerActions = (
     <Button asChild>
-      <Link href="/admin/courses/new">
+      <Link href="/admin/lms/courses/new">
         <PlusCircle className="mr-2 h-4 w-4" /> Create Course
       </Link>
     </Button>
@@ -298,7 +298,7 @@ export default function AdminCoursesPage() {
             <div className="flex h-40 flex-col items-center justify-center gap-2 text-center">
               <p className="text-muted-foreground">No courses found</p>
               <Button asChild variant="outline">
-                <Link href="/admin/courses/new">
+                <Link href="/admin/lms/courses/new">
                   <PlusCircle className="mr-2 h-4 w-4" /> Create your first
                   course
                 </Link>

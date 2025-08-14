@@ -98,7 +98,7 @@ export default function DefaultSidebar() {
     },
     {
       title: "Courses",
-      url: "/admin/courses",
+      url: "/admin/lms/courses",
       icon: Users,
       items: [
         {

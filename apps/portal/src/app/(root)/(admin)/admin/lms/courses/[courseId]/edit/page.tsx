@@ -1,12 +1,13 @@
 "use client";
 
+import type { CourseFormValues } from "@/components/CourseForm";
 import type { Id } from "@convex-config/_generated/dataModel";
 import React, { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ContentAccess } from "@/components/admin/ContentAccess";
 import { LinkedProduct } from "@/components/admin/LinkedProduct";
-import { CourseForm, CourseFormValues } from "@/components/CourseForm";
+import { CourseForm } from "@/components/CourseForm";
 import { api } from "@convex-config/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { ChevronLeft } from "lucide-react";
@@ -31,8 +32,8 @@ export default function EditCoursePage() {
   const [activeTab, setActiveTab] = useState("details");
 
   // Fetch course details
-  const course = useQuery(api.lms.courses.queries.getCourse, {
-    courseId: courseIdTyped,
+  const course = useQuery(api.lms.courses.queries.getCourseById, {
+    id: courseIdTyped,
   });
 
   const updateCourse = useMutation(api.lms.courses.mutations.updateCourse);
@@ -72,7 +73,7 @@ export default function EditCoursePage() {
     <>
       <div className="mb-6 flex items-center gap-2">
         <Button variant="outline" size="icon" asChild>
-          <Link href="/admin/courses">
+          <Link href="/admin/lms/courses">
             <ChevronLeft className="h-4 w-4" />
           </Link>
         </Button>
@@ -154,7 +155,7 @@ export default function EditCoursePage() {
       <Card>
         <CardFooter className="pt-6">
           <Button asChild variant="secondary">
-            <Link href="/admin/courses">Back to List</Link>
+            <Link href="/admin/lms/courses">Back to List</Link>
           </Button>
         </CardFooter>
       </Card>

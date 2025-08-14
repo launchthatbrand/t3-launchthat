@@ -13,7 +13,7 @@ export default function AdminLessonEditPage() {
   const params = useParams();
   const { lessonId } = params as { lessonId: string };
 
-  const lesson = useQuery(api.lms.lessons.queries.getLesson, { lessonId });
+  const lesson = useQuery(api.lms.lessons.queries.getLessonById, { lessonId });
 
   const updateLesson = useMutation(api.lms.lessons.mutations.update);
 

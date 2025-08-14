@@ -1,6 +1,7 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 
+import type { Doc } from "../../_generated/dataModel";
 /**
  * Courses Queries
  *
@@ -40,6 +41,41 @@ export const getCourseById = query({
   },
 });
 
+/**
+ * Get minimal metadata for a course (for lightweight lookups)
+ */
+export const getCourseMetadata = query({
+  args: { id: v.id("courses") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("courses"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      isPublished: v.optional(v.boolean()),
+      organizationId: v.optional(v.id("organizations")),
+      productId: v.optional(v.id("products")),
+      menuOrder: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const course = await ctx.db.get(args.id);
+    if (!course) return null;
+    // Return only metadata fields
+    return {
+      _id: course._id,
+      _creationTime: course._creationTime,
+      title: course.title,
+      description: course.description,
+      isPublished: course.isPublished,
+      organizationId: course.organizationId,
+      productId: course.productId,
+      menuOrder: course.menuOrder,
+    };
+  },
+});
+
 // /**
 //  * List all courses with pagination
 //  */
@@ -50,7 +86,6 @@ export const listCourses = query({
     isPublished: v.optional(v.boolean()),
     productId: v.optional(v.id("products")),
   },
-  returns: v.any(), // Use any for pagination result to avoid validation mismatches
   handler: async (ctx, args) => {
     // Query by product directly when provided
     if (args.productId) {
@@ -270,52 +305,51 @@ export const listCourses = query({
 // /**
 //  * Get course structure with all associated items (lessons, topics, quizzes)
 //  */
-// export const getCourseStructureWithItems = query({
-//   args: { courseId: v.id("courses") },
-//   returns: v.any(), // Use any to avoid complex validation issues
-//   handler: async (ctx, args) => {
-//     // Get the course
-//     const course = await ctx.db.get(args.courseId);
-//     if (!course) {
-//       return null;
-//     }
+export const getCourseStructureWithItems = query({
+  args: { courseId: v.id("courses") },
+  handler: async (ctx, args) => {
+    // Get the course
+    const course = await ctx.db.get(args.courseId);
+    if (!course) {
+      return null;
+    }
 
-//     // Get all lessons attached to this course and order them according to course.courseStructure
-//     const attachedLessons: Doc<"lessons">[] = [];
-//     if (course.courseStructure) {
-//       for (const structureItem of course.courseStructure) {
-//         const lesson = await ctx.db.get(structureItem.lessonId);
-//         if (lesson) {
-//           attachedLessons.push(lesson);
-//         }
-//       }
-//     }
+    // Get all lessons attached to this course and order them according to course.courseStructure
+    const attachedLessons: Doc<"lessons">[] = [];
+    if (course.courseStructure) {
+      for (const structureItem of course.courseStructure) {
+        const lesson = await ctx.db.get(structureItem.lessonId);
+        if (lesson) {
+          attachedLessons.push(lesson);
+        }
+      }
+    }
 
-//     // Get all topics attached to lessons in this course
-//     const attachedTopics: Doc<"topics">[] = [];
-//     for (const lessonId of attachedLessons.map((l) => l._id)) {
-//       const topics = await ctx.db
-//         .query("topics")
-//         .withIndex("by_lesson", (q) => q.eq("lessonId", lessonId))
-//         .collect();
-//       attachedTopics.push(...topics);
-//     }
+    // Get all topics attached to lessons in this course
+    const attachedTopics: Doc<"topics">[] = [];
+    for (const lessonId of attachedLessons.map((l) => l._id)) {
+      const topics = await ctx.db
+        .query("topics")
+        .withIndex("by_lesson", (q) => q.eq("lessonId", lessonId))
+        .collect();
+      attachedTopics.push(...topics);
+    }
 
-//     // Get all quizzes attached to lessons in this course
-//     const attachedQuizzes = [];
-//     for (const lessonId of attachedLessons.map((l) => l._id)) {
-//       const quizzes = await ctx.db
-//         .query("quizzes")
-//         .withIndex("by_lessonId", (q) => q.eq("lessonId", lessonId))
-//         .collect();
-//       attachedQuizzes.push(...quizzes);
-//     }
+    // Get all quizzes attached to lessons in this course
+    const attachedQuizzes = [];
+    for (const lessonId of attachedLessons.map((l) => l._id)) {
+      const quizzes = await ctx.db
+        .query("quizzes")
+        .withIndex("by_lesson", (q) => q.eq("lessonId", lessonId))
+        .collect();
+      attachedQuizzes.push(...quizzes);
+    }
 
-//     return {
-//       course,
-//       attachedLessons,
-//       attachedTopics,
-//       attachedQuizzes,
-//     };
-//   },
-// });
+    return {
+      course,
+      attachedLessons,
+      attachedTopics,
+      attachedQuizzes,
+    };
+  },
+});

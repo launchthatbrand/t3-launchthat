@@ -28,8 +28,8 @@ export default function EditCoursePage() {
   const courseIdTyped = params.courseId as unknown as Id<"courses">;
 
   // Fetch course details
-  const course = useQuery(api.lms.courses.queries.getCourse, {
-    courseId: courseIdTyped,
+  const course = useQuery(api.lms.courses.queries.getCourseById, {
+    id: courseIdTyped,
   });
 
   const updateCourse = useMutation(api.lms.courses.mutations.updateCourse);
@@ -99,7 +99,7 @@ export default function EditCoursePage() {
         </CardContent>
         <CardFooter>
           <Button asChild variant="secondary">
-            <Link href="/admin/courses">Back to List</Link>
+            <Link href="/admin/lms/courses">Back to List</Link>
           </Button>
         </CardFooter>
       </Card>

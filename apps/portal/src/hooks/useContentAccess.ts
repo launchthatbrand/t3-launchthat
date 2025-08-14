@@ -36,7 +36,7 @@ export interface UserTag {
   assignedBy?: Id<"users">;
   source?: string;
   expiresAt?: number;
-  _id: Id<"userMarketingTags">;
+  _id: Id<"marketingTags">;
   marketingTag: {
     _id: Id<"marketingTags">;
     name: string;
@@ -78,7 +78,7 @@ export const useContentAccess = ({
 
   // Check if there are access rules for this content (always run)
   const contentRules = useQuery(
-    api.lms.contentAccess.index.getContentAccessRules,
+    api.lms.contentAccess.queries.,
     {
       contentType,
       contentId,

@@ -29,7 +29,7 @@ const CreateTopicPage = () => {
       // Call the Convex mutation
       await createTopic({ title: values.title });
       // Redirect on success (optional)
-      router.push("/admin/courses"); // Redirect back to courses list
+      router.push("/admin/lms/courses"); // Redirect back to courses list
     } catch (error) {
       console.error("Failed to create topic:", error);
       // Error is handled by toast in TopicForm, re-throw for state

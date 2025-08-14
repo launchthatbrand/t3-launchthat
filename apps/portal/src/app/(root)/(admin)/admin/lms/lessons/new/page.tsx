@@ -38,7 +38,7 @@ function CreateStandaloneLessonPage() {
 
         // Optionally redirect after successful creation (e.g., to a lesson management page)
         // alert(`Lesson "${title}" created successfully!`); // Or use a toast notification
-        // router.push(`/admin/courses/lessons`);
+        // router.push(`/admin/lms/courses/lessons`);
         router.push(`/admin/dashboard`); // Redirecting to dashboard for now
       } catch (error) {
         console.error("Failed to create lesson:", error);

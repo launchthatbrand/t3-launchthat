@@ -87,22 +87,22 @@ export default function DefaultSidebar() {
     },
     {
       title: "Courses",
-      url: "/admin/courses",
+      url: "/admin/lms/courses",
       icon: Users,
       items: [
         {
           title: "Lessons",
-          url: "/admin/lessons",
+          url: "/admin/lms/lessons",
           icon: BookOpen,
         },
         {
           title: "Topics",
-          url: "/admin/topics",
+          url: "/admin/lms/topics",
           icon: BookOpen,
         },
         {
           title: "Quizzes",
-          url: "/admin/quizzes",
+          url: "/admin/lms/quizzes",
           icon: BookOpen,
         },
       ],
