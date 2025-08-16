@@ -1,0 +1,477 @@
+# Task ID: 9
+# Title: Implement React Flow Integration for Scenario Designer
+# Status: done
+# Dependencies: 2, 5, 6
+# Priority: medium
+# Description: Add support for React Flow-based scenario authoring with persistent node positions, edges, and UI state.
+# Details:
+1. Update the nodes table schema to include React Flow properties:
+
+```typescript
+interface Node {
+  _id: Id<"nodes">;
+  scenarioId: Id<"scenarios">;
+  type: string;
+  name: string;
+  config: Record<string, unknown>;
+  // React Flow specific properties
+  rfType: string;
+  rfPosition: { x: number; y: number };
+  rfLabel?: string;
+  rfWidth?: number;
+  rfHeight?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+```
+
+2. Create a new scenarioEdges table:
+
+```typescript
+interface ScenarioEdge {
+  _id: Id<"scenarioEdges">;
+  scenarioId: Id<"scenarios">;
+  sourceNodeId: Id<"nodes">;
+  sourceHandle?: string;
+  targetNodeId: Id<"nodes">;
+  targetHandle?: string;
+  label?: string;
+  animated?: boolean;
+  style?: Record<string, unknown>;
+  order?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+```
+
+3. Add UI state to the scenarios table:
+
+```typescript
+interface Scenario {
+  // ... existing fields
+  uiState?: {
+    viewport: { x: number; y: number; zoom: number };
+    selectedNodeIds?: Id<"nodes">[];
+  };
+}
+```
+
+4. Implement batch upsert for scenario graph:
+
+```typescript
+export const upsertScenarioGraph = mutation({
+  args: {
+    scenarioId: v.id("scenarios"),
+    nodes: v.array(
+      v.object({
+        _id: v.optional(v.id("nodes")),
+        type: v.string(),
+        name: v.string(),
+        config: v.any(),
+        rfType: v.string(),
+        rfPosition: v.object({
+          x: v.number(),
+          y: v.number()
+        }),
+        rfLabel: v.optional(v.string()),
+        rfWidth: v.optional(v.number()),
+        rfHeight: v.optional(v.number())
+      })
+    ),
+    edges: v.array(
+      v.object({
+        _id: v.optional(v.id("scenarioEdges")),
+        sourceNodeId: v.id("nodes"),
+        sourceHandle: v.optional(v.string()),
+        targetNodeId: v.id("nodes"),
+        targetHandle: v.optional(v.string()),
+        label: v.optional(v.string()),
+        animated: v.optional(v.boolean()),
+        style: v.optional(v.any()),
+        order: v.optional(v.number())
+      })
+    ),
+    uiState: v.optional(
+      v.object({
+        viewport: v.object({
+          x: v.number(),
+          y: v.number(),
+          zoom: v.number()
+        }),
+        selectedNodeIds: v.optional(v.array(v.id("nodes")))
+      })
+    )
+  },
+  handler: async (ctx, args) => {
+    // Verify scenario exists
+    const scenario = await ctx.db.get(args.scenarioId);
+    if (!scenario) {
+      throw new Error(`Scenario ${args.scenarioId} not found`);
+    }
+    
+    // Validate node types against registry
+    for (const node of args.nodes) {
+      if (!nodeRegistry.has(node.type)) {
+        throw new Error(`Node type '${node.type}' is not registered`);
+      }
+      
+      // Validate node config against its schema
+      const nodeDefinition = nodeRegistry.get(node.type);
+      try {
+        nodeDefinition.configSchema.parse(node.config);
+      } catch (error) {
+        throw new Error(`Invalid config for node '${node.name}': ${error.message}`);
+      }
+    }
+    
+    // Validate the graph is a DAG
+    const tempNodeMap = new Map();
+    for (const node of args.nodes) {
+      tempNodeMap.set(node._id, node);
+    }
+    
+    const { valid, error } = validateScenarioGraph(
+      args.nodes.map(n => ({ ...n, _id: n._id || `temp_${Math.random()}` })),
+      args.edges.map(e => ({ ...e, _id: e._id || `temp_${Math.random()}` }))
+    );
+    
+    if (!valid) {
+      throw new Error(`Invalid scenario graph: ${error}`);
+    }
+    
+    // Validate edge handles against node capabilities
+    for (const edge of args.edges) {
+      const sourceNode = args.nodes.find(n => n._id === edge.sourceNodeId);
+      const targetNode = args.nodes.find(n => n._id === edge.targetNodeId);
+      
+      if (!sourceNode || !targetNode) {
+        throw new Error(`Edge references non-existent node`);
+      }
+      
+      // Check if handles are valid for these node types
+      // This would require node types to declare their available handles
+      if (edge.sourceHandle) {
+        const sourceNodeDef = nodeRegistry.get(sourceNode.type);
+        if (!sourceNodeDef.outputHandles?.includes(edge.sourceHandle)) {
+          throw new Error(`Invalid source handle '${edge.sourceHandle}' for node type '${sourceNode.type}'`);
+        }
+      }
+      
+      if (edge.targetHandle) {
+        const targetNodeDef = nodeRegistry.get(targetNode.type);
+        if (!targetNodeDef.inputHandles?.includes(edge.targetHandle)) {
+          throw new Error(`Invalid target handle '${edge.targetHandle}' for node type '${targetNode.type}'`);
+        }
+      }
+    }
+    
+    // Start a transaction for the batch update
+    const now = Date.now();
+    
+    // Get existing nodes and edges
+    const existingNodes = await ctx.db
+      .query("nodes")
+      .withIndex("by_scenario", q => q.eq("scenarioId", args.scenarioId))
+      .collect();
+    
+    const existingEdges = await ctx.db
+      .query("scenarioEdges")
+      .withIndex("by_scenario", q => q.eq("scenarioId", args.scenarioId))
+      .collect();
+    
+    // Track IDs to delete/update/insert
+    const existingNodeIds = new Set(existingNodes.map(n => n._id));
+    const updatedNodeIds = new Set();
+    
+    const existingEdgeIds = new Set(existingEdges.map(e => e._id));
+    const updatedEdgeIds = new Set();
+    
+    // Update or insert nodes
+    for (const node of args.nodes) {
+      if (node._id && existingNodeIds.has(node._id)) {
+        // Update existing node
+        await ctx.db.patch(node._id, {
+          type: node.type,
+          name: node.name,
+          config: node.config,
+          rfType: node.rfType,
+          rfPosition: node.rfPosition,
+          rfLabel: node.rfLabel,
+          rfWidth: node.rfWidth,
+          rfHeight: node.rfHeight,
+          updatedAt: now
+        });
+        updatedNodeIds.add(node._id);
+      } else {
+        // Insert new node
+        const nodeId = await ctx.db.insert("nodes", {
+          scenarioId: args.scenarioId,
+          type: node.type,
+          name: node.name,
+          config: node.config,
+          rfType: node.rfType,
+          rfPosition: node.rfPosition,
+          rfLabel: node.rfLabel,
+          rfWidth: node.rfWidth,
+          rfHeight: node.rfHeight,
+          createdAt: now,
+          updatedAt: now
+        });
+        
+        // If this node had a temporary ID in the input, we need to update edges
+        if (node._id && !existingNodeIds.has(node._id)) {
+          // Update any edges that reference this node
+          for (const edge of args.edges) {
+            if (edge.sourceNodeId === node._id) {
+              edge.sourceNodeId = nodeId;
+            }
+            if (edge.targetNodeId === node._id) {
+              edge.targetNodeId = nodeId;
+            }
+          }
+        }
+      }
+    }
+    
+    // Delete nodes that weren't updated
+    for (const nodeId of existingNodeIds) {
+      if (!updatedNodeIds.has(nodeId)) {
+        await ctx.db.delete(nodeId);
+      }
+    }
+    
+    // Update or insert edges
+    for (const edge of args.edges) {
+      if (edge._id && existingEdgeIds.has(edge._id)) {
+        // Update existing edge
+        await ctx.db.patch(edge._id, {
+          sourceNodeId: edge.sourceNodeId,
+          sourceHandle: edge.sourceHandle,
+          targetNodeId: edge.targetNodeId,
+          targetHandle: edge.targetHandle,
+          label: edge.label,
+          animated: edge.animated,
+          style: edge.style,
+          order: edge.order,
+          updatedAt: now
+        });
+        updatedEdgeIds.add(edge._id);
+      } else {
+        // Insert new edge
+        const edgeId = await ctx.db.insert("scenarioEdges", {
+          scenarioId: args.scenarioId,
+          sourceNodeId: edge.sourceNodeId,
+          sourceHandle: edge.sourceHandle,
+          targetNodeId: edge.targetNodeId,
+          targetHandle: edge.targetHandle,
+          label: edge.label,
+          animated: edge.animated,
+          style: edge.style,
+          order: edge.order,
+          createdAt: now,
+          updatedAt: now
+        });
+        updatedEdgeIds.add(edgeId);
+      }
+    }
+    
+    // Delete edges that weren't updated
+    for (const edgeId of existingEdgeIds) {
+      if (!updatedEdgeIds.has(edgeId)) {
+        await ctx.db.delete(edgeId);
+      }
+    }
+    
+    // Update scenario UI state if provided
+    if (args.uiState) {
+      await ctx.db.patch(args.scenarioId, {
+        uiState: args.uiState,
+        updatedAt: now
+      });
+    }
+    
+    return { success: true };
+  },
+});
+```
+
+5. Implement query to get scenario graph in React Flow format:
+
+```typescript
+export const getScenarioGraph = query({
+  args: { scenarioId: v.id("scenarios") },
+  handler: async (ctx, args) => {
+    // Get scenario
+    const scenario = await ctx.db.get(args.scenarioId);
+    if (!scenario) {
+      throw new Error(`Scenario ${args.scenarioId} not found`);
+    }
+    
+    // Get nodes
+    const nodes = await ctx.db
+      .query("nodes")
+      .withIndex("by_scenario", q => q.eq("scenarioId", args.scenarioId))
+      .collect();
+    
+    // Get edges
+    const edges = await ctx.db
+      .query("scenarioEdges")
+      .withIndex("by_scenario", q => q.eq("scenarioId", args.scenarioId))
+      .collect();
+    
+    // Transform to React Flow format
+    const rfNodes = nodes.map(node => ({
+      id: node._id,
+      type: node.rfType,
+      position: node.rfPosition,
+      data: {
+        nodeId: node._id,
+        type: node.type,
+        name: node.name,
+        label: node.rfLabel || node.name,
+        config: node.config
+      },
+      width: node.rfWidth,
+      height: node.rfHeight
+    }));
+    
+    const rfEdges = edges.map(edge => ({
+      id: edge._id,
+      source: edge.sourceNodeId,
+      sourceHandle: edge.sourceHandle,
+      target: edge.targetNodeId,
+      targetHandle: edge.targetHandle,
+      label: edge.label,
+      animated: edge.animated,
+      style: edge.style
+    }));
+    
+    return {
+      nodes: rfNodes,
+      edges: rfEdges,
+      uiState: scenario.uiState || {
+        viewport: { x: 0, y: 0, zoom: 1 }
+      }
+    };
+  },
+});
+```
+<info added on 2025-08-15T20:38:36.385Z>
+## 7. **Additional Features Implemented**
+
+- ✅ **Backward Compatibility**: Added support for legacy position field with automatic migration to rfPosition
+- ✅ **Additional Mutations**:
+  - `updateScenarioUIState`: Dedicated mutation for just updating viewport/selection state
+  - `createScenarioEdge`: Single edge creation with validation
+  - `deleteScenarioEdge`: Edge removal with proper cleanup
+- ✅ **Additional Queries**:
+  - `getScenarioGraphForValidation`: Optimized format for DAG validation
+  - `getScenarioNodeTypes`: Analysis of node types used in scenario
+- ✅ **Integration with Dry-Run**:
+  - Updated dry-run functionality to use scenarioEdges
+  - Graceful fallback to legacy nodeConnections if needed
+  - Maintains compatibility with existing scenarios
+
+## 8. **Files Created/Modified**
+- `nodes/schema.ts`: Extended with React Flow fields and scenarioEdges table
+- `scenarios/schema.ts`: Added uiState field
+- `scenarios/reactFlowMutations.ts`: New file with batch upsert and edge operations
+- `scenarios/reactFlowQueries.ts`: New file with React Flow-formatted queries
+- `nodes/queries.ts`: Added scenarioEdges queries
+- `lib/dryRun.ts`: Updated to use scenarioEdges with fallback
+
+## 9. **Performance Optimizations**
+- Implemented batch operations for efficient graph updates
+- Added proper indexes on scenarioEdges table for faster queries
+- Optimized graph traversal for DAG validation with early termination
+</info added on 2025-08-15T20:38:36.385Z>
+
+# Test Strategy:
+1. Unit tests for graph validation (DAG checking)
+2. Test edge validation with valid and invalid handles
+3. Test batch upsert with various scenarios (create, update, delete nodes/edges)
+4. Test the transformation to React Flow format
+5. Integration tests with a real React Flow component
+6. Test error handling for invalid graphs
+7. Test persistence of UI state
+8. Performance tests with large graphs
+
+# Subtasks:
+## 1. Update Node Schema for React Flow Properties [done]
+### Dependencies: None
+### Description: Modify the existing nodes table schema to include React Flow specific properties such as rfType, rfPosition, rfLabel, rfWidth, and rfHeight.
+### Details:
+Update the Node interface in the database schema to include new fields: rfType (string), rfPosition (object with x and y as numbers), rfLabel (optional string), rfWidth (optional number), and rfHeight (optional number). Ensure these changes are reflected in all relevant database operations and type definitions.
+
+## 2. Create ScenarioEdge Table [done]
+### Dependencies: 9.1
+### Description: Implement a new scenarioEdges table to store edge information for React Flow, replacing the existing nodeConnections table.
+### Details:
+Define the ScenarioEdge interface with fields like _id, scenarioId, sourceNodeId, targetNodeId, sourceHandle, targetHandle, label, animated, style, and order. Create the necessary database schema and update all relevant queries and mutations to use this new table instead of nodeConnections.
+
+## 3. Implement Batch Upsert for Scenario Graph [done]
+### Dependencies: 9.1, 9.2
+### Description: Create a mutation to handle batch updates of nodes and edges in a single transaction, ensuring graph consistency.
+### Details:
+Implement the upsertScenarioGraph mutation as outlined in the task description. Include validation for node types, config schemas, and graph structure (DAG). Handle creation, updating, and deletion of nodes and edges within a single transaction.
+
+## 4. Develop Query for React Flow Formatted Scenario Graph [done]
+### Dependencies: 9.1, 9.2
+### Description: Create a query to retrieve the scenario graph data in a format compatible with React Flow, including nodes, edges, and UI state.
+### Details:
+Implement the getScenarioGraph query as described in the task. Transform the database representation of nodes and edges into the format expected by React Flow, including position, type, and custom data fields.
+
+## 5. Integrate UI State Persistence [done]
+### Dependencies: 9.3, 9.4
+### Description: Update the scenarios table and related operations to include persistent UI state for React Flow, such as viewport position and zoom level.
+### Details:
+Modify the Scenario interface to include a uiState field with viewport information (x, y, zoom) and selectedNodeIds. Update the upsertScenarioGraph mutation to handle UI state updates. Ensure the getScenarioGraph query returns the UI state.
+
+## 6. Implement Graph Validation Logic [done]
+### Dependencies: 9.2, 9.3
+### Description: Create utility functions to validate the scenario graph structure, ensuring it remains a Directed Acyclic Graph (DAG) and that all node connections are valid.
+### Details:
+Develop a validateScenarioGraph function that checks for cycles in the graph and validates node connections based on their types and available handles. Integrate this validation into the upsertScenarioGraph mutation.
+
+## 7. Fix ScenarioGraph Component API Integration [pending]
+### Dependencies: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6
+### Description: Update the ScenarioGraph component to properly use the React Flow APIs and data structures from the backend implementation.
+### Details:
+Fix the remaining variable references in the ScenarioGraph component after switching from legacy `scenario` to `scenarioGraph` API calls. Update all instances of `scenario` variable to use the new `scenarioGraph` data structure. Ensure proper error handling and loading states.
+
+## 8. Implement Proper Graph Persistence [pending]
+### Dependencies: 9.7
+### Description: Replace the legacy individual node/edge mutations with the batch upsertScenarioGraph mutation for proper React Flow integration.
+### Details:
+Update the ScenarioGraph component to use `upsertScenarioGraph` mutation instead of individual `updateNode`, `createConnection`, and `removeConnection` calls. Implement proper batch saving when nodes are moved, edges are created/deleted, or the graph structure changes. Ensure the UI state (viewport, zoom, selection) is persisted with each save operation.
+
+## 9. Add Graph Validation UI Feedback [pending]
+### Dependencies: 9.8
+### Description: Integrate the backend graph validation (DAG checking, cycle detection) into the UI to provide real-time feedback to users.
+### Details:
+Add validation feedback in the ScenarioGraph component that shows errors when users create cyclic graphs or invalid node connections. Display validation messages in the UI and prevent saving of invalid graphs. Integrate with the validateScenarioGraph function from the backend to show specific error details (e.g., 'Cycle detected between nodes A and B').
+
+## 10. Enhance Node Creation with React Flow Properties [pending]
+### Dependencies: 9.8
+### Description: Update the node creation flow to properly set React Flow specific properties (rfType, rfPosition, rfLabel) when new nodes are added.
+### Details:
+Modify the CreateNode component and related node creation logic to set proper React Flow properties. Ensure new nodes get appropriate `rfType` values that map to the node registry, proper initial `rfPosition` based on drop location or layout, and `rfLabel` for display. Update the node creation mutations to populate these fields correctly.
+
+## 11. Implement UI State Persistence [pending]
+### Dependencies: 9.8
+### Description: Add proper persistence of React Flow UI state including viewport position, zoom level, and node selection state.
+### Details:
+Implement automatic saving of UI state changes in the ScenarioGraph component. Track viewport changes (pan/zoom), node selection, and other UI interactions, and persist them to the backend using the upsertScenarioGraph mutation or dedicated updateScenarioUIState mutation. Ensure the UI state is restored when the component loads. Add debouncing to prevent excessive API calls during continuous interactions like zooming or panning.
+
+## 12. Add Edge Management with ScenarioEdges [pending]
+### Dependencies: 9.8
+### Description: Replace the legacy nodeConnections system with the new scenarioEdges table for proper React Flow edge management.
+### Details:
+Update all edge-related operations in the ScenarioGraph component to use the scenarioEdges table instead of nodeConnections. Implement proper edge creation, deletion, and modification using the React Flow edge system. Add support for edge handles, labels, and styling. Ensure edge operations work with the batch upsertScenarioGraph mutation and maintain graph consistency.
+
+## 13. Add Integration Testing and Documentation [pending]
+### Dependencies: 9.9, 9.10, 9.11, 9.12
+### Description: Create comprehensive tests for the React Flow integration and document the complete workflow for scenario editing.
+### Details:
+Write integration tests that verify the complete React Flow workflow: loading a scenario, adding/removing nodes, creating/deleting edges, saving changes, and UI state persistence. Test error scenarios like invalid graphs and network failures. Create documentation for developers on how to extend the React Flow integration with new node types and edge behaviors. Include performance testing for large graphs.
+

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { usePostCategories } from "@/lib/blog";
+import { api } from "@convex-config/_generated/api";
+import { useQuery } from "convex/react";
 import { FilePlus, Pencil, Trash } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
@@ -57,15 +58,16 @@ export default function CategoryAdminPage() {
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
 
   // Get categories data
-  const { data: categories, isLoading } = usePostCategories();
+  const categories = useQuery(api.core.posts.queries.getPostCategories, {});
+  const isLoading = categories === undefined;
 
   // Function to refresh categories list
-  const refreshCategories = () => {
-    window.location.reload();
-  };
+  // const refreshCategories = () => {
+  //   window.location.reload();
+  // };
 
   // Function to handle adding a new category
-  const handleAddCategory = async () => {
+  const handleAddCategory = () => {
     if (!categoryForm.name.trim()) {
       toast.error("Category name is required");
       return;
@@ -97,7 +99,7 @@ export default function CategoryAdminPage() {
   };
 
   // Function to submit category edits
-  const handleUpdateCategory = async () => {
+  const handleUpdateCategory = () => {
     if (!categoryForm.name.trim() || !editingCategory) {
       toast.error("Category name is required");
       return;
@@ -120,7 +122,7 @@ export default function CategoryAdminPage() {
   };
 
   // Function to handle deleting a category
-  const handleDeleteCategory = async (categoryName: string) => {
+  const handleDeleteCategory = (categoryName: string) => {
     // Confirm delete
     if (
       !window.confirm(
@@ -269,7 +271,7 @@ export default function CategoryAdminPage() {
             <div className="flex h-40 items-center justify-center">
               <p className="text-muted-foreground">Loading categories...</p>
             </div>
-          ) : !categories || categories.length === 0 ? (
+          ) : categories.length === 0 ? (
             <div className="flex h-40 flex-col items-center justify-center rounded-md border border-dashed p-8 text-center">
               <h3 className="mb-2 text-xl font-medium">No categories found</h3>
               <p className="mb-4 text-sm text-muted-foreground">
@@ -294,7 +296,7 @@ export default function CategoryAdminPage() {
                     <TableCell className="font-medium">
                       {category.name || "Unnamed Category"}
                     </TableCell>
-                    <TableCell>{category.count || 0}</TableCell>
+                    <TableCell>{category.postTypes?.length ?? 0}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"

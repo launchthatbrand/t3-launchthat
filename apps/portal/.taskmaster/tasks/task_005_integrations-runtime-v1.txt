@@ -1,0 +1,312 @@
+# Task ID: 5
+# Title: Implement Scenario Versioning and Migrations
+# Status: done
+# Dependencies: 2
+# Priority: medium
+# Description: Add support for scenario draft/published versioning with atomic publishing and node configuration migrations.
+# Details:
+1. Update the scenarios table schema to support versioning:
+
+```typescript
+interface Scenario {
+  _id: Id<"scenarios">;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  draftConfig: ScenarioConfig;
+  publishedConfig: ScenarioConfig | null;
+  version: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface ScenarioConfig {
+  triggerKey: string;
+  triggerConfig: Record<string, unknown>;
+  // Any other scenario-level configuration
+}
+```
+
+2. Implement publishing functionality that atomically swaps draft to published:
+
+```typescript
+export const publishScenario = mutation({
+  args: { id: v.id("scenarios") },
+  handler: async (ctx, args) => {
+    const scenario = await ctx.db.get(args.id);
+    if (!scenario) {
+      throw new Error(`Scenario ${args.id} not found`);
+    }
+    
+    // Update the scenario with the published config
+    return await ctx.db.patch(args.id, {
+      publishedConfig: scenario.draftConfig,
+      version: scenario.version + 1,
+      updatedAt: Date.now()
+    });
+  },
+});
+```
+
+3. Add node migration support in the node registry:
+
+```typescript
+// In the NodeDefinition interface (already defined in Task 2)
+interface NodeDefinition<TConfig> {
+  // ... other properties
+  migrate?: (oldConfig: unknown) => TConfig;
+}
+
+// Migration helper function
+export async function migrateNodeConfig(ctx: ActionContext, nodeId: Id<"nodes">, newNodeType: string) {
+  const node = await ctx.runQuery(internal.nodes.getById, { id: nodeId });
+  if (!node) {
+    throw new Error(`Node ${nodeId} not found`);
+  }
+  
+  const nodeDefinition = nodeRegistry.get(newNodeType);
+  if (!nodeDefinition.migrate) {
+    throw new Error(`Node type ${newNodeType} does not support migration`);
+  }
+  
+  // Attempt to migrate the configuration
+  try {
+    const migratedConfig = nodeDefinition.migrate(node.config);
+    
+    // Validate the migrated config against the schema
+    const validatedConfig = nodeDefinition.configSchema.parse(migratedConfig);
+    
+    // Update the node with the new type and migrated config
+    await ctx.runMutation(internal.nodes.update, {
+      id: nodeId,
+      type: newNodeType,
+      config: validatedConfig
+    });
+    
+    return { success: true, nodeId };
+  } catch (error) {
+    return {
+      success: false,
+      nodeId,
+      error: {
+        code: "MIGRATION_FAILED",
+        message: error.message || String(error)
+      }
+    };
+  }
+}
+```
+
+4. Implement scenario cloning for safe editing:
+
+```typescript
+export const cloneScenario = mutation({
+  args: { id: v.id("scenarios"), newName: v.string() },
+  handler: async (ctx, args) => {
+    const scenario = await ctx.db.get(args.id);
+    if (!scenario) {
+      throw new Error(`Scenario ${args.id} not found`);
+    }
+    
+    // Create a new scenario with the same configuration
+    const newScenarioId = await ctx.db.insert("scenarios", {
+      name: args.newName,
+      description: `Clone of ${scenario.name}`,
+      enabled: false, // Start disabled
+      draftConfig: scenario.publishedConfig || scenario.draftConfig,
+      publishedConfig: null, // Start with no published version
+      version: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    });
+    
+    // Clone all nodes associated with the scenario
+    const nodes = await ctx.db
+      .query("nodes")
+      .withIndex("by_scenario", q => q.eq("scenarioId", args.id))
+      .collect();
+    
+    for (const node of nodes) {
+      await ctx.db.insert("nodes", {
+        ...node,
+        _id: undefined, // Let Convex generate a new ID
+        scenarioId: newScenarioId,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      });
+    }
+    
+    return newScenarioId;
+  },
+});
+```
+
+5. Ensure runs reference a specific scenario version:
+
+```typescript
+// Update the runs table schema
+interface Run {
+  // ... other fields from Task 1
+  scenarioVersion: number; // Store the version at execution time
+}
+
+// When creating a run, include the current scenario version
+export const createRun = mutation({
+  args: { 
+    scenarioId: v.id("scenarios"),
+    triggerKey: v.string(),
+    correlationId: v.string(),
+    // other args
+  },
+  handler: async (ctx, args) => {
+    const scenario = await ctx.db.get(args.scenarioId);
+    if (!scenario) {
+      throw new Error(`Scenario ${args.scenarioId} not found`);
+    }
+    
+    return await ctx.db.insert("runs", {
+      scenarioId: args.scenarioId,
+      scenarioVersion: scenario.version,
+      status: "pending",
+      triggerKey: args.triggerKey,
+      correlationId: args.correlationId,
+      startedAt: Date.now()
+    });
+  },
+});
+```
+
+# Test Strategy:
+1. Unit tests for scenario versioning and publishing
+2. Test node configuration migration with various test cases
+3. Verify that publishing is atomic (either succeeds completely or fails)
+4. Test scenario cloning functionality
+5. Verify that runs correctly reference the scenario version at execution time
+6. Integration tests for end-to-end scenario lifecycle (draft, edit, publish)
+7. Test error handling during migration
+
+# Subtasks:
+## 1. Update Scenario Schema for Versioning [done]
+### Dependencies: None
+### Description: Modify the scenarios table schema to support draft and published versions of scenario configurations.
+### Details:
+Update the Scenario interface to include draftConfig, publishedConfig, and version fields. Ensure the ScenarioConfig interface is properly defined with triggerKey and triggerConfig.
+<info added on 2025-08-15T19:32:50.738Z>
+Subtask 5.1 has been successfully completed with the following schema updates:
+
+- Enhanced Scenario Schema with:
+  - scenarioConfigValidator for configuration validation
+  - draftConfig and publishedConfig fields for versioning
+  - version number tracking
+  - enabled boolean flag for execution control
+  - New indexes: by_enabled, by_version, by_trigger, by_enabled_published
+  - Backward compatibility maintained
+
+- Enhanced ScenarioRuns Schema with:
+  - scenarioVersion field to track execution version
+  - by_scenario_version index for efficient querying
+
+- Updated mutations:
+  - createScenarioRun and ensureIdempotentRun now capture scenario version
+  - Added proper error handling for missing scenarios
+
+All schema foundations for scenario versioning are now in place, with proper validation, backward compatibility, and efficient indexing to support the upcoming publishing functionality implementation.
+</info added on 2025-08-15T19:32:50.738Z>
+
+## 2. Implement Atomic Publishing Functionality [done]
+### Dependencies: 5.1
+### Description: Create a mutation to atomically publish a scenario's draft configuration.
+### Details:
+Develop the publishScenario mutation that swaps the draft configuration to published, increments the version, and updates the timestamp.
+<info added on 2025-08-15T19:35:59.628Z>
+Atomic Publishing Functionality Implemented:
+
+1. Core Publishing Mutations:
+   - `publishScenario` - Atomically publishes draft configuration, increments version, sets active status
+   - `createDraftFromPublished` - Creates editable drafts from published configurations
+   - `updateDraftConfig` - Updates draft configuration with validation
+   - `discardDraft` - Reverts draft changes back to published configuration
+   - `getDraftDiff` - Compares draft vs published configurations
+
+2. Versioning Queries Added:
+   - `getVersionInfo` - Comprehensive version information including draft changes detection
+   - `listPublished` - Runtime execution query for published scenarios only
+   - `getRunsByVersion` - Historical runs filtered by scenario version
+
+3. Key Features Implemented:
+   - Atomic publishing (single transaction)
+   - Version increment on each publish
+   - Draft/Published separation with diff detection
+   - Safe editing workflow (draft → publish → revert)
+   - Runtime execution queries (published configs only)
+   - Version tracking for all operations
+   - Comprehensive error handling
+
+4. Schema Integration:
+   - Updated `create` mutation to initialize with proper draft configuration
+   - All mutations work with new versioning schema
+   - Proper validation and type safety maintained
+
+Files Modified:
+- `apps/portal/convex/integrations/scenarios/mutations.ts` (added 5 new mutations)
+- `apps/portal/convex/integrations/scenarios/queries.ts` (added 3 versioning queries)
+</info added on 2025-08-15T19:35:59.628Z>
+
+## 3. Add Node Configuration Migration Support [done]
+### Dependencies: 5.1, 5.2
+### Description: Implement a system for migrating node configurations when node types change or evolve.
+### Details:
+Create a migrateNodeConfig function that uses the migrate method from NodeDefinition to update node configurations. Implement error handling and validation of migrated configs.
+<info added on 2025-08-15T19:40:11.637Z>
+# Node Configuration Migration Support Implementation
+
+Core migration infrastructure created in `lib/migrations.ts` with comprehensive functionality including `MigrationResult`, `BatchMigrationResult`, and `MigrationOptions` types. Added migration support to the existing `NodeDefinition` interface.
+
+Implemented key migration functions:
+- `migrateNodeConfig` for individual nodes with type validation and atomic updates
+- `migrateScenarioNodes` for batch migration of all nodes in a scenario
+- `checkMigrationCompatibility` for pre-validation of migration compatibility
+- `getAvailableMigrationPaths` for discovering available migration targets
+
+Created public actions in `actions/migrations.ts` exposing endpoints for node migration, scenario migration, compatibility checking, and available migration paths.
+
+Added migration-specific error codes and comprehensive error handling with safe rollback on validation failures.
+
+Implemented example migration in `nodes/registry.ts` with an `EnhancedPassThroughNode` demonstrating practical migration from `{ enabled: boolean }` to `{ enabled: boolean, delay: number, transformData: boolean }`.
+
+Key features include atomic node updates with validation, dry-run support, batch processing with error handling, type-safe configuration migration, backward compatibility checking, and configuration change detection.
+</info added on 2025-08-15T19:40:11.637Z>
+
+## 4. Implement Scenario Cloning Functionality [done]
+### Dependencies: 5.1, 5.2
+### Description: Develop a mutation to clone existing scenarios for safe editing and experimentation.
+### Details:
+Create the cloneScenario mutation that duplicates a scenario and its associated nodes, assigning new IDs and resetting version information.
+
+## 5. Integrate Version Tracking in Run Creation [done]
+### Dependencies: 5.1, 5.2, 5.4
+### Description: Update the run creation process to include and reference the specific scenario version used for execution.
+### Details:
+Modify the Run interface to include a scenarioVersion field. Update the createRun mutation to capture and store the current scenario version when creating a new run.
+<info added on 2025-08-15T19:58:03.919Z>
+✅ **Version Tracking Implementation Complete**
+
+**Core Functionality Implemented:**
+1. **Schema**: The `scenarioRuns` table already has `scenarioVersion: v.number()` field
+2. **Run Creation**: Both `createScenarioRun` and `ensureIdempotentRun` mutations capture and store `scenario.version` when creating runs
+3. **Data Access**: All queries now return the `scenarioVersion` field for complete traceability  
+4. **New Query**: Added `getScenarioRunsByScenarioAndVersion` for filtering runs by specific scenario versions
+
+**Technical Details:**
+- `scenarioRuns/mutations.ts`: Both create functions fetch scenario and capture `scenarioVersion: scenario.version`
+- `scenarioRuns/queries.ts`: All return types now include `scenarioVersion: v.number()`
+- `scenarioRuns/schema.ts`: Index `by_scenario_version` supports efficient queries
+
+**Integration Status:**
+- Version tracking is working correctly in run creation
+- Deployment successful with core functionality intact
+- Some legacy function signatures in actionExecution need broader refactoring (outside scope of this subtask)
+
+**Result:** ✅ Scenario runs now properly track and reference the specific version of the scenario configuration used for execution
+</info added on 2025-08-15T19:58:03.919Z>
+

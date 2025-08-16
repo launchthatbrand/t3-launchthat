@@ -89,7 +89,6 @@ export const getDashboardConfig = query({
  */
 export const getDefaultDashboardConfig = query({
   args: {},
-  returns: v.any(), // Puck Data object
   handler: async () => {
     // Simulate an async operation to satisfy the linter
     await Promise.resolve();

@@ -1,16 +1,16 @@
 // Keep httpAction import from generated server
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-// Correct import for httpRouter according to docs
-import { httpRouter } from "convex/server";
-
 import { api, internal } from "./_generated/api";
-import { httpAction } from "./_generated/server";
 import {
   createMediaFromWebhook,
   uploadMediaOptions,
   uploadMediaPost,
 } from "./core/media/http";
+
+import { httpAction } from "./_generated/server";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+// Correct import for httpRouter according to docs
+import { httpRouter } from "convex/server";
 
 /**
  * Request body structure expected by the createAuthNetTransaction endpoint.
@@ -189,6 +189,334 @@ http.route({
   path: "/webhook/media",
   method: "POST",
   handler: createMediaFromWebhook,
+});
+
+/**
+ * Main webhook endpoint for receiving external webhooks
+ * URL format: /webhook/:appKey
+ */
+http.route({
+  path: "/webhook/:appKey",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      // Extract app key from URL path
+      const url = new URL(request.url);
+      const appKey = url.pathname.split("/").pop();
+
+      if (!appKey) {
+        return new Response(
+          JSON.stringify({ error: "Missing app key in URL" }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      // Get app by key
+      const app = await ctx.runQuery(
+        internal.integrations.apps.queries.getByKey,
+        {
+          key: appKey,
+        },
+      );
+
+      if (!app) {
+        return new Response(JSON.stringify({ error: "Invalid app key" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Parse request body
+      let payload: any;
+      try {
+        const contentType = request.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          payload = await request.json();
+        } else if (contentType.includes("application/x-www-form-urlencoded")) {
+          const formData = await request.formData();
+          payload = Object.fromEntries(formData.entries());
+        } else {
+          const textPayload = await request.text();
+          // Try to parse as JSON, fallback to text
+          try {
+            payload = JSON.parse(textPayload);
+          } catch {
+            payload = { body: textPayload };
+          }
+        }
+      } catch (error) {
+        return new Response(JSON.stringify({ error: "Invalid request body" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Convert headers to plain object
+      const headers: Record<string, string> = {};
+      for (const [key, value] of request.headers.entries()) {
+        headers[key.toLowerCase()] = value;
+      }
+
+      // Add request metadata to payload
+      const enrichedPayload = {
+        ...payload,
+        _metadata: {
+          method: request.method,
+          url: request.url,
+          userAgent: headers["user-agent"],
+          contentType: headers["content-type"],
+          timestamp: Date.now(),
+        },
+      };
+
+      // Process the webhook
+      const result = await ctx.runAction(
+        internal.integrations.webhooks.handler.handleIncomingWebhook,
+        {
+          appId: app._id,
+          triggerKey: "webhook", // Default trigger key
+          payload: enrichedPayload,
+          headers,
+          connectionId: app.defaultConnectionId,
+          source: "http_endpoint",
+        },
+      );
+
+      if (!result.success) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: result.error,
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      // Return success response
+      return new Response(
+        JSON.stringify({
+          success: true,
+          runIds: result.runIds,
+          scenariosTriggered: result.scenariosTriggered,
+          idempotent: result.idempotent,
+          message: result.idempotent
+            ? "Request was processed idempotently"
+            : `Triggered ${result.scenariosTriggered} scenario(s)`,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    } catch (error) {
+      console.error("Webhook endpoint error:", error);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Internal server error",
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+  }),
+});
+
+/**
+ * Health check endpoint for monitoring
+ */
+http.route({
+  path: "/health",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      // Basic health checks
+      const startTime = Date.now();
+
+      // Test database connectivity by running a simple query
+      const dbCheck = await ctx.runQuery(
+        internal.integrations.scenarios.queries.getScenarios,
+        { limit: 1 },
+      );
+
+      const responseTime = Date.now() - startTime;
+
+      // Get system stats
+      const stats = {
+        timestamp: Date.now(),
+        uptime: process.uptime ? process.uptime() : "unknown",
+        responseTime,
+        version: "1.0.0",
+      };
+
+      return new Response(
+        JSON.stringify({
+          status: "healthy",
+          checks: {
+            database: dbCheck !== null,
+            responseTime: responseTime < 5000, // Less than 5 seconds
+          },
+          stats,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    } catch (error) {
+      console.error("Health check error:", error);
+      return new Response(
+        JSON.stringify({
+          status: "unhealthy",
+          error: error instanceof Error ? error.message : "Unknown error",
+          timestamp: Date.now(),
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+  }),
+});
+
+/**
+ * System info endpoint (for debugging)
+ */
+http.route({
+  path: "/system/info",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      // Get system information
+      const info = {
+        version: "1.0.0",
+        timestamp: Date.now(),
+        environment: process.env.NODE_ENV || "unknown",
+        endpoints: [
+          {
+            path: "/webhook/:appKey",
+            method: "POST",
+            description: "Receive webhooks",
+          },
+          { path: "/health", method: "GET", description: "Health check" },
+          {
+            path: "/system/info",
+            method: "GET",
+            description: "System information",
+          },
+        ],
+      };
+
+      return new Response(JSON.stringify(info), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      return new Response(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : "Unknown error",
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+  }),
+});
+
+/**
+ * Manual trigger endpoint for testing scenarios
+ * POST /trigger/:scenarioId
+ */
+http.route({
+  path: "/trigger/:scenarioId",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      // Extract scenario ID from URL
+      const url = new URL(request.url);
+      const scenarioId = url.pathname.split("/").pop();
+
+      if (!scenarioId) {
+        return new Response(JSON.stringify({ error: "Missing scenario ID" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Parse payload
+      let payload = {};
+      try {
+        const contentType = request.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          payload = await request.json();
+        } else {
+          const text = await request.text();
+          if (text) {
+            payload = { data: text };
+          }
+        }
+      } catch (error) {
+        payload = {};
+      }
+
+      // Trigger the scenario manually
+      const result = await ctx.runAction(
+        internal.integrations.webhooks.handler.triggerScenarioManually,
+        {
+          scenarioId: scenarioId as any, // Type assertion for ID
+          payload,
+        },
+      );
+
+      if (!result.success) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: result.error,
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          runId: result.runId,
+          executionResult: result.executionResult,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    } catch (error) {
+      console.error("Manual trigger error:", error);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Internal server error",
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+  }),
 });
 
 // Export the router as the default export

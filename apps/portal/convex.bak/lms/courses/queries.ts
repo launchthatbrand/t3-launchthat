@@ -48,7 +48,6 @@ export const listCourses = query({
     organizationId: v.optional(v.id("organizations")),
     isPublished: v.optional(v.boolean()),
   },
-  returns: v.any(), // Use any for pagination result to avoid validation mismatches
   handler: async (ctx, args) => {
     if (args.organizationId && args.isPublished !== undefined) {
       // Use the combined index when both filters are present
@@ -266,7 +265,6 @@ export const listCourses = query({
 //  */
 // export const getCourseStructureWithItems = query({
 //   args: { courseId: v.id("courses") },
-//   returns: v.any(), // Use any to avoid complex validation issues
 //   handler: async (ctx, args) => {
 //     // Get the course
 //     const course = await ctx.db.get(args.courseId);

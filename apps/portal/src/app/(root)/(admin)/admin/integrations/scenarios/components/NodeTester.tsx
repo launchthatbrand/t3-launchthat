@@ -1,9 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 "use client";
 
-import { useState } from "react";
-import { api } from "@convex-config/_generated/api";
-import { useAction, useMutation, useQuery } from "convex/react";
 import {
   BrainCircuit,
   Code,
@@ -12,7 +9,6 @@ import {
   Play,
   Webhook,
 } from "lucide-react";
-
 import {
   Button,
   Card,
@@ -26,10 +22,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@acme/ui";
+import { NodeTestResult, SupportedApp, appActions } from "../types";
+import { useAction, useMutation, useQuery } from "convex/react";
 
 import { JSONView } from "~/components/ui/JSONView";
-import { appActions, NodeTestResult, SupportedApp } from "../types";
+import { api } from "@convex-config/_generated/api";
 import { getNodeMockData } from "../utils";
+import { useState } from "react";
 
 interface NodeTesterProps {
   nodeId: string;
@@ -81,24 +80,40 @@ export function NodeTester({
   );
   const saveSchema = useMutation(api.integrations.nodes.mutations.updateSchema);
 
-  // Add automation logging mutations
-  const logNodeExecution = useMutation(
-    api.integrations.automationLogs.mutations.logNodeExecution,
+  // Add scenario run lifecycle mutations
+  const createScenarioRun = useMutation(
+    api.integrations.scenarioRuns.mutations.createScenarioRun,
   );
-  const logScenarioStart = useMutation(
-    api.integrations.automationLogs.mutations.logScenarioStart,
-  );
-  const logScenarioComplete = useMutation(
-    api.integrations.automationLogs.mutations.logScenarioComplete,
+  const completeScenarioRun = useMutation(
+    api.integrations.scenarioRuns.mutations.completeScenarioRun,
   );
 
-  // Generate a unique run ID for this test session
+  // Add automation logging mutations
+  const logNodeExecution = useMutation(
+    api.integrations.scenarioLogs.mutations.logNodeExecution,
+  );
+  const logScenarioStart = useMutation(
+    api.integrations.scenarioLogs.mutations.logScenarioStart,
+  );
+  const logScenarioComplete = useMutation(
+    api.integrations.scenarioLogs.mutations.logScenarioComplete,
+  );
+
+  // Generate a unique run ID for this test session (used as correlation id)
   const generateRunId = () =>
     `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
   const handleWebhookTest = async () => {
-    const runId = generateRunId();
+    const correlationId = generateRunId();
     const startTime = Date.now();
+
+    // Create a scenario run first
+    const runId = await createScenarioRun({
+      scenarioId: scenarioId as any,
+      triggerKey: "manual_test",
+      correlationId,
+      connectionId: connectionId as any,
+    });
 
     try {
       // Extract webhook configuration from config
@@ -115,9 +130,9 @@ export function NodeTester({
 
       // Log the start of webhook execution
       await logNodeExecution({
-        scenarioId: scenarioId as any, // Type assertion needed for now
+        scenarioId: scenarioId as any,
         runId,
-        nodeId: nodeId as any, // Type assertion needed for now
+        nodeId: nodeId as any,
         action: "webhook_send",
         status: "running",
         startTime,
@@ -180,6 +195,12 @@ export function NodeTester({
           headers: webhookResult.responseHeaders,
         },
         metadata: JSON.stringify({ nodeType: "webhook", testMode: true }),
+      });
+
+      // Complete scenario run
+      await completeScenarioRun({
+        runId,
+        status: webhookResult.success ? "succeeded" : "failed",
       });
 
       // Format result for display
@@ -249,6 +270,7 @@ export function NodeTester({
           error instanceof Error ? error.message : "Unknown webhook test error",
         metadata: JSON.stringify({ nodeType: "webhook", testMode: true }),
       });
+      await completeScenarioRun({ runId, status: "failed" });
 
       const errorResult: NodeTestResult = {
         data: null,
@@ -270,8 +292,16 @@ export function NodeTester({
 
     setIsLoading(true);
 
-    const runId = generateRunId();
+    const correlationId = generateRunId();
     const startTime = Date.now();
+
+    // Create a scenario run first
+    const runId = await createScenarioRun({
+      scenarioId: scenarioId as any,
+      triggerKey: "manual_test",
+      correlationId,
+      connectionId: connectionId as any,
+    });
 
     try {
       // Log scenario start
@@ -344,6 +374,12 @@ export function NodeTester({
           }),
         });
 
+        // Complete scenario run status
+        await completeScenarioRun({
+          runId,
+          status: actionResult.error ? "failed" : "succeeded",
+        });
+
         result = {
           ...actionResult,
           isProxied: actionResult.isProxied,
@@ -382,6 +418,9 @@ export function NodeTester({
           action,
           appName,
         );
+
+        // Complete scenario run status
+        await completeScenarioRun({ runId, status: "failed" });
 
         // Add flag to indicate this is fallback data
         result = {
@@ -436,6 +475,9 @@ export function NodeTester({
           totalDuration: endTime - startTime,
         }),
       });
+
+      // Complete scenario run
+      await completeScenarioRun({ runId, status: "failed" });
 
       const errorResult: NodeTestResult = {
         data: null,

@@ -1,7 +1,6 @@
-import { v } from "convex/values";
-
 import type { Id } from "../../_generated/dataModel";
 import { query } from "../../_generated/server";
+import { v } from "convex/values";
 
 // Define type for node data
 interface NodeData {
@@ -270,5 +269,90 @@ export const getAllNodes = query({
   ),
   handler: async (ctx) => {
     return await ctx.db.query("nodes").collect();
+  },
+});
+
+/**
+ * Alias for listByScenario with a more descriptive name
+ */
+export const getByScenarioId = listByScenario;
+
+/**
+ * Get all node connections for a scenario
+ */
+export const getConnectionsByScenario = query({
+  args: {
+    scenarioId: v.id("scenarios"),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("nodeConnections"),
+      _creationTime: v.number(),
+      scenarioId: v.id("scenarios"),
+      sourceNodeId: v.id("nodes"),
+      targetNodeId: v.id("nodes"),
+      mapping: v.optional(v.string()),
+      label: v.optional(v.string()),
+      branch: v.optional(v.string()),
+      order: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    // Verify the scenario exists
+    const scenario = await ctx.db.get(args.scenarioId);
+    if (!scenario) {
+      throw new Error(`Scenario with ID ${args.scenarioId} not found`);
+    }
+
+    // Get all connections for this scenario
+    const connections = await ctx.db
+      .query("nodeConnections")
+      .withIndex("by_scenario", (q) => q.eq("scenarioId", args.scenarioId))
+      .collect();
+
+    return connections;
+  },
+});
+
+/**
+ * Get all scenario edges for a scenario (React Flow integration)
+ */
+export const getScenarioEdgesByScenario = query({
+  args: {
+    scenarioId: v.id("scenarios"),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("scenarioEdges"),
+      _creationTime: v.number(),
+      scenarioId: v.id("scenarios"),
+      sourceNodeId: v.id("nodes"),
+      sourceHandle: v.optional(v.string()),
+      targetNodeId: v.id("nodes"),
+      targetHandle: v.optional(v.string()),
+      label: v.optional(v.string()),
+      animated: v.optional(v.boolean()),
+      style: v.optional(v.string()),
+      order: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    // Verify the scenario exists
+    const scenario = await ctx.db.get(args.scenarioId);
+    if (!scenario) {
+      throw new Error(`Scenario with ID ${args.scenarioId} not found`);
+    }
+
+    // Get all scenario edges for this scenario
+    const edges = await ctx.db
+      .query("scenarioEdges")
+      .withIndex("by_scenario", (q) => q.eq("scenarioId", args.scenarioId))
+      .collect();
+
+    return edges;
   },
 });

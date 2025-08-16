@@ -10,7 +10,6 @@ export const get = query({
   args: {
     id: v.string(),
   },
-  returns: v.any(),
   handler: async (ctx, args) => {
     // Check if the ID is a valid connection ID
     let connectionId: Id<"connections">;

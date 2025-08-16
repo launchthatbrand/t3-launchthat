@@ -1,0 +1,474 @@
+# Task ID: 8
+# Title: Implement Dry-Run Preview Functionality
+# Status: done
+# Dependencies: 2, 5, 6
+# Priority: medium
+# Description: Create a dry-run internal action that validates and executes a scenario without side effects, returning node-by-node preview outputs.
+# Details:
+1. Implement a dry-run mode for actions:
+
+```typescript
+// Add a dryRun flag to the action context
+interface ActionContext {
+  // ... existing properties
+  dryRun: boolean;
+}
+
+// Update action execution to respect dry run mode
+async function executeAction<TConfig, TInput, TOutput>(
+  ctx: ActionContext,
+  actionType: string,
+  config: TConfig,
+  input: TInput
+): Promise<ActionResult<TOutput>> {
+  const actionDefinition = actionRegistry.get(actionType);
+  
+  // Validate config and input against schemas
+  try {
+    actionDefinition.configSchema.parse(config);
+    actionDefinition.inputSchema.parse(input);
+  } catch (error) {
+    return {
+      kind: "fatal_error",
+      error: {
+        code: "VALIDATION_ERROR",
+        message: error.message
+      }
+    };
+  }
+  
+  // If in dry-run mode, return a mock success result
+  if (ctx.dryRun) {
+    // For some actions, we might want to provide realistic mock data
+    // based on the action type and input
+    const mockOutput = generateMockOutput(actionType, input);
+    
+    return {
+      kind: "success",
+      data: mockOutput as TOutput
+    };
+  }
+  
+  // Otherwise, execute the real action
+  return await actionDefinition.execute(ctx, input as TInput, config as TConfig);
+}
+
+// Helper to generate realistic mock outputs for dry runs
+function generateMockOutput(actionType: string, input: any): unknown {
+  // Action-specific mock data generation
+  switch (actionType) {
+    case "http.request":
+      return {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: { message: "[Dry run] Simulated HTTP response" }
+      };
+    
+    case "database.query":
+      return {
+        rows: [
+          { id: "mock1", name: "Mock Record 1" },
+          { id: "mock2", name: "Mock Record 2" }
+        ],
+        count: 2
+      };
+    
+    // Add more action types as needed
+    
+    default:
+      // Generic mock data
+      return {
+        _dryRun: true,
+        _mockData: true,
+        timestamp: Date.now()
+      };
+  }
+}
+```
+
+2. Implement the dry-run internal action for scenarios:
+
+```typescript
+export const dryRunScenario = internalAction({
+  args: {
+    scenarioId: v.id("scenarios"),
+    triggerPayload: v.optional(v.any())
+  },
+  handler: async (ctx, args) => {
+    // Get the scenario
+    const scenario = await ctx.runQuery(internal.scenarios.getById, { id: args.scenarioId });
+    if (!scenario) {
+      throw new Error(`Scenario ${args.scenarioId} not found`);
+    }
+    
+    // Get all nodes for this scenario
+    const nodes = await ctx.runQuery(internal.nodes.getByScenarioId, { scenarioId: args.scenarioId });
+    
+    // Get all edges to determine execution flow
+    const edges = await ctx.runQuery(internal.scenarioEdges.getByScenarioId, { scenarioId: args.scenarioId });
+    
+    // Validate the graph is a DAG (no cycles)
+    const { valid, error } = validateScenarioGraph(nodes, edges);
+    if (!valid) {
+      return {
+        valid: false,
+        error
+      };
+    }
+    
+    // Create a correlation ID for this dry run
+    const correlationId = `dryrun_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    
+    // Create a context with dryRun flag
+    const dryRunCtx = {
+      ...ctx,
+      dryRun: true
+    };
+    
+    // Generate or use provided trigger payload
+    const triggerPayload = args.triggerPayload || generateMockTriggerPayload(scenario.draftConfig.triggerKey);
+    
+    // Sort nodes in execution order (topological sort of the DAG)
+    const sortedNodes = topologicalSort(nodes, edges);
+    
+    // Execute each node in order and collect results
+    const nodeResults = [];
+    const nodeOutputs = new Map();
+    
+    // Start with trigger output
+    nodeOutputs.set("trigger", {
+      correlationId,
+      data: triggerPayload
+    });
+    
+    for (const node of sortedNodes) {
+      // Get node definition
+      const nodeDefinition = nodeRegistry.get(node.type);
+      
+      // Get input for this node based on incoming edges
+      const inputNodeIds = edges
+        .filter(edge => edge.targetNodeId === node._id)
+        .map(edge => edge.sourceNodeId);
+      
+      // For simplicity, we'll just use the output of the first input node
+      // In a real implementation, you'd need to handle multiple inputs and named handles
+      const inputNodeId = inputNodeIds[0] || "trigger";
+      const input = nodeOutputs.get(inputNodeId) || { correlationId, data: {} };
+      
+      try {
+        // Validate node config
+        nodeDefinition.configSchema.parse(node.config);
+        
+        // Execute the node in dry-run mode
+        const output = await executeNode(dryRunCtx, node, input);
+        
+        // Store the result
+        nodeOutputs.set(node._id, output);
+        
+        nodeResults.push({
+          nodeId: node._id,
+          nodeName: node.name,
+          nodeType: node.type,
+          status: "success",
+          input: input.data,
+          output: output.data
+        });
+      } catch (error) {
+        nodeResults.push({
+          nodeId: node._id,
+          nodeName: node.name,
+          nodeType: node.type,
+          status: "error",
+          input: input.data,
+          error: {
+            message: error.message,
+            code: error.code || "EXECUTION_ERROR"
+          }
+        });
+        
+        // Stop execution if a node fails
+        break;
+      }
+    }
+    
+    return {
+      valid: true,
+      correlationId,
+      nodeResults,
+      flowTaken: sortedNodes.map(node => node._id)
+    };
+  },
+});
+
+// Helper to validate a scenario graph is a DAG
+function validateScenarioGraph(nodes, edges) {
+  // Check for cycles using DFS
+  const adjacencyList = new Map();
+  
+  // Build adjacency list
+  for (const node of nodes) {
+    adjacencyList.set(node._id, []);
+  }
+  
+  for (const edge of edges) {
+    const sourceNeighbors = adjacencyList.get(edge.sourceNodeId) || [];
+    sourceNeighbors.push(edge.targetNodeId);
+    adjacencyList.set(edge.sourceNodeId, sourceNeighbors);
+  }
+  
+  // Check for cycles
+  const visited = new Set();
+  const recursionStack = new Set();
+  
+  function hasCycle(nodeId) {
+    if (!visited.has(nodeId)) {
+      visited.add(nodeId);
+      recursionStack.add(nodeId);
+      
+      const neighbors = adjacencyList.get(nodeId) || [];
+      for (const neighbor of neighbors) {
+        if (!visited.has(neighbor) && hasCycle(neighbor)) {
+          return true;
+        } else if (recursionStack.has(neighbor)) {
+          return true;
+        }
+      }
+    }
+    
+    recursionStack.delete(nodeId);
+    return false;
+  }
+  
+  for (const node of nodes) {
+    if (!visited.has(node._id) && hasCycle(node._id)) {
+      return {
+        valid: false,
+        error: "Scenario contains cycles, which are not allowed"
+      };
+    }
+  }
+  
+  return { valid: true };
+}
+
+// Helper to sort nodes in execution order
+function topologicalSort(nodes, edges) {
+  const adjacencyList = new Map();
+  const inDegree = new Map();
+  
+  // Initialize
+  for (const node of nodes) {
+    adjacencyList.set(node._id, []);
+    inDegree.set(node._id, 0);
+  }
+  
+  // Build adjacency list and calculate in-degrees
+  for (const edge of edges) {
+    const sourceNeighbors = adjacencyList.get(edge.sourceNodeId) || [];
+    sourceNeighbors.push(edge.targetNodeId);
+    adjacencyList.set(edge.sourceNodeId, sourceNeighbors);
+    
+    inDegree.set(edge.targetNodeId, (inDegree.get(edge.targetNodeId) || 0) + 1);
+  }
+  
+  // Find all sources (nodes with in-degree 0)
+  const queue = [];
+  for (const node of nodes) {
+    if (inDegree.get(node._id) === 0) {
+      queue.push(node);
+    }
+  }
+  
+  // Process the queue
+  const result = [];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    result.push(current);
+    
+    const neighbors = adjacencyList.get(current._id) || [];
+    for (const neighbor of neighbors) {
+      inDegree.set(neighbor, inDegree.get(neighbor) - 1);
+      if (inDegree.get(neighbor) === 0) {
+        queue.push(nodes.find(node => node._id === neighbor));
+      }
+    }
+  }
+  
+  return result;
+}
+
+// Helper to generate mock trigger payload
+function generateMockTriggerPayload(triggerKey) {
+  // Generate realistic mock data based on trigger type
+  switch (triggerKey) {
+    case "webhook":
+      return {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "user-agent": "DryRun/1.0"
+        },
+        body: {
+          event: "test_event",
+          timestamp: Date.now()
+        }
+      };
+    
+    case "schedule":
+      return {
+        timestamp: Date.now(),
+        scheduledTime: new Date().toISOString()
+      };
+    
+    // Add more trigger types as needed
+    
+    default:
+      return {
+        _dryRun: true,
+        timestamp: Date.now()
+      };
+  }
+}
+```
+<info added on 2025-08-15T20:31:16.491Z>
+3. Implementation Status and Completion Report:
+
+```typescript
+// Implementation Status: COMPLETE
+
+// Key Components Implemented:
+
+// 1. ActionContext Interface Extension
+interface ActionContext {
+  // ... existing properties
+  dryRun?: boolean; // Added to ActionContext in registries.ts
+}
+
+// 2. Enhanced Mock Output Generators
+// Added support for additional action types:
+function generateMockOutput(actionType: string, input: any): unknown {
+  switch (actionType) {
+    case "http.request":
+    case "webhooks.send":
+      return {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: { message: "[Dry run] Simulated HTTP response" },
+        _dryRun: true
+      };
+    
+    case "database.query":
+    case "database.insert":
+    case "database.update":
+    case "database.delete":
+      return {
+        rows: [
+          { id: "mock1", name: "Mock Record 1" },
+          { id: "mock2", name: "Mock Record 2" }
+        ],
+        count: 2,
+        affected: 2,
+        _dryRun: true
+      };
+      
+    case "email.send":
+      return {
+        messageId: `mock_email_${Date.now()}`,
+        status: "simulated",
+        _dryRun: true
+      };
+      
+    case "file.upload":
+    case "file.download":
+      return {
+        url: "https://example.com/mock-file.pdf",
+        size: 1024,
+        mimeType: "application/pdf",
+        _dryRun: true
+      };
+      
+    case "data.transform":
+    case "data.filter":
+    case "data.map":
+      return {
+        result: input ? input : { transformed: "mock data" },
+        _dryRun: true
+      };
+    
+    default:
+      return {
+        _dryRun: true,
+        _mockData: true,
+        timestamp: Date.now()
+      };
+  }
+}
+
+// 3. Extended dryRunScenario with additional features
+export const dryRunScenario = internalAction({
+  args: {
+    scenarioId: v.id("scenarios"),
+    triggerPayload: v.optional(v.any()),
+    usePublished: v.optional(v.boolean()) // Added to support testing published configs
+  },
+  handler: async (ctx, args) => {
+    // Implementation complete with all features described in the completion report
+    // ...
+  }
+});
+
+// 4. Added executeNodeInDryRun helper function
+async function executeNodeInDryRun(ctx, node, input) {
+  // Simulates node execution without side effects
+  // Preserves correlation IDs and adds execution metadata
+  // ...
+}
+
+// 5. Added support for additional trigger types in mock generator
+function generateMockTriggerPayload(triggerKey) {
+  switch (triggerKey) {
+    case "webhook":
+      // Implementation as before
+    case "schedule":
+    case "cron":
+      // Implementation as before
+    case "manual":
+      return {
+        timestamp: Date.now(),
+        user: {
+          id: "mock_user_id",
+          name: "Mock User"
+        },
+        _dryRun: true
+      };
+    case "file_upload":
+      return {
+        files: [{
+          name: "mock_file.pdf",
+          size: 1024,
+          mimeType: "application/pdf",
+          url: "https://example.com/mock-file.pdf"
+        }],
+        timestamp: Date.now(),
+        _dryRun: true
+      };
+    default:
+      return {
+        _dryRun: true,
+        _triggerKey: triggerKey,
+        timestamp: Date.now()
+      };
+  }
+}
+```
+</info added on 2025-08-15T20:31:16.491Z>
+
+# Test Strategy:
+1. Unit tests for dry-run mode in actions with various action types
+2. Test mock output generation for different action types
+3. Test graph validation to ensure cycles are detected
+4. Test topological sorting of nodes
+5. Integration tests for end-to-end dry-run of scenarios
+6. Test with complex scenarios containing multiple branches
+7. Verify that no side effects occur during dry-run
+8. Test error handling during dry-run execution

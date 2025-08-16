@@ -32,7 +32,7 @@ export const nodesTable = defineTable({
   // Optional JSON string containing raw sample data returned from a test run
   sampleData: v.optional(v.string()),
 
-  // Position in the visual editor (JSON with x, y coordinates)
+  // Position in the visual editor (JSON with x, y coordinates) - LEGACY
   position: v.string(),
 
   // Execution order in the scenario (used for non-branching scenarios)
@@ -43,6 +43,25 @@ export const nodesTable = defineTable({
 
   // Optional list of property names that should be locked from edits
   lockedProperties: v.optional(v.array(v.string())),
+
+  // React Flow specific properties
+  // React Flow node type (maps to component type)
+  rfType: v.optional(v.string()),
+
+  // React Flow position object with x, y coordinates
+  rfPosition: v.optional(
+    v.object({
+      x: v.number(),
+      y: v.number(),
+    }),
+  ),
+
+  // Optional display label separate from internal name
+  rfLabel: v.optional(v.string()),
+
+  // Optional layout dimensions for React Flow
+  rfWidth: v.optional(v.number()),
+  rfHeight: v.optional(v.number()),
 
   // Creation timestamp
   createdAt: v.number(),
@@ -104,9 +123,59 @@ export const nodeConnectionsTable = defineTable({
   .index("by_source_and_target", ["sourceNodeId", "targetNodeId"]);
 
 /**
+ * Schema definition for the Scenario Edges table (React Flow Integration)
+ *
+ * This table stores React Flow edges for visual scenario editing.
+ * It's separate from nodeConnections which handles runtime logic.
+ */
+export const scenarioEdgesTable = defineTable({
+  // Reference to the scenario this edge belongs to
+  scenarioId: v.id("scenarios"),
+
+  // Source node ID
+  sourceNodeId: v.id("nodes"),
+
+  // Source handle (for React Flow multi-handle support)
+  sourceHandle: v.optional(v.string()),
+
+  // Target node ID
+  targetNodeId: v.id("nodes"),
+
+  // Target handle (for React Flow multi-handle support)
+  targetHandle: v.optional(v.string()),
+
+  // Optional display label for this edge
+  label: v.optional(v.string()),
+
+  // Whether the edge should be animated
+  animated: v.optional(v.boolean()),
+
+  // Edge styling (JSON object for React Flow style)
+  style: v.optional(v.string()),
+
+  // Optional ordering index among sibling edges
+  order: v.optional(v.number()),
+
+  // Creation timestamp
+  createdAt: v.number(),
+
+  // Last update timestamp
+  updatedAt: v.number(),
+})
+  // Index for looking up edges by scenario
+  .index("by_scenario", ["scenarioId"])
+  // Index for looking up edges by source node
+  .index("by_source", ["sourceNodeId"])
+  // Index for looking up edges by target node
+  .index("by_target", ["targetNodeId"])
+  // Index for looking up the specific edge between two nodes
+  .index("by_source_and_target", ["sourceNodeId", "targetNodeId"]);
+
+/**
  * Export the nodes schemas
  */
 export const integrationsNodesSchema = {
   nodes: nodesTable,
   nodeConnections: nodeConnectionsTable,
+  scenarioEdges: scenarioEdgesTable,
 };

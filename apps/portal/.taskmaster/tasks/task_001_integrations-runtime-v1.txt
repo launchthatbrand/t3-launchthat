@@ -1,0 +1,56 @@
+# Task ID: 1
+# Title: Create Runs and Logs Data Models
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Implement the new 'runs' and 'logs' tables with appropriate fields and indexes for tracking execution and observability.
+# Details:
+Create two new tables in the Convex database:
+
+1. `runs` table with fields:
+```typescript
+interface Run {
+  _id: Id<"runs">
+  scenarioId: Id<"scenarios">
+  status: "pending" | "running" | "succeeded" | "failed" | "cancelled"
+  triggerKey: string
+  connectionId?: Id<"connections">
+  correlationId: string
+  startedAt: number
+  finishedAt?: number
+}
+```
+
+Add the following indexes:
+- `by_scenario`: Index on `scenarioId` for querying runs by scenario
+- `by_status_and_time`: Compound index on `status` and `startedAt` for filtering by status
+- `by_correlation`: Index on `correlationId` for idempotency checks
+
+2. `logs` table with fields:
+```typescript
+interface Log {
+  _id: Id<"logs">
+  runId: Id<"runs">
+  nodeId?: Id<"nodes">
+  step: number
+  status: "success" | "retryable_error" | "fatal_error"
+  attempt: number
+  startedAt: number
+  durationMs?: number
+  errorCode?: string
+  errorMessage?: string
+  data?: any
+}
+```
+
+Add index:
+- `by_run`: Index on `runId` for querying logs by run
+
+Implement basic query functions for retrieving runs and logs with pagination.
+
+# Test Strategy:
+1. Unit tests for table schema validation
+2. Integration tests to verify index functionality by inserting sample data and querying with different parameters
+3. Test pagination of logs retrieval
+4. Verify that runs can be queried by scenario, status, and correlation ID
+5. Test that logs can be properly associated with runs

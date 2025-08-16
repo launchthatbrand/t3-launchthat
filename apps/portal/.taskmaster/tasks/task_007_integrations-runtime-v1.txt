@@ -1,0 +1,279 @@
+# Task ID: 7
+# Title: Implement Webhook Hardening and Validation
+# Status: done
+# Dependencies: 2, 4
+# Priority: high
+# Description: Add HMAC signature validation, replay protection, and idempotency enforcement for inbound webhooks.
+# Details:
+1. Implement HMAC signature validation:
+
+```typescript
+import { createHmac } from 'crypto';
+
+interface WebhookValidationConfig {
+  secret: string;
+  algorithm?: string; // default: 'sha256'
+  headerName?: string; // default: 'X-Signature'
+  timestampHeaderName?: string; // default: 'X-Timestamp'
+  maxReplayWindow?: number; // default: 5 minutes in ms
+}
+
+export const validateWebhookSignature = internalAction({
+  args: {
+    connectionId: v.id("connections"),
+    payload: v.any(),
+    headers: v.map(v.string())
+  },
+  handler: async (ctx, args) => {
+    // Get connection secrets
+    const connection = await ctx.runQuery(internal.connections.getById, { id: args.connectionId });
+    if (!connection) {
+      return { valid: false, error: "Connection not found" };
+    }
+    
+    const webhookSecret = connection.secrets.credentials.webhookSecret;
+    if (!webhookSecret) {
+      return { valid: false, error: "Webhook secret not configured" };
+    }
+    
+    const config: WebhookValidationConfig = {
+      secret: webhookSecret,
+      algorithm: 'sha256',
+      headerName: 'X-Signature',
+      timestampHeaderName: 'X-Timestamp',
+      maxReplayWindow: 5 * 60 * 1000 // 5 minutes
+    };
+    
+    // Get signature from headers
+    const signature = args.headers[config.headerName.toLowerCase()];
+    if (!signature) {
+      return { valid: false, error: "Missing signature header" };
+    }
+    
+    // Get timestamp for replay protection
+    const timestamp = args.headers[config.timestampHeaderName.toLowerCase()];
+    if (timestamp) {
+      const eventTime = parseInt(timestamp, 10);
+      const currentTime = Date.now();
+      
+      if (isNaN(eventTime)) {
+        return { valid: false, error: "Invalid timestamp format" };
+      }
+      
+      if (currentTime - eventTime > config.maxReplayWindow) {
+        return { valid: false, error: "Webhook replay detected (expired timestamp)" };
+      }
+    }
+    
+    // Compute expected signature
+    const payloadString = typeof args.payload === 'string' 
+      ? args.payload 
+      : JSON.stringify(args.payload);
+    
+    const hmac = createHmac(config.algorithm, config.secret);
+    hmac.update(payloadString);
+    if (timestamp) {
+      hmac.update(timestamp);
+    }
+    const expectedSignature = hmac.digest('hex');
+    
+    // Compare signatures (constant-time comparison to prevent timing attacks)
+    const valid = timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+    
+    return { 
+      valid, 
+      error: valid ? undefined : "Invalid signature" 
+    };
+  },
+});
+
+// Constant-time comparison helper
+function timingSafeEqual(a: Buffer, b: Buffer): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a[i] ^ b[i];
+  }
+  
+  return result === 0;
+}
+```
+
+2. Implement idempotency key enforcement:
+
+```typescript
+export const processWebhook = internalAction({
+  args: {
+    appId: v.id("apps"),
+    triggerKey: v.string(),
+    payload: v.any(),
+    headers: v.map(v.string()),
+    connectionId: v.optional(v.id("connections"))
+  },
+  handler: async (ctx, args) => {
+    // Extract idempotency key from headers or payload
+    const idempotencyKey = args.headers['x-idempotency-key'] || 
+                          (args.payload.id ? `${args.triggerKey}:${args.payload.id}` : null);
+    
+    if (!idempotencyKey) {
+      return { success: false, error: "Missing idempotency key" };
+    }
+    
+    // Check if this webhook has already been processed
+    const existingRun = await ctx.runQuery(internal.runs.getByIdempotencyKey, { 
+      idempotencyKey,
+      triggerKey: args.triggerKey
+    });
+    
+    if (existingRun) {
+      // Return the existing run details instead of processing again
+      return {
+        success: true,
+        idempotent: true,
+        runId: existingRun._id,
+        status: existingRun.status
+      };
+    }
+    
+    // Validate signature if connection is provided
+    if (args.connectionId) {
+      const validationResult = await ctx.runAction(internal.webhooks.validateWebhookSignature, {
+        connectionId: args.connectionId,
+        payload: args.payload,
+        headers: args.headers
+      });
+      
+      if (!validationResult.valid) {
+        return { success: false, error: validationResult.error };
+      }
+    }
+    
+    // Normalize payload to typed shape before processing
+    const normalizedPayload = await normalizeWebhookPayload(ctx, args.triggerKey, args.payload);
+    
+    // Create a new run with the idempotency key
+    const correlationId = generateCorrelationId();
+    const runId = await ctx.runMutation(internal.runs.create, {
+      scenarioId: null, // Will be set when matching scenarios are found
+      status: "pending",
+      triggerKey: args.triggerKey,
+      connectionId: args.connectionId,
+      correlationId,
+      idempotencyKey,
+      startedAt: Date.now()
+    });
+    
+    // Find matching scenarios and execute them
+    const matchingScenarios = await ctx.runQuery(internal.scenarios.findByTrigger, {
+      triggerKey: args.triggerKey
+    });
+    
+    // Process each matching scenario
+    const results = await Promise.all(matchingScenarios.map(scenario => 
+      ctx.runAction(internal.scenarios.executeScenario, {
+        scenarioId: scenario._id,
+        runId,
+        payload: normalizedPayload,
+        correlationId
+      })
+    ));
+    
+    return {
+      success: true,
+      idempotent: false,
+      runId,
+      scenariosExecuted: results.length
+    };
+  },
+});
+
+// Helper to normalize webhook payloads based on trigger type
+async function normalizeWebhookPayload(ctx, triggerKey, rawPayload) {
+  const triggerDefinition = triggerRegistry.get(triggerKey);
+  if (!triggerDefinition) {
+    throw new Error(`Unknown trigger type: ${triggerKey}`);
+  }
+  
+  // Use the trigger's schema to validate and transform the payload
+  try {
+    // Assuming the trigger has a payloadSchema property
+    if (triggerDefinition.payloadSchema) {
+      return triggerDefinition.payloadSchema.parse(rawPayload);
+    }
+    
+    // If no schema defined, return as-is
+    return rawPayload;
+  } catch (error) {
+    throw new Error(`Invalid payload for trigger ${triggerKey}: ${error.message}`);
+  }
+}
+
+// Helper to generate a correlation ID
+function generateCorrelationId() {
+  return `corr_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+}
+```
+<info added on 2025-08-15T20:06:10.634Z>
+3. Implementation Status and Deployment Summary:
+
+## Implementation Status
+- ✅ **Task Implementation Complete**
+
+**Successfully implemented webhook hardening and validation with the following features:**
+
+## 1. HMAC Signature Validation
+- ✅ Added `validateWebhookSignature` internalAction with:
+  - HMAC SHA-256 signature verification using webhook secrets from connections
+  - Constant-time comparison with `timingSafeEqual` to prevent timing attacks
+  - Case-insensitive header lookup for better compatibility
+  - Configurable signature header names (default: 'X-Signature')
+
+## 2. Replay Protection  
+- ✅ Implemented timestamp-based replay protection:
+  - Configurable timestamp header (default: 'X-Timestamp')
+  - 5-minute replay window to prevent old webhook replay attacks
+  - Proper timestamp validation with NaN checks
+
+## 3. Idempotency Enforcement
+- ✅ Added `processInboundWebhook` internalAction with:
+  - Multiple idempotency key sources: headers ('x-idempotency-key', 'idempotency-key') or payload.id
+  - Automatic duplicate detection using correlation ID lookup
+  - Returns existing run details for duplicate requests instead of reprocessing
+
+## 4. Payload Normalization and Validation
+- ✅ Implemented `normalizeWebhookPayload` helper:
+  - JSON parsing for string payloads
+  - Object validation for structured payloads  
+  - Primitive value wrapping for non-object payloads
+  - Error handling for invalid JSON
+
+## 5. Supporting Infrastructure
+- ✅ Added `findByTriggerKey` query in scenarios/queries.ts to find matching scenarios
+- ✅ Added correlation ID generation with deterministic hashing for idempotency
+- ✅ Integrated with existing crypto actions for secure secret management
+- ✅ Full integration with scenario run creation and execution flow
+
+## Deployment Status
+- ✅ **Successfully deployed** and validated - no compilation errors
+- ✅ All functions properly integrated with existing Convex schema
+- ✅ Ready for production webhook processing with security hardening
+
+## Security Features Implemented
+- **HMAC Validation**: Prevents webhook spoofing
+- **Replay Protection**: Prevents replay attacks  
+- **Idempotency**: Prevents duplicate processing
+- **Constant-time Comparison**: Prevents timing side-channel attacks
+- **Flexible Configuration**: Supports different webhook providers and signature formats
+</info added on 2025-08-15T20:06:10.634Z>
+
+# Test Strategy:
+1. Unit tests for HMAC signature validation with various algorithms
+2. Test replay protection with timestamps outside the allowed window
+3. Test idempotency key enforcement with duplicate webhook calls
+4. Integration tests with sample webhook payloads from common providers
+5. Test payload normalization for different trigger types
+6. Security tests to verify signature validation cannot be bypassed
+7. Test error handling for malformed payloads and missing headers

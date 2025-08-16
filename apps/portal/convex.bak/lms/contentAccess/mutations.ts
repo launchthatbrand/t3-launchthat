@@ -128,8 +128,7 @@ export const logContentAccess = mutation({
     contentId: v.string(),
     accessGranted: v.boolean(),
     reason: v.optional(v.string()),
-  },
-  returns: v.any(), // Use any for return type
+  }, // Use any for return type
   handler: async (ctx, args) => {
     // Simplified version without complex userMarketingTags logic
     return await ctx.db.insert("contentAccessLog", {

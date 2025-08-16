@@ -1,0 +1,368 @@
+# Integration System Refactor: Centralized Node Architecture
+## Product Requirements Document (PRD)
+
+### Version: 1.0
+### Date: January 15, 2025
+### Author: AI Agent
+### Status: Draft
+
+---
+
+## Executive Summary
+
+This PRD outlines a comprehensive refactor of the portal's integration system to centralize around a unified "IntegrationNode" architecture. The current system has conceptual overlap between apps, connections, and nodes, leading to scattered logic and poor developer experience. We propose consolidating these concepts into a clean, extensible architecture that follows Convex best practices.
+
+## Background & Problem Statement
+
+### Current Issues
+
+1. **Conceptual Overlap**: Apps and nodes serve essentially the same purpose but are implemented separately
+2. **Scattered Logic**: Integration logic is spread across `/convex`, `/src`, and mixed with Convex functions
+3. **Poor DX**: Adding new integrations requires modifying multiple files and understanding complex relationships
+4. **Convex Anti-patterns**: Non-function logic mixed in convex folder violating Convex guidelines
+5. **Inconsistent Registration**: Different registration patterns for apps vs nodes
+6. **Complex UI Flow**: Scenario builder has confusing app → connection → action selection flow
+
+### Goals
+
+- **Unify** apps and nodes into a single "IntegrationNode" concept
+- **Centralize** all integration logic in clean, modular packages
+- **Improve** developer experience for adding new integrations
+- **Follow** Convex best practices for folder organization
+- **Streamline** user experience in scenario builder
+
+## Solution Overview
+
+### Core Architecture Changes
+
+1. **Centralized Node System**: Replace apps/nodes dichotomy with unified IntegrationNodes
+2. **Package-Based Organization**: Each integration is a self-contained package
+3. **Convex Compliance**: Move non-function logic out of convex folder
+4. **Type-Based Classification**: System vs External node types
+5. **Improved UX**: Direct node selection with integrated connection management
+
+## Detailed Requirements
+
+### 1. Folder Structure Reorganization
+
+#### New Structure
+```
+apps/portal/
+├── src/
+│   └── integrations/
+│       └── nodes/
+│           ├── system/
+│           │   ├── webhook/
+│           │   │   ├── index.ts          # Node definition
+│           │   │   ├── config.ts         # Configuration schema
+│           │   │   ├── processor.ts      # Business logic
+│           │   │   └── metadata.ts       # UI metadata
+│           │   ├── orders/
+│           │   │   ├── index.ts
+│           │   │   ├── processors/
+│           │   │   │   ├── create.ts
+│           │   │   │   ├── update.ts
+│           │   │   │   └── cancel.ts
+│           │   │   └── config.ts
+│           │   └── passthrough/
+│           └── external/
+│               ├── wordpress/
+│               │   ├── index.ts
+│               │   ├── auth/
+│               │   │   ├── oauth.ts
+│               │   │   └── apiKey.ts
+│               │   ├── actions/
+│               │   │   ├── createPost.ts
+│               │   │   ├── updatePost.ts
+│               │   │   └── getPost.ts
+│               │   └── config.ts
+│               ├── monday/
+│               └── stripe/
+├── convex/
+│   └── integrations/
+│       ├── nodes/
+│       │   ├── queries.ts        # Only Convex functions
+│       │   ├── mutations.ts      # Only Convex functions
+│       │   └── actions.ts        # Only Convex functions
+│       └── scenarios/
+└── packages/
+    └── integration-sdk/          # Shared types and utilities
+        ├── types.ts
+        ├── registry.ts
+        └── validation.ts
+```
+
+### 2. IntegrationNode Definition
+
+#### Core Interface
+```typescript
+interface IntegrationNode<TConfig = any> {
+  // Identity
+  id: string;                     // e.g., "system.webhook", "external.wordpress.createPost"
+  type: 'system' | 'external';
+  name: string;
+  description: string;
+  category: string;
+
+  // Configuration
+  configSchema: ZodSchema<TConfig>;
+  defaultConfig: TConfig;
+  
+  // Authentication (for external nodes)
+  authType?: 'none' | 'api_key' | 'oauth2' | 'custom';
+  authConfig?: AuthConfiguration;
+  
+  // Processing
+  processor: NodeProcessor<TConfig>;
+  
+  // UI Metadata
+  ui: {
+    icon?: string;
+    color?: string;
+    inputs: IODefinition[];
+    outputs: IODefinition[];
+    configFields: ConfigFieldDefinition[];
+  };
+}
+```
+
+### 3. Node Registration System
+
+#### Auto-Discovery Registry
+- Scan `/src/integrations/nodes/` folders automatically
+- Each folder with `index.ts` exports an IntegrationNode definition
+- Central registry builds from file system structure
+- No manual registration required
+
+#### Example Node Implementation
+```typescript
+// src/integrations/nodes/external/wordpress/actions/createPost.ts
+export const wordpressCreatePost: IntegrationNode = {
+  id: 'external.wordpress.createPost',
+  type: 'external',
+  name: 'Create WordPress Post',
+  description: 'Create a new post in WordPress',
+  category: 'Content Management',
+  
+  authType: 'oauth2',
+  authConfig: {
+    authUrl: 'https://public-api.wordpress.com/oauth2/authorize',
+    tokenUrl: 'https://public-api.wordpress.com/oauth2/token',
+    scopes: ['posts']
+  },
+  
+  configSchema: z.object({
+    title: z.string(),
+    content: z.string(),
+    status: z.enum(['draft', 'published']),
+    categoryId: z.string().optional()
+  }),
+  
+  processor: async (config, context) => {
+    const { connection, inputs } = context;
+    // Implementation logic here
+  },
+  
+  ui: {
+    icon: 'wordpress',
+    color: '#0073aa',
+    inputs: [
+      { id: 'title', type: 'string', required: true },
+      { id: 'content', type: 'text', required: true }
+    ],
+    outputs: [
+      { id: 'postId', type: 'string' },
+      { id: 'url', type: 'string' }
+    ],
+    configFields: [
+      {
+        id: 'status',
+        type: 'select',
+        label: 'Post Status',
+        options: [
+          { value: 'draft', label: 'Draft' },
+          { value: 'published', label: 'Published' }
+        ]
+      }
+    ]
+  }
+};
+```
+
+### 4. Database Schema Changes
+
+#### Remove apps table
+- Migrate existing apps to node definitions
+- Apps become external node categories
+
+#### Update scenarios schema
+```typescript
+// nodes table (updated)
+{
+  _id: Id<"nodes">,
+  scenarioId: Id<"scenarios">,
+  nodeId: string,                 // Integration node ID
+  connectionId?: Id<"connections">, // Only for external nodes
+  config: any,                    // Node-specific configuration
+  position: { x: number, y: number },
+  // ... other React Flow properties
+}
+```
+
+#### Connections table (minimal changes)
+- Keep existing structure
+- Add `nodeType` field to link to integration nodes
+- Remove dependency on apps table
+
+### 5. Scenario Builder UX Improvements
+
+#### New Node Creation Flow
+1. **Direct Node Selection**: Show categorized list of all available nodes
+2. **Connection Selection**: For external nodes only, select/create connection in sidebar
+3. **Configuration**: Configure node with dynamic form based on configSchema
+
+#### UI Components
+- **NodePalette**: Categorized list of available nodes (system/external)
+- **ConnectionSelector**: Dropdown for external nodes requiring connections
+- **DynamicConfigForm**: Auto-generated form from configSchema
+- **NodePreview**: Live preview of node configuration
+
+### 6. Development Experience Improvements
+
+#### Add New Integration Checklist
+1. Create folder: `/src/integrations/nodes/external/myservice/`
+2. Implement `index.ts` with IntegrationNode definition
+3. Add processor logic
+4. Add authentication configuration (if needed)
+5. Test in scenario builder
+6. Done! (Auto-discovered by registry)
+
+#### Developer Tools
+- **Integration CLI**: Script to scaffold new integrations
+- **Type Safety**: Full TypeScript support with strict typing
+- **Validation**: Runtime validation of node definitions
+- **Testing Utilities**: Mock context and processors for testing
+
+### 7. Migration Strategy
+
+#### Phase 1: Foundation (2 weeks)
+- Create new folder structure
+- Implement IntegrationNode interface and registry
+- Build basic auto-discovery system
+- Migrate 2-3 existing nodes as proof of concept
+
+#### Phase 2: Core Migration (3 weeks)
+- Migrate all existing apps to node definitions
+- Update database schema and migrations
+- Implement new scenario builder components
+- Update all Convex functions
+
+#### Phase 3: UX Polish (2 weeks)
+- Implement improved node creation flow
+- Add dynamic configuration forms
+- Polish UI components and interactions
+- Add comprehensive error handling
+
+#### Phase 4: Documentation & Testing (1 week)
+- Write integration developer guide
+- Create example integrations
+- Add comprehensive test coverage
+- Performance optimization
+
+### 8. Success Metrics
+
+#### Developer Experience
+- **Time to add new integration**: Target < 30 minutes (vs current ~2 hours)
+- **Files touched per integration**: Target 1 folder (vs current ~5 files)
+- **Learning curve**: New developers productive in < 1 day
+
+#### User Experience
+- **Node creation time**: Target < 30 seconds (vs current ~2 minutes)
+- **Configuration errors**: Reduce by 80% through better validation
+- **User satisfaction**: Target 9/10 in usability testing
+
+#### Technical Metrics
+- **Code maintainability**: Reduce cyclomatic complexity by 50%
+- **Test coverage**: Achieve 90%+ coverage for integration logic
+- **Performance**: Node execution time < 500ms p95
+
+## Technical Implementation Details
+
+### Authentication Integration
+- OAuth2 flow handled by connection system
+- API key storage in encrypted connection config
+- Custom auth handlers for unique requirements
+
+### Error Handling
+- Standardized error types across all nodes
+- Graceful degradation for connection failures
+- Comprehensive logging and debugging support
+
+### Validation & Type Safety
+- Runtime validation using Zod schemas
+- TypeScript inference for configuration types
+- IDE autocomplete for node development
+
+### Testing Strategy
+- Unit tests for each node processor
+- Integration tests for end-to-end scenarios
+- Mock providers for external API testing
+
+## Risk Assessment
+
+### Technical Risks
+- **Migration Complexity**: Large codebase changes require careful planning
+- **Backward Compatibility**: Ensure existing scenarios continue working
+- **Performance Impact**: Registry auto-discovery must be optimized
+
+### Mitigation Strategies
+- Phased rollout with feature flags
+- Comprehensive testing at each phase
+- Database migration scripts with rollback capability
+- Performance monitoring during migration
+
+## Dependencies
+
+### External Dependencies
+- Zod for schema validation
+- React Hook Form for dynamic forms
+- React Flow for scenario builder (existing)
+
+### Internal Dependencies
+- Convex database migrations
+- Updated UI component library
+- Integration with existing auth system
+
+## Conclusion
+
+This refactor will significantly improve both developer and user experience while following Convex best practices. The centralized node architecture eliminates conceptual confusion and creates a foundation for rapid integration development. The improved UX in the scenario builder will make the platform more intuitive and powerful for end users.
+
+### Next Steps
+1. Review and approve this PRD
+2. Create detailed technical specifications
+3. Begin Phase 1 implementation
+4. Set up project tracking and milestones
+
+---
+
+## Appendix
+
+### A. Current vs. Proposed Comparison
+| Aspect | Current | Proposed |
+|--------|---------|----------|
+| Integration Concepts | Apps + Nodes | IntegrationNodes |
+| Files per Integration | 5+ files | 1 folder |
+| Registration | Manual | Auto-discovery |
+| Configuration | Mixed patterns | Standardized schema |
+| Authentication | Per-app custom | Unified patterns |
+| Folder Organization | Mixed in convex/ | Clean separation |
+
+### B. Example Migrations
+- WordPress: apps/seed.ts → src/integrations/nodes/external/wordpress/
+- Orders: Multiple files → src/integrations/nodes/system/orders/
+- Webhook: Scattered logic → src/integrations/nodes/system/webhook/
+
+### C. Integration Examples
+- See attached examples for WordPress, Monday.com, and Stripe integrations
+- Each follows the proposed structure and patterns
+- Demonstrates consistency across different node types 

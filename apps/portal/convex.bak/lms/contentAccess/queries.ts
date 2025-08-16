@@ -20,7 +20,6 @@ export const getContentAccessRules = query({
     ),
     contentId: v.string(),
   },
-  returns: v.any(), // Use any to avoid validation mismatches
   handler: async (ctx, args) => {
     const rule = await ctx.db
       .query("contentAccessRules")
@@ -51,7 +50,6 @@ export const checkContentAccess = query({
     ),
     parentContentId: v.optional(v.string()),
   },
-  returns: v.any(), // Use any to avoid validation mismatches
   handler: async (ctx, args) => {
     // Get content-specific rules first
     const contentRules = await ctx.db

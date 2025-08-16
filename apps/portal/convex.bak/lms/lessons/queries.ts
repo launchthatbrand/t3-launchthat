@@ -16,7 +16,6 @@ export const getAvailable = query({
   args: {
     courseId: v.id("courses"),
   },
-  returns: v.any(), // Use any to avoid validation mismatches with complex types
   handler: async (ctx, args) => {
     // Get all lessons that are not attached to this course
     const lessons = await filter(
@@ -34,7 +33,6 @@ export const listLessons = query({
   args: {
     searchTitle: v.optional(v.string()),
   },
-  returns: v.any(), // Use any to avoid validation mismatches
   handler: async (ctx, args) => {
     let lessons = await ctx.db.query("lessons").collect();
     if (args.searchTitle) {
@@ -52,7 +50,6 @@ export const getLesson = query({
   args: {
     lessonId: v.id("lessons"),
   },
-  returns: v.any(), // Use any to avoid validation mismatches
   handler: async (ctx, args) => {
     const lesson = await ctx.db.get(args.lessonId);
     if (!lesson) return null;

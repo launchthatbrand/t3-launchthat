@@ -68,59 +68,59 @@ export const useContentAccess = ({
 }: UseContentAccessProps): ContentAccessResult => {
   const { convexId: userId, isLoading: userLoading } = useConvexUser();
 
-  // Early return for invalid or empty content IDs
-  if (!contentId || contentId === "skip" || contentId.trim() === "") {
-    return {
-      hasAccess: true,
-      isLoading: false,
-    };
-  }
-
-  // Check if there are access rules for this content (always run)
-  const contentRules = useQuery(
-    api.lms.contentAccess.queries.,
-    {
-      contentType,
-      contentId,
-    },
-  );
-
-  // Check parent content rules for cascading (always run if parent info exists)
+  // Normalize params for hooks so hooks are not conditional
+  const normalizedContentId = contentId || "";
   const parentQueryParams =
     parentContentType && parentContentId
       ? {
           contentType: parentContentType,
           contentId: parentContentId,
         }
-      : "skip";
+      : ("skip" as const);
 
-  const parentRules = useQuery(
-    api.lms.contentAccess.index.getContentAccessRules,
-    parentQueryParams,
-  );
-
-  // Get course information for buy button (when dealing with course content)
-  // Always call the hook, but use "skip" when we don't need course info
   const courseQueryParams = (() => {
-    if (contentType === "course" && contentId) {
-      return { courseId: contentId as Id<"courses"> };
+    if (contentType === "course" && normalizedContentId) {
+      return { courseId: normalizedContentId as Id<"courses"> };
     }
     if (parentContentType === "course" && parentContentId) {
       return { courseId: parentContentId as Id<"courses"> };
     }
-    return "skip";
+    return "skip" as const;
   })();
+
+  // Hooks (never conditional)
+  const contentRules = useQuery(
+    api.lms.contentAccess.queries.getContentAccessRules,
+    normalizedContentId
+      ? {
+          contentType,
+          contentId: normalizedContentId,
+        }
+      : ("skip" as const),
+  );
+
+  const parentRules = useQuery(
+    api.lms.contentAccess.queries.getContentAccessRules,
+    parentQueryParams,
+  );
 
   const courseInfo = useQuery(
     api.lms.courses.queries.getCourse,
     courseQueryParams,
   );
 
-  // Get user tags (always run if user exists)
   const userTags = useQuery(
     api.users.marketingTags.index.getUserMarketingTags,
-    userId ? { userId } : "skip",
+    userId ? { userId } : ("skip" as const),
   );
+
+  // Early return for invalid or empty content IDs
+  if (!normalizedContentId || normalizedContentId === "skip") {
+    return {
+      hasAccess: true,
+      isLoading: false,
+    };
+  }
 
   // Helper function to check if user meets tag requirements
   const checkTagAccess = (
@@ -178,25 +178,28 @@ export const useContentAccess = ({
   }
 
   // Extract user tag IDs
-  const userTagIds = (userTags ?? []).map((tag) => tag.marketingTag._id);
+  const userTagIds = (userTags ?? []).map(
+    (tag: UserTag) => tag.marketingTag._id,
+  );
 
   // Check content-specific rules first
   if (contentRules) {
     const hasAccess = userId
-      ? checkTagAccess(contentRules, userTagIds)
-      : contentRules.isPublic;
+      ? checkTagAccess(contentRules as unknown as AccessRules, userTagIds)
+      : (contentRules as unknown as AccessRules).isPublic;
 
     if (!hasAccess) {
+      const rules = contentRules as unknown as AccessRules;
       const reason = !userId
         ? "Please log in to access this content"
-        : contentRules.requiredTags.tagIds.length > 0
-          ? `Missing required tags (need ${contentRules.requiredTags.mode === "all" ? "ALL" : "at least one"} of the specified tags)`
+        : rules.requiredTags.tagIds.length > 0
+          ? `Missing required tags (need ${rules.requiredTags.mode === "all" ? "ALL" : "at least one"} of the specified tags)`
           : "Access denied due to excluded tags";
 
       return {
         hasAccess: false,
         isLoading: false,
-        accessRules: contentRules,
+        accessRules: rules,
         userTags,
         reason,
         course: courseInfo
@@ -213,7 +216,7 @@ export const useContentAccess = ({
     return {
       hasAccess: true,
       isLoading: false,
-      accessRules: contentRules,
+      accessRules: contentRules as unknown as AccessRules,
       userTags,
       course: courseInfo
         ? {
@@ -227,21 +230,22 @@ export const useContentAccess = ({
 
   // Check parent rules for cascading access
   if (parentRules) {
+    const rules = parentRules as unknown as AccessRules;
     const hasAccess = userId
-      ? checkTagAccess(parentRules, userTagIds)
-      : parentRules.isPublic;
+      ? checkTagAccess(rules, userTagIds)
+      : rules.isPublic;
 
     if (!hasAccess) {
       const reason = !userId
         ? "Please log in to access this content"
-        : parentRules.requiredTags.tagIds.length > 0
-          ? `Missing required tags from parent content (need ${parentRules.requiredTags.mode === "all" ? "ALL" : "at least one"} of the specified tags)`
+        : rules.requiredTags.tagIds.length > 0
+          ? `Missing required tags from parent content (need ${rules.requiredTags.mode === "all" ? "ALL" : "at least one"} of the specified tags)`
           : "Access denied due to parent content restrictions";
 
       return {
         hasAccess: false,
         isLoading: false,
-        accessRules: parentRules,
+        accessRules: rules,
         userTags,
         reason,
         course: courseInfo
@@ -258,7 +262,7 @@ export const useContentAccess = ({
     return {
       hasAccess: true,
       isLoading: false,
-      accessRules: parentRules,
+      accessRules: rules,
       userTags,
       course: courseInfo
         ? {
