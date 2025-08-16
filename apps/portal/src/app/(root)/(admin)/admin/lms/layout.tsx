@@ -3,21 +3,9 @@
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-
-import {
-  AdminLayout,
-  AdminLayoutContent,
-  AdminLayoutHeader,
-  AdminLayoutMain,
-  AdminLayoutSidebar,
-  ORDER_TABS,
-  STORE_TABS,
-} from "~/components/admin/AdminLayout";
-import {
-  NavigationContext,
-  TabConfig,
-} from "~/components/admin/NavigationContext";
+import type { TabConfig } from "~/components/admin/NavigationContext";
+import { AdminLayout, AdminLayoutHeader } from "~/components/admin/AdminLayout";
+import { NavigationContext } from "~/components/admin/NavigationContext";
 
 interface AdminLayoutProps {
   children: ReactNode;

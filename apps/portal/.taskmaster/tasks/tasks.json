@@ -1176,11 +1176,451 @@
     }
   },
   "integration-refactor": {
-    "tasks": [],
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Setup Project Structure and Dependencies",
+        "description": "Set up the new folder structure and install necessary dependencies for the centralized node architecture.",
+        "details": "1. Create the new folder structure as specified in the PRD:\n   - /src/integrations/nodes/\n   - /convex/integrations/\n   - /packages/integration-sdk/\n2. Install and configure dependencies:\n   - Zod (latest version, e.g., ^3.21.4) for schema validation\n   - React Hook Form (latest version, e.g., ^7.44.2) for dynamic forms\n   - Ensure React Flow is up-to-date (latest version, e.g., ^11.7.2)\n3. Set up TypeScript configuration to ensure strict typing across the project.\n4. Create initial placeholder files for key components:\n   - /packages/integration-sdk/types.ts\n   - /packages/integration-sdk/registry.ts\n   - /packages/integration-sdk/validation.ts\n5. Update package.json with new scripts for the integration CLI (to be implemented later).",
+        "testStrategy": "1. Verify the folder structure is correctly set up using a file system check script.\n2. Ensure all dependencies are correctly installed and configured by running `npm list`.\n3. Validate TypeScript configuration by running `tsc --noEmit`.\n4. Create a simple test file that imports from the placeholder files to ensure they're recognized by the TypeScript compiler.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Implement IntegrationNode Interface and Registry",
+        "description": "Create the core IntegrationNode interface and implement the auto-discovery registry system.",
+        "details": "1. In /packages/integration-sdk/types.ts:\n   - Define the IntegrationNode interface as specified in the PRD.\n   - Include types for NodeProcessor, AuthConfiguration, IODefinition, and ConfigFieldDefinition.\n2. In /packages/integration-sdk/registry.ts:\n   - Implement the auto-discovery system using Node.js fs and path modules.\n   - Create a function to scan the /src/integrations/nodes/ directory and its subdirectories.\n   - Implement logic to dynamically import IntegrationNode definitions from index.ts files.\n3. Create a central Registry class that maintains a map of all discovered IntegrationNodes.\n4. Implement methods in the Registry class for adding, retrieving, and listing nodes.\n5. Add error handling and logging for the discovery process.\n6. Optimize the discovery process to run efficiently at startup.",
+        "testStrategy": "1. Write unit tests for the IntegrationNode interface to ensure type safety.\n2. Create mock directory structures and test the auto-discovery system's ability to correctly identify and load node definitions.\n3. Write integration tests that verify the Registry class correctly manages the discovered nodes.\n4. Implement performance tests to ensure the discovery process meets the target of <500ms execution time.\n5. Test error handling by introducing invalid node definitions and ensuring appropriate errors are thrown and logged.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Develop Core System Nodes",
+        "description": "Implement the core system nodes: webhook, orders, and passthrough.",
+        "details": "1. Create the following directory structure:\n   /src/integrations/nodes/system/\n     - webhook/\n     - orders/\n     - passthrough/\n2. For each system node:\n   a. Implement index.ts with the IntegrationNode definition\n   b. Create config.ts for configuration schema\n   c. Implement processor.ts with the core business logic\n   d. Add metadata.ts for UI-related information\n3. For the webhook node:\n   - Use the latest best practices for webhook handling, such as signature verification and rate limiting\n   - Implement a generic webhook processor that can handle various payload structures\n4. For the orders node:\n   - Create separate processors for create, update, and cancel operations\n   - Implement a flexible order schema that can adapt to different e-commerce platforms\n5. For the passthrough node:\n   - Create a generic processor that can forward data between other nodes\n   - Implement data transformation capabilities using a safe evaluation environment (e.g., vm2 library)\n6. Ensure all nodes use Zod for configuration validation\n7. Implement comprehensive error handling and logging for each node",
+        "testStrategy": "1. Write unit tests for each node's processor logic\n2. Create integration tests that simulate the execution of each node in various scenarios\n3. Implement property-based testing for the passthrough node to ensure it handles a wide range of data structures\n4. Test error handling by simulating various failure modes (network errors, invalid inputs, etc.)\n5. Perform security testing on the webhook node, especially focusing on signature verification\n6. Conduct performance testing to ensure each node meets the <500ms p95 execution time target",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement External Node Framework",
+        "description": "Create the framework for external nodes, including authentication handling and API integration.",
+        "details": "1. Create a base class for external nodes in /packages/integration-sdk/ExternalNode.ts\n2. Implement authentication handling:\n   - OAuth2 flow integration with the existing connection system\n   - Secure API key storage in encrypted connection config\n   - Custom auth handler support for unique requirements\n3. Create utility functions for common API operations (GET, POST, PUT, DELETE)\n4. Implement rate limiting and request queuing for external API calls\n5. Add error handling specific to external API interactions\n6. Create a template for external node implementation that extends the base class\n7. Implement a connection testing mechanism for external nodes\n8. Add support for dynamic discovery of available actions from external APIs where possible",
+        "testStrategy": "1. Write unit tests for the base ExternalNode class\n2. Create mock external APIs for testing authentication flows\n3. Implement integration tests that verify the correct handling of API calls, including error cases\n4. Test rate limiting by simulating high-frequency API requests\n5. Verify secure storage of API keys and tokens\n6. Create a test suite for the connection testing mechanism\n7. Implement end-to-end tests for the OAuth2 flow",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create ExternalNode Base Class",
+            "description": "Implement the base class for external nodes that will serve as the foundation for all external integrations.",
+            "dependencies": [],
+            "details": "Create the ExternalNode.ts file in /packages/integration-sdk/ that extends the IntegrationNode interface. Include abstract methods for authentication, API calls, and configuration validation. Define the core structure with properties for connection configuration, API endpoints, and rate limiting settings. Implement the necessary TypeScript interfaces for external node specific properties.",
+            "status": "done",
+            "testStrategy": "Write unit tests to verify the base class structure and inheritance from IntegrationNode. Test that abstract methods throw appropriate errors when not implemented by child classes."
+          },
+          {
+            "id": 2,
+            "title": "Implement OAuth2 Authentication Flow",
+            "description": "Create the OAuth2 authentication handler that integrates with the existing connection system.",
+            "dependencies": [
+              "4.1"
+            ],
+            "details": "Implement an OAuth2Handler class that manages the OAuth2 flow, including authorization URL generation, token exchange, refresh token management, and token storage. Integrate with the existing connection system to store tokens securely. Create methods for initiating auth flow, handling callbacks, and validating tokens. Include support for different grant types (authorization code, client credentials).\n<info added on 2025-08-16T02:42:28.143Z>\n## OAuth2 Implementation Details\n\n### Core Components Added:\n1. **OAuth2Token Interface**: Defines the structure for OAuth2 tokens including access_token, refresh_token, expires_at, etc.\n2. **OAuth2Config Interface**: Configuration for OAuth2 providers (clientId, clientSecret, authorizationUrl, tokenUrl, redirectUri, scopes)\n3. **OAuth2TokenStorage Interface**: Abstract interface for token storage with get/save/delete operations\n4. **OAuth2Handler Class**: Complete OAuth2 authentication handler implementing the AuthHandler interface\n\n### Key Features Implemented:\n- **Token Management**: Automatic token refresh when tokens expire (with 1-minute buffer)\n- **Authorization Flow**: `getAuthorizationUrl()` method to generate OAuth2 authorization URLs\n- **Token Exchange**: `exchangeCodeForToken()` method to exchange authorization codes for access tokens\n- **Token Refresh**: Automatic refresh token handling with fallback to original refresh token\n- **State Parameter Support**: Optional state parameter for CSRF protection\n- **Scope Management**: Support for OAuth2 scopes\n- **Error Handling**: Proper AuthenticationError handling for OAuth2 failures\n\n### Storage Implementation:\n- **InMemoryTokenStorage**: Simple in-memory storage implementation for testing/demo purposes\n- **Extensible Design**: Interface-based design allows for custom storage implementations (database, file system, etc.)\n\n### Integration:\n- Added OAuth2Handler to the AuthHandler type union\n- Exported all OAuth2 types and classes from the main SDK index\n- Maintains compatibility with existing authentication handlers\n</info added on 2025-08-16T02:42:28.143Z>",
+            "status": "done",
+            "testStrategy": "Create mock OAuth2 servers to test the full authentication flow. Write unit tests for token refresh logic and error handling. Test secure storage of tokens in the connection config."
+          },
+          {
+            "id": 3,
+            "title": "Implement API Key and Custom Authentication",
+            "description": "Add support for API key authentication and custom authentication methods for external nodes.",
+            "dependencies": [
+              "4.1"
+            ],
+            "details": "Create an ApiKeyHandler class for simple API key authentication. Implement secure storage of API keys in encrypted connection config. Develop a CustomAuthHandler interface that allows for implementation of unique authentication requirements. Include methods for header generation, request signing, and authentication validation. Create factory methods to instantiate the appropriate auth handler based on node configuration.\n<info added on 2025-08-16T02:44:56.345Z>\n## Enhanced Authentication Implementation\n\n### API Key Authentication Enhancements:\n1. **EnhancedApiKeyHandler**: Advanced API key handler supporting multiple placement strategies:\n   - **Header placement**: Traditional X-API-Key header\n   - **Query parameter**: API key in URL query string\n   - **Request body**: API key in POST body\n   - **Configurable prefixes**: Support for \"Bearer \", \"Token \", etc.\n   - **Custom field names**: Flexible key field and parameter naming\n\n### Custom Authentication Framework:\n2. **CustomAuthMethod Interface**: Extensible interface for implementing custom auth methods\n   - Schema validation with Zod\n   - Flexible authentication and signing capabilities\n   - Configuration validation\n\n3. **Built-in Custom Authentication Methods**:\n   - **AWS Signature v4**: Simplified AWS API authentication\n   - **HMAC Authentication**: HMAC-based signing with customizable algorithms (SHA-1, SHA-256, SHA-512)\n   - **JWT Authentication**: JSON Web Token generation with HS256/HS512 algorithms\n\n### Authentication Factory:\n4. **AuthFactory Class**: Centralized authentication handler creation\n   - Dynamic registration of custom authentication methods\n   - Factory pattern for creating appropriate auth handlers\n   - Configuration-based handler instantiation\n   - Support for all authentication types: oauth2, api_key, enhanced_api_key, basic_auth, bearer_token, custom\n\n### Key Features:\n- **Extensibility**: Easy registration of new custom authentication methods\n- **Type Safety**: Full TypeScript support with proper type definitions\n- **Security**: Proper HMAC signing, JWT generation, and token handling\n- **Flexibility**: Multiple placement options for API keys and custom headers\n- **Validation**: Configuration validation for all authentication methods\n\n### Integration Points:\n- All new components exported from main SDK index\n- Maintains compatibility with existing authentication handlers\n- Ready for use in external node implementations\n- Supports encrypted storage of authentication credentials\n</info added on 2025-08-16T02:44:56.345Z>",
+            "status": "done",
+            "testStrategy": "Test encryption and decryption of API keys. Verify that authentication headers are correctly applied to requests. Create a mock custom auth implementation to test the extensibility of the system."
+          },
+          {
+            "id": 4,
+            "title": "Create API Request Utility Functions",
+            "description": "Implement utility functions for common API operations (GET, POST, PUT, DELETE) with standardized error handling.",
+            "dependencies": [
+              "4.1"
+            ],
+            "details": "Create an ApiClient class with methods for standard HTTP operations. Implement request preparation with proper headers, authentication, and content type. Add response parsing with JSON handling and error detection. Include support for different content types and request body formats. Create utility functions for URL parameter handling and query string generation.\n<info added on 2025-08-16T02:47:05.253Z>\n## API Request Utilities Implementation\n\nThe EnhancedApiClient has been successfully implemented with comprehensive extensions to the base ApiClient class. The implementation includes advanced URL building utilities, enhanced GET requests with parameter support, and robust pagination handling that accommodates various response structures and pagination formats.\n\nFile upload capabilities have been added with support for multiple file formats and automatic Content-Type handling. The client now features batch request processing with configurable concurrency limits and flexible error handling strategies.\n\nAdditional utility methods include health check functionality with response time measurement and detailed status reporting, plus streaming support for memory-efficient handling of large responses through readable streams and event-driven data processing.\n\nThe implementation follows an inheritance-based design with protected properties accessible to extensions, full TypeScript support with generic types, and standardized error handling using ExternalApiError types. All authentication handlers are fully compatible with the enhanced client.\n\nThe EnhancedApiClient has been added to the main SDK exports while maintaining backward compatibility with the existing ApiClient, making it ready for use in external node implementations.\n</info added on 2025-08-16T02:47:05.253Z>",
+            "status": "done",
+            "testStrategy": "Write unit tests for each HTTP method with mock responses. Test error handling for different HTTP status codes. Verify correct handling of different content types and request formats."
+          },
+          {
+            "id": 5,
+            "title": "Implement Rate Limiting and Request Queuing",
+            "description": "Add rate limiting and request queuing functionality to prevent API quota exhaustion and handle throttling gracefully.",
+            "dependencies": [
+              "4.4"
+            ],
+            "details": "Create a RateLimiter class that tracks API usage and enforces rate limits. Implement a RequestQueue that manages pending requests and schedules them according to rate limits. Add support for different rate limiting strategies (fixed window, sliding window, token bucket). Implement backoff strategies for handling rate limit errors from APIs. Add events for queue status changes and rate limit warnings.\n<info added on 2025-08-16T02:49:37.335Z>\n## Rate Limiting and Request Queuing Implementation\n\n### Enhanced Rate Limiting Features:\n1. **Multiple Rate Limiting Strategies**:\n   - **Fixed Window**: Traditional fixed time window rate limiting\n   - **Sliding Window**: More accurate sliding window approach\n   - **Token Bucket**: Burst-capable rate limiting with token refills\n\n2. **EnhancedRateLimiter Class**: \n   - Strategy-based configuration (fixed, sliding, token_bucket)\n   - Real-time status monitoring with remaining requests\n   - Automatic token refill and window management\n   - Detailed status reporting with next refill times\n\n### Request Queue Management:\n3. **RequestQueue Class**: Advanced queue management with:\n   - **Configurable Concurrency**: Control maximum simultaneous requests\n   - **Priority Support**: High-priority requests processed first\n   - **Intelligent Retry Logic**: Exponential backoff with configurable max retries\n   - **Rate Limit Integration**: Automatic integration with EnhancedRateLimiter\n   - **Queue Size Limits**: Prevent memory overflow with max queue size\n\n4. **Advanced Queue Features**:\n   - **Automatic Error Handling**: Retry for rate limits and retryable errors\n   - **Request Status Tracking**: Monitor active requests and queue length\n   - **Queue Control**: Pause, resume, and clear operations\n   - **Backoff Strategies**: Exponential backoff for retries\n\n### Integration Points:\n5. **Seamless API Client Integration**: \n   - Rate limiters work with both ApiClient and EnhancedApiClient\n   - Automatic rate limit checking before requests\n   - Proper error propagation and retry handling\n\n6. **Configuration Options**:\n   - Configurable retry delays and maximum retries\n   - Priority-based queue processing\n   - Custom rate limiting strategies\n   - Flexible queue size management\n\n### Error Handling:\n7. **Smart Retry Logic**:\n   - Rate limit errors automatically retried with proper delays\n   - Retryable API errors handled with exponential backoff\n   - Non-retryable errors fail immediately\n   - Maximum retry limits prevent infinite loops\n\n### Monitoring and Control:\n8. **Status Monitoring**: Real-time visibility into:\n   - Queue length and active request count\n   - Rate limit status and remaining requests\n   - Processing state and configuration\n</info added on 2025-08-16T02:49:37.335Z>",
+            "status": "done",
+            "testStrategy": "Test rate limiting by simulating high-frequency API requests. Verify that requests are properly queued and executed within rate limits. Test backoff strategies with mock 429 responses."
+          },
+          {
+            "id": 6,
+            "title": "Implement External API Error Handling",
+            "description": "Create specialized error handling for external API interactions, including retry logic and error normalization.",
+            "dependencies": [
+              "4.4",
+              "4.5"
+            ],
+            "details": "Create ExternalApiError class hierarchy for different error types (authentication, rate limiting, server errors, etc.). Implement retry logic with configurable strategies. Add error normalization to provide consistent error formats across different APIs. Create utility functions for error detection and classification. Implement logging for API errors with appropriate context.\n<info added on 2025-08-16T03:17:49.759Z>\n## External API Error Handling Implementation\n\n### Specialized Error Types:\n1. **ValidationError**: HTTP 400 errors with input validation failures\n2. **NotFoundError**: HTTP 404 errors for missing resources\n3. **ConflictError**: HTTP 409 errors for resource conflicts\n4. **ServerError**: HTTP 5xx server-side errors (retryable)\n5. **NetworkError**: Network connectivity issues (retryable)\n6. **TimeoutError**: Request timeout errors (retryable)\n\n### Error Classification and Normalization:\n7. **ErrorClassifier**: Intelligent error classification utility that:\n   - Automatically classifies HTTP errors by status code\n   - Extracts error messages from various response formats\n   - Handles network and timeout errors consistently\n   - Normalizes error structures across different APIs\n\n### Advanced Retry Management:\n8. **RetryManager**: Configurable retry system with:\n   - Multiple Backoff Strategies: Exponential, linear, and fixed delays\n   - Smart Error Detection: Automatic retry for retryable errors\n   - Jitter Support: Prevents thundering herd problems\n   - Configurable Limits: Max retries, delays, and error types\n   - Context Logging: Detailed retry attempt logging\n\n9. **RetryConfig**: Flexible configuration for:\n   - Max retries and delay settings\n   - Retryable error types and status codes\n   - Backoff strategy selection\n\n### Error Aggregation and Monitoring:\n10. **ErrorAggregator**: Batch error collection with:\n    - Operation-specific error tracking\n    - Error type categorization and counting\n    - Time-based error analysis\n    - Summary statistics and reports\n\n11. **ErrorLogger**: Enhanced logging system with:\n    - Unique error ID generation for tracking\n    - Contextual error information capture\n    - Severity-based logging (error, warn, info)\n    - Automatic context cleanup for memory management\n\n### Integration Points:\n12. **Enhanced ApiClient Integration**: Updated the ApiClient to:\n    - Use ErrorClassifier for consistent error handling\n    - Properly extract retry-after headers\n    - Handle both JSON and text error responses\n    - Maintain backward compatibility\n\n13. **ExternalNode Error Handling**: Enhanced the base class with:\n    - Comprehensive error type detection\n    - Structured error responses with metadata\n    - Error ID tracking and context logging\n    - Retry recommendations based on error types\n\n### Key Features:\n- **Consistent Error Structure**: All errors follow the same format\n- **Retry Intelligence**: Automatic detection of retryable vs non-retryable errors\n- **Context Preservation**: Rich error context for debugging\n- **Memory Management**: Automatic cleanup of old error contexts\n- **Type Safety**: Full TypeScript support for all error types\n- **Extensibility**: Easy to add new error types and handling logic\n</info added on 2025-08-16T03:17:49.759Z>",
+            "status": "done",
+            "testStrategy": "Test retry logic with mock failing requests. Verify that different error types are correctly classified and handled. Test that normalized errors contain all necessary information for debugging."
+          },
+          {
+            "id": 7,
+            "title": "Create External Node Template",
+            "description": "Develop a template for external node implementation that extends the base class with standardized structure.",
+            "dependencies": [
+              "4.1",
+              "4.2",
+              "4.3",
+              "4.4",
+              "4.6"
+            ],
+            "details": "Create a template file ExternalNodeTemplate.ts that demonstrates proper implementation of an external node. Include examples of authentication configuration, API method implementation, and error handling. Add documentation comments explaining each required section. Implement a sample external node using the template to validate the approach. Create utility functions to generate new external node files based on the template.\n<info added on 2025-08-16T03:27:17.490Z>\n## External Node Template Implementation\n\n### Template Files Created:\n1. **external-node-template.ts** - Comprehensive template with detailed documentation and examples\n2. **simple-template.ts** - Clean, minimal working template for quick implementation\n\n### Simple Template Features:\n- **SimpleNode class** - Clean external node implementation\n- **SimpleInputSchema/SimpleOutputSchema** - Type-safe input/output definitions  \n- **SimpleConnectionDefinition** - API key authentication setup\n- **SimpleNodeDefinition** - Complete integration node configuration\n- **Full TypeScript support** - Proper typing and validation\n\n### Template Usage:\n1. Copy simple-template.ts and rename for your service\n2. Update schemas, connection definition, and API endpoints\n3. Implement your specific business logic in the execute method\n4. Configure authentication method for your API\n5. Test with real credentials and deploy\n\n### Key Benefits:\n- **Standardized structure** for consistent external node development\n- **Built-in error handling** using the enhanced error system\n- **Type safety** with Zod schema validation\n- **Authentication support** with various auth methods\n- **Rate limiting** and retry logic included\n- **Comprehensive documentation** and usage examples\n\n### Export Integration:\n- All template components exported from integration-sdk index\n- Ready for use in external integrations\n- Follows established patterns and conventions\n</info added on 2025-08-16T03:27:17.490Z>",
+            "status": "done",
+            "testStrategy": "Verify that nodes created from the template compile without errors. Test that the sample implementation correctly handles authentication and API calls. Review template with team members to ensure clarity and completeness."
+          },
+          {
+            "id": 8,
+            "title": "Implement Connection Testing and Action Discovery",
+            "description": "Add support for testing connections to external APIs and dynamically discovering available actions.",
+            "dependencies": [
+              "4.1",
+              "4.4",
+              "4.6",
+              "4.7"
+            ],
+            "details": "Create a ConnectionTester class that verifies API connectivity and authentication. Implement methods for basic health checks and authentication validation. Add ActionDiscovery interface and default implementation that can scan API endpoints or documentation to identify available actions. Create utility functions to convert discovered API operations into node configurations. Implement caching for discovered actions to improve performance.\n<info added on 2025-08-16T03:30:48.036Z>\n## Connection Testing and Action Discovery Implementation\n\n### Core Features Implemented:\n\n#### Connection Testing (ConnectionTester class):\n1. **Comprehensive Connection Validation**:\n   - Multiple test endpoint strategies (health, ping, status, etc.)\n   - Support for different authentication types (API key, OAuth2, Basic Auth)\n   - Latency measurement and error reporting\n   - Capability detection for advanced features\n\n2. **Batch Connection Testing**:\n   - Concurrent testing of multiple connections\n   - Promise.allSettled for robust error handling\n   - Individual connection result tracking\n\n3. **Authentication Handler Integration**:\n   - Dynamic auth handler creation based on connection type\n   - Support for custom headers and prefixes\n   - Proper credential validation with Zod schemas\n\n#### Action Discovery (ActionDiscovery class):\n1. **OpenAPI/Swagger Discovery**:\n   - Automatic detection of API documentation endpoints\n   - Full OpenAPI spec parsing with parameter extraction\n   - Support for operation metadata (tags, descriptions, etc.)\n\n2. **Common Endpoint Discovery**:\n   - Probing for standard REST endpoints (CRUD operations)\n   - Resource-based discovery (users, projects, tasks, messages)\n   - HTTP method detection via HEAD requests\n\n3. **Custom Endpoint Support**:\n   - User-defined endpoint discovery\n   - Multi-method testing for optimal compatibility\n   - Flexible endpoint categorization\n\n### Key Interfaces and Types:\n- **ConnectionTestResult**: Comprehensive test result structure\n- **DiscoveredAction**: Rich action metadata with parameters\n- **DiscoveredParameter**: Type-safe parameter definitions\n- **ConnectionTestConfig**: Flexible testing configuration\n\n### Utility Functions:\n- **createActionDiscovery()**: Factory function for discovery instances\n- **validateAndDiscoverConnection()**: One-stop validation and discovery\n- **Concurrent batch operations** for testing multiple connections\n\n### Integration Features:\n- **Export Integration**: All components exported from SDK index\n- **Error Handling**: Robust error handling with graceful fallbacks\n- **Timeout Management**: Configurable timeouts for different operations\n- **Capability Detection**: Advanced feature discovery for APIs\n\n### Benefits:\n- **User Experience**: Instant feedback on connection validity\n- **Developer Experience**: Automatic action discovery reduces manual configuration\n- **Reliability**: Multiple fallback strategies ensure robust operation\n- **Flexibility**: Support for various API styles and authentication methods\n- **Performance**: Concurrent operations and intelligent timeouts\n</info added on 2025-08-16T03:30:48.036Z>",
+            "status": "done",
+            "testStrategy": "Test connection testing with both valid and invalid credentials. Create mock APIs with OpenAPI specifications to test dynamic action discovery. Verify that discovered actions are correctly converted to node configurations."
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Develop Key External Nodes",
+        "description": "Implement external nodes for WordPress, Monday.com, and Stripe as examples and core integrations.",
+        "details": "1. For each external service (WordPress, Monday.com, Stripe):\n   a. Create a directory under /src/integrations/nodes/external/\n   b. Implement index.ts with the IntegrationNode definition\n   c. Create an auth directory with appropriate authentication methods\n   d. Implement an actions directory with key operations\n2. For WordPress:\n   - Implement createPost, updatePost, and getPost actions\n   - Use the WordPress REST API (latest version)\n   - Handle media uploads for post content\n3. For Monday.com:\n   - Implement createItem, updateItem, and getItem actions\n   - Use the Monday.com API v2 (GraphQL)\n   - Handle board and column mapping\n4. For Stripe:\n   - Implement createCharge, createCustomer, and createSubscription actions\n   - Use Stripe API v2022-11-15 or later\n   - Implement proper error handling for payment failures\n5. Ensure all nodes use TypeScript for type safety\n6. Implement comprehensive logging for debugging\n7. Add detailed comments and documentation for each action",
+        "testStrategy": "1. Write unit tests for each action in every external node\n2. Create integration tests using mock servers that simulate the external APIs\n3. Implement end-to-end tests with sandbox accounts for each service\n4. Test error handling by simulating various API error responses\n5. Verify proper handling of rate limits and API quotas\n6. Conduct security testing, especially for handling sensitive data in Stripe integration\n7. Perform usability testing of the configuration options for each node",
+        "priority": "medium",
+        "dependencies": [
+          4
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up project structure for external nodes",
+            "description": "Create the necessary directory structure and base files for WordPress, Monday.com, and Stripe integrations.",
+            "dependencies": [],
+            "details": "Create directories under /src/integrations/nodes/external/ for WordPress, Monday.com, and Stripe. Implement index.ts with IntegrationNode definition for each service. Set up auth and actions directories.\n<info added on 2025-08-16T03:44:36.696Z>\nSuccessfully implemented the WordPress node with comprehensive CRUD operations for posts. Created the directory structure at apps/portal/src/integrations/nodes/external/wordpress/node.ts with enhanced input/output schemas, proper validation, improved authentication, and better error handling. Added support for post metadata (categories, tags, featured media, slug), query parameters for listing posts, and comprehensive response formatting. Used a functional approach to maintain compatibility with the existing integration framework. The implementation includes all four CRUD operations, enhanced input schemas, proper WordPress API response formatting, and connection testing with detailed validation. The foundation is now ready for implementing Monday.com and Stripe nodes in the following subtasks.\n</info added on 2025-08-16T03:44:36.696Z>",
+            "status": "done",
+            "testStrategy": "Verify the correct file structure and base files exist for each integration."
+          },
+          {
+            "id": 2,
+            "title": "Implement WordPress authentication",
+            "description": "Create authentication methods for WordPress integration.",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Implement OAuth2 authentication for WordPress. Create necessary classes and methods in the auth directory. Handle token storage and refresh mechanisms.\n<info added on 2025-08-16T03:46:39.275Z>\n## Monday.com Node Implementation\n\n### Comprehensive Monday.com Integration Features:\n1. **Complete Board Management**:\n   - Get all boards with metadata (items count, description)\n   - Get individual board details with groups and columns\n   - Full board structure understanding\n\n2. **Advanced Item Operations**:\n   - Create items with custom column values and group assignment\n   - Update items using multiple column value changes\n   - Get items by board ID or specific item IDs\n   - Pagination support for large datasets\n\n3. **Project Communication**:\n   - Create updates on items for project communication\n   - Full update metadata including creator information\n   - Support for rich text content in updates\n\n4. **Flexible Column Management**:\n   - Update individual column values with type-safe operations\n   - Support for any column type (text, status, date, numbers, etc.)\n   - JSON-based column value handling for Monday.com compatibility\n\n### Technical Implementation:\n- **GraphQL API Integration**: Full Monday.com GraphQL v2 API implementation\n- **Bearer Token Authentication**: Secure API token-based authentication\n- **Comprehensive Error Handling**: Monday.com-specific error parsing\n- **Type-Safe Operations**: Zod validation for all inputs and outputs\n- **Flexible Querying**: Support for various query patterns and pagination\n\n### Actions Supported:\n1. `create_item` - Create new items in boards\n2. `update_item` - Update multiple column values\n3. `get_items` - Retrieve items by board or IDs\n4. `create_update` - Add updates to items\n5. `get_boards` - List all accessible boards\n6. `get_board` - Get detailed board information\n7. `update_column_value` - Update single column values\n\n### Connection Testing:\n- Validates API token using authenticated \"me\" query\n- Verifies user permissions and API access\n- Returns boolean for connection validity\n</info added on 2025-08-16T03:46:39.275Z>",
+            "status": "done",
+            "testStrategy": "Write unit tests for authentication methods. Test token refresh and error handling."
+          },
+          {
+            "id": 3,
+            "title": "Develop WordPress actions",
+            "description": "Implement createPost, updatePost, and getPost actions for WordPress.",
+            "dependencies": [
+              "5.2"
+            ],
+            "details": "Use WordPress REST API (latest version) to implement createPost, updatePost, and getPost actions. Handle media uploads for post content. Implement error handling and response parsing.",
+            "status": "done",
+            "testStrategy": "Create unit tests for each action. Implement integration tests using a mock WordPress server."
+          },
+          {
+            "id": 4,
+            "title": "Implement Monday.com authentication",
+            "description": "Create authentication methods for Monday.com integration.",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Implement OAuth2 authentication for Monday.com. Create necessary classes and methods in the auth directory. Handle token storage and refresh mechanisms.",
+            "status": "done",
+            "testStrategy": "Write unit tests for authentication methods. Test token refresh and error handling."
+          },
+          {
+            "id": 5,
+            "title": "Develop Monday.com actions",
+            "description": "Implement createItem, updateItem, and getItem actions for Monday.com.",
+            "dependencies": [
+              "5.4"
+            ],
+            "details": "Use Monday.com API v2 (GraphQL) to implement createItem, updateItem, and getItem actions. Handle board and column mapping. Implement error handling and response parsing.",
+            "status": "done",
+            "testStrategy": "Create unit tests for each action. Implement integration tests using a mock Monday.com server."
+          },
+          {
+            "id": 6,
+            "title": "Implement Stripe authentication",
+            "description": "Create authentication methods for Stripe integration.",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Implement API key authentication for Stripe. Create necessary classes and methods in the auth directory. Handle secure storage of API keys.\n<info added on 2025-08-16T03:49:07.779Z>\n## Stripe Node Implementation\n\n### Complete Payment Processing Features:\n1. **Customer Management**:\n   - Create, update, and retrieve customers\n   - Support for customer metadata, addresses, and contact information\n   - Secure customer data handling with proper validation\n\n2. **Payment Intent Operations**:\n   - Create payment intents with flexible configuration\n   - Confirm payment intents for payment processing\n   - Support for multiple payment methods and confirmation flows\n   - Automatic and manual confirmation methods\n\n3. **Subscription Management**:\n   - Create subscriptions with multiple items and pricing\n   - Update existing subscriptions (pricing, quantities)\n   - Cancel subscriptions with proper status tracking\n   - Trial period support and payment behavior configuration\n\n4. **Product & Pricing Catalog**:\n   - Create products with metadata and descriptions\n   - Create flexible pricing models (one-time and recurring)\n   - Support for multiple currencies and billing intervals\n   - Price management for subscription services\n\n5. **Payment Method Management**:\n   - Retrieve customer payment methods\n   - Support for credit card information display\n   - Secure payment method handling\n\n### Technical Implementation:\n- **Stripe API v2023-10-16**: Latest stable Stripe API version\n- **Proper Authentication**: Secure API key handling with bearer token authentication\n- **URL-Encoded Form Data**: Correct Stripe API format using form encoding\n- **Nested Object Flattening**: Helper function for Stripe's specific parameter format\n- **Comprehensive Error Handling**: Stripe-specific error parsing and user-friendly messages\n- **Type-Safe Operations**: Full Zod validation for inputs and outputs\n\n### Actions Supported:\n1. `create_customer` - Create new Stripe customers\n2. `update_customer` - Update customer information\n3. `get_customer` - Retrieve customer details\n4. `create_payment_intent` - Create payment intents\n5. `confirm_payment_intent` - Confirm and process payments\n6. `create_subscription` - Create recurring subscriptions\n7. `update_subscription` - Modify existing subscriptions\n8. `cancel_subscription` - Cancel subscriptions\n9. `create_product` - Create products in catalog\n10. `create_price` - Create pricing for products\n11. `get_payment_methods` - Retrieve customer payment methods\n\n### Security & Best Practices:\n- Secure API key storage in connection configuration\n- Webhook secret support for payment confirmations\n- Test mode configuration for development\n- Proper amount validation (minimum values)\n- Email validation for customer and receipt emails\n- Metadata support for custom business data\n\n### Connection Testing:\n- Validates API credentials using Stripe balance endpoint\n- Verifies account access and API key validity\n- Returns boolean for connection status\n</info added on 2025-08-16T03:49:07.779Z>",
+            "status": "done",
+            "testStrategy": "Write unit tests for authentication methods. Test error handling for invalid API keys."
+          },
+          {
+            "id": 7,
+            "title": "Develop Stripe actions",
+            "description": "Implement createCharge, createCustomer, and createSubscription actions for Stripe.",
+            "dependencies": [
+              "5.6"
+            ],
+            "details": "Use Stripe API v2022-11-15 or later to implement createCharge, createCustomer, and createSubscription actions. Implement proper error handling for payment failures. Handle response parsing and error codes.",
+            "status": "done",
+            "testStrategy": "Create unit tests for each action. Implement integration tests using Stripe's test mode."
+          },
+          {
+            "id": 8,
+            "title": "Finalize documentation and logging",
+            "description": "Add comprehensive logging and detailed documentation for all implemented external nodes.",
+            "dependencies": [
+              "5.3",
+              "5.5",
+              "5.7"
+            ],
+            "details": "Implement comprehensive logging for debugging in all actions. Add detailed comments and documentation for each action, including usage examples and error handling scenarios. Create README files for each integration explaining setup and configuration.",
+            "status": "done",
+            "testStrategy": "Review documentation for completeness. Test logging output for various scenarios, including error cases."
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Update Database Schema",
+        "description": "Modify the database schema to support the new centralized node architecture.",
+        "details": "1. Remove the apps table from the database schema\n2. Update the scenarios schema:\n   - Modify the nodes table as specified in the PRD\n   - Add nodeId field (string) to reference IntegrationNode\n   - Update connectionId to be optional\n   - Modify config field to be a flexible JSON structure\n3. Update the connections table:\n   - Add nodeType field to link to integration nodes\n   - Remove dependency on the apps table\n4. Create database migration scripts:\n   - Script to remove apps table\n   - Script to update scenarios and nodes tables\n   - Script to update connections table\n5. Implement data migration logic:\n   - Convert existing apps to external node categories\n   - Update existing scenarios to use new node structure\n   - Migrate connection data to new format\n6. Update Convex schema definitions in /convex/schema.ts\n7. Implement rollback scripts for all migrations",
+        "testStrategy": "1. Create a test database and run all migration scripts\n2. Verify data integrity after migration using automated checks\n3. Test rollback scripts to ensure they correctly revert changes\n4. Perform stress tests on the new schema with a large volume of mock data\n5. Verify that existing queries and mutations work with the new schema\n6. Test edge cases, such as scenarios with mixed old and new node types\n7. Conduct performance testing to ensure query efficiency with the new schema",
+        "priority": "high",
+        "dependencies": [
+          2,
+          3,
+          4
+        ],
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Remove apps table",
+            "description": "Delete the apps table from the database schema",
+            "dependencies": [],
+            "details": "Execute SQL command to drop the apps table from the database schema. Ensure all references to this table are removed from other parts of the schema.",
+            "status": "in-progress",
+            "testStrategy": "Verify the table no longer exists in the schema. Check for any foreign key constraints that may be affected."
+          },
+          {
+            "id": 2,
+            "title": "Update scenarios schema",
+            "description": "Modify the scenarios and nodes tables as per the PRD specifications",
+            "dependencies": [
+              "6.1"
+            ],
+            "details": "Alter the nodes table to add nodeId field (string), update connectionId to be optional, and modify config field to be a flexible JSON structure. Update any existing queries or stored procedures that interact with these tables.",
+            "status": "pending",
+            "testStrategy": "Run test queries to ensure the new structure is in place. Verify data integrity for existing records."
+          },
+          {
+            "id": 3,
+            "title": "Update connections table",
+            "description": "Add nodeType field and remove dependency on the apps table",
+            "dependencies": [
+              "6.1",
+              "6.2"
+            ],
+            "details": "Alter the connections table to add a nodeType field that links to integration nodes. Remove any foreign key constraints or references to the now-deleted apps table.",
+            "status": "pending",
+            "testStrategy": "Test the new nodeType field by inserting sample data. Verify that all references to the apps table have been successfully removed."
+          },
+          {
+            "id": 4,
+            "title": "Create database migration scripts",
+            "description": "Develop scripts for removing apps table and updating scenarios, nodes, and connections tables",
+            "dependencies": [
+              "6.1",
+              "6.2",
+              "6.3"
+            ],
+            "details": "Write SQL scripts to perform all necessary schema changes. Include scripts for removing the apps table, updating the scenarios and nodes tables, and modifying the connections table. Ensure proper error handling and transaction management.",
+            "status": "pending",
+            "testStrategy": "Execute migration scripts on a test database. Verify all changes are applied correctly and in the right order."
+          },
+          {
+            "id": 5,
+            "title": "Implement data migration logic",
+            "description": "Convert existing data to fit the new schema structure",
+            "dependencies": [
+              "6.4"
+            ],
+            "details": "Develop scripts or programs to migrate existing data: convert apps to external node categories, update scenarios to use the new node structure, and migrate connection data to the new format. Ensure data integrity and handle potential conflicts or inconsistencies.",
+            "status": "pending",
+            "testStrategy": "Run data migration on a copy of production data. Verify data integrity and consistency after migration. Perform spot checks on critical data points."
+          },
+          {
+            "id": 6,
+            "title": "Update Convex schema definitions",
+            "description": "Modify /convex/schema.ts to reflect the new database structure",
+            "dependencies": [
+              "6.2",
+              "6.3",
+              "6.4"
+            ],
+            "details": "Update the Convex schema definitions in /convex/schema.ts to match the new database structure. Remove references to the apps table, update scenarios and nodes definitions, and modify the connections schema.",
+            "status": "pending",
+            "testStrategy": "Validate the updated schema.ts file against Convex documentation. Test Convex queries and mutations to ensure they work with the new schema."
+          },
+          {
+            "id": 7,
+            "title": "Implement rollback scripts",
+            "description": "Create scripts to revert all schema and data changes",
+            "dependencies": [
+              "6.4",
+              "6.5"
+            ],
+            "details": "Develop rollback scripts for all migrations. These should undo the changes made to the schema and revert data to its original state. Include scripts to recreate the apps table if necessary.",
+            "status": "pending",
+            "testStrategy": "Test rollback scripts on a migrated test database. Verify that the schema and data are correctly reverted to their original state. Ensure all constraints and relationships are properly restored."
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Implement New Scenario Builder Components",
+        "description": "Develop the UI components for the improved scenario builder experience.",
+        "details": "1. Create new React components:\n   - NodePalette: Categorized list of available nodes\n   - ConnectionSelector: Dropdown for selecting/creating connections\n   - DynamicConfigForm: Auto-generated form based on node's configSchema\n   - NodePreview: Live preview of node configuration\n2. Implement NodePalette:\n   - Use React virtualization for efficient rendering of large node lists\n   - Implement search and filter functionality\n   - Group nodes by system/external and categories\n3. Develop ConnectionSelector:\n   - Integrate with existing connection management system\n   - Implement inline connection creation flow\n   - Handle connection testing and validation\n4. Create DynamicConfigForm:\n   - Use React Hook Form for form management\n   - Dynamically generate form fields based on Zod schema\n   - Implement real-time validation\n5. Build NodePreview:\n   - Create a read-only view of node configuration\n   - Implement a collapsible interface for detailed view\n6. Update existing scenario builder to integrate new components\n7. Implement drag-and-drop functionality for adding nodes to the scenario\n8. Ensure all components are fully responsive and accessible",
+        "testStrategy": "1. Write unit tests for each new React component\n2. Implement integration tests for component interactions\n3. Conduct usability testing with real users to gather feedback\n4. Perform accessibility audits using tools like axe-core\n5. Test performance, especially for NodePalette with a large number of nodes\n6. Verify proper handling of various node types and configurations\n7. Conduct cross-browser testing to ensure consistency",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          5,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Update Convex Functions",
+        "description": "Refactor and update all Convex functions to work with the new node architecture.",
+        "details": "1. Update /convex/integrations/nodes/queries.ts:\n   - Implement getAvailableNodes query to return all registered nodes\n   - Create getNodeConfig query to fetch node-specific configuration\n   - Update existing queries to work with the new schema\n2. Modify /convex/integrations/nodes/mutations.ts:\n   - Implement createNode mutation for adding nodes to scenarios\n   - Update updateNode mutation to handle new node structure\n   - Create deleteNode mutation\n3. Refactor /convex/integrations/nodes/actions.ts:\n   - Implement executeNode action that works with the new processor interface\n   - Create validateNodeConfig action for client-side config validation\n4. Update /convex/integrations/scenarios/ functions:\n   - Modify createScenario and updateScenario to work with new node structure\n   - Update getScenarioDetails to include full node information\n5. Implement new functions for connection management:\n   - createConnection, updateConnection, deleteConnection\n   - getAvailableConnections query\n6. Ensure all functions use proper error handling and input validation\n7. Optimize query performance, especially for scenarios with many nodes\n8. Implement proper access control and security measures for all functions",
+        "testStrategy": "1. Write unit tests for each Convex function\n2. Create integration tests that simulate real-world usage scenarios\n3. Implement performance tests, especially for queries returning large datasets\n4. Test error handling by simulating various error conditions\n5. Verify access control by testing functions with different user roles\n6. Conduct end-to-end tests that combine multiple functions in sequence\n7. Use Convex's testing utilities to mock the database and test in isolation",
+        "priority": "high",
+        "dependencies": [
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Implement Improved Node Creation Flow",
+        "description": "Develop the new user experience for adding and configuring nodes in the scenario builder.",
+        "details": "1. Create a new NodeCreationWizard component:\n   - Implement step-by-step flow: Node Selection → Connection (if needed) → Configuration\n   - Use React context to manage wizard state\n2. Enhance NodePalette component:\n   - Add detailed node information display on selection\n   - Implement quick search and category filtering\n3. Improve ConnectionSelector:\n   - Add inline connection creation process\n   - Implement connection testing functionality\n4. Enhance DynamicConfigForm:\n   - Add real-time validation using Zod schemas\n   - Implement dynamic field dependencies and conditional rendering\n5. Create a NodeSummary component for reviewing the final configuration\n6. Implement a SaveNode action that creates the node and adds it to the scenario\n7. Add animations and transitions for a smooth user experience\n8. Ensure the entire flow is keyboard accessible and screen-reader friendly\n9. Implement error handling and user feedback throughout the process",
+        "testStrategy": "1. Conduct user testing sessions to gather feedback on the new flow\n2. Write unit tests for each component in the creation flow\n3. Implement integration tests that simulate the entire node creation process\n4. Test accessibility using automated tools and manual screen reader testing\n5. Verify error handling by simulating various error scenarios\n6. Conduct performance testing, especially for scenarios with many available nodes\n7. Test the flow across different devices and screen sizes for responsiveness",
+        "priority": "medium",
+        "dependencies": [
+          7,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Develop Integration CLI and Developer Tools",
+        "description": "Create command-line tools and utilities to improve the developer experience for adding new integrations.",
+        "details": "1. Create a new integration-cli package in the project:\n   - Implement a CLI using a modern framework like commander.js (version 10.0.0 or later)\n   - Create commands for scaffolding new integrations, running tests, and validating nodes\n2. Implement scaffolding functionality:\n   - Create templates for system and external nodes\n   - Generate boilerplate code for processor, config, and metadata files\n   - Automatically update the registry when new integrations are added\n3. Develop testing utilities:\n   - Create mock contexts for testing node processors\n   - Implement helpers for simulating various scenarios and edge cases\n   - Add commands to run tests for specific nodes or all nodes\n4. Add validation tools:\n   - Implement comprehensive validation of node definitions against the IntegrationNode interface\n   - Create lint rules specific to integration development\n5. Develop a documentation generator:\n   - Automatically generate markdown documentation from node definitions\n   - Include example usage, configuration options, and testing guidelines\n6. Create a local development server for testing integrations in isolation\n7. Implement a debug mode for detailed logging during node execution",
+        "testStrategy": "1. Write unit tests for each CLI command\n2. Create integration tests that simulate the entire process of creating and testing a new node\n3. Test the scaffolding functionality with various node types and configurations\n4. Verify that generated code passes all lint and validation checks\n5. Test the documentation generator with a variety of node definitions\n6. Conduct usability testing with developers to gather feedback on the CLI\n7. Ensure all tools work across different operating systems (Windows, macOS, Linux)",
+        "priority": "low",
+        "dependencies": [
+          2,
+          3,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Implement Comprehensive Error Handling and Logging",
+        "description": "Develop a robust error handling and logging system across the entire integration architecture.",
+        "details": "1. Design an error hierarchy specific to the integration system:\n   - Create custom error classes for different types of failures (e.g., ConfigurationError, ProcessorError, ConnectionError)\n   - Implement error serialization for Convex function returns\n2. Enhance the logging system:\n   - Integrate a structured logging library like winston (version 3.8.2 or later)\n   - Implement log levels (debug, info, warn, error) across all components\n   - Add context information to log entries (nodeId, scenarioId, userId)\n3. Implement global error handlers:\n   - Create an error boundary component for the React application\n   - Implement a global error handler for unhandled promise rejections and exceptions\n4. Enhance node processors with detailed error reporting:\n   - Add try-catch blocks with specific error types\n   - Implement retry logic for transient failures\n5. Create a user-facing error display system:\n   - Develop components for showing errors in the UI\n   - Implement different display strategies based on error severity\n6. Add telemetry for error tracking:\n   - Integrate an error tracking service (e.g., Sentry, latest version)\n   - Implement custom grouping for integration-specific errors\n7. Develop a system for error aggregation and reporting:\n   - Create daily/weekly error summaries\n   - Implement alerts for critical or frequent errors",
+        "testStrategy": "1. Write unit tests for each custom error class\n2. Implement integration tests that simulate various error scenarios\n3. Verify that errors are correctly logged and reported to the error tracking service\n4. Test the error display components with different types of errors\n5. Conduct usability testing to ensure error messages are clear and actionable\n6. Verify that sensitive information is not leaked in error logs or reports\n7. Test the system's behavior under high error rates to ensure stability",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Conduct Migration and Final Testing",
+        "description": "Perform the final migration of existing data and conduct comprehensive testing of the new architecture.",
+        "details": "1. Develop a comprehensive migration plan:\n   - Create a checklist of all data and components to be migrated\n   - Implement a staging environment that mirrors the production setup\n2. Perform data migration:\n   - Execute database migration scripts developed in Task 6\n   - Verify data integrity after migration\n   - Migrate existing apps to the new node structure\n3. Update all client-side code to use the new API:\n   - Refactor React components to work with the new node architecture\n   - Update any hard-coded references to old app or node structures\n4. Conduct thorough testing:\n   - Run all unit and integration tests\n   - Perform end-to-end testing of key user flows\n   - Conduct load testing to ensure performance under high user counts\n5. Implement a feature flag system:\n   - Use a tool like LaunchDarkly (latest version) for gradual rollout\n   - Create flags for each major component of the new architecture\n6. Develop a rollback plan:\n   - Create scripts to revert database changes\n   - Implement quick-switch mechanism between old and new architectures\n7. Conduct user acceptance testing:\n   - Invite a group of beta testers to use the new system\n   - Gather and address feedback\n8. Prepare documentation and training materials:\n   - Update user guides and API documentation\n   - Create training videos for both users and developers\n9. Plan the production deployment:\n   - Schedule the deployment during a low-traffic period\n   - Prepare a detailed deployment checklist\n   - Assign roles and responsibilities for the deployment team",
+        "testStrategy": "1. Conduct a full regression test suite on the migrated system\n2. Perform security audits and penetration testing\n3. Test the rollback procedures in a staging environment\n4. Conduct performance benchmarks comparing old and new architectures\n5. Verify all logging and error reporting systems are functioning correctly\n6. Test the feature flag system to ensure smooth transitions\n7. Conduct cross-browser and cross-device testing\n8. Perform accessibility testing to ensure WCAG compliance",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
     "metadata": {
       "created": "2025-08-16T01:43:47.895Z",
-      "updated": "2025-08-16T01:43:47.895Z",
-      "description": "Integration system refactor to centralized node architecture"
+      "updated": "2025-08-16T03:49:23.913Z",
+      "description": "Tasks for integration-refactor context"
     }
   }
 }

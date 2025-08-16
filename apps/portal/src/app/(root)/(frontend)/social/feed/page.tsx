@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/clerk-react";
 import { useConvexAuth } from "convex/react";
@@ -14,6 +14,23 @@ import type { FilterValue } from "~/components/shared/EntityList/types";
 import type { FeedType } from "~/components/social";
 import { FeedStream } from "~/components/social";
 import { FeedFilters } from "~/components/social/FeedFilters";
+
+// Wrapper component for FeedFilters to handle Suspense
+function FeedFiltersWrapper({
+  onFiltersChange,
+}: {
+  onFiltersChange: (filters: Record<string, FilterValue>) => void;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
+      }
+    >
+      <FeedFilters onFiltersChange={onFiltersChange} />
+    </Suspense>
+  );
+}
 
 export default function FeedPage() {
   const { isAuthenticated } = useConvexAuth();
@@ -41,7 +58,7 @@ export default function FeedPage() {
         </div>
 
         <div className="mb-4">
-          <FeedFilters onFiltersChange={handleFiltersChange} />
+          <FeedFiltersWrapper onFiltersChange={handleFiltersChange} />
         </div>
 
         <Tabs

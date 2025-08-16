@@ -4,8 +4,8 @@ import React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { formatPhoneNumber } from "@/lib/utils";
 import { useUser } from "@clerk/nextjs";
+import { formatPhoneNumber } from "@convex-config/shared";
 import { useQuery } from "convex/react";
 import { ArrowLeft, Building, Edit, Mail, Phone } from "lucide-react";
 

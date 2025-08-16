@@ -1,4 +1,5 @@
 import { ConvexError } from "convex/values";
+
 /**
  * Gets the authenticated user ID from the Convex context
  * @param ctx - The Convex query or mutation context
@@ -6,19 +7,23 @@ import { ConvexError } from "convex/values";
  * @throws ConvexError if the user is not authenticated
  */
 export const getAuthenticatedUserId = async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-        throw new ConvexError("Unauthorized: You must be logged in to perform this action");
-    }
-    // Find the user in the database
-    const user = await ctx.db
-        .query("users")
-        .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-        .unique();
-    if (!user) {
-        throw new ConvexError("User not found in the database");
-    }
-    return user._id;
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new ConvexError(
+      "Unauthorized: You must be logged in to perform this action",
+    );
+  }
+  // Find the user in the database
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_token", (q) =>
+      q.eq("tokenIdentifier", identity.tokenIdentifier),
+    )
+    .unique();
+  if (!user) {
+    throw new ConvexError("User not found in the database");
+  }
+  return user._id;
 };
 /**
  * Gets the authenticated user document from the Convex context
@@ -27,20 +32,24 @@ export const getAuthenticatedUserId = async (ctx) => {
  * @throws ConvexError if the user is not authenticated
  */
 export const getAuthenticatedUser = async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    console.log("[getAuthenticatedUser]", identity);
-    if (!identity) {
-        throw new ConvexError("Unauthorized: You must be logged in to perform this action");
-    }
-    // Find the user in the database
-    const user = await ctx.db
-        .query("users")
-        .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-        .unique();
-    if (!user) {
-        throw new ConvexError("User not found in the database");
-    }
-    return user;
+  const identity = await ctx.auth.getUserIdentity();
+
+  if (!identity) {
+    throw new ConvexError(
+      "Unauthorized: You must be logged in to perform this action",
+    );
+  }
+  // Find the user in the database
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_token", (q) =>
+      q.eq("tokenIdentifier", identity.tokenIdentifier),
+    )
+    .unique();
+  if (!user) {
+    throw new ConvexError("User not found in the database");
+  }
+  return user;
 };
 /**
  * Checks if the current user is authenticated
@@ -48,13 +57,12 @@ export const getAuthenticatedUser = async (ctx) => {
  * @returns True if the user is authenticated, false otherwise
  */
 export const isAuthenticated = async (ctx) => {
-    try {
-        await getAuthenticatedUserId(ctx);
-        return true;
-    }
-    catch {
-        return false;
-    }
+  try {
+    await getAuthenticatedUserId(ctx);
+    return true;
+  } catch {
+    return false;
+  }
 };
 /**
  * Gets the user identity information from the auth context
@@ -62,5 +70,5 @@ export const isAuthenticated = async (ctx) => {
  * @returns The user identity object or null if not authenticated
  */
 export const getUserIdentity = async (ctx) => {
-    return await ctx.auth.getUserIdentity();
+  return await ctx.auth.getUserIdentity();
 };

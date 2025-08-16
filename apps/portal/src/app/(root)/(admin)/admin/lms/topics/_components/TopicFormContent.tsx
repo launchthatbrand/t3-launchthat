@@ -1,6 +1,12 @@
 "use client";
 
+import React from "react";
 import { Doc, Id } from "@convex-config/_generated/dataModel";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
+import { Button } from "@acme/ui/button";
 import {
   Form,
   FormControl,
@@ -10,6 +16,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@acme/ui/form";
+import { Input } from "@acme/ui/input";
 import {
   Select,
   SelectContent,
@@ -17,15 +24,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
+import { Textarea } from "@acme/ui/textarea";
 
 import type { AdminPostFormProps } from "~/components/admin/AdminSinglePostLayout";
-import { Button } from "@acme/ui/button";
-import { Input } from "@acme/ui/input";
-import React from "react";
-import { Textarea } from "@acme/ui/textarea";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 
 // Schema for topic form
 export const topicFormSchema = z.object({
@@ -224,7 +225,7 @@ export const TopicFormContent: React.FC<TopicFormContentProps> = ({
               <Select
                 value={field.value}
                 onValueChange={field.onChange}
-                disabled={categories.length === 0}
+                disabled={categories?.length === 0}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -240,7 +241,7 @@ export const TopicFormContent: React.FC<TopicFormContentProps> = ({
                 </SelectContent>
               </Select>
               <FormDescription>
-                {categories.length === 0
+                {categories?.length === 0
                   ? "No categories available."
                   : "Choose a category for this topic"}
               </FormDescription>

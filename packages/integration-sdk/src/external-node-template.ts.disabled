@@ -1,0 +1,221 @@
+import { z } from "zod";
+
+import type { ErrorContext, RetryConfig } from "./external-node.js";
+import {
+  AuthFactory,
+  DEFAULT_RETRY_CONFIG,
+  EnhancedApiClient,
+  ErrorLogger,
+  ExternalNode,
+  RetryManager,
+} from "./external-node.js";
+import {
+  ConnectionDefinition,
+  IntegrationNodeDefinition,
+  NodeExecutionContext,
+  NodeExecutionResult,
+} from "./types.js";
+
+/**
+ * External Node Template
+ *
+ * This template provides a standardized structure for creating external API integrations.
+ * Follow this pattern to ensure consistency, proper error handling, and maintainability.
+ *
+ * To use this template:
+ * 1. Copy this file and rename it (e.g., "slack-node.ts")
+ * 2. Replace "ExampleService" with your service name (e.g., "Slack")
+ * 3. Replace "ExampleAction" with your action name (e.g., "SendMessage")
+ * 4. Update the schemas, connection definition, and implementation
+ * 5. Test thoroughly with error scenarios
+ */
+
+// ==================== CONFIGURATION SCHEMAS ====================
+
+/**
+ * Input schema - defines what data the node expects
+ * Keep this focused and validate all required fields
+ */
+export const ExampleServiceInputSchema = z.object({
+  // Required fields
+  targetId: z.string().min(1, "Target ID is required"),
+  content: z.string().min(1, "Content is required"),
+
+  // Optional fields
+  priority: z.enum(["low", "medium", "high"]).default("medium"),
+  metadata: z.record(z.string()).optional(),
+
+  // Validation example
+  email: z.string().email().optional(),
+});
+
+/**
+ * Output schema - defines what the node returns
+ * This helps with type safety and debugging
+ */
+export const ExampleServiceOutputSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  timestamp: z.number(),
+  details: z.record(z.any()).optional(),
+});
+
+// ==================== CONNECTION DEFINITION ====================
+
+/**
+ * Connection definition - defines authentication requirements
+ * Choose the appropriate auth type for your service
+ */
+export const ExampleServiceConnectionDefinition: ConnectionDefinition = {
+  id: "example_service_connection",
+  name: "Example Service Connection",
+  type: "api_key", // or "oauth2", "basic_auth", etc.
+
+  authSchema: z.object({
+    type: z.literal("api_key"),
+    apiKey: z.string().min(1, "API key is required"),
+    // Add additional auth fields as needed
+    baseUrl: z.string().url().optional(),
+  }),
+};
+
+// ==================== NODE IMPLEMENTATION ====================
+
+/**
+ * Main node class - extends ExternalNode for common functionality
+ * This is where your business logic goes
+ */
+export class ExampleServiceActionNode extends ExternalNode {
+  constructor() {
+    // Initialize auth handler - adjust based on your service
+    const authHandler = AuthFactory.createAuthHandler({
+      type: "api_key",
+      keyField: "apiKey",
+      headerName: "X-API-Key",
+    });
+
+    super("https://api.example-service.com", authHandler, {
+      maxRequests: 60, // Adjust based on API limits
+      windowMs: 60000, // 1 minute window
+      strategy: "sliding",
+    });
+  }
+
+  /**
+   * Main execution method - called when the node runs
+   */
+  async execute(context: NodeExecutionContext): Promise<NodeExecutionResult> {
+    try {
+      // Parse and validate input
+      const input = ExampleServiceInputSchema.parse(context.inputData);
+      const connection = ExampleServiceConnectionDefinition.authSchema.parse(
+        context.connections.example_service,
+      );
+
+      // Perform the API operation
+      const result = await this.performApiCall(input, connection);
+
+      // Validate output
+      const output = ExampleServiceOutputSchema.parse(result);
+
+      // Return success result
+      return {
+        success: true,
+        data: output,
+        logs: [
+          `Successfully processed action for target: ${input.targetId}`,
+          `Result ID: ${output.id}`,
+          `Status: ${output.status}`,
+        ],
+      };
+    } catch (error) {
+      // Use built-in error handling
+      return this.handleApiError(error);
+    }
+  }
+
+  /**
+   * Private method to handle the actual API call
+   * Keep this focused on the API interaction
+   */
+  private async performApiCall(
+    input: z.infer<typeof ExampleServiceInputSchema>,
+    connection: z.infer<typeof ExampleServiceConnectionDefinition.authSchema>,
+  ): Promise<any> {
+    // Prepare request payload
+    const payload = {
+      target_id: input.targetId,
+      content: input.content,
+      priority: input.priority,
+      metadata: input.metadata,
+    };
+
+    // Make the API call using the inherited apiClient
+    const response = await this.apiClient.post("/api/v1/action", payload, {
+      auth: connection,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    return response;
+  }
+}
+
+// ==================== NODE DEFINITION EXPORT ====================
+
+/**
+ * Complete node definition - export this for registration
+ */
+export const ExampleServiceActionNodeDefinition: IntegrationNodeDefinition = {
+  // ==================== METADATA ====================
+  metadata: {
+    id: "example_service_action",
+    name: "Example Service - Perform Action",
+    description: "Perform an action using the Example Service API",
+    type: "external" as const,
+    category: "external",
+    version: "1.0.0",
+    icon: "activity",
+    color: "#6366f1",
+  },
+
+  // ==================== INPUT/OUTPUT SCHEMAS ====================
+  inputSchema: ExampleServiceInputSchema,
+  outputSchema: ExampleServiceOutputSchema,
+
+  // ==================== CONNECTIONS ====================
+  connections: [ExampleServiceConnectionDefinition],
+
+  // ==================== EXECUTION LOGIC ====================
+  execute: async (
+    context: NodeExecutionContext,
+  ): Promise<NodeExecutionResult> => {
+    const node = new ExampleServiceActionNode();
+    return node.execute(context);
+  },
+};
+
+// ==================== TEMPLATE CHECKLIST ====================
+
+/**
+ * Before deploying your node, ensure you have:
+ *
+ * ✓ Updated all schema names and properties
+ * ✓ Configured correct authentication method
+ * ✓ Set appropriate retry and rate limit settings
+ * ✓ Added proper error handling
+ * ✓ Validated input/output schemas
+ * ✓ Updated metadata (name, description, icon, etc.)
+ * ✓ Tested with real API credentials
+ * ✓ Handled edge cases and error scenarios
+ * ✓ Added appropriate logging
+ * ✓ Documented any special requirements
+ *
+ * Common API patterns to consider:
+ * - Pagination for list operations
+ * - Webhook validation for triggers
+ * - File upload/download handling
+ * - Bulk operations
+ * - Real-time subscriptions
+ */

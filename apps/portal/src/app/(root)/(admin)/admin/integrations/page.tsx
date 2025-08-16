@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
 import { Id } from "@convex-config/_generated/dataModel";
@@ -22,7 +22,7 @@ import {
   TabsTrigger,
 } from "@acme/ui";
 
-export default function IntegrationsPage() {
+function IntegrationsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
@@ -372,5 +372,13 @@ export default function IntegrationsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function IntegrationsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <IntegrationsPageContent />
+    </Suspense>
   );
 }

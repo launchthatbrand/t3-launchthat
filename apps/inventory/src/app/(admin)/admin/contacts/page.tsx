@@ -1,10 +1,10 @@
 "use client";
 
+import type { Id } from "@/convex/_generated/dataModel";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import {
@@ -13,7 +13,6 @@ import {
   Mail,
   Phone,
   PlusCircle,
-  Tag,
   Trash2,
   UserCircle,
 } from "lucide-react";

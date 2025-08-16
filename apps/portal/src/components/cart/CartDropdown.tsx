@@ -5,8 +5,9 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
-import { formatPrice } from "@/lib/utils";
 import { useClerk } from "@clerk/nextjs";
+// Define types for cart items that match the schema
+import { formatPrice } from "@convex-config/ecommerce/lib";
 import { useMutation, useQuery } from "convex/react";
 import { ArrowRight, ShoppingCart, X } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
@@ -22,7 +23,6 @@ import { Separator } from "@acme/ui/separator";
 
 import { CartIcon } from "./CartIcon";
 
-// Define types for cart items that match the schema
 interface ProductSnapshot {
   name: string;
   description?: string;

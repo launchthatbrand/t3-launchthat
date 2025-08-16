@@ -2,12 +2,6 @@ import "~/app/globals.css";
 
 import type { Metadata, Viewport } from "next";
 
-import { GeistMono } from "geist/font/mono";
-import { GeistSans } from "geist/font/sans";
-import { Providers } from "../providers";
-import StandardLayout from "@acme/ui/layout/StandardLayout";
-import { cn } from "@acme/ui";
-
 // Metadata for the app
 export const metadata: Metadata = {
   title: "Portal",
@@ -55,29 +49,7 @@ export default function RootLayout(props: {
   sidebar: React.ReactNode;
   header: React.ReactNode;
 }) {
-  return (
-    <>{props.children}</>
-    // <html lang="en" suppressHydrationWarning>
-    //   <body
-    //     className={cn(
-    //       "min-h-screen bg-background font-sans text-foreground antialiased",
-    //       GeistSans.variable,
-    //       GeistMono.variable,
-    //     )}
-    //   >
-    //     <Providers>
-    //       <StandardLayout
-    //         appName="Portal Demo"
-    //         sidebar={props.sidebar}
-    //         header={props.header}
-    //         sidebarVariant="inset"
-    //       >
-    //         {props.children}
-    //       </StandardLayout>
-    //     </Providers>
-    //   </body>
-    // </html>
-  );
+  return <>{props.children}</>;
 }
 
 function _Package2Icon(props: React.SVGProps<SVGSVGElement>) {

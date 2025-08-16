@@ -195,7 +195,7 @@ export default function AdminTopicEditPage() {
     featuredImage: topic.featuredImage || "",
     featuredMedia: topic.featuredMedia,
     categories:
-      topic.categories && topic.categories.length > 0
+      topic.categories && topic.categories?.length > 0
         ? topic.categories[0]
         : "",
     menuOrder: topic.menuOrder || 0,
@@ -272,7 +272,7 @@ export default function AdminTopicEditPage() {
           <div>
             <div className="text-xs text-muted-foreground">Tags</div>
             <div className="mt-1 flex flex-wrap gap-1">
-              {selectedTags.length > 0 ? (
+              {selectedTags?.length > 0 ? (
                 selectedTags.map((tagId: string) => {
                   const tag = tags?.find(
                     (t: Doc<"tags">) => t._id.toString() === tagId,

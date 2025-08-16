@@ -3,7 +3,7 @@
 import type { Id } from "@/convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
-import { formatPhoneNumber } from "@/lib/utils";
+import { formatPhoneNumber } from "@convex-config/shared";
 import { useMutation } from "convex/react";
 import {
   Building,

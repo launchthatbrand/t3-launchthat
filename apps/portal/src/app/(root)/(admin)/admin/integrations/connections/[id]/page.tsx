@@ -1,7 +1,10 @@
 "use client";
 
+import type { Id } from "@/convex/_generated/dataModel";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+// Import Convex functions
+import { api } from "@/convex/_generated/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Check, Loader2, Trash2 } from "lucide-react";
@@ -34,10 +37,6 @@ import {
   FormMessage,
   Input,
 } from "@acme/ui";
-
-import type { Id } from "../../../../../../convex/_generated/dataModel";
-// Import Convex functions
-import { api } from "../../../../../../convex/_generated/api";
 
 // Base fields common to all connections
 const baseSchema = {

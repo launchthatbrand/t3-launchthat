@@ -1,7 +1,10 @@
 "use client";
 
+import type { Doc } from "@/convex/_generated/dataModel";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+// Use absolute paths for Convex imports
+import { api } from "@/convex/_generated/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
@@ -24,10 +27,6 @@ import {
   FormMessage,
   Input,
 } from "@acme/ui";
-
-// Use absolute paths for Convex imports
-import { api } from "../../../../../../convex/_generated/api";
-import { Doc, Id } from "../../../../../../convex/_generated/dataModel";
 
 // Connection form validation schema
 const formSchema = z.object({

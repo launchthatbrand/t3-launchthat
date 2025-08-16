@@ -2,14 +2,16 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePostCategories } from "@/lib/blog";
+import { api } from "@convex-config/_generated/api";
+import { useQuery } from "convex/react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Separator } from "@acme/ui/separator";
 import { Skeleton } from "@acme/ui/skeleton";
 
 export default function CategoriesPage() {
-  const { data: categories, isLoading } = usePostCategories();
+  const categories = useQuery(api.core.posts.queries.getPostCategories, {});
+  const isLoading = categories === undefined;
 
   return (
     <div className="container mx-auto px-4 py-12">

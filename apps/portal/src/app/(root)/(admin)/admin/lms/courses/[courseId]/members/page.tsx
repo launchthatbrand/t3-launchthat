@@ -65,7 +65,7 @@ export default function CourseMembersPage() {
     <div className="space-y-4">
       <Card className="shadow-sm">
         <CardHeader>
-          <CardTitle>Members ({members.length})</CardTitle>
+          <CardTitle>Members ({members?.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {members.length === 0 && (
@@ -75,7 +75,7 @@ export default function CourseMembersPage() {
           )}
           {members.length > 0 && (
             <ul className="divide-y">
-              {members.map((member) => (
+              {members?.map((member) => (
                 <li
                   key={member._id}
                   className="group flex items-center justify-between py-3"

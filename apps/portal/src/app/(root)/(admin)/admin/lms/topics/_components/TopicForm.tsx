@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { Doc, Id } from "@convex-config/_generated/dataModel"; // Removed Id import since it's unused
+import type { Doc, Id } from "@convex-config/_generated/dataModel"; // Removed Id import since it's unused
 
+import React, { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ImagePlus, PlusCircle, Save } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -132,7 +132,7 @@ export const TopicForm: React.FC<TopicFormProps> = ({
     }
   };
 
-  const tagOptions = availableTags.map((tag) => ({
+  const tagOptions = availableTags?.map((tag) => ({
     label: tag.name,
     value: tag._id,
   }));
@@ -501,7 +501,7 @@ export const TopicForm: React.FC<TopicFormProps> = ({
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
-                        disabled={categories.length === 0}
+                        disabled={categories?.length === 0}
                       >
                         <FormControl>
                           <SelectTrigger id="topic-category" className="w-full">
@@ -509,7 +509,7 @@ export const TopicForm: React.FC<TopicFormProps> = ({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {categories.map(
+                          {categories?.map(
                             (c: { value: string; label: string }) => (
                               <SelectItem key={c.value} value={c.value}>
                                 {c.label}
@@ -519,7 +519,7 @@ export const TopicForm: React.FC<TopicFormProps> = ({
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        {categories.length === 0 && "No categories available."}
+                        {categories?.length === 0 && "No categories available."}
                       </FormDescription>
                     </FormItem>
                   )}

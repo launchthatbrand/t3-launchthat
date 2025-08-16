@@ -1,0 +1,424 @@
+import { z } from "zod";
+
+import type { ErrorContext, RetryConfig } from "./external-node.js";
+import {
+  AuthFactory,
+  DEFAULT_RETRY_CONFIG,
+  EnhancedApiClient,
+  ErrorLogger,
+  ExternalNode,
+  RetryManager,
+} from "./external-node.js";
+import {
+  ConnectionDefinition,
+  IntegrationNodeDefinition,
+  NodeExecutionContext,
+  NodeExecutionResult,
+} from "./types.js";
+
+/**
+ * Slack Send Message Node Example
+ *
+ * This is a concrete example implementation of the external node template
+ * demonstrating how to integrate with Slack's API to send messages.
+ *
+ * This example serves as both:
+ * 1. A working implementation for Slack integration
+ * 2. A reference template for creating other external node integrations
+ */
+
+// ==================== CONFIGURATION SCHEMAS ====================
+
+/**
+ * Input schema for Slack message sending
+ */
+const SlackSendMessageInputSchema = z.object({
+  message: z.string().min(1, "Message content is required"),
+  channel: z.string().min(1, "Channel ID or name is required"),
+  threadTs: z.string().optional(), // For threaded messages
+  username: z.string().optional(), // Custom username for the bot
+  iconEmoji: z.string().optional(), // Custom emoji icon
+  attachments: z.array(z.record(z.unknown())).optional(), // Rich message attachments
+  blocks: z.array(z.record(z.unknown())).optional(), // Block Kit UI elements
+  metadata: z.record(z.unknown()).optional(),
+});
+
+/**
+ * Output schema for Slack message response
+ */
+const SlackSendMessageOutputSchema = z.object({
+  messageId: z.string(),
+  channel: z.string(),
+  timestamp: z.string(),
+  threadTimestamp: z.string().optional(),
+  permalink: z.string().optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+/**
+ * Settings schema for Slack node configuration
+ */
+const SlackSendMessageSettingsSchema = z.object({
+  // API Configuration
+  apiVersion: z.string().default("v1"),
+  baseUrl: z.string().url().default("https://slack.com/api"),
+  timeout: z.number().min(1000).max(300000).default(30000),
+
+  // Rate Limiting (Slack allows 1 request per second for chat.postMessage)
+  rateLimit: z
+    .object({
+      maxRequests: z.number().min(1).default(1),
+      windowMs: z.number().min(1000).default(1000), // 1 second
+      strategy: z.enum(["fixed", "sliding", "token_bucket"]).default("fixed"),
+    })
+    .optional(),
+
+  // Retry Configuration
+  retryConfig: z
+    .object({
+      maxRetries: z.number().min(0).max(5).default(3),
+      baseDelayMs: z.number().min(100).default(1000),
+      maxDelayMs: z.number().min(1000).default(10000),
+      backoffStrategy: z
+        .enum(["exponential", "linear", "fixed"])
+        .default("exponential"),
+    })
+    .optional(),
+
+  // Feature Flags
+  enableAdvancedLogging: z.boolean().default(false),
+  enableMetrics: z.boolean().default(true),
+  formatMessages: z.boolean().default(true), // Enable markdown formatting
+
+  // Slack-specific options
+  slackOptions: z
+    .object({
+      linkNames: z.boolean().default(true), // Link @user and #channel mentions
+      unfurlLinks: z.boolean().default(true), // Unfurl URLs in messages
+      unfurlMedia: z.boolean().default(true), // Unfurl media in messages
+      parseMode: z.enum(["full", "none"]).default("full"),
+    })
+    .optional(),
+});
+
+// ==================== CONNECTION DEFINITION ====================
+
+/**
+ * Slack connection definition with Bot Token authentication
+ */
+export const SlackConnectionDefinition: ConnectionDefinition = {
+  id: "slack_connection",
+  name: "Slack Bot Connection",
+  type: "api_key",
+
+  authSchema: z.object({
+    type: z.literal("bearer_token"),
+    token: z
+      .string()
+      .min(1, "Bot token is required")
+      .startsWith("xoxb-", "Must be a bot token starting with 'xoxb-'"),
+    workspaceId: z.string().optional(),
+    teamName: z.string().optional(),
+  }),
+
+  async testConnection(auth: any): Promise<boolean> {
+    try {
+      const authHandler = AuthFactory.createAuthHandler({
+        type: "bearer_token",
+      });
+
+      const apiClient = new EnhancedApiClient(
+        "https://slack.com/api",
+        authHandler,
+      );
+
+      // Test connection using auth.test endpoint
+      const response = await apiClient.get("/auth.test", { auth });
+
+      return response.ok && response.user_id;
+    } catch (error) {
+      console.error("Slack connection test failed:", error);
+      return false;
+    }
+  },
+};
+
+// ==================== NODE IMPLEMENTATION ====================
+
+/**
+ * SlackSendMessageNode - Slack API integration for sending messages
+ */
+class SlackSendMessageNode extends ExternalNode {
+  private retryManager: RetryManager;
+  private settings: z.infer<typeof SlackSendMessageSettingsSchema>;
+
+  constructor(settings: z.infer<typeof SlackSendMessageSettingsSchema>) {
+    const authHandler = AuthFactory.createAuthHandler({
+      type: "bearer_token",
+    });
+
+    const rateLimitConfig = settings.rateLimit
+      ? {
+          maxRequests: settings.rateLimit.maxRequests,
+          windowMs: settings.rateLimit.windowMs,
+          strategy: settings.rateLimit.strategy as
+            | "fixed"
+            | "sliding"
+            | "token_bucket",
+        }
+      : undefined;
+
+    super(settings.baseUrl, authHandler, rateLimitConfig);
+
+    this.settings = settings;
+
+    const retryConfig: RetryConfig = {
+      ...DEFAULT_RETRY_CONFIG,
+      ...settings.retryConfig,
+    };
+    this.retryManager = new RetryManager(retryConfig);
+  }
+
+  async execute(context: NodeExecutionContext): Promise<NodeExecutionResult> {
+    try {
+      const input = SlackSendMessageInputSchema.parse(context.inputData);
+      const connection = SlackConnectionDefinition.authSchema.parse(
+        context.connections.slack,
+      );
+
+      const errorContext: ErrorContext = {
+        operation: "slack_send_message",
+        endpoint: "/chat.postMessage",
+        method: "POST",
+        userId: context.nodeId,
+        timestamp: Date.now(),
+        metadata: {
+          channel: input.channel,
+          hasAttachments: !!input.attachments?.length,
+          hasBlocks: !!input.blocks?.length,
+          workspaceId: connection.workspaceId,
+        },
+      };
+
+      const result = await this.retryManager.executeWithRetry(async () => {
+        return await this.performSlackApiCall(input, connection, errorContext);
+      }, "Slack Send Message");
+
+      const output = SlackSendMessageOutputSchema.parse(result);
+
+      return {
+        success: true,
+        data: output,
+        logs: [
+          `Successfully sent message to Slack channel: ${input.channel}`,
+          `Message ID: ${output.messageId}`,
+          `Timestamp: ${output.timestamp}`,
+        ],
+      };
+    } catch (error) {
+      return this.handleApiError(error, {
+        operation: "slack_send_message",
+        userId: context.nodeId,
+      });
+    }
+  }
+
+  private async performSlackApiCall(
+    input: z.infer<typeof SlackSendMessageInputSchema>,
+    connection: z.infer<typeof SlackConnectionDefinition.authSchema>,
+    errorContext: ErrorContext,
+  ): Promise<any> {
+    // Prepare Slack API payload
+    const payload: Record<string, any> = {
+      channel: input.channel,
+      text: input.message,
+    };
+
+    // Add optional Slack-specific parameters
+    if (input.threadTs) payload.thread_ts = input.threadTs;
+    if (input.username) payload.username = input.username;
+    if (input.iconEmoji) payload.icon_emoji = input.iconEmoji;
+    if (input.attachments) payload.attachments = input.attachments;
+    if (input.blocks) payload.blocks = input.blocks;
+
+    // Add Slack options from settings
+    if (this.settings.slackOptions) {
+      const opts = this.settings.slackOptions;
+      payload.link_names = opts.linkNames;
+      payload.unfurl_links = opts.unfurlLinks;
+      payload.unfurl_media = opts.unfurlMedia;
+      payload.parse = opts.parseMode;
+    }
+
+    // Format the message if enabled
+    if (this.settings.formatMessages) {
+      payload.mrkdwn = true;
+    }
+
+    // Make the API call
+    const response = await this.apiClient.post("/chat.postMessage", payload, {
+      auth: connection,
+      timeout: this.settings.timeout,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "User-Agent": "Integration-SDK-Slack/1.0",
+      },
+    });
+
+    // Check if Slack returned an error (Slack returns 200 even for errors)
+    if (!response.ok) {
+      throw new Error(`Slack API error: ${response.error}`);
+    }
+
+    // Transform response to match our output schema
+    return {
+      messageId: response.message.ts,
+      channel: response.channel,
+      timestamp: response.message.ts,
+      threadTimestamp: response.message.thread_ts,
+      permalink: await this.getPermalink(
+        response.channel,
+        response.message.ts,
+        connection,
+      ),
+      metadata: input.metadata,
+    };
+  }
+
+  private async getPermalink(
+    channel: string,
+    messageTs: string,
+    connection: any,
+  ): Promise<string | undefined> {
+    try {
+      const response = await this.apiClient.get(
+        `/chat.getPermalink?channel=${encodeURIComponent(channel)}&message_ts=${messageTs}`,
+        { auth: connection },
+      );
+
+      return response.ok ? response.permalink : undefined;
+    } catch (error) {
+      // Don't fail the main operation if permalink generation fails
+      console.warn("Failed to get Slack message permalink:", error);
+      return undefined;
+    }
+  }
+
+  async validate(settings: unknown): Promise<boolean> {
+    try {
+      SlackSendMessageSettingsSchema.parse(settings);
+      return true;
+    } catch (error) {
+      console.error("Slack settings validation failed:", error);
+      return false;
+    }
+  }
+
+  async setup(): Promise<void> {
+    if (this.settings.enableAdvancedLogging) {
+      console.log("Slack Send Message node initialized with advanced logging");
+    }
+  }
+
+  async teardown(): Promise<void> {
+    if (this.settings.enableAdvancedLogging) {
+      console.log("Slack Send Message node teardown completed");
+    }
+  }
+}
+
+// ==================== NODE DEFINITION EXPORT ====================
+
+export const SlackSendMessageNodeDefinition: IntegrationNodeDefinition = {
+  metadata: {
+    id: "slack_send_message",
+    name: "Slack - Send Message",
+    description:
+      "Send messages to Slack channels with support for threading, attachments, and rich formatting",
+    type: "external",
+    version: "1.0.0",
+    category: "communication",
+    icon: "message-square",
+    color: "#4A154B", // Slack brand color
+  },
+
+  // Documentation and examples
+  configSchema: {
+    input: {
+      schema: SlackSendMessageInputSchema,
+      description: "Input data for sending a message to Slack",
+    },
+    output: {
+      schema: SlackSendMessageOutputSchema,
+      description: "Response data from Slack after sending the message",
+    },
+    settings: {
+      schema: SlackSendMessageSettingsSchema,
+      description: "Configuration settings for Slack integration",
+    },
+  },
+
+  processor: {
+    execute: async (context: NodeExecutionContext) => {
+      const settings = SlackSendMessageSettingsSchema.parse(context.settings);
+      const node = new SlackSendMessageNode(settings);
+      return await node.execute(context);
+    },
+
+    validate: async (settings: unknown) => {
+      try {
+        SlackSendMessageSettingsSchema.parse(settings);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  },
+
+  connectionDefinition: SlackConnectionDefinition,
+
+  onInstall: async () => {
+    console.log("Slack Send Message node installed successfully");
+  },
+
+  onUninstall: async () => {
+    console.log("Slack Send Message node uninstalled");
+  },
+};
+
+// ==================== UTILITY FUNCTIONS ====================
+
+export function createSlackSendMessageNode(
+  settings: Partial<z.infer<typeof SlackSendMessageSettingsSchema>> = {},
+): IntegrationNodeDefinition {
+  const mergedSettings = {
+    apiVersion: "v1",
+    baseUrl: "https://slack.com/api",
+    timeout: 30000,
+    formatMessages: true,
+    ...settings,
+  };
+
+  return {
+    ...SlackSendMessageNodeDefinition,
+    configSchema: {
+      ...SlackSendMessageNodeDefinition.configSchema,
+      settings: {
+        schema: SlackSendMessageSettingsSchema.default(mergedSettings),
+        description: "Pre-configured settings for Slack integration",
+      },
+    },
+  };
+}
+
+// Export types for external use
+export type SlackSendMessageInput = z.infer<typeof SlackSendMessageInputSchema>;
+export type SlackSendMessageOutput = z.infer<
+  typeof SlackSendMessageOutputSchema
+>;
+export type SlackSendMessageSettings = z.infer<
+  typeof SlackSendMessageSettingsSchema
+>;
+export type SlackConnectionConfig = z.infer<
+  typeof SlackConnectionDefinition.authSchema
+>;

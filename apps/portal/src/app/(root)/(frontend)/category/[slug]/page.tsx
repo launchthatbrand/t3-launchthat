@@ -4,10 +4,9 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { formatPostDate, useAllPosts } from "@/lib/blog";
+import { formatPostDate } from "@/lib/blog";
 import { Calendar, ChevronLeft, User } from "lucide-react";
 
-import { cn } from "@acme/ui";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent } from "@acme/ui/card";
 import { Separator } from "@acme/ui/separator";

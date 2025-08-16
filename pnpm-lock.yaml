@@ -1118,6 +1118,9 @@ importers:
       '@acme/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@acme/integration-sdk':
+        specifier: workspace:*
+        version: link:../../packages/integration-sdk
       '@acme/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -2167,6 +2170,40 @@ importers:
       drizzle-kit:
         specifier: ^0.30.5
         version: 0.30.5
+      eslint:
+        specifier: 'catalog:'
+        version: 9.23.0(jiti@2.4.2)
+      prettier:
+        specifier: 'catalog:'
+        version: 3.5.3
+      typescript:
+        specifier: 'catalog:'
+        version: 5.8.2
+
+  packages/integration-sdk:
+    dependencies:
+      react-hook-form:
+        specifier: ^7.54.2
+        version: 7.54.2(react@19.0.0)
+      zod:
+        specifier: 'catalog:'
+        version: 3.24.2
+    devDependencies:
+      '@acme/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint
+      '@acme/prettier-config':
+        specifier: workspace:*
+        version: link:../../tooling/prettier
+      '@acme/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      '@types/node':
+        specifier: ^22.13.11
+        version: 22.13.11
+      '@types/react':
+        specifier: catalog:react19
+        version: 19.0.12
       eslint:
         specifier: 'catalog:'
         version: 9.23.0(jiti@2.4.2)

@@ -19,6 +19,7 @@
   "dependencies": {
     "@acme/auth": "workspace:*",
     "@acme/db": "workspace:*",
+    "@acme/integration-sdk": "workspace:*",
     "@acme/ui": "workspace:*",
     "@acme/validators": "workspace:*",
     "@clerk/nextjs": "^6.18.0",

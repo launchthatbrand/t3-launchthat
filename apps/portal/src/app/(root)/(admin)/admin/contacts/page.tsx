@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
+import { formatPhoneNumber } from "@convex-config/shared";
 import { useQuery } from "convex/react";
 import {
   Building,
@@ -40,7 +41,6 @@ import { CustomerTypeFilter } from "~/app/(root)/(frontend)/contacts/_components
 import { ImportExportButtons } from "~/app/(root)/(frontend)/contacts/_components/ImportExportButtons";
 import { TagFilter } from "~/app/(root)/(frontend)/contacts/_components/TagFilter";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
-import { formatPhoneNumber } from "~/lib/utils";
 
 interface Contact {
   _id: Id<"contacts">;

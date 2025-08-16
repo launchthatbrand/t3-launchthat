@@ -2,7 +2,7 @@
 "use client";
 
 // Import Clerk provider and hook
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { ClerkProvider, useAuth } from "@clerk/clerk-react";
 import { SessionProvider } from "convex-helpers/react/sessions";
@@ -16,7 +16,6 @@ import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
 import { Toaster } from "@acme/ui/toast";
 
 import { ContentProtectionProvider } from "~/components/access/ContentProtectionProvider";
-import { PuckEditor } from "~/components/puckeditor/PuckEditorProvider";
 import { env } from "~/env";
 import useEditorStore from "~/store/useEditorStore";
 import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
@@ -72,7 +71,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 defaultTheme="system"
                 enableSystem
               >
-                <EditorModeDetector />
+                <Suspense fallback={null}>
+                  <EditorModeDetector />
+                </Suspense>
                 {/* <PuckEditor> */}
                 {children}
                 {/* </PuckEditor>  */}

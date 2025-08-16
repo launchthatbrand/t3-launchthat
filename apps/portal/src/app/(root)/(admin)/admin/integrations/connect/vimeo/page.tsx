@@ -1,7 +1,9 @@
 "use client";
 
+import type { Doc } from "@/convex/_generated/dataModel";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { api } from "@/convex/_generated/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -24,9 +26,7 @@ import {
   Input,
 } from "@acme/ui";
 
-import type { Doc } from "../../../../../../convex/_generated/dataModel";
 import { env } from "~/env";
-import { api } from "../../../../../../convex/_generated/api";
 
 const formSchema = z.object({
   name: z.string().min(2, {

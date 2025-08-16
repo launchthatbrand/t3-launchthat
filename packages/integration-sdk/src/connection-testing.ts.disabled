@@ -1,0 +1,676 @@
+import { z } from "zod";
+
+import type { AuthHandler, ErrorContext } from "./external-node.js";
+import {
+  AuthenticationError,
+  AuthFactory,
+  EnhancedApiClient,
+  ExternalApiError,
+} from "./external-node.js";
+import { ConnectionDefinition } from "./types.js";
+
+// ==================== CONNECTION TESTING ====================
+
+export interface ConnectionTestResult {
+  isValid: boolean;
+  error?: string;
+  latency?: number;
+  details?: Record<string, any>;
+  capabilities?: string[];
+}
+
+export interface ConnectionTestConfig {
+  testEndpoints?: string[];
+  timeout?: number;
+  retryCount?: number;
+  includeCapabilityCheck?: boolean;
+}
+
+export class ConnectionTester {
+  private static readonly DEFAULT_TEST_ENDPOINTS = [
+    "/health",
+    "/ping",
+    "/status",
+    "/api/health",
+    "/api/v1/health",
+    "/api/v1/status",
+    "/me",
+    "/user",
+    "/account",
+  ];
+
+  /**
+   * Test a connection using the provided credentials and configuration
+   */
+  static async testConnection(
+    connectionDefinition: ConnectionDefinition,
+    credentials: Record<string, any>,
+    config: ConnectionTestConfig = {},
+  ): Promise<ConnectionTestResult> {
+    const startTime = Date.now();
+
+    try {
+      // Validate credentials against schema
+      const validatedCredentials =
+        connectionDefinition.authSchema.parse(credentials);
+
+      // Create auth handler
+      const authHandler = this.createAuthHandler(
+        connectionDefinition,
+        validatedCredentials,
+      );
+
+      // Determine test endpoints
+      const testEndpoints =
+        config.testEndpoints ||
+        (connectionDefinition.testConnection
+          ? ["/test"]
+          : this.DEFAULT_TEST_ENDPOINTS);
+
+      // Create API client with short timeout for testing
+      const apiClient = new EnhancedApiClient(
+        this.extractBaseUrl(validatedCredentials),
+        authHandler,
+      );
+
+      // Try each test endpoint until one succeeds
+      let lastError: Error | null = null;
+
+      for (const endpoint of testEndpoints) {
+        try {
+          const response = await apiClient.request("GET", endpoint, {
+            timeout: config.timeout || 10000,
+          });
+
+          const latency = Date.now() - startTime;
+
+          // If we get here, the connection is working
+          return {
+            isValid: true,
+            latency,
+            details: {
+              endpoint: endpoint,
+              statusCode: 200, // Assume success since no error was thrown
+              responseTime: latency,
+            },
+            capabilities: config.includeCapabilityCheck
+              ? await this.detectCapabilities(apiClient)
+              : undefined,
+          };
+        } catch (error) {
+          lastError = error as Error;
+
+          // If it's an authentication error, fail immediately
+          if (error instanceof AuthenticationError) {
+            return {
+              isValid: false,
+              error: "Authentication failed: " + error.message,
+              latency: Date.now() - startTime,
+            };
+          }
+
+          // For other errors, continue to next endpoint
+          continue;
+        }
+      }
+
+      // If no endpoint worked, return failure
+      return {
+        isValid: false,
+        error: lastError?.message || "All test endpoints failed",
+        latency: Date.now() - startTime,
+      };
+    } catch (error) {
+      return {
+        isValid: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unknown error during connection test",
+        latency: Date.now() - startTime,
+      };
+    }
+  }
+
+  /**
+   * Test multiple connections concurrently
+   */
+  static async testConnections(
+    tests: Array<{
+      connectionDefinition: ConnectionDefinition;
+      credentials: Record<string, any>;
+      config?: ConnectionTestConfig;
+    }>,
+  ): Promise<Record<string, ConnectionTestResult>> {
+    const results = await Promise.allSettled(
+      tests.map(
+        async ({ connectionDefinition, credentials, config }, index) => {
+          const result = await this.testConnection(
+            connectionDefinition,
+            credentials,
+            config,
+          );
+          return { id: connectionDefinition.id || `test_${index}`, result };
+        },
+      ),
+    );
+
+    const testResults: Record<string, ConnectionTestResult> = {};
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        testResults[result.value.id] = result.value.result;
+      } else {
+        const id = tests[index]?.connectionDefinition.id || `test_${index}`;
+        testResults[id] = {
+          isValid: false,
+          error: result.reason?.message || "Test failed with unknown error",
+        };
+      }
+    });
+
+    return testResults;
+  }
+
+  private static createAuthHandler(
+    connectionDefinition: ConnectionDefinition,
+    credentials: Record<string, any>,
+  ): AuthHandler {
+    switch (connectionDefinition.type) {
+      case "api_key":
+        return AuthFactory.createAuthHandler({
+          type: "api_key",
+          keyField: "apiKey",
+          headerName: credentials.headerName || "Authorization",
+          prefix: credentials.prefix || "Bearer ",
+        });
+
+      case "basic_auth":
+        return AuthFactory.createAuthHandler({
+          type: "basic_auth",
+          usernameField: "username",
+          passwordField: "password",
+        });
+
+      case "oauth2":
+        return AuthFactory.createAuthHandler({
+          type: "bearer_token",
+          tokenField: "accessToken",
+        });
+
+      default:
+        throw new Error(
+          `Unsupported connection type: ${connectionDefinition.type}`,
+        );
+    }
+  }
+
+  private static extractBaseUrl(credentials: Record<string, any>): string {
+    return (
+      credentials.baseUrl ||
+      credentials.apiUrl ||
+      credentials.endpoint ||
+      "https://api.example.com"
+    );
+  }
+
+  private static async detectCapabilities(
+    apiClient: EnhancedApiClient,
+  ): Promise<string[]> {
+    const capabilities: string[] = [];
+
+    // Common capability detection endpoints
+    const capabilityTests = [
+      { endpoint: "/api", capability: "rest_api" },
+      { endpoint: "/graphql", capability: "graphql" },
+      { endpoint: "/webhooks", capability: "webhooks" },
+      { endpoint: "/upload", capability: "file_upload" },
+      { endpoint: "/download", capability: "file_download" },
+      { endpoint: "/search", capability: "search" },
+      { endpoint: "/batch", capability: "batch_operations" },
+    ];
+
+    for (const test of capabilityTests) {
+      try {
+        await apiClient.request("HEAD", test.endpoint, {
+          timeout: 5000,
+        });
+        capabilities.push(test.capability);
+      } catch {
+        // Capability not available
+      }
+    }
+
+    return capabilities;
+  }
+}
+
+// ==================== ACTION DISCOVERY ====================
+
+export interface DiscoveredAction {
+  id: string;
+  name: string;
+  description?: string;
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+  endpoint: string;
+  parameters?: DiscoveredParameter[];
+  responseSchema?: Record<string, any>;
+  category?: string;
+  tags?: string[];
+}
+
+export interface DiscoveredParameter {
+  name: string;
+  type: "string" | "number" | "boolean" | "object" | "array";
+  description?: string;
+  required: boolean;
+  defaultValue?: any;
+  enum?: string[];
+}
+
+export interface ActionDiscoveryConfig {
+  includeInternalEndpoints?: boolean;
+  maxDepth?: number;
+  followLinks?: boolean;
+  customEndpoints?: string[];
+  schemaFormats?: ("openapi" | "swagger" | "jsonschema")[];
+}
+
+export class ActionDiscovery {
+  private apiClient: EnhancedApiClient;
+  private baseUrl: string;
+
+  constructor(apiClient: EnhancedApiClient, baseUrl: string) {
+    this.apiClient = apiClient;
+    this.baseUrl = baseUrl;
+  }
+
+  /**
+   * Discover available actions from an API
+   */
+  async discoverActions(
+    config: ActionDiscoveryConfig = {},
+  ): Promise<DiscoveredAction[]> {
+    const actions: DiscoveredAction[] = [];
+
+    try {
+      // Try OpenAPI/Swagger discovery first
+      const apiDocActions = await this.discoverFromApiDocs(config);
+      actions.push(...apiDocActions);
+
+      // If no API docs found, try common endpoint discovery
+      if (actions.length === 0) {
+        const endpointActions = await this.discoverFromEndpoints(config);
+        actions.push(...endpointActions);
+      }
+
+      // Add any custom endpoints
+      if (config.customEndpoints) {
+        const customActions = await this.discoverFromCustomEndpoints(
+          config.customEndpoints,
+        );
+        actions.push(...customActions);
+      }
+
+      return this.deduplicateActions(actions);
+    } catch (error) {
+      console.warn("Action discovery failed:", error);
+      return [];
+    }
+  }
+
+  private async discoverFromApiDocs(
+    config: ActionDiscoveryConfig,
+  ): Promise<DiscoveredAction[]> {
+    const apiDocEndpoints = [
+      "/openapi.json",
+      "/openapi.yaml",
+      "/swagger.json",
+      "/swagger.yaml",
+      "/api-docs",
+      "/docs/openapi.json",
+      "/v1/openapi.json",
+      "/api/v1/openapi.json",
+    ];
+
+    for (const endpoint of apiDocEndpoints) {
+      try {
+        const response = await this.apiClient.request("GET", endpoint, {
+          timeout: 5000,
+        });
+
+        if (response) {
+          return this.parseOpenApiSpec(response);
+        }
+      } catch {
+        // Try next endpoint
+        continue;
+      }
+    }
+
+    return [];
+  }
+
+  private async discoverFromEndpoints(
+    config: ActionDiscoveryConfig,
+  ): Promise<DiscoveredAction[]> {
+    const commonEndpoints = [
+      // CRUD operations
+      {
+        method: "GET",
+        endpoint: "/users",
+        name: "List Users",
+        category: "users",
+      },
+      {
+        method: "POST",
+        endpoint: "/users",
+        name: "Create User",
+        category: "users",
+      },
+      {
+        method: "GET",
+        endpoint: "/users/{id}",
+        name: "Get User",
+        category: "users",
+      },
+      {
+        method: "PUT",
+        endpoint: "/users/{id}",
+        name: "Update User",
+        category: "users",
+      },
+      {
+        method: "DELETE",
+        endpoint: "/users/{id}",
+        name: "Delete User",
+        category: "users",
+      },
+
+      // Common resources
+      {
+        method: "GET",
+        endpoint: "/projects",
+        name: "List Projects",
+        category: "projects",
+      },
+      {
+        method: "POST",
+        endpoint: "/projects",
+        name: "Create Project",
+        category: "projects",
+      },
+      {
+        method: "GET",
+        endpoint: "/tasks",
+        name: "List Tasks",
+        category: "tasks",
+      },
+      {
+        method: "POST",
+        endpoint: "/tasks",
+        name: "Create Task",
+        category: "tasks",
+      },
+      {
+        method: "GET",
+        endpoint: "/messages",
+        name: "List Messages",
+        category: "messaging",
+      },
+      {
+        method: "POST",
+        endpoint: "/messages",
+        name: "Send Message",
+        category: "messaging",
+      },
+
+      // Common operations
+      {
+        method: "POST",
+        endpoint: "/upload",
+        name: "Upload File",
+        category: "files",
+      },
+      {
+        method: "GET",
+        endpoint: "/download/{id}",
+        name: "Download File",
+        category: "files",
+      },
+      {
+        method: "POST",
+        endpoint: "/search",
+        name: "Search",
+        category: "search",
+      },
+      {
+        method: "GET",
+        endpoint: "/reports",
+        name: "Get Reports",
+        category: "reporting",
+      },
+    ];
+
+    const discoveredActions: DiscoveredAction[] = [];
+
+    for (const endpoint of commonEndpoints) {
+      try {
+        // Test if endpoint exists (HEAD request)
+        await this.apiClient.request({
+          method: "HEAD",
+          url: endpoint.endpoint,
+          timeout: 3000,
+          validateStatus: (status) => status < 500,
+        });
+
+        discoveredActions.push({
+          id: `${endpoint.method.toLowerCase()}_${endpoint.endpoint.replace(/[^a-zA-Z0-9]/g, "_")}`,
+          name: endpoint.name,
+          method: endpoint.method as any,
+          endpoint: endpoint.endpoint,
+          category: endpoint.category,
+        });
+      } catch {
+        // Endpoint not available
+      }
+    }
+
+    return discoveredActions;
+  }
+
+  private async discoverFromCustomEndpoints(
+    endpoints: string[],
+  ): Promise<DiscoveredAction[]> {
+    const actions: DiscoveredAction[] = [];
+
+    for (const endpoint of endpoints) {
+      try {
+        // Try to determine the appropriate method
+        const methods = ["GET", "POST", "PUT", "DELETE"];
+
+        for (const method of methods) {
+          try {
+            await this.apiClient.request({
+              method: method as any,
+              url: endpoint,
+              timeout: 2000,
+              validateStatus: (status) => status < 500,
+            });
+
+            actions.push({
+              id: `${method.toLowerCase()}_${endpoint.replace(/[^a-zA-Z0-9]/g, "_")}`,
+              name: `${method} ${endpoint}`,
+              method: method as any,
+              endpoint: endpoint,
+              category: "custom",
+            });
+            break; // Found working method
+          } catch {
+            // Try next method
+          }
+        }
+      } catch {
+        // Endpoint not accessible
+      }
+    }
+
+    return actions;
+  }
+
+  private parseOpenApiSpec(spec: any): DiscoveredAction[] {
+    const actions: DiscoveredAction[] = [];
+
+    if (!spec.paths) {
+      return actions;
+    }
+
+    for (const [path, pathItem] of Object.entries(
+      spec.paths as Record<string, any>,
+    )) {
+      const methods = ["get", "post", "put", "delete", "patch"];
+
+      for (const method of methods) {
+        const operation = pathItem[method];
+        if (!operation) continue;
+
+        const action: DiscoveredAction = {
+          id:
+            operation.operationId ||
+            `${method}_${path.replace(/[^a-zA-Z0-9]/g, "_")}`,
+          name: operation.summary || `${method.toUpperCase()} ${path}`,
+          description: operation.description,
+          method: method.toUpperCase() as any,
+          endpoint: path,
+          category: operation.tags?.[0] || "api",
+          tags: operation.tags,
+        };
+
+        // Parse parameters
+        if (operation.parameters) {
+          action.parameters = operation.parameters.map((param: any) => ({
+            name: param.name,
+            type: param.schema?.type || "string",
+            description: param.description,
+            required: param.required || false,
+            defaultValue: param.schema?.default,
+            enum: param.schema?.enum,
+          }));
+        }
+
+        // Parse request body parameters
+        if (operation.requestBody?.content?.["application/json"]?.schema) {
+          const schema =
+            operation.requestBody.content["application/json"].schema;
+          if (schema.properties) {
+            const bodyParams = Object.entries(schema.properties).map(
+              ([name, prop]: [string, any]) => ({
+                name,
+                type: prop.type || "string",
+                description: prop.description,
+                required: schema.required?.includes(name) || false,
+                defaultValue: prop.default,
+                enum: prop.enum,
+              }),
+            );
+            action.parameters = [...(action.parameters || []), ...bodyParams];
+          }
+        }
+
+        actions.push(action);
+      }
+    }
+
+    return actions;
+  }
+
+  private deduplicateActions(actions: DiscoveredAction[]): DiscoveredAction[] {
+    const seen = new Set<string>();
+    return actions.filter((action) => {
+      const key = `${action.method}:${action.endpoint}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  }
+}
+
+// ==================== UTILITY FUNCTIONS ====================
+
+/**
+ * Create an ActionDiscovery instance from connection credentials
+ */
+export function createActionDiscovery(
+  connectionDefinition: ConnectionDefinition,
+  credentials: Record<string, any>,
+): ActionDiscovery {
+  // Create auth handler
+  const authHandler = AuthFactory.createAuthHandler({
+    type: connectionDefinition.type === "api_key" ? "api_key" : "bearer_token",
+    keyField: "apiKey",
+    headerName: "Authorization",
+  });
+
+  // Extract base URL
+  const baseUrl =
+    credentials.baseUrl ||
+    credentials.apiUrl ||
+    credentials.endpoint ||
+    "https://api.example.com";
+
+  // Create API client
+  const apiClient = new EnhancedApiClient({
+    baseURL: baseUrl,
+    authHandler,
+    timeout: 30000,
+  });
+
+  return new ActionDiscovery(apiClient, baseUrl);
+}
+
+/**
+ * Comprehensive connection validation and action discovery
+ */
+export async function validateAndDiscoverConnection(
+  connectionDefinition: ConnectionDefinition,
+  credentials: Record<string, any>,
+  config: {
+    testConfig?: ConnectionTestConfig;
+    discoveryConfig?: ActionDiscoveryConfig;
+    includeActionDiscovery?: boolean;
+  } = {},
+): Promise<{
+  connectionTest: ConnectionTestResult;
+  discoveredActions?: DiscoveredAction[];
+}> {
+  // Test connection first
+  const connectionTest = await ConnectionTester.testConnection(
+    connectionDefinition,
+    credentials,
+    config.testConfig,
+  );
+
+  let discoveredActions: DiscoveredAction[] | undefined;
+
+  // If connection is valid and action discovery is enabled
+  if (connectionTest.isValid && config.includeActionDiscovery !== false) {
+    try {
+      const discovery = createActionDiscovery(
+        connectionDefinition,
+        credentials,
+      );
+      discoveredActions = await discovery.discoverActions(
+        config.discoveryConfig,
+      );
+    } catch (error) {
+      console.warn("Action discovery failed:", error);
+      discoveredActions = [];
+    }
+  }
+
+  return {
+    connectionTest,
+    discoveredActions,
+  };
+}

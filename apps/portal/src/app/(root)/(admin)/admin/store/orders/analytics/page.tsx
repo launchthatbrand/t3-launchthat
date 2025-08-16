@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/convex/_generated/api";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice } from "@convex-config/ecommerce/lib";
 import { useQuery } from "convex/react";
 import {
   BarChart,

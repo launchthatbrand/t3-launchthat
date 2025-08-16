@@ -1,0 +1,362 @@
+import { z } from "zod";
+
+import type { AuthHandler, RateLimitConfig } from "./external-node.js";
+import type {
+  ConnectionDefinition,
+  IntegrationNodeDefinition,
+  IODefinition,
+  NodeExecutionContext,
+  NodeExecutionResult,
+} from "./types.js";
+import {
+  ApiKeyHandler,
+  BasicAuthHandler,
+  BearerTokenHandler,
+  ExternalNode,
+} from "./external-node.js";
+
+// =====================================================
+// STANDARDIZED EXTERNAL NODE TEMPLATE
+// =====================================================
+
+// 1. DEFINE INPUT/OUTPUT SCHEMAS (Reusable)
+export const ExampleInputSchema = z.object({
+  action: z.enum(["create", "read", "update", "delete"]),
+  resourceId: z.string().optional(),
+  data: z.record(z.unknown()).optional(),
+});
+
+export const ExampleOutputSchema = z.object({
+  success: z.boolean(),
+  data: z.unknown().optional(),
+  error: z.string().optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export const ExampleSettingsSchema = z.object({
+  timeout: z.number().default(30000),
+  retryAttempts: z.number().min(0).max(5).default(3),
+  defaultFormat: z.enum(["json", "xml"]).default("json"),
+});
+
+// 2. DEFINE CONNECTION DEFINITION
+export const ExampleConnectionDefinition: ConnectionDefinition = {
+  id: "example-service",
+  name: "Example Service",
+  type: "api_key", // or "oauth2", "basic_auth", "custom"
+  authSchema: z.object({
+    apiKey: z.string().min(1, "API key is required"),
+    baseUrl: z.string().url("Base URL must be a valid URL"),
+    // For basic auth:
+    // username: z.string(),
+    // password: z.string(),
+    // For OAuth2:
+    // clientId: z.string(),
+    // clientSecret: z.string(),
+    // accessToken: z.string().optional(),
+    // refreshToken: z.string().optional(),
+  }),
+  testConnection: async (auth: unknown): Promise<boolean> => {
+    try {
+      const { apiKey, baseUrl } =
+        ExampleConnectionDefinition.authSchema.parse(auth);
+
+      // Create auth handler
+      const authHandler = new ApiKeyHandler("apiKey", "Authorization");
+
+      // Create a simple API client for testing
+      const response = await fetch(`${baseUrl}/health`, {
+        headers: await authHandler.authenticate({}, { apiKey }),
+      });
+
+      return response.ok;
+    } catch (error) {
+      console.error("Connection test failed:", error);
+      return false;
+    }
+  },
+};
+
+// 3. EXTERNAL NODE IMPLEMENTATION CLASS
+export class ExampleExternalNode extends ExternalNode {
+  constructor() {
+    const rateLimitConfig: RateLimitConfig = {
+      maxRequests: 100,
+      windowMs: 60000, // 1 minute
+      strategy: "sliding",
+    };
+
+    // Create auth handler based on connection type
+    const authHandler = new ApiKeyHandler("apiKey", "Authorization");
+
+    super(
+      "https://api.example.com", // Base URL - can be overridden by connection
+      authHandler,
+      rateLimitConfig,
+    );
+  }
+
+  async execute(context: NodeExecutionContext): Promise<NodeExecutionResult> {
+    try {
+      // 1. Parse and validate inputs
+      const input = ExampleInputSchema.parse(context.inputData);
+      const settings = ExampleSettingsSchema.parse(context.settings);
+      const connection = ExampleConnectionDefinition.authSchema.parse(
+        context.connections["example-service"],
+      );
+
+      // 2. Set up authentication
+      const auth = {
+        apiKey: connection.apiKey,
+      };
+
+      // 3. Execute the action
+      const { action, resourceId, data } = input;
+      let result: any;
+
+      switch (action) {
+        case "create":
+          if (!data) {
+            throw new Error("Data is required for create operation");
+          }
+          result = await this.apiClient.post("/resources", data, { auth });
+          break;
+
+        case "read":
+          if (!resourceId) {
+            throw new Error("Resource ID is required for read operation");
+          }
+          result = await this.apiClient.get(`/resources/${resourceId}`, {
+            auth,
+          });
+          break;
+
+        case "update":
+          if (!resourceId || !data) {
+            throw new Error(
+              "Resource ID and data are required for update operation",
+            );
+          }
+          result = await this.apiClient.put(`/resources/${resourceId}`, data, {
+            auth,
+          });
+          break;
+
+        case "delete":
+          if (!resourceId) {
+            throw new Error("Resource ID is required for delete operation");
+          }
+          result = await this.apiClient.delete(`/resources/${resourceId}`, {
+            auth,
+          });
+          break;
+
+        default:
+          throw new Error(`Unsupported action: ${action}`);
+      }
+
+      // 4. Return success result
+      return {
+        success: true,
+        data: result,
+        logs: [`${action} operation completed successfully`],
+        metadata: {
+          action,
+          resourceId,
+          timestamp: new Date().toISOString(),
+        },
+      };
+    } catch (error) {
+      // Use the parent class error handling
+      return this.handleApiError(error, {
+        operation: `example-${(context.inputData as any)?.action || "unknown"}`,
+        endpoint: this.apiClient ? "example-api" : "unknown",
+        userId: context.nodeId,
+      });
+    }
+  }
+
+  async validate(settings: unknown): Promise<boolean> {
+    try {
+      ExampleSettingsSchema.parse(settings);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+// 4. CREATE NODE DEFINITION (PROPER STRUCTURE)
+export const ExampleNodeDefinition: IntegrationNodeDefinition = {
+  metadata: {
+    id: "external.example",
+    name: "Example Service",
+    description: "Connect to Example Service for CRUD operations",
+    type: "external",
+    category: "productivity",
+    version: "1.0.0",
+    icon: "Zap",
+    color: "#3B82F6",
+  },
+
+  // CRITICAL: configSchema must use IODefinition structure
+  configSchema: {
+    input: {
+      schema: ExampleInputSchema,
+      description: "Input parameters for the example service operation",
+      examples: [
+        {
+          action: "create",
+          data: { name: "Example Item", description: "This is an example" },
+        },
+        {
+          action: "read",
+          resourceId: "12345",
+        },
+      ],
+      required: true,
+    },
+    output: {
+      schema: ExampleOutputSchema,
+      description: "Result from the example service operation",
+      examples: [
+        {
+          success: true,
+          data: { id: "12345", name: "Example Item" },
+        },
+      ],
+    },
+    settings: {
+      schema: ExampleSettingsSchema,
+      description: "Configuration settings for the example service node",
+      examples: [
+        {
+          timeout: 30000,
+          retryAttempts: 3,
+          defaultFormat: "json",
+        },
+      ],
+      required: false,
+    },
+  },
+
+  // CRITICAL: processor must be an object with methods
+  processor: {
+    execute: async (
+      context: NodeExecutionContext,
+    ): Promise<NodeExecutionResult> => {
+      const node = new ExampleExternalNode();
+      return await node.execute(context);
+    },
+    validate: async (settings: unknown): Promise<boolean> => {
+      const node = new ExampleExternalNode();
+      return await node.validate(settings);
+    },
+    setup: async (): Promise<void> => {
+      // Optional: Any setup needed when node is installed
+      console.log("Example node setup completed");
+    },
+    teardown: async (): Promise<void> => {
+      // Optional: Any cleanup needed when node is uninstalled
+      console.log("Example node teardown completed");
+    },
+  },
+
+  // Optional: Authentication configuration for UI
+  auth: {
+    type: "api_key",
+    fields: [
+      {
+        key: "apiKey",
+        label: "API Key",
+        type: "password",
+        description: "Your Example Service API key",
+        required: true,
+      },
+      {
+        key: "baseUrl",
+        label: "Base URL",
+        type: "text",
+        description: "The base URL for your Example Service instance",
+        required: true,
+        defaultValue: "https://api.example.com",
+      },
+    ],
+    testEndpoint: "/health",
+  },
+
+  // Optional: Configuration fields for UI forms
+  configFields: [
+    {
+      key: "timeout",
+      label: "Request Timeout (ms)",
+      type: "number",
+      description: "How long to wait for API responses",
+      defaultValue: 30000,
+      required: false,
+    },
+    {
+      key: "retryAttempts",
+      label: "Retry Attempts",
+      type: "number",
+      description: "Number of times to retry failed requests",
+      defaultValue: 3,
+      required: false,
+    },
+  ],
+
+  // Optional lifecycle hooks
+  onInstall: async (): Promise<void> => {
+    console.log("Example Service integration installed");
+  },
+
+  onUninstall: async (): Promise<void> => {
+    console.log("Example Service integration uninstalled");
+  },
+};
+
+// 5. EXPORT CONNECTION FOR REGISTRY
+export const ExampleConnections = [ExampleConnectionDefinition];
+
+// 6. USAGE EXAMPLE:
+/*
+// To register this node:
+import { ExampleNodeDefinition, ExampleConnections } from './example-node';
+
+// Register with your node registry
+nodeRegistry.register(ExampleNodeDefinition);
+connectionRegistry.register(...ExampleConnections);
+*/
+
+// =====================================================
+// KEY DIFFERENCES FROM CURRENT IMPLEMENTATIONS:
+// =====================================================
+
+/*
+1. PROPER SCHEMA STRUCTURE:
+   - configSchema uses IODefinition with { schema, description, examples }
+   - No schema duplication between top-level and configSchema
+
+2. PROPER PROCESSOR STRUCTURE:
+   - processor is an object with execute, validate, setup, teardown methods
+   - NOT just an execute function
+
+3. PROPER ERROR HANDLING:
+   - Uses ExternalNode base class for consistent error handling
+   - Leverages handleApiError method for standardized error responses
+
+4. PROPER AUTH CONFIGURATION:
+   - Uses auth field for UI configuration
+   - ConnectionDefinition for actual auth logic
+   - Consistent auth handler usage
+
+5. PROPER TYPE SAFETY:
+   - All schemas are properly typed
+   - Input/output validation at runtime
+   - Connection validation with testConnection
+
+6. PROPER LIFECYCLE:
+   - onInstall/onUninstall hooks
+   - setup/teardown methods in processor
+   - Proper resource management
+*/

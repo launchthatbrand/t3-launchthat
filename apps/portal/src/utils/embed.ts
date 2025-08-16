@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await */
 "use server";
 
 /**
@@ -21,7 +22,8 @@ interface GenerateEmbedHtmlOptions {
 /**
  * Generates a URL for embedding a page
  */
-export function generateEmbedUrl({
+// eslint-disable-next-line @typescript-eslint/require-await
+export async function generateEmbedUrl({
   page,
   params = {},
   baseUrl = typeof window !== "undefined" ? window.location.origin : "",
@@ -40,7 +42,7 @@ export function generateEmbedUrl({
 /**
  * Generates HTML code for an iframe
  */
-export function generateEmbedHtml({
+export async function generateEmbedHtml({
   url,
   width = "100%",
   height = "600px",
@@ -61,7 +63,7 @@ export function generateEmbedHtml({
 /**
  * Generates Monday.com specific embed code
  */
-export function generateMondayEmbedCode({
+export async function generateMondayEmbedCode({
   boardId = "",
   workspaceId = "",
   width = "100%",

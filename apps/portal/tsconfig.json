@@ -5,6 +5,7 @@
     "lib": ["ES2022", "dom", "dom.iterable"],
     "jsx": "preserve",
     "baseUrl": ".",
+    "moduleResolution": "bundler",
     "paths": {
       "~/*": ["./src/*"],
       "@convexcms-config": ["./src/convexcms.config.ts"],
@@ -16,8 +17,7 @@
       "@/lib/*": ["./src/lib/*"],
       "@acme/ui/*": ["../../packages/ui/src/*"]
     },
-    "plugins": [{ "name": "next" }],
-    "module": "esnext"
+    "plugins": [{ "name": "next" }]
   },
   "include": [".", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
