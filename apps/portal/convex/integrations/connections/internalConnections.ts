@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 
+import { v } from "convex/values";
+
 import type { Doc, Id } from "../../_generated/dataModel";
+import { internal } from "../../_generated/api";
 import {
   internalAction,
   internalMutation,
@@ -8,12 +11,9 @@ import {
   mutation,
 } from "../../_generated/server";
 
-import { internal } from "../../_generated/api";
-import { v } from "convex/values";
-
 /**
- * Create default connections for internal apps
- * This is called when apps are seeded to ensure internal apps have their default connections
+ * Create default connections for internal node types
+ * This is called when node types are seeded to ensure internal nodes have their default connections
  */
 export const createDefaultInternalConnections = internalMutation({
   args: {},
@@ -26,42 +26,39 @@ export const createDefaultInternalConnections = internalMutation({
     const errors: string[] = [];
 
     try {
-      // Get all internal apps
-      const internalApps = await ctx.db
-        .query("apps")
-        .filter((q) => q.eq(q.field("isInternal"), true))
-        .collect();
+      // Define internal node types that should have default connections
+      const internalNodeTypes = ["webhook", "orders", "passthrough"];
 
-      console.log(`Found ${internalApps.length} internal apps`);
+      console.log(`Processing ${internalNodeTypes.length} internal node types`);
 
       // Get all existing connections to avoid duplicates
       const existingConnections = await ctx.db.query("connections").collect();
-      const existingConnectionsByApp = new Map<
-        Id<"apps">,
+      const existingConnectionsByNodeType = new Map<
+        string,
         Doc<"connections">[]
       >();
 
       for (const conn of existingConnections) {
-        const list = existingConnectionsByApp.get(conn.appId) ?? [];
+        const list = existingConnectionsByNodeType.get(conn.nodeType) ?? [];
         list.push(conn);
-        existingConnectionsByApp.set(conn.appId, list);
+        existingConnectionsByNodeType.set(conn.nodeType, list);
       }
 
       const now = Date.now();
 
-      for (const app of internalApps) {
+      for (const nodeType of internalNodeTypes) {
         try {
-          // Check if this internal app already has a default connection
-          const existingAppConnections =
-            existingConnectionsByApp.get(app._id) ?? [];
-          const hasDefaultConnection = existingAppConnections.some(
+          // Check if this internal node type already has a default connection
+          const existingNodeTypeConnections =
+            existingConnectionsByNodeType.get(nodeType) ?? [];
+          const hasDefaultConnection = existingNodeTypeConnections.some(
             (conn) =>
-              conn.name === `${app.name} (Default)` || conn.name === app.name,
+              conn.name === `${nodeType} (Default)` || conn.name === nodeType,
           );
 
           if (!hasDefaultConnection) {
-            // Create a default connection for this internal app
-            const connectionName = `${app.name} (Default)`;
+            // Create a default connection for this internal node type
+            const connectionName = `${nodeType} (Default)`;
 
             const defaultConfig = JSON.stringify({
               enabled: true,
@@ -70,7 +67,7 @@ export const createDefaultInternalConnections = internalMutation({
             });
 
             await ctx.db.insert("connections", {
-              appId: app._id,
+              nodeType: nodeType,
               name: connectionName,
               // do not set real credentials; internal placeholder
               credentials: undefined,
@@ -84,12 +81,12 @@ export const createDefaultInternalConnections = internalMutation({
             });
 
             connectionsCreated++;
-            console.log(`Created default connection for ${app.name}`);
+            console.log(`Created default connection for ${nodeType}`);
           } else {
-            console.log(`Default connection already exists for ${app.name}`);
+            console.log(`Default connection already exists for ${nodeType}`);
           }
         } catch (error) {
-          const errorMsg = `Failed to create connection for ${app.name}: ${error}`;
+          const errorMsg = `Failed to create connection for ${nodeType}: ${error}`;
           console.error(errorMsg);
           errors.push(errorMsg);
         }
@@ -100,11 +97,10 @@ export const createDefaultInternalConnections = internalMutation({
         errors,
       };
     } catch (error) {
-      console.error("Error in createDefaultInternalConnections:", error);
-      errors.push(`General error: ${error}`);
+      console.error("Failed to create default internal connections:", error);
       return {
-        connectionsCreated,
-        errors,
+        connectionsCreated: 0,
+        errors: [String(error)],
       };
     }
   },
@@ -125,16 +121,16 @@ export const getConnectionSecrets = internalAction({
   returns: v.any(), // Simplified to avoid type instantiation issues
   handler: async (ctx, args) => {
     try {
-    const raw = await ctx.runQuery(
-      internal.integrations.connections.internalConnections.getRawById,
-      { id: args.connectionId },
-    );
+      const raw = await ctx.runQuery(
+        internal.integrations.connections.internalConnections.getRawById,
+        { id: args.connectionId },
+      );
 
       if (!raw) {
         return null;
       }
 
-    return raw.secrets ?? null;
+      return raw.secrets ?? null;
     } catch (error) {
       // Log error for debugging but don't expose details
       console.error("Failed to get connection secrets:", error);
@@ -228,25 +224,25 @@ export const checkRateLimit = internalAction({
 });
 
 /**
- * Get existing default connection for an internal app
+ * Get existing default connection for an internal node type
  * This only reads, doesn't create - use createDefaultInternalConnections for creation
  */
 export const getInternalConnection = internalQuery({
   args: {
-    appId: v.id("apps"),
+    nodeType: v.string(),
   },
   returns: v.any(), // Simplified to avoid deep type instantiation issues with nested validators
   handler: async (ctx, args) => {
-    // First check if the app is internal
-    const app = await ctx.db.get(args.appId);
-    if (!app || !app.isInternal) {
+    // Check if the node type is internal
+    const internalNodeTypes = ["webhook", "orders", "passthrough"];
+    if (!internalNodeTypes.includes(args.nodeType)) {
       return null;
     }
 
     // Look for existing default connection
     const existingConnection = await ctx.db
       .query("connections")
-      .withIndex("by_app_id", (q) => q.eq("appId", args.appId))
+      .withIndex("by_node_type", (q) => q.eq("nodeType", args.nodeType))
       .filter((q) => q.eq(q.field("ownerId"), "system"))
       .first();
 
@@ -275,7 +271,7 @@ export const testCreateInternalConnections = mutation({
 /** Helper mutation to insert connection with pre-encrypted secrets */
 export const insertConnectionWithSecrets = internalMutation({
   args: {
-    appId: v.id("apps"),
+    nodeType: v.string(),
     name: v.string(),
     credentials: v.string(),
     ciphertext: v.string(),
@@ -288,7 +284,7 @@ export const insertConnectionWithSecrets = internalMutation({
   returns: v.id("connections"),
   handler: async (ctx, args) => {
     return await ctx.db.insert("connections", {
-      appId: args.appId,
+      nodeType: args.nodeType,
       name: args.name,
       // Keep legacy for backward compatibility
       credentials: args.credentials,

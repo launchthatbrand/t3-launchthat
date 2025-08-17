@@ -1,0 +1,462 @@
+# Integration Seeding System PRD
+
+## Executive Summary
+
+Implement a robust, type-safe integration seeding system using Convex best practices that evolves from hard-coded integrations to a fully automated marketplace discovery system. This system will ensure reliable data initialization across all environments while supporting the platform's evolution from Phase 1 (Foundation) through Phase 3 (Marketplace).
+
+## Problem Statement
+
+### Current State
+- Integration nodes are manually created in the database through ad-hoc seeding
+- No standardized approach for seeding integration definitions
+- Risk of data inconsistency across environments
+- Manual process prone to errors and difficult to maintain
+- No version management for seeded integration data
+
+### Target State
+- Automated, type-safe seeding system using Convex internalMutation
+- Idempotent operations that safely handle multiple runs
+- Environment-specific seeding strategies (dev, staging, production)
+- Automated discovery and registration of integration manifests
+- Version-aware seeding with conflict resolution
+
+## Goals & Success Metrics
+
+### Primary Goals
+1. **Reliability**: 100% successful seeding across all environments
+2. **Type Safety**: All seeding operations type-checked against Convex schema
+3. **Performance**: Seeding completes in under 30 seconds for full catalog
+4. **Maintainability**: Zero manual intervention required for standard deployments
+
+### Success Metrics
+- Seeding success rate: 100%
+- Time to seed full integration catalog: <30 seconds
+- Developer setup time reduction: 50% (from manual to automated)
+- Environment consistency: 0 data drift between environments
+
+## User Stories
+
+### Developer
+- As a developer, I want seeding to happen automatically during dev setup so I can start working immediately
+- As a developer, I want seeding to be idempotent so I can run it multiple times safely
+- As a developer, I want clear error messages when seeding fails so I can debug quickly
+
+### Platform Administrator
+- As a platform admin, I want environment-specific seeding so I can control what integrations are available where
+- As a platform admin, I want seeding logs and metrics so I can monitor the process
+- As a platform admin, I want rollback capabilities so I can recover from failed deployments
+
+### Integration Developer
+- As an integration developer, I want my manifest to be automatically discovered so my integration appears in the platform
+- As an integration developer, I want version management so I can deploy updates safely
+
+## Technical Requirements
+
+### Core Architecture
+
+#### 1. Convex Seeding Foundation
+- **internalMutation Pattern**: Use Convex recommended seeding approach
+- **Idempotent Operations**: Safe to run multiple times with existence checks
+- **Type Safety**: Full TypeScript integration with schema validation
+- **Error Handling**: Comprehensive error catching and reporting
+
+#### 2. Multi-Phase Evolution
+- **Phase 1**: Hard-coded integration seeding from current definitions
+- **Phase 2**: Manifest-based auto-discovery seeding
+- **Phase 3**: Marketplace and community integration seeding
+
+#### 3. Environment Management
+- **Development**: Full catalog including experimental integrations
+- **Staging**: Production catalog plus approved beta integrations
+- **Production**: Only stable, reviewed integrations
+
+#### 4. Performance & Monitoring
+- **Batch Operations**: Efficient database writes with batching
+- **Progress Tracking**: Real-time seeding progress and metrics
+- **Logging**: Comprehensive audit trail of seeding operations
+
+### Implementation Phases
+
+#### Phase 1: Foundation Seeding (Week 1-2)
+**Goal**: Implement reliable seeding for current hard-coded integrations
+
+**Deliverables**:
+1. **Core Seeding Infrastructure**
+   - `convex/integrations/init.ts` with internalMutation
+   - Idempotent seeding with existence checks
+   - Type-safe operations against current schema
+   - Basic error handling and logging
+
+2. **Integration Node Seeding**
+   - WordPress integration node creation
+   - Stripe integration node creation
+   - Action and trigger registry seeding
+   - Connection definition seeding
+
+3. **Development Workflow Integration**
+   - Package.json scripts for automated seeding
+   - Dev server integration with `--run init`
+   - CLI commands for manual seeding
+   - Error reporting and debugging tools
+
+4. **Testing & Validation**
+   - Unit tests for seeding functions
+   - Integration tests for full seeding workflow
+   - Performance benchmarks
+   - Data consistency validation
+
+#### Phase 2: Manifest-Based Discovery (Week 3-4)
+**Goal**: Implement auto-discovery of integration manifests
+
+**Deliverables**:
+1. **Manifest Discovery System**
+   - File system scanning for integration manifests
+   - Manifest validation and parsing
+   - Dependency resolution between integrations
+   - Version conflict detection and resolution
+
+2. **Enhanced Seeding Logic**
+   - Dynamic integration registration
+   - Manifest-to-database transformation
+   - Incremental seeding for updates
+   - Rollback capabilities for failed operations
+
+3. **Environment Configuration**
+   - Environment-specific manifest filtering
+   - Integration enable/disable per environment
+   - Feature flags for experimental integrations
+   - Configuration management system
+
+4. **Developer Tools**
+   - Manifest validation CLI commands
+   - Integration preview and testing tools
+   - Seeding status dashboard
+   - Performance monitoring and alerts
+
+#### Phase 3: Marketplace Seeding (Week 5-6)
+**Goal**: Support community and marketplace integration seeding
+
+**Deliverables**:
+1. **Multi-Source Seeding**
+   - Official integration seeding
+   - Community integration discovery
+   - Marketplace integration installation
+   - External registry integration
+
+2. **Advanced Management Features**
+   - A/B testing for integration rollouts
+   - Gradual deployment strategies
+   - Health checks and monitoring
+   - Automated rollback on failures
+
+3. **Security & Validation**
+   - Integration signature verification
+   - Security scanning integration
+   - Malware detection for community integrations
+   - Sandbox testing environment
+
+4. **Analytics & Reporting**
+   - Seeding performance metrics
+   - Integration usage analytics
+   - Error rate monitoring
+   - Community adoption tracking
+
+### Technical Specifications
+
+#### Seeding Function Architecture
+```typescript
+// convex/integrations/init.ts
+import { internalMutation } from "../_generated/server";
+import { v } from "convex/values";
+
+export interface SeedingResult {
+  integrationNodesCreated: number;
+  actionsCreated: number;
+  triggersCreated: number;
+  connectionsCreated: number;
+  errors: string[];
+  duration: number;
+}
+
+export const seedIntegrations = internalMutation({
+  args: {
+    environment: v.optional(v.string()),
+    forceReseed: v.optional(v.boolean()),
+    integrationIds: v.optional(v.array(v.string())),
+  },
+  returns: v.object({
+    integrationNodesCreated: v.number(),
+    actionsCreated: v.number(),
+    triggersCreated: v.number(),
+    connectionsCreated: v.number(),
+    errors: v.array(v.string()),
+    duration: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    // Implementation details
+  },
+});
+```
+
+#### Manifest Discovery System
+```typescript
+// src/integrations/core/discovery.ts
+export interface IntegrationManifest {
+  id: string;
+  name: string;
+  version: string;
+  actions: ActionDefinition[];
+  triggers: TriggerDefinition[];
+  connections: ConnectionDefinition[];
+  environment?: string[];
+  dependencies?: string[];
+}
+
+export class ManifestDiscovery {
+  async discoverManifests(): Promise<IntegrationManifest[]> {
+    // Auto-discovery logic
+  }
+  
+  async validateManifest(manifest: IntegrationManifest): Promise<boolean> {
+    // Validation logic
+  }
+  
+  async resolvedependencies(manifests: IntegrationManifest[]): Promise<IntegrationManifest[]> {
+    // Dependency resolution
+  }
+}
+```
+
+#### Environment Configuration
+```typescript
+// convex/integrations/config.ts
+export interface EnvironmentConfig {
+  name: string;
+  allowedIntegrations: string[];
+  blockedIntegrations: string[];
+  featureFlags: Record<string, boolean>;
+  seedingStrategy: 'full' | 'incremental' | 'selective';
+}
+
+export const environments: Record<string, EnvironmentConfig> = {
+  development: {
+    name: 'development',
+    allowedIntegrations: ['*'],
+    blockedIntegrations: [],
+    featureFlags: { experimentalFeatures: true },
+    seedingStrategy: 'full',
+  },
+  staging: {
+    name: 'staging',
+    allowedIntegrations: ['wordpress', 'stripe', 'monday'],
+    blockedIntegrations: ['experimental-*'],
+    featureFlags: { experimentalFeatures: false },
+    seedingStrategy: 'incremental',
+  },
+  production: {
+    name: 'production',
+    allowedIntegrations: ['wordpress', 'stripe'],
+    blockedIntegrations: ['beta-*', 'experimental-*'],
+    featureFlags: { experimentalFeatures: false },
+    seedingStrategy: 'selective',
+  },
+};
+```
+
+#### Database Schema Requirements
+```sql
+-- Seeding audit log
+CREATE TABLE seeding_logs (
+  id TEXT PRIMARY KEY,
+  environment TEXT NOT NULL,
+  started_at TIMESTAMP NOT NULL,
+  completed_at TIMESTAMP,
+  status TEXT NOT NULL, -- running, completed, failed
+  integrations_processed INTEGER DEFAULT 0,
+  actions_created INTEGER DEFAULT 0,
+  triggers_created INTEGER DEFAULT 0,
+  connections_created INTEGER DEFAULT 0,
+  errors JSONB,
+  metadata JSONB,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Integration manifest cache
+CREATE TABLE integration_manifests (
+  id TEXT PRIMARY KEY,
+  integration_id TEXT NOT NULL,
+  version TEXT NOT NULL,
+  manifest JSONB NOT NULL,
+  checksum TEXT NOT NULL,
+  environment TEXT NOT NULL,
+  status TEXT NOT NULL, -- discovered, validated, seeded, error
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Seeding conflicts and resolutions
+CREATE TABLE seeding_conflicts (
+  id TEXT PRIMARY KEY,
+  integration_id TEXT NOT NULL,
+  conflict_type TEXT NOT NULL, -- version, dependency, duplicate
+  current_version TEXT,
+  new_version TEXT,
+  resolution TEXT, -- skip, override, merge
+  resolved_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### File Structure
+```
+apps/portal/
+├── convex/
+│   ├── integrations/
+│   │   ├── init.ts                  # Main seeding entry point
+│   │   ├── seeds/
+│   │   │   ├── foundation.ts        # Phase 1: Hard-coded integrations
+│   │   │   ├── manifests.ts         # Phase 2: Manifest-based seeding
+│   │   │   └── marketplace.ts       # Phase 3: Marketplace seeding
+│   │   ├── discovery/
+│   │   │   ├── scanner.ts           # File system scanning
+│   │   │   ├── validator.ts         # Manifest validation
+│   │   │   └── resolver.ts          # Dependency resolution
+│   │   └── config/
+│   │       ├── environments.ts      # Environment configurations
+│   │       └── policies.ts          # Seeding policies
+├── src/
+│   ├── integrations/
+│   │   ├── core/
+│   │   │   ├── seeding/             # Seeding utilities
+│   │   │   └── discovery/           # Discovery system
+│   │   └── manifests/               # Integration manifests
+└── scripts/
+    ├── seed-integrations.ts         # CLI seeding script
+    ├── validate-manifests.ts        # Manifest validation
+    └── generate-seeding-report.ts   # Seeding analytics
+```
+
+### Package.json Integration
+```json
+{
+  "scripts": {
+    "predev": "convex dev --until-success --run integrations/init",
+    "seed": "convex run integrations/init",
+    "seed:force": "convex run integrations/init '{\"forceReseed\": true}'",
+    "seed:env": "convex run integrations/init '{\"environment\": \"staging\"}'",
+    "seed:specific": "convex run integrations/init '{\"integrationIds\": [\"wordpress\", \"stripe\"]}'",
+    "validate:manifests": "tsx scripts/validate-manifests.ts",
+    "report:seeding": "tsx scripts/generate-seeding-report.ts"
+  }
+}
+```
+
+## Performance Requirements
+
+### Seeding Performance Targets
+- **Full Catalog Seeding**: <30 seconds for 100 integrations
+- **Incremental Seeding**: <5 seconds for single integration update
+- **Validation**: <10 seconds for manifest validation
+- **Discovery**: <15 seconds for file system scanning
+
+### Scalability Requirements
+- **Integration Count**: Support 1000+ integrations without performance degradation
+- **Concurrent Seeding**: Handle multiple environment seeding simultaneously
+- **Memory Usage**: <500MB peak memory usage during seeding
+- **Database Load**: <100 operations per second during seeding
+
+## Risk Assessment
+
+### Technical Risks
+1. **Schema Evolution**: Changes to Convex schema could break seeding
+   - *Mitigation*: Comprehensive migration system and version compatibility checks
+
+2. **Performance Degradation**: Large integration catalogs could slow seeding
+   - *Mitigation*: Batch operations, streaming processing, and performance monitoring
+
+3. **Data Corruption**: Failed seeding could leave database in inconsistent state
+   - *Mitigation*: Transactional operations, rollback capabilities, and data validation
+
+### Operational Risks
+1. **Environment Drift**: Different data across environments
+   - *Mitigation*: Automated consistency checks and standardized seeding
+
+2. **Dependency Conflicts**: Integration dependencies could create circular references
+   - *Mitigation*: Dependency analysis and conflict resolution algorithms
+
+3. **Security Vulnerabilities**: Malicious manifests could compromise system
+   - *Mitigation*: Manifest validation, sandboxing, and security scanning
+
+## Success Criteria
+
+### Phase 1 Success Criteria
+- [ ] Seeding system successfully initializes all current integrations
+- [ ] Idempotent operations confirmed through multiple test runs
+- [ ] Dev workflow automation reduces setup time by 50%
+- [ ] Type safety verified with zero runtime type errors
+- [ ] Performance targets met for current integration count
+
+### Phase 2 Success Criteria
+- [ ] Manifest discovery automatically detects all integration definitions
+- [ ] Environment-specific seeding correctly filters integrations
+- [ ] Version management prevents conflicts and data corruption
+- [ ] Developer tools enable easy manifest validation and testing
+
+### Phase 3 Success Criteria
+- [ ] Marketplace seeding supports external integration sources
+- [ ] Security validation prevents malicious integration deployment
+- [ ] A/B testing enables safe integration rollouts
+- [ ] Analytics provide insights into seeding performance and adoption
+
+## Timeline & Milestones
+
+### Week 1: Foundation Setup
+- Days 1-2: Core seeding infrastructure and schema
+- Days 3-4: Hard-coded integration seeding implementation
+- Days 5-7: Testing, validation, and performance optimization
+
+### Week 2: Workflow Integration
+- Days 1-2: Package.json integration and CLI commands
+- Days 3-4: Error handling and logging systems
+- Days 5-7: Documentation and developer onboarding
+
+### Week 3: Manifest Discovery
+- Days 1-3: File system scanning and manifest parsing
+- Days 4-5: Validation and dependency resolution
+- Days 6-7: Environment configuration and filtering
+
+### Week 4: Enhanced Seeding
+- Days 1-2: Dynamic seeding logic implementation
+- Days 3-4: Incremental seeding and rollback capabilities
+- Days 5-7: Performance optimization and monitoring
+
+### Week 5: Marketplace Preparation
+- Days 1-3: Multi-source seeding architecture
+- Days 4-5: Security validation and sandboxing
+- Days 6-7: A/B testing and gradual deployment
+
+### Week 6: Polish & Launch
+- Days 1-2: Analytics and reporting systems
+- Days 3-4: Final testing and performance validation
+- Days 5-7: Documentation, training, and launch preparation
+
+## Resource Requirements
+
+### Development Resources
+- 1 Senior Backend Developer (lead, seeding architecture)
+- 1 Full-Stack Developer (integration and testing)
+- 1 DevOps Engineer (CI/CD and deployment automation)
+
+### Infrastructure Requirements
+- Enhanced development environment with seeding automation
+- Staging environment for testing multi-environment seeding
+- Performance monitoring and analytics infrastructure
+- Security scanning and validation tools
+
+### Success Metrics Tracking
+- Seeding performance dashboards
+- Error rate monitoring and alerting
+- Integration adoption analytics
+- Developer experience surveys and feedback
+
+This PRD establishes the foundation for a robust, scalable integration seeding system that evolves with the platform while maintaining reliability and performance standards. 

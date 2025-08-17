@@ -1,16 +1,16 @@
 // Keep httpAction import from generated server
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+// Correct import for httpRouter according to docs
+import { httpRouter } from "convex/server";
+
 import { api, internal } from "./_generated/api";
+import { httpAction } from "./_generated/server";
 import {
   createMediaFromWebhook,
   uploadMediaOptions,
   uploadMediaPost,
 } from "./core/media/http";
-
-import { httpAction } from "./_generated/server";
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-// Correct import for httpRouter according to docs
-import { httpRouter } from "convex/server";
 
 /**
  * Request body structure expected by the createAuthNetTransaction endpoint.
@@ -191,144 +191,8 @@ http.route({
   handler: createMediaFromWebhook,
 });
 
-/**
- * Main webhook endpoint for receiving external webhooks
- * URL format: /webhook/:appKey
- */
-http.route({
-  path: "/webhook/:appKey",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    try {
-      // Extract app key from URL path
-      const url = new URL(request.url);
-      const appKey = url.pathname.split("/").pop();
-
-      if (!appKey) {
-        return new Response(
-          JSON.stringify({ error: "Missing app key in URL" }),
-          {
-            status: 400,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      // Get app by key
-      const app = await ctx.runQuery(
-        internal.integrations.apps.queries.getByKey,
-        {
-          key: appKey,
-        },
-      );
-
-      if (!app) {
-        return new Response(JSON.stringify({ error: "Invalid app key" }), {
-          status: 404,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      // Parse request body
-      let payload: any;
-      try {
-        const contentType = request.headers.get("content-type") || "";
-        if (contentType.includes("application/json")) {
-          payload = await request.json();
-        } else if (contentType.includes("application/x-www-form-urlencoded")) {
-          const formData = await request.formData();
-          payload = Object.fromEntries(formData.entries());
-        } else {
-          const textPayload = await request.text();
-          // Try to parse as JSON, fallback to text
-          try {
-            payload = JSON.parse(textPayload);
-          } catch {
-            payload = { body: textPayload };
-          }
-        }
-      } catch (error) {
-        return new Response(JSON.stringify({ error: "Invalid request body" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      // Convert headers to plain object
-      const headers: Record<string, string> = {};
-      for (const [key, value] of request.headers.entries()) {
-        headers[key.toLowerCase()] = value;
-      }
-
-      // Add request metadata to payload
-      const enrichedPayload = {
-        ...payload,
-        _metadata: {
-          method: request.method,
-          url: request.url,
-          userAgent: headers["user-agent"],
-          contentType: headers["content-type"],
-          timestamp: Date.now(),
-        },
-      };
-
-      // Process the webhook
-      const result = await ctx.runAction(
-        internal.integrations.webhooks.handler.handleIncomingWebhook,
-        {
-          appId: app._id,
-          triggerKey: "webhook", // Default trigger key
-          payload: enrichedPayload,
-          headers,
-          connectionId: app.defaultConnectionId,
-          source: "http_endpoint",
-        },
-      );
-
-      if (!result.success) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: result.error,
-          }),
-          {
-            status: 400,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      // Return success response
-      return new Response(
-        JSON.stringify({
-          success: true,
-          runIds: result.runIds,
-          scenariosTriggered: result.scenariosTriggered,
-          idempotent: result.idempotent,
-          message: result.idempotent
-            ? "Request was processed idempotently"
-            : `Triggered ${result.scenariosTriggered} scenario(s)`,
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-    } catch (error) {
-      console.error("Webhook endpoint error:", error);
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Internal server error",
-        }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-    }
-  }),
-});
+// Webhook endpoint removed - was dependent on apps system which has been removed
+// New webhook system will be implemented based on node types and connections
 
 /**
  * Health check endpoint for monitoring

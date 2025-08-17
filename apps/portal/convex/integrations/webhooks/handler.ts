@@ -1,9 +1,9 @@
-import { ErrorCode, createError } from "../lib/errors";
-import { createCorrelationId, createIdempotencyKey } from "../lib/idempotency";
+import { v } from "convex/values";
 
 import { internal } from "../../_generated/api";
 import { internalAction } from "../../_generated/server";
-import { v } from "convex/values";
+import { createError, ErrorCode } from "../lib/errors";
+import { createCorrelationId, createIdempotencyKey } from "../lib/idempotency";
 
 /**
  * Main webhook handler that processes incoming webhooks and executes scenarios
@@ -11,7 +11,6 @@ import { v } from "convex/values";
  */
 export const handleIncomingWebhook = internalAction({
   args: {
-    appId: v.id("apps"),
     triggerKey: v.string(),
     payload: v.any(),
     headers: v.any(),
@@ -31,7 +30,6 @@ export const handleIncomingWebhook = internalAction({
       const webhookResult = await ctx.runAction(
         internal.integrations.actions.webhooks.processInboundWebhook,
         {
-          appId: args.appId,
           triggerKey: args.triggerKey,
           payload: args.payload,
           headers: args.headers,

@@ -1,8 +1,5 @@
-import { integrationsAppsSchema } from "./apps/schema";
 import { integrationsConnectionsSchema } from "./connections/schema";
-import { integrationsNodesSchema } from "./nodes/schema";
-import { integrationsScenarioLogsSchema } from "./scenarioLogs/schema";
-import { integrationsScenarioRunsSchema } from "./scenarioRuns/schema";
+import { integrationsNodesSchema } from "./integrationNodes/schema";
 import { integrationsScenariosSchema } from "./scenarios/schema";
 
 /**
@@ -10,9 +7,6 @@ import { integrationsScenariosSchema } from "./scenarios/schema";
  */
 export const integrationsSchema = {
   ...integrationsScenariosSchema,
-  ...integrationsNodesSchema,
-  ...integrationsAppsSchema,
+  ...integrationsNodesSchema, // This now includes both integrationNodes and scenarioNodes
   ...integrationsConnectionsSchema,
-  ...integrationsScenarioRunsSchema,
-  ...integrationsScenarioLogsSchema,
 };

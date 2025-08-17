@@ -14,7 +14,16 @@
     "test": "jest",
     "ssl-proxy": "local-ssl-proxy --source 3001 --target 3000",
     "with-env": "dotenv -e ../../.env --",
-    "migrate:groups": "tsx scripts/migrate-group-headers.ts"
+    "migrate:groups": "tsx scripts/migrate-group-headers.ts",
+    "seed:nodes": "tsx scripts/seed-integration-nodes.ts",
+    "seed": "pnpm with-env tsx scripts/seed-integrations.ts",
+    "seed:force": "pnpm with-env tsx scripts/seed-integrations.ts --force",
+    "seed:dry": "pnpm with-env tsx scripts/seed-integrations.ts --dry-run",
+    "seed:env": "pnpm with-env tsx scripts/seed-integrations.ts --environment staging",
+    "seed:specific": "pnpm with-env tsx scripts/seed-integrations.ts --integrations wordpress_create_post,stripe_create_charge",
+    "seed:help": "pnpm with-env tsx scripts/seed-integrations.ts --help",
+    "seed:convex": "pnpm with-env convex run integrations/init",
+    "predev": "pnpm seed:dry"
   },
   "dependencies": {
     "@acme/auth": "workspace:*",

@@ -1,6 +1,10 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
+import { integrationsScenarioLogsSchema } from "./scenarioLogs/schema";
+import { integrationsScenarioNodesSchema } from "./scenarioNodes/schema";
+import { integrationsScenarioRunsSchema } from "./scenarioRuns/schema";
+
 /**
  * Configuration for a scenario version
  * Contains the trigger configuration and other scenario-level settings
@@ -114,4 +118,7 @@ export const scenariosTable = defineTable({
  */
 export const integrationsScenariosSchema = {
   scenarios: scenariosTable,
+  ...integrationsScenarioNodesSchema,
+  ...integrationsScenarioRunsSchema,
+  ...integrationsScenarioLogsSchema,
 };

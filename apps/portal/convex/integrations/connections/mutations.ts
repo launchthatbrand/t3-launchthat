@@ -1,6 +1,7 @@
+import { v } from "convex/values";
+
 import { internal } from "../../_generated/api";
 import { mutation } from "../../_generated/server";
-import { v } from "convex/values";
 
 // Define types for the update fields
 interface UpdateFields {
@@ -25,11 +26,11 @@ interface UpdateFields {
 }
 
 /**
- * Create a new connection for an integration app
+ * Create a new connection for an integration node type
  */
 export const create = mutation({
   args: {
-    appId: v.id("apps"),
+    nodeType: v.string(),
     name: v.string(),
     // Accept raw credentials; we will store safely
     credentials: v.string(),
@@ -39,12 +40,6 @@ export const create = mutation({
   },
   returns: v.id("connections"),
   handler: async (ctx, args) => {
-    // Verify the app exists
-    const app = await ctx.db.get(args.appId);
-    if (!app) {
-      throw new Error(`App with ID ${args.appId} not found`);
-    }
-
     if (typeof args.ownerId !== "string") {
       const owner = await ctx.db.get(args.ownerId);
       if (!owner) {
@@ -59,7 +54,7 @@ export const create = mutation({
       internal.integrations.connections.internalConnections
         .createWithEncryptedSecrets,
       {
-        appId: args.appId,
+        nodeType: args.nodeType,
         name: args.name,
         credentials: args.credentials,
         config: args.config,
@@ -123,14 +118,13 @@ export const test = mutation({
   args: {
     id: v.optional(v.id("connections")),
     credentials: v.optional(v.string()),
-    appId: v.optional(v.id("apps")),
+    nodeType: v.optional(v.string()),
   },
   returns: v.object({
     success: v.boolean(),
     message: v.string(),
   }),
   handler: async (ctx, args) => {
-    let app;
     let connectionCredentials;
 
     if (args.id) {
@@ -138,19 +132,13 @@ export const test = mutation({
       if (!connection) {
         throw new Error(`Connection with ID ${args.id} not found`);
       }
-      app = await ctx.db.get(connection.appId);
       connectionCredentials = args.credentials ?? connection.credentials;
-    } else if (args.appId && args.credentials) {
-      app = await ctx.db.get(args.appId);
+    } else if (args.nodeType && args.credentials) {
       connectionCredentials = args.credentials;
     } else {
       throw new Error(
-        "Either connection ID or app ID with credentials must be provided",
+        "Either connection ID or node type with credentials must be provided",
       );
-    }
-
-    if (!app) {
-      throw new Error("App not found");
     }
 
     console.log("Testing connection with credentials:", connectionCredentials);

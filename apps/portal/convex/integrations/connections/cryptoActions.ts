@@ -1,16 +1,16 @@
 "use node";
 
-import { decryptRecord, encryptRecord, maskFromRecord } from "../lib/crypto";
+import { v } from "convex/values";
 
 import type { Id } from "../../_generated/dataModel";
 import { internal } from "../../_generated/api";
 import { internalAction } from "../../_generated/server";
-import { v } from "convex/values";
+import { decryptRecord, encryptRecord, maskFromRecord } from "../lib/crypto";
 
 /** Create connection with encrypted secrets (internal only) */
 export const createWithEncryptedSecrets = internalAction({
   args: {
-    appId: v.id("apps"),
+    nodeType: v.string(),
     name: v.string(),
     credentials: v.string(),
     config: v.optional(v.string()),
@@ -28,7 +28,7 @@ export const createWithEncryptedSecrets = internalAction({
       internal.integrations.connections.internalConnections
         .insertConnectionWithSecrets,
       {
-        appId: args.appId,
+        nodeType: args.nodeType,
         name: args.name,
         credentials: args.credentials,
         ciphertext,

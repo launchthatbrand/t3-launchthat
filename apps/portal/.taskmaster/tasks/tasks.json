@@ -1443,8 +1443,8 @@
             "title": "Remove apps table",
             "description": "Delete the apps table from the database schema",
             "dependencies": [],
-            "details": "Execute SQL command to drop the apps table from the database schema. Ensure all references to this table are removed from other parts of the schema.",
-            "status": "in-progress",
+            "details": "Execute SQL command to drop the apps table from the database schema. Ensure all references to this table are removed from other parts of the schema.\n<info added on 2025-08-16T06:38:27.815Z>\nImplementation in progress: Removing apps table from the database schema. Updating the integrations schema to remove apps dependency by modifying the connections table to include nodeType field instead. Modifying the nodes table to add nodeId field and make connectionId optional. Updating the config field structure to support flexible JSON configuration as specified in the PRD.\n</info added on 2025-08-16T06:38:27.815Z>\n<info added on 2025-08-16T06:39:23.013Z>\nCompleted removing apps table from schema:\n1. Removed apps schema import and reference from integrations/schema.ts\n2. Updated nodes schema to add nodeId field (string), make connectionId optional, and change config to flexible JSON (v.any())\n3. Updated connections schema to replace appId with nodeType field and updated all related indexes\n4. Added new indexes for nodeId and connectionId in nodes table\n\nNext step: Need to check if there are any existing Convex functions that reference the old schema structure and update them accordingly. This will involve reviewing all functions in the /convex/integrations directory, particularly those that interact with the nodes and connections tables, to ensure they're compatible with the new schema changes.\n</info added on 2025-08-16T06:39:23.013Z>\n<info added on 2025-08-16T06:41:16.672Z>\nSchema update progress: Completed implementation of schema changes but encountering TypeScript errors. All schema modifications are complete including:\n- Removed apps schema from integrations/schema.ts\n- Updated nodes schema with nodeId field (string), optional connectionId, and flexible JSON config (v.any())\n- Updated connections schema by replacing appId with nodeType field and updated all related indexes\n- Updated connections mutations to use nodeType instead of appId\n- Updated internal connections to use nodeType instead of appId\n\nCurrently facing TypeScript type instantiation errors that appear to be related to complex type instantiation, possibly from circular references. Will proceed with updating other files and creating migration scripts while addressing these TypeScript issues.\n</info added on 2025-08-16T06:41:16.672Z>\n<info added on 2025-08-16T06:42:54.263Z>\nCompleted major schema updates but encountering persistent TypeScript type instantiation errors. Schema changes are functionally complete:\n\n1. ✅ Removed apps schema from integrations/schema.ts\n2. ✅ Updated nodes schema: added nodeId field, made connectionId optional, changed config to v.any()\n3. ✅ Updated connections schema: replaced appId with nodeType field, updated all indexes\n4. ✅ Updated connections mutations to use nodeType instead of appId\n5. ✅ Updated internal connections to use nodeType instead of appId\n6. ✅ Updated connections queries to use nodeType instead of appId\n7. ✅ Removed getVimeoApp function that referenced non-existent apps table\n\nThe TypeScript errors appear to be related to complex type instantiation issues that may resolve once the schema is fully migrated. Will proceed with creating migration scripts and updating remaining files.\n</info added on 2025-08-16T06:42:54.263Z>\n<info added on 2025-08-16T06:47:31.184Z>\nFor Task 6.1, we need to update the scenarios schema to work with the new node architecture. The following changes are required:\n\n1. Update the scenarios table to include:\n   - Add a new field for nodeType to identify the type of node\n   - Add a field for nodeConfig to store node-specific configuration\n   - Update any references to the removed apps table\n\n2. Modify the scenarios execution logic to:\n   - Use the nodeType field to determine which node processor to use\n   - Pass the nodeConfig to the appropriate node processor\n   - Handle the updated node structure in the execution flow\n\n3. Update any scenarios-related queries and mutations to work with the new schema structure:\n   - Modify createScenario to accept nodeType instead of appId\n   - Update getScenarios to return nodeType information\n   - Ensure all scenario operations properly handle the new schema\n\n4. Create migration scripts to update existing scenarios data:\n   - Convert any appId references to appropriate nodeType values\n   - Ensure backward compatibility during the transition period\n</info added on 2025-08-16T06:47:31.184Z>",
+            "status": "done",
             "testStrategy": "Verify the table no longer exists in the schema. Check for any foreign key constraints that may be affected."
           },
           {
@@ -1454,8 +1454,8 @@
             "dependencies": [
               "6.1"
             ],
-            "details": "Alter the nodes table to add nodeId field (string), update connectionId to be optional, and modify config field to be a flexible JSON structure. Update any existing queries or stored procedures that interact with these tables.",
-            "status": "pending",
+            "details": "Alter the nodes table to add nodeId field (string), update connectionId to be optional, and modify config field to be a flexible JSON structure. Update any existing queries or stored procedures that interact with these tables.\n<info added on 2025-08-16T06:49:43.475Z>\nUpdated the scenarios schema to work with the new centralized node architecture:\n\n1. Added nodeId field (string) for integration node identifier\n2. Made connectionId optional (v.optional(v.id(\"connections\")))\n3. Changed config field from v.string() to v.any() for flexible JSON\n4. Added new indexes for nodeId and connectionId\n\nUpdated nodes mutations:\n- Modified create function to include nodeId and optional connectionId\n- Updated update function to handle the new fields\n- Changed config validation from v.string() to v.any()\n- Fixed type safety issues with proper TypeScript types\n\nSchema validation is complete with all changes properly validated. Build completed successfully with no compilation errors. The new schema structure supports the centralized node architecture where each node references an integration node type via nodeId and optionally connects to a specific connection instance.\n</info added on 2025-08-16T06:49:43.475Z>",
+            "status": "done",
             "testStrategy": "Run test queries to ensure the new structure is in place. Verify data integrity for existing records."
           },
           {
@@ -1467,7 +1467,7 @@
               "6.2"
             ],
             "details": "Alter the connections table to add a nodeType field that links to integration nodes. Remove any foreign key constraints or references to the now-deleted apps table.",
-            "status": "pending",
+            "status": "in-progress",
             "testStrategy": "Test the new nodeType field by inserting sample data. Verify that all references to the apps table have been successfully removed."
           },
           {
@@ -1619,8 +1619,231 @@
     ],
     "metadata": {
       "created": "2025-08-16T01:43:47.895Z",
-      "updated": "2025-08-16T03:49:23.913Z",
+      "updated": "2025-08-16T06:49:49.847Z",
       "description": "Tasks for integration-refactor context"
+    }
+  },
+  "integration-platform": {
+    "tasks": [],
+    "metadata": {
+      "created": "2025-08-16T18:10:17.357Z",
+      "updated": "2025-08-16T18:10:17.357Z",
+      "description": "Evolution of the integration system into a scalable plugin-based platform with developer ecosystem"
+    }
+  },
+  "integration-seeding": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Setup Core Seeding Infrastructure",
+        "description": "Implement the foundation for the seeding system using Convex internalMutation pattern",
+        "details": "Create `convex/integrations/init.ts` file with the main seeding function using Convex's internalMutation. Implement type-safe operations against the current schema, idempotent seeding with existence checks, and basic error handling and logging. Use TypeScript for full type safety. Utilize Convex v0.9.0 or later for the latest features. Example structure:\n\n```typescript\nimport { internalMutation } from \"../_generated/server\";\nimport { v } from \"convex/values\";\n\nexport const seedIntegrations = internalMutation({\n  args: {\n    environment: v.optional(v.string()),\n    forceReseed: v.optional(v.boolean()),\n    integrationIds: v.optional(v.array(v.string())),\n  },\n  returns: v.object({\n    integrationNodesCreated: v.number(),\n    actionsCreated: v.number(),\n    triggersCreated: v.number(),\n    connectionsCreated: v.number(),\n    errors: v.array(v.string()),\n    duration: v.number(),\n  }),\n  handler: async (ctx, args) => {\n    // Implementation details\n  },\n});\n```\n\nEnsure to implement comprehensive error catching and reporting.\n<info added on 2025-08-16T18:30:28.048Z>\n## Implementation Complete\n\nSuccessfully implemented the core seeding infrastructure using Convex internalMutation pattern with the following components:\n\n### Files Created\n- `convex/integrations/init.ts` - Core seeding function with comprehensive error handling\n- `convex/integrations/lib/seedingUtils.ts` - Utility functions and validation schemas\n- `scripts/seed-integrations.ts` - CLI script for user-friendly seeding operations\n\n### Key Features Implemented\n1. **Type-Safe Configuration**: Full TypeScript interfaces for `SeedingResult` and `SeedingConfig`\n2. **Environment Validation**: Validates development/staging/production environments\n3. **Idempotent Operations**: Prevents duplicate seeding with proper error handling\n4. **Comprehensive Logging**: Detailed seeding logs stored in database with status tracking\n5. **Dry Run Support**: Safe testing without actual database changes\n6. **Batch Processing**: Configurable batch sizes for performance optimization\n7. **Error Recovery**: Robust error handling with detailed error collection and reporting\n\n### Package Scripts Added\n- `pnpm seed:dry` - Dry run seeding\n- `pnpm seed:force` - Force reseed existing integrations  \n- `pnpm seed:env` - Environment-specific seeding\n- `pnpm seed:specific` - Selective integration seeding\n- `pnpm seed:help` - CLI help documentation\n- `pnpm seed:convex` - Direct convex run fallback\n\n### Testing Results\n- Dry run functionality working correctly\n- Hard-coded integrations identified (wordpress_create_post, wordpress_create_media, stripe_create_charge)\n- Environment validation functional\n- Error handling and logging operational\n- CLI help system working\n\n### Architecture Highlights\n- Uses Convex `internalMutation` pattern for security\n- Implements comprehensive seeding log tracking in database\n- Provides both programmatic (CLI) and direct (convex run) interfaces\n- Designed for Phase 1 hard-coded integrations with extensibility for manifest-based discovery\n\nReady for Task 2 (Create Integration Registry) and Task 3 (Implement Hard-coded Integration Definitions) to build upon this foundation.\n</info added on 2025-08-16T18:30:28.048Z>",
+        "testStrategy": "Write unit tests for the seeding function, covering various scenarios including successful seeding, idempotent operations, and error handling. Use Convex's testing utilities to mock the database context.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Implement Hard-coded Integration Seeding",
+        "description": "Create seeding logic for current hard-coded integrations including WordPress and Stripe",
+        "details": "Implement seeding functions for WordPress and Stripe integrations. Create integration nodes, seed action and trigger registries, and connection definitions. Use the latest Convex API (v0.9.0+) for efficient database operations. Example:\n\n```typescript\nasync function seedWordPress(ctx: MutationCtx) {\n  const integrationId = await ctx.db.insert('integrations', {\n    name: 'WordPress',\n    version: '1.0.0',\n    // other fields\n  });\n  \n  await ctx.db.insert('actions', {\n    integrationId,\n    name: 'Create Post',\n    // other fields\n  });\n  \n  // Seed triggers and connections similarly\n}\n```\n\nEnsure to use batch operations for efficient writes and implement proper error handling.",
+        "testStrategy": "Create integration tests that verify the correct creation of integration nodes, actions, triggers, and connections for each hard-coded integration. Test idempotency by running the seeding multiple times.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "in-progress",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Develop CLI Commands for Manual Seeding",
+        "description": "Create CLI commands for manual seeding operations and integrate with package.json scripts",
+        "details": "Implement CLI commands using a modern CLI framework like Commander.js v9.0.0 or later. Create scripts for seeding, force reseeding, and environment-specific seeding. Integrate these commands into package.json scripts. Example CLI implementation:\n\n```typescript\nimport { Command } from 'commander';\nimport { seedIntegrations } from './convex/integrations/init';\n\nconst program = new Command();\n\nprogram\n  .command('seed')\n  .option('-e, --environment <env>', 'Specify environment')\n  .option('-f, --force', 'Force reseed')\n  .action(async (options) => {\n    await seedIntegrations({\n      environment: options.environment,\n      forceReseed: options.force,\n    });\n  });\n\nprogram.parse(process.argv);\n```\n\nUpdate package.json with new scripts:\n\n```json\n{\n  \"scripts\": {\n    \"seed\": \"ts-node scripts/seed.ts\",\n    \"seed:force\": \"ts-node scripts/seed.ts --force\",\n    \"seed:env\": \"ts-node scripts/seed.ts --environment\"\n  }\n}\n```",
+        "testStrategy": "Write integration tests for CLI commands, ensuring they correctly invoke the seeding functions with the right parameters. Test different combinations of options and verify the output.",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement Environment-specific Seeding",
+        "description": "Create logic for environment-specific seeding strategies (dev, staging, production)",
+        "details": "Implement environment configuration system and seeding strategies. Use a configuration management library like node-config (v3.3.0 or later) for managing environment-specific settings. Create separate seeding logic for development, staging, and production environments. Example configuration:\n\n```typescript\n// config/default.ts\nexport default {\n  seeding: {\n    development: {\n      strategy: 'full',\n      allowedIntegrations: ['*'],\n    },\n    staging: {\n      strategy: 'incremental',\n      allowedIntegrations: ['wordpress', 'stripe', 'monday'],\n    },\n    production: {\n      strategy: 'selective',\n      allowedIntegrations: ['wordpress', 'stripe'],\n    },\n  },\n};\n\n// convex/integrations/init.ts\nimport config from 'config';\n\nconst seedingConfig = config.get('seeding');\n\nexport const seedIntegrations = internalMutation({\n  // ...\n  handler: async (ctx, args) => {\n    const envConfig = seedingConfig[args.environment || 'development'];\n    // Apply seeding strategy based on envConfig\n  },\n});\n```\n\nImplement logic to filter integrations based on the environment configuration.",
+        "testStrategy": "Create unit tests for each environment configuration, ensuring the correct seeding strategy is applied. Test the filtering of integrations based on the allowedIntegrations list for each environment.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Develop Manifest Discovery System",
+        "description": "Implement auto-discovery of integration manifests from the file system",
+        "details": "Create a manifest discovery system that scans the file system for integration manifests. Use the `fs` module with promises (available in Node.js 10+) for file system operations. Implement manifest validation and parsing. Example implementation:\n\n```typescript\nimport { promises as fs } from 'fs';\nimport path from 'path';\n\nasync function discoverManifests(directory: string): Promise<IntegrationManifest[]> {\n  const files = await fs.readdir(directory);\n  const manifests: IntegrationManifest[] = [];\n\n  for (const file of files) {\n    if (path.extname(file) === '.json') {\n      const content = await fs.readFile(path.join(directory, file), 'utf8');\n      const manifest = JSON.parse(content);\n      if (validateManifest(manifest)) {\n        manifests.push(manifest);\n      }\n    }\n  }\n\n  return manifests;\n}\n\nfunction validateManifest(manifest: any): manifest is IntegrationManifest {\n  // Implement validation logic\n}\n```\n\nUse a schema validation library like Ajv (version 8.0.0 or later) for robust manifest validation.\n<info added on 2025-08-16T18:59:20.646Z>\n## Implementation Complete\n\nThe Manifest Discovery System has been successfully implemented with comprehensive functionality:\n\n### Files Created:\n- `convex/integrations/lib/manifestTypes.ts` - Complete manifest schema definitions and validation using Zod\n- `convex/integrations/lib/manifestDiscovery.ts` - Core discovery engine with file system scanning, validation, and file watching capabilities\n- `convex/integrations/manifestSeeding.ts` - Convex actions for manifest-based seeding integration\n- `scripts/test-manifest-discovery.ts` - Standalone testing script for manifest discovery\n\n### Key Features Implemented:\n\n1. **Comprehensive Manifest Schema**:\n   - Full Zod validation schemas for integration manifests\n   - Support for actions, triggers, connections, and authentication\n   - Extensible configuration field definitions for dynamic forms\n   - Type-safe interfaces derived from Zod schemas\n\n2. **Advanced Discovery Engine**:\n   - Recursive directory scanning with configurable depth limits\n   - RegEx-based file pattern matching (*.manifest.json)\n   - Comprehensive error handling and validation reporting\n   - Exclude patterns for node_modules, .git, build directories\n   - File metadata collection and statistics\n\n3. **Real-time File Watching**:\n   - ManifestWatcher class for monitoring manifest changes\n   - Automatic re-discovery on file modifications\n   - Callback system for responding to changes\n\n4. **Convex Integration**:\n   - `seedFromManifests` - Main seeding action with manifest discovery\n   - `createExampleManifestFiles` - Generate example manifest files\n   - `validateManifestDirectory` - Batch validation of manifest directories\n   - `getManifestStats` - Discovery statistics and analytics\n\n5. **Development Tools**:\n   - Standalone test script that works without Convex deployment\n   - Example manifest generation (WordPress, Slack)\n   - Comprehensive error reporting and validation feedback\n\n### Testing Results:\nSuccessfully tested the discovery system with:\n- Valid manifest processing (WordPress test manifest)\n- Invalid manifest detection (missing required fields)\n- Malformed JSON handling (parse error detection)\n- Complete statistics and error reporting\n\nThe manifest discovery system is fully functional and ready for Task 6 (Implement Manifest-based Seeding Logic) which will integrate this discovery system with the existing Convex seeding infrastructure.\n</info added on 2025-08-16T18:59:20.646Z>",
+        "testStrategy": "Write unit tests for the discovery system, including tests for successful discovery, validation of correct and incorrect manifests, and handling of various file system scenarios. Mock the file system for consistent testing.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement Manifest-based Seeding Logic",
+        "description": "Develop seeding logic based on discovered integration manifests",
+        "details": "Create a system to seed integrations based on discovered manifests. Implement manifest-to-database transformation logic. Use efficient database operations with Convex, such as batch inserts. Example implementation:\n\n```typescript\nasync function seedFromManifest(ctx: MutationCtx, manifest: IntegrationManifest) {\n  const integrationId = await ctx.db.insert('integrations', {\n    name: manifest.name,\n    version: manifest.version,\n    // other fields from manifest\n  });\n\n  const actions = manifest.actions.map(action => ({\n    integrationId,\n    name: action.name,\n    // other action fields\n  }));\n\n  await ctx.db.insert('actions', actions);\n\n  // Similar logic for triggers and connections\n}\n\nexport const seedIntegrations = internalMutation({\n  // ...\n  handler: async (ctx, args) => {\n    const manifests = await discoverManifests('./integrations');\n    for (const manifest of manifests) {\n      await seedFromManifest(ctx, manifest);\n    }\n  },\n});\n```\n\nImplement incremental seeding for updates and version management to handle conflicts.",
+        "testStrategy": "Develop integration tests that cover the entire process from manifest discovery to database seeding. Test scenarios including new integrations, updates to existing integrations, and conflict resolution.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          5
+        ],
+        "status": "in-progress",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Implement Dependency Resolution System",
+        "description": "Create a system to resolve dependencies between integrations",
+        "details": "Develop a dependency resolution algorithm to ensure integrations are seeded in the correct order. Use a topological sorting algorithm like Kahn's algorithm for dependency resolution. Implement conflict detection and resolution for version conflicts. Example implementation:\n\n```typescript\nclass DependencyResolver {\n  private graph: Map<string, string[]> = new Map();\n\n  addDependency(integration: string, dependency: string) {\n    if (!this.graph.has(integration)) {\n      this.graph.set(integration, []);\n    }\n    this.graph.get(integration)!.push(dependency);\n  }\n\n  resolve(): string[] {\n    // Implement Kahn's algorithm\n  }\n}\n\nasync function resolveDependencies(manifests: IntegrationManifest[]): Promise<IntegrationManifest[]> {\n  const resolver = new DependencyResolver();\n  for (const manifest of manifests) {\n    for (const dep of manifest.dependencies || []) {\n      resolver.addDependency(manifest.id, dep);\n    }\n  }\n\n  const order = resolver.resolve();\n  return order.map(id => manifests.find(m => m.id === id)!).filter(Boolean);\n}\n```\n\nUse a library like semver (version 7.0.0 or later) for version comparison and conflict resolution.",
+        "testStrategy": "Write unit tests for the dependency resolution algorithm, covering various dependency scenarios including circular dependencies. Test version conflict detection and resolution with different version combinations.",
+        "priority": "high",
+        "dependencies": [
+          5,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Develop Seeding Performance Optimization",
+        "description": "Implement performance enhancements to meet seeding time targets",
+        "details": "Optimize seeding performance to meet the target of <30 seconds for 100 integrations. Implement batch operations for database writes, use streaming for large data sets, and optimize database queries. Consider using worker threads for parallel processing of independent tasks. Example optimization:\n\n```typescript\nimport { Worker, isMainThread, parentPort, workerData } from 'worker_threads';\n\nif (isMainThread) {\n  async function seedIntegrations(manifests: IntegrationManifest[]) {\n    const chunkSize = 10;\n    const chunks = chunk(manifests, chunkSize);\n    const workers = chunks.map(chunkData => new Worker(__filename, { workerData: chunkData }));\n    \n    await Promise.all(workers.map(worker => new Promise((resolve, reject) => {\n      worker.on('message', resolve);\n      worker.on('error', reject);\n    })));\n  }\n} else {\n  (async () => {\n    for (const manifest of workerData) {\n      await seedFromManifest(manifest);\n    }\n    parentPort?.postMessage('done');\n  })();\n}\n\nfunction chunk<T>(array: T[], size: number): T[][] {\n  return Array.from({ length: Math.ceil(array.length / size) }, (_, i) =>\n    array.slice(i * size, i * size + size)\n  );\n}\n```\n\nUse the latest Node.js version (14+) for improved performance and newer JavaScript features.",
+        "testStrategy": "Conduct performance benchmarks with varying numbers of integrations. Profile the seeding process to identify bottlenecks. Implement stress tests to ensure performance under high load.",
+        "priority": "high",
+        "dependencies": [
+          6,
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Implement Rollback Capabilities",
+        "description": "Develop a system for rolling back failed seeding operations",
+        "details": "Implement a rollback mechanism to revert the database to a consistent state in case of seeding failures. Use database transactions where possible, and implement compensating actions for operations that can't be part of a transaction. Example implementation:\n\n```typescript\nclass SeedingOperation {\n  private actions: (() => Promise<void>)[] = [];\n  private compensations: (() => Promise<void>)[] = [];\n\n  addAction(action: () => Promise<void>, compensation: () => Promise<void>) {\n    this.actions.push(action);\n    this.compensations.unshift(compensation); // Stack compensations in reverse order\n  }\n\n  async execute() {\n    for (const action of this.actions) {\n      try {\n        await action();\n      } catch (error) {\n        await this.rollback();\n        throw error;\n      }\n    }\n  }\n\n  async rollback() {\n    for (const compensation of this.compensations) {\n      await compensation();\n    }\n  }\n}\n\nasync function seedWithRollback(ctx: MutationCtx, manifest: IntegrationManifest) {\n  const operation = new SeedingOperation();\n\n  operation.addAction(\n    async () => {\n      const id = await ctx.db.insert('integrations', { /* ... */ });\n      return id;\n    },\n    async (id) => {\n      await ctx.db.delete(id);\n    }\n  );\n\n  // Add more actions and compensations\n\n  await operation.execute();\n}\n```\n\nUse Convex's built-in transaction support where applicable, and implement custom rollback logic for multi-table operations.",
+        "testStrategy": "Write unit tests for the rollback mechanism, simulating various failure scenarios. Implement integration tests that verify the database state after a rollback. Test partial failures to ensure correct partial rollbacks.",
+        "priority": "high",
+        "dependencies": [
+          6,
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Implement Logging and Monitoring System",
+        "description": "Develop a comprehensive logging and monitoring system for the seeding process",
+        "details": "Implement a logging system that captures detailed information about the seeding process, including performance metrics, errors, and warnings. Use a structured logging library like Winston (version 3.3.0 or later) for flexible and performant logging. Integrate with a monitoring solution like Prometheus for real-time metrics. Example implementation:\n\n```typescript\nimport winston from 'winston';\nimport { Counter, Gauge } from 'prom-client';\n\nconst logger = winston.createLogger({\n  level: 'info',\n  format: winston.format.json(),\n  transports: [\n    new winston.transports.File({ filename: 'seeding.log' }),\n    new winston.transports.Console(),\n  ],\n});\n\nconst seedingDurationGauge = new Gauge({\n  name: 'seeding_duration_seconds',\n  help: 'Duration of seeding operation in seconds',\n});\n\nconst integrationsCreatedCounter = new Counter({\n  name: 'integrations_created_total',\n  help: 'Total number of integrations created',\n});\n\nexport const seedIntegrations = internalMutation({\n  // ...\n  handler: async (ctx, args) => {\n    const startTime = Date.now();\n    logger.info('Starting seeding process', { environment: args.environment });\n\n    try {\n      // Seeding logic\n      integrationsCreatedCounter.inc(createdCount);\n    } catch (error) {\n      logger.error('Seeding failed', { error: error.message });\n      throw error;\n    } finally {\n      const duration = (Date.now() - startTime) / 1000;\n      seedingDurationGauge.set(duration);\n      logger.info('Seeding process completed', { duration });\n    }\n  },\n});\n```\n\nImplement alerts for critical errors and performance issues.",
+        "testStrategy": "Write unit tests for logging and metrics collection. Implement integration tests that verify correct logging output and metric values for various seeding scenarios. Test alert triggers for error conditions.",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          6,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Develop Integration Preview and Testing Tools",
+        "description": "Create tools for developers to preview and test integrations before seeding",
+        "details": "Implement a set of developer tools for previewing and testing integrations before they are seeded into the main database. Create a sandbox environment for testing integrations. Use a library like Inquirer.js (version 8.0.0 or later) for interactive CLI tools. Example implementation:\n\n```typescript\nimport inquirer from 'inquirer';\nimport { previewIntegration, testIntegration } from './integrationTester';\n\nasync function integrationDevTools() {\n  const { action } = await inquirer.prompt([\n    {\n      type: 'list',\n      name: 'action',\n      message: 'What would you like to do?',\n      choices: ['Preview Integration', 'Test Integration', 'Exit'],\n    },\n  ]);\n\n  switch (action) {\n    case 'Preview Integration':\n      const { integrationPath } = await inquirer.prompt([\n        {\n          type: 'input',\n          name: 'integrationPath',\n          message: 'Enter the path to the integration manifest:',\n        },\n      ]);\n      await previewIntegration(integrationPath);\n      break;\n    case 'Test Integration':\n      // Similar implementation for testing\n      break;\n    case 'Exit':\n      return;\n  }\n}\n\nintegrationDevTools();\n```\n\nImplement the `previewIntegration` and `testIntegration` functions to provide detailed information and run tests in a sandbox environment.",
+        "testStrategy": "Write unit tests for each developer tool function. Implement integration tests that simulate user interactions with the CLI tools. Test various integration configurations and error scenarios.",
+        "priority": "medium",
+        "dependencies": [
+          5,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Implement Multi-Source Seeding for Marketplace",
+        "description": "Develop seeding capabilities for official, community, and marketplace integrations",
+        "details": "Extend the seeding system to support multiple sources of integrations, including official, community-contributed, and marketplace integrations. Implement source-specific validation and security checks. Use a plugin architecture for extensibility. Example implementation:\n\n```typescript\ninterface IntegrationSource {\n  name: string;\n  fetchManifests(): Promise<IntegrationManifest[]>;\n  validateManifest(manifest: IntegrationManifest): Promise<boolean>;\n}\n\nclass OfficialSource implements IntegrationSource {\n  name = 'official';\n  async fetchManifests() { /* ... */ }\n  async validateManifest(manifest: IntegrationManifest) { /* ... */ }\n}\n\nclass CommunitySource implements IntegrationSource {\n  name = 'community';\n  async fetchManifests() { /* ... */ }\n  async validateManifest(manifest: IntegrationManifest) { /* ... */ }\n}\n\nclass MarketplaceSource implements IntegrationSource {\n  name = 'marketplace';\n  async fetchManifests() { /* ... */ }\n  async validateManifest(manifest: IntegrationManifest) { /* ... */ }\n}\n\nclass IntegrationSeeder {\n  private sources: IntegrationSource[] = [];\n\n  addSource(source: IntegrationSource) {\n    this.sources.push(source);\n  }\n\n  async seedAllSources() {\n    for (const source of this.sources) {\n      const manifests = await source.fetchManifests();\n      for (const manifest of manifests) {\n        if (await source.validateManifest(manifest)) {\n          await this.seedIntegration(manifest, source.name);\n        }\n      }\n    }\n  }\n\n  private async seedIntegration(manifest: IntegrationManifest, source: string) {\n    // Implement seeding logic\n  }\n}\n\nconst seeder = new IntegrationSeeder();\nseeder.addSource(new OfficialSource());\nseeder.addSource(new CommunitySource());\nseeder.addSource(new MarketplaceSource());\nseeder.seedAllSources();\n```\n\nImplement source-specific security checks and validation rules.",
+        "testStrategy": "Write unit tests for each integration source class. Implement integration tests that cover the entire multi-source seeding process. Test various combinations of sources and integration types. Implement security tests to ensure proper validation of community and marketplace integrations.",
+        "priority": "medium",
+        "dependencies": [
+          6,
+          7,
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Implement Security Scanning for Integrations",
+        "description": "Develop a security scanning system for validating integrations before seeding",
+        "details": "Implement a comprehensive security scanning system for integrations, especially focusing on community and marketplace contributions. Use static analysis tools and sandboxed execution for dynamic analysis. Integrate with vulnerability databases for known issues. Example implementation:\n\n```typescript\nimport { staticAnalysis } from './staticAnalyzer';\nimport { dynamicAnalysis } from './sandboxExecutor';\nimport { checkVulnerabilityDatabase } from './vulnDbChecker';\n\nasync function securityScan(manifest: IntegrationManifest): Promise<SecurityScanResult> {\n  const staticResults = await staticAnalysis(manifest);\n  const dynamicResults = await dynamicAnalysis(manifest);\n  const vulnDbResults = await checkVulnerabilityDatabase(manifest);\n\n  return {\n    passed: staticResults.passed && dynamicResults.passed && vulnDbResults.passed,\n    staticIssues: staticResults.issues,\n    dynamicIssues: dynamicResults.issues,\n    knownVulnerabilities: vulnDbResults.vulnerabilities,\n  };\n}\n\nclass SecureIntegrationSeeder extends IntegrationSeeder {\n  async seedIntegration(manifest: IntegrationManifest, source: string) {\n    const scanResult = await securityScan(manifest);\n    if (scanResult.passed) {\n      await super.seedIntegration(manifest, source);\n    } else {\n      this.logSecurityIssues(scanResult);\n      throw new Error('Security scan failed');\n    }\n  }\n\n  private logSecurityIssues(result: SecurityScanResult) {\n    // Log security issues\n  }\n}\n```\n\nUse established security scanning libraries and tools appropriate for the integration's technology stack.",
+        "testStrategy": "Develop a comprehensive test suite for the security scanning system. Include tests with known vulnerable integrations to ensure detection. Implement fuzz testing to identify potential security issues. Regularly update and test against a database of known vulnerabilities.",
+        "priority": "high",
+        "dependencies": [
+          12
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Implement Gradual Deployment and A/B Testing",
+        "description": "Develop a system for gradual deployment and A/B testing of integrations",
+        "details": "Implement a gradual deployment system that allows for controlled rollout of new integrations or updates. Include A/B testing capabilities to compare different versions or configurations of integrations. Use feature flags for fine-grained control. Example implementation:\n\n```typescript\nimport { FeatureFlag, ABTest } from './experimentationSystem';\n\nclass GradualDeploymentSeeder extends SecureIntegrationSeeder {\n  private featureFlags: FeatureFlag;\n  private abTests: ABTest;\n\n  constructor(featureFlags: FeatureFlag, abTests: ABTest) {\n    super();\n    this.featureFlags = featureFlags;\n    this.abTests = abTests;\n  }\n\n  async seedIntegration(manifest: IntegrationManifest, source: string) {\n    if (await this.shouldDeployIntegration(manifest)) {\n      const version = this.selectIntegrationVersion(manifest);\n      await super.seedIntegration(version, source);\n      await this.monitorDeployment(version);\n    }\n  }\n\n  private async shouldDeployIntegration(manifest: IntegrationManifest): Promise<boolean> {\n    return this.featureFlags.isEnabled(`integration_${manifest.id}`);\n  }\n\n  private selectIntegrationVersion(manifest: IntegrationManifest): IntegrationManifest {\n    const testVersion = this.abTests.getVariant(`integration_${manifest.id}_version`);\n    return testVersion === 'B' ? manifest.betaVersion : manifest.stableVersion;\n  }\n\n  private async monitorDeployment(version: IntegrationManifest) {\n    // Implement monitoring and automatic rollback if necessary\n  }\n}\n```\n\nUse a robust experimentation platform like LaunchDarkly or implement a custom solution using Redis for feature flags and A/B tests.",
+        "testStrategy": "Develop unit tests for the gradual deployment logic, including feature flag checks and A/B test variant selection. Implement integration tests that simulate various deployment scenarios. Create end-to-end tests that verify the entire gradual deployment process, including monitoring and potential rollback scenarios.",
+        "priority": "medium",
+        "dependencies": [
+          12,
+          13
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Develop Analytics and Reporting System",
+        "description": "Implement a comprehensive analytics and reporting system for integration seeding and usage",
+        "details": "Create an analytics and reporting system that tracks seeding performance, integration usage, error rates, and adoption metrics. Implement real-time dashboards and scheduled reports. Use a time-series database like InfluxDB for efficient storage and querying of metrics data. Example implementation:\n\n```typescript\nimport { InfluxDB, Point } from '@influxdata/influxdb-client';\nimport { generateReport } from './reportGenerator';\n\nclass AnalyticsSeeder extends GradualDeploymentSeeder {\n  private influx: InfluxDB;\n\n  constructor(influx: InfluxDB, ...args: any[]) {\n    super(...args);\n    this.influx = influx;\n  }\n\n  async seedIntegration(manifest: IntegrationManifest, source: string) {\n    const startTime = Date.now();\n    try {\n      await super.seedIntegration(manifest, source);\n      this.recordMetric('seeding_success', 1, { integration: manifest.id, source });\n    } catch (error) {\n      this.recordMetric('seeding_failure', 1, { integration: manifest.id, source, error: error.message });\n      throw error;\n    } finally {\n      const duration = Date.now() - startTime;\n      this.recordMetric('seeding_duration', duration, { integration: manifest.id, source });\n    }\n  }\n\n  private recordMetric(name: string, value: number, tags: Record<string, string>) {\n    const point = new Point(name)\n      .floatField('value', value)\n      .timestamp(new Date());\n    for (const [key, val] of Object.entries(tags)) {\n      point.tag(key, val);\n    }\n    this.influx.writeApi.writePoint(point);\n  }\n\n  async generateDailyReport() {\n    const report = await generateReport(this.influx);\n    // Send report via email or store in database\n  }\n}\n```\n\nImplement scheduled tasks for regular report generation and distribution. Use data visualization libraries like D3.js for creating interactive dashboards.",
+        "testStrategy": "Write unit tests for metric recording and report generation functions. Implement integration tests that verify the correct storage and retrieval of analytics data. Create end-to-end tests for the entire analytics and reporting workflow, including scheduled report generation. Test dashboard rendering with various data scenarios.",
+        "priority": "medium",
+        "dependencies": [
+          10,
+          14
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-16T18:17:19.855Z",
+      "updated": "2025-08-16T19:14:42.911Z",
+      "description": "Tasks for integration-seeding context"
     }
   }
 }

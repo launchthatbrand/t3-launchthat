@@ -9,8 +9,8 @@ import { v } from "convex/values";
  * with its own credentials and configuration.
  */
 export const connectionsTable = defineTable({
-  // Reference to the app this connection is for
-  appId: v.id("apps"),
+  // Type of integration node this connection is for (e.g., "wordpress", "monday", "stripe")
+  nodeType: v.optional(v.string()),
 
   // User-friendly name for this connection (e.g., "Company Blog WordPress")
   name: v.string(),
@@ -59,16 +59,16 @@ export const connectionsTable = defineTable({
   // Last update timestamp
   updatedAt: v.number(),
 })
-  // Index for looking up connections by app
-  .index("by_app_id", ["appId"])
+  // Index for looking up connections by node type
+  .index("by_node_type", ["nodeType"])
   // Index for looking up connections by status
   .index("by_status", ["status"])
   // Index for looking up connections by owner
   .index("by_owner", ["ownerId"])
-  // Index for looking up connections by app and owner
-  .index("by_app_and_owner", ["appId", "ownerId"])
-  // Index for looking up connections by app and status
-  .index("by_app_and_status", ["appId", "status"]);
+  // Index for looking up connections by node type and owner
+  .index("by_node_type_and_owner", ["nodeType", "ownerId"])
+  // Index for looking up connections by node type and status
+  .index("by_node_type_and_status", ["nodeType", "status"]);
 
 /**
  * Export the connections schema

@@ -1,22 +1,21 @@
-import type { Doc, Id } from "../../_generated/dataModel";
-import { internalQuery, query } from "../../_generated/server";
-
-import { api } from "../../_generated/api";
 import { v } from "convex/values";
 
+import { api } from "../../_generated/api";
+import { internalQuery, query } from "../../_generated/server";
+
 /**
- * List all connections, optionally filtered by app or owner
+ * List all connections, optionally filtered by node type or owner
  */
 export const list = query({
   args: {
-    appId: v.optional(v.id("apps")),
+    nodeType: v.optional(v.string()),
     status: v.optional(v.string()),
   },
   returns: v.array(
     v.object({
       _id: v.id("connections"),
       _creationTime: v.number(),
-      appId: v.id("apps"),
+      nodeType: v.string(),
       name: v.string(),
       status: v.string(),
       // Never expose secrets on public queries
@@ -33,14 +32,6 @@ export const list = query({
       ownerId: v.union(v.id("users"), v.string()),
       createdAt: v.number(),
       updatedAt: v.number(),
-      app: v.optional(
-        v.object({
-          _id: v.id("apps"),
-          name: v.string(),
-          description: v.string(),
-          authType: v.string(),
-        }),
-      ),
     }),
   ),
   handler: async (ctx, args) => {
@@ -50,17 +41,17 @@ export const list = query({
     // Apply filters based on provided arguments using proper indexes
     let filteredConnections;
 
-    if (args.appId !== undefined && args.status !== undefined) {
-      // Both appId and status provided - use composite index
+    if (args.nodeType !== undefined && args.status !== undefined) {
+      // Both nodeType and status provided - use composite index
       filteredConnections = await baseQuery
-        .withIndex("by_app_and_status", (q) =>
-          q.eq("appId", args.appId!).eq("status", args.status!),
+        .withIndex("by_node_type_and_status", (q) =>
+          q.eq("nodeType", args.nodeType!).eq("status", args.status!),
         )
         .collect();
-    } else if (args.appId !== undefined) {
-      // Only appId provided - use existing index
+    } else if (args.nodeType !== undefined) {
+      // Only nodeType provided - use existing index
       filteredConnections = await baseQuery
-        .withIndex("by_app_id", (q) => q.eq("appId", args.appId!))
+        .withIndex("by_node_type", (q) => q.eq("nodeType", args.nodeType!))
         .collect();
     } else if (args.status !== undefined) {
       // Only status provided - use existing index
@@ -72,22 +63,8 @@ export const list = query({
       filteredConnections = await baseQuery.collect();
     }
 
-    // Enrich the connections with app data
-    const appIds = new Set(filteredConnections.map((conn) => conn.appId));
-    const appsPromises = Array.from(appIds).map((appId) => ctx.db.get(appId));
-    const apps = await Promise.all(appsPromises);
-
-    // Create a map of app data for quick lookup
-    const appMap = new Map<Id<"apps">, Doc<"apps">>();
-    for (const app of apps) {
-      if (app) {
-        appMap.set(app._id, app);
-      }
-    }
-
-    // Return the connections with app data and without secrets
+    // Return the connections without secrets
     return filteredConnections.map((conn) => {
-      const app = appMap.get(conn.appId);
       const maskedFromLegacy = conn.credentials
         ? { token: `****${conn.credentials.slice(-4)}` }
         : undefined;
@@ -95,12 +72,11 @@ export const list = query({
       return {
         _id: conn._id,
         _creationTime: conn._creationTime,
-        appId: conn.appId,
+        nodeType: conn.nodeType,
         name: conn.name,
         status: conn.status,
         metadata: {
-          lastUsed: conn.metadata?.lastUsed,
-          errorMessage: conn.metadata?.errorMessage ?? conn.lastError,
+          ...conn.metadata,
           maskedCredentials:
             conn.metadata?.maskedCredentials ?? maskedFromLegacy,
         },
@@ -110,14 +86,6 @@ export const list = query({
         ownerId: conn.ownerId,
         createdAt: conn.createdAt,
         updatedAt: conn.updatedAt,
-        app: app
-          ? {
-              _id: app._id,
-              name: app.name,
-              description: app.description,
-              authType: app.authType,
-            }
-          : undefined,
       };
     });
   },
@@ -134,7 +102,7 @@ export const get = query({
     v.object({
       _id: v.id("connections"),
       _creationTime: v.number(),
-      appId: v.id("apps"),
+      nodeType: v.string(),
       name: v.string(),
       status: v.string(),
       metadata: v.optional(
@@ -150,15 +118,6 @@ export const get = query({
       ownerId: v.union(v.id("users"), v.string()),
       createdAt: v.number(),
       updatedAt: v.number(),
-      app: v.union(
-        v.object({
-          _id: v.id("apps"),
-          name: v.string(),
-          description: v.string(),
-          authType: v.string(),
-        }),
-        v.null(),
-      ),
     }),
     v.null(),
   ),
@@ -169,9 +128,6 @@ export const get = query({
       return null;
     }
 
-    // Get the app data
-    const app = await ctx.db.get(connection.appId);
-
     const maskedFromLegacy = connection.credentials
       ? { token: `****${connection.credentials.slice(-4)}` }
       : undefined;
@@ -179,12 +135,11 @@ export const get = query({
     return {
       _id: connection._id,
       _creationTime: connection._creationTime,
-      appId: connection.appId,
+      nodeType: connection.nodeType,
       name: connection.name,
       status: connection.status,
       metadata: {
-        lastUsed: connection.metadata?.lastUsed,
-        errorMessage: connection.metadata?.errorMessage ?? connection.lastError,
+        ...connection.metadata,
         maskedCredentials:
           connection.metadata?.maskedCredentials ?? maskedFromLegacy,
       },
@@ -194,57 +149,39 @@ export const get = query({
       ownerId: connection.ownerId,
       createdAt: connection.createdAt,
       updatedAt: connection.updatedAt,
-      app: app
-        ? {
-            _id: app._id,
-            name: app.name,
-            description: app.description,
-            authType: app.authType,
-          }
-        : null,
     };
   },
 });
 
-export const getVimeoApp = internalQuery({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db
-      .query("apps")
-      .filter((q) => q.eq(q.field("name"), "Vimeo"))
-      .unique();
-  },
-});
-
-export const getConnectionByAppAndOwner = internalQuery({
+export const getConnectionByNodeTypeAndOwner = internalQuery({
   args: {
-    appId: v.id("apps"),
+    nodeType: v.string(),
     ownerId: v.union(v.id("users"), v.string()),
   },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("connections")
-      .withIndex("by_app_and_owner", (q) =>
-        q.eq("appId", args.appId).eq("ownerId", args.ownerId),
+      .withIndex("by_node_type_and_owner", (q) =>
+        q.eq("nodeType", args.nodeType).eq("ownerId", args.ownerId),
       )
       .unique();
   },
 });
 
 /**
- * List connections with automatic inclusion of internal app connections
- * This ensures internal apps show up with their default connections
+ * List connections with automatic inclusion of internal node type connections
+ * This ensures internal node types show up with their default connections
  */
-export const listWithInternalApps = query({
+export const listWithInternalNodeTypes = query({
   args: {
-    appId: v.optional(v.id("apps")),
+    nodeType: v.optional(v.string()),
     status: v.optional(v.string()),
   },
   returns: v.array(
     v.object({
       _id: v.id("connections"),
       _creationTime: v.number(),
-      appId: v.id("apps"),
+      nodeType: v.string(),
       name: v.string(),
       status: v.string(),
       metadata: v.optional(
@@ -260,14 +197,6 @@ export const listWithInternalApps = query({
       ownerId: v.union(v.id("users"), v.string()),
       createdAt: v.number(),
       updatedAt: v.number(),
-      app: v.optional(
-        v.object({
-          _id: v.id("apps"),
-          name: v.string(),
-          description: v.string(),
-          authType: v.string(),
-        }),
-      ),
     }),
   ),
   handler: async (ctx, args) => {
@@ -277,40 +206,31 @@ export const listWithInternalApps = query({
       args,
     );
 
-    // Get all internal apps that might not have connections yet
-    const internalApps = await ctx.db
-      .query("apps")
-      .filter((q) => q.eq(q.field("isInternal"), true))
-      .collect();
+    // Define internal node types that should have default connections
+    const internalNodeTypes = ["webhook", "orders", "passthrough"];
 
     const result = [...regularConnections];
 
-    // For each internal app, ensure it has a connection in the result
-    for (const app of internalApps) {
-      // Skip if we already have a connection for this app in the results
-      const hasConnection = result.some((conn) => conn.appId === app._id);
+    // For each internal node type, ensure it has a connection in the result
+    for (const nodeType of internalNodeTypes) {
+      // Skip if we already have a connection for this node type in the results
+      const hasConnection = result.some((conn) => conn.nodeType === nodeType);
 
       if (!hasConnection) {
         // Create a synthetic connection for display purposes
         const syntheticConnection = {
-          _id: `${app._id}_default` as any, // Synthetic ID
-          _creationTime: app._creationTime,
-          appId: app._id,
-          name: `${app.name} (Default)`,
+          _id: `${nodeType}_default` as any, // Synthetic ID
+          _creationTime: Date.now(),
+          nodeType: nodeType,
+          name: `${nodeType} (Default)`,
           status: "connected",
           metadata: {
             maskedCredentials: { token: "****internal" },
           },
           config: JSON.stringify({ isDefault: true }),
           ownerId: "system",
-          createdAt: app.createdAt,
-          updatedAt: app.updatedAt,
-          app: {
-            _id: app._id,
-            name: app.name,
-            description: app.description,
-            authType: app.authType,
-          },
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
         };
 
         result.push(syntheticConnection as any);
