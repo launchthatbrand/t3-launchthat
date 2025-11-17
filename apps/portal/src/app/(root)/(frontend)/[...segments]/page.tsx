@@ -2,9 +2,9 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { api } from "@/convex/_generated/api";
+import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
 
-import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 interface PageProps {
   params: { segments?: string[] };
 }

@@ -8,6 +8,7 @@ import { useQuery } from "convex/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Separator } from "@acme/ui/separator";
 import { Skeleton } from "@acme/ui/skeleton";
+
 import { useTenant } from "~/context/TenantContext";
 
 export default function CategoriesPage() {

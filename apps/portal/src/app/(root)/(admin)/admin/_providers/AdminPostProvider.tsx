@@ -2,14 +2,13 @@
 "use client";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-import { Suspense } from "react";
-import { createContext, useContext, useMemo } from "react";
+import { createContext, Suspense, useContext, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 
-import { usePostTypeBySlug } from "../settings/post-types/_api/postTypes";
 import { useTenant } from "~/context/TenantContext";
+import { usePostTypeBySlug } from "../settings/post-types/_api/postTypes";
 
 type AdminPostViewMode = "archive" | "single";
 
