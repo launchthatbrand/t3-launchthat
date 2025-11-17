@@ -2,15 +2,35 @@
 
 import type { Doc } from "@convex-config/_generated/dataModel";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
 import { useMutation, useQuery } from "convex/react";
-import { Edit, Plus, Shield, Trash2, Users } from "lucide-react";
+import { Edit, Loader2, Plus, Shield, Trash2, Users } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@acme/ui/dialog";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@acme/ui/select";
+import { Switch } from "@acme/ui/switch";
+import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
 
 import type { EntityAction } from "~/components/shared/EntityList/types";
@@ -22,13 +42,37 @@ type RoleData = Doc<"roles"> & {
   permissionCount: number;
 };
 
+type NewRoleState = {
+  name: string;
+  description: string;
+  scope: "global" | "group" | "course" | "organization";
+  isAssignable: boolean;
+  priority: number;
+  parentId?: string;
+};
+
+const defaultRoleState: NewRoleState = {
+  name: "",
+  description: "",
+  scope: "global",
+  isAssignable: true,
+  priority: 1,
+  parentId: undefined,
+};
+
 export default function RolesAdminPage() {
   const router = useRouter();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newRole, setNewRole] = useState<NewRoleState>(defaultRoleState);
+  const [isCreatingRole, setIsCreatingRole] = useState(false);
 
   // Queries
-  const rolesQuery = useQuery(api["core/permissions/queries"].getRoles);
+  const rolesQuery = useQuery(api.core.permissions.queries.getRoles);
+  const createRoleMutation = useMutation(
+    api.core.permissions.mutations.createRole,
+  );
   const deleteRoleMutation = useMutation(
-    api["core/permissions/mutations"].deleteRole,
+    api.core.permissions.mutations.deleteRole,
   );
 
   // Transform roles data for EntityList
@@ -37,6 +81,43 @@ export default function RolesAdminPage() {
     userCount: 0, // TODO: Add query to get user count per role
     permissionCount: 0, // TODO: Add query to get permission count per role
   }));
+
+  const parentRoleOptions = useMemo(
+    () =>
+      roles
+        .filter((role) => role._id !== newRole.parentId)
+        .map((role) => ({
+          label: role.name,
+          value: role._id,
+        })),
+    [roles, newRole.parentId],
+  );
+
+  const handleCreateRole = async () => {
+    if (!newRole.name.trim()) {
+      toast.error("Role name is required");
+      return;
+    }
+    setIsCreatingRole(true);
+    try {
+      await createRoleMutation({
+        name: newRole.name.trim(),
+        description: newRole.description.trim(),
+        scope: newRole.scope,
+        isAssignable: newRole.isAssignable,
+        priority: Number(newRole.priority) || 1,
+        parentId: newRole.parentId ?? undefined,
+      });
+      toast.success("Role created");
+      setNewRole(defaultRoleState);
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to create role", error);
+      toast.error("Failed to create role");
+    } finally {
+      setIsCreatingRole(false);
+    }
+  };
 
   // Handle role deletion
   const handleDeleteRole = async (role: RoleData) => {
@@ -184,13 +265,135 @@ export default function RolesAdminPage() {
 
   // Header actions
   const headerActions = (
-    <Button
-      onClick={() => router.push("/admin/settings/roles/new")}
-      className="gap-2"
-    >
-      <Plus className="h-4 w-4" />
-      Create Role
-    </Button>
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <DialogTrigger asChild>
+        <Button className="gap-2">
+          <Plus className="h-4 w-4" />
+          Create Role
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>Create New Role</DialogTitle>
+          <DialogDescription>
+            Define role metadata and availability
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="role-name">Name</Label>
+            <Input
+              id="role-name"
+              placeholder="e.g., Marketing Manager"
+              value={newRole.name}
+              onChange={(e) =>
+                setNewRole((prev) => ({ ...prev, name: e.target.value }))
+              }
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="role-description">Description</Label>
+            <Textarea
+              id="role-description"
+              placeholder="Describe the responsibilities for this role"
+              value={newRole.description}
+              onChange={(e) =>
+                setNewRole((prev) => ({ ...prev, description: e.target.value }))
+              }
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="role-scope">Scope</Label>
+            <Select
+              value={newRole.scope}
+              onValueChange={(value) =>
+                setNewRole((prev) => ({
+                  ...prev,
+                  scope: value as NewRoleState["scope"],
+                }))
+              }
+            >
+              <SelectTrigger id="role-scope">
+                <SelectValue placeholder="Select scope" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="global">Global</SelectItem>
+                <SelectItem value="organization">Organization</SelectItem>
+                <SelectItem value="group">Group</SelectItem>
+                <SelectItem value="course">Course</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="role-parent">Parent Role (optional)</Label>
+            <Select
+              value={newRole.parentId ?? "none"}
+              onValueChange={(value) =>
+                setNewRole((prev) => ({
+                  ...prev,
+                  parentId: value === "none" ? undefined : value,
+                }))
+              }
+            >
+              <SelectTrigger id="role-parent">
+                <SelectValue placeholder="Select parent role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No parent</SelectItem>
+                {parentRoleOptions.map((role) => (
+                  <SelectItem key={role.value} value={role.value}>
+                    {role.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="role-priority">Priority</Label>
+            <Input
+              id="role-priority"
+              type="number"
+              min={1}
+              value={newRole.priority}
+              onChange={(e) =>
+                setNewRole((prev) => ({
+                  ...prev,
+                  priority: Number(e.target.value) || 1,
+                }))
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Higher priority roles can override lower priority permissions.
+            </p>
+          </div>
+          <div className="flex items-center justify-between rounded-md border p-3">
+            <div className="space-y-1">
+              <Label htmlFor="role-assignable">Assignable</Label>
+              <p className="text-sm text-muted-foreground">
+                Allow admins to assign this role to users.
+              </p>
+            </div>
+            <Switch
+              id="role-assignable"
+              checked={newRole.isAssignable}
+              onCheckedChange={(checked) =>
+                setNewRole((prev) => ({ ...prev, isAssignable: checked }))
+              }
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            disabled={isCreatingRole}
+            onClick={handleCreateRole}
+            className="gap-2"
+          >
+            {isCreatingRole && <Loader2 className="h-4 w-4 animate-spin" />}
+            Create Role
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 
   return (
