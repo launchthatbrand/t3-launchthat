@@ -156,6 +156,14 @@ export const hasPermission = async (
   scopeId?: string,
   resourceOwnerId?: Id<"users">,
 ): Promise<boolean> => {
+  const userDoc = await ctx.db.get(userId);
+  if (userDoc?.role) {
+    const normalizedRole = userDoc.role.toString().trim().toLowerCase();
+    if (["admin", "super_admin", "superadmin"].includes(normalizedRole)) {
+      return true;
+    }
+  }
+
   const userRoles = await ctx.db
     .query("userRoleAssignments")
     .withIndex("by_user_scope", (q) =>
