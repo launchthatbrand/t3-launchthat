@@ -20,10 +20,10 @@ export default function OrganizationsSeedPage() {
   const [isSeeding, setIsSeeding] = useState(false);
 
   // Check if plans already exist
-  const existingPlans = useQuery(api.organizations.queries.getPlans, {});
+  const existingPlans = useQuery(api.core.organizations.queries.getPlans, {});
 
   // Seed mutation
-  const seedPlans = useMutation(api.organizations.seed.seedPlans);
+  const seedPlans = useMutation(api.core.organizations.seed.seedPlans);
 
   const handleSeedPlans = async () => {
     setIsSeeding(true);

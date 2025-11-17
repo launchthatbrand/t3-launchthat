@@ -75,12 +75,15 @@ export default function OrganizationsSettingsPage() {
     useState<OrganizationData | null>(null);
 
   // Queries
-  const organizations = useQuery(api.organizations.queries.myOrganizations, {});
-  const plans = useQuery(api.organizations.queries.getPlans, {});
+  const organizations = useQuery(
+    api.core.organizations.queries.myOrganizations,
+    {},
+  );
+  const plans = useQuery(api.core.organizations.queries.getPlans, {});
 
   // Mutations
   const deleteOrganization = useMutation(
-    api.organizations.mutations.deleteOrganization,
+    api.core.organizations.mutations.deleteOrganization,
   );
 
   // Transform organizations data for display

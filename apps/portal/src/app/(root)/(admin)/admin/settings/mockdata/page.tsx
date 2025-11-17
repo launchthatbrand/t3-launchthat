@@ -45,7 +45,7 @@ export default function MockDataPage() {
     api.ecommerce.transfers.mockData.createMockTransfer,
   );
   // TODO: Restore mock user functionality after users refactor
-  // const createMockUser = useMutation(api.users.mockData.createMockUser);
+  // const createMockUser = useMutation(api.core.users.mockData.createMockUser);
   const createMockChargeback = useMutation(
     api.ecommerce.chargebacks.mockData.createMockChargeback,
   );

@@ -81,13 +81,13 @@ export function UserForm({
 }: UserFormProps) {
   // Queries - always call hooks in the same order
   const existingUser = useQuery(
-    api.users.queries.getUserById,
+    api.core.users.queries.getUserById,
     userId ? { userId } : "skip",
   );
 
   // Mutations
-  const createUser = useMutation(api.users.createOrGetUser);
-  const updateUser = useMutation(api.users.updateUser);
+  const createUser = useMutation(api.core.users.createOrGetUser);
+  const updateUser = useMutation(api.core.users.updateUser);
 
   // Form setup
   const form = useForm<UserFormValues>({

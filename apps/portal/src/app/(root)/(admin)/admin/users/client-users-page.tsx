@@ -51,13 +51,13 @@ export default function ClientUsersPage() {
   const [editingUserId, setEditingUserId] = useState<Id<"users"> | null>(null);
 
   // First get current user to confirm admin status
-  const me = useQuery(api.users.queries.getMe);
+  const me = useQuery(api.core.users.queries.getMe);
 
   const isMeAdmin = me?.role === "admin";
 
   // Fetch all users only if admin; otherwise skip
   const allUsersResult = useQuery(
-    api.users.queries.listUsers,
+    api.core.users.queries.listUsers,
     isMeAdmin ? {} : "skip",
   );
 

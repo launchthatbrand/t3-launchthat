@@ -71,7 +71,7 @@ export function PostForm({
 }: PostFormProps) {
   const { isLoaded: isAuthLoaded } = useAuth();
   const users = useQuery(
-    api.users.queries.listUsers,
+    api.core.users.queries.listUsers,
     isAuthLoaded ? {} : "skip",
   );
 

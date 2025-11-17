@@ -74,9 +74,9 @@ const functionMappings: Record<string, string> = {
   "api.groups.getGroupJoinRequests": "api.groups.listGroupJoinRequests",
 
   // Users module
-  "api.users.getUser": "api.users.getUserByClerkId",
-  "api.users.getUserById": "api.users.getUserById",
-  "api.users.getAllUsers": "api.users.listAllUsers",
+  "api.core.users.getUser": "api.core.users.getUserByClerkId",
+  "api.core.users.getUserById": "api.core.users.getUserById",
+  "api.core.users.getAllUsers": "api.core.users.listAllUsers",
 
   // Products module
   "api.products.getAllProducts": "api.products.listProducts",

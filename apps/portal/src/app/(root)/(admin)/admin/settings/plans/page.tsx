@@ -65,10 +65,10 @@ export default function PlansSettingsPage() {
   const [planToDelete, setPlanToDelete] = useState<Id<"plans"> | undefined>();
 
   // Queries
-  const plans = useQuery(api.organizations.queries.getPlans, {});
+  const plans = useQuery(api.core.organizations.queries.getPlans, {});
 
   // Mutations
-  const deletePlan = useMutation(api.organizations.mutations.deletePlan);
+  const deletePlan = useMutation(api.core.organizations.mutations.deletePlan);
 
   // Transform data for EntityList with validation
   const plansData: PlanData[] = React.useMemo(() => {

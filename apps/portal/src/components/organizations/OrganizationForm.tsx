@@ -71,12 +71,12 @@ export function OrganizationForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Queries
-  const plans = useQuery(api.organizations.queries.getPlans, {});
-  const currentUser = useQuery(api.users.queries.getMe, {});
+  const plans = useQuery(api.core.organizations.queries.getPlans, {});
+  const currentUser = useQuery(api.core.users.queries.getMe, {});
 
   // Fetch organization data when editing
   const organizationData = useQuery(
-    api.organizations.queries.getById,
+    api.core.organizations.queries.getById,
     organizationId ? { organizationId } : "skip",
   );
 
@@ -84,8 +84,12 @@ export function OrganizationForm({
   const isAdmin = currentUser?.role === "admin";
 
   // Mutations
-  const createOrganization = useMutation(api.organizations.mutations.create);
-  const updateOrganization = useMutation(api.organizations.mutations.update);
+  const createOrganization = useMutation(
+    api.core.organizations.mutations.create,
+  );
+  const updateOrganization = useMutation(
+    api.core.organizations.mutations.update,
+  );
 
   // Form setup
   const form = useForm<OrganizationFormData>({

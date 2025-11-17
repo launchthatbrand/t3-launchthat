@@ -89,15 +89,19 @@ export function OrganizationForm({
 
   // Queries
   const existingOrganization = useQuery(
-    api.organizations.queries.getById,
+    api.core.organizations.queries.getById,
     organizationId ? { organizationId } : "skip",
   );
-  const plans = useQuery(api.organizations.queries.getPlans, {});
-  const currentUser = useQuery(api.users.queries.getMe, {});
+  const plans = useQuery(api.core.organizations.queries.getPlans, {});
+  const currentUser = useQuery(api.core.users.queries.getMe, {});
 
   // Mutations
-  const createOrganization = useMutation(api.organizations.mutations.create);
-  const updateOrganization = useMutation(api.organizations.mutations.update);
+  const createOrganization = useMutation(
+    api.core.organizations.mutations.create,
+  );
+  const updateOrganization = useMutation(
+    api.core.organizations.mutations.update,
+  );
 
   // Check if current user is admin
   const isAdmin = currentUser?.role === "admin";

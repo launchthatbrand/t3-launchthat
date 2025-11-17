@@ -82,19 +82,22 @@ export default function OrganizationUsersPage() {
   const [userToDelete, setUserToDelete] = useState<Id<"users"> | null>(null);
 
   // Queries
-  const organization = useQuery(api.organizations.queries.getById, {
+  const organization = useQuery(api.core.organizations.queries.getById, {
     organizationId,
   });
-  const members = useQuery(api.organizations.queries.getOrganizationMembers, {
-    organizationId,
-  });
-  const currentUser = useQuery(api.users.queries.getMe);
+  const members = useQuery(
+    api.core.organizations.queries.getOrganizationMembers,
+    {
+      organizationId,
+    },
+  );
+  const currentUser = useQuery(api.core.users.queries.getMe);
 
   // Mutations
-  const removeUser = useMutation(api.organizations.mutations.removeUser);
-  const addUser = useMutation(api.organizations.mutations.addUser);
-  const createUser = useMutation(api.users.createOrGetUser);
-  const updateUser = useMutation(api.users.updateUser);
+  const removeUser = useMutation(api.core.organizations.mutations.removeUser);
+  const addUser = useMutation(api.core.organizations.mutations.addUser);
+  const createUser = useMutation(api.core.users.createOrGetUser);
+  const updateUser = useMutation(api.core.users.updateUser);
 
   // Transform data for EntityList
   const membersData: OrganizationMember[] = (members ||

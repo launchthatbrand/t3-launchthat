@@ -49,7 +49,7 @@ interface CategoryItem {
 export default function DownloadCategoryPage() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const router = useRouter();
-  const ensureUser = useMutation(api.users.mutations.createOrGetUser);
+  const ensureUser = useMutation(api.core.users.mutations.createOrGetUser);
 
   // Early return if auth is loading or user is not authenticated
   useEffect(() => {
@@ -93,7 +93,9 @@ function AuthenticatedCategoryPage({
   ensureUser,
   router,
 }: {
-  ensureUser: ReturnType<typeof useMutation<typeof api.users.createOrGetUser>>;
+  ensureUser: ReturnType<
+    typeof useMutation<typeof api.core.users.createOrGetUser>
+  >;
   router: ReturnType<typeof useRouter>;
 }) {
   const isAdminResult = useQuery(api.accessControl.checkIsAdmin);

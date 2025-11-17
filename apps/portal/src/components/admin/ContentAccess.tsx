@@ -57,7 +57,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
   // Queries
   // TODO: Restore marketing tags functionality after users refactor
   // const marketingTags = useQuery(
-  //   api.users.marketingTags.index.listMarketingTags,
+  //   api.core.users.marketingTags.index.listMarketingTags,
   // );
   const marketingTags = undefined;
   const currentRules = useQuery(

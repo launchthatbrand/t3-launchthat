@@ -95,12 +95,12 @@ export function PlanForm({
   const [newFeature, setNewFeature] = useState("");
 
   // Queries
-  const plans = useQuery(api.organizations.queries.getPlans, {});
+  const plans = useQuery(api.core.organizations.queries.getPlans, {});
   const existingPlan = plans?.find((p: any) => p._id === planId);
 
   // Mutations
-  const createPlan = useMutation(api.organizations.mutations.createPlan);
-  const updatePlan = useMutation(api.organizations.mutations.updatePlan);
+  const createPlan = useMutation(api.core.organizations.mutations.createPlan);
+  const updatePlan = useMutation(api.core.organizations.mutations.updatePlan);
 
   // Form setup
   const form = useForm<PlanFormData>({

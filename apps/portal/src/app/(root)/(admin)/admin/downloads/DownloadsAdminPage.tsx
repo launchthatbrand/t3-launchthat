@@ -94,7 +94,7 @@ interface UploadResponseData {
 export function DownloadsAdminPage() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const router = useRouter();
-  const ensureUser = useMutation(api.users.createOrGetUser);
+  const ensureUser = useMutation(api.core.users.createOrGetUser);
 
   // Early return if auth is loading or user is not authenticated
   useEffect(() => {
@@ -141,7 +141,9 @@ function AuthenticatedDownloadsAdminPage({
   ensureUser,
   router,
 }: {
-  ensureUser: ReturnType<typeof useMutation<typeof api.users.createOrGetUser>>;
+  ensureUser: ReturnType<
+    typeof useMutation<typeof api.core.users.createOrGetUser>
+  >;
   router: ReturnType<typeof useRouter>;
 }) {
   const isAdminResult = useQuery(api.accessControl.checkIsAdmin);

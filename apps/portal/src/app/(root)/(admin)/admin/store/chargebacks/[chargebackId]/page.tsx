@@ -1,5 +1,12 @@
 "use client";
 
+import React, { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { Id } from "@convex-config/_generated/dataModel";
+import { useMutation, useQuery } from "convex/react";
+import { format } from "date-fns";
 import {
   Activity,
   AlertTriangle,
@@ -13,6 +20,7 @@ import {
   Trash2,
   User,
 } from "lucide-react";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +32,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@acme/ui/alert-dialog";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
   Dialog,
@@ -32,23 +42,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import React, { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { Label } from "@acme/ui/label";
+import { Separator } from "@acme/ui/separator";
+import { toast } from "@acme/ui/toast";
 
 import { AuditLogViewer } from "~/components/admin/AuditLogViewer";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { ChargebackEvidenceManager } from "~/components/admin/ChargebackEvidenceManager";
 import { ChargebackForm } from "~/components/admin/ChargebackForm";
-import { Id } from "@convex-config/_generated/dataModel";
-import { Label } from "@acme/ui/label";
-import Link from "next/link";
-import { Separator } from "@acme/ui/separator";
-import { api } from "@convex-config/_generated/api";
-import { format } from "date-fns";
-import { toast } from "@acme/ui/toast";
 import { useChargebackEvidence } from "~/hooks/useChargebackEvidence";
-import { useRouter } from "next/navigation";
 
 interface Props {
   params: Promise<{
@@ -81,7 +82,7 @@ export default function ChargebackDetailPage({ params }: Props) {
 
   // Get the user associated with this chargeback's email
   const customerUser = useQuery(
-    api.users.getUserByEmail,
+    api.core.users.getUserByEmail,
     chargeback ? { email: chargeback.customerInfo.email } : "skip",
   );
 

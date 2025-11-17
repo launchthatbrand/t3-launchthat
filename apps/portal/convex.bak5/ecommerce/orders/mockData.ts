@@ -44,7 +44,7 @@ export const createMockOrder = mutation({
 
       // Create or get mock user using centralized function
       const mockUserResult = await ctx.runMutation(
-        api.users.mockData.createMockUser,
+        api.core.users.mockData.createMockUser,
         {},
       );
 

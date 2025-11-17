@@ -32,7 +32,7 @@ export default function CalendarPage() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const router = useRouter();
   const { user } = useUser();
-  const ensureUser = useMutation(api.users.createOrGetUser);
+  const ensureUser = useMutation(api.core.users.createOrGetUser);
 
   // State
   const [date, setDate] = useState<Date>(new Date());

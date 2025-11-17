@@ -52,7 +52,7 @@ interface CalendarCategoryItem {
 export default function CalendarCategoryPage() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const router = useRouter();
-  const ensureUser = useMutation(api.users.createOrGetUser);
+  const ensureUser = useMutation(api.core.users.createOrGetUser);
 
   // Early return if auth is loading or user is not authenticated
   useEffect(() => {
@@ -97,7 +97,7 @@ function AuthenticatedCategoryPage({
   router,
 }: {
   ensureUser: ReturnType<
-    typeof useMutation<typeof api.users.mutations.createOrGetUser>
+    typeof useMutation<typeof api.core.users.mutations.createOrGetUser>
   >;
   router: ReturnType<typeof useRouter>;
 }) {

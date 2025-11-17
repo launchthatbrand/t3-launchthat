@@ -179,7 +179,7 @@ export function OrderForm({
   // Fetch users for selection - only when auth is ready
   const { isLoaded: isAuthLoaded } = useAuth();
   const usersQuery = useQuery(
-    api.users.queries.listUsers,
+    api.core.users.queries.listUsers,
     isAuthLoaded ? {} : "skip",
   );
 

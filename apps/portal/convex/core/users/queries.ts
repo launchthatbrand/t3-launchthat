@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
-import { query } from "../_generated/server";
-import { throwForbidden } from "../shared/errors";
+import { query } from "../../_generated/server";
+import { throwForbidden } from "../../shared/errors";
 import { requireAdmin } from "./helpers";
 
 /**

@@ -1,16 +1,16 @@
 import { v } from "convex/values";
 
-import type { Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
+import type { Id } from "../../_generated/dataModel";
+import type { MutationCtx } from "../../_generated/server";
 import type { UserRole } from "./types";
-import { internal } from "../_generated/api";
-import { internalMutation, mutation } from "../_generated/server";
+import { internal } from "../../_generated/api";
+import { internalMutation, mutation } from "../../_generated/server";
 import {
   logError,
   throwForbidden,
   throwNotFound,
   throwUnauthorized,
-} from "../shared/errors";
+} from "../../shared/errors";
 import { requireAdmin } from "./helpers";
 
 /**
@@ -179,7 +179,7 @@ export const createOrGetUser = mutation({
     console.log("--- createOrGetUser (public wrapper) CALLED ---");
     // Call the internal mutation using the internal API reference
     const userId = await ctx.runMutation(
-      internal.users.mutations.internalEnsureUser,
+      internal.core.users.mutations.internalEnsureUser,
       {},
     );
     console.log(

@@ -1,25 +1,25 @@
+import { api } from "@convex-config/_generated/api";
+import { Id } from "@convex-config/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 
-import { Id } from "@convex-config/_generated/dataModel";
-import { api } from "@convex-config/_generated/api";
 import { useConvexUser } from "./useConvexUser";
 
 export function useMarketingTags() {
   // Get all marketing tags
   const marketingTags = useQuery(
-    api.users.marketingTags.index.listMarketingTags,
+    api.core.users.marketingTags.index.listMarketingTags,
     {},
   );
 
   // Mutations
   const createTag = useMutation(
-    api.users.marketingTags.index.createMarketingTag,
+    api.core.users.marketingTags.index.createMarketingTag,
   );
   const assignTag = useMutation(
-    api.users.marketingTags.index.assignMarketingTagToUser,
+    api.core.users.marketingTags.index.assignMarketingTagToUser,
   );
   const removeTag = useMutation(
-    api.users.marketingTags.index.removeMarketingTagFromUser,
+    api.core.users.marketingTags.index.removeMarketingTagFromUser,
   );
 
   return {
@@ -36,16 +36,16 @@ export function useUserMarketingTags(userId?: Id<"users">) {
 
   // Get user's marketing tags
   const userTags = useQuery(
-    api.users.marketingTags.index.getUserMarketingTags,
+    api.core.users.marketingTags.index.getUserMarketingTags,
     targetUserId ? { userId: targetUserId } : "skip",
   );
 
   // Mutations
   const assignTagMutation = useMutation(
-    api.users.marketingTags.index.assignMarketingTagToUser,
+    api.core.users.marketingTags.index.assignMarketingTagToUser,
   );
   const removeTagMutation = useMutation(
-    api.users.marketingTags.index.removeMarketingTagFromUser,
+    api.core.users.marketingTags.index.removeMarketingTagFromUser,
   );
 
   const assignTag = async (args: {
@@ -86,7 +86,7 @@ export function useMarketingTagAccess(tagSlugs: string[], requireAll = false) {
 
   // Check if current user has the required tags
   const access = useQuery(
-    api.users.marketingTags.index.userHasMarketingTags,
+    api.core.users.marketingTags.index.userHasMarketingTags,
     convexId && tagSlugs.length > 0
       ? {
           userId: convexId,

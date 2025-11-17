@@ -77,17 +77,17 @@ export default function UserEditPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Get user by ID
-  const user = useQuery(api.users.queries.getUserById, {
+  const user = useQuery(api.core.users.queries.getUserById, {
     userId: userId as Id<"users">,
   });
 
   console.log("user", user);
 
   // Update user mutation
-  const updateUser = useMutation(api.users.updateUser);
+  const updateUser = useMutation(api.core.users.updateUser);
 
   // Delete user mutation
-  const deleteUser = useMutation(api.users.deleteUser);
+  const deleteUser = useMutation(api.core.users.deleteUser);
 
   // Setup form
   const form = useForm<UserFormValues>({

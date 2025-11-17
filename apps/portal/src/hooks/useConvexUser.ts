@@ -16,7 +16,7 @@ export function useConvexUser() {
   const { userId: clerkId, isLoaded: isClerkLoaded } = useAuth();
 
   const user = useQuery(
-    api.users.queries.getUserByClerkId,
+    api.core.users.queries.getUserByClerkId,
     clerkId ? { clerkId } : "skip",
   );
 

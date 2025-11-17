@@ -89,7 +89,7 @@ export function BlockedUsersList({ className = "" }: BlockedUsersListProps) {
         setError(null);
 
         // In a real app, fetch from API
-        // const result = await convex.query(api.users.getBlockedUsers, { userId });
+        // const result = await convex.query(api.core.users.getBlockedUsers, { userId });
 
         // For now, use mock data
         // Simulate API delay

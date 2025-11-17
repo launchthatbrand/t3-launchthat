@@ -6,7 +6,9 @@ import { useConvexAuth, useMutation } from "convex/react";
 
 export function ConvexUserEnsurer() {
   const { isAuthenticated } = useConvexAuth();
-  const triggerEnsureUser = useMutation(api.users.mutations.createOrGetUser);
+  const triggerEnsureUser = useMutation(
+    api.core.users.mutations.createOrGetUser,
+  );
 
   useEffect(() => {
     if (isAuthenticated) {

@@ -39,7 +39,7 @@ export function NotificationDropdown({
 
   // Get convex user by clerkId
   const convexUser = useQuery(
-    api.users.getUserByClerkId,
+    api.core.users.getUserByClerkId,
     clerkId ? { clerkId } : "skip",
   );
 

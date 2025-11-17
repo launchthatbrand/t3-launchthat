@@ -43,7 +43,7 @@ export default function OrdersAdminPage() {
   const organizationId = organization?.id as Id<"organizations">;
 
   // Check current user's role
-  const currentUser = useQuery(api.users.queries.getMe, {});
+  const currentUser = useQuery(api.core.users.queries.getMe, {});
 
   // Fetch orders - only when auth is loaded to prevent permission errors on hard refresh
   const orders = useQuery(

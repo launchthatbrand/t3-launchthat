@@ -72,11 +72,11 @@ export default function PlanDetailPage({ params }: PlanDetailPageProps) {
   const [isDeleting, setIsDeleting] = React.useState(false);
 
   // Queries
-  const plans = useQuery(api.organizations.queries.getPlans, {});
+  const plans = useQuery(api.core.organizations.queries.getPlans, {});
   const currentPlan = plans?.find((p: PlanData) => p._id === planId);
 
   // Mutations
-  const deletePlan = useMutation(api.organizations.mutations.deletePlan);
+  const deletePlan = useMutation(api.core.organizations.mutations.deletePlan);
 
   // Handlers
   const handleEdit = () => {

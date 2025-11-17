@@ -34,7 +34,7 @@ export const createMockTransfer = mutation({
       if (!mockUser) {
         // Create mock user using centralized function
         const mockUserResult = await ctx.runMutation(
-          api.users.mockData.createMockUser,
+          api.core.users.mockData.createMockUser,
           {},
         );
 

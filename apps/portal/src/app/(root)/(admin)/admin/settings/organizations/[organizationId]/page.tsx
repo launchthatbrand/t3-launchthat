@@ -62,14 +62,14 @@ export default function OrganizationDetailPage({
   const [isDeleting, setIsDeleting] = React.useState(false);
 
   // Queries
-  const organization = useQuery(api.organizations.queries.getById, {
+  const organization = useQuery(api.core.organizations.queries.getById, {
     organizationId,
   });
-  const plans = useQuery(api.organizations.queries.getPlans, {});
+  const plans = useQuery(api.core.organizations.queries.getPlans, {});
 
   // Mutations
   const deleteOrganization = useMutation(
-    api.organizations.mutations.deleteOrganization,
+    api.core.organizations.mutations.deleteOrganization,
   );
 
   // Get plan details

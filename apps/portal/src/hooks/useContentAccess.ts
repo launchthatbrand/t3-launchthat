@@ -1,7 +1,8 @@
-import { Id } from "@convex-config/_generated/dataModel";
 import { api } from "@convex-config/_generated/api";
-import { useConvexUser } from "./useConvexUser";
+import { Id } from "@convex-config/_generated/dataModel";
 import { useQuery } from "convex/react";
+
+import { useConvexUser } from "./useConvexUser";
 
 export type ContentType =
   | "course"
@@ -110,7 +111,7 @@ export const useContentAccess = ({
   );
 
   const userTags = useQuery(
-    api.users.marketingTags.index.getUserMarketingTags,
+    api.core.users.marketingTags.index.getUserMarketingTags,
     userId ? { userId } : ("skip" as const),
   );
 

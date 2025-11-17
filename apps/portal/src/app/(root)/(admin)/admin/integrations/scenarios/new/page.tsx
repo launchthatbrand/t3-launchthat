@@ -17,7 +17,7 @@ export default function NewScenarioPage() {
     api.integrations.scenarios.mutations.create,
   );
   const createSystemUser = useMutation(
-    api.users.mutations.createSystemUserIfNeeded,
+    api.core.users.mutations.createSystemUserIfNeeded,
   );
 
   useEffect(() => {

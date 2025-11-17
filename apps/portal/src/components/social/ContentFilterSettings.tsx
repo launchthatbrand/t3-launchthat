@@ -89,7 +89,7 @@ export function ContentFilterSettings({
         }
 
         // In a real app, we would fetch settings from the server
-        // const userSettings = await convex.query(api.users.getSettings, { userId });
+        // const userSettings = await convex.query(api.core.users.getSettings, { userId });
         // if (userSettings) {
         //   setSettings(userSettings.contentFilters);
         // }

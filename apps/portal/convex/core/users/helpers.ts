@@ -3,7 +3,7 @@
  *
  * Shared utility functions for the users feature.
  */
-import type { Doc } from "../_generated/dataModel";
+import type { Doc } from "../../_generated/dataModel";
 
 /**
  * Format user for display
@@ -118,4 +118,4 @@ export function formatAddress(address: Doc<"users">["addresses"]): string {
 /**
  * Re-export from the central permissions module for better consistency
  */
-export { requireAdmin } from "../lib/permissions/requirePermission";
+export { requireAdmin } from "../../lib/permissions/requirePermission";

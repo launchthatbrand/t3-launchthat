@@ -113,7 +113,7 @@ export function UserRoleAssignment({
   });
 
   // Get user details
-  const user = useQuery(api.users.getUserByClerkId, { userId });
+  const user = useQuery(api.core.users.getUserByClerkId, { userId });
 
   // Mutations
   const assignRole = useMutation(api.permissions.assignRole);

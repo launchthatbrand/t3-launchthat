@@ -126,7 +126,7 @@ export function PostCreator({
 
   // Convert Clerk user ID to Convex user ID
   const convexUser = useQuery(
-    api.users.queries.getUserByClerkId,
+    api.core.users.queries.getUserByClerkId,
     clerkUserId ? { clerkId: clerkUserId } : "skip",
   );
 

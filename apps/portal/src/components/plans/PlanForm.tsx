@@ -74,13 +74,13 @@ export function PlanForm({
   const [newFeature, setNewFeature] = useState("");
 
   // Get plan data if editing
-  const existingPlan = useQuery(api.organizations.queries.getPlans, {});
+  const existingPlan = useQuery(api.core.organizations.queries.getPlans, {});
 
   const plan = existingPlan?.find((p) => p._id === planId);
 
   // Mutations
-  const createPlan = useMutation(api.organizations.mutations.createPlan);
-  const updatePlan = useMutation(api.organizations.mutations.updatePlan);
+  const createPlan = useMutation(api.core.organizations.mutations.createPlan);
+  const updatePlan = useMutation(api.core.organizations.mutations.updatePlan);
 
   const form = useForm<PlanFormData>({
     resolver: zodResolver(planFormSchema),

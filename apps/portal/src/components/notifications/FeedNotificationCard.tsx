@@ -35,7 +35,7 @@ export function FeedNotificationCard({
 
   // Get source user information
   const sourceUser = useQuery(
-    api.users.queries.getUserById,
+    api.core.users.queries.getUserById,
     notification.sourceUserId ? { userId: notification.sourceUserId } : "skip",
   );
 

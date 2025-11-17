@@ -54,7 +54,7 @@ export function ScenarioForm({
     useQuery(api.integrations.apps.queries.list, { showDisabled: false }) ?? [];
   const fetchedConnections =
     useQuery(api.integrations.connections.queries.list, {}) ?? [];
-  const systemUser = useQuery(api.users.queries.getSystemUser);
+  const systemUser = useQuery(api.core.users.queries.getSystemUser);
   const existingScenario = useQuery(
     api.integrations.scenarios.queries.getById,
     scenarioId ? { id: scenarioId } : "skip",
@@ -98,7 +98,9 @@ export function ScenarioForm({
       // Ensure system user exists
       let ownerId = systemUser?._id;
       if (!ownerId)
-        ownerId = await api.users.mutations.createSystemUserIfNeeded({} as any);
+        ownerId = await api.core.users.mutations.createSystemUserIfNeeded(
+          {} as any,
+        );
 
       if (!ownerId) throw new Error("Failed to determine owner");
 

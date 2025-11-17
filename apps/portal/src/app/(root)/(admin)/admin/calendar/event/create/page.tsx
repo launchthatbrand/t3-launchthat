@@ -23,7 +23,7 @@ import { LoadingSpinner } from "../../_components/LoadingSpinner";
 export default function EventCreatePage() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const router = useRouter();
-  const ensureUser = useMutation(api.users.createOrGetUser);
+  const ensureUser = useMutation(api.core.users.createOrGetUser);
   const { user } = useUser();
 
   // Early return if auth is loading or user is not authenticated
@@ -75,7 +75,9 @@ function AuthenticatedCreatePage({
   router,
   userId,
 }: {
-  ensureUser: ReturnType<typeof useMutation<typeof api.users.createOrGetUser>>;
+  ensureUser: ReturnType<
+    typeof useMutation<typeof api.core.users.createOrGetUser>
+  >;
   router: ReturnType<typeof useRouter>;
   userId?: string;
 }) {
