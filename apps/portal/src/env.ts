@@ -22,6 +22,7 @@ export const env = createEnv({
     CLERK_SECRET_KEY: z.string().min(1),
     VIMEO_CLIENT_SECRET: z.string().min(1),
     VIMEO_REDIRECT_URI: z.string().url(),
+    CLERK_JWT_ISSUER_DOMAIN: z.string().url(),
   },
 
   /**

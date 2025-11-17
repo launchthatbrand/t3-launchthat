@@ -53,6 +53,8 @@ export default function ClientUsersPage() {
   // First get current user to confirm admin status
   const me = useQuery(api.core.users.queries.getMe);
 
+  console.log("me", me);
+
   const isMeAdmin = me?.role === "admin";
 
   // Fetch all users only if admin; otherwise skip
