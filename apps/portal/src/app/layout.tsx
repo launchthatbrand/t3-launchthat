@@ -1,11 +1,11 @@
 // import "@acme/ui/globals.css";
 import "./globals.css";
 
-import { Geist, Geist_Mono } from "next/font/google";
+import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 
-import { Button, cn } from "@acme/ui";
+import { cn } from "@acme/ui";
 import StandardLayout from "@acme/ui/layout/StandardLayout";
 
 import { Providers } from "./providers";
@@ -25,6 +25,8 @@ export default function RootLayout(props: {
   sidebar: React.ReactNode;
   header: React.ReactNode;
 }) {
+  const tenant = getActiveTenantFromHeaders();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -34,7 +36,7 @@ export default function RootLayout(props: {
           GeistMono.variable,
         )}
       >
-        <Providers>
+        <Providers tenant={tenant}>
           <StandardLayout
             appName="Wall Street Academy"
             sidebar={props.sidebar}

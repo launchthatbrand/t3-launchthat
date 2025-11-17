@@ -1,6 +1,7 @@
 /* eslint-disable react-compiler/react-compiler */
 "use client";
 
+import type { TenantSummary } from "@/lib/tenant-fetcher";
 // Import Clerk provider and hook
 import React, { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
@@ -16,6 +17,7 @@ import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
 import { Toaster } from "@acme/ui/toast";
 
 import { ContentProtectionProvider } from "~/components/access/ContentProtectionProvider";
+import { TenantProvider } from "~/context/TenantContext";
 import { env } from "~/env";
 import useEditorStore from "~/store/useEditorStore";
 import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
@@ -56,33 +58,40 @@ function StandardLayoutWrapper(
   return <StandardLayout {...props} showSidebar={!isEditorMode} />;
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+interface ProvidersProps {
+  children: React.ReactNode;
+  tenant: TenantSummary | null;
+}
+
+export function Providers({ children, tenant }: ProvidersProps) {
   return (
     // Wrap everything with ClerkProvider - key is now guaranteed to be a string
     <ClerkProvider publishableKey={env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <SessionProvider storageKey="cart-session" useStorage={useLocalStorage}>
           <ContentProtectionProvider>
-            <SidebarProvider>
-              <ConvexUserEnsurer />
-              <GuestCartMerger />
-              <ThemeProvider
-                attribute="class"
-                defaultTheme="system"
-                enableSystem
-              >
-                <Suspense fallback={null}>
-                  <EditorModeDetector />
-                </Suspense>
-                {/* <PuckEditor> */}
-                {children}
-                {/* </PuckEditor>  */}
-                <div className="absolute bottom-4 right-4">
-                  <ThemeToggle />
-                </div>
-                <Toaster />
-              </ThemeProvider>
-            </SidebarProvider>
+            <TenantProvider value={tenant}>
+              <SidebarProvider>
+                <ConvexUserEnsurer />
+                <GuestCartMerger />
+                <ThemeProvider
+                  attribute="class"
+                  defaultTheme="system"
+                  enableSystem
+                >
+                  <Suspense fallback={null}>
+                    <EditorModeDetector />
+                  </Suspense>
+                  {/* <PuckEditor> */}
+                  {children}
+                  {/* </PuckEditor>  */}
+                  <div className="absolute bottom-4 right-4">
+                    <ThemeToggle />
+                  </div>
+                  <Toaster />
+                </ThemeProvider>
+              </SidebarProvider>
+            </TenantProvider>
           </ContentProtectionProvider>
         </SessionProvider>
       </ConvexProviderWithClerk>

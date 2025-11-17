@@ -2,6 +2,8 @@ import type { ClassValue } from "clsx";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+import { env } from "~/env";
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -23,3 +25,6 @@ export function formatBytes(bytes: number, decimals = 2): string {
 
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
+
+export const protocol = env.NODE_ENV === "production" ? "https" : "http";
+export const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";

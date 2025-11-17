@@ -1,5 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { fetchTenantBySlug } from "@/lib/tenant-fetcher";
+import { rootDomain } from "@/lib/utils";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 // Define protected routes (require sign-in)
@@ -15,21 +17,88 @@ const isEmbedRoute = createRouteMatcher([
   "/api/auth/monday(.*)",
 ]);
 
+function extractSubdomain(request: NextRequest): string | null {
+  const url = request.url;
+  const host = request.headers.get("host") ?? "";
+  const hostname = host.split(":")[0];
+
+  // Local development environment
+  if (url.includes("localhost") || url.includes("127.0.0.1")) {
+    const fullUrlMatch = /http:\/\/([^.]+)\.localhost/.exec(url);
+    if (fullUrlMatch?.[1]) {
+      return fullUrlMatch[1];
+    }
+
+    if (hostname?.includes(".localhost")) {
+      return hostname.split(".")[0] ?? null;
+    }
+
+    return null;
+  }
+
+  const rootDomainFormatted = rootDomain.split(":")[0];
+
+  // Handle preview deployment URLs (tenant---branch-name.vercel.app)
+  if (hostname?.includes("---") && hostname.endsWith(".vercel.app")) {
+    const parts = hostname.split("---");
+    return parts.length > 0 ? (parts[0] ?? null) : null;
+  }
+
+  const isSubdomain =
+    (hostname !== rootDomainFormatted &&
+      hostname !== `www.${rootDomainFormatted}` &&
+      hostname?.endsWith(`.${rootDomainFormatted}`)) ??
+    false;
+
+  return isSubdomain
+    ? (hostname?.replace(`.${rootDomainFormatted}`, "") ?? null)
+    : null;
+}
+
 // Middleware function
 export default clerkMiddleware(async (auth, req: NextRequest) => {
+  const { pathname } = req.nextUrl;
+  const subdomain = extractSubdomain(req);
+  const tenant = await fetchTenantBySlug(subdomain);
+
+  if (subdomain && !tenant) {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  if (tenant && pathname.startsWith("/admin")) {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
   // Check if this is an embed route
   const url = new URL(req.url);
   const isEmbed = isEmbedRoute(req);
 
+  const requestHeaders = new Headers(req.headers);
+  if (tenant) {
+    requestHeaders.set("x-tenant-id", tenant._id);
+    requestHeaders.set("x-tenant-slug", tenant.slug);
+    requestHeaders.set("x-tenant-name", encodeURIComponent(tenant.name));
+    if (tenant.planId) {
+      requestHeaders.set("x-tenant-plan-id", tenant.planId);
+    }
+    if (tenant.customDomain) {
+      requestHeaders.set("x-tenant-custom-domain", tenant.customDomain);
+    }
+  }
+
   // Create a single response object and set pathname header
   const response = NextResponse.next({
     request: {
-      headers: new Headers(req.headers),
+      headers: requestHeaders,
     },
   });
 
   // Set pathname header for use in components
   response.headers.set("x-pathname", req.nextUrl.pathname);
+  if (tenant) {
+    response.headers.set("x-tenant-id", tenant._id);
+    response.headers.set("x-tenant-slug", tenant.slug);
+  }
 
   // For embed routes, we need to allow iframe embedding
   if (isEmbed) {

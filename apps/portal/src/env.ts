@@ -35,6 +35,7 @@ export const env = createEnv({
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().min(1),
     NEXT_PUBLIC_VIMEO_CLIENT_ID: z.string().min(1),
+    NEXT_PUBLIC_ROOT_DOMAIN: z.string().min(1),
   },
   /**
    * Destructure all variables from `process.env` to make sure they aren't tree-shaken away.
@@ -54,6 +55,7 @@ export const env = createEnv({
     // Server vars like CLERK_SECRET_KEY are validated but not explicitly mapped here
     // as they are usually accessed directly by server-side libraries.
     NEXT_PUBLIC_VIMEO_CLIENT_ID: process.env.NEXT_PUBLIC_VIMEO_CLIENT_ID,
+    NEXT_PUBLIC_ROOT_DOMAIN: process.env.NEXT_PUBLIC_ROOT_DOMAIN,
   },
   skipValidation:
     !!process.env.CI || process.env.npm_lifecycle_event === "lint",
