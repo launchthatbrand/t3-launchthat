@@ -1,6 +1,7 @@
 "use client";
 
-import type { Id } from "@/convex/_generated/dataModel";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { OrganizationMember } from "@/convex/core/organizations/types";
 import React from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
@@ -39,10 +40,38 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import { Input } from "@acme/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@acme/ui/select";
 import { Separator } from "@acme/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@acme/ui/table";
 
 import { LoadingSpinner } from "~/components/ui/loading-spinner";
 import { OrganizationForm } from "../_components/OrganizationForm";
+
+type OrganizationMeta = Doc<"organizations"> & {
+  memberCount?: number;
+  userRole?: "owner" | "admin" | "editor" | "viewer" | "student";
+};
+
+const MEMBER_ROLE_OPTIONS = [
+  { value: "admin", label: "Admin" },
+  { value: "editor", label: "Editor" },
+  { value: "viewer", label: "Viewer" },
+  { value: "student", label: "Student" },
+] as const;
 
 interface OrganizationDetailPageProps {
   params: Promise<{
@@ -60,20 +89,43 @@ export default function OrganizationDetailPage({
   // State
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [newMemberEmail, setNewMemberEmail] = React.useState("");
+  const [newMemberRole, setNewMemberRole] = React.useState<
+    "admin" | "editor" | "viewer" | "student"
+  >("viewer");
+  const [isAddingMember, setIsAddingMember] = React.useState(false);
+  const [roleUpdatingUserId, setRoleUpdatingUserId] = React.useState<
+    string | null
+  >(null);
+  const [removingUserId, setRemovingUserId] = React.useState<string | null>(
+    null,
+  );
 
   // Queries
   const organization = useQuery(api.core.organizations.queries.getById, {
     organizationId,
   });
   const plans = useQuery(api.core.organizations.queries.getPlans, {});
+  const members = useQuery(
+    api.core.organizations.queries.getOrganizationMembers,
+    {
+      organizationId,
+    },
+  );
 
   // Mutations
   const deleteOrganization = useMutation(
     api.core.organizations.mutations.deleteOrganization,
   );
-
-  // Get plan details
-  const currentPlan = plans?.find((p: any) => p._id === organization?.planId);
+  const addOrganizationMember = useMutation(
+    api.core.organizations.mutations.addUserByEmail,
+  );
+  const updateMemberRole = useMutation(
+    api.core.organizations.mutations.updateUserRole,
+  );
+  const removeOrganizationMember = useMutation(
+    api.core.organizations.mutations.removeUser,
+  );
 
   // Handlers
   const handleEdit = () => {
@@ -99,6 +151,73 @@ export default function OrganizationDetailPage({
     toast.success("Organization updated successfully");
   };
 
+  const handleAddMember = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedEmail = newMemberEmail.trim().toLowerCase();
+    if (!trimmedEmail) {
+      toast.error("Please enter an email address");
+      return;
+    }
+    try {
+      setIsAddingMember(true);
+      await addOrganizationMember({
+        organizationId,
+        email: trimmedEmail,
+        role: newMemberRole,
+      });
+      toast.success("Member added successfully");
+      setNewMemberEmail("");
+      setNewMemberRole("viewer");
+    } catch (error) {
+      console.error("Error adding member:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add member",
+      );
+    } finally {
+      setIsAddingMember(false);
+    }
+  };
+
+  const handleRoleChange = async (
+    userId: Id<"users">,
+    role: (typeof MEMBER_ROLE_OPTIONS)[number]["value"],
+  ) => {
+    try {
+      setRoleUpdatingUserId(userId);
+      await updateMemberRole({
+        organizationId,
+        userId,
+        role,
+      });
+      toast.success("Member role updated");
+    } catch (error) {
+      console.error("Error updating member role:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update role",
+      );
+    } finally {
+      setRoleUpdatingUserId(null);
+    }
+  };
+
+  const handleRemoveMember = async (userId: Id<"users">) => {
+    try {
+      setRemovingUserId(userId);
+      await removeOrganizationMember({
+        organizationId,
+        userId,
+      });
+      toast.success("Member removed");
+    } catch (error) {
+      console.error("Error removing member:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to remove member",
+      );
+    } finally {
+      setRemovingUserId(null);
+    }
+  };
+
   if (organization === undefined) {
     return <LoadingSpinner />;
   }
@@ -121,6 +240,25 @@ export default function OrganizationDetailPage({
     );
   }
 
+  const planList: {
+    _id: Id<"plans">;
+    displayName: string;
+    priceMonthly: number;
+  }[] = Array.isArray(plans)
+    ? (plans as {
+        _id: Id<"plans">;
+        displayName: string;
+        priceMonthly: number;
+      }[])
+    : [];
+  const org = organization as OrganizationMeta;
+  const currentPlan = planList.find(
+    (plan) => org.planId && plan._id === org.planId,
+  );
+  const memberList: OrganizationMember[] = Array.isArray(members)
+    ? (members as OrganizationMember[])
+    : [];
+
   return (
     <div className="container mx-auto space-y-6 py-6">
       {/* Header */}
@@ -135,7 +273,7 @@ export default function OrganizationDetailPage({
             Back to Organizations
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">{organization.name}</h1>
+            <h1 className="text-2xl font-bold">{org.name}</h1>
             <p className="text-muted-foreground">
               Organization details and settings
             </p>
@@ -157,8 +295,8 @@ export default function OrganizationDetailPage({
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Organization</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Are you sure you want to delete "{organization.name}"? This
-                  action cannot be undone and will remove all associated data.
+                  Are you sure you want to delete "{org.name}"? This action
+                  cannot be undone and will remove all associated data.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -302,18 +440,14 @@ export default function OrganizationDetailPage({
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Created</span>
               <span className="text-sm">
-                {new Date(
-                  organization.createdAt ?? Date.now(),
-                ).toLocaleDateString()}
+                {new Date(organization._creationTime).toLocaleDateString()}
               </span>
             </div>
             <Separator />
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Last Updated</span>
               <span className="text-sm">
-                {new Date(
-                  organization.updatedAt ?? Date.now(),
-                ).toLocaleDateString()}
+                {new Date(organization.updatedAt).toLocaleDateString()}
               </span>
             </div>
             <Separator />
@@ -331,6 +465,139 @@ export default function OrganizationDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* Members */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5" />
+                Organization Members
+              </CardTitle>
+              <CardDescription>
+                Manage team members who can access this organization
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <form
+            onSubmit={handleAddMember}
+            className="grid gap-4 md:grid-cols-[1fr,_200px,_auto]"
+          >
+            <Input
+              type="email"
+              placeholder="user@example.com"
+              value={newMemberEmail}
+              onChange={(event) => setNewMemberEmail(event.target.value)}
+              required
+            />
+            <Select
+              value={newMemberRole}
+              onValueChange={(value) =>
+                setNewMemberRole(
+                  value as (typeof MEMBER_ROLE_OPTIONS)[number]["value"],
+                )
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                {MEMBER_ROLE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button type="submit" disabled={isAddingMember}>
+              {isAddingMember ? "Adding..." : "Add Member"}
+            </Button>
+          </form>
+          <Separator />
+          {members === undefined ? (
+            <div className="py-8 text-center">
+              <LoadingSpinner />
+            </div>
+          ) : members.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No members yet. Add someone using their email address.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {members.map((member) => (
+                    <TableRow key={member._id}>
+                      <TableCell>
+                        <div className="font-medium">
+                          {member.user.name ?? "Unnamed"}
+                        </div>
+                      </TableCell>
+                      <TableCell>{member.user.email}</TableCell>
+                      <TableCell>
+                        <Select
+                          value={member.role}
+                          onValueChange={(value) =>
+                            handleRoleChange(
+                              member.userId,
+                              value as (typeof MEMBER_ROLE_OPTIONS)[number]["value"],
+                            )
+                          }
+                          disabled={
+                            member.role === "owner" ||
+                            roleUpdatingUserId === member.userId
+                          }
+                        >
+                          <SelectTrigger className="w-[160px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {member.role === "owner" ? (
+                              <SelectItem value="owner">Owner</SelectItem>
+                            ) : null}
+                            {MEMBER_ROLE_OPTIONS.map((option) => (
+                              <SelectItem
+                                key={option.value}
+                                value={option.value}
+                              >
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveMember(member.userId)}
+                          disabled={
+                            member.role === "owner" ||
+                            removingUserId === member.userId
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Additional Information */}
       {organization.description && (

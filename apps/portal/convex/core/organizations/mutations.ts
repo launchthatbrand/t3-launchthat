@@ -1,6 +1,7 @@
 import type { Id } from "@convex-config/_generated/dataModel";
 import { v } from "convex/values";
 
+import type { MutationCtx } from "../../_generated/server";
 import { mutation } from "../../_generated/server";
 import { getAuthenticatedUserId } from "../../lib/permissions/userAuth";
 import {
@@ -56,7 +57,6 @@ export const create = mutation({
       isPublic: args.isPublic ?? false,
       allowSelfRegistration: args.allowSelfRegistration ?? false,
       subscriptionStatus: user.role === "admin" ? "active" : "trialing", // Admin orgs are immediately active
-      createdAt: now,
       updatedAt: now,
     });
 
@@ -67,7 +67,6 @@ export const create = mutation({
       role: "owner",
       isActive: true,
       joinedAt: now,
-      createdAt: now,
       updatedAt: now,
     });
 
@@ -220,7 +219,6 @@ export const inviteUser = mutation({
       token,
       expiresAt,
       status: "pending",
-      createdAt: Date.now(),
     });
   },
 });
@@ -276,9 +274,8 @@ export const acceptInvitation = mutation({
       role: invitation.role,
       isActive: true,
       invitedBy: invitation.invitedBy,
-      invitedAt: invitation.createdAt,
+      invitedAt: invitation._creationTime,
       joinedAt: now,
-      createdAt: now,
       updatedAt: now,
     });
 
@@ -502,64 +499,49 @@ export const addUser = mutation({
   },
   returns: v.id("userOrganizations"),
   handler: async (ctx, args) => {
-    const userId = await getAuthenticatedUserId(ctx);
+    const actorUserId = await getAuthenticatedUserId(ctx);
+    await ensureCanManageMembers(ctx, args.organizationId, actorUserId);
 
-    // Check if current user is admin or has organization access
-    const currentUser = await ctx.db.get(userId);
-    if (!currentUser) {
-      throw new Error("User not found");
-    }
+    return await addOrReactivateMembership(ctx, {
+      organizationId: args.organizationId,
+      targetUserId: args.userId,
+      role: args.role,
+      invitedBy: actorUserId,
+    });
+  },
+});
 
-    // Global admins can add users to any organization
-    if (currentUser.role !== "admin") {
-      // Non-admin users must have admin access to the organization
-      await verifyOrganizationAccess(ctx, args.organizationId, userId, [
-        "owner",
-        "admin",
-      ]);
-    }
+export const addUserByEmail = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    email: v.string(),
+    role: v.union(
+      v.literal("admin"),
+      v.literal("editor"),
+      v.literal("viewer"),
+      v.literal("student"),
+    ),
+  },
+  returns: v.id("userOrganizations"),
+  handler: async (ctx, args) => {
+    const actorUserId = await getAuthenticatedUserId(ctx);
+    await ensureCanManageMembers(ctx, args.organizationId, actorUserId);
 
-    // Check if user exists
-    const targetUser = await ctx.db.get(args.userId);
-    if (!targetUser) {
-      throw new Error("Target user not found");
-    }
-
-    // Check if user is already a member
-    const existingMembership = await ctx.db
-      .query("userOrganizations")
-      .withIndex("by_user_organization", (q) =>
-        q.eq("userId", args.userId).eq("organizationId", args.organizationId),
-      )
+    const targetUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
       .unique();
 
-    if (existingMembership) {
-      if (existingMembership.isActive) {
-        throw new Error("User is already a member of this organization");
-      } else {
-        // Reactivate existing membership with new role
-        await ctx.db.patch(existingMembership._id, {
-          role: args.role,
-          isActive: true,
-          updatedAt: Date.now(),
-        });
-        return existingMembership._id;
-      }
+    if (!targetUser) {
+      throw new Error("No user found with that email address");
     }
 
-    // Create new membership
-    const membershipId = await ctx.db.insert("userOrganizations", {
-      userId: args.userId,
+    return await addOrReactivateMembership(ctx, {
       organizationId: args.organizationId,
+      targetUserId: targetUser._id,
       role: args.role,
-      isActive: true,
-      joinedAt: Date.now(),
-      invitedBy: userId,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      invitedBy: actorUserId,
     });
-
-    return membershipId;
   },
 });
 
@@ -619,7 +601,6 @@ export const createPlan = mutation({
       features: args.features,
       isActive: args.isActive ?? true,
       sortOrder: args.sortOrder ?? 0,
-      createdAt: now,
       updatedAt: now,
     });
 
@@ -737,3 +718,66 @@ export const deletePlan = mutation({
     return null;
   },
 });
+
+type MemberRole = "admin" | "editor" | "viewer" | "student";
+
+async function ensureCanManageMembers(
+  ctx: MutationCtx,
+  organizationId: Id<"organizations">,
+  actorUserId: Id<"users">,
+) {
+  const currentUser = await ctx.db.get(actorUserId);
+  if (!currentUser) {
+    throw new Error("User not found");
+  }
+
+  if (currentUser.role !== "admin") {
+    await verifyOrganizationAccess(ctx, organizationId, actorUserId, [
+      "owner",
+      "admin",
+    ]);
+  }
+}
+
+async function addOrReactivateMembership(
+  ctx: MutationCtx,
+  params: {
+    organizationId: Id<"organizations">;
+    targetUserId: Id<"users">;
+    role: MemberRole;
+    invitedBy: Id<"users">;
+  },
+) {
+  const existingMembership = await ctx.db
+    .query("userOrganizations")
+    .withIndex("by_user_organization", (q) =>
+      q
+        .eq("userId", params.targetUserId)
+        .eq("organizationId", params.organizationId),
+    )
+    .unique();
+
+  if (existingMembership) {
+    if (existingMembership.isActive) {
+      throw new Error("User is already a member of this organization");
+    }
+
+    await ctx.db.patch(existingMembership._id, {
+      role: params.role,
+      isActive: true,
+      updatedAt: Date.now(),
+    });
+    return existingMembership._id;
+  }
+
+  const now = Date.now();
+  return await ctx.db.insert("userOrganizations", {
+    userId: params.targetUserId,
+    organizationId: params.organizationId,
+    role: params.role,
+    isActive: true,
+    joinedAt: now,
+    invitedBy: params.invitedBy,
+    updatedAt: now,
+  });
+}

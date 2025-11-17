@@ -20,12 +20,12 @@ import { Providers } from "./providers";
 //   variable: "--font-mono",
 // });
 
-export default function RootLayout(props: {
+export default async function RootLayout(props: {
   children: React.ReactNode;
   sidebar: React.ReactNode;
   header: React.ReactNode;
 }) {
-  const tenant = getActiveTenantFromHeaders();
+  const tenant = await getActiveTenantFromHeaders();
 
   return (
     <html lang="en" suppressHydrationWarning>

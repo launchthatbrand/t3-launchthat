@@ -254,7 +254,6 @@ export const grantCustomerAccess = async (
         accessSourceId: args.sourceId,
         expiresAt: args.expiresAt,
       },
-      createdAt: Date.now(),
       updatedAt: Date.now(),
     });
   }

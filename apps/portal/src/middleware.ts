@@ -60,12 +60,15 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   const { pathname } = req.nextUrl;
   const subdomain = extractSubdomain(req);
   const tenant = await fetchTenantBySlug(subdomain);
+  const host = req.headers.get("host") ?? "unknown-host";
+  console.log("[middleware] incoming request", {
+    host,
+    pathname,
+    subdomain,
+    tenantId: tenant?._id,
+  });
 
   if (subdomain && !tenant) {
-    return NextResponse.redirect(new URL("/", req.url));
-  }
-
-  if (tenant && pathname.startsWith("/admin")) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
@@ -128,13 +131,32 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   // Handle protected and admin routes
   if (isProtectedRoute(req) || isAdminRoute(req)) {
     // Protect the route if the user is not authenticated.
-    await auth.protect();
+    try {
+      await auth.protect();
+    } catch (error) {
+      console.warn("[middleware] auth.protect redirecting", {
+        host,
+        pathname,
+        subdomain,
+        tenantId: tenant?._id,
+        error,
+      });
+      throw error;
+    }
 
     // If we reach here, the user IS authenticated.
     // Now, check for admin role specifically on admin routes.
+    const authState = await auth();
+    console.log("[middleware] authenticated user", {
+      userId: authState.userId,
+      role: authState.sessionClaims?.metadata.role,
+      host,
+      subdomain,
+      tenantId: tenant?._id,
+    });
     if (isAdminRoute(req)) {
       // Get claims for the authenticated user
-      const { sessionClaims } = await auth();
+      const { sessionClaims } = authState;
 
       // Check if the user has the admin role
       if (

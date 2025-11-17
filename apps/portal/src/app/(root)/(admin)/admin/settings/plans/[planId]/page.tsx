@@ -49,6 +49,7 @@ interface PlanDetailPageProps {
 
 interface PlanData {
   _id: Id<"plans">;
+  _creationTime: number;
   name: string;
   displayName: string;
   description?: string;
@@ -58,7 +59,6 @@ interface PlanData {
   features?: string[];
   isActive: boolean;
   sortOrder?: number;
-  createdAt?: number;
   updatedAt?: number;
 }
 
@@ -293,7 +293,7 @@ export default function PlanDetailPage({ params }: PlanDetailPageProps) {
               <span className="text-sm font-medium">Created</span>
               <span className="text-sm">
                 {new Date(
-                  currentPlan.createdAt ?? Date.now(),
+                  currentPlan._creationTime ?? Date.now(),
                 ).toLocaleDateString()}
               </span>
             </div>

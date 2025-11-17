@@ -197,7 +197,8 @@ export function InvitationsPageClient() {
       header: "Date",
       accessorKey: "createdAt",
       sortable: true,
-      cell: (invitation) => new Date(invitation.createdAt).toLocaleDateString(),
+      cell: (invitation) =>
+        new Date(invitation._creationTime ?? Date.now()).toLocaleDateString(),
     },
     {
       id: "status",

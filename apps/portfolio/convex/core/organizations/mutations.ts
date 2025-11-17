@@ -276,7 +276,7 @@ export const acceptInvitation = mutation({
       role: invitation.role,
       isActive: true,
       invitedBy: invitation.invitedBy,
-      invitedAt: invitation.createdAt,
+      invitedAt: invitation._creationTime,
       joinedAt: now,
       createdAt: now,
       updatedAt: now,

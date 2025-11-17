@@ -36,7 +36,6 @@ export const seedPlans = mutation({
       ],
       isActive: true,
       sortOrder: 1,
-      createdAt: now,
       updatedAt: now,
     });
     planIds.push(freePlanId);
@@ -59,7 +58,6 @@ export const seedPlans = mutation({
       ],
       isActive: true,
       sortOrder: 2,
-      createdAt: now,
       updatedAt: now,
     });
     planIds.push(starterPlanId);
@@ -85,7 +83,6 @@ export const seedPlans = mutation({
       ],
       isActive: true,
       sortOrder: 3,
-      createdAt: now,
       updatedAt: now,
     });
     planIds.push(businessPlanId);
@@ -113,7 +110,6 @@ export const seedPlans = mutation({
       ],
       isActive: true,
       sortOrder: 4,
-      createdAt: now,
       updatedAt: now,
     });
     planIds.push(agencyPlanId);
@@ -193,8 +189,6 @@ export const createDefaultOrganization = mutation({
       counter++;
     }
 
-    const now = Date.now();
-
     // Create organization
     const organizationId = await ctx.db.insert("organizations", {
       name: orgName,
@@ -205,8 +199,7 @@ export const createDefaultOrganization = mutation({
       isPublic: false,
       allowSelfRegistration: false,
       subscriptionStatus: "active",
-      createdAt: now,
-      updatedAt: now,
+      updatedAt: Date.now(),
     });
 
     // Add user as owner
@@ -215,9 +208,8 @@ export const createDefaultOrganization = mutation({
       organizationId,
       role: "owner",
       isActive: true,
-      joinedAt: now,
-      createdAt: now,
-      updatedAt: now,
+      joinedAt: Date.now(),
+      updatedAt: Date.now(),
     });
 
     return organizationId;

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 "use client";
 
 import type { Doc } from "@/convex/_generated/dataModel";
@@ -7,18 +9,20 @@ import * as LucideIcons from "lucide-react";
 import { BookOpen } from "lucide-react";
 
 import { NavMain } from "@acme/ui/general/nav-main";
-import { TeamSwitcher } from "@acme/ui/general/team-switcher";
 import { SidebarHeader } from "@acme/ui/sidebar";
 
 import { usePostTypes } from "~/app/(root)/(admin)/admin/settings/post-types/_api/postTypes";
 import { useTaxonomies } from "~/app/(root)/(admin)/admin/settings/taxonomies/_api/taxonomies";
+import { AdminTeamSwitcher } from "~/components/admin/AdminTeamSwitcher";
 import { navItems } from "../_components/nav-items";
 
 type PostTypeDoc = Doc<"postTypes">;
+
 interface NavChildItem {
   title: string;
   url: string;
 }
+
 interface NavItem {
   title: string;
   url: string;
@@ -47,8 +51,26 @@ const BUILTIN_TAXONOMIES: TaxonomyNavDefinition[] = [
 ] as const;
 
 export default function DefaultSidebar() {
-  const { data: contentTypes } = usePostTypes(true);
-  const { data: taxonomyDefs } = useTaxonomies();
+  const postTypesQuery = usePostTypes(true);
+  const taxonomiesQuery = useTaxonomies();
+  const contentTypes = useMemo<PostTypeDoc[]>(() => {
+    if (!Array.isArray(postTypesQuery.data)) {
+      return [];
+    }
+    return postTypesQuery.data as PostTypeDoc[];
+  }, [postTypesQuery.data]);
+  const taxonomyDefs = useMemo<
+    { slug: string; name: string; postTypeSlugs?: string[] }[]
+  >(() => {
+    if (!Array.isArray(taxonomiesQuery.data)) {
+      return [];
+    }
+    return taxonomiesQuery.data as {
+      slug: string;
+      name: string;
+      postTypeSlugs?: string[];
+    }[];
+  }, [taxonomiesQuery.data]);
 
   const resolveIcon = (iconName?: string) => {
     if (!iconName) return BookOpen;
@@ -57,12 +79,11 @@ export default function DefaultSidebar() {
   };
 
   const normalizedTaxonomies = useMemo<TaxonomyNavDefinition[]>(() => {
-    const list: TaxonomyNavDefinition[] =
-      (taxonomyDefs ?? []).map((taxonomy) => ({
-        slug: taxonomy.slug,
-        name: taxonomy.name,
-        postTypeSlugs: taxonomy.postTypeSlugs ?? undefined,
-      })) ?? [];
+    const list: TaxonomyNavDefinition[] = taxonomyDefs.map((taxonomy) => ({
+      slug: taxonomy.slug,
+      name: taxonomy.name,
+      postTypeSlugs: taxonomy.postTypeSlugs ?? undefined,
+    }));
 
     BUILTIN_TAXONOMIES.forEach((fallback) => {
       if (!list.some((entry) => entry.slug === fallback.slug)) {
@@ -79,8 +100,7 @@ export default function DefaultSidebar() {
 
   const taxonomyAssignments = useMemo(() => {
     const map = new Map<string, TaxonomyNavDefinition[]>();
-    const typedPostTypes = (contentTypes as PostTypeDoc[] | undefined) ?? [];
-    const allPostTypeSlugs = typedPostTypes.map((type) => type.slug);
+    const allPostTypeSlugs = contentTypes.map((type) => type.slug);
 
     normalizedTaxonomies.forEach((taxonomy) => {
       const targets =
@@ -95,7 +115,7 @@ export default function DefaultSidebar() {
       });
     });
 
-    typedPostTypes.forEach((type) => {
+    contentTypes.forEach((type) => {
       if (!type.supports?.taxonomy) return;
       const current = map.get(type.slug) ?? [];
       const missingBuiltins = BUILTIN_TAXONOMIES.filter((fallback) =>
@@ -112,7 +132,7 @@ export default function DefaultSidebar() {
   }, [normalizedTaxonomies, contentTypes]);
 
   const dynamicItems =
-    (contentTypes as PostTypeDoc[] | undefined)
+    contentTypes
       ?.filter((type: PostTypeDoc) => type.adminMenu?.enabled)
       .sort((a: PostTypeDoc, b: PostTypeDoc) => {
         const aPos = a.adminMenu?.position ?? 100;
@@ -155,8 +175,9 @@ export default function DefaultSidebar() {
         };
       }) ?? [];
 
-  const [dashboardItem, ...staticNavItems] = navItems as NavItem[];
-  const orderedItems: Array<NavItem | undefined> = [
+  const typedNavItems = navItems as NavItem[];
+  const [dashboardItem, ...staticNavItems] = typedNavItems;
+  const orderedItems: (NavItem | undefined)[] = [
     dashboardItem,
     ...dynamicItems,
     ...staticNavItems,
@@ -168,7 +189,7 @@ export default function DefaultSidebar() {
   return (
     <>
       <SidebarHeader>
-        <TeamSwitcher />
+        <AdminTeamSwitcher />
       </SidebarHeader>
       <NavMain items={items} />
     </>

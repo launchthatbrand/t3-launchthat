@@ -127,7 +127,9 @@ export function GroupInvitations({
               </CardTitle>
               <div className="flex items-center text-sm text-muted-foreground">
                 <Clock className="mr-1 h-3 w-3" />
-                {new Date(invitation.createdAt).toLocaleDateString()}
+                {new Date(
+                  invitation._creationTime ?? Date.now(),
+                ).toLocaleDateString()}
               </div>
             </div>
           </CardHeader>

@@ -44,17 +44,17 @@ import { PlanForm } from "./_components/PlanForm";
 // Plan data type
 interface PlanData {
   _id: Id<"plans">;
-  //   name: "free" | "starter" | "business" | "agency";
-  //   displayName: string;
-  //   description: string;
-  //   maxOrganizations: number;
-  //   priceMonthly: number;
-  //   priceYearly?: number;
-  //   features: string[];
-  //   isActive: boolean;
-  //   sortOrder: number;
-  //   createdAt: number;
-  //   updatedAt: number;
+  _creationTime: number;
+  name: "free" | "starter" | "business" | "agency";
+  displayName: string;
+  description: string;
+  maxOrganizations: number;
+  priceMonthly: number;
+  priceYearly?: number;
+  features: string[];
+  isActive: boolean;
+  sortOrder: number;
+  updatedAt: number;
 }
 
 export default function PlansSettingsPage() {
@@ -78,6 +78,7 @@ export default function PlansSettingsPage() {
 
     return plans.map((plan) => ({
       _id: plan._id,
+      _creationTime: plan._creationTime ?? Date.now(),
       name: plan.name || "unknown",
       displayName: plan.displayName || "Unnamed Plan",
       description: plan.description || "",
@@ -87,7 +88,6 @@ export default function PlansSettingsPage() {
       features: Array.isArray(plan.features) ? plan.features : [],
       isActive: plan.isActive ?? true,
       sortOrder: plan.sortOrder || 0,
-      createdAt: plan.createdAt || Date.now(),
       updatedAt: plan.updatedAt || Date.now(),
     }));
   }, [plans]);

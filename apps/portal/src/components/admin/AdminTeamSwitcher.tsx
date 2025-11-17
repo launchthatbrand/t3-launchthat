@@ -1,97 +1,24 @@
 "use client";
 
-import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { useCallback, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { rootDomain } from "@/lib/utils";
+import { api } from "@convex-config/_generated/api";
 import { useQuery } from "convex/react";
-import { BookOpen, TerminalSquare } from "lucide-react";
 
 import type { TeamSwitcherOrganization } from "@acme/ui/general/team-switcher";
-import { NavMain } from "@acme/ui/general/nav-main";
 import { TeamSwitcher } from "@acme/ui/general/team-switcher";
-import { SidebarHeader } from "@acme/ui/sidebar";
 
 import { useTenant } from "~/context/TenantContext";
+import { rootDomain } from "~/lib/utils";
 
-const MENU_LOCATION = "primary";
-
-const FALLBACK_NAV = [
-  {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: TerminalSquare,
-  },
-] as const;
-
-type MenuItemDoc = Doc<"menuItems">;
-
-interface SidebarNavItem {
-  title: string;
-  url: string;
-  icon?: typeof BookOpen;
-  isActive?: boolean;
-  items?: SidebarNavItem[];
-}
-
-const normalizeUrl = (url: string) => {
-  if (!url) return "/";
-  if (/^https?:\/\//i.test(url)) return url;
-  return url.startsWith("/") ? url : `/${url}`;
-};
-
-const getOrderValue = (value: number | null | undefined) =>
-  typeof value === "number" ? value : 0;
-
-const buildMenuTree = (
-  items: MenuItemDoc[],
-  pathname: string | null,
-  parentId: Id<"menuItems"> | null = null,
-): SidebarNavItem[] => {
-  return items
-    .filter((item) => {
-      if (item.parentId === undefined || item.parentId === null) {
-        return parentId === null;
-      }
-      return item.parentId === parentId;
-    })
-    .sort((a, b) => getOrderValue(a.order) - getOrderValue(b.order))
-    .map((item) => {
-      const url = normalizeUrl(item.url);
-      const isActive =
-        pathname !== null &&
-        (pathname === url || pathname.startsWith(`${url}/`));
-      return {
-        title: item.label,
-        url,
-        icon: BookOpen,
-        isActive,
-        items: buildMenuTree(items, pathname, item._id),
-      };
-    });
-};
-
-export default function DefaultSidebar() {
-  const pathname = usePathname();
+export function AdminTeamSwitcher() {
   const tenant = useTenant();
-  const [switchingOrganizationId, setSwitchingOrganizationId] = useState<
-    string | null
-  >(null);
-  const menuData = useQuery(api.core.menus.queries.getMenuWithItemsByLocation, {
-    location: MENU_LOCATION,
-  }) as
-    | {
-        menu: Doc<"menus">;
-        items: MenuItemDoc[];
-      }
-    | null
-    | undefined;
-
   const organizationsResult = useQuery(
     api.core.organizations.queries.myOrganizations,
     {},
   );
+  const [switchingOrganizationId, setSwitchingOrganizationId] = useState<
+    string | null
+  >(null);
 
   const organizations = useMemo<TeamSwitcherOrganization[]>(() => {
     if (!organizationsResult || !Array.isArray(organizationsResult)) {
@@ -137,7 +64,10 @@ export default function DefaultSidebar() {
           role: roleValue,
         };
       })
-      .filter((org): org is TeamSwitcherOrganization => Boolean(org));
+      .filter(
+        (org): org is TeamSwitcherOrganization =>
+          org !== null && org !== undefined,
+      );
   }, [organizationsResult]);
 
   const tenantFallbackOrganization =
@@ -148,11 +78,17 @@ export default function DefaultSidebar() {
 
       const slug = typeof tenant.slug === "string" ? tenant.slug : undefined;
       const fallbackId =
-        typeof tenant._id === "string" ? tenant._id : (slug ?? "tenant");
+        typeof tenant._id === "string"
+          ? tenant._id
+          : slug !== undefined
+            ? slug
+            : "tenant";
       const fallbackName =
         typeof tenant.name === "string"
           ? tenant.name
-          : (slug ?? "Current Organization");
+          : slug !== undefined
+            ? slug
+            : "Current Organization";
       const fallbackDomain =
         typeof tenant.customDomain === "string"
           ? tenant.customDomain
@@ -250,27 +186,15 @@ export default function DefaultSidebar() {
     [switchingOrganizationId],
   );
 
-  const navItems = useMemo(() => {
-    if (!menuData || menuData.items.length === 0) {
-      return FALLBACK_NAV;
-    }
-    const tree = buildMenuTree(menuData.items, pathname);
-    return tree.length ? tree : FALLBACK_NAV;
-  }, [menuData, pathname]);
-
   return (
-    <>
-      <SidebarHeader>
-        <TeamSwitcher
-          organizations={effectiveOrganizations}
-          activeOrganizationId={activeOrganizationId}
-          onSelect={handleOrganizationSelect}
-          isLoading={organizationsResult === undefined}
-          switchingOrganizationId={switchingOrganizationId}
-          createHref="/admin/settings/organizations"
-        />
-      </SidebarHeader>
-      <NavMain items={navItems} />
-    </>
+    <TeamSwitcher
+      organizations={effectiveOrganizations}
+      activeOrganizationId={activeOrganizationId}
+      onSelect={handleOrganizationSelect}
+      isLoading={organizationsResult === undefined}
+      switchingOrganizationId={switchingOrganizationId}
+      createHref="/admin/settings/organizations"
+    />
   );
 }
+

@@ -27,6 +27,20 @@ const config = {
     ],
   },
 
+  allowedDevOrigins: [
+    "localhost:3004",
+    "127.0.0.1:3004",
+    "*.localhost:3004",
+    "*.localhost",
+    "*.127.0.0.1:3004",
+    "launchthat.local:3004",
+    "*.launchthat.local:3004",
+    "*.launchthat.local:3000",
+    "launchthat.local:3000",
+    "*.launchthat.local",
+    "launchthat.local",
+  ],
+
   // Add headers configuration to allow iframe embedding
   async headers() {
     return [

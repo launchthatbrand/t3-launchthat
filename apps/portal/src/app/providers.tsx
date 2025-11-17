@@ -2,14 +2,14 @@
 "use client";
 
 import type { TenantSummary } from "@/lib/tenant-fetcher";
+import type { SessionId, UseStorage } from "convex-helpers/react/sessions";
 // Import Clerk provider and hook
-import React, { Suspense, useEffect } from "react";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ClerkProvider, useAuth } from "@clerk/clerk-react";
 import { SessionProvider } from "convex-helpers/react/sessions";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { useLocalStorage } from "usehooks-ts";
 
 import StandardLayout from "@acme/ui/layout/StandardLayout";
 import { SidebarProvider } from "@acme/ui/sidebar";
@@ -31,6 +31,38 @@ if (!env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
 
 // Initialize Convex client within the Client Component
 const convex = new ConvexReactClient(env.NEXT_PUBLIC_CONVEX_URL);
+
+const useSessionStorage: UseStorage<SessionId | undefined> = (key) => {
+  const readValue = () =>
+    typeof window === "undefined"
+      ? undefined
+      : (window.localStorage.getItem(key) ?? undefined);
+
+  const [value, setValueState] = useState<SessionId | undefined>(undefined);
+
+  useEffect(() => {
+    setValueState(readValue());
+  }, [key]);
+
+  const setValue = useCallback(
+    (next: SessionId | undefined) => {
+      setValueState(next);
+      if (typeof window === "undefined") return;
+      if (next === undefined) {
+        window.localStorage.removeItem(key);
+      } else {
+        window.localStorage.setItem(key, next);
+      }
+    },
+    [key],
+  );
+
+  const remove = useCallback(() => {
+    setValue(undefined);
+  }, [setValue]);
+
+  return [value, setValue, remove];
+};
 
 /**
  * EditorModeDetector watches for ?editor=true in URL and updates the editor store
@@ -68,7 +100,10 @@ export function Providers({ children, tenant }: ProvidersProps) {
     // Wrap everything with ClerkProvider - key is now guaranteed to be a string
     <ClerkProvider publishableKey={env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-        <SessionProvider storageKey="cart-session" useStorage={useLocalStorage}>
+        <SessionProvider
+          storageKey="cart-session"
+          useStorage={useSessionStorage}
+        >
           <ContentProtectionProvider>
             <TenantProvider value={tenant}>
               <SidebarProvider>

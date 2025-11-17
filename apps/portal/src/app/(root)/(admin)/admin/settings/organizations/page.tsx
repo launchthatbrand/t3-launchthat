@@ -41,6 +41,7 @@ import { OrganizationForm } from "./_components/OrganizationForm";
 // Organization data type
 interface OrganizationData {
   _id: Id<"organizations">;
+  _creationTime: number;
   name: string;
   slug: string;
   description?: string;
@@ -58,7 +59,6 @@ interface OrganizationData {
     | "unpaid"
     | "incomplete";
   memberCount?: number;
-  createdAt: number;
   updatedAt: number;
 }
 
@@ -189,10 +189,10 @@ export default function OrganizationsSettingsPage() {
     // {
     //   id: "created",
     //   header: "Created",
-    //   accessorKey: "createdAt",
+    //   accessorKey: "_creationTime",
     //   cell: (organization) => (
     //     <span className="text-sm text-muted-foreground">
-    //       {new Date(organization.createdAt).toLocaleDateString()}
+    //       {new Date(organization._creationTime).toLocaleDateString()}
     //     </span>
     //   ),
     //   sortable: true,

@@ -2,7 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ChevronsUpDown, Image as ImageIcon, Plus } from "lucide-react";
+import {
+  Building2,
+  ChevronsUpDown,
+  Loader2,
+  Plus,
+  ShieldCheck,
+} from "lucide-react";
 
 import {
   DropdownMenu,
@@ -10,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@acme/ui/components/dropdown-menu";
 import {
@@ -19,27 +26,63 @@ import {
   useSidebar,
 } from "@acme/ui/sidebar";
 
-const mockNfts = [
-  {
-    name: "Crypto Punk #1234",
-    image: ImageIcon,
-    collection: "CryptoPunks",
-  },
-  {
-    name: "Bored Ape #5678",
-    image: ImageIcon,
-    collection: "BAYC",
-  },
-  {
-    name: "Doodle #9012",
-    image: ImageIcon,
-    collection: "Doodles",
-  },
-];
+export interface TeamSwitcherOrganization {
+  id: string;
+  name: string;
+  slug?: string;
+  customDomain?: string;
+  role?: string;
+  badgeLabel?: string;
+  badgeDescription?: string;
+}
 
-export function TeamSwitcher() {
+interface TeamSwitcherProps {
+  organizations: TeamSwitcherOrganization[];
+  activeOrganizationId?: string | null;
+  onSelect?: (organization: TeamSwitcherOrganization) => void;
+  isLoading?: boolean;
+  isDisabled?: boolean;
+  switchingOrganizationId?: string | null;
+  createHref?: string;
+  menuLabel?: string;
+  emptyLabel?: string;
+  loadingLabel?: string;
+  triggerPlaceholder?: {
+    title: string;
+    description?: string;
+  };
+}
+
+const DEFAULT_PLACEHOLDER = {
+  title: "No organization",
+  description: "Select an organization",
+};
+
+export function TeamSwitcher({
+  organizations = [],
+  activeOrganizationId,
+  onSelect,
+  isLoading,
+  isDisabled,
+  switchingOrganizationId,
+  createHref,
+  menuLabel = "Organizations",
+  emptyLabel = "No organizations found",
+  loadingLabel = "Loading organizations…",
+  triggerPlaceholder = DEFAULT_PLACEHOLDER,
+}: TeamSwitcherProps) {
   const { isMobile } = useSidebar();
-  const [activeNft, setActiveNft] = React.useState(mockNfts[0]);
+
+  const activeOrganization =
+    organizations.find((org) => org.id === activeOrganizationId) ??
+    organizations[0] ??
+    null;
+  const hasOrganizations = organizations.length > 0;
+
+  let isTriggerDisabled = isDisabled ?? false;
+  if (!isTriggerDisabled && !hasOrganizations && !onSelect) {
+    isTriggerDisabled = true;
+  }
 
   return (
     <SidebarMenu>
@@ -48,57 +91,97 @@ export function TeamSwitcher() {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="rounded-lg bg-gradient-to-r from-pink-500/10 to-purple-500/10 p-2 hover:from-pink-500/20 hover:to-purple-500/20"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              disabled={isTriggerDisabled}
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-r from-pink-500 to-purple-500 text-white">
-                <activeNft.image className="size-4" />
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                <Building2 className="size-4" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold text-white">
-                  {activeNft.name}
+                <span className="truncate font-medium">
+                  {activeOrganization?.name ?? triggerPlaceholder.title}
                 </span>
-                <span className="truncate text-xs text-white/70">
-                  {activeNft.collection}
+                <span className="truncate text-xs">
+                  {activeOrganization?.slug ??
+                    triggerPlaceholder.description ??
+                    ""}
                 </span>
               </div>
-              <ChevronsUpDown className="ml-auto size-4 text-white/70" />
+              <ChevronsUpDown className="ml-auto" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg border border-white/10 bg-black/90 text-white backdrop-blur-xl"
+            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
             align="start"
             side={isMobile ? "bottom" : "right"}
             sideOffset={4}
           >
-            <DropdownMenuLabel className="text-xs text-white/70">
-              Your NFTs
+            <DropdownMenuLabel className="text-xs text-muted-foreground">
+              {menuLabel}
             </DropdownMenuLabel>
-            {mockNfts.map((nft) => (
-              <DropdownMenuItem
-                key={nft.name}
-                onClick={() => setActiveNft(nft)}
-                className="gap-2 p-2 focus:bg-gradient-to-r focus:from-pink-500/20 focus:to-purple-500/20"
-              >
-                <div className="flex size-6 items-center justify-center rounded-lg bg-gradient-to-r from-pink-500 to-purple-500">
-                  <nft.image className="size-4 shrink-0 text-white" />
-                </div>
-                <div className="flex flex-1 flex-col">
-                  <span className="text-sm font-medium">{nft.name}</span>
-                  <span className="text-xs text-white/70">
-                    {nft.collection}
-                  </span>
-                </div>
+            {isLoading && (
+              <DropdownMenuItem className="gap-2 p-2 text-sm">
+                <Loader2 className="size-4 animate-spin" />
+                {loadingLabel}
               </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator className="bg-white/[0.08]" />
-            <Link href="/my-nfts">
-              <DropdownMenuItem className="gap-2 p-2 focus:bg-gradient-to-r focus:from-pink-500/20 focus:to-purple-500/20">
-                <div className="flex size-6 items-center justify-center rounded-lg bg-gradient-to-r from-pink-500 to-purple-500">
-                  <Plus className="size-4 text-white" />
-                </div>
-                <span className="font-medium">Add New NFT</span>
+            )}
+            {!isLoading && !hasOrganizations && (
+              <DropdownMenuItem className="gap-2 p-2 text-sm">
+                {emptyLabel}
               </DropdownMenuItem>
-            </Link>
+            )}
+            {organizations.map((org) => {
+              const isActive = activeOrganization?.id === org.id;
+              return (
+                <DropdownMenuItem
+                  key={org.id}
+                  disabled={
+                    switchingOrganizationId === org.id || !onSelect || isLoading
+                  }
+                  onClick={() => onSelect?.(org)}
+                  className="gap-2 p-2"
+                >
+                  <div className="flex size-6 items-center justify-center rounded-md border">
+                    {org.name.charAt(0).toUpperCase()}
+                  </div>
+                  {org.name}
+                  <DropdownMenuShortcut>
+                    ⌘{organizations.indexOf(org) + 1}
+                  </DropdownMenuShortcut>
+                  {org.role && (
+                    <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <ShieldCheck className="size-3" />
+                      {org.role}
+                    </span>
+                  )}
+                  {isActive && (
+                    <span className="rounded-full bg-emerald-400/20 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700">
+                      Active
+                    </span>
+                  )}
+                  {switchingOrganizationId === org.id && (
+                    <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                  )}
+                </DropdownMenuItem>
+              );
+            })}
+            {createHref && (
+              <>
+                <DropdownMenuSeparator />
+                <Link href={createHref}>
+                  <DropdownMenuItem className="gap-2 p-2">
+                    <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                      <Plus className="size-4" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-muted-foreground">
+                        Add organization
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                </Link>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

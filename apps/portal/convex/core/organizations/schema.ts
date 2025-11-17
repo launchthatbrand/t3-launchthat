@@ -17,7 +17,6 @@ export const plansTable = defineTable({
   features: v.optional(v.array(v.string())), // Array of feature descriptions
   isActive: v.boolean(), // Whether this plan is available for new subscriptions
   sortOrder: v.number(), // For display ordering
-  createdAt: v.number(),
   updatedAt: v.number(),
 })
   .index("by_name", ["name"])
@@ -55,7 +54,6 @@ export const organizationsTable = defineTable({
   cancelAtPeriodEnd: v.optional(v.boolean()),
 
   // Timestamps
-  createdAt: v.number(),
   updatedAt: v.number(),
 })
   .index("by_owner", ["ownerId"])
@@ -106,7 +104,6 @@ export const userOrganizationsTable = defineTable({
     }),
   ),
 
-  createdAt: v.number(),
   updatedAt: v.number(),
 })
   .index("by_user", ["userId"])
@@ -137,7 +134,6 @@ export const organizationInvitationsTable = defineTable({
     v.literal("expired"),
     v.literal("revoked"),
   ),
-  createdAt: v.number(),
 })
   .index("by_organization", ["organizationId"])
   .index("by_email", ["email"])

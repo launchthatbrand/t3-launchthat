@@ -1,11 +1,10 @@
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 /**
  * Organizations Type Definitions
  *
  * TypeScript types and Convex validators for organizations feature.
  */
 import { v } from "convex/values";
-
-import type { Doc, Id } from "../_generated/dataModel";
 
 // Plan types
 export const planValidator = v.object({
@@ -25,7 +24,6 @@ export const planValidator = v.object({
   features: v.optional(v.array(v.string())),
   isActive: v.boolean(),
   sortOrder: v.number(),
-  createdAt: v.number(),
   updatedAt: v.number(),
 });
 
@@ -54,8 +52,18 @@ export const organizationValidator = v.object({
   currentPeriodStart: v.optional(v.number()),
   currentPeriodEnd: v.optional(v.number()),
   cancelAtPeriodEnd: v.optional(v.boolean()),
-  createdAt: v.number(),
   updatedAt: v.number(),
+  // Optional computed fields that certain queries may append
+  memberCount: v.optional(v.number()),
+  userRole: v.optional(
+    v.union(
+      v.literal("owner"),
+      v.literal("admin"),
+      v.literal("editor"),
+      v.literal("viewer"),
+      v.literal("student"),
+    ),
+  ),
 });
 
 // User organization relationship types
@@ -115,7 +123,6 @@ export const organizationInvitationValidator = v.object({
     v.literal("expired"),
     v.literal("revoked"),
   ),
-  createdAt: v.number(),
 });
 
 // Organization settings types
@@ -157,7 +164,6 @@ export const organizationWithRoleValidator = v.object({
   currentPeriodStart: v.optional(v.number()),
   currentPeriodEnd: v.optional(v.number()),
   cancelAtPeriodEnd: v.optional(v.boolean()),
-  createdAt: v.number(),
   updatedAt: v.number(),
   // Additional role information
   userRole: v.union(
@@ -189,6 +195,7 @@ export const organizationMemberValidator = v.object({
   invitedBy: v.optional(v.id("users")),
   invitedAt: v.optional(v.number()),
   joinedAt: v.number(),
+  updatedAt: v.number(),
   // User information
   user: v.object({
     _id: v.id("users"),

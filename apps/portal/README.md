@@ -20,6 +20,16 @@ If you are not familiar with the different technologies used in this project, pl
 
 This application requires several environment variables to be set up correctly.
 
+### Clerk session cookies for multi-tenant admin
+
+When developing with tenant subdomains (e.g., `wall-street-academy.localhost:3004`), Clerk must share its session cookie across every subdomain. Set the following in your frontend `.env.local` (or your deployment environment) and restart the dev server:
+
+```env
+CLERK_COOKIE_DOMAIN=.localhost
+```
+
+For production, replace `.localhost` with your root domain (for example, `.example.com`). Without this setting, navigating to an organization-specific admin like `https://some-org.example.com/admin` will appear logged out even if you are signed in on `https://example.com/admin`.
+
 ### Next.js Frontend (`apps/wsa/.env.local`)
 
 Create a `.env.local` file in the `apps/wsa` directory (if it doesn't exist) and add the following variables. These are used by the frontend components:
