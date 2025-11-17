@@ -6,6 +6,7 @@
 import { v } from "convex/values";
 
 import { query } from "../../_generated/server";
+import { isAdmin } from "../../lib/permissions/hasPermission";
 
 /**
  * Get all posts with optional filtering
@@ -24,31 +25,40 @@ export const getAllPosts = query({
         category: v.optional(v.string()),
         authorId: v.optional(v.id("users")),
         limit: v.optional(v.number()),
+        postTypeSlug: v.optional(v.string()),
       }),
     ),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db.query("posts");
+    let queryBuilder = args.filters?.postTypeSlug
+      ? ctx.db
+          .query("posts")
+          .withIndex("by_postTypeSlug", (q) =>
+            q.eq("postTypeSlug", args.filters?.postTypeSlug ?? ""),
+          )
+      : ctx.db.query("posts");
 
     if (args.filters?.status) {
-      query = query.filter((q) =>
+      queryBuilder = queryBuilder.filter((q) =>
         q.eq(q.field("status"), args.filters?.status),
       );
     }
 
     if (args.filters?.category) {
-      query = query.filter((q) =>
+      queryBuilder = queryBuilder.filter((q) =>
         q.eq(q.field("category"), args.filters?.category),
       );
     }
 
     if (args.filters?.authorId) {
-      query = query.filter((q) =>
+      queryBuilder = queryBuilder.filter((q) =>
         q.eq(q.field("authorId"), args.filters?.authorId),
       );
     }
 
-    const posts = await query.order("desc").take(args.filters?.limit ?? 50);
+    const posts = await queryBuilder
+      .order("desc")
+      .take(args.filters?.limit ?? 50);
 
     return posts;
   },
@@ -66,6 +76,18 @@ export const getPostById = query({
   },
 });
 
+export const getPostMeta = query({
+  args: {
+    postId: v.id("posts"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("postsMeta")
+      .withIndex("by_post", (q) => q.eq("postId", args.postId))
+      .collect();
+  },
+});
+
 /**
  * Get a post by slug
  */
@@ -74,10 +96,27 @@ export const getPostBySlug = query({
     slug: v.string(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const post = await ctx.db
       .query("posts")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .first();
+
+    if (!post) {
+      return null;
+    }
+
+    const status = (post.status ?? "published").toLowerCase();
+    const isDraftOrArchived =
+      status === "draft" || status === "archived" || status === "private";
+
+    if (isDraftOrArchived) {
+      const adminUser = await isAdmin(ctx);
+      if (!adminUser) {
+        return null;
+      }
+    }
+
+    return post;
   },
 });
 

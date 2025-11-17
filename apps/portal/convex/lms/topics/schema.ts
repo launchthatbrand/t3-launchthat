@@ -33,7 +33,7 @@ export const topicsTable = defineTable({
   menuOrder: v.optional(v.number()),
   isPublished: v.optional(v.boolean()),
 })
-  .index("by_lesson", ["lessonId"])
+  .index("by_lessonId", ["lessonId"])
   .index("by_lessonId_order", ["lessonId", "order"])
   .index("by_lessonId_menuOrder", ["lessonId", "menuOrder"])
   .index("by_organization", ["organizationId"])

@@ -268,8 +268,8 @@ export default function DefaultSidebar() {
           url: "/admin/settings/site",
         },
         {
-          title: "Content types",
-          url: "/admin/settings/content-types",
+          title: "Post types",
+          url: "/admin/settings/post-types",
         },
         {
           title: "Custom fields",

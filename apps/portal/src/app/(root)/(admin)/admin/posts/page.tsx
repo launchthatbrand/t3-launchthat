@@ -3,7 +3,7 @@
 import type { FilterConfig } from "@/components/shared/EntityList/EntityList";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { EntityList } from "@/components/shared/EntityList/EntityList";
 import { api } from "@/convex/_generated/api";
@@ -54,7 +54,7 @@ const statusVariantMap: Record<
 
 type Post = Doc<"posts">;
 
-function PostsAdminPage() {
+function PostsAdminPageBody() {
   const [selectedPosts, setSelectedPosts] = useState<Id<"posts">[]>([]);
   const [activeFilters, setActiveFilters] = useState({});
 
@@ -352,4 +352,10 @@ function PostsAdminPage() {
   );
 }
 
-export default PostsAdminPage;
+export default function PostsAdminPage() {
+  return (
+    <Suspense fallback={<div className="p-4">Loading posts…</div>}>
+      <PostsAdminPageBody />
+    </Suspense>
+  );
+}

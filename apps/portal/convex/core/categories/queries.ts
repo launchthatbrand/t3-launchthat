@@ -157,3 +157,38 @@ export const getChildCategories = query({
     return categories;
   },
 });
+
+/**
+ * List categories limited to a specific post type.
+ * If a category does not specify postTypes it is treated as global.
+ */
+export const listCategoriesByPostType = query({
+  args: {
+    postType: v.string(),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("categories"),
+      _creationTime: v.number(),
+      name: v.string(),
+      slug: v.string(),
+      description: v.optional(v.string()),
+      parentId: v.optional(v.id("categories")),
+      metadata: v.optional(
+        v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
+      ),
+      createdAt: v.optional(v.number()),
+      updatedAt: v.optional(v.number()),
+      postTypes: v.optional(v.array(v.string())),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const categories = await ctx.db.query("categories").collect();
+    return categories.filter((category) => {
+      if (!category.postTypes || category.postTypes.length === 0) {
+        return true;
+      }
+      return category.postTypes.includes(args.postType);
+    });
+  },
+});

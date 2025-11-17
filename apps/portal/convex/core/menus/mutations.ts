@@ -3,9 +3,22 @@
  *
  * This module provides mutation endpoints for menus.
  */
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 import { mutation } from "../../_generated/server";
+
+const ALLOWED_LOCATIONS = ["primary", "footer", "sidebar"] as const;
+type MenuLocation = (typeof ALLOWED_LOCATIONS)[number];
+
+const normalizeLocation = (value: string): MenuLocation => {
+  const normalized = value.trim().toLowerCase();
+  if (!ALLOWED_LOCATIONS.includes(normalized as MenuLocation)) {
+    throw new ConvexError(
+      `Unsupported menu location "${value}". Use ${ALLOWED_LOCATIONS.join(", ")}`,
+    );
+  }
+  return normalized as MenuLocation;
+};
 
 /**
  * Create a new menu
@@ -17,9 +30,22 @@ export const createMenu = mutation({
     isBuiltIn: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const location = normalizeLocation(args.location);
+
+    const existingMenu = await ctx.db
+      .query("menus")
+      .withIndex("by_location", (q) => q.eq("location", location))
+      .unique();
+
+    if (existingMenu) {
+      throw new ConvexError(
+        `Location "${location}" is already assigned to the "${existingMenu.name}" menu. Update that menu instead.`,
+      );
+    }
+
     return await ctx.db.insert("menus", {
       name: args.name,
-      location: args.location,
+      location,
       isBuiltIn: args.isBuiltIn ?? false,
       itemCount: 0,
       createdAt: Date.now(),
@@ -36,28 +62,38 @@ export const addMenuItem = mutation({
     parentId: v.optional(v.union(v.id("menuItems"), v.null())),
     label: v.string(),
     url: v.string(),
-    order: v.number(),
+    order: v.optional(v.number()),
     isBuiltIn: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const menu = await ctx.db.get(args.menuId);
+    if (!menu) {
+      throw new ConvexError("Menu not found");
+    }
+
+    const order =
+      args.order ??
+      (await ctx.db
+        .query("menuItems")
+        .withIndex("by_menu", (q) => q.eq("menuId", args.menuId))
+        .collect()
+        .then((items) => items.length));
+
     const menuItemId = await ctx.db.insert("menuItems", {
       menuId: args.menuId,
       parentId: args.parentId,
       label: args.label,
       url: args.url,
-      order: args.order,
+      order,
       isBuiltIn: args.isBuiltIn ?? false,
       createdAt: Date.now(),
     });
 
     // Update menu item count
-    const menu = await ctx.db.get(args.menuId);
-    if (menu) {
-      await ctx.db.patch(args.menuId, {
-        itemCount: (menu.itemCount ?? 0) + 1,
-        updatedAt: Date.now(),
-      });
-    }
+    await ctx.db.patch(args.menuId, {
+      itemCount: (menu.itemCount ?? 0) + 1,
+      updatedAt: Date.now(),
+    });
 
     return menuItemId;
   },
@@ -73,7 +109,7 @@ export const removeMenuItem = mutation({
   handler: async (ctx, args) => {
     const menuItem = await ctx.db.get(args.itemId);
     if (!menuItem) {
-      throw new Error("Menu item not found");
+      throw new ConvexError("Menu item not found");
     }
 
     await ctx.db.delete(args.itemId);
@@ -97,7 +133,7 @@ export const removeMenuItem = mutation({
 export const reorderMenuItems = mutation({
   args: {
     menuId: v.id("menus"),
-    itemOrders: v.array(
+    updates: v.array(
       v.object({
         itemId: v.id("menuItems"),
         order: v.number(),
@@ -105,7 +141,7 @@ export const reorderMenuItems = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    for (const item of args.itemOrders) {
+    for (const item of args.updates) {
       await ctx.db.patch(item.itemId, {
         order: item.order,
         updatedAt: Date.now(),
@@ -118,5 +154,98 @@ export const reorderMenuItems = mutation({
     });
 
     return null;
+  },
+});
+
+export const updateMenu = mutation({
+  args: {
+    menuId: v.id("menus"),
+    data: v.object({
+      name: v.optional(v.string()),
+      location: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const existingMenu = await ctx.db.get(args.menuId);
+    if (!existingMenu) {
+      throw new ConvexError("Menu not found");
+    }
+
+    const patch: Record<string, unknown> = {};
+
+    if (args.data.name && args.data.name !== existingMenu.name) {
+      patch.name = args.data.name;
+    }
+
+    if (args.data.location) {
+      const location = normalizeLocation(args.data.location);
+      if (location !== existingMenu.location) {
+        const locationInUse = await ctx.db
+          .query("menus")
+          .withIndex("by_location", (q) => q.eq("location", location))
+          .unique();
+        if (locationInUse && locationInUse._id !== args.menuId) {
+          throw new ConvexError(
+            `Location "${location}" is already assigned to the "${locationInUse.name}" menu.`,
+          );
+        }
+        patch.location = location;
+      }
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return args.menuId;
+    }
+
+    patch.updatedAt = Date.now();
+    await ctx.db.patch(args.menuId, patch);
+    return args.menuId;
+  },
+});
+
+export const updateMenuItem = mutation({
+  args: {
+    itemId: v.id("menuItems"),
+    data: v.object({
+      label: v.optional(v.string()),
+      url: v.optional(v.string()),
+      parentId: v.optional(v.union(v.id("menuItems"), v.null())),
+      order: v.optional(v.number()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.itemId);
+    if (!existing) {
+      throw new ConvexError("Menu item not found");
+    }
+
+    const patch: Record<string, unknown> = {};
+
+    if (args.data.label && args.data.label !== existing.label) {
+      patch.label = args.data.label;
+    }
+    if (args.data.url && args.data.url !== existing.url) {
+      patch.url = args.data.url;
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(args.data, "parentId") &&
+      args.data.parentId !== existing.parentId
+    ) {
+      patch.parentId = args.data.parentId ?? null;
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(args.data, "order") &&
+      args.data.order !== existing.order
+    ) {
+      patch.order = args.data.order;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return args.itemId;
+    }
+
+    patch.updatedAt = Date.now();
+    await ctx.db.patch(args.itemId, patch);
+    return args.itemId;
   },
 });

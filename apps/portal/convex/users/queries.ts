@@ -56,6 +56,20 @@ export const getUserByClerkId = query({
       tokenIdentifier: v.optional(v.string()),
       username: v.optional(v.string()),
       image: v.optional(v.string()),
+      addresses: v.optional(
+        v.array(
+          v.object({
+            fullName: v.string(),
+            addressLine1: v.string(),
+            addressLine2: v.optional(v.string()),
+            city: v.string(),
+            stateOrProvince: v.string(),
+            postalCode: v.string(),
+            country: v.string(),
+            phoneNumber: v.optional(v.string()),
+          }),
+        ),
+      ),
     }),
   ),
   handler: async (ctx, args) => {

@@ -18,13 +18,27 @@ export const postsTable = defineTable({
   featuredImageUrl: v.optional(v.string()), // URL to a featured image
   featured: v.optional(v.boolean()), // Whether the post is featured
   readTime: v.optional(v.string()), // Estimated reading time
+  postTypeId: v.optional(v.id("postTypes")),
+  postTypeSlug: v.string(),
 })
   .index("by_author", ["authorId"])
   .index("by_status", ["status"])
   .index("by_slug", ["slug"])
   .index("by_category", ["category"])
-  .index("by_featured", ["featured"]);
+  .index("by_featured", ["featured"])
+  .index("by_postTypeSlug", ["postTypeSlug"]);
+
+export const postMetaTable = defineTable({
+  postId: v.id("posts"),
+  key: v.string(),
+  value: v.optional(v.union(v.string(), v.number(), v.boolean(), v.null())),
+  createdAt: v.number(),
+  updatedAt: v.optional(v.number()),
+})
+  .index("by_post", ["postId"])
+  .index("by_post_and_key", ["postId", "key"]);
 
 export const postsSchema = {
   posts: postsTable,
+  postsMeta: postMetaTable,
 };

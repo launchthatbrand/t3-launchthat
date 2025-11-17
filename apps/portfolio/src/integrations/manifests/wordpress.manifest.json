@@ -1,0 +1,76 @@
+{
+  "$schema": "https://raw.githubusercontent.com/your-org/integration-schema/main/manifest.schema.json",
+  "metadata": {
+    "id": "wordpress",
+    "name": "WordPress",
+    "description": "Interact with WordPress sites via REST API",
+    "version": "1.0.0",
+    "type": "external",
+    "category": "cms",
+    "icon": "FileText",
+    "color": "#21759B",
+    "author": "Integration Team",
+    "keywords": ["wordpress", "cms", "blog", "content"],
+    "tags": ["popular", "cms"]
+  },
+  "connections": [
+    {
+      "id": "wordpress-basic",
+      "name": "WordPress Basic Auth",
+      "type": "basic_auth",
+      "authSchema": "{\"type\":\"object\",\"properties\":{\"baseUrl\":{\"type\":\"string\",\"format\":\"uri\"},\"username\":{\"type\":\"string\"},\"applicationPassword\":{\"type\":\"string\"}},\"required\":[\"baseUrl\",\"username\",\"applicationPassword\"]}",
+      "testEndpoint": "/wp-json/wp/v2/users/me",
+      "description": "Connect using WordPress username and application password"
+    }
+  ],
+  "actions": [
+    {
+      "id": "create_post",
+      "name": "Create Post",
+      "description": "Create a new WordPress post",
+      "category": "content",
+      "configSchema": {
+        "input": {
+          "schema": "{\"type\":\"object\",\"properties\":{\"postData\":{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"},\"status\":{\"type\":\"string\"}}}}}",
+          "description": "Post data to create"
+        },
+        "output": {
+          "schema": "{\"type\":\"object\",\"properties\":{\"success\":{\"type\":\"boolean\"},\"postId\":{\"type\":\"number\"},\"postUrl\":{\"type\":\"string\"},\"error\":{\"type\":\"string\"}}}",
+          "description": "Result of post creation"
+        },
+        "settings": {
+          "schema": "{\"type\":\"object\",\"properties\":{\"action\":{\"type\":\"string\",\"enum\":[\"create_post\",\"update_post\",\"get_posts\"]},\"title\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"},\"status\":{\"type\":\"string\",\"enum\":[\"publish\",\"draft\",\"private\"],\"default\":\"draft\"},\"categories\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}}",
+          "description": "Configuration settings for WordPress operations"
+        }
+      },
+      "endpoint": "/wp-json/wp/v2/posts",
+      "method": "POST",
+      "bodyTemplate": "{\"title\":\"{{input.postData.title || settings.title}}\",\"content\":\"{{input.postData.content || settings.content}}\",\"status\":\"{{input.postData.status || settings.status}}\"}",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    },
+    {
+      "id": "get_posts",
+      "name": "Get Posts",
+      "description": "Retrieve WordPress posts",
+      "category": "content",
+      "configSchema": {
+        "input": {
+          "schema": "{\"type\":\"object\",\"properties\":{\"filters\":{\"type\":\"object\",\"properties\":{\"status\":{\"type\":\"string\"},\"author\":{\"type\":\"number\"},\"search\":{\"type\":\"string\"},\"per_page\":{\"type\":\"number\",\"default\":10}}}}}",
+          "description": "Filters for retrieving posts"
+        },
+        "output": {
+          "schema": "{\"type\":\"object\",\"properties\":{\"success\":{\"type\":\"boolean\"},\"posts\":{\"type\":\"array\",\"items\":{\"type\":\"object\"}},\"total\":{\"type\":\"number\"},\"error\":{\"type\":\"string\"}}}",
+          "description": "Retrieved posts data"
+        },
+        "settings": {
+          "schema": "{\"type\":\"object\",\"properties\":{\"defaultStatus\":{\"type\":\"string\",\"default\":\"publish\"},\"defaultPerPage\":{\"type\":\"number\",\"default\":10}}}",
+          "description": "Default settings for post retrieval"
+        }
+      },
+      "endpoint": "/wp-json/wp/v2/posts",
+      "method": "GET"
+    }
+  ]
+}

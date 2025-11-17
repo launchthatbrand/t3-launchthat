@@ -1,7 +1,6 @@
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
-
-import type { Doc, Id } from "../../convex/_generated/dataModel";
-import { api } from "../../convex/_generated/api";
 
 // Posts Types - extend with more post metadata
 export interface PostFilter {
@@ -9,6 +8,7 @@ export interface PostFilter {
   category?: string;
   authorId?: Id<"users">;
   limit?: number;
+  postTypeSlug?: string;
 }
 
 export interface CreatePostArgs {
@@ -20,6 +20,8 @@ export interface CreatePostArgs {
   category?: string;
   tags?: string[];
   featuredImage?: string;
+  postTypeSlug?: string;
+  meta?: Record<string, string | number | boolean | null>;
 }
 
 export interface UpdatePostArgs {
@@ -32,6 +34,8 @@ export interface UpdatePostArgs {
   category?: string;
   tags?: string[];
   featuredImage?: string;
+  postTypeSlug?: string;
+  meta?: Record<string, string | number | boolean | null>;
 }
 
 export interface SearchPostArgs {
@@ -45,9 +49,10 @@ export interface SearchPostArgs {
 
 // Query hooks
 export function useGetAllPosts(filters?: PostFilter) {
-  const result = useQuery(api.core.posts.queries.getAllPosts, { filters });
+  const args = filters ? { filters } : {};
+  const result = useQuery(api.core.posts.queries.getAllPosts, args);
   return {
-    posts: result ?? [],
+    posts: (result ?? []) as Array<Doc<"posts">>,
     isLoading: result === undefined,
   };
 }

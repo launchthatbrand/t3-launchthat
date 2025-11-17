@@ -81,10 +81,10 @@ function SettingsPage() {
       href: "/admin/settings/site",
     },
     {
-      title: "Content Types",
-      description: "Define and manage custom content types and their structure",
+      title: "Post Types",
+      description: "Define and manage custom post types and their structure",
       icon: <ListTree className="h-6 w-6" />,
-      href: "/admin/settings/content-types",
+      href: "/admin/settings/post-types",
     },
     {
       title: "Advanced",

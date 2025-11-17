@@ -5,7 +5,44 @@
  */
 import { v } from "convex/values";
 
+import type { Id } from "../../_generated/dataModel";
+import type { MutationCtx } from "../../_generated/server";
 import { mutation } from "../../_generated/server";
+
+const metaValueValidator = v.union(
+  v.string(),
+  v.number(),
+  v.boolean(),
+  v.null(),
+);
+
+const DEFAULT_POST_TYPE = "post";
+
+async function upsertPostMeta(
+  ctx: MutationCtx,
+  postId: Id<"posts">,
+  meta: Record<string, string | number | boolean | null>,
+) {
+  const timestamp = Date.now();
+  for (const [key, value] of Object.entries(meta)) {
+    const existing = await ctx.db
+      .query("postsMeta")
+      .withIndex("by_post_and_key", (q) =>
+        q.eq("postId", postId).eq("key", key),
+      )
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, { value, updatedAt: timestamp });
+    } else {
+      await ctx.db.insert("postsMeta", {
+        postId,
+        key,
+        value,
+        createdAt: timestamp,
+      });
+    }
+  }
+}
 
 /**
  * Create a new post
@@ -24,6 +61,8 @@ export const createPost = mutation({
     category: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     featuredImage: v.optional(v.string()),
+    postTypeSlug: v.optional(v.string()),
+    meta: v.optional(v.record(v.string(), metaValueValidator)),
   },
   handler: async (ctx, args) => {
     // Get current user if authenticated
@@ -41,18 +80,29 @@ export const createPost = mutation({
       }
     }
 
-    return await ctx.db.insert("posts", {
+    const postTypeSlug = (args.postTypeSlug ?? DEFAULT_POST_TYPE).toLowerCase();
+    const normalizedSlug = sanitizeSlug(args.slug) || `post-${Date.now()}`;
+    const uniqueSlug = await ensureUniqueSlug(ctx, normalizedSlug);
+
+    const postId = await ctx.db.insert("posts", {
       title: args.title,
       content: args.content,
       excerpt: args.excerpt,
-      slug: args.slug,
+      slug: uniqueSlug,
       status: args.status,
       category: args.category,
       tags: args.tags,
       featuredImageUrl: args.featuredImage,
+      postTypeSlug,
       authorId,
       createdAt: Date.now(),
     });
+
+    if (args.meta && Object.keys(args.meta).length > 0) {
+      await upsertPostMeta(ctx, postId, args.meta);
+    }
+
+    return postId;
   },
 });
 
@@ -76,19 +126,32 @@ export const updatePost = mutation({
     category: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     featuredImage: v.optional(v.string()),
+    postTypeSlug: v.optional(v.string()),
+    meta: v.optional(v.record(v.string(), metaValueValidator)),
   },
   handler: async (ctx, args) => {
-    const { id, ...updates } = args;
+    const { id, meta, ...updates } = args;
 
     const post = await ctx.db.get(id);
     if (!post) {
       throw new Error(`Post with ID ${id} not found`);
     }
 
+    if (updates.slug) {
+      const normalizedSlug = sanitizeSlug(updates.slug) || post.slug;
+      if (normalizedSlug !== post.slug) {
+        updates.slug = await ensureUniqueSlug(ctx, normalizedSlug, id);
+      }
+    }
+
     await ctx.db.patch(id, {
       ...updates,
       updatedAt: Date.now(),
     });
+
+    if (meta && Object.keys(meta).length > 0) {
+      await upsertPostMeta(ctx, id, meta);
+    }
 
     return id;
   },
@@ -168,3 +231,36 @@ export const bulkUpdatePostStatus = mutation({
     return results;
   },
 });
+
+const sanitizeSlug = (value: string | undefined) => {
+  if (!value) return "";
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+};
+
+const ensureUniqueSlug = async (
+  ctx: MutationCtx,
+  baseSlug: string,
+  excludeId?: Id<"posts">,
+) => {
+  let attempt = baseSlug || `post-${Date.now()}`;
+  let counter = 2;
+
+  while (true) {
+    const existing = await ctx.db
+      .query("posts")
+      .withIndex("by_slug", (q) => q.eq("slug", attempt))
+      .first();
+
+    if (!existing || (excludeId && existing._id === excludeId)) {
+      return attempt;
+    }
+
+    attempt = `${baseSlug}-${counter}`;
+    counter += 1;
+  }
+};

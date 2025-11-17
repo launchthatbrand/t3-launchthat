@@ -1,7 +1,7 @@
 "use client";
 
 import type { DateRange as DayPickerDateRange } from "react-day-picker";
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BookmarkPlus,
@@ -86,7 +86,7 @@ const sortOptions = [
   { label: "Most Relevant", value: "relevant" },
 ];
 
-export function FeedFilters({
+function FeedFiltersInner({
   onFiltersChange,
   className = "",
 }: FeedFiltersProps) {
@@ -906,5 +906,13 @@ export function FeedFilters({
         <p>Swipe horizontally to see more filter options</p>
       </div>
     </div>
+  );
+}
+
+export function FeedFilters(props: FeedFiltersProps) {
+  return (
+    <Suspense fallback={<div className={props.className}>Loading filters…</div>}>
+      <FeedFiltersInner {...props} />
+    </Suspense>
   );
 }

@@ -1,7 +1,5 @@
 "use client";
 
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog";
 import React, {
   createContext,
   useCallback,
@@ -9,10 +7,12 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 
+import { cn } from ".";
 import { Button } from "./button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog";
 import { Progress } from "./progress";
-import { cn } from "../@acme/utils";
 
 // === IMPROVED TYPES ===
 

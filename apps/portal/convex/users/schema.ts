@@ -6,7 +6,10 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
-import { marketingTagsTable } from "./marketingTags/schema";
+import {
+  marketingTagsTable,
+  userMarketingTagsTable,
+} from "./marketingTags/schema";
 import { userSettingsTable } from "./settings/schema";
 
 // Address object definition (for user addresses)
@@ -137,4 +140,5 @@ export const usersSchema = {
   users: usersTable,
   userSettings: userSettingsTable,
   marketingTags: marketingTagsTable,
+  userMarketingTags: userMarketingTagsTable,
 };

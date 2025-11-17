@@ -1,12 +1,5 @@
 "use client";
 
-import {
-  Dialog,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogContent as ShadcnDialogContent,
-} from "./dialog";
 import React, {
   createContext,
   useCallback,
@@ -15,12 +8,19 @@ import React, {
   useMemo,
   useState,
 } from "react";
-
-import { Button } from "./button";
 import { Check } from "lucide-react";
-import { Progress } from "./progress";
-import { cn } from "../@acme/utils";
+
+import { cn } from ".";
+import { Button } from "./button";
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogContent as ShadcnDialogContent,
+} from "./dialog";
 import { useMultiPageDialogStore } from "./multi-page-dialog-store";
+import { Progress } from "./progress";
 
 // Types
 export interface MultiPageDialogStep<TData = Record<string, unknown>> {

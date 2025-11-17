@@ -1,141 +1,102 @@
 "use client";
 
-import { useSelectedLayoutSegment } from "next/navigation";
-import {
-  AudioWaveform,
-  BookOpen,
-  Bot,
-  Command,
-  Frame,
-  GalleryVerticalEnd,
-  HelpCircle,
-  Image,
-  Map,
-  PieChart,
-  Settings2,
-  Share2,
-  ShoppingCart,
-  TerminalSquare,
-  Twitter,
-  User,
-  Users,
-} from "lucide-react";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { useMemo } from "react";
+import { usePathname } from "next/navigation";
+import { api } from "@/convex/_generated/api";
+import { useQuery } from "convex/react";
+import { BookOpen, TerminalSquare } from "lucide-react";
 
 import { NavMain } from "@acme/ui/general/nav-main";
 import { TeamSwitcher } from "@acme/ui/general/team-switcher";
 import { SidebarHeader } from "@acme/ui/sidebar";
 
-// import { useLearndash } from "../hooks/useLearndash";
+const MENU_LOCATION = "primary";
 
-// This is sample data (kept for reference).
-const _data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
+const FALLBACK_NAV = [
+  {
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: TerminalSquare,
   },
-  teams: [
-    {
-      name: "Acme Inc",
-      logo: GalleryVerticalEnd,
-      plan: "Enterprise",
-    },
-    {
-      name: "Acme Corp.",
-      logo: AudioWaveform,
-      plan: "Startup",
-    },
-    {
-      name: "Evil Corp.",
-      logo: Command,
-      plan: "Free",
-    },
-  ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: Frame,
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
-    },
-  ],
+] as const;
+
+type MenuItemDoc = Doc<"menuItems">;
+
+interface SidebarNavItem {
+  title: string;
+  url: string;
+  icon?: typeof BookOpen;
+  isActive?: boolean;
+  items?: SidebarNavItem[];
+}
+
+const normalizeUrl = (url: string) => {
+  if (!url) return "/";
+  if (/^https?:\/\//i.test(url)) return url;
+  return url.startsWith("/") ? url : `/${url}`;
+};
+
+const getOrderValue = (value: number | null | undefined) =>
+  typeof value === "number" ? value : 0;
+
+const buildMenuTree = (
+  items: MenuItemDoc[],
+  pathname: string | null,
+  parentId: Id<"menuItems"> | null = null,
+): SidebarNavItem[] => {
+  return items
+    .filter((item) => {
+      if (item.parentId === undefined || item.parentId === null) {
+        return parentId === null;
+      }
+      return item.parentId === parentId;
+    })
+    .sort((a, b) => getOrderValue(a.order) - getOrderValue(b.order))
+    .map((item) => {
+      const url = normalizeUrl(item.url);
+      const isActive =
+        pathname !== null &&
+        (pathname === url || pathname.startsWith(`${url}/`));
+      return {
+        title: item.label,
+        url,
+        icon: BookOpen,
+        isActive,
+        items: buildMenuTree(items, pathname, item._id),
+      };
+    });
 };
 
 export default function DefaultSidebar() {
-  // const { courses } = useLearndash();
+  const pathname = usePathname();
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  const menuData = useQuery(api.core.menus.queries.getMenuWithItemsByLocation, {
+    location: MENU_LOCATION,
+  }) as
+    | {
+        menu: Doc<"menus">;
+        items: MenuItemDoc[];
+      }
+    | null
+    | undefined;
 
-  const navMain = [
-    {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: TerminalSquare,
-      isActive: true,
-    },
-    {
-      title: "Courses",
-      url: "/courses",
-      icon: Users,
-    },
-    {
-      title: "Downloads",
-      url: "/downloads",
-      icon: Bot,
-    },
-    {
-      title: "Campaign Calendar",
-      url: "/calendar",
-      icon: BookOpen,
-    },
-    {
-      title: "Document Library",
-      url: "/documents",
-      icon: Users,
-    },
-    {
-      title: "Shop",
-      url: "/store",
-      icon: User,
-    },
-    {
-      title: "Districts",
-      url: "/groups",
-      icon: ShoppingCart,
-    },
-    {
-      title: "Blog",
-      url: "/posts",
-      icon: BookOpen,
-    },
-    {
-      title: "Helpdesk",
-      url: "/helpdesk",
-      icon: HelpCircle,
-    },
-    {
-      title: "Social",
-      url: "/social/feed",
-      icon: Twitter,
-    },
-  ];
+  console.log("menuData", menuData);
 
-  const loginSegment = useSelectedLayoutSegment("sidebar");
-  console.log("loginSegment", loginSegment);
+  const navItems = useMemo(() => {
+    if (!menuData || menuData.items.length === 0) {
+      return FALLBACK_NAV;
+    }
+    const tree = buildMenuTree(menuData.items, pathname);
+    return tree.length ? tree : FALLBACK_NAV;
+  }, [menuData, pathname]);
 
   return (
     <>
       <SidebarHeader>
         <TeamSwitcher />
       </SidebarHeader>
-      <NavMain items={navMain} />
+      <NavMain items={navItems} />
     </>
   );
 }

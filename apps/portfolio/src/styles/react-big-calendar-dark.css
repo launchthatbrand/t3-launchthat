@@ -1,0 +1,119 @@
+/* Dark mode styles for React Big Calendar */
+[data-theme="dark"] .rbc-calendar,
+.react-big-calendar-dark {
+  /* Background and text colors */
+  --rbc-bg-color: hsl(var(--background));
+  --rbc-border-color: hsl(var(--border));
+  --rbc-text-color: hsl(var(--foreground));
+  --rbc-muted-text-color: hsl(var(--muted-foreground));
+  --rbc-btn-color: hsl(var(--primary));
+  --rbc-today-bg-color: hsl(var(--accent));
+  --rbc-event-bg-color: hsl(var(--primary));
+  --rbc-event-border-color: hsl(var(--primary));
+  --rbc-off-range-bg-color: hsl(var(--muted) / 0.3);
+  --rbc-header-bg-color: hsl(var(--background));
+  --rbc-selected-cell-bg-color: hsl(var(--accent) / 0.4);
+  --rbc-off-range-color: hsl(var(--muted-foreground) / 0.6);
+
+  background-color: var(--rbc-bg-color);
+  color: var(--rbc-text-color);
+}
+
+[data-theme="dark"] .rbc-toolbar button,
+.react-big-calendar-dark .rbc-toolbar button {
+  color: var(--rbc-text-color);
+  background-color: var(--rbc-bg-color);
+  border-color: var(--rbc-border-color);
+}
+
+[data-theme="dark"] .rbc-toolbar button:hover,
+.react-big-calendar-dark .rbc-toolbar button:hover {
+  background-color: hsl(var(--accent) / 0.2);
+}
+
+[data-theme="dark"] .rbc-toolbar button.rbc-active,
+.react-big-calendar-dark .rbc-toolbar button.rbc-active {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+[data-theme="dark"] .rbc-month-view,
+[data-theme="dark"] .rbc-time-view,
+[data-theme="dark"] .rbc-agenda-view,
+.react-big-calendar-dark .rbc-month-view,
+.react-big-calendar-dark .rbc-time-view,
+.react-big-calendar-dark .rbc-agenda-view {
+  border-color: var(--rbc-border-color);
+}
+
+[data-theme="dark"] .rbc-header,
+.react-big-calendar-dark .rbc-header {
+  background-color: var(--rbc-header-bg-color);
+  border-color: var(--rbc-border-color);
+}
+
+[data-theme="dark"] .rbc-day-bg,
+.react-big-calendar-dark .rbc-day-bg {
+  border-color: var(--rbc-border-color);
+}
+
+[data-theme="dark"] .rbc-today,
+.react-big-calendar-dark .rbc-today {
+  background-color: var(--rbc-today-bg-color);
+}
+
+[data-theme="dark"] .rbc-off-range-bg,
+.react-big-calendar-dark .rbc-off-range-bg {
+  background-color: var(--rbc-off-range-bg-color);
+}
+
+[data-theme="dark"] .rbc-off-range,
+.react-big-calendar-dark .rbc-off-range {
+  color: var(--rbc-off-range-color);
+}
+
+[data-theme="dark"] .rbc-event,
+.react-big-calendar-dark .rbc-event {
+  border-color: var(--rbc-event-border-color);
+}
+
+[data-theme="dark"] .rbc-selected-cell,
+.react-big-calendar-dark .rbc-selected-cell {
+  background-color: var(--rbc-selected-cell-bg-color);
+}
+
+[data-theme="dark"] .rbc-show-more,
+.react-big-calendar-dark .rbc-show-more {
+  color: var(--rbc-btn-color);
+  background-color: transparent;
+}
+
+[data-theme="dark"] .rbc-timeslot-group,
+.react-big-calendar-dark .rbc-timeslot-group {
+  border-color: var(--rbc-border-color);
+}
+
+[data-theme="dark"] .rbc-time-header-content,
+.react-big-calendar-dark .rbc-time-header-content {
+  border-color: var(--rbc-border-color);
+}
+
+[data-theme="dark"] .rbc-time-content,
+.react-big-calendar-dark .rbc-time-content {
+  border-color: var(--rbc-border-color);
+}
+
+[data-theme="dark"] .rbc-time-content > * + * > *,
+.react-big-calendar-dark .rbc-time-content > * + * > * {
+  border-color: var(--rbc-border-color);
+}
+
+[data-theme="dark"] .rbc-time-header-gutter,
+.react-big-calendar-dark .rbc-time-header-gutter {
+  background-color: var(--rbc-header-bg-color);
+}
+
+[data-theme="dark"] .rbc-day-slot .rbc-time-slot,
+.react-big-calendar-dark .rbc-day-slot .rbc-time-slot {
+  border-color: var(--rbc-border-color);
+}

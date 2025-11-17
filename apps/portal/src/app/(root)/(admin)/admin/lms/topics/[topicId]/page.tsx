@@ -53,6 +53,8 @@ export default function AdminTopicEditPage() {
   const params = useParams();
   const { topicId } = params as { topicId: string };
 
+  console.log("topicId", topicId);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isNewTagModalOpen, setIsNewTagModalOpen] = useState(false);
@@ -68,10 +70,10 @@ export default function AdminTopicEditPage() {
 
   // Convex queries and mutations
   const topic = useQuery(api.lms.topics.queries.getTopic, {
-    topicId,
+    id: topicId,
   });
-  const tags = useQuery(api.tags.index.listTags, {});
-  const createTag = useMutation(api.tags.index.createTag);
+  const tags = useQuery(api.core.tags.queries.listTags, {});
+  const createTag = useMutation(api.core.tags.mutations.createTag);
   const updateTopic = useMutation(api.lms.topics.mutations.updateTopic);
 
   // Initialize data when topic loads

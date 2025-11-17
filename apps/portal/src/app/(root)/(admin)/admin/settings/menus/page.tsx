@@ -1,5 +1,6 @@
 "use client";
 
+import type { Doc } from "@/convex/_generated/dataModel";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Edit, Plus } from "lucide-react";
@@ -39,15 +40,40 @@ import {
   TableRow,
 } from "@acme/ui/table";
 
-import { useCreateMenu, useMenus } from "./_api/menus";
+import { useCreateMenu, useMenus, useUpdateMenu } from "./_api/menus";
+
+const MENU_LOCATIONS = [
+  { value: "primary", label: "Primary Navigation" },
+  { value: "footer", label: "Footer Navigation" },
+  { value: "sidebar", label: "Sidebar Navigation" },
+] as const;
+
+const getLocationLabel = (location: string) =>
+  MENU_LOCATIONS.find((loc) => loc.value === location)?.label ?? location;
 
 export default function MenusSettingsPage() {
   const router = useRouter();
   const [newMenuName, setNewMenuName] = useState("");
   const [newMenuLocation, setNewMenuLocation] = useState("");
+  const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [editingLocation, setEditingLocation] = useState<string>("primary");
 
-  const menus = useMenus() ?? [];
+  const { data: menus } = useMenus();
   const createMenu = useCreateMenu();
+  const updateMenu = useUpdateMenu();
+
+  const openEditDialog = (menu: Doc<"menus">) => {
+    setEditingMenuId(menu._id);
+    setEditingName(menu.name);
+    setEditingLocation(menu.location);
+  };
+
+  const closeEditDialog = () => {
+    setEditingMenuId(null);
+    setEditingName("");
+    setEditingLocation("primary");
+  };
 
   return (
     <div className="container mx-auto py-10">
@@ -88,9 +114,11 @@ export default function MenusSettingsPage() {
                     <SelectValue placeholder="Select location" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="header">Header</SelectItem>
-                    <SelectItem value="footer">Footer</SelectItem>
-                    <SelectItem value="sidebar">Sidebar</SelectItem>
+                    {MENU_LOCATIONS.map((location) => (
+                      <SelectItem key={location.value} value={location.value}>
+                        {location.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -130,7 +158,7 @@ export default function MenusSettingsPage() {
               {menus.map((menu) => (
                 <TableRow key={menu._id}>
                   <TableCell className="font-medium">{menu.name}</TableCell>
-                  <TableCell className="capitalize">{menu.location}</TableCell>
+                  <TableCell>{getLocationLabel(menu.location)}</TableCell>
                   <TableCell>{menu.itemCount}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -147,7 +175,9 @@ export default function MenusSettingsPage() {
                         >
                           Edit Menu Items
                         </DropdownMenuItem>
-                        <DropdownMenuItem>Rename Menu</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditDialog(menu)}>
+                          Edit Details
+                        </DropdownMenuItem>
                         <DropdownMenuItem className="text-destructive">
                           Delete Menu
                         </DropdownMenuItem>
@@ -160,6 +190,66 @@ export default function MenusSettingsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={!!editingMenuId} onOpenChange={closeEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Menu</DialogTitle>
+            <DialogDescription>
+              Update the menu name and location assignment.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-menu-name">Menu Name</Label>
+              <Input
+                id="edit-menu-name"
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+                placeholder="Menu name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-menu-location">Location</Label>
+              <Select
+                value={editingLocation}
+                onValueChange={setEditingLocation}
+              >
+                <SelectTrigger id="edit-menu-location">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MENU_LOCATIONS.map((location) => (
+                    <SelectItem key={location.value} value={location.value}>
+                      {location.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeEditDialog}>
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!editingMenuId || !editingName) return;
+                await updateMenu({
+                  menuId: editingMenuId,
+                  data: {
+                    name: editingName,
+                    location: editingLocation,
+                  },
+                });
+                closeEditDialog();
+              }}
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

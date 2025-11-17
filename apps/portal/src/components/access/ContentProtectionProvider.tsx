@@ -83,11 +83,10 @@ export function ContentProtectionProvider({
 
   // Get user's marketing tags
   // TODO: Restore marketing tags functionality after users refactor
-  // const userTags = useQuery(
-  //   api.users.marketingTags.index.getUserMarketingTags,
-  //   userId ? { userId } : "skip",
-  // );
-  const userTags = undefined;
+  const userTags = useQuery(
+    api.users.marketingTags.index.getUserMarketingTags,
+    userId ? { userId } : "skip",
+  );
 
   // Stable user tag IDs to prevent unnecessary re-renders
   const userTagIds = useMemo(

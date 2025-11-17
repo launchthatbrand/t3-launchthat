@@ -7,7 +7,6 @@
  * the integration seeding system with various options.
  */
 import { ConvexHttpClient } from "convex/browser";
-
 import { api } from "../convex/_generated/api";
 
 // Get Convex URL from environment

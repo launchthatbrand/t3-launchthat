@@ -1,5 +1,11 @@
 "use client";
 
+import type { Id } from "@convex-config/_generated/dataModel";
+import { useState } from "react";
+import { Plus, Tag, X } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
   Dialog,
@@ -10,7 +16,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import { Plus, Tag, X } from "lucide-react";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -18,19 +25,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
+import { Textarea } from "@acme/ui/textarea";
+import { toast } from "@acme/ui/toast";
+
+import { useConvexUser } from "~/hooks/useConvexUser";
 import {
   useMarketingTags,
   useUserMarketingTags,
 } from "~/hooks/useMarketingTags";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { Id } from "@convex-config/_generated/dataModel";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import { Textarea } from "@acme/ui/textarea";
-import { toast } from "@acme/ui/toast";
-import { useState } from "react";
 
 interface UserMarketingTagsManagerProps {
   userId: Id<"users">;
@@ -83,6 +85,7 @@ export function UserMarketingTagsManager({
   // Get user's current marketing tags
   const { userTags, assignTag, removeTag } = useUserMarketingTags(userId);
   const { marketingTags, createTag } = useMarketingTags();
+  const { convexId: actingUserId } = useConvexUser();
 
   // Filter out tags that user already has
   const availableTags =
@@ -113,7 +116,7 @@ export function UserMarketingTagsManager({
         userId,
         tagId: newTagId,
         source: "admin_manual",
-        assignedBy: userId, // In a real app, this would be the current admin user ID
+        assignedBy: actingUserId ?? userId,
       });
 
       toast.success("Marketing tag created and assigned successfully");
@@ -146,7 +149,7 @@ export function UserMarketingTagsManager({
         userId,
         tagId: selectedTagId as Id<"marketingTags">,
         source: "admin_manual",
-        assignedBy: userId, // In a real app, this would be the current admin user ID
+        assignedBy: actingUserId ?? userId,
       });
 
       toast.success("Marketing tag assigned successfully");

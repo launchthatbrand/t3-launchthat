@@ -1,9 +1,9 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
 import React, { useState } from "react";
+import { Check, Copy } from "lucide-react";
 
-import { cn } from "../@acme/utils";
+import { cn } from ".";
 
 interface CopyTextProps {
   value: string;

@@ -22,8 +22,7 @@
     "seed:env": "pnpm with-env tsx scripts/seed-integrations.ts --environment staging",
     "seed:specific": "pnpm with-env tsx scripts/seed-integrations.ts --integrations wordpress_create_post,stripe_create_charge",
     "seed:help": "pnpm with-env tsx scripts/seed-integrations.ts --help",
-    "seed:convex": "pnpm with-env convex run integrations/init",
-    "predev": "pnpm seed:dry"
+    "seed:convex": "pnpm with-env convex run integrations/init"
   },
   "dependencies": {
     "@acme/auth": "workspace:*",

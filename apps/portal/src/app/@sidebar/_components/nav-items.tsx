@@ -1,6 +1,7 @@
 import {
   BookOpen,
   Bot,
+  HammerIcon,
   HelpCircle,
   Image,
   Settings2,
@@ -18,18 +19,6 @@ export const navItems = [
     url: "/dashboard",
     icon: TerminalSquare,
     isActive: true,
-  },
-  {
-    title: "Media",
-    url: "/admin/media",
-    icon: Image,
-    items: [
-      {
-        title: "Categories",
-        url: "/admin/media/categories",
-        icon: BookOpen,
-      },
-    ],
   },
   {
     title: "LMS",
@@ -58,23 +47,7 @@ export const navItems = [
       },
     ],
   },
-  {
-    title: "Downloads",
-    url: "/admin/downloads",
-    icon: Bot,
-    items: [
-      {
-        title: "Create",
-        url: "/admin/downloads/create",
-        icon: BookOpen,
-      },
-      {
-        title: "Categories",
-        url: "/admin/downloads/category",
-        icon: BookOpen,
-      },
-    ],
-  },
+
   {
     title: "Campaign Calendar",
     url: "/admin/calendar",
@@ -93,23 +66,6 @@ export const navItems = [
       {
         title: "Categories",
         url: "/admin/calendar/category",
-        icon: BookOpen,
-      },
-    ],
-  },
-  {
-    title: "Document Library",
-    url: "/admin/documents",
-    icon: Users,
-    items: [
-      {
-        title: "Create",
-        url: "/admin/documents/create",
-        icon: BookOpen,
-      },
-      {
-        title: "Categories",
-        url: "/admin/documents/category",
         icon: BookOpen,
       },
     ],
@@ -168,33 +124,6 @@ export const navItems = [
     ],
   },
   {
-    title: "Districts",
-    url: "/admin/groups",
-    icon: ShoppingCart,
-  },
-  {
-    title: "Blog",
-    url: "/admin/posts",
-    icon: BookOpen,
-    items: [
-      {
-        title: "Dashboard",
-        url: "/admin/posts",
-        icon: BookOpen,
-      },
-      {
-        title: "Create Post",
-        url: "/admin/posts/create",
-        icon: BookOpen,
-      },
-      {
-        title: "Categories",
-        url: "/admin/posts/category",
-        icon: BookOpen,
-      },
-    ],
-  },
-  {
     title: "Helpdesk",
     url: "/admin/helpdesk",
     icon: HelpCircle,
@@ -244,8 +173,12 @@ export const navItems = [
         url: "/admin/settings/site",
       },
       {
-        title: "Content types",
-        url: "/admin/settings/content-types",
+        title: "Post types",
+        url: "/admin/settings/post-types",
+      },
+      {
+        title: "Taxonomies",
+        url: "/admin/settings/taxonomies",
       },
       {
         title: "Custom fields",
@@ -269,6 +202,7 @@ export const navItems = [
       },
     ],
   },
+  { title: "Tools", url: "/admin/tools", icon: HammerIcon },
   {
     title: "Integrations",
     url: "/admin/integrations",
@@ -285,6 +219,11 @@ export const navItems = [
       {
         title: "Scenarios",
         url: "/admin/integrations?tab=scenarios",
+      },
+      {
+        title: "Plugins",
+        url: "/admin/integrations/plugins",
+        icon: BookOpen,
       },
       {
         title: "Logs",

@@ -1,0 +1,24 @@
+{
+  "extends": "@acme/tsconfig/base.json",
+  "compilerOptions": {
+    "types": ["jest", "node"],
+    "lib": ["ES2022", "dom", "dom.iterable"],
+    "jsx": "preserve",
+    "baseUrl": ".",
+    "moduleResolution": "bundler",
+    "paths": {
+      "~/*": ["./src/*"],
+      "@convexcms-config": ["./src/convexcms.config.ts"],
+      "@convex-config/*": ["./convex/*"],
+      "react": ["./node_modules/@types/react"],
+      "@/*": ["./*"],
+      "@/components/*": ["./src/components/*"],
+      "@/hooks/*": ["./src/hooks/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@acme/ui/*": ["../../packages/ui/src/*"]
+    },
+    "plugins": [{ "name": "next" }]
+  },
+  "include": [".", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

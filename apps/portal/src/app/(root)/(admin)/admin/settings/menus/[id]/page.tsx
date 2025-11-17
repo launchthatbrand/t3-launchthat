@@ -1,12 +1,12 @@
 "use client";
 
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { DragEndEvent } from "@dnd-kit/core";
 import React, { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { Id } from "@/convex/_generated/dataModel";
 import {
   closestCenter,
   DndContext,
-  DragEndEvent,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -57,19 +57,21 @@ import {
   useMenuItems,
   useRemoveMenuItem,
   useReorderMenuItems,
+  useUpdateMenuItem,
 } from "../_api/menus";
-import { Doc } from "../../../../convex/_generated/dataModel";
 
 interface SortableTableRowProps {
   item: Doc<"menuItems">;
   parentItemLabel: string | null;
   onDeleteItem: (id: Id<"menuItems">) => void;
+  onEditItem: (item: Doc<"menuItems">) => void;
 }
 
 const SortableTableRow = ({
   item,
   parentItemLabel,
   onDeleteItem,
+  onEditItem,
 }: SortableTableRowProps) => {
   const {
     attributes,
@@ -101,34 +103,35 @@ const SortableTableRow = ({
       <TableCell>{item.order}</TableCell>
       <TableCell className="text-right">
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" onClick={() => onEditItem(item)}>
             <Edit className="h-4 w-4" />
           </Button>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onDeleteItem(item._id)}
-                disabled={item.isBuiltIn}
-              >
-                <Trash className="h-4 w-4 text-destructive" />
-              </Button>
-            </DialogTrigger>
-          </Dialog>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onDeleteItem(item._id)}
+            disabled={item.isBuiltIn}
+          >
+            <Trash className="h-4 w-4 text-destructive" />
+          </Button>
         </div>
       </TableCell>
     </TableRow>
   );
 };
 
+const getOrderValue = (value: number | null | undefined) =>
+  typeof value === "number" ? value : 0;
+
 export default function MenuItemsPage({ params }: { params: { id: string } }) {
-  const { id: menuId } = use(params);
+  const { id } = use(params);
+  const menuId = id as Id<"menus">;
   const menu = useMenu(menuId);
   const fetchedMenuItems = useMenuItems(menuId);
   const addMenuItem = useAddMenuItem();
   const removeMenuItem = useRemoveMenuItem();
   const reorderMenuItems = useReorderMenuItems();
+  const updateMenuItem = useUpdateMenuItem();
 
   const [itemToDelete, setItemToDelete] = useState<Id<"menuItems"> | null>(
     null,
@@ -137,7 +140,11 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     if (fetchedMenuItems) {
-      setMenuItems(fetchedMenuItems);
+      setMenuItems(
+        [...fetchedMenuItems].sort(
+          (a, b) => getOrderValue(a.order) - getOrderValue(b.order),
+        ),
+      );
     }
   }, [fetchedMenuItems]);
 
@@ -148,6 +155,27 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
   );
 
   const [isAddDialogOpened, setIsAddDialogOpened] = useState(false);
+  const [isEditDialogOpened, setIsEditDialogOpened] = useState(false);
+  const [editingItem, setEditingItem] = useState<Doc<"menuItems"> | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editUrl, setEditUrl] = useState("");
+  const [editParent, setEditParent] = useState<Id<"menuItems"> | null>(null);
+
+  const openEditDialog = (item: Doc<"menuItems">) => {
+    setEditingItem(item);
+    setEditLabel(item.label);
+    setEditUrl(item.url);
+    setEditParent(item.parentId ?? null);
+    setIsEditDialogOpened(true);
+  };
+
+  const closeEditDialog = () => {
+    setIsEditDialogOpened(false);
+    setEditingItem(null);
+    setEditLabel("");
+    setEditUrl("");
+    setEditParent(null);
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -156,7 +184,7 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
     }),
   );
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (active.id && over?.id && active.id !== over.id) {
@@ -181,7 +209,7 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
         // Filter items that belong to the same parent (or are top-level if parentId is null)
         const relevantItems = currentItems
           .filter((item) => item.parentId === parentIdToReorder)
-          .sort((a, b) => a.order - b.order); // Ensure this subset is sorted by current order
+          .sort((a, b) => getOrderValue(a.order) - getOrderValue(b.order));
 
         const oldIndex = relevantItems.findIndex(
           (item) => item._id === activeId,
@@ -200,20 +228,21 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
 
         // Prepare updates for the backend
         const updates = newOrderedRelevantItems.map((item, index) => ({
-          id: item._id,
-          order: index, // Assign new order based on their position in the reordered subset
-          parentId: parentIdToReorder, // Parent ID remains the same
+          itemId: item._id,
+          order: index,
         }));
 
         // Call mutation to update backend
         void reorderMenuItems({
-          menuId: menuId,
-          updates: updates,
+          menuId,
+          updates,
         });
 
         // Update local state by reconstructing the full list with new orders for relevant items
         const updatedMenuItems = currentItems.map((item) => {
-          const updatedItem = updates.find((update) => update.id === item._id);
+          const updatedItem = updates.find(
+            (update) => update.itemId === item._id,
+          );
           return updatedItem ? { ...item, order: updatedItem.order } : item;
         });
 
@@ -239,10 +268,9 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
   const topLevelMenuItems = menuItems.filter((item) => item.parentId === null);
   // Helper function to get children of a parent
   const getChildren = (parentId: Id<"menuItems"> | null) => {
-    // Filter and sort children by their current order
     return menuItems
       .filter((item) => item.parentId === parentId)
-      .sort((a, b) => a.order - b.order);
+      .sort((a, b) => getOrderValue(a.order) - getOrderValue(b.order));
   };
 
   return (
@@ -300,7 +328,9 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
               <div className="grid gap-2">
                 <Label htmlFor="item-parent">Parent Item (Optional)</Label>
                 <Select
-                  value={newItemParent?.toString() ?? "NONE_PARENT"}
+                  value={
+                    newItemParent ? newItemParent.toString() : "NONE_PARENT"
+                  }
                   onValueChange={(val) =>
                     setNewItemParent(
                       val === "NONE_PARENT" ? null : (val as Id<"menuItems">),
@@ -334,6 +364,7 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
                     label: newItemLabel,
                     url: newItemUrl,
                     parentId: newItemParent,
+                    order: menuItems.length,
                   });
                   setNewItemLabel("");
                   setNewItemUrl("");
@@ -342,6 +373,100 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
                 }}
               >
                 Add Item
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={isEditDialogOpened && !!editingItem}
+          onOpenChange={(open) => {
+            if (!open) {
+              closeEditDialog();
+            } else if (editingItem) {
+              setIsEditDialogOpened(true);
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Menu Item</DialogTitle>
+              <DialogDescription>
+                Update the selected item for {menu.name}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-item-label">Label</Label>
+                <Input
+                  id="edit-item-label"
+                  placeholder="Item label"
+                  value={editLabel}
+                  onChange={(e) => setEditLabel(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-item-url">URL</Label>
+                <Input
+                  id="edit-item-url"
+                  placeholder="e.g., /about"
+                  value={editUrl}
+                  onChange={(e) => setEditUrl(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-item-parent">Parent Item (Optional)</Label>
+                <Select
+                  value={editParent ? editParent.toString() : "NONE_PARENT"}
+                  onValueChange={(val) =>
+                    setEditParent(
+                      val === "NONE_PARENT" ? null : (val as Id<"menuItems">),
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None (Top Level)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NONE_PARENT">
+                      None (Top Level)
+                    </SelectItem>
+                    {menuItems
+                      .filter(
+                        (item) =>
+                          item.parentId === null &&
+                          (!editingItem || item._id !== editingItem._id),
+                      )
+                      .map((item) => (
+                        <SelectItem key={item._id} value={item._id.toString()}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={closeEditDialog}>
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!editingItem || !editLabel || !editUrl) {
+                    return;
+                  }
+                  await updateMenuItem({
+                    itemId: editingItem._id,
+                    data: {
+                      label: editLabel,
+                      url: editUrl,
+                      parentId: editParent,
+                    },
+                  });
+                  closeEditDialog();
+                }}
+              >
+                Save Changes
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -408,6 +533,7 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
                         item={item}
                         parentItemLabel={null}
                         onDeleteItem={handleDeleteItem}
+                        onEditItem={openEditDialog}
                       />
                       {getChildren(item._id).map((childItem) => (
                         <SortableTableRow
@@ -415,6 +541,7 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
                           item={childItem}
                           parentItemLabel={item.label}
                           onDeleteItem={handleDeleteItem}
+                          onEditItem={openEditDialog}
                         />
                       ))}
                     </React.Fragment>

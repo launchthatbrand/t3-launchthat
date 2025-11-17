@@ -4,7 +4,7 @@ import "@measured/puck/puck.css";
 
 import type { Id } from "@/convex/_generated/dataModel";
 import type { Data } from "@measured/puck";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { Puck } from "@measured/puck";
@@ -59,7 +59,7 @@ function CustomHeader({
  * 1. The Puck editor when ?editor=true is in the URL
  * 2. The normal children when not in editor mode
  */
-export function PuckEditor({ children }: PuckEditorProps) {
+function PuckEditorInner({ children }: PuckEditorProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isEditorMode = useEditorStore((state) => state.isEditorMode);
@@ -224,6 +224,14 @@ export function PuckEditor({ children }: PuckEditorProps) {
         )}
       />
     </div>
+  );
+}
+
+export function PuckEditor({ children }: PuckEditorProps) {
+  return (
+    <Suspense fallback={children}>
+      <PuckEditorInner>{children}</PuckEditorInner>
+    </Suspense>
   );
 }
 

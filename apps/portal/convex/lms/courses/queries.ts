@@ -376,7 +376,7 @@ export const getCourseStructureWithItems = query({
     for (const lessonId of attachedLessons.map((l) => l._id)) {
       const topics = await ctx.db
         .query("topics")
-        .withIndex("by_lesson", (q) => q.eq("lessonId", lessonId))
+        .withIndex("by_lessonId", (q) => q.eq("lessonId", lessonId))
         .collect();
       attachedTopics.push(...topics);
     }
@@ -386,7 +386,7 @@ export const getCourseStructureWithItems = query({
     for (const lessonId of attachedLessons.map((l) => l._id)) {
       const quizzes = await ctx.db
         .query("quizzes")
-        .withIndex("by_lesson", (q) => q.eq("lessonId", lessonId))
+        .withIndex("by_lessonId", (q) => q.eq("lessonId", lessonId))
         .collect();
       attachedQuizzes.push(...quizzes);
     }

@@ -24,7 +24,7 @@ export const quizzesTable = defineTable({
   courseId: v.optional(v.id("courses")), // Link to course for final quizzes
   isPublished: v.optional(v.boolean()),
 })
-  .index("by_lesson", ["lessonId"]) // Used by progress queries
+  .index("by_lessonId", ["lessonId"]) // Used by progress queries
   .index("by_topic", ["topicId"])
   .index("by_course", ["courseId"])
   .index("by_organization", ["organizationId"]);

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SignIn } from "@clerk/nextjs";
 
-export default function Page() {
+function SignInPageBody() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mondayToken = searchParams.get("monday_token");
@@ -90,4 +90,12 @@ export default function Page() {
 
   // Use Clerk's SignIn component for standard sign-in
   return <SignIn />;
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div className="p-4">Loading sign-in…</div>}>
+      <SignInPageBody />
+    </Suspense>
+  );
 }

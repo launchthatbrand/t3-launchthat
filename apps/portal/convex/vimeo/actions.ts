@@ -1,6 +1,5 @@
 "use node";
 
-import { ActionCache } from "@convex-dev/action-cache";
 import { v } from "convex/values";
 
 import { internal } from "../_generated/api";
@@ -116,17 +115,10 @@ export const syncVimeoVideos = internalAction({
 export const syncAllConnections = internalAction({
   args: {},
   handler: async (ctx) => {
-    const vimeoApp = await ctx.runQuery(
-      internal.integrations.connections.queries.getVimeoApp,
-      {},
+    const connections = await ctx.runQuery(
+      internal.integrations.connections.queries.list,
+      { nodeType: "vimeo" },
     );
-
-    if (!vimeoApp) return;
-
-    const connections = await ctx.db
-      .query("connections")
-      .withIndex("by_app", (q) => q.eq("appId", vimeoApp._id))
-      .collect();
 
     for (const conn of connections) {
       await ctx.runAction(internal.vimeo.actions.syncVimeoVideos, {
@@ -240,13 +232,6 @@ export const getCachedVimeoVideos = action({
     ownerId: v.union(v.id("users"), v.string()),
   },
   handler: async (ctx, args) => {
-    return await cache.fetch(ctx, args);
+    return await ctx.runAction(internal.vimeo.actions.fetchVimeoVideos, args);
   },
 });
-
-// ActionCache instance for 5 minute caching
-// const cache = new ActionCache(components.actionCache, {
-//   action: internal.vimeo.actions.fetchVimeoVideos,
-//   name: "vimeoVideos",
-//   ttl: 1000 * 60 * 1, // 5 minutes
-// });

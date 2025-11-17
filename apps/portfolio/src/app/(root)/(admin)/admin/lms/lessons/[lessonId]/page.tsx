@@ -1,0 +1,63 @@
+"use client";
+
+import { useParams } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { useMutation, useQuery } from "convex/react";
+
+import { toast } from "@acme/ui/toast";
+
+import type { LessonFormValues } from "../../../lessons/_components/LessonForm";
+import LessonForm from "../../../lessons/_components/LessonForm";
+
+export default function AdminLessonEditPage() {
+  const params = useParams();
+  const { lessonId } = params as { lessonId: string };
+
+  const lesson = useQuery(api.lms.lessons.queries.getLessonById, { lessonId });
+
+  const updateLesson = useMutation(api.lms.lessons.mutations.update);
+
+  const handleSubmit = async (values: LessonFormValues) => {
+    await updateLesson({
+      lessonId,
+      title: values.title,
+      content: values.content,
+      excerpt: values.excerpt,
+      categories: values.categories
+        ? values.categories.split(",").map((c) => c.trim())
+        : undefined,
+      featuredMedia: values.featuredMedia,
+      // status handled via isPublished in form values
+      isPublished: values.status === "published",
+    });
+    toast.success("Lesson updated");
+  };
+
+  if (lesson === undefined) return <div>Loading...</div>;
+  if (lesson === null) return <div>Lesson not found.</div>;
+
+  // Dummy categories placeholder
+  const categories = [
+    { value: "general", label: "General" },
+    { value: "advanced", label: "Advanced" },
+  ];
+
+  return (
+    <LessonForm
+      initialData={{
+        _id: lesson._id,
+        title: lesson.title,
+        content: lesson.content ?? "",
+        excerpt: lesson.excerpt ?? "",
+        categories: lesson.categories?.join(", ") ?? "",
+        featuredMedia: lesson.featuredMedia ?? "",
+        status: lesson.isPublished ? "published" : "draft",
+        featured: false,
+      }}
+      onSubmit={handleSubmit}
+      isSubmitting={false}
+      categories={categories}
+      submitButtonText="Save Lesson"
+    />
+  );
+}
