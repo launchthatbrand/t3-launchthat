@@ -63,6 +63,7 @@ export const createPost = mutation({
     featuredImage: v.optional(v.string()),
     postTypeSlug: v.optional(v.string()),
     meta: v.optional(v.record(v.string(), metaValueValidator)),
+    organizationId: v.optional(v.id("organizations")),
   },
   handler: async (ctx, args) => {
     // Get current user if authenticated
@@ -82,7 +83,11 @@ export const createPost = mutation({
 
     const postTypeSlug = (args.postTypeSlug ?? DEFAULT_POST_TYPE).toLowerCase();
     const normalizedSlug = sanitizeSlug(args.slug) || `post-${Date.now()}`;
-    const uniqueSlug = await ensureUniqueSlug(ctx, normalizedSlug);
+    const uniqueSlug = await ensureUniqueSlug(
+      ctx,
+      normalizedSlug,
+      args.organizationId,
+    );
 
     const postId = await ctx.db.insert("posts", {
       title: args.title,
@@ -95,6 +100,7 @@ export const createPost = mutation({
       featuredImageUrl: args.featuredImage,
       postTypeSlug,
       authorId,
+      organizationId: args.organizationId ?? undefined,
       createdAt: Date.now(),
     });
 
@@ -140,7 +146,12 @@ export const updatePost = mutation({
     if (updates.slug) {
       const normalizedSlug = sanitizeSlug(updates.slug) || post.slug;
       if (normalizedSlug !== post.slug) {
-        updates.slug = await ensureUniqueSlug(ctx, normalizedSlug, id);
+        updates.slug = await ensureUniqueSlug(
+          ctx,
+          normalizedSlug,
+          post.organizationId as Id<"organizations"> | undefined,
+          id,
+        );
       }
     }
 
@@ -245,16 +256,24 @@ const sanitizeSlug = (value: string | undefined) => {
 const ensureUniqueSlug = async (
   ctx: MutationCtx,
   baseSlug: string,
+  organizationId: Id<"organizations"> | undefined,
   excludeId?: Id<"posts">,
 ) => {
   let attempt = baseSlug || `post-${Date.now()}`;
   let counter = 2;
 
   while (true) {
-    const existing = await ctx.db
-      .query("posts")
-      .withIndex("by_slug", (q) => q.eq("slug", attempt))
-      .first();
+    const existing = organizationId
+      ? await ctx.db
+          .query("posts")
+          .withIndex("by_organization_slug", (q) =>
+            q.eq("organizationId", organizationId).eq("slug", attempt),
+          )
+          .first()
+      : await ctx.db
+          .query("posts")
+          .withIndex("by_slug", (q) => q.eq("slug", attempt))
+          .first();
 
     if (!existing || (excludeId && existing._id === excludeId)) {
       return attempt;

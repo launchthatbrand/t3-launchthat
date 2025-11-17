@@ -41,6 +41,7 @@ import {
 } from "@acme/ui/dropdown-menu";
 
 import type { PostStatus } from "~/components/admin/PostStatusForm";
+import { useTenant } from "~/context/TenantContext";
 
 // Map status to badge variants
 const statusVariantMap: Record<
@@ -57,14 +58,21 @@ type Post = Doc<"posts">;
 function PostsAdminPageBody() {
   const [selectedPosts, setSelectedPosts] = useState<Id<"posts">[]>([]);
   const [activeFilters, setActiveFilters] = useState({});
+  const tenant = useTenant();
 
-  const postsData = useQuery(api.core.posts.queries.getAllPosts, {});
+  const postsData = useQuery(
+    api.core.posts.queries.getAllPosts,
+    tenant?._id ? { organizationId: tenant._id } : {},
+  );
 
   console.log("postsData", postsData);
 
   // Get posts data from Convex
   // const { data: postsData, isLoading: isPostsLoading } = useAllPosts();
-  const categoriesData = useQuery(api.core.posts.queries.getPostCategories, {});
+  const categoriesData = useQuery(
+    api.core.posts.queries.getPostCategories,
+    tenant?._id ? { organizationId: tenant._id } : {},
+  );
   const updatePostsStatus = useBulkUpdatePostStatus();
   const deletePost = useDeletePost();
 

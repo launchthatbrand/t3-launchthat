@@ -9,6 +9,7 @@ import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 
 import { usePostTypeBySlug } from "../settings/post-types/_api/postTypes";
+import { useTenant } from "~/context/TenantContext";
 
 type AdminPostViewMode = "archive" | "single";
 
@@ -46,6 +47,7 @@ const AdminPostProviderInner = ({
   children: React.ReactNode;
 }) => {
   const searchParams = useSearchParams();
+  const tenant = useTenant();
   const postIdParam = searchParams.get("post_id") ?? undefined;
   const queryPostTypeParam = searchParams.get("post_type") ?? undefined;
 
@@ -63,7 +65,11 @@ const AdminPostProviderInner = ({
 
   const post = useQuery(
     api.core.posts.queries.getPostById,
-    normalizedPostId && supportsPostsTable ? { id: normalizedPostId } : "skip",
+    normalizedPostId && supportsPostsTable
+      ? tenant?._id
+        ? { id: normalizedPostId, organizationId: tenant._id }
+        : { id: normalizedPostId }
+      : "skip",
   );
 
   const slugFromPost = post?.postTypeSlug;

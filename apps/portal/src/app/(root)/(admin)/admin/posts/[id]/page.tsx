@@ -19,6 +19,7 @@ import AdminSinglePost, {
 } from "~/components/admin/AdminSinglePostLayout";
 import { PostForm } from "~/components/admin/PostForm";
 import { PostStatusForm } from "~/components/admin/PostStatusForm";
+import { useTenant } from "~/context/TenantContext";
 
 function EditPostContent({
   initialData,
@@ -81,10 +82,15 @@ function EditPostPage() {
   const router = useRouter();
   const [_isSubmitting] = useState(false);
   const postId = params.id as Id<"posts">;
+  const tenant = useTenant();
 
   const post = useQuery(
     api.core.posts.queries.getPostById,
-    postId ? { id: postId } : "skip",
+    postId
+      ? tenant?._id
+        ? { id: postId, organizationId: tenant._id }
+        : { id: postId }
+      : "skip",
   );
 
   const initialData: PostFormData | undefined = useMemo(() => {

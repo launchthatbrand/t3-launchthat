@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { fetchQuery } from "convex/nextjs";
 
+import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 interface PageProps {
   params: { segments?: string[] };
 }
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
 export default async function FrontendCatchAllPage({ params }: PageProps) {
   const segments = params.segments ?? [];
   const slug = deriveSlugFromSegments(segments);
+  const tenant = await getActiveTenantFromHeaders();
 
   if (!slug) {
     notFound();
@@ -22,6 +24,7 @@ export default async function FrontendCatchAllPage({ params }: PageProps) {
 
   const post = await fetchQuery(api.core.posts.queries.getPostBySlug, {
     slug,
+    ...(tenant?._id ? { organizationId: tenant._id } : {}),
   });
 
   if (!post) {

@@ -17,14 +17,21 @@ import {
   FrontendSinglePostSidebar,
 } from "~/components/frontend/FrontendSinglePostLayout";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
-import FrontendLayout from "../layout";
+import { useTenant } from "~/context/TenantContext";
 
 type Post = Doc<"posts">;
 
 export default function BlogPage() {
-  const posts = useQuery(api.core.posts.queries.getAllPosts, {
-    filters: { status: "published", limit: 50 },
-  });
+  const tenant = useTenant();
+  const posts = useQuery(
+    api.core.posts.queries.getAllPosts,
+    tenant?._id
+      ? {
+          organizationId: tenant._id,
+          filters: { status: "published", limit: 50 },
+        }
+      : { filters: { status: "published", limit: 50 } },
+  );
 
   const columns: ColumnDef<Post>[] = [
     {

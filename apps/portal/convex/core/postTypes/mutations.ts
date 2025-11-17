@@ -219,6 +219,7 @@ export const create = mutation({
     supports: v.optional(postTypeSupportsValidator),
     rewrite: v.optional(postTypeRewriteValidator),
     adminMenu: postTypeAdminMenuValidator,
+    organizationId: v.optional(v.id("organizations")),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -231,6 +232,10 @@ export const create = mutation({
 
     const timestamp = Date.now();
     const id = await ctx.db.insert("postTypes", {
+      organizationId: args.organizationId ?? undefined,
+      enabledOrganizationIds: args.organizationId
+        ? [args.organizationId]
+        : undefined,
       name: args.name,
       slug: args.slug,
       description: args.description,
@@ -250,6 +255,35 @@ export const create = mutation({
 
     await createSystemFields(ctx, id);
     return id;
+  },
+});
+
+export const enableForOrganization = mutation({
+  args: {
+    slug: v.string(),
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    const postType = await ctx.db
+      .query("postTypes")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .unique();
+
+    if (!postType) {
+      throw new Error(`Post type with slug ${args.slug} not found`);
+    }
+
+    const existing = postType.enabledOrganizationIds ?? [];
+    if (existing.includes(args.organizationId)) {
+      return { updated: false };
+    }
+
+    await ctx.db.patch(postType._id, {
+      enabledOrganizationIds: [...existing, args.organizationId],
+      updatedAt: Date.now(),
+    });
+
+    return { updated: true };
   },
 });
 

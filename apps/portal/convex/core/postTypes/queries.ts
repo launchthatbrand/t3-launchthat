@@ -18,6 +18,7 @@ import {
 export const list = query({
   args: {
     includeBuiltIn: v.optional(v.boolean()),
+    organizationId: v.optional(v.id("organizations")),
   },
   returns: v.array(
     v.object({
@@ -39,21 +40,32 @@ export const list = query({
       createdAt: v.number(),
       updatedAt: v.optional(v.number()),
       createdBy: v.optional(v.id("users")),
+      organizationId: v.optional(v.id("organizations")),
+      enabledOrganizationIds: v.optional(v.array(v.id("organizations"))),
     }),
   ),
   handler: async (ctx, args) => {
-    const { includeBuiltIn = true } = args;
+    const { includeBuiltIn = true, organizationId } = args;
+    const allPostTypes = await ctx.db.query("postTypes").collect();
 
-    if (!includeBuiltIn) {
-      // Filter out built-in content types
-      return await ctx.db
-        .query("postTypes")
-        .withIndex("by_isBuiltIn", (q) => q.eq("isBuiltIn", false))
-        .collect();
-    }
+    const filtered = allPostTypes.filter((type) => {
+      const hasAccess =
+        !organizationId ||
+        !type.enabledOrganizationIds ||
+        type.enabledOrganizationIds.includes(organizationId);
 
-    // Return all content types
-    return await ctx.db.query("postTypes").collect();
+      if (!hasAccess) {
+        return false;
+      }
+
+      if (!includeBuiltIn && type.isBuiltIn) {
+        return false;
+      }
+
+      return true;
+    });
+
+    return filtered;
   },
 });
 
@@ -63,6 +75,7 @@ export const list = query({
 export const get = query({
   args: {
     id: v.id("postTypes"),
+    organizationId: v.optional(v.id("organizations")),
   },
   returns: v.union(
     v.object({
@@ -84,11 +97,26 @@ export const get = query({
       createdAt: v.number(),
       updatedAt: v.optional(v.number()),
       createdBy: v.optional(v.id("users")),
+      organizationId: v.optional(v.id("organizations")),
+      enabledOrganizationIds: v.optional(v.array(v.id("organizations"))),
     }),
     v.null(),
   ),
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const postType = await ctx.db.get(args.id);
+    if (!postType) {
+      return null;
+    }
+
+    if (
+      args.organizationId &&
+      postType.enabledOrganizationIds &&
+      !postType.enabledOrganizationIds.includes(args.organizationId)
+    ) {
+      return null;
+    }
+
+    return postType;
   },
 });
 
@@ -98,6 +126,7 @@ export const get = query({
 export const getBySlug = query({
   args: {
     slug: v.string(),
+    organizationId: v.optional(v.id("organizations")),
   },
   returns: v.union(
     v.object({
@@ -119,13 +148,26 @@ export const getBySlug = query({
       createdAt: v.number(),
       updatedAt: v.optional(v.number()),
       createdBy: v.optional(v.id("users")),
+      organizationId: v.optional(v.id("organizations")),
+      enabledOrganizationIds: v.optional(v.array(v.id("organizations"))),
     }),
     v.null(),
   ),
   handler: async (ctx, args) => {
-    return await ctx.db
+    const postType = await ctx.db
       .query("postTypes")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
+
+    if (
+      postType &&
+      args.organizationId &&
+      postType.enabledOrganizationIds &&
+      !postType.enabledOrganizationIds.includes(args.organizationId)
+    ) {
+      return null;
+    }
+
+    return postType;
   },
 });

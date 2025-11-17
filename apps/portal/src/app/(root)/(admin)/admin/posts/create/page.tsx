@@ -1,8 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { api } from "@convex-config/_generated/api";
-import { useMutation } from "convex/react";
 
 import { toast } from "@acme/ui/toast";
 
@@ -14,10 +12,11 @@ import AdminSinglePost, {
   AdminSinglePostTabsContent,
 } from "~/components/admin/AdminSinglePostLayout";
 import { PostForm } from "~/components/admin/PostForm";
+import { useCreatePost } from "~/lib/blog";
 
 export default function CreatePostPage() {
   const router = useRouter();
-  const createPost = useMutation(api.core.posts.mutations.createPost);
+  const createPost = useCreatePost();
 
   const handleSubmit = async (data: PostFormData) => {
     try {

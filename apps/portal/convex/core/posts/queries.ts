@@ -13,6 +13,7 @@ import { isAdmin } from "../../lib/permissions/hasPermission";
  */
 export const getAllPosts = query({
   args: {
+    organizationId: v.optional(v.id("organizations")),
     filters: v.optional(
       v.object({
         status: v.optional(
@@ -30,13 +31,37 @@ export const getAllPosts = query({
     ),
   },
   handler: async (ctx, args) => {
-    let queryBuilder = args.filters?.postTypeSlug
-      ? ctx.db
+    const organizationId = args.organizationId ?? undefined;
+
+    let queryBuilder;
+    if (organizationId) {
+      if (args.filters?.postTypeSlug) {
+        queryBuilder = ctx.db
           .query("posts")
-          .withIndex("by_postTypeSlug", (q) =>
-            q.eq("postTypeSlug", args.filters?.postTypeSlug ?? ""),
-          )
-      : ctx.db.query("posts");
+          .withIndex("by_organization_postTypeSlug", (q) =>
+            q
+              .eq("organizationId", organizationId)
+              .eq("postTypeSlug", args.filters?.postTypeSlug ?? ""),
+          );
+      } else {
+        queryBuilder = ctx.db
+          .query("posts")
+          .withIndex("by_organization", (q) =>
+            q.eq("organizationId", organizationId),
+          );
+      }
+    } else if (args.filters?.postTypeSlug) {
+      queryBuilder = ctx.db
+        .query("posts")
+        .withIndex("by_postTypeSlug", (q) =>
+          q.eq("postTypeSlug", args.filters?.postTypeSlug ?? ""),
+        )
+        .filter((q) => q.eq(q.field("organizationId"), undefined));
+    } else {
+      queryBuilder = ctx.db
+        .query("posts")
+        .filter((q) => q.eq(q.field("organizationId"), undefined));
+    }
 
     if (args.filters?.status) {
       queryBuilder = queryBuilder.filter((q) =>
@@ -70,17 +95,40 @@ export const getAllPosts = query({
 export const getPostById = query({
   args: {
     id: v.id("posts"),
+    organizationId: v.optional(v.id("organizations")),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const post = await ctx.db.get(args.id);
+    if (!post) {
+      return null;
+    }
+
+    const requestedOrg = args.organizationId ?? undefined;
+    const postOrg = post.organizationId ?? undefined;
+    if (requestedOrg !== postOrg) {
+      return null;
+    }
+
+    return post;
   },
 });
 
 export const getPostMeta = query({
   args: {
     postId: v.id("posts"),
+    organizationId: v.optional(v.id("organizations")),
   },
   handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.postId);
+    if (!post) {
+      return [];
+    }
+    const requestedOrg = args.organizationId ?? undefined;
+    const postOrg = post.organizationId ?? undefined;
+    if (requestedOrg !== postOrg) {
+      return [];
+    }
+
     return await ctx.db
       .query("postsMeta")
       .withIndex("by_post", (q) => q.eq("postId", args.postId))
@@ -94,12 +142,23 @@ export const getPostMeta = query({
 export const getPostBySlug = query({
   args: {
     slug: v.string(),
+    organizationId: v.optional(v.id("organizations")),
   },
   handler: async (ctx, args) => {
-    const post = await ctx.db
-      .query("posts")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .first();
+    const requestedOrg = args.organizationId ?? undefined;
+
+    const post = requestedOrg
+      ? await ctx.db
+          .query("posts")
+          .withIndex("by_organization_slug", (q) =>
+            q.eq("organizationId", requestedOrg).eq("slug", args.slug),
+          )
+          .unique()
+      : await ctx.db
+          .query("posts")
+          .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+          .filter((q) => q.eq(q.field("organizationId"), undefined))
+          .first();
 
     if (!post) {
       return null;
@@ -127,10 +186,15 @@ export const searchPosts = query({
   args: {
     searchTerm: v.string(),
     limit: v.optional(v.number()),
+    organizationId: v.optional(v.id("organizations")),
   },
   handler: async (ctx, args) => {
+    const organizationId = args.organizationId ?? undefined;
     const posts = await ctx.db
       .query("posts")
+      .filter((q) =>
+        q.eq(q.field("organizationId"), organizationId ?? undefined),
+      )
       .filter((q) =>
         q.or(
           q.eq(q.field("title"), args.searchTerm),
@@ -147,9 +211,15 @@ export const searchPosts = query({
  * Get all post tags
  */
 export const getPostTags = query({
-  args: {},
-  handler: async (ctx) => {
-    const posts = await ctx.db.query("posts").collect();
+  args: { organizationId: v.optional(v.id("organizations")) },
+  handler: async (ctx, args) => {
+    const organizationId = args.organizationId ?? undefined;
+    const posts = await ctx.db
+      .query("posts")
+      .filter((q) =>
+        q.eq(q.field("organizationId"), organizationId ?? undefined),
+      )
+      .collect();
     const tagsSet = new Set<string>();
 
     posts.forEach((post) => {
@@ -166,8 +236,9 @@ export const getPostTags = query({
  * Get all post categories
  */
 export const getPostCategories = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { organizationId: v.optional(v.id("organizations")) },
+  handler: async (ctx, _args) => {
+    // TODO: Categories should be tenant-scoped; currently shared.
     const postCategories = await ctx.db
       .query("categories")
       .withIndex("by_postTypes", (q) => q.eq("postTypes", ["post"]))

@@ -18,14 +18,20 @@ import {
   FrontendSinglePostMain,
   FrontendSinglePostSidebar,
 } from "~/components/frontend/FrontendSinglePostLayout";
+import { useTenant } from "~/context/TenantContext";
 
 export default function PostPage() {
   const params = useParams();
   const postId = params.postId as Id<"posts">;
+  const tenant = useTenant();
 
   const post = useQuery(
     api.core.posts.queries.getPostById,
-    postId ? { id: postId } : "skip",
+    postId
+      ? tenant?._id
+        ? { id: postId, organizationId: tenant._id }
+        : { id: postId }
+      : "skip",
   );
 
   if (post === undefined) {

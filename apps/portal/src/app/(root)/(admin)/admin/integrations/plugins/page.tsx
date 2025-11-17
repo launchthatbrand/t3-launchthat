@@ -1,6 +1,6 @@
 "use client";
 
-import type { Doc } from "@/convex/_generated/dataModel";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { useMemo, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -16,8 +16,10 @@ import {
 } from "@acme/ui/card";
 import { Separator } from "@acme/ui/separator";
 
+import { useTenant } from "~/context/TenantContext";
 import {
   useCreatePostType,
+  useEnsurePostTypeAccess,
   usePostTypes,
 } from "../../settings/post-types/_api/postTypes";
 
@@ -75,10 +77,25 @@ interface PluginDefinition {
   postTypes: PluginPostTypeConfig[];
 }
 
+const isPostTypeEnabledForTenant = (
+  postType: Doc<"postTypes">,
+  organizationId?: Id<"organizations">,
+) => {
+  if (!organizationId) return true;
+  const enabledIds = postType.enabledOrganizationIds;
+  if (!enabledIds || enabledIds.length === 0) {
+    return true;
+  }
+  return enabledIds.some((id) => id === organizationId);
+};
+
 export default function PluginsPage() {
   const { data: postTypes, isLoading } = usePostTypes(true);
   const createPostType = useCreatePostType();
+  const ensurePostTypeAccess = useEnsurePostTypeAccess();
   const [isPending, startTransition] = useTransition();
+  const tenant = useTenant();
+  const tenantId = tenant?._id;
 
   const plugins = useMemo<PluginDefinition[]>(
     () => [
@@ -357,12 +374,16 @@ export default function PluginsPage() {
   );
 
   const pluginStatus = useMemo(() => {
-    const enabledSlugs = new Set(
-      postTypes.map((postType: Doc<"postTypes">) => postType.slug),
+    const availability = new Set(
+      postTypes
+        .filter((type: Doc<"postTypes">) =>
+          isPostTypeEnabledForTenant(type, tenantId),
+        )
+        .map((postType: Doc<"postTypes">) => postType.slug),
     );
     return plugins.map((plugin) => {
       const missing = plugin.postTypes.filter(
-        (type: PluginPostTypeConfig) => !enabledSlugs.has(type.slug),
+        (type: PluginPostTypeConfig) => !availability.has(type.slug),
       );
       return {
         pluginId: plugin.id,
@@ -370,20 +391,28 @@ export default function PluginsPage() {
         missingSlugs: missing.map((type) => type.slug),
       };
     });
-  }, [postTypes, plugins]);
+  }, [postTypes, plugins, tenantId]);
 
   const handleEnablePlugin = (plugin: PluginDefinition) => {
+    if (!tenantId) {
+      toast.error("Select an organization before enabling plugins.");
+      return;
+    }
+
     startTransition(async () => {
       try {
         for (const type of plugin.postTypes) {
-          const exists = postTypes.some(
-            (existing: Doc<"postTypes">) => existing.slug === type.slug,
-          );
-
-          if (!exists) {
-            await createPostType({
-              ...type,
-            });
+          try {
+            await ensurePostTypeAccess(type.slug);
+          } catch (error) {
+            if (error instanceof Error && error.message.includes("not found")) {
+              await createPostType({
+                ...type,
+                organizationId: tenantId,
+              });
+            } else {
+              throw error;
+            }
           }
         }
         toast.success(`${plugin.name} plugin enabled`);

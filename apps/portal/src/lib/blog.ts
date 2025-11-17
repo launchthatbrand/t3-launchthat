@@ -1,6 +1,10 @@
-import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useCallback, useMemo } from "react";
+
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
+
+import { useTenant } from "~/context/TenantContext";
 
 // Posts Types - extend with more post metadata
 export interface PostFilter {
@@ -49,31 +53,66 @@ export interface SearchPostArgs {
 
 // Query hooks
 export function useGetAllPosts(filters?: PostFilter) {
-  const args = filters ? { filters } : {};
+  const tenant = useTenant();
+  const args = useMemo(() => {
+    const params: {
+      organizationId?: Id<"organizations">;
+      filters?: PostFilter;
+    } = {};
+    if (tenant?._id) {
+      params.organizationId = tenant._id;
+    }
+    if (filters) {
+      params.filters = filters;
+    }
+    return params;
+  }, [tenant?._id, filters]);
+
   const result = useQuery(api.core.posts.queries.getAllPosts, args);
   return {
-    posts: (result ?? []) as Array<Doc<"posts">>,
+    posts: result ?? [],
     isLoading: result === undefined,
   };
 }
 
 export function useGetPostById(id: Id<"posts"> | undefined) {
-  return useQuery(api.core.posts.queries.getPostById, id ? { id } : "skip");
+  const tenant = useTenant();
+  const args = id
+    ? tenant?._id
+      ? { id, organizationId: tenant._id }
+      : { id }
+    : "skip";
+  return useQuery(api.core.posts.queries.getPostById, args);
 }
 
 export function useGetPostBySlug(slug: string | undefined) {
+  const tenant = useTenant();
   return useQuery(
     api.core.posts.queries.getPostBySlug,
-    slug ? { slug } : "skip",
+    slug
+      ? tenant?._id
+        ? { slug, organizationId: tenant._id }
+        : { slug }
+      : "skip",
   );
 }
 
 export function useSearchPosts(args: SearchPostArgs) {
-  return useQuery(api.core.posts.queries.searchPosts, args);
+  const tenant = useTenant();
+  const params = useMemo(() => {
+    if (tenant?._id) {
+      return { ...args, organizationId: tenant._id };
+    }
+    return args;
+  }, [args, tenant?._id]);
+
+  return useQuery(api.core.posts.queries.searchPosts, params);
 }
 
 export function useGetPostTags() {
-  const result = useQuery(api.core.posts.queries.getPostTags, {});
+  const tenant = useTenant();
+  const args = tenant?._id ? { organizationId: tenant._id } : {};
+  const result = useQuery(api.core.posts.queries.getPostTags, args);
   return {
     tags: result ?? [],
     isLoading: result === undefined,
@@ -81,13 +120,26 @@ export function useGetPostTags() {
 }
 
 export function useGetPostCategories() {
-  const result = useQuery(api.core.posts.queries.getPostCategories, {});
+  const tenant = useTenant();
+  const args = tenant?._id ? { organizationId: tenant._id } : {};
+  const result = useQuery(api.core.posts.queries.getPostCategories, args);
   return result;
 }
 
 // Mutation hooks
 export function useCreatePost() {
-  return useMutation(api.core.posts.mutations.createPost);
+  const tenant = useTenant();
+  const mutate = useMutation(api.core.posts.mutations.createPost);
+  return useCallback<
+    (input: CreatePostArgs) => Promise<Id<"posts"> | undefined>
+  >(
+    (input) =>
+      mutate({
+        ...input,
+        organizationId: tenant?._id ?? undefined,
+      }),
+    [mutate, tenant?._id],
+  );
 }
 
 export function useUpdatePost() {

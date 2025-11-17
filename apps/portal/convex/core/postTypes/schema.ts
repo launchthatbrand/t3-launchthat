@@ -120,6 +120,8 @@ const fieldUiConfig = v.optional(
  * Content Types Table - Defines different content types in the system
  */
 export const postTypesTable = defineTable({
+  organizationId: v.optional(v.id("organizations")),
+  enabledOrganizationIds: v.optional(v.array(v.id("organizations"))),
   // Basic Info
   name: v.string(), // Display name (e.g., "Blog Post")
   slug: v.string(), // URL/API slug (e.g., "blog-posts")
@@ -145,7 +147,9 @@ export const postTypesTable = defineTable({
   createdBy: v.optional(v.id("users")),
 })
   .index("by_slug", ["slug"])
-  .index("by_isBuiltIn", ["isBuiltIn"]);
+  .index("by_isBuiltIn", ["isBuiltIn"])
+  .index("by_organization", ["organizationId"])
+  .index("by_slug_organization", ["slug", "organizationId"]);
 
 /**
  * Content Type Fields Table - Defines fields for each content type

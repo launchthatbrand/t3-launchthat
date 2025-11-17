@@ -8,6 +8,7 @@ export const postsTable = defineTable({
   title: v.string(),
   content: v.optional(v.string()),
   authorId: v.optional(v.id("users")),
+  organizationId: v.optional(v.id("organizations")),
   createdAt: v.optional(v.number()), // Consider adding timestamps
   updatedAt: v.optional(v.number()),
   status: v.optional(v.string()), // "published", "draft", or "archived"
@@ -24,6 +25,9 @@ export const postsTable = defineTable({
   .index("by_author", ["authorId"])
   .index("by_status", ["status"])
   .index("by_slug", ["slug"])
+  .index("by_organization", ["organizationId"])
+  .index("by_organization_slug", ["organizationId", "slug"])
+  .index("by_organization_postTypeSlug", ["organizationId", "postTypeSlug"])
   .index("by_category", ["category"])
   .index("by_featured", ["featured"])
   .index("by_postTypeSlug", ["postTypeSlug"]);

@@ -178,21 +178,38 @@ export default function DefaultSidebar() {
 
   const typedNavItems = navItems as NavItem[];
   const [dashboardItem, ...staticNavItems] = typedNavItems;
-  const orderedItems: (NavItem | undefined)[] = [
-    dashboardItem,
-    ...dynamicItems,
-    ...staticNavItems,
-  ];
-  const items: NavItem[] = orderedItems.filter((item): item is NavItem =>
-    Boolean(item),
+  const adminNavTitles = new Set(["Settings", "Tools", "Integrations"]);
+  const adminNavItems = staticNavItems.filter((item) =>
+    adminNavTitles.has(item.title),
   );
+  const remainingStaticItems = staticNavItems.filter(
+    (item) => !adminNavTitles.has(item.title),
+  );
+
+  const sections: { label?: string; items: NavItem[] }[] = [];
+
+  if (dashboardItem) {
+    sections.push({ items: [dashboardItem] });
+  }
+
+  if (dynamicItems.length > 0) {
+    sections.push({ label: "Post Types", items: dynamicItems });
+  }
+
+  if (adminNavItems.length > 0) {
+    sections.push({ label: "Admin", items: adminNavItems });
+  }
+
+  if (remainingStaticItems.length > 0) {
+    sections.push({ items: remainingStaticItems });
+  }
 
   return (
     <>
       <SidebarHeader>
         <AdminTeamSwitcher />
       </SidebarHeader>
-      <NavMain items={items} />
+      <NavMain sections={sections} />
     </>
   );
 }
