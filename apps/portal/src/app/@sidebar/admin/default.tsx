@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 "use client";
 
-import type { Doc } from "@/convex/_generated/dataModel";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { LucideIcon } from "lucide-react";
 import { useMemo } from "react";
 import * as LucideIcons from "lucide-react";
@@ -11,9 +11,12 @@ import { BookOpen } from "lucide-react";
 import { NavMain } from "@acme/ui/general/nav-main";
 import { SidebarHeader } from "@acme/ui/sidebar";
 
+import type { PluginDefinition } from "~/lib/plugins/types";
 import { usePostTypes } from "~/app/(root)/(admin)/admin/settings/post-types/_api/postTypes";
 import { useTaxonomies } from "~/app/(root)/(admin)/admin/settings/taxonomies/_api/taxonomies";
 import { AdminTeamSwitcher } from "~/components/admin/AdminTeamSwitcher";
+import { useTenant } from "~/context/TenantContext";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
 import { navItems } from "../_components/nav-items";
 
 type PostTypeDoc = Doc<"postTypes">;
@@ -31,11 +34,32 @@ interface NavItem {
   items?: NavChildItem[];
 }
 
+type GroupedNavItem = NavItem & { group?: "lms" | "postTypes" };
+
 interface TaxonomyNavDefinition {
   slug: string;
   name: string;
   postTypeSlugs?: string[];
 }
+
+const canAccessPostType = (
+  postType: PostTypeDoc,
+  organizationId: Id<"organizations">,
+) => {
+  const enabledIds = postType.enabledOrganizationIds;
+  if (enabledIds !== undefined) {
+    if (enabledIds.length === 0) {
+      return false;
+    }
+    return enabledIds.includes(organizationId);
+  }
+
+  if (postType.organizationId) {
+    return postType.organizationId === organizationId;
+  }
+
+  return true;
+};
 
 const BUILTIN_TAXONOMIES: TaxonomyNavDefinition[] = [
   {
@@ -51,14 +75,19 @@ const BUILTIN_TAXONOMIES: TaxonomyNavDefinition[] = [
 ] as const;
 
 export default function DefaultSidebar() {
+  const tenant = useTenant();
+  const tenantId = tenant?._id;
   const postTypesQuery = usePostTypes(true);
   const taxonomiesQuery = useTaxonomies();
   const contentTypes = useMemo<PostTypeDoc[]>(() => {
     if (!Array.isArray(postTypesQuery.data)) {
       return [];
     }
-    return postTypesQuery.data as PostTypeDoc[];
-  }, [postTypesQuery.data]);
+    const types = postTypesQuery.data as PostTypeDoc[];
+    return tenantId
+      ? types.filter((type) => canAccessPostType(type, tenantId))
+      : types;
+  }, [postTypesQuery.data, tenantId]);
   const taxonomyDefs = useMemo<
     { slug: string; name: string; postTypeSlugs?: string[] }[]
   >(() => {
@@ -134,7 +163,7 @@ export default function DefaultSidebar() {
     return map;
   }, [normalizedTaxonomies, contentTypes]);
 
-  const dynamicItems = contentTypes
+  const dynamicItems: GroupedNavItem[] = contentTypes
     .filter((type: PostTypeDoc) => type.adminMenu?.enabled)
     .sort((a: PostTypeDoc, b: PostTypeDoc) => {
       const aPos = a.adminMenu?.position ?? 100;
@@ -144,8 +173,15 @@ export default function DefaultSidebar() {
     .map((type: PostTypeDoc) => {
       const IconComponent = resolveIcon(type.adminMenu?.icon);
       const adminSlug = type.adminMenu?.slug?.trim();
+      const slugMatchesPath =
+        adminSlug &&
+        adminSlug.includes("/") &&
+        adminSlug.split("/").filter(Boolean).pop()?.toLowerCase() ===
+          type.slug.toLowerCase();
       const hasCustomPath =
-        adminSlug && (adminSlug.includes("/") || adminSlug.startsWith("http"));
+        adminSlug &&
+        (adminSlug.startsWith("http") ||
+          (adminSlug.includes("/") && !slugMatchesPath));
       const url = hasCustomPath
         ? adminSlug.startsWith("http")
           ? adminSlug
@@ -168,13 +204,66 @@ export default function DefaultSidebar() {
             }))
           : undefined;
 
+      const parentGroup = type.adminMenu?.parent?.toLowerCase();
+      const group: "lms" | "postTypes" =
+        parentGroup === "lms" ||
+        adminSlug?.toLowerCase().startsWith("lms") ||
+        adminSlug?.toLowerCase() === "lms"
+          ? "lms"
+          : "postTypes";
+
       return {
         title: type.adminMenu?.label ?? type.name,
         url,
         icon: IconComponent,
         items: childItems,
+        group,
       };
     });
+
+  const pluginSettingsMenus = useMemo<
+    { pluginId: string; item: NavItem }[]
+  >(() => {
+    if (contentTypes.length === 0) {
+      return [];
+    }
+
+    const settingsIcon = LucideIcons.Settings ?? BookOpen;
+
+    const isPluginEnabled = (plugin: PluginDefinition) =>
+      plugin.postTypes.every((definition) =>
+        contentTypes.some((type) => type.slug === definition.slug),
+      );
+
+    return pluginDefinitions
+      .filter(
+        (plugin) =>
+          plugin.settingsPages &&
+          plugin.settingsPages.length > 0 &&
+          isPluginEnabled(plugin),
+      )
+      .map((plugin) => {
+        const firstSetting = plugin.settingsPages?.[0];
+        const buildSettingsUrl = (slug: string) =>
+          `/admin/edit?plugin=${plugin.id}&page=${slug}`;
+        const baseUrl = firstSetting
+          ? buildSettingsUrl(firstSetting.slug)
+          : `/admin/integrations/plugins/${plugin.id}`;
+
+        return {
+          pluginId: plugin.id,
+          item: {
+            title: `${plugin.name} Settings`,
+            url: baseUrl,
+            icon: settingsIcon,
+            items: plugin.settingsPages?.map((setting) => ({
+              title: setting.label,
+              url: buildSettingsUrl(setting.slug),
+            })),
+          },
+        };
+      });
+  }, [contentTypes]);
 
   const typedNavItems = navItems as NavItem[];
   const [dashboardItem, ...staticNavItems] = typedNavItems;
@@ -192,8 +281,20 @@ export default function DefaultSidebar() {
     sections.push({ items: [dashboardItem] });
   }
 
-  if (dynamicItems.length > 0) {
-    sections.push({ label: "Post Types", items: dynamicItems });
+  const lmsItems = dynamicItems.filter((item) => item.group === "lms");
+  const postTypeItems = dynamicItems.filter((item) => item.group !== "lms");
+  const lmsSettingsItems = pluginSettingsMenus
+    .filter((entry) => entry.pluginId === "lms")
+    .map((entry) => entry.item);
+
+  if (postTypeItems.length > 0 || lmsItems.length > 0) {
+    sections.push({ label: "Post Types", items: postTypeItems });
+    if (lmsItems.length > 0 || lmsSettingsItems.length > 0) {
+      sections.push({
+        label: "LMS",
+        items: [...lmsItems, ...lmsSettingsItems],
+      });
+    }
   }
 
   if (adminNavItems.length > 0) {

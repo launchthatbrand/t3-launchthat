@@ -177,12 +177,16 @@ export const navItems = [
         url: "/admin/settings/post-types",
       },
       {
-        title: "Taxonomies",
-        url: "/admin/settings/taxonomies",
+        title: "Custom fields",
+        url: "/admin/settings/post-types?tab=fields",
       },
       {
-        title: "Custom fields",
-        url: "/admin/settings/custom-fields",
+        title: "Taxonomies",
+        url: "/admin/settings/post-types?tab=taxonomies",
+      },
+      {
+        title: "Templates",
+        url: "/admin/settings/post-types?tab=templates",
       },
       {
         title: "Menus",

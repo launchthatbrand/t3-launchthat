@@ -37,6 +37,7 @@ import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
 
 import { useTenant } from "~/context/TenantContext";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 
 // Since the current implementation uses a simple string for category
 // We'll create a more structured interface for future expansion
@@ -60,10 +61,11 @@ export default function CategoryAdminPage() {
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
 
   const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant);
   // Get categories data
   const categories = useQuery(
     api.core.posts.queries.getPostCategories,
-    tenant?._id ? { organizationId: tenant._id } : {},
+    organizationId ? { organizationId } : {},
   );
   const isLoading = categories === undefined;
 

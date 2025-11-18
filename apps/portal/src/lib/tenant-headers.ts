@@ -4,6 +4,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { headers } from "next/headers";
 
 import type { TenantSummary } from "./tenant-fetcher";
+import { PORTAL_TENANT_SUMMARY } from "./tenant-fetcher";
 
 export async function getActiveTenantFromHeaders(): Promise<TenantSummary | null> {
   const headerList: Headers = await headers();
@@ -12,7 +13,7 @@ export async function getActiveTenantFromHeaders(): Promise<TenantSummary | null
   const encodedName: string | null = headerList.get("x-tenant-name");
 
   if (!id || !slug || !encodedName) {
-    return null;
+    return PORTAL_TENANT_SUMMARY;
   }
 
   const planId: string | null = headerList.get("x-tenant-plan-id");

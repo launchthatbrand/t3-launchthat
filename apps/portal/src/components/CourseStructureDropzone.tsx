@@ -1,13 +1,11 @@
 "use client";
 
 import React from "react";
-import { type Id } from "@convex-config/_generated/dataModel";
 import { useDroppable } from "@dnd-kit/core";
 
 interface DropzoneProps {
   id: string;
   children: React.ReactNode;
-  lessonId?: Id<"lessons">; // Make lessonId optional for course-level dropzone
 }
 
 export const CourseStructureDropzone: React.FC<DropzoneProps> = ({

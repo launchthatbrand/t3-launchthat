@@ -7,7 +7,7 @@ import { useDroppable } from "@dnd-kit/core";
 interface DropzoneProps {
   id: string;
   children: React.ReactNode;
-  lessonId: Id<"lessons">; // Make lessonId required for Topic/Quiz dropzone
+  lessonId: Id<"posts">;
 }
 
 export const QuizDropzone: React.FC<DropzoneProps> = ({

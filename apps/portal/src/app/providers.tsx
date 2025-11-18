@@ -19,6 +19,7 @@ import { Toaster } from "@acme/ui/toast";
 import { ContentProtectionProvider } from "~/components/access/ContentProtectionProvider";
 import { TenantProvider } from "~/context/TenantContext";
 import { env } from "~/env";
+import { PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
 import useEditorStore from "~/store/useEditorStore";
 import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
 // Import the correct Convex provider for Clerk integration
@@ -96,6 +97,7 @@ interface ProvidersProps {
 }
 
 export function Providers({ children, tenant }: ProvidersProps) {
+  const effectiveTenant = tenant ?? PORTAL_TENANT_SUMMARY;
   return (
     // Wrap everything with ClerkProvider - key is now guaranteed to be a string
     <ClerkProvider publishableKey={env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
@@ -105,7 +107,7 @@ export function Providers({ children, tenant }: ProvidersProps) {
           useStorage={useSessionStorage}
         >
           <ContentProtectionProvider>
-            <TenantProvider value={tenant}>
+            <TenantProvider value={effectiveTenant}>
               <SidebarProvider>
                 <ConvexUserEnsurer />
                 <GuestCartMerger />

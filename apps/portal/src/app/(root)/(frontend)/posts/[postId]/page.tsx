@@ -19,17 +19,19 @@ import {
   FrontendSinglePostSidebar,
 } from "~/components/frontend/FrontendSinglePostLayout";
 import { useTenant } from "~/context/TenantContext";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 
 export default function PostPage() {
   const params = useParams();
   const postId = params.postId as Id<"posts">;
   const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant);
 
   const post = useQuery(
     api.core.posts.queries.getPostById,
     postId
-      ? tenant?._id
-        ? { id: postId, organizationId: tenant._id }
+      ? organizationId
+        ? { id: postId, organizationId }
         : { id: postId }
       : "skip",
   );

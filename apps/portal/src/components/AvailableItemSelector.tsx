@@ -40,7 +40,10 @@ export function AvailableItemSelector<T>({
           {newItemTrigger}
         </div>
         <CommandList>
-          <CommandEmpty>No {title.toLowerCase()} found.</CommandEmpty>
+          <CommandEmpty>
+            No {typeof title === "string" ? title.toLowerCase() : "items"}{" "}
+            found.
+          </CommandEmpty>
           <CommandGroup>
             {items.map((item, idx) => (
               <CommandItem

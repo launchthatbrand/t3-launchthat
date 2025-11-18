@@ -12,6 +12,27 @@ export interface TenantSummary {
   customDomain?: string | null;
 }
 
+export const PORTAL_TENANT_ID = "portal-root" as Id<"organizations">;
+
+export const PORTAL_TENANT_SUMMARY: TenantSummary = {
+  _id: PORTAL_TENANT_ID,
+  slug: "portal",
+  name: "Portal",
+  planId: null,
+  customDomain: null,
+};
+
+export const isPortalTenantId = (id?: Id<"organizations"> | null) =>
+  !!id && id === PORTAL_TENANT_ID;
+
+export const isPortalTenant = (tenant?: TenantSummary | null) =>
+  isPortalTenantId(tenant?._id);
+
+export const getTenantOrganizationId = (
+  tenant?: TenantSummary | null,
+): Id<"organizations"> | undefined =>
+  tenant?._id && !isPortalTenantId(tenant._id) ? tenant._id : undefined;
+
 const TENANT_CACHE_TTL_MS = 60 * 1000; // 1 minute edge cache
 const tenantCache = new Map<
   string,
@@ -29,7 +50,7 @@ const getConvexClient = () => {
 export async function fetchTenantBySlug(
   slug: string | null,
 ): Promise<TenantSummary | null> {
-  if (!slug) return null;
+  if (!slug) return PORTAL_TENANT_SUMMARY;
   const normalizedSlug = slug.toLowerCase();
 
   const cached = tenantCache.get(normalizedSlug);

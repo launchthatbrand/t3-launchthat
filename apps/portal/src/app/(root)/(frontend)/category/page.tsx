@@ -10,12 +10,14 @@ import { Separator } from "@acme/ui/separator";
 import { Skeleton } from "@acme/ui/skeleton";
 
 import { useTenant } from "~/context/TenantContext";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 
 export default function CategoriesPage() {
   const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant);
   const categories = useQuery(
     api.core.posts.queries.getPostCategories,
-    tenant?._id ? { organizationId: tenant._id } : {},
+    organizationId ? { organizationId } : {},
   );
   const isLoading = categories === undefined;
 

@@ -1,10 +1,11 @@
-import { Doc } from "@convex-config/_generated/dataModel";
+import type { Doc } from "@convex-config/_generated/dataModel";
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { v } from "convex/values";
 
 import type { MutationCtx } from "../../_generated/server";
 import type { PostTypeField } from "./lib/contentTypes";
 import { mutation } from "../../_generated/server";
+import { PORTAL_TENANT_ID } from "../../constants";
 import { seedDefaultTaxonomies } from "../taxonomies/mutations";
 import {
   createSystemFields,
@@ -218,7 +219,7 @@ export const create = mutation({
     enableVersioning: v.optional(v.boolean()),
     supports: v.optional(postTypeSupportsValidator),
     rewrite: v.optional(postTypeRewriteValidator),
-    adminMenu: postTypeAdminMenuValidator,
+    adminMenu: v.optional(postTypeAdminMenuValidator),
     organizationId: v.optional(v.id("organizations")),
   },
   handler: async (ctx, args) => {
@@ -246,7 +247,13 @@ export const create = mutation({
       enableVersioning: args.enableVersioning ?? false,
       supports: args.supports,
       rewrite: args.rewrite,
-      adminMenu: args.adminMenu,
+      adminMenu:
+        args.adminMenu ??
+        ({
+          enabled: false,
+          label: args.name,
+          slug: args.slug,
+        } satisfies Doc<"postTypes">["adminMenu"]),
       fieldCount: 0,
       entryCount: 0,
       createdAt: timestamp,
@@ -258,10 +265,15 @@ export const create = mutation({
   },
 });
 
+const organizationAccessValidator = v.union(
+  v.id("organizations"),
+  v.literal(PORTAL_TENANT_ID),
+);
+
 export const enableForOrganization = mutation({
   args: {
     slug: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: organizationAccessValidator,
   },
   handler: async (ctx, args) => {
     const postType = await ctx.db
@@ -274,12 +286,71 @@ export const enableForOrganization = mutation({
     }
 
     const existing = postType.enabledOrganizationIds ?? [];
+    const isPortal = args.organizationId === PORTAL_TENANT_ID;
+
+    if (isPortal) {
+      if (postType.enabledOrganizationIds?.length === 0) {
+        await ctx.db.patch(postType._id, {
+          enabledOrganizationIds: undefined,
+          updatedAt: Date.now(),
+        });
+        return { updated: true };
+      }
+      return { updated: false };
+    }
+
     if (existing.includes(args.organizationId)) {
       return { updated: false };
     }
 
     await ctx.db.patch(postType._id, {
       enabledOrganizationIds: [...existing, args.organizationId],
+      updatedAt: Date.now(),
+    });
+
+    return { updated: true };
+  },
+});
+
+export const disableForOrganization = mutation({
+  args: {
+    slug: v.string(),
+    organizationId: organizationAccessValidator,
+  },
+  handler: async (ctx, args) => {
+    const postType = await ctx.db
+      .query("postTypes")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .unique();
+
+    if (!postType) {
+      throw new Error(`Post type with slug ${args.slug} not found`);
+    }
+
+    const enabledOrgIds = postType.enabledOrganizationIds;
+    const existing = enabledOrgIds ?? [];
+    const isPortal = args.organizationId === PORTAL_TENANT_ID;
+    const hasLegacyOwnership =
+      enabledOrgIds === undefined &&
+      (postType.organizationId === args.organizationId ||
+        (isPortal && postType.organizationId === undefined));
+
+    if (!existing.includes(args.organizationId) && !hasLegacyOwnership) {
+      return { updated: false };
+    }
+
+    if (hasLegacyOwnership) {
+      await ctx.db.patch(postType._id, {
+        enabledOrganizationIds: [],
+        updatedAt: Date.now(),
+      });
+      return { updated: true };
+    }
+
+    const next = existing.filter((id) => id !== args.organizationId);
+
+    await ctx.db.patch(postType._id, {
+      enabledOrganizationIds: next,
       updatedAt: Date.now(),
     });
 
@@ -384,7 +455,7 @@ export const addField = mutation({
       options: args.field.options,
       isSystem: args.field.isSystem ?? false,
       isBuiltIn: args.field.isBuiltIn ?? false,
-      uiConfig: args.field.uiConfig as PostTypeField["uiConfig"],
+      uiConfig: (args.field.uiConfig ?? null) as PostTypeField["uiConfig"],
       order: args.field.order ?? 0,
     };
 
@@ -403,9 +474,13 @@ export const addField = mutation({
     const fieldPayload = {
       postTypeId: args.postTypeId,
       ...fieldInput,
+      uiConfig: (fieldInput.uiConfig ??
+        null) as Doc<"postTypeFields">["uiConfig"],
       createdAt: now,
     };
 
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error Field payload is runtime validated via validators above
     await ctx.db.insert("postTypeFields", fieldPayload);
 
     await updateFieldCount(ctx, args.postTypeId);

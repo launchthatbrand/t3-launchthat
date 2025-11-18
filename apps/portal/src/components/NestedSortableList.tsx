@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment */
 "use client";
 
-import type { Doc, Id } from "@convex-config/_generated/dataModel";
+import type { Id } from "@convex-config/_generated/dataModel";
 import React from "react";
 import { SortableItem } from "@/components/SortableItem";
 import {
@@ -14,21 +14,21 @@ interface DraggedItemData<T> {
   item: T;
 }
 
-interface NestedSortableListProps<T extends Doc<"topics"> | Doc<"quizzes">> {
+interface NestedSortableListProps<T extends { _id: Id<"posts"> }> {
   title: string;
   items: T[];
   emptyMessage: string;
   renderItem: (item: T) => React.ReactNode;
   DropzoneComponent: React.FC<{
     id: string;
-    lessonId: Id<"lessons">; // Correctly type lessonId
+    lessonId: Id<"posts">;
     children: React.ReactNode;
   }>;
-  lessonId: Id<"lessons">; // Correctly type lessonId
+  lessonId: Id<"posts">;
   dropzoneType: "topicDropzone" | "quizDropzone";
 }
 
-export const NestedSortableList = <T extends Doc<"topics"> | Doc<"quizzes">>({
+export const NestedSortableList = <T extends { _id: Id<"posts"> }>({
   title,
   items,
   emptyMessage,

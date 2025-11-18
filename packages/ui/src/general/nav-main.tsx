@@ -171,20 +171,47 @@ export function NavMain({ items, sections }: NavMainProps) {
     </SidebarMenu>
   );
 
+  const sectionIsActive = (section: NavSection) =>
+    section.items.some((item) => {
+      if (isActive(item.url)) return true;
+      return item.items?.some((sub) => isActive(sub.url));
+    });
+
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-4">
-        {normalizedSections.map((section, index) => (
-          <div
-            key={section.label ?? `section-${index}`}
-            className="flex flex-col gap-2"
-          >
-            {section.label ? (
-              <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
-            ) : null}
-            {renderMenuItems(section.items)}
-          </div>
-        ))}
+        {normalizedSections.map((section, index) => {
+          if (!section.label) {
+            return (
+              <div key={`section-${index}`} className="flex flex-col gap-2">
+                {renderMenuItems(section.items)}
+              </div>
+            );
+          }
+
+          const isSectionActive = sectionIsActive(section);
+
+          return (
+            <Collapsible
+              key={section.label}
+              defaultOpen={isSectionActive}
+              className="group/collapsible flex flex-col gap-2"
+            >
+              <SidebarGroupLabel
+                asChild
+                className="group/label text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              >
+                <CollapsibleTrigger className="flex items-center px-2 py-1">
+                  {section.label}
+                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                </CollapsibleTrigger>
+              </SidebarGroupLabel>
+              <CollapsibleContent>
+                {renderMenuItems(section.items)}
+              </CollapsibleContent>
+            </Collapsible>
+          );
+        })}
       </SidebarGroupContent>
     </SidebarGroup>
   );

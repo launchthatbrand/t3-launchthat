@@ -4,6 +4,7 @@ import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 
 import { useTenant } from "~/context/TenantContext";
+import { getTenantOrganizationId } from "./tenant-fetcher";
 
 // Posts Types - extend with more post metadata
 export interface PostFilter {
@@ -58,14 +59,15 @@ export function useGetAllPosts(filters?: PostFilter) {
       organizationId?: Id<"organizations">;
       filters?: PostFilter;
     } = {};
-    if (tenant?._id) {
-      params.organizationId = tenant._id;
+    const organizationId = getTenantOrganizationId(tenant);
+    if (organizationId) {
+      params.organizationId = organizationId;
     }
     if (filters) {
       params.filters = filters;
     }
     return params;
-  }, [tenant?._id, filters]);
+  }, [tenant, filters]);
 
   const result = useQuery(api.core.posts.queries.getAllPosts, args);
   return {
@@ -76,41 +78,37 @@ export function useGetAllPosts(filters?: PostFilter) {
 
 export function useGetPostById(id: Id<"posts"> | undefined) {
   const tenant = useTenant();
-  const args = id
-    ? tenant?._id
-      ? { id, organizationId: tenant._id }
-      : { id }
-    : "skip";
+  const organizationId = getTenantOrganizationId(tenant);
+  const args = id ? (organizationId ? { id, organizationId } : { id }) : "skip";
   return useQuery(api.core.posts.queries.getPostById, args);
 }
 
 export function useGetPostBySlug(slug: string | undefined) {
   const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant);
   return useQuery(
     api.core.posts.queries.getPostBySlug,
-    slug
-      ? tenant?._id
-        ? { slug, organizationId: tenant._id }
-        : { slug }
-      : "skip",
+    slug ? (organizationId ? { slug, organizationId } : { slug }) : "skip",
   );
 }
 
 export function useSearchPosts(args: SearchPostArgs) {
   const tenant = useTenant();
   const params = useMemo(() => {
-    if (tenant?._id) {
-      return { ...args, organizationId: tenant._id };
+    const organizationId = getTenantOrganizationId(tenant);
+    if (organizationId) {
+      return { ...args, organizationId };
     }
     return args;
-  }, [args, tenant?._id]);
+  }, [args, tenant]);
 
   return useQuery(api.core.posts.queries.searchPosts, params);
 }
 
 export function useGetPostTags() {
   const tenant = useTenant();
-  const args = tenant?._id ? { organizationId: tenant._id } : {};
+  const organizationId = getTenantOrganizationId(tenant);
+  const args = organizationId ? { organizationId } : {};
   const result = useQuery(api.core.posts.queries.getPostTags, args);
   return {
     tags: result ?? [],
@@ -120,7 +118,8 @@ export function useGetPostTags() {
 
 export function useGetPostCategories() {
   const tenant = useTenant();
-  const args = tenant?._id ? { organizationId: tenant._id } : {};
+  const organizationId = getTenantOrganizationId(tenant);
+  const args = organizationId ? { organizationId } : {};
   const result = useQuery(api.core.posts.queries.getPostCategories, args);
   return result;
 }
@@ -135,9 +134,9 @@ export function useCreatePost() {
     (input) =>
       mutate({
         ...input,
-        organizationId: tenant?._id ?? undefined,
+        organizationId: getTenantOrganizationId(tenant) ?? undefined,
       }),
-    [mutate, tenant?._id],
+    [mutate, tenant],
   );
 }
 

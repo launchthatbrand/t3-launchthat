@@ -42,6 +42,7 @@ import {
 
 import type { PostStatus } from "~/components/admin/PostStatusForm";
 import { useTenant } from "~/context/TenantContext";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 
 // Map status to badge variants
 const statusVariantMap: Record<
@@ -59,10 +60,11 @@ function PostsAdminPageBody() {
   const [selectedPosts, setSelectedPosts] = useState<Id<"posts">[]>([]);
   const [activeFilters, setActiveFilters] = useState({});
   const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant);
 
   const postsData = useQuery(
     api.core.posts.queries.getAllPosts,
-    tenant?._id ? { organizationId: tenant._id } : {},
+    organizationId ? { organizationId } : {},
   );
 
   console.log("postsData", postsData);
@@ -71,7 +73,7 @@ function PostsAdminPageBody() {
   // const { data: postsData, isLoading: isPostsLoading } = useAllPosts();
   const categoriesData = useQuery(
     api.core.posts.queries.getPostCategories,
-    tenant?._id ? { organizationId: tenant._id } : {},
+    organizationId ? { organizationId } : {},
   );
   const updatePostsStatus = useBulkUpdatePostStatus();
   const deletePost = useDeletePost();

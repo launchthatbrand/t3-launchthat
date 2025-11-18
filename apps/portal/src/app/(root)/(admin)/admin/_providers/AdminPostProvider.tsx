@@ -1,14 +1,15 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 "use client";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-import { createContext, Suspense, useContext, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
+import { Suspense, createContext, useContext, useMemo } from "react";
 
-import { useTenant } from "~/context/TenantContext";
+import { api } from "@/convex/_generated/api";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import { usePostTypeBySlug } from "../settings/post-types/_api/postTypes";
+import { useQuery } from "convex/react";
+import { useSearchParams } from "next/navigation";
+import { useTenant } from "~/context/TenantContext";
 
 type AdminPostViewMode = "archive" | "single";
 
@@ -27,19 +28,6 @@ const AdminPostContext = createContext<AdminPostContextValue | undefined>(
 );
 
 const DEFAULT_POST_TYPE_SLUG = "course";
-const POSTS_TABLE_SLUGS = new Set([
-  "post",
-  "posts",
-  "page",
-  "pages",
-  "attachment",
-  "attachments",
-  "revision",
-  "revisions",
-  "nav_menu_item",
-  "nav-menu-item",
-]);
-
 const AdminPostProviderInner = ({
   children,
 }: {
@@ -47,6 +35,7 @@ const AdminPostProviderInner = ({
 }) => {
   const searchParams = useSearchParams();
   const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant);
   const postIdParam = searchParams.get("post_id") ?? undefined;
   const queryPostTypeParam = searchParams.get("post_type") ?? undefined;
 
@@ -59,14 +48,11 @@ const AdminPostProviderInner = ({
     : undefined;
 
   const loweredQuerySlug = queryPostTypeParam?.toLowerCase();
-  const supportsPostsTable =
-    loweredQuerySlug === undefined || POSTS_TABLE_SLUGS.has(loweredQuerySlug);
-
   const post = useQuery(
     api.core.posts.queries.getPostById,
-    normalizedPostId && supportsPostsTable
-      ? tenant?._id
-        ? { id: normalizedPostId, organizationId: tenant._id }
+    normalizedPostId
+      ? organizationId
+        ? { id: normalizedPostId, organizationId }
         : { id: normalizedPostId }
       : "skip",
   );

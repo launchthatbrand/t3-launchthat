@@ -1,26 +1,10 @@
 "use client";
 
-import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import {
-  generateSlugFromTitle,
-  useCreatePost,
-  useGetAllPosts,
-  useUpdatePost,
-} from "@/lib/blog";
-import { useMutation, useQuery } from "convex/react";
-import { formatDistanceToNow } from "date-fns";
+  AdminLayoutContent,
+  AdminLayoutMain,
+  AdminLayoutSidebar,
+} from "~/components/admin/AdminLayout";
 import {
   ArrowLeft,
   Eye,
@@ -31,10 +15,6 @@ import {
   Sparkles,
   Upload,
 } from "lucide-react";
-import { toast } from "sonner";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -50,8 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@acme/ui/dialog";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
   Select,
   SelectContent,
@@ -59,7 +38,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { Switch } from "@acme/ui/switch";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Table,
   TableBody,
@@ -69,17 +55,12 @@ import {
   TableRow,
 } from "@acme/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-import { Textarea } from "@acme/ui/textarea";
-
-import type { TaxonomyTerm } from "../../settings/taxonomies/_api/taxonomies";
 import {
-  AdminLayoutContent,
-  AdminLayoutMain,
-  AdminLayoutSidebar,
-} from "~/components/admin/AdminLayout";
-import { useAdminPostContext } from "../../_providers/AdminPostProvider";
-import AdminCoursesPage from "../../lms/courses/page";
-import { usePostTypes } from "../../settings/post-types/_api/postTypes";
+  generateSlugFromTitle,
+  useCreatePost,
+  useGetAllPosts,
+  useUpdatePost,
+} from "@/lib/blog";
 import {
   useCreateTaxonomyTerm,
   useDeleteTaxonomyTerm,
@@ -88,22 +69,34 @@ import {
   useTaxonomyTerms,
   useUpdateTaxonomyTerm,
 } from "../../settings/taxonomies/_api/taxonomies";
+import { useMutation, useQuery } from "convex/react";
+import { useRouter, useSearchParams } from "next/navigation";
+
+import AdminCoursesPage from "../../lms/courses/page";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import Image from "next/image";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import Link from "next/link";
+import type { PluginPostSingleViewConfig } from "~/lib/plugins/types";
+import { Switch } from "@acme/ui/switch";
+import type { TaxonomyTerm } from "../../settings/taxonomies/_api/taxonomies";
+import { Textarea } from "@acme/ui/textarea";
+import { api } from "@/convex/_generated/api";
+import { formatDistanceToNow } from "date-fns";
+import { getCanonicalPostPath } from "~/lib/postTypes/routing";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
+import { toast } from "sonner";
+import { useAdminPostContext } from "../../_providers/AdminPostProvider";
+import { usePostTypes } from "../../settings/post-types/_api/postTypes";
+import { useTenant } from "~/context/TenantContext";
 
 const DEFAULT_POST_TYPE = "course";
 const PERMALINK_OPTION_KEY = "permalink_settings";
 const CONFIGURED_SITE_URL = "";
-const POSTS_TABLE_SLUGS = new Set([
-  "post",
-  "posts",
-  "page",
-  "pages",
-  "attachment",
-  "attachments",
-  "revision",
-  "revisions",
-  "nav_menu_item",
-  "nav-menu-item",
-]);
 const BUILTIN_TAXONOMY_SLUGS = new Set(["category", "post_tag"]);
 
 interface PlaceholderRow {
@@ -171,8 +164,45 @@ const defaultPermalinkSettings: PermalinkSettings = {
 function AdminEditPageBody() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const tenant = useTenant();
   const { data: postTypesResponse } = usePostTypes();
   const postTypes = useMemo(() => postTypesResponse ?? [], [postTypesResponse]);
+  const pluginParam = searchParams.get("plugin")?.toLowerCase().trim() ?? "";
+  const pluginPage =
+    searchParams.get("page")?.toLowerCase().trim() ?? "settings";
+  const pluginDefinition = useMemo(() => {
+    if (!pluginParam) return null;
+    return (
+      pluginDefinitions.find(
+        (candidate) => candidate.id.toLowerCase() === pluginParam,
+      ) ?? null
+    );
+  }, [pluginParam]);
+  const pluginSetting = useMemo(() => {
+    if (!pluginDefinition || !pluginDefinition.settingsPages) {
+      return null;
+    }
+    return (
+      pluginDefinition.settingsPages.find(
+        (setting) => setting.slug === pluginPage,
+      ) ??
+      pluginDefinition.settingsPages[0] ??
+      null
+    );
+  }, [pluginDefinition, pluginPage]);
+  const organizationId = useMemo(
+    () => getTenantOrganizationId(tenant ?? undefined),
+    [tenant],
+  );
+  const pluginSettingContent = useMemo(() => {
+    if (!pluginDefinition || !pluginSetting) return null;
+    return pluginSetting.render({
+      pluginId: pluginDefinition.id,
+      pluginName: pluginDefinition.name,
+      settingId: pluginSetting.id,
+      organizationId,
+    });
+  }, [pluginDefinition, pluginSetting, organizationId]);
   const { viewMode, post, postType, postTypeSlug, isLoading, isNewRecord } =
     useAdminPostContext();
   const permalinkOption = useQuery(api.core.options.get, {
@@ -204,6 +234,71 @@ function AdminEditPageBody() {
     params.delete("post_id");
     router.replace(`/admin/edit?${params.toString()}`);
   };
+  if (pluginParam && !pluginDefinition) {
+    return (
+      <AdminLayoutContent>
+        <AdminLayoutMain>
+          <Card>
+            <CardHeader>
+              <CardTitle>Plugin not found</CardTitle>
+              <CardDescription>
+                The requested plugin could not be located.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center gap-3">
+              <Button asChild variant="outline">
+                <Link href="/admin/integrations/plugins">Back to plugins</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </AdminLayoutMain>
+      </AdminLayoutContent>
+    );
+  }
+
+  if (pluginParam && pluginDefinition && pluginSetting) {
+    return (
+      <AdminLayoutContent>
+        <AdminLayoutMain>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  Admin / Integrations / {pluginDefinition.name}
+                </p>
+                <h1 className="text-3xl font-bold">
+                  {pluginDefinition.name} Settings
+                </h1>
+                <p className="text-muted-foreground">
+                  {pluginDefinition.longDescription ??
+                    pluginDefinition.description}
+                </p>
+              </div>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/admin/integrations/plugins">Back to plugins</Link>
+              </Button>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{pluginSetting.label}</CardTitle>
+                {pluginSetting.description ? (
+                  <CardDescription>{pluginSetting.description}</CardDescription>
+                ) : null}
+              </CardHeader>
+              <CardContent>
+                {pluginSettingContent ?? (
+                  <p className="text-sm text-muted-foreground">
+                    This plugin does not expose configurable settings yet.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </AdminLayoutMain>
+      </AdminLayoutContent>
+    );
+  }
 
   if (taxonomySlugParam) {
     return (
@@ -216,6 +311,11 @@ function AdminEditPageBody() {
     );
   }
 
+  const pluginSingleView = useMemo(() => {
+    if (!hydratedPostType) return null;
+    return getPluginSingleViewForSlug(hydratedPostType.slug);
+  }, [hydratedPostType]);
+
   if (viewMode === "single") {
     return (
       <AdminSinglePostView
@@ -223,6 +323,8 @@ function AdminEditPageBody() {
         postType={hydratedPostType}
         slug={resolvedSlug}
         isNewRecord={isNewRecord}
+        organizationId={organizationId ?? undefined}
+        pluginSingleView={pluginSingleView}
         onBack={() => {
           const params = new URLSearchParams(searchParams.toString());
           params.delete("post_id");
@@ -296,7 +398,9 @@ function GenericArchiveView({
   const description =
     postType?.description ?? "Manage structured entries for this post type.";
   const normalizedSlug = slug.toLowerCase();
-  const shouldLoadPosts = POSTS_TABLE_SLUGS.has(normalizedSlug);
+  const shouldLoadPosts = postType
+    ? true
+    : isBuiltInPostTypeSlug(normalizedSlug);
   const { posts, isLoading: postsLoading } = useGetAllPosts(
     shouldLoadPosts ? { postTypeSlug: normalizedSlug } : undefined,
   );
@@ -382,6 +486,7 @@ function GenericArchiveView({
                               const permalink = buildPermalink(
                                 row,
                                 permalinkSettings,
+                                postType,
                               );
                               return (
                                 <TableRow key={row._id}>
@@ -1147,11 +1252,35 @@ function AttachmentsArchiveView({
   );
 }
 
+interface PluginSingleViewInstance {
+  pluginId: string;
+  pluginName: string;
+  config: PluginPostSingleViewConfig;
+}
+
+function getPluginSingleViewForSlug(
+  slug: string,
+): PluginSingleViewInstance | null {
+  for (const plugin of pluginDefinitions) {
+    const postType = plugin.postTypes.find((type) => type.slug === slug);
+    if (postType?.singleView) {
+      return {
+        pluginId: plugin.id,
+        pluginName: plugin.name,
+        config: postType.singleView,
+      };
+    }
+  }
+  return null;
+}
+
 interface AdminSinglePostViewProps {
   post?: PostDoc | null;
   postType: PostTypeDoc | null;
   slug: string;
   isNewRecord: boolean;
+  organizationId?: Id<"organizations">;
+  pluginSingleView?: PluginSingleViewInstance | null;
   onBack: () => void;
 }
 
@@ -1160,9 +1289,12 @@ function AdminSinglePostView({
   postType,
   slug,
   isNewRecord,
+  organizationId,
+  pluginSingleView,
   onBack,
 }: AdminSinglePostViewProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const createPost = useCreatePost();
   const updatePost = useUpdatePost();
   const [title, setTitle] = useState(post?.title ?? "");
@@ -1172,7 +1304,33 @@ function AdminSinglePostView({
   const [isPublished, setIsPublished] = useState(post?.status === "published");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const supportsPostsTable = POSTS_TABLE_SLUGS.has(slug);
+  const supportsPostsTable = Boolean(postType) || isBuiltInPostTypeSlug(slug);
+  const pluginTabs = pluginSingleView?.config.tabs ?? [];
+  const defaultTab =
+    pluginSingleView?.config.defaultTab ?? pluginTabs[0]?.slug ?? "edit";
+  const queriedTab = (searchParams.get("tab") ?? defaultTab).toLowerCase();
+  const normalizedTab = pluginTabs.some((tab) => tab.slug === queriedTab)
+    ? queriedTab
+    : defaultTab;
+  const [activeTab, setActiveTab] = useState(normalizedTab);
+
+  useEffect(() => {
+    setActiveTab(normalizedTab);
+  }, [normalizedTab]);
+
+  const handleTabChange = useCallback(
+    (value: string) => {
+      setActiveTab(value);
+      const params = new URLSearchParams(searchParams.toString());
+      if (value === defaultTab) {
+        params.delete("tab");
+      } else {
+        params.set("tab", value);
+      }
+      router.replace(`/admin/edit?${params.toString()}`, { scroll: false });
+    },
+    [defaultTab, router, searchParams],
+  );
 
   useEffect(() => {
     if (post) {
@@ -1275,151 +1433,207 @@ function AdminSinglePostView({
     }
   };
 
-  return (
-    <AdminLayoutContent withSidebar>
-      <AdminLayoutMain>
-        <div className="flex flex-col gap-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Admin / Edit</p>
-              <h1 className="text-3xl font-bold">
-                {isNewRecord ? `New ${headerLabel}` : title || headerLabel}
-              </h1>
-              <p className="text-muted-foreground">
-                {postType?.description ?? "Update metadata for this entry."}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={onBack}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving || !supportsPostsTable}
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving…
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" /> Save Changes
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-          {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+  const pluginBreadcrumb = pluginSingleView
+    ? pluginSingleView.pluginName
+    : "Edit";
+  const defaultHeader = (
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <p className="text-sm text-muted-foreground">
+          Admin / {pluginBreadcrumb}
+        </p>
+        <h1 className="text-3xl font-bold">
+          {isNewRecord ? `New ${headerLabel}` : title || headerLabel}
+        </h1>
+        <p className="text-muted-foreground">
+          {postType?.description ?? "Update metadata for this entry."}
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={onBack}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back
+        </Button>
+        <Button
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving || !supportsPostsTable}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving…
+            </>
+          ) : (
+            <>
+              <Save className="mr-2 h-4 w-4" /> Save Changes
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
 
-          <Card>
-            <CardHeader>
-              <CardTitle>General</CardTitle>
-              <CardDescription>
-                Fundamental settings for this {headerLabel} entry.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="post-title">Title</Label>
-                  <Input
-                    id="post-title"
-                    value={title}
-                    onChange={(event) => setTitle(event.target.value)}
-                    placeholder="Add a descriptive title"
-                  />
-                </div>
-                {supportsPostsTable && (
-                  <div className="space-y-2">
-                    <Label htmlFor="post-slug">Frontend Slug</Label>
-                    <Input
-                      id="post-slug"
-                      value={slugValue}
-                      onChange={(event) => setSlugValue(event.target.value)}
-                      placeholder="friendly-url-slug"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Must be unique; determines the public URL.
-                    </p>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="post-status">Status</Label>
-                  <div className="flex items-center justify-between rounded-md border p-3">
-                    <div>
-                      <p className="text-sm font-medium">Published</p>
-                      <p className="text-xs text-muted-foreground">
-                        Toggle visibility for this entry.
-                      </p>
-                    </div>
-                    <Switch
-                      id="post-status"
-                      checked={isPublished}
-                      onCheckedChange={(checked) => setIsPublished(checked)}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="post-excerpt">Excerpt</Label>
-                <Textarea
-                  id="post-excerpt"
-                  rows={3}
-                  value={excerpt}
-                  onChange={(event) => setExcerpt(event.target.value)}
-                  placeholder="Short summary for listing views"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="post-content">Content</Label>
-                <Textarea
-                  id="post-content"
-                  rows={8}
-                  value={content}
-                  onChange={(event) => setContent(event.target.value)}
-                  placeholder="Compose the main body content"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </AdminLayoutMain>
-      <AdminLayoutSidebar>
-        <Card>
-          <CardHeader>
-            <CardTitle>Metadata</CardTitle>
-            <CardDescription>
-              High-level attributes for this entry.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <div>
-              <p className="font-medium text-foreground">Post Type</p>
-              <p>{headerLabel}</p>
+  const defaultMain = (
+    <div className="flex flex-col gap-6">
+      {defaultHeader}
+      {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+      <Card>
+        <CardHeader>
+          <CardTitle>General</CardTitle>
+          <CardDescription>
+            Fundamental settings for this {headerLabel} entry.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="post-title">Title</Label>
+              <Input
+                id="post-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Add a descriptive title"
+              />
             </div>
-            {!isNewRecord && post ? (
-              <>
+            {supportsPostsTable && (
+              <div className="space-y-2">
+                <Label htmlFor="post-slug">Frontend Slug</Label>
+                <Input
+                  id="post-slug"
+                  value={slugValue}
+                  onChange={(event) => setSlugValue(event.target.value)}
+                  placeholder="friendly-url-slug"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Must be unique; determines the public URL.
+                </p>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="post-status">Status</Label>
+              <div className="flex items-center justify-between rounded-md border p-3">
                 <div>
-                  <p className="font-medium text-foreground">Status</p>
-                  <p className="capitalize">{post.status ?? "draft"}</p>
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">Updated</p>
-                  <p>
-                    {post.updatedAt
-                      ? formatDistanceToNow(post.updatedAt, { addSuffix: true })
-                      : "Not updated"}
+                  <p className="text-sm font-medium">Published</p>
+                  <p className="text-xs text-muted-foreground">
+                    Toggle visibility for this entry.
                   </p>
                 </div>
-              </>
-            ) : (
-              <p>This entry has not been saved yet.</p>
-            )}
-          </CardContent>
-        </Card>
-      </AdminLayoutSidebar>
+                <Switch
+                  id="post-status"
+                  checked={isPublished}
+                  onCheckedChange={(checked) => setIsPublished(checked)}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="post-excerpt">Excerpt</Label>
+            <Textarea
+              id="post-excerpt"
+              rows={3}
+              value={excerpt}
+              onChange={(event) => setExcerpt(event.target.value)}
+              placeholder="Short summary for listing views"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="post-content">Content</Label>
+            <Textarea
+              id="post-content"
+              rows={8}
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              placeholder="Compose the main body content"
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const defaultSidebar = (
+    <Card>
+      <CardHeader>
+        <CardTitle>Metadata</CardTitle>
+        <CardDescription>High-level attributes for this entry.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm text-muted-foreground">
+        <div>
+          <p className="font-medium text-foreground">Post Type</p>
+          <p>{headerLabel}</p>
+        </div>
+        {!isNewRecord && post ? (
+          <>
+            <div>
+              <p className="font-medium text-foreground">Status</p>
+              <p className="capitalize">{post.status ?? "draft"}</p>
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Updated</p>
+              <p>
+                {post.updatedAt
+                  ? formatDistanceToNow(post.updatedAt, { addSuffix: true })
+                  : "Not updated"}
+              </p>
+            </div>
+          </>
+        ) : (
+          <p>This entry has not been saved yet.</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  if (pluginSingleView && pluginTabs.length > 0) {
+    const activeTabDefinition =
+      pluginTabs.find((tab) => tab.slug === activeTab) ?? pluginTabs[0];
+    const showSidebar = activeTabDefinition?.usesDefaultEditor ?? false;
+    const pluginTabProps = {
+      pluginId: pluginSingleView.pluginId,
+      pluginName: pluginSingleView.pluginName,
+      postId: post?._id,
+      postTypeSlug: slug,
+      organizationId,
+    };
+
+    return (
+      <AdminLayoutContent withSidebar={showSidebar}>
+        <AdminLayoutMain>
+          <div className="flex flex-col gap-6">
+            {defaultHeader}
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
+              <TabsList>
+                {pluginTabs.map((tab) => (
+                  <TabsTrigger key={tab.id} value={tab.slug}>
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              {pluginTabs.map((tab) => (
+                <TabsContent key={tab.id} value={tab.slug}>
+                  {tab.usesDefaultEditor ? (
+                    defaultMain
+                  ) : tab.render ? (
+                    tab.render(pluginTabProps)
+                  ) : (
+                    <PlaceholderState label={tab.label} />
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
+          </div>
+        </AdminLayoutMain>
+        {showSidebar && (
+          <AdminLayoutSidebar>{defaultSidebar}</AdminLayoutSidebar>
+        )}
+      </AdminLayoutContent>
+    );
+  }
+
+  return (
+    <AdminLayoutContent withSidebar>
+      <AdminLayoutMain>{defaultMain}</AdminLayoutMain>
+      <AdminLayoutSidebar>{defaultSidebar}</AdminLayoutSidebar>
     </AdminLayoutContent>
   );
 }
@@ -1459,7 +1673,20 @@ function isPermalinkSettingsValue(
   return true;
 }
 
-function buildPermalink(post: PostDoc, settings: PermalinkSettings) {
+function buildPermalink(
+  post: PostDoc,
+  settings: PermalinkSettings,
+  postType?: PostTypeDoc | null,
+) {
+  if (postType?.rewrite?.singleSlug) {
+    const canonicalPath = getCanonicalPostPath(
+      post,
+      postType,
+      settings.trailingSlash,
+    );
+    const baseUrl = getFrontendBaseUrl();
+    return baseUrl ? `${baseUrl}${canonicalPath}` : canonicalPath;
+  }
   if (settings.structure === "plain") {
     return `${getFrontendBaseUrl()}/?p=${post._id}`;
   }

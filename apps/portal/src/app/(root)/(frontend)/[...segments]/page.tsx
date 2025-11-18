@@ -1,9 +1,15 @@
+import {
+  getCanonicalPostPath,
+  getCanonicalPostSegments,
+} from "~/lib/postTypes/routing";
+import { notFound, redirect } from "next/navigation";
+
 import type { Doc } from "@/convex/_generated/dataModel";
+import Link from "next/link";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { api } from "@/convex/_generated/api";
-import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
+import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 
 interface PageProps {
   params: { segments?: string[] };
@@ -14,9 +20,24 @@ export const metadata: Metadata = {
 };
 
 export default async function FrontendCatchAllPage({ params }: PageProps) {
-  const segments = params.segments ?? [];
-  const slug = deriveSlugFromSegments(segments);
+  const segments = normalizeSegments(params.segments ?? []);
   const tenant = await getActiveTenantFromHeaders();
+  const organizationId = tenant?._id;
+
+  const archiveContext = await resolveArchiveContext(segments, organizationId);
+  if (archiveContext) {
+    const posts = await fetchQuery(api.core.posts.queries.getAllPosts, {
+      ...(organizationId ? { organizationId } : {}),
+      filters: {
+        status: "published",
+        postTypeSlug: archiveContext.postType.slug,
+        limit: 50,
+      },
+    });
+    return <PostArchive postType={archiveContext.postType} posts={posts} />;
+  }
+
+  const slug = deriveSlugFromSegments(segments);
 
   if (!slug) {
     notFound();
@@ -24,7 +45,7 @@ export default async function FrontendCatchAllPage({ params }: PageProps) {
 
   const post = await fetchQuery(api.core.posts.queries.getPostBySlug, {
     slug,
-    ...(tenant?._id ? { organizationId: tenant._id } : {}),
+    ...(organizationId ? { organizationId } : {}),
   });
 
   if (!post) {
@@ -35,10 +56,26 @@ export default async function FrontendCatchAllPage({ params }: PageProps) {
   if (post.postTypeSlug) {
     postType = await fetchQuery(api.core.postTypes.queries.getBySlug, {
       slug: post.postTypeSlug,
+      ...(organizationId ? { organizationId } : {}),
     });
   }
 
+  const canonicalSegments = getCanonicalPostSegments(post, postType);
+  if (canonicalSegments.length > 0) {
+    const canonicalPath = canonicalSegments.join("/");
+    const requestedPath = segments.join("/");
+    if (canonicalPath !== requestedPath) {
+      redirect(`/${canonicalPath}`);
+    }
+  }
+
   return <PostDetail post={post} postType={postType} />;
+}
+
+function normalizeSegments(segments: string[]) {
+  return segments
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0);
 }
 
 function deriveSlugFromSegments(segments: string[]): string | null {
@@ -151,5 +188,96 @@ function PostMetaSummary({
         </div>
       ))}
     </dl>
+  );
+}
+
+async function resolveArchiveContext(
+  segments: string[],
+  organizationId?: Doc<"organizations">["_id"],
+) {
+  if (segments.length === 0) {
+    return null;
+  }
+  const path = segments.join("/");
+  const postTypes = await fetchQuery(api.core.postTypes.queries.list, {
+    includeBuiltIn: true,
+    ...(organizationId ? { organizationId } : {}),
+  });
+
+  const match = postTypes.find((type) => {
+    if (!type.rewrite?.hasArchive) {
+      return false;
+    }
+    const archiveSlug = trimSlashes(type.rewrite.archiveSlug ?? "");
+    if (!archiveSlug) {
+      return false;
+    }
+    return archiveSlug === path;
+  });
+
+  if (!match) {
+    return null;
+  }
+
+  return { postType: match };
+}
+
+const trimSlashes = (value: string) => value.replace(/^\/+|\/+$/g, "");
+
+function PostArchive({
+  postType,
+  posts,
+}: {
+  postType: PostTypeDoc;
+  posts: Doc<"posts">[];
+}) {
+  const description =
+    postType.description ??
+    `Browse published ${postType.name.toLowerCase()} entries.`;
+
+  return (
+    <main className="container mx-auto max-w-5xl space-y-6 py-10">
+      <header className="space-y-2 text-center">
+        <p className="text-sm uppercase tracking-wide text-muted-foreground">
+          {postType.name}
+        </p>
+        <h1 className="text-4xl font-bold">{postType.name} Archive</h1>
+        <p className="text-muted-foreground">{description}</p>
+      </header>
+
+      {posts.length === 0 ? (
+        <div className="rounded-lg border p-10 text-center text-muted-foreground">
+          No {postType.name.toLowerCase()} have been published yet.
+        </div>
+      ) : (
+        <section className="grid gap-6 md:grid-cols-2">
+          {posts.map((post) => {
+            const url = getCanonicalPostPath(post, postType, true);
+            return (
+              <article
+                key={post._id}
+                className="rounded-lg border bg-card p-6 shadow-sm transition hover:shadow-md"
+              >
+                <Link href={url} className="space-y-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {postType.name}
+                    </p>
+                    <h2 className="text-2xl font-semibold text-foreground">
+                      {post.title || "Untitled"}
+                    </h2>
+                  </div>
+                  {post.excerpt ? (
+                    <p className="text-sm text-muted-foreground">
+                      {post.excerpt}
+                    </p>
+                  ) : null}
+                </Link>
+              </article>
+            );
+          })}
+        </section>
+      )}
+    </main>
   );
 }

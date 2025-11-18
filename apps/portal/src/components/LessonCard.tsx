@@ -1,13 +1,11 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import type { Doc, Id } from "@convex-config/_generated/dataModel";
-import React, { useState } from "react";
+import type { Id } from "@convex-config/_generated/dataModel";
+import React from "react";
 import { NestedSortableList } from "@/components/NestedSortableList"; // Changed to named import
 import { QuizDropzone } from "@/components/QuizDropzone"; // Correct import
 
 import { TopicDropzone } from "@/components/TopicDropzone"; // Correct import
-import { ChevronDown } from "lucide-react";
 
 import {
   Accordion,
@@ -17,20 +15,24 @@ import {
 } from "@acme/ui/accordion";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Card, CardContent } from "@acme/ui/card";
 import { Separator } from "@acme/ui/separator";
 
+import type {
+  LmsBuilderLesson,
+  LmsBuilderQuiz,
+  LmsBuilderTopic,
+} from "~/plugins/lms/types";
+
 interface LessonCardProps {
-  lesson: Doc<"lessons">;
-  topics: Doc<"topics">[];
-  quizzes: Doc<"quizzes">[];
+  lesson: LmsBuilderLesson;
+  topics: LmsBuilderTopic[];
+  quizzes: LmsBuilderQuiz[];
   topicSortOrder: "alphabetical" | "date";
-  onToggleSortOrder: (lessonId: Id<"lessons">) => void;
-  onRemoveLesson: (lessonId: Id<"lessons">) => void;
-  onRemoveTopic: (topicId: Id<"topics">) => void;
-  onRemoveQuiz: (quizId: Id<"quizzes">) => void;
-  lessonExpanded?: boolean;
-  onToggleExpand?: (lessonId: Id<"lessons">) => void;
+  onToggleSortOrder: (lessonId: Id<"posts">) => void;
+  onRemoveLesson: (lessonId: Id<"posts">) => void;
+  onRemoveTopic: (topicId: Id<"posts">) => void;
+  onRemoveQuiz: (quizId: Id<"posts">) => void;
 }
 
 export const LessonCard: React.FC<LessonCardProps> = ({
@@ -42,16 +44,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({
   onRemoveLesson,
   onRemoveTopic,
   onRemoveQuiz,
-  lessonExpanded = false,
-  onToggleExpand,
 }) => {
-  const [expanded, setExpanded] = useState(lessonExpanded);
-
-  const handleToggle = () => {
-    setExpanded((prev) => !prev);
-    onToggleExpand?.(lesson._id);
-  };
-
   return (
     <Card className="YESY cursor-default rounded-none border-0 shadow-none">
       <Accordion type="single" collapsible className="border-0 p-2">

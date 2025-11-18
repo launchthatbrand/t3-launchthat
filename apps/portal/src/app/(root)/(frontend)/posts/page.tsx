@@ -18,16 +18,18 @@ import {
 } from "~/components/frontend/FrontendSinglePostLayout";
 import { EntityList } from "~/components/shared/EntityList/EntityList";
 import { useTenant } from "~/context/TenantContext";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 
 type Post = Doc<"posts">;
 
 export default function BlogPage() {
   const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant);
   const posts = useQuery(
     api.core.posts.queries.getAllPosts,
-    tenant?._id
+    organizationId
       ? {
-          organizationId: tenant._id,
+          organizationId,
           filters: { status: "published", limit: 50 },
         }
       : { filters: { status: "published", limit: 50 } },

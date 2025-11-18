@@ -6,20 +6,29 @@
  * This module provides client functions to interact with the post types API.
  */
 import type { Id } from "@/convex/_generated/dataModel";
-import type { InferMutationInput } from "convex/react";
+import type { InferMutationInput } from "convex/server";
 import { useCallback } from "react";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 
 import { useTenant } from "~/context/TenantContext";
+import {
+  getTenantOrganizationId,
+  PORTAL_TENANT_ID,
+} from "~/lib/tenant-fetcher";
+
+const resolvePortalAwareOrganizationId = (
+  tenant: ReturnType<typeof useTenant>,
+) => getTenantOrganizationId(tenant) ?? PORTAL_TENANT_ID;
 
 /**
  * Hook to get all post types
  */
 export function usePostTypes(includeBuiltIn = true) {
   const tenant = useTenant();
-  const args = tenant?._id
-    ? { includeBuiltIn, organizationId: tenant._id }
+  const organizationId = getTenantOrganizationId(tenant);
+  const args = organizationId
+    ? { includeBuiltIn, organizationId }
     : { includeBuiltIn };
   const result = useQuery(api.core.postTypes.queries.list, args);
   return {
@@ -33,12 +42,13 @@ export function usePostTypes(includeBuiltIn = true) {
  */
 export function usePostType(id: Id<"postTypes"> | undefined) {
   const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant);
   return useQuery(
     api.core.postTypes.queries.get,
     id
       ? {
           id,
-          organizationId: tenant?._id ?? undefined,
+          organizationId,
         }
       : "skip",
   );
@@ -49,12 +59,13 @@ export function usePostType(id: Id<"postTypes"> | undefined) {
  */
 export function usePostTypeBySlug(slug: string | undefined) {
   const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant);
   return useQuery(
     api.core.postTypes.queries.getBySlug,
     slug
       ? {
           slug,
-          organizationId: tenant?._id ?? undefined,
+          organizationId,
         }
       : "skip",
   );
@@ -79,11 +90,12 @@ export function useCreatePostType() {
     ) => {
       const payload: CreatePostTypeArgs = {
         ...args,
-        organizationId: args.organizationId ?? tenant?._id ?? undefined,
+        organizationId:
+          args.organizationId ?? getTenantOrganizationId(tenant) ?? undefined,
       };
       return await mutate(payload);
     },
-    [mutate, tenant?._id],
+    [mutate, tenant],
   );
 }
 
@@ -93,22 +105,52 @@ type EnablePostTypeAccessArgs = InferMutationInput<
 
 export function useEnsurePostTypeAccess() {
   const tenant = useTenant();
+  const organizationId = resolvePortalAwareOrganizationId(tenant);
   const mutate = useMutation(
     api.core.postTypes.mutations.enableForOrganization,
   );
 
   return useCallback(
     async (slug: string) => {
-      if (!tenant?._id) {
+      if (!organizationId) {
         throw new Error("No tenant selected");
       }
       const payload: EnablePostTypeAccessArgs = {
         slug,
-        organizationId: tenant._id,
+        organizationId,
       };
       return await mutate(payload);
     },
-    [mutate, tenant?._id],
+    [mutate, organizationId],
+  );
+}
+
+type DisablePostTypeAccessArgs = InferMutationInput<
+  typeof api.core.postTypes.mutations.disableForOrganization
+>;
+
+export function useDisablePostTypeAccess() {
+  const tenant = useTenant();
+  const organizationId = resolvePortalAwareOrganizationId(tenant);
+  const mutate = useMutation(
+    api.core.postTypes.mutations.disableForOrganization,
+  );
+
+  return useCallback(
+    async (slug: string) => {
+      if (!organizationId) {
+        throw new Error("No tenant selected");
+      }
+      const payload: DisablePostTypeAccessArgs = {
+        slug,
+        organizationId,
+      };
+
+      const result = await mutate(payload);
+      console.log("[disablePostTypeAccess] result", result);
+      return result;
+    },
+    [mutate, organizationId],
   );
 }
 
