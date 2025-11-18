@@ -2,22 +2,22 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 "use client";
 
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import type { LucideIcon } from "lucide-react";
-import { useMemo } from "react";
 import * as LucideIcons from "lucide-react";
+
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+
+import { AdminTeamSwitcher } from "~/components/admin/AdminTeamSwitcher";
 import { BookOpen } from "lucide-react";
-
+import type { LucideIcon } from "lucide-react";
 import { NavMain } from "@acme/ui/general/nav-main";
-import { SidebarHeader } from "@acme/ui/sidebar";
-
 import type { PluginDefinition } from "~/lib/plugins/types";
+import { SidebarHeader } from "@acme/ui/sidebar";
+import { navItems } from "../_components/nav-items";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
+import { useMemo } from "react";
 import { usePostTypes } from "~/app/(root)/(admin)/admin/settings/post-types/_api/postTypes";
 import { useTaxonomies } from "~/app/(root)/(admin)/admin/settings/taxonomies/_api/taxonomies";
-import { AdminTeamSwitcher } from "~/components/admin/AdminTeamSwitcher";
 import { useTenant } from "~/context/TenantContext";
-import { pluginDefinitions } from "~/lib/plugins/definitions";
-import { navItems } from "../_components/nav-items";
 
 type PostTypeDoc = Doc<"postTypes">;
 
@@ -267,7 +267,12 @@ export default function DefaultSidebar() {
 
   const typedNavItems = navItems as NavItem[];
   const [dashboardItem, ...staticNavItems] = typedNavItems;
-  const adminNavTitles = new Set(["Settings", "Tools", "Integrations"]);
+  const adminNavTitles = new Set([
+    "Users",
+    "Settings",
+    "Tools",
+    "Integrations",
+  ]);
   const adminNavItems = staticNavItems.filter((item) =>
     adminNavTitles.has(item.title),
   );

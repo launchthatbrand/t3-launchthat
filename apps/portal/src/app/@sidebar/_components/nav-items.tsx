@@ -1,12 +1,9 @@
 import {
   BookOpen,
-  Bot,
   HammerIcon,
   HelpCircle,
-  Image,
   Settings2,
   Share2,
-  ShoppingCart,
   TerminalSquare,
   Twitter,
   User,
@@ -162,6 +159,11 @@ export const navItems = [
     title: "Tasks",
     url: "/admin/tasks",
     icon: BookOpen,
+  },
+  {
+    title: "Users",
+    url: "/admin/users",
+    icon: Users,
   },
   {
     title: "Settings",
