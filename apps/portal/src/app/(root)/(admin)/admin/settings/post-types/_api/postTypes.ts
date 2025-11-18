@@ -5,17 +5,16 @@
  *
  * This module provides client functions to interact with the post types API.
  */
-import type { Id } from "@/convex/_generated/dataModel";
-import type { InferMutationInput } from "convex/server";
-import { useCallback } from "react";
-import { api } from "@/convex/_generated/api";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import {
+  PORTAL_TENANT_ID,
+  getTenantOrganizationId,
+} from "~/lib/tenant-fetcher";
 import { useMutation, useQuery } from "convex/react";
 
+import { api } from "@/convex/_generated/api";
+import { useCallback } from "react";
 import { useTenant } from "~/context/TenantContext";
-import {
-  getTenantOrganizationId,
-  PORTAL_TENANT_ID,
-} from "~/lib/tenant-fetcher";
 
 const resolvePortalAwareOrganizationId = (
   tenant: ReturnType<typeof useTenant>,
@@ -24,7 +23,10 @@ const resolvePortalAwareOrganizationId = (
 /**
  * Hook to get all post types
  */
-export function usePostTypes(includeBuiltIn = true) {
+export function usePostTypes(includeBuiltIn = true): {
+  data: Doc<"postTypes">[];
+  isLoading: boolean;
+} {
   const tenant = useTenant();
   const organizationId = getTenantOrganizationId(tenant);
   const args = organizationId
@@ -71,24 +73,49 @@ export function usePostTypeBySlug(slug: string | undefined) {
   );
 }
 
+export function usePostTypeFields(
+  slug: string | null | undefined,
+  includeSystem = true,
+): {
+  data: Doc<"postTypeFields">[];
+  isLoading: boolean;
+} {
+  const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant);
+  const args = slug
+    ? {
+        slug,
+        includeSystem,
+        ...(organizationId ? { organizationId } : {}),
+      }
+    : "skip";
+  const result = useQuery(api.core.postTypes.queries.fieldsBySlug, args) as
+    | Doc<"postTypeFields">[]
+    | undefined;
+  if (!slug) {
+    return { data: [], isLoading: false };
+  }
+  return {
+    data: result ?? [],
+    isLoading: result === undefined,
+  };
+}
+
 /**
  * Hook for creating a post type
  */
-type CreatePostTypeArgs = InferMutationInput<
-  typeof api.core.postTypes.mutations.create
->;
-
 export function useCreatePostType() {
   const tenant = useTenant();
   const mutate = useMutation(api.core.postTypes.mutations.create);
+  type MutationArgs = Parameters<typeof mutate>[0];
 
   return useCallback(
     async (
-      args: Omit<CreatePostTypeArgs, "organizationId"> & {
-        organizationId?: CreatePostTypeArgs["organizationId"];
+      args: Omit<MutationArgs, "organizationId"> & {
+        organizationId?: MutationArgs["organizationId"];
       },
     ) => {
-      const payload: CreatePostTypeArgs = {
+      const payload: MutationArgs = {
         ...args,
         organizationId:
           args.organizationId ?? getTenantOrganizationId(tenant) ?? undefined,
@@ -99,23 +126,20 @@ export function useCreatePostType() {
   );
 }
 
-type EnablePostTypeAccessArgs = InferMutationInput<
-  typeof api.core.postTypes.mutations.enableForOrganization
->;
-
 export function useEnsurePostTypeAccess() {
   const tenant = useTenant();
   const organizationId = resolvePortalAwareOrganizationId(tenant);
   const mutate = useMutation(
     api.core.postTypes.mutations.enableForOrganization,
   );
+  type MutationArgs = Parameters<typeof mutate>[0];
 
   return useCallback(
     async (slug: string) => {
       if (!organizationId) {
         throw new Error("No tenant selected");
       }
-      const payload: EnablePostTypeAccessArgs = {
+      const payload: MutationArgs = {
         slug,
         organizationId,
       };
@@ -125,23 +149,20 @@ export function useEnsurePostTypeAccess() {
   );
 }
 
-type DisablePostTypeAccessArgs = InferMutationInput<
-  typeof api.core.postTypes.mutations.disableForOrganization
->;
-
 export function useDisablePostTypeAccess() {
   const tenant = useTenant();
   const organizationId = resolvePortalAwareOrganizationId(tenant);
   const mutate = useMutation(
     api.core.postTypes.mutations.disableForOrganization,
   );
+  type MutationArgs = Parameters<typeof mutate>[0];
 
   return useCallback(
     async (slug: string) => {
       if (!organizationId) {
         throw new Error("No tenant selected");
       }
-      const payload: DisablePostTypeAccessArgs = {
+      const payload: MutationArgs = {
         slug,
         organizationId,
       };

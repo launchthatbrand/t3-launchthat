@@ -1,0 +1,2210 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.husky/
+  pre-commit
+apps/
+  docs/
+    app/
+      docs/
+        page.module.css
+        page.tsx
+      client-scripts.tsx
+      favicon.ico
+      globals.css
+      layout.tsx
+    components/
+      ui/
+        button.tsx
+    lib/
+      utils.ts
+    public/
+      mfe-icon-dark.png
+    .eslintrc.cjs
+    components.json
+    next-env.d.ts
+    next.config.ts
+    package.json
+    postcss.config.js
+    tailwind.config.js
+    tsconfig.json
+    turbo.json
+    vercel.json
+  marketing/
+    app/
+      client-scripts.tsx
+      favicon.ico
+      globals.css
+      layout.tsx
+      page.module.css
+      page.tsx
+    components/
+      ui/
+        button.tsx
+    lib/
+      utils.ts
+    public/
+      mfe-icon-dark.png
+    .eslintrc.cjs
+    components.json
+    microfrontends.json
+    next-env.d.ts
+    next.config.ts
+    package.json
+    postcss.config.js
+    tailwind.config.js
+    tsconfig.json
+    turbo.json
+    vercel.json
+packages/
+  eslint-config-custom/
+    next.js
+    package.json
+  ts-config/
+    package.json
+    tsconfig.base.json
+    tsconfig.next.json
+.gitignore
+.node-version
+.npmrc
+package.json
+pnpm-workspace.yaml
+README.md
+turbo.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".husky/pre-commit">
+pnpm exec lint-staged
+</file>
+
+<file path="apps/docs/app/docs/page.module.css">
+.page {
+  --gray-rgb: 0, 0, 0;
+  --gray-alpha-200: rgba(var(--gray-rgb), 0.08);
+  --gray-alpha-100: rgba(var(--gray-rgb), 0.05);
+
+  --button-primary-hover: #383838;
+  --button-secondary-hover: #f2f2f2;
+
+  display: grid;
+  grid-template-rows: 20px 1fr 20px;
+  align-items: center;
+  justify-items: center;
+  min-height: 100svh;
+  padding: 80px;
+  gap: 64px;
+  font-synthesis: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .page {
+    --gray-rgb: 255, 255, 255;
+    --gray-alpha-200: rgba(var(--gray-rgb), 0.145);
+    --gray-alpha-100: rgba(var(--gray-rgb), 0.06);
+
+    --button-primary-hover: #ccc;
+    --button-secondary-hover: #1a1a1a;
+  }
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  grid-row-start: 2;
+}
+
+.main ol {
+  font-family: var(--font-geist-mono);
+  padding-left: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+  list-style-position: inside;
+}
+
+.main li:not(:last-of-type) {
+  margin-bottom: 8px;
+}
+
+.main code {
+  font-family: inherit;
+  background: var(--gray-alpha-100);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.ctas {
+  display: flex;
+  gap: 16px;
+}
+
+.ctas a {
+  appearance: none;
+  border-radius: 128px;
+  height: 48px;
+  padding: 0 20px;
+  border: none;
+  font-family: var(--font-geist-sans);
+  border: 1px solid transparent;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+a.primary {
+  background: var(--foreground);
+  color: var(--background);
+  gap: 8px;
+}
+
+a.secondary {
+  border-color: var(--gray-alpha-200);
+  min-width: 180px;
+}
+
+button.secondary {
+  appearance: none;
+  border-radius: 128px;
+  height: 48px;
+  padding: 0 20px;
+  border: none;
+  font-family: var(--font-geist-sans);
+  border: 1px solid transparent;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 500;
+  background: transparent;
+  border-color: var(--gray-alpha-200);
+  min-width: 180px;
+}
+
+.footer {
+  font-family: var(--font-geist-sans);
+  grid-row-start: 3;
+  display: flex;
+  gap: 24px;
+}
+
+.footer a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer img {
+  flex-shrink: 0;
+}
+
+/* Enable hover only on non-touch devices */
+@media (hover: hover) and (pointer: fine) {
+  a.primary:hover {
+    background: var(--button-primary-hover);
+    border-color: transparent;
+  }
+
+  a.secondary:hover {
+    background: var(--button-secondary-hover);
+    border-color: transparent;
+  }
+
+  .footer a:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding: 32px;
+    padding-bottom: 80px;
+  }
+
+  .main {
+    align-items: center;
+  }
+
+  .main ol {
+    text-align: center;
+  }
+
+  .ctas {
+    flex-direction: column;
+  }
+
+  .ctas a {
+    font-size: 14px;
+    height: 40px;
+    padding: 0 16px;
+  }
+
+  a.secondary {
+    min-width: auto;
+  }
+
+  .footer {
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .logo {
+    filter: invert();
+  }
+}
+</file>
+
+<file path="apps/docs/app/docs/page.tsx">
+import Image from 'next/image';
+import { Link } from '@vercel/microfrontends/next/client';
+import { Button } from '@/components/ui/button';
+import mfeIcon from '../../public/mfe-icon-dark.png';
+
+export default function DocsPage() {
+  return (
+    <div className="flex flex-col min-h-screen">
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <h1 className="flex flex-row gap-2 text-2xl font-bold text-gray-900">
+            <Image
+              alt="MFE Icon"
+              className="inline-block"
+              height={32}
+              src={mfeIcon}
+              width={32}
+            />
+            Vercel Microfrontends
+          </h1>
+          <nav>
+            <ul className="flex space-x-4">
+              <li>
+                <Link
+                  className="text-gray-600 hover:text-gray-900"
+                  href="#getting-started"
+                >
+                  Getting Started
+                </Link>
+              </li>
+              <li>
+                <Link
+                  className="text-gray-600 hover:text-gray-900"
+                  href="#examples"
+                >
+                  Examples
+                </Link>
+              </li>
+              <li>
+                <Link className="text-blue-600 hover:text-blue-800" href="/">
+                  Back to Home
+                </Link>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </header>
+
+      <main className="flex-grow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <h2 className="text-3xl font-extrabold text-gray-900 mb-8">
+            Documentation
+          </h2>
+
+          <section className="mb-12" id="getting-started">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">
+              Getting Started
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Welcome to Vercel Microfrontends documentation. This guide will
+              help you get started with implementing microfrontends in your
+              project.
+            </p>
+            <ol className="list-decimal list-inside text-gray-600">
+              <li className="mb-2">Install the Microfrontends CLI tool</li>
+              <li className="mb-2">Create your first microfrontend</li>
+              <li className="mb-2">Configure the host application</li>
+              <li>Deploy your microfrontends</li>
+            </ol>
+          </section>
+
+          <section className="mb-12" id="examples">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">Examples</h3>
+            <p className="text-gray-600 mb-4">
+              Check out these examples to see Vercel Microfrontends in action:
+            </p>
+            <ul className="list-disc list-inside text-gray-600">
+              <li className="mb-2">Basic microfrontend setup</li>
+              <li className="mb-2">Communication between microfrontends</li>
+              <li className="mb-2">Shared state management</li>
+              <li>Microfrontend with different frameworks</li>
+            </ul>
+          </section>
+
+          <div className="mt-8">
+            <Button asChild>
+              <Link href="/">Return to Home</Link>
+            </Button>
+          </div>
+        </div>
+      </main>
+
+      <footer className="bg-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <p className="text-center text-gray-500">
+            &copy; 2025 Vercel Microfrontends All rights reserved.
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+}
+</file>
+
+<file path="apps/docs/app/client-scripts.tsx">
+'use client';
+
+import { VercelToolbar } from '@vercel/toolbar/next';
+
+export function Toolbar() {
+  return <VercelToolbar />;
+}
+</file>
+
+<file path="apps/docs/app/globals.css">
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+</file>
+
+<file path="apps/docs/app/layout.tsx">
+import {
+  PrefetchCrossZoneLinks,
+  PrefetchCrossZoneLinksProvider,
+} from '@vercel/microfrontends/next/client';
+import './globals.css';
+import { Inter } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Toolbar } from './client-scripts';
+
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata = {
+  title: 'Vercel Microfrontends - Revolutionize Your Frontend',
+  description:
+    'Build scalable and maintainable web applications with our microfrontend architecture.',
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body className={inter.className}>
+        <PrefetchCrossZoneLinksProvider>
+          {children}
+        </PrefetchCrossZoneLinksProvider>
+        <PrefetchCrossZoneLinks />
+        <SpeedInsights />
+        <Analytics />
+        <Toolbar />
+      </body>
+    </html>
+  );
+}
+</file>
+
+<file path="apps/docs/components/ui/button.tsx">
+import * as React from 'react';
+import { Slot } from '@radix-ui/react-slot';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@/lib/utils';
+
+const buttonVariants = cva(
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  {
+    variants: {
+      variant: {
+        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        destructive:
+          'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+        outline:
+          'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+        secondary:
+          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        ghost: 'hover:bg-accent hover:text-accent-foreground',
+        link: 'text-primary underline-offset-4 hover:underline',
+      },
+      size: {
+        default: 'h-10 px-4 py-2',
+        sm: 'h-9 rounded-md px-3',
+        lg: 'h-11 rounded-md px-8',
+        icon: 'h-10 w-10',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+      size: 'default',
+    },
+  },
+);
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : 'button';
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    );
+  },
+);
+Button.displayName = 'Button';
+
+export { Button, buttonVariants };
+</file>
+
+<file path="apps/docs/lib/utils.ts">
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+</file>
+
+<file path="apps/docs/.eslintrc.cjs">
+module.exports = {
+  extends: ['custom/next'],
+};
+</file>
+
+<file path="apps/docs/components.json">
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.js",
+    "css": "app/globals.css",
+    "baseColor": "slate",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "iconLibrary": "lucide"
+}
+</file>
+
+<file path="apps/docs/next-env.d.ts">
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+</file>
+
+<file path="apps/docs/next.config.ts">
+import type { NextConfig } from 'next';
+import { withMicrofrontends } from '@vercel/microfrontends/next/config';
+import { withVercelToolbar } from '@vercel/toolbar/plugins/next';
+
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+};
+
+export default withVercelToolbar()(
+  withMicrofrontends(nextConfig, { debug: true }),
+);
+</file>
+
+<file path="apps/docs/package.json">
+{
+  "name": "microfrontends-docs",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev --turbo --port $(microfrontends port)",
+    "lint": "eslint .",
+    "lint-fix": "eslint . --fix",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@radix-ui/react-slot": "^1.1.1",
+    "@vercel/analytics": "^1.5.0",
+    "@vercel/microfrontends": "1.2.4",
+    "@vercel/speed-insights": "^1.2.0",
+    "@vercel/toolbar": "0.1.36",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "flags": "^3.2.0",
+    "lucide-react": "^0.473.0",
+    "next": "15.1.6",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@types/node": "20.11.30",
+    "@types/react": "18.3.1",
+    "@types/react-dom": "18.3.0",
+    "autoprefixer": "^10.4.20",
+    "eslint-config-custom": "workspace:*",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "ts-config": "workspace:*",
+    "typescript": "5.7.3"
+  }
+}
+</file>
+
+<file path="apps/docs/postcss.config.js">
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+</file>
+
+<file path="apps/docs/tailwind.config.js">
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+    darkMode: ["class"],
+    content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+  	extend: {
+  		borderRadius: {
+  			lg: 'var(--radius)',
+  			md: 'calc(var(--radius) - 2px)',
+  			sm: 'calc(var(--radius) - 4px)'
+  		},
+  		colors: {
+  			background: 'hsl(var(--background))',
+  			foreground: 'hsl(var(--foreground))',
+  			card: {
+  				DEFAULT: 'hsl(var(--card))',
+  				foreground: 'hsl(var(--card-foreground))'
+  			},
+  			popover: {
+  				DEFAULT: 'hsl(var(--popover))',
+  				foreground: 'hsl(var(--popover-foreground))'
+  			},
+  			primary: {
+  				DEFAULT: 'hsl(var(--primary))',
+  				foreground: 'hsl(var(--primary-foreground))'
+  			},
+  			secondary: {
+  				DEFAULT: 'hsl(var(--secondary))',
+  				foreground: 'hsl(var(--secondary-foreground))'
+  			},
+  			muted: {
+  				DEFAULT: 'hsl(var(--muted))',
+  				foreground: 'hsl(var(--muted-foreground))'
+  			},
+  			accent: {
+  				DEFAULT: 'hsl(var(--accent))',
+  				foreground: 'hsl(var(--accent-foreground))'
+  			},
+  			destructive: {
+  				DEFAULT: 'hsl(var(--destructive))',
+  				foreground: 'hsl(var(--destructive-foreground))'
+  			},
+  			border: 'hsl(var(--border))',
+  			input: 'hsl(var(--input))',
+  			ring: 'hsl(var(--ring))',
+  			chart: {
+  				'1': 'hsl(var(--chart-1))',
+  				'2': 'hsl(var(--chart-2))',
+  				'3': 'hsl(var(--chart-3))',
+  				'4': 'hsl(var(--chart-4))',
+  				'5': 'hsl(var(--chart-5))'
+  			}
+  		}
+  	}
+  },
+  plugins: [require("tailwindcss-animate")],
+};
+</file>
+
+<file path="apps/docs/tsconfig.json">
+{
+  "extends": "ts-config/tsconfig.next",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "allowJs": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+  },
+  "include": [
+    "next-env.d.ts",
+    "next.config.mjs",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path="apps/docs/turbo.json">
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "cache": false
+    }
+  }
+}
+</file>
+
+<file path="apps/docs/vercel.json">
+{
+  "buildCommand": "pnpm --workspace-root exec turbo --no-daemon --filter microfrontends-docs build --env-mode loose",
+  "installCommand": "node -v && pnpm --workspace-root --filter microfrontends-docs... install --config.dedupe-peer-dependents=false"
+}
+</file>
+
+<file path="apps/marketing/app/client-scripts.tsx">
+'use client';
+
+import { VercelToolbar } from '@vercel/toolbar/next';
+
+export function Toolbar() {
+  return <VercelToolbar />;
+}
+</file>
+
+<file path="apps/marketing/app/globals.css">
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+</file>
+
+<file path="apps/marketing/app/layout.tsx">
+import {
+  PrefetchCrossZoneLinks,
+  PrefetchCrossZoneLinksProvider,
+} from '@vercel/microfrontends/next/client';
+import './globals.css';
+import { Inter } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Toolbar } from './client-scripts';
+
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata = {
+  title: 'Vercel Microfrontends - Revolutionize Your Frontend',
+  description:
+    'Build scalable and maintainable web applications with our microfrontend architecture.',
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body className={inter.className}>
+        <PrefetchCrossZoneLinksProvider>
+          {children}
+        </PrefetchCrossZoneLinksProvider>
+        <PrefetchCrossZoneLinks />
+        <SpeedInsights />
+        <Analytics />
+        <Toolbar />
+      </body>
+    </html>
+  );
+}
+</file>
+
+<file path="apps/marketing/app/page.module.css">
+.page {
+  --gray-rgb: 0, 0, 0;
+  --gray-alpha-200: rgba(var(--gray-rgb), 0.08);
+  --gray-alpha-100: rgba(var(--gray-rgb), 0.05);
+
+  --button-primary-hover: #383838;
+  --button-secondary-hover: #f2f2f2;
+
+  display: grid;
+  grid-template-rows: 20px 1fr 20px;
+  align-items: center;
+  justify-items: center;
+  min-height: 100svh;
+  padding: 80px;
+  gap: 64px;
+  font-synthesis: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .page {
+    --gray-rgb: 255, 255, 255;
+    --gray-alpha-200: rgba(var(--gray-rgb), 0.145);
+    --gray-alpha-100: rgba(var(--gray-rgb), 0.06);
+
+    --button-primary-hover: #ccc;
+    --button-secondary-hover: #1a1a1a;
+  }
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  grid-row-start: 2;
+}
+
+.main ol {
+  font-family: var(--font-geist-mono);
+  padding-left: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+  list-style-position: inside;
+}
+
+.main li:not(:last-of-type) {
+  margin-bottom: 8px;
+}
+
+.main code {
+  font-family: inherit;
+  background: var(--gray-alpha-100);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.ctas {
+  display: flex;
+  gap: 16px;
+}
+
+.ctas a {
+  appearance: none;
+  border-radius: 128px;
+  height: 48px;
+  padding: 0 20px;
+  border: none;
+  font-family: var(--font-geist-sans);
+  border: 1px solid transparent;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+a.primary {
+  background: var(--foreground);
+  color: var(--background);
+  gap: 8px;
+}
+
+a.secondary {
+  border-color: var(--gray-alpha-200);
+  min-width: 180px;
+}
+
+button.secondary {
+  appearance: none;
+  border-radius: 128px;
+  height: 48px;
+  padding: 0 20px;
+  border: none;
+  font-family: var(--font-geist-sans);
+  border: 1px solid transparent;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 500;
+  background: transparent;
+  border-color: var(--gray-alpha-200);
+  min-width: 180px;
+}
+
+.footer {
+  font-family: var(--font-geist-sans);
+  grid-row-start: 3;
+  display: flex;
+  gap: 24px;
+}
+
+.footer a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer img {
+  flex-shrink: 0;
+}
+
+/* Enable hover only on non-touch devices */
+@media (hover: hover) and (pointer: fine) {
+  a.primary:hover {
+    background: var(--button-primary-hover);
+    border-color: transparent;
+  }
+
+  a.secondary:hover {
+    background: var(--button-secondary-hover);
+    border-color: transparent;
+  }
+
+  .footer a:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding: 32px;
+    padding-bottom: 80px;
+  }
+
+  .main {
+    align-items: center;
+  }
+
+  .main ol {
+    text-align: center;
+  }
+
+  .ctas {
+    flex-direction: column;
+  }
+
+  .ctas a {
+    font-size: 14px;
+    height: 40px;
+    padding: 0 16px;
+  }
+
+  a.secondary {
+    min-width: auto;
+  }
+
+  .footer {
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .logo {
+    filter: invert();
+  }
+}
+</file>
+
+<file path="apps/marketing/app/page.tsx">
+import Image from 'next/image';
+import { Link } from '@vercel/microfrontends/next/client';
+import { Button } from '@/components/ui/button';
+import mfeIcon from '../public/mfe-icon-dark.png';
+
+export default function Home() {
+  return (
+    <div className="flex flex-col min-h-screen">
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <h1 className="flex flex-row gap-2 text-2xl font-bold text-gray-900">
+            <Image
+              alt="MFE Icon"
+              className="inline-block"
+              height={32}
+              src={mfeIcon}
+              width={32}
+            />
+            Vercel Microfrontends
+          </h1>
+          <nav>
+            <ul className="flex space-x-4">
+              <li>
+                <Link className="text-gray-600 hover:text-gray-900" href="#">
+                  Home
+                </Link>
+              </li>
+              <li>
+                <Link
+                  className="text-gray-600 hover:text-gray-900"
+                  href="#features"
+                >
+                  Features
+                </Link>
+              </li>
+              <li>
+                <Link className="text-gray-600 hover:text-gray-900" href="#">
+                  Pricing
+                </Link>
+              </li>
+              <li>
+                <Link
+                  className="text-blue-600 hover:text-blue-800"
+                  href="/docs"
+                >
+                  Docs
+                </Link>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </header>
+
+      <main className="flex-grow">
+        <HeroSection />
+        <FeaturesSection />
+        <CTASection />
+      </main>
+
+      <footer className="bg-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <p className="text-center text-gray-500">
+            &copy; 2025 Vercel Microfrontends All rights reserved.
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function HeroSection() {
+  return (
+    <section className="bg-blue-50 py-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl sm:tracking-tight lg:text-6xl">
+          Revolutionize Your Frontend
+        </h2>
+        <p className="mt-5 max-w-xl mx-auto text-xl text-gray-500">
+          Build scalable and maintainable web applications with our
+          microfrontend architecture.
+        </p>
+        <div className="mt-8">
+          <Link href="/docs">
+            <Button size="lg">Get Started</Button>
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FeaturesSection() {
+  const features = [
+    {
+      title: 'Independent Deployment',
+      description:
+        'Deploy each microfrontend separately for faster iterations.',
+    },
+    {
+      title: 'Technology Agnostic',
+      description:
+        'Use different frameworks or libraries for each microfrontend.',
+    },
+    {
+      title: 'Scalable Teams',
+      description:
+        'Enable multiple teams to work on different parts of the application simultaneously.',
+    },
+    {
+      title: 'Improved Performance',
+      description:
+        'Load only the necessary parts of your application for better performance.',
+    },
+  ];
+
+  return (
+    <section className="py-20" id="features">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 className="text-3xl font-extrabold text-gray-900 text-center mb-12">
+          Features
+        </h2>
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {features.map((feature) => (
+            <div className="bg-white shadow rounded-lg p-6" key={feature.title}>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {feature.title}
+              </h3>
+              <p className="text-gray-500">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CTASection() {
+  return (
+    <section className="bg-blue-600 py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 className="text-3xl font-extrabold text-white mb-4">
+          Ready to get started?
+        </h2>
+        <p className="text-xl text-blue-100 mb-8">
+          Join the microfrontend revolution today and build better web
+          applications.
+        </p>
+        <Button size="lg" variant="secondary">
+          Start Free Trial
+        </Button>
+      </div>
+    </section>
+  );
+}
+</file>
+
+<file path="apps/marketing/components/ui/button.tsx">
+import * as React from 'react';
+import { Slot } from '@radix-ui/react-slot';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@/lib/utils';
+
+const buttonVariants = cva(
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  {
+    variants: {
+      variant: {
+        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        destructive:
+          'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+        outline:
+          'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+        secondary:
+          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        ghost: 'hover:bg-accent hover:text-accent-foreground',
+        link: 'text-primary underline-offset-4 hover:underline',
+      },
+      size: {
+        default: 'h-10 px-4 py-2',
+        sm: 'h-9 rounded-md px-3',
+        lg: 'h-11 rounded-md px-8',
+        icon: 'h-10 w-10',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+      size: 'default',
+    },
+  },
+);
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : 'button';
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    );
+  },
+);
+Button.displayName = 'Button';
+
+export { Button, buttonVariants };
+</file>
+
+<file path="apps/marketing/lib/utils.ts">
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+</file>
+
+<file path="apps/marketing/.eslintrc.cjs">
+module.exports = {
+  extends: ["custom/next"]
+};
+</file>
+
+<file path="apps/marketing/components.json">
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.js",
+    "css": "app/globals.css",
+    "baseColor": "slate",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "iconLibrary": "lucide"
+}
+</file>
+
+<file path="apps/marketing/microfrontends.json">
+{
+  "$schema": "https://openapi.vercel.sh/microfrontends.json",
+  "applications": {
+    "microfrontends-marketing": {
+      "development": {
+        "local": 3000,
+        "fallback": "microfrontends-marketing.labs.vercel.dev"
+      }
+    },
+    "microfrontends-docs": {
+      "development": {
+        "local": 3001
+      },
+      "routing": [
+        {
+          "group": "docs",
+          "paths": ["/docs", "/docs/:path*"]
+        }
+      ]
+    }
+  }
+}
+</file>
+
+<file path="apps/marketing/next-env.d.ts">
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+</file>
+
+<file path="apps/marketing/next.config.ts">
+import type { NextConfig } from 'next';
+import { withMicrofrontends } from '@vercel/microfrontends/next/config';
+import { withVercelToolbar } from '@vercel/toolbar/plugins/next';
+
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+};
+
+export default withVercelToolbar()(
+  withMicrofrontends(nextConfig, { debug: true }),
+);
+</file>
+
+<file path="apps/marketing/package.json">
+{
+  "name": "microfrontends-marketing",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev --turbo --port $(microfrontends port)",
+    "lint": "eslint .",
+    "lint-fix": "eslint . --fix",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@radix-ui/react-slot": "^1.1.1",
+    "@vercel/analytics": "^1.5.0",
+    "@vercel/microfrontends": "1.2.4",
+    "@vercel/speed-insights": "^1.2.0",
+    "@vercel/toolbar": "0.1.36",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "flags": "^3.2.0",
+    "lucide-react": "^0.473.0",
+    "next": "15.1.6",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@next/env": "15.1.6",
+    "@types/jest": "^29.2.0",
+    "@types/node": "20.11.30",
+    "@types/react": "18.3.1",
+    "@types/react-dom": "18.3.0",
+    "autoprefixer": "^10.4.20",
+    "eslint-config-custom": "workspace:*",
+    "jest": "^29.7.0",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "ts-config": "workspace:*",
+    "typescript": "5.7.3"
+  }
+}
+</file>
+
+<file path="apps/marketing/postcss.config.js">
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+</file>
+
+<file path="apps/marketing/tailwind.config.js">
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+    darkMode: ["class"],
+    content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+  	extend: {
+  		borderRadius: {
+  			lg: 'var(--radius)',
+  			md: 'calc(var(--radius) - 2px)',
+  			sm: 'calc(var(--radius) - 4px)'
+  		},
+  		colors: {
+  			background: 'hsl(var(--background))',
+  			foreground: 'hsl(var(--foreground))',
+  			card: {
+  				DEFAULT: 'hsl(var(--card))',
+  				foreground: 'hsl(var(--card-foreground))'
+  			},
+  			popover: {
+  				DEFAULT: 'hsl(var(--popover))',
+  				foreground: 'hsl(var(--popover-foreground))'
+  			},
+  			primary: {
+  				DEFAULT: 'hsl(var(--primary))',
+  				foreground: 'hsl(var(--primary-foreground))'
+  			},
+  			secondary: {
+  				DEFAULT: 'hsl(var(--secondary))',
+  				foreground: 'hsl(var(--secondary-foreground))'
+  			},
+  			muted: {
+  				DEFAULT: 'hsl(var(--muted))',
+  				foreground: 'hsl(var(--muted-foreground))'
+  			},
+  			accent: {
+  				DEFAULT: 'hsl(var(--accent))',
+  				foreground: 'hsl(var(--accent-foreground))'
+  			},
+  			destructive: {
+  				DEFAULT: 'hsl(var(--destructive))',
+  				foreground: 'hsl(var(--destructive-foreground))'
+  			},
+  			border: 'hsl(var(--border))',
+  			input: 'hsl(var(--input))',
+  			ring: 'hsl(var(--ring))',
+  			chart: {
+  				'1': 'hsl(var(--chart-1))',
+  				'2': 'hsl(var(--chart-2))',
+  				'3': 'hsl(var(--chart-3))',
+  				'4': 'hsl(var(--chart-4))',
+  				'5': 'hsl(var(--chart-5))'
+  			}
+  		}
+  	}
+  },
+  plugins: [require("tailwindcss-animate")],
+};
+</file>
+
+<file path="apps/marketing/tsconfig.json">
+{
+  "extends": "ts-config/tsconfig.next",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "allowJs": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+  },
+  "include": [
+    "next-env.d.ts",
+    "next.config.mjs",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path="apps/marketing/turbo.json">
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "cache": false
+    }
+  }
+}
+</file>
+
+<file path="apps/marketing/vercel.json">
+{
+  "buildCommand": "pnpm --workspace-root exec turbo --no-daemon --filter microfrontends-marketing build --env-mode loose",
+  "installCommand": "node -v && pnpm --workspace-root --filter microfrontends-marketing... install --config.dedupe-peer-dependents=false"
+}
+</file>
+
+<file path="packages/eslint-config-custom/next.js">
+const { resolve } = require('node:path');
+
+module.exports = {
+  extends: [
+    '@vercel/style-guide/eslint/browser',
+    '@vercel/style-guide/eslint/node',
+    '@vercel/style-guide/eslint/react',
+    '@vercel/style-guide/eslint/next',
+    '@vercel/style-guide/eslint/typescript',
+    '@vercel/style-guide/eslint/jest',
+  ].map((config) => require.resolve(config)),
+
+  ignorePatterns: ['node_modules/', 'dist/'],
+  rules: {
+    'eslint-comments/require-description': 'off',
+    '@typescript-eslint/explicit-function-return-type': 'off',
+    '@typescript-eslint/no-confusing-void-expression': 'off',
+    camelcase: [
+      'error',
+      {
+        allow: ['^UNSAFE_', '^unstable_', '^experimental_'],
+        ignoreDestructuring: false,
+        properties: 'never',
+      },
+    ],
+  },
+  overrides: [
+    {
+      files: ['**/*.test.ts', '**/*.test.tsx'],
+      rules: {
+        'eslint-comments/require-description': 'off',
+      },
+    },
+    {
+      files: [
+        'pages/**',
+        'src/pages/**',
+        'next.config.*',
+        '**/theme.config.tsx',
+        'app/**/{head,layout,loading,page,error,global-error,not-found}.tsx',
+        'src/app/**/{head,layout,page,}.tsx',
+      ],
+      rules: {
+        // This isn't supported in Next.js today.
+        // https://github.com/vercel/next.js/discussions/35725
+        'import/no-default-export': 'off',
+      },
+    },
+  ],
+};
+</file>
+
+<file path="packages/eslint-config-custom/package.json">
+{
+  "name": "eslint-config-custom",
+  "version": "0.0.0",
+  "private": true,
+  "devDependencies": {
+    "@next/eslint-plugin-next": "15.1.6",
+    "@typescript-eslint/parser": "^8.22.0",
+    "@vercel/style-guide": "^6.0.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^10.0.1"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  }
+}
+</file>
+
+<file path="packages/ts-config/package.json">
+{
+  "name": "ts-config",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@vercel/style-guide": "^6.0.0"
+  },
+  "devDependencies": {
+    "typescript": "5.7.3"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  }
+}
+</file>
+
+<file path="packages/ts-config/tsconfig.base.json">
+{
+  "extends": "./node_modules/@vercel/style-guide/typescript/tsconfig.node20.json",
+  "compilerOptions": {
+    "incremental": true,
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "allowArbitraryExtensions": true,
+    "strict": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path="packages/ts-config/tsconfig.next.json">
+{
+  "extends": "./tsconfig.base",
+  "compilerOptions": {
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "plugins": [{ "name": "next" }]
+  }
+}
+</file>
+
+<file path=".gitignore">
+# dependencies
+node_modules
+**/node_modules
+.pnp
+.pnp.js
+.swc
+
+# misc
+.env*
+.DS_Store
+*.pem
+-*.log
+-dist
+dist/
+tsconfig.tsbuildinfo
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Vercel
+.vercel
+
+# Next.js
+.next
+
+# turbo
+.turbo
+
+# Vite
+vite.config.ts.timestamp-*
+
+# Module Federation
+.__mf__temp
+</file>
+
+<file path=".node-version">
+20.x
+</file>
+
+<file path=".npmrc">
+auto-install-peers = false
+</file>
+
+<file path="package.json">
+{
+  "name": "microfrontends-nextjs-app-multi-zone",
+  "version": "0.0.0",
+  "description": "Vercel microfrontends Next.js multi-zone example",
+  "bugs": {
+    "url": "https://github.com/vercel-labs/microfrontends-nextjs-app-multi-zone/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vercel-labs/microfrontends-nextjs-app-multi-zone.git"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "turbo build",
+    "checks": "turbo run build lint typecheck",
+    "dev": "turbo dev",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json,jsonc}\"",
+    "lint": "turbo lint",
+    "start": "turbo start",
+    "typecheck": "turbo typecheck"
+  },
+  "lint-staged": {
+    "**/*.{ts,tsx,md,json,jsonc}": [
+      "prettier --write"
+    ]
+  },
+  "prettier": "@vercel/style-guide/prettier",
+  "devDependencies": {
+    "@vercel/style-guide": "^6.0.0",
+    "cross-env": "^7.0.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
+    "prettier": "^3.4.2",
+    "turbo": "2.5.2-canary.0",
+    "typescript": "5.7.3"
+  },
+  "packageManager": "pnpm@9.4.0",
+  "engines": {
+    "node": "20.x",
+    "pnpm": "9.4.0"
+  }
+}
+</file>
+
+<file path="pnpm-workspace.yaml">
+packages:
+  - 'apps/**'
+  - 'packages/*'
+</file>
+
+<file path="README.md">
+<picture>
+  <source srcset="https://assets.vercel.com/image/upload/v1689795055/docs-assets/static/docs/microfrontends/mfe-banner-dark.png" media="(prefers-color-scheme: dark)">
+  <source srcset="https://assets.vercel.com/image/upload/v1689795055/docs-assets/static/docs/microfrontends/mfe-banner-light.png" media="(prefers-color-scheme: light)">
+  <img src="https://assets.vercel.com/image/upload/v1689795055/docs-assets/static/docs/microfrontends/mfe-banner-light.png" alt="Vercel Microfrontends">
+</picture>
+
+# Vercel Microfrontends - Next.js Multi-Zones example
+
+This example showcases how to build and deploy a [Next.js Multi-Zones](https://nextjs.org/docs/pages/guides/multi-zones) microfrontends application using [Vercel Microfrontends](https://vercel.com/docs/microfrontends) with [Next.js App Router](https://nextjs.org/docs/app/building-your-application/routing). Learn how to architect independent, deployable frontend applications that work together seamlessly while maintaining team autonomy and deployment independence.
+
+Demo URL: https://vercel-microfrontends-multi-zones.vercel.app/
+
+## 🚀 Deploy to Vercel
+
+This example consists of two separate microfrontends that can be deployed independently:
+
+| Application       | Description                                                        | Deploy                                                                                                                                                                                                                                                                            |
+| ----------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Marketing**     | Main application handling homepage, pricing, and marketing content | [![Deploy Marketing App](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fexamples&project-name=microfrontends-marketing&repository-name=examples&root-directory=microfrontends/nextjs-multi-zones%2Fapps%2Fmarketing) |
+| **Documentation** | Dedicated docs microfrontend handling all `/docs` routes           | [![Deploy Documentation App](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fexamples&project-name=microfrontends-docs&repository-name=examples&root-directory=microfrontends/nextjs-multi-zones%2Fapps%docs)         |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+Ensure you have the following installed:
+
+- **Node.js 20.x** or later
+- **pnpm 9.4.0** (recommended package manager)
+- **Git** for version control
+
+### Local Development Setup
+
+1. **Clone the repository**:
+
+   ```bash
+   git clone https://github.com/vercel/examples
+   cd microfrontends/nextjs-multi-zones
+   ```
+
+2. **Install dependencies**:
+
+   ```bash
+   pnpm install
+   ```
+
+3. **Start the development environment**:
+   ```bash
+   pnpm dev
+   ```
+
+This command starts both applications simultaneously:
+
+- **Marketing app**: http://localhost:3000
+- **Documentation app**: http://localhost:3001 (automatically proxied through marketing app)
+
+4. **Access the application**:
+   Open http://localhost:3024 in your browser and navigate between different sections to see the microfrontend routing in action.
+
+---
+
+## Why Multi-Zones?
+
+Multi-Zones, or splitting a single domain into multiple applications, allows you to build and iterate on different parts of an application independently. The benefits include:
+
+- **Independent Deployments**: Deploy each microfrontend without affecting others
+- **Team Autonomy**: Enable teams to work independently while maintaining consistency
+- **Technology Flexibility**: Each microfrontend can use different technologies or versions
+- **Fault Isolation**: Issues in one microfrontend don't affect others
+- **Incremental Upgrades**: Modernize parts of your application gradually
+
+---
+
+## Architecture Overview
+
+This example implements a **multi-zones architecture** where:
+
+```mermaid
+block-beta
+  columns 1
+
+  block:marketing:1
+    columns 1
+    marketingTitle["🏠 Marketing Application (Shell)"]
+    marketingRoutes["Routes: /, /about, /pricing, etc."]
+    marketingHost["Hosted: Main deployment"]
+    marketingTech["Tech: Next.js + Tailwind CSS"]
+  end
+
+  space:1
+
+  block:docs:1
+    columns 1
+    docsTitle["📚 Documentation Zone"]
+    docsRoutes["Routes: /docs, /docs/*"]
+    docsHost["Hosted: Separate deployment"]
+    docsTech["Tech: Next.js + Tailwind CSS"]
+  end
+
+  marketing --> docs
+
+  style marketing fill:#0070f3,color:#fff,stroke:#333
+  style docs fill:#7c3aed,color:#fff,stroke:#333
+  style marketingTitle fill:#0070f3,color:#fff,stroke:none
+  style docsTitle fill:#7c3aed,color:#fff,stroke:none
+```
+
+### Key Components
+
+1. **Marketing Application** (`apps/marketing/`)
+
+   - Primary application handling the main website
+   - Contains homepage, pricing, and general marketing content
+   - Acts as the shell application orchestrating other microfrontends
+
+2. **Documentation Application** (`apps/docs/`)
+
+   - Dedicated documentation microfrontend
+   - Handles all `/docs` routes
+   - Can be developed and deployed independently
+
+3. **Shared Packages** (`packages/`)
+   - Common TypeScript configurations
+   - Shared ESLint rules and formatting standards
+   - Ensures consistency across all applications
+
+---
+
+## Project Structure Deep Dive
+
+```
+microfrontends/nextjs-multi-zones/
+├── apps/
+│   ├── marketing/              # Main application (shell)
+│   │   ├── app/               # Next.js App Router pages
+│   │   ├── components/        # UI components
+│   │   ├── lib/              # Utilities and helpers
+│   │   ├── microfrontends.json # Routing configuration
+│   │   └── next.config.ts    # Next.js configuration with MFE setup
+│   │
+│   └── docs/                  # Documentation microfrontend
+│       ├── app/              # Documentation pages
+│       ├── components/       # Doc-specific components
+│       ├── lib/             # Documentation utilities
+│       └── next.config.ts   # Standalone Next.js configuration
+│
+├── packages/
+│   ├── eslint-config-custom/  # Shared linting configuration
+│   └── ts-config/            # Shared TypeScript configuration
+│
+├── package.json              # Root package.json with workspaces
+├── pnpm-workspace.yaml       # PNPM workspace configuration
+└── turbo.json               # Turborepo build pipeline
+```
+
+### Configuration Files Explained
+
+#### `microfrontends.json`
+
+This file defines how microfrontends are discovered and routed:
+
+- **Applications mapping**: Defines each microfrontend and its ports
+- **Routing rules**: Specifies which URLs should be handled by which microfrontend
+- **Development settings**: Local ports and fallback URLs for development
+
+#### `next.config.ts`
+
+Each application has its own Next.js configuration enhanced with:
+
+- `withMicrofrontends()`: Enables microfrontend capabilities
+- `withVercelToolbar()`: Adds development debugging tools
+- Standard Next.js optimizations and settings
+
+---
+
+## How Microfrontend Routing Works
+
+The magic happens through the `@vercel/microfrontends` package:
+
+### 1. **Route Discovery**
+
+The marketing application (shell) reads the `microfrontends.json` configuration to understand which routes should be handled by which microfrontend.
+
+### 2. **Dynamic Proxying**
+
+When a user navigates to `/docs`, Vercel Microfrontends:
+
+- Recognizes this route belongs to the documentation microfrontend
+- Proxies the request to the documentation application
+- Returns the response seamlessly to the user
+
+All routing between microfrontends is handled dynamically by Vercel Microfrontends, allowing for a smooth user experience without page reloads.
+
+### 3. **Development Magic**
+
+During development, both applications run simultaneously, and the routing happens transparently, providing a seamless development experience.
+
+### 4. **Production Deployment**
+
+In production, each microfrontend is deployed independently to Vercel, and the routing configuration ensures requests are directed to the correct deployment.
+
+Learn more in the [routing documentation](https://vercel.com/docs/microfrontends/path-routing).
+
+---
+
+## Development Workflow
+
+### Working with Individual Microfrontends
+
+You can develop microfrontends in isolation using the [microfrontends local development proxy](https://vercel.com/docs/microfrontends/local-development):
+
+```bash
+# Work on the marketing application only
+cd apps/marketing
+pnpm dev
+
+# Work on the documentation application only
+cd apps/docs
+pnpm dev
+```
+
+### Building and Testing
+
+```bash
+# Build all applications
+pnpm build
+
+# Run linting across all apps
+pnpm lint
+
+# Type check all applications
+pnpm typecheck
+
+# Run all quality checks
+pnpm checks
+```
+
+### Adding New Microfrontends
+
+1. **Create a new application** in the `apps/` directory
+2. **Update `microfrontends.json`** to include routing rules
+3. **Add the new app** to the workspace configuration
+4. **Configure deployment** settings for the new microfrontend
+
+Learn more in the [Managing Microfrontends](https://vercel.com/docs/microfrontends/managing-microfrontends) documentation.
+
+---
+
+## Configuration and Components
+
+### Next.js Configuration in This Project
+
+Both applications use `withMicrofrontends` to enable cross-zone routing:
+
+```typescript
+// apps/marketing/next.config.ts & apps/docs/next.config.ts
+import { withMicrofrontends } from '@vercel/microfrontends/next/config';
+import { withVercelToolbar } from '@vercel/toolbar/plugins/next';
+
+export default withVercelToolbar()(
+  withMicrofrontends(nextConfig, { debug: true }),
+);
+```
+
+### Routing Configuration
+
+The marketing app defines how to route to the docs microfrontend:
+
+```jsonc
+// apps/marketing/microfrontends.json
+{
+  "applications": {
+    "microfrontends-marketing": {
+      "development": {
+        "local": 3000,
+        "fallback": "microfrontends-marketing.vercel.app",
+      },
+    },
+    "microfrontends-docs": {
+      "development": { "local": 3001 },
+      "routing": [{ "group": "docs", "paths": ["/docs", "/docs/:path*"] }],
+    },
+  },
+}
+```
+
+### Optimizing Cross-Microfrontend Navigation
+
+The `@vercel/microfrontends` package can be used to prefetch and prerender links to other microfrontends.
+
+First, embed the `PrefetchCrossZoneLinksProvider` element in the root `layout.tsx` of your application.
+
+Then, use the enhanced `Link` component for seamless optimized navigation between zones:
+
+```tsx
+// In marketing app - navigating to docs
+import { Link } from '@vercel/microfrontends/next/client';
+
+<Link href="/docs">View Documentation</Link>
+<Link href="/docs/getting-started">Getting Started Guide</Link>
+```
+
+This setup enables the marketing app to seamlessly route `/docs` requests to the documentation microfrontend while maintaining a unified user experience.
+
+Learn more in the [Optimizing Hard Navigations](https://vercel.com/docs/microfrontends/managing-microfrontends#optimizing-navigations-between-microfrontends) documentation.
+</file>
+
+<file path="turbo.json">
+{
+  "$schema": "https://turborepo.org/schema.json",
+  "globalPassThroughEnv": ["MFE_DEBUG"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^build"]
+    },
+    "start": {
+      "cache": false,
+      "dependsOn": ["^build"],
+      "persistent": true
+    },
+    "typecheck": {
+      "dependsOn": ["^build"]
+    }
+  }
+}
+</file>
+
+</files>

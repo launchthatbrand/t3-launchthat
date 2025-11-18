@@ -1,16 +1,16 @@
+import {
+  postTypeAdminMenuValidator,
+  postTypeRewriteValidator,
+  postTypeSupportsValidator,
+} from "./schema";
+
+import { query } from "../../_generated/server";
 /**
  * Content Types Queries
  *
  * This module provides query endpoints for content types.
  */
 import { v } from "convex/values";
-
-import { query } from "../../_generated/server";
-import {
-  postTypeAdminMenuValidator,
-  postTypeRewriteValidator,
-  postTypeSupportsValidator,
-} from "./schema";
 
 /**
  * List all content types
@@ -169,5 +169,68 @@ export const getBySlug = query({
     }
 
     return postType;
+  },
+});
+
+export const fieldsBySlug = query({
+  args: {
+    slug: v.string(),
+    includeSystem: v.optional(v.boolean()),
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("postTypeFields"),
+      _creationTime: v.number(),
+      postTypeId: v.id("postTypes"),
+      name: v.string(),
+      key: v.string(),
+      description: v.optional(v.string()),
+      type: v.string(),
+      required: v.boolean(),
+      searchable: v.optional(v.boolean()),
+      filterable: v.optional(v.boolean()),
+      defaultValue: v.optional(v.any()),
+      validationRules: v.optional(v.any()),
+      options: v.optional(v.any()),
+      isSystem: v.boolean(),
+      isBuiltIn: v.boolean(),
+      uiConfig: v.optional(v.any()),
+      order: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+      createdBy: v.optional(v.id("users")),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const postType = await ctx.db
+      .query("postTypes")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .unique();
+
+    if (!postType) {
+      return [];
+    }
+
+    if (
+      args.organizationId &&
+      postType.enabledOrganizationIds &&
+      !postType.enabledOrganizationIds.includes(args.organizationId)
+    ) {
+      return [];
+    }
+
+    const includeSystem = args.includeSystem ?? true;
+    const fieldQuery = ctx.db
+      .query("postTypeFields")
+      .withIndex("by_postType", (q) => q.eq("postTypeId", postType._id));
+
+    if (includeSystem) {
+      return await fieldQuery.collect();
+    }
+
+    return await fieldQuery
+      .filter((q) => q.eq(q.field("isSystem"), false))
+      .collect();
   },
 });

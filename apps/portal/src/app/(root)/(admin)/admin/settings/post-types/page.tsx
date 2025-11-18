@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
   Select,
   SelectContent,
@@ -34,10 +35,13 @@ import {
 } from "@acme/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import {
+  useAddPostTypeField,
   useCreatePostType,
   useDeletePostType,
   useInitPostTypes,
+  usePostTypeFields,
   usePostTypes,
+  useRemovePostTypeField,
   useUpdatePostTypeEntryCounts,
 } from "./_api/postTypes";
 import { useEffect, useMemo, useState } from "react";
@@ -45,7 +49,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import type { Doc } from "@/convex/_generated/dataModel";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import Link from "next/link";
@@ -53,21 +56,20 @@ import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 import { toast } from "sonner";
 
-type PostTypeDoc = Doc<"postTypes">;
-
 type FieldType =
   | "text"
   | "textarea"
-  | "rich-text"
+  | "richText"
   | "number"
   | "boolean"
   | "date"
-  | "time"
+  | "datetime"
   | "image"
   | "file"
   | "select"
-  | "multi-select"
-  | "relation";
+  | "multiSelect"
+  | "relation"
+  | "json";
 
 const TAB_VALUES = ["types", "fields", "taxonomies", "templates"] as const;
 type TabValue = (typeof TAB_VALUES)[number];
@@ -77,18 +79,6 @@ const isValidTab = (value: string | null): value is TabValue => {
   if (!value) return false;
   return TAB_VALUES.includes(value as TabValue);
 };
-
-interface CustomField {
-  id: string;
-  name: string;
-  key: string;
-  type: FieldType;
-  description?: string;
-  required: boolean;
-  searchable: boolean;
-  filterable: boolean;
-  isSystem?: boolean;
-}
 
 interface TaxonomyDefinition {
   slug: string;
@@ -101,16 +91,17 @@ interface TaxonomyDefinition {
 const FIELD_TYPE_OPTIONS: { label: string; value: FieldType }[] = [
   { label: "Text", value: "text" },
   { label: "Textarea", value: "textarea" },
-  { label: "Rich Text", value: "rich-text" },
+  { label: "Rich Text", value: "richText" },
   { label: "Number", value: "number" },
   { label: "Boolean", value: "boolean" },
   { label: "Date", value: "date" },
-  { label: "Time", value: "time" },
+  { label: "Date & Time", value: "datetime" },
   { label: "Image", value: "image" },
   { label: "File", value: "file" },
   { label: "Select", value: "select" },
-  { label: "Multi Select", value: "multi-select" },
+  { label: "Multi Select", value: "multiSelect" },
   { label: "Relation", value: "relation" },
+  { label: "JSON", value: "json" },
 ];
 
 const DEFAULT_TAXONOMIES: TaxonomyDefinition[] = [
@@ -138,63 +129,12 @@ const DEFAULT_TAXONOMIES: TaxonomyDefinition[] = [
   },
 ];
 
-const generateId = () => Math.random().toString(36).slice(2, 12);
 const normalizeMetaKey = (value: string) =>
   value
     .trim()
     .toLowerCase()
     .replace(/\s+/g, "_")
     .replace(/[^a-z0-9_]/g, "");
-
-const createSystemFields = (postType?: PostTypeDoc): CustomField[] => {
-  const singular = postType?.name ?? "Entry";
-  return [
-    {
-      id: `${postType?.slug ?? "generic"}-title`,
-      name: "Title",
-      key: "title",
-      type: "text",
-      description: `Primary title for this ${singular.toLowerCase()}.`,
-      required: true,
-      searchable: true,
-      filterable: true,
-      isSystem: true,
-    },
-    {
-      id: `${postType?.slug ?? "generic"}-slug`,
-      name: "Slug",
-      key: "slug",
-      type: "text",
-      description: "URL friendly version of the title.",
-      required: true,
-      searchable: true,
-      filterable: false,
-      isSystem: true,
-    },
-    {
-      id: `${postType?.slug ?? "generic"}-content`,
-      name: "Content",
-      key: "content",
-      type: "rich-text",
-      description: `Long form body for the ${singular.toLowerCase()}.`,
-      required: false,
-      searchable: true,
-      filterable: false,
-      isSystem: true,
-    },
-    {
-      id: `${postType?.slug ?? "generic"}-status`,
-      name: "Status",
-      key: "status",
-      type: "select",
-      description: "Draft / Published / Archived.",
-      required: true,
-      searchable: false,
-      filterable: true,
-      isSystem: true,
-    },
-  ];
-};
 
 type PostType = Doc<"postTypes">;
 
@@ -203,6 +143,7 @@ export default function PostTypesSettingsPage() {
   const router = useRouter();
   const pathname = usePathname();
   const tabParam = searchParams.get("tab");
+  const postTypeParam = searchParams.get("post_type");
   const initialTab = isValidTab(tabParam) ? tabParam : DEFAULT_TAB;
   const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
   const [selectedType, setSelectedType] = useState<string | null>(null);
@@ -218,9 +159,6 @@ export default function PostTypesSettingsPage() {
   const [isInitializing, setIsInitializing] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [fieldsByPostType, setFieldsByPostType] = useState<
-    Record<string, CustomField[]>
-  >({});
   const [isFieldDialogOpen, setIsFieldDialogOpen] = useState(false);
   const [fieldForm, setFieldForm] = useState<{
     name: string;
@@ -260,24 +198,31 @@ export default function PostTypesSettingsPage() {
     }
   }, [tabParam, activeTab]);
 
-  const handleTabChange = (value: string) => {
-    if (!isValidTab(value)) {
-      return;
-    }
-    setActiveTab(value);
+  const updateQueryParams = (mutator: (params: URLSearchParams) => void) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (value === DEFAULT_TAB) {
-      params.delete("tab");
-    } else {
-      params.set("tab", value);
-    }
+    mutator(params);
     const query = params.toString();
     const target = query ? `${pathname}?${query}` : pathname;
     router.replace(target, { scroll: false });
   };
 
-  const { data: postTypesQuery = [], isLoading: postTypesLoading } =
-    usePostTypes();
+  const handleTabChange = (value: string) => {
+    if (!isValidTab(value)) {
+      return;
+    }
+    setActiveTab(value);
+    updateQueryParams((params) => {
+      if (value === DEFAULT_TAB) {
+        params.delete("tab");
+      } else {
+        params.set("tab", value);
+      }
+    });
+  };
+
+  const postTypesResult = usePostTypes();
+  const postTypesQuery = postTypesResult.data;
+  const postTypesLoading = postTypesResult.isLoading;
   const selectedPostType = useMemo(
     () => postTypesQuery.find((type) => type.slug === selectedType) ?? null,
     [postTypesQuery, selectedType],
@@ -286,9 +231,15 @@ export default function PostTypesSettingsPage() {
     () => postTypesQuery.find((type) => type.slug === taxonomyPostType) ?? null,
     [postTypesQuery, taxonomyPostType],
   );
-  const currentFields = selectedType
-    ? (fieldsByPostType[selectedType] ?? [])
-    : [];
+  const addPostTypeField = useAddPostTypeField();
+  const removePostTypeField = useRemovePostTypeField();
+  const postTypeFieldsResult = usePostTypeFields(
+    selectedType ?? undefined,
+    true,
+  );
+  const postTypeFields = postTypeFieldsResult.data;
+  const postTypeFieldsLoading = postTypeFieldsResult.isLoading;
+  const currentFields = postTypeFields;
   const assignedTaxonomies = selectedTaxonomyPostType
     ? (taxonomyAssignments[selectedTaxonomyPostType.slug] ?? [])
     : [];
@@ -301,28 +252,18 @@ export default function PostTypesSettingsPage() {
     if (!first) {
       return;
     }
-    if (!selectedType) {
+    const hasParamMatch =
+      postTypeParam &&
+      postTypesQuery.some((type) => type.slug === postTypeParam);
+    if (hasParamMatch && postTypeParam !== selectedType) {
+      setSelectedType(postTypeParam);
+    } else if (!selectedType) {
       setSelectedType(first.slug);
     }
     if (!taxonomyPostType) {
       setTaxonomyPostType(first.slug);
     }
-  }, [postTypesQuery, selectedType, taxonomyPostType]);
-
-  useEffect(() => {
-    if (!postTypesQuery.length) {
-      return;
-    }
-    setFieldsByPostType((prev) => {
-      const next = { ...prev };
-      postTypesQuery.forEach((type) => {
-        if (!next[type.slug]) {
-          next[type.slug] = createSystemFields(type);
-        }
-      });
-      return next;
-    });
-  }, [postTypesQuery]);
+  }, [postTypesQuery, selectedType, taxonomyPostType, postTypeParam]);
 
   useEffect(() => {
     if (!postTypesQuery.length) {
@@ -370,37 +311,61 @@ export default function PostTypesSettingsPage() {
     });
   };
 
-  const handleAddField = () => {
-    if (!selectedType || !fieldForm.name.trim() || !fieldForm.key.trim()) {
+  const handleAddField = async () => {
+    if (!selectedPostType) {
+      toast("Select a post type before adding fields.");
       return;
     }
-    const newField: CustomField = {
-      id: generateId(),
-      name: fieldForm.name.trim(),
-      key: normalizeMetaKey(fieldForm.key),
-      type: fieldForm.type,
-      description: fieldForm.description.trim(),
-      required: fieldForm.required,
-      searchable: fieldForm.searchable,
-      filterable: fieldForm.filterable,
-      isSystem: false,
-    };
-    setFieldsByPostType((prev) => ({
-      ...prev,
-      [selectedType]: [...(prev[selectedType] ?? []), newField],
-    }));
-    setIsFieldDialogOpen(false);
-    resetFieldForm();
+    if (!fieldForm.name.trim() || !fieldForm.key.trim()) {
+      toast("Field name and key are required.");
+      return;
+    }
+    try {
+      await addPostTypeField({
+        postTypeId: selectedPostType._id,
+        field: {
+          name: fieldForm.name.trim(),
+          key: normalizeMetaKey(fieldForm.key),
+          type: fieldForm.type,
+          description: fieldForm.description.trim() || undefined,
+          required: fieldForm.required,
+          searchable: fieldForm.searchable,
+          filterable: fieldForm.filterable,
+          isSystem: false,
+          isBuiltIn: false,
+          order: postTypeFields.length + 1,
+        },
+      });
+      toast("Field added.");
+      setIsFieldDialogOpen(false);
+      resetFieldForm();
+    } catch (error) {
+      toast(
+        error instanceof Error
+          ? error.message
+          : "Failed to add field. Please try again.",
+      );
+    }
   };
 
-  const handleRemoveField = (fieldId: string) => {
-    if (!selectedType) return;
-    setFieldsByPostType((prev) => ({
-      ...prev,
-      [selectedType]: (prev[selectedType] ?? []).filter(
-        (field) => field.id !== fieldId,
-      ),
-    }));
+  const handleRemoveField = async (
+    fieldId: Id<"postTypeFields">,
+    isSystem?: boolean,
+  ) => {
+    if (isSystem) {
+      toast("System fields cannot be removed.");
+      return;
+    }
+    try {
+      await removePostTypeField({ fieldId });
+      toast("Field removed.");
+    } catch (error) {
+      toast(
+        error instanceof Error
+          ? error.message
+          : "Failed to remove field. Please try again.",
+      );
+    }
   };
 
   const handleToggleTaxonomyAssignment = (
@@ -444,6 +409,18 @@ export default function PostTypesSettingsPage() {
       slug: "",
       description: "",
       hierarchical: false,
+    });
+  };
+
+  const handlePostTypeChange = (value: string) => {
+    const slug = value || null;
+    setSelectedType(slug);
+    updateQueryParams((params) => {
+      if (slug) {
+        params.set("post_type", slug);
+      } else {
+        params.delete("post_type");
+      }
     });
   };
 
@@ -1034,7 +1011,7 @@ export default function PostTypesSettingsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <Select
                 value={selectedType ?? ""}
-                onValueChange={setSelectedType}
+                onValueChange={handlePostTypeChange}
                 disabled={!postTypesQuery.length}
               >
                 <SelectTrigger className="w-[220px]">
@@ -1192,30 +1169,33 @@ export default function PostTypesSettingsPage() {
           {selectedPostType ? (
             <Card>
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Field</TableHead>
-                      <TableHead>Meta Key</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Required</TableHead>
-                      <TableHead>Searchable</TableHead>
-                      <TableHead>Filterable</TableHead>
-                      <TableHead>Source</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentFields.length === 0 ? (
+                {postTypeFieldsLoading ? (
+                  <div className="flex flex-col items-center justify-center gap-3 py-8 text-sm text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Loading fields…
+                  </div>
+                ) : currentFields.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center gap-3 py-8 text-sm text-muted-foreground">
+                    No custom fields yet. Click “Add Field” to register the
+                    first meta key.
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={8} className="py-6 text-center">
-                          No custom fields yet. Click “Add Field” to register
-                          the first meta key.
-                        </TableCell>
+                        <TableHead>Field</TableHead>
+                        <TableHead>Meta Key</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Required</TableHead>
+                        <TableHead>Searchable</TableHead>
+                        <TableHead>Filterable</TableHead>
+                        <TableHead>Source</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ) : (
-                      currentFields.map((field) => (
-                        <TableRow key={field.id}>
+                    </TableHeader>
+                    <TableBody>
+                      {currentFields.map((field) => (
+                        <TableRow key={field._id}>
                           <TableCell>
                             <div>
                               <div className="font-medium">{field.name}</div>
@@ -1230,7 +1210,10 @@ export default function PostTypesSettingsPage() {
                             {field.key}
                           </TableCell>
                           <TableCell className="capitalize">
-                            {field.type.replace("-", " ")}
+                            {FIELD_TYPE_OPTIONS.find(
+                              (option) =>
+                                option.value === (field.type as FieldType),
+                            )?.label ?? field.type}
                           </TableCell>
                           <TableCell>
                             {field.required ? (
@@ -1261,7 +1244,9 @@ export default function PostTypesSettingsPage() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleRemoveField(field.id)}
+                                  onClick={() =>
+                                    handleRemoveField(field._id, field.isSystem)
+                                  }
                                 >
                                   <Trash className="h-4 w-4 text-destructive" />
                                 </Button>
@@ -1269,10 +1254,10 @@ export default function PostTypesSettingsPage() {
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           ) : (

@@ -70,6 +70,10 @@ import {
   useUpdateTaxonomyTerm,
 } from "../../settings/taxonomies/_api/taxonomies";
 import { useMutation, useQuery } from "convex/react";
+import {
+  usePostTypeFields,
+  usePostTypes,
+} from "../../settings/post-types/_api/postTypes";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import AdminCoursesPage from "../../lms/courses/page";
@@ -91,7 +95,6 @@ import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import { pluginDefinitions } from "~/lib/plugins/definitions";
 import { toast } from "sonner";
 import { useAdminPostContext } from "../../_providers/AdminPostProvider";
-import { usePostTypes } from "../../settings/post-types/_api/postTypes";
 import { useTenant } from "~/context/TenantContext";
 
 const DEFAULT_POST_TYPE = "course";
@@ -159,6 +162,77 @@ const defaultPermalinkSettings: PermalinkSettings = {
   categoryBase: "",
   tagBase: "",
   trailingSlash: true,
+};
+
+type CustomFieldValue = string | number | boolean | null;
+
+const normalizeFieldOptions = (
+  options: Doc<"postTypeFields">["options"],
+): { label: string; value: string }[] | null => {
+  if (!options) {
+    return null;
+  }
+  if (Array.isArray(options)) {
+    return options.map((option) => {
+      if (
+        option &&
+        typeof option === "object" &&
+        "label" in option &&
+        "value" in option
+      ) {
+        const typed = option as { label: string; value: string | number };
+        return {
+          label: String(typed.label),
+          value: String(typed.value),
+        };
+      }
+      return {
+        label: String(option),
+        value: String(option),
+      };
+    });
+  }
+  if (typeof options === "object") {
+    return Object.entries(options).map(([key, value]) => ({
+      label: key,
+      value: String(value),
+    }));
+  }
+  return null;
+};
+
+const formatTimestamp = (timestamp?: number | null) => {
+  if (typeof timestamp !== "number" || Number.isNaN(timestamp)) {
+    return "";
+  }
+  return new Date(timestamp).toISOString();
+};
+
+const deriveSystemFieldValue = (
+  field: Doc<"postTypeFields">,
+  post: PostDoc | null | undefined,
+  isNewRecord: boolean,
+): CustomFieldValue => {
+  if (!post) {
+    return isNewRecord ? "Will be generated on save" : "";
+  }
+
+  switch (field.key) {
+    case "_id":
+      return post._id;
+    case "_creationTime":
+      return formatTimestamp(post._creationTime);
+    case "createdAt":
+      return formatTimestamp(post.createdAt ?? post._creationTime);
+    case "updatedAt":
+      return formatTimestamp(post.updatedAt ?? post._creationTime);
+    case "slug":
+      return post.slug ?? "";
+    case "status":
+      return post.status ?? "";
+    default:
+      return "";
+  }
 };
 
 function AdminEditPageBody() {
@@ -1318,6 +1392,296 @@ function AdminSinglePostView({
     setActiveTab(normalizedTab);
   }, [normalizedTab]);
 
+  const { data: postTypeFields = [], isLoading: postTypeFieldsLoading } =
+    usePostTypeFields(slug, true);
+  const postMeta = useQuery(
+    api.core.posts.queries.getPostMeta,
+    post?._id
+      ? organizationId
+        ? ({ postId: post._id, organizationId } as const)
+        : ({ postId: post._id } as const)
+      : "skip",
+  ) as Doc<"postsMeta">[] | undefined;
+  const postMetaMap = useMemo<Record<string, CustomFieldValue>>(() => {
+    if (!postMeta) {
+      return {};
+    }
+    return postMeta.reduce<Record<string, CustomFieldValue>>((acc, meta) => {
+      acc[meta.key] = meta.value ?? "";
+      return acc;
+    }, {});
+  }, [postMeta]);
+  const [customFieldValues, setCustomFieldValues] = useState<
+    Record<string, CustomFieldValue>
+  >({});
+  const customFieldHydrationRef = useRef({
+    fieldSig: "",
+    metaSig: "",
+    postSig: "",
+    slug,
+  });
+  const postTypeFieldSignature = useMemo(
+    () =>
+      postTypeFields
+        .map(
+          (field) => `${field._id}-${field.updatedAt ?? field.createdAt ?? 0}`,
+        )
+        .join("|"),
+    [postTypeFields],
+  );
+  const postMetaSignature = useMemo(
+    () =>
+      Object.entries(postMetaMap)
+        .map(([key, value]) => `${key}:${value ?? ""}`)
+        .sort()
+        .join("|"),
+    [postMetaMap],
+  );
+  const postIdentitySignature = useMemo(
+    () =>
+      [
+        post?._id ?? "new",
+        post?._creationTime ?? "",
+        post?.updatedAt ?? "",
+        post?.slug ?? "",
+      ].join("|"),
+    [post],
+  );
+
+  useEffect(() => {
+    const shouldHydrate =
+      customFieldHydrationRef.current.fieldSig !== postTypeFieldSignature ||
+      customFieldHydrationRef.current.metaSig !== postMetaSignature ||
+      customFieldHydrationRef.current.slug !== slug ||
+      customFieldHydrationRef.current.postSig !== postIdentitySignature;
+    if (!shouldHydrate) {
+      return;
+    }
+    customFieldHydrationRef.current = {
+      fieldSig: postTypeFieldSignature,
+      metaSig: postMetaSignature,
+      postSig: postIdentitySignature,
+      slug,
+    };
+    setCustomFieldValues(() => {
+      const next: Record<string, CustomFieldValue> = {};
+      postTypeFields.forEach((field) => {
+        if (field.isSystem) {
+          next[field.key] = deriveSystemFieldValue(field, post, isNewRecord);
+          return;
+        }
+        if (postMetaMap[field.key] !== undefined) {
+          next[field.key] = postMetaMap[field.key];
+        } else if (field.defaultValue !== undefined) {
+          next[field.key] = field.defaultValue as CustomFieldValue;
+        } else if (field.type === "boolean") {
+          next[field.key] = false;
+        } else {
+          next[field.key] = "";
+        }
+      });
+      return next;
+    });
+  }, [
+    postMetaSignature,
+    postMetaMap,
+    postTypeFieldSignature,
+    postTypeFields,
+    slug,
+    postIdentitySignature,
+    post,
+    isNewRecord,
+  ]);
+
+  const sortedCustomFields = useMemo(
+    () => [...postTypeFields].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+    [postTypeFields],
+  );
+
+  const handleCustomFieldChange = useCallback(
+    (key: string, value: CustomFieldValue) => {
+      setCustomFieldValues((prev) => ({
+        ...prev,
+        [key]: value,
+      }));
+    },
+    [],
+  );
+
+  const renderCustomFieldControl = useCallback(
+    (field: Doc<"postTypeFields">) => {
+      const controlId = `custom-field-${field._id}`;
+      const value = customFieldValues[field.key];
+      const normalizedOptions = normalizeFieldOptions(field.options);
+      if (field.isSystem) {
+        const displayValue =
+          typeof value === "string" || typeof value === "number"
+            ? String(value)
+            : (value ?? "");
+        return (
+          <Input
+            id={controlId}
+            value={displayValue}
+            readOnly
+            disabled
+            className="bg-muted text-muted-foreground"
+          />
+        );
+      }
+      switch (field.type) {
+        case "textarea":
+        case "richText":
+          return (
+            <Textarea
+              id={controlId}
+              rows={4}
+              value={typeof value === "string" ? value : (value ?? "")}
+              onChange={(event) =>
+                handleCustomFieldChange(field.key, event.target.value)
+              }
+              placeholder={`Enter ${field.name.toLowerCase()}`}
+            />
+          );
+        case "boolean":
+          return (
+            <div className="flex items-center gap-2">
+              <Switch
+                id={controlId}
+                checked={Boolean(value)}
+                onCheckedChange={(checked) =>
+                  handleCustomFieldChange(field.key, checked)
+                }
+              />
+              <span className="text-sm text-muted-foreground">
+                {Boolean(value) ? "Enabled" : "Disabled"}
+              </span>
+            </div>
+          );
+        case "number":
+          return (
+            <Input
+              id={controlId}
+              type="number"
+              value={
+                typeof value === "number" || typeof value === "string"
+                  ? String(value ?? "")
+                  : ""
+              }
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                handleCustomFieldChange(
+                  field.key,
+                  nextValue === "" ? "" : Number(nextValue),
+                );
+              }}
+              placeholder="0"
+            />
+          );
+        case "date":
+          return (
+            <Input
+              id={controlId}
+              type="date"
+              value={typeof value === "string" ? value : ""}
+              onChange={(event) =>
+                handleCustomFieldChange(field.key, event.target.value)
+              }
+            />
+          );
+        case "datetime":
+          return (
+            <Input
+              id={controlId}
+              type="datetime-local"
+              value={typeof value === "string" ? value : ""}
+              onChange={(event) =>
+                handleCustomFieldChange(field.key, event.target.value)
+              }
+            />
+          );
+        case "select":
+          if (normalizedOptions?.length) {
+            return (
+              <Select
+                value={
+                  typeof value === "string" || typeof value === "number"
+                    ? String(value)
+                    : ""
+                }
+                onValueChange={(selected) =>
+                  handleCustomFieldChange(field.key, selected)
+                }
+              >
+                <SelectTrigger id={controlId}>
+                  <SelectValue placeholder={`Select ${field.name}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {normalizedOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            );
+          }
+          return (
+            <Input
+              id={controlId}
+              value={typeof value === "string" ? value : (value ?? "")}
+              onChange={(event) =>
+                handleCustomFieldChange(field.key, event.target.value)
+              }
+            />
+          );
+        default:
+          return (
+            <Input
+              id={controlId}
+              value={
+                typeof value === "string" || typeof value === "number"
+                  ? String(value)
+                  : (value ?? "")
+              }
+              onChange={(event) =>
+                handleCustomFieldChange(field.key, event.target.value)
+              }
+              placeholder={`Enter ${field.name.toLowerCase()}`}
+            />
+          );
+      }
+    },
+    [customFieldValues, handleCustomFieldChange],
+  );
+
+  const buildMetaPayload = useCallback(() => {
+    const payload: Record<string, CustomFieldValue> = {};
+    sortedCustomFields.forEach((field) => {
+      if (field.isSystem) {
+        return;
+      }
+      const value = customFieldValues[field.key];
+      if (value === undefined) {
+        return;
+      }
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (trimmed === "") {
+          if (field.required) {
+            payload[field.key] = "";
+          } else if (postMetaMap[field.key] !== undefined) {
+            payload[field.key] = null;
+          }
+          return;
+        }
+        payload[field.key] = value;
+        return;
+      }
+      payload[field.key] = value;
+    });
+    return payload;
+  }, [customFieldValues, postMetaMap, sortedCustomFields]);
+
   const handleTabChange = useCallback(
     (value: string) => {
       setActiveTab(value);
@@ -1390,6 +1754,8 @@ function AdminSinglePostView({
 
     setIsSaving(true);
     try {
+      const metaPayload = buildMetaPayload();
+      const hasMetaEntries = Object.keys(metaPayload).length > 0;
       const manualSlug = slugValue.trim();
       const baseSlug =
         manualSlug || generateSlugFromTitle(normalizedTitle) || "";
@@ -1406,6 +1772,7 @@ function AdminSinglePostView({
           slug: normalizedSlug,
           status,
           postTypeSlug: slug,
+          ...(hasMetaEntries ? { meta: metaPayload } : {}),
         });
         setSaveError(null);
         router.replace(`/admin/edit?post_type=${slug}&post_id=${newId}`);
@@ -1421,6 +1788,7 @@ function AdminSinglePostView({
           status,
           postTypeSlug: slug,
           slug: normalizedSlug,
+          ...(hasMetaEntries ? { meta: metaPayload } : {}),
         });
         setSaveError(null);
       }
@@ -1548,6 +1916,75 @@ function AdminSinglePostView({
           </div>
         </CardContent>
       </Card>
+      {postTypeFieldsLoading ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Custom Fields</CardTitle>
+            <CardDescription>Loading field definitions…</CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Fetching the latest custom fields for this post type.
+          </CardContent>
+        </Card>
+      ) : sortedCustomFields.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Custom Fields</CardTitle>
+            <CardDescription>
+              These fields come from Post Type settings and save into post_meta.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {sortedCustomFields.map((field) => (
+              <div key={field._id} className="space-y-2 rounded-md border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Label htmlFor={`custom-field-${field._id}`}>
+                    {field.name}
+                    {field.required ? " *" : ""}
+                  </Label>
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {field.type}
+                  </span>
+                </div>
+                {field.description ? (
+                  <p className="text-sm text-muted-foreground">
+                    {field.description}
+                  </p>
+                ) : null}
+                {renderCustomFieldControl(field)}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <Sparkles className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <CardTitle className="text-base">Need custom fields?</CardTitle>
+              <CardDescription>
+                Connect this post type to marketing tags, menu builders, or
+                plugin data by defining post_meta keys.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button variant="outline" asChild>
+              <Link
+                href={`/admin/settings/post-types?tab=fields&post_type=${slug}`}
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                Configure Fields
+              </Link>
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              Custom fields mirror WordPress&apos; post_meta table so plugins
+              can rely on a familiar contract.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 

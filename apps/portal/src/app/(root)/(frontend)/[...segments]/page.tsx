@@ -4,6 +4,7 @@ import {
 } from "~/lib/postTypes/routing";
 import { notFound, redirect } from "next/navigation";
 
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import type { Doc } from "@/convex/_generated/dataModel";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -53,12 +54,32 @@ export default async function FrontendCatchAllPage({ params }: PageProps) {
   }
 
   let postType: PostTypeDoc | null = null;
+  let postFields: Doc<"postTypeFields">[] = [];
   if (post.postTypeSlug) {
-    postType = await fetchQuery(api.core.postTypes.queries.getBySlug, {
-      slug: post.postTypeSlug,
-      ...(organizationId ? { organizationId } : {}),
-    });
+    postType =
+      (await fetchQuery(api.core.postTypes.queries.getBySlug, {
+        slug: post.postTypeSlug,
+        ...(organizationId ? { organizationId } : {}),
+      })) ?? null;
+    const fieldResult: Doc<"postTypeFields">[] | null = await fetchQuery(
+      api.core.postTypes.queries.fieldsBySlug,
+      {
+        slug: post.postTypeSlug,
+        includeSystem: true,
+        ...(organizationId ? { organizationId } : {}),
+      },
+    );
+    postFields = fieldResult ?? [];
   }
+
+  const postMetaResult: Doc<"postsMeta">[] | null = await fetchQuery(
+    api.core.posts.queries.getPostMeta,
+    {
+      postId: post._id,
+      ...(organizationId ? { organizationId } : {}),
+    },
+  );
+  const postMeta = postMetaResult ?? [];
 
   const canonicalSegments = getCanonicalPostSegments(post, postType);
   if (canonicalSegments.length > 0) {
@@ -69,7 +90,14 @@ export default async function FrontendCatchAllPage({ params }: PageProps) {
     }
   }
 
-  return <PostDetail post={post} postType={postType} />;
+  return (
+    <PostDetail
+      post={post}
+      postType={postType}
+      fields={postFields}
+      postMeta={postMeta}
+    />
+  );
 }
 
 function normalizeSegments(segments: string[]) {
@@ -89,14 +117,23 @@ function deriveSlugFromSegments(segments: string[]): string | null {
 }
 
 type PostTypeDoc = Doc<"postTypes">;
+type PostFieldDoc = Doc<"postTypeFields">;
+type PostMetaDoc = Doc<"postsMeta">;
 
 interface PostDetailProps {
   post: Doc<"posts">;
   postType: PostTypeDoc | null;
+  fields: PostFieldDoc[];
+  postMeta: PostMetaDoc[];
 }
 
-function PostDetail({ post, postType }: PostDetailProps) {
+function PostDetail({ post, postType, fields, postMeta }: PostDetailProps) {
   const contextLabel = resolveContextLabel(post, postType);
+  const customFieldEntries = buildCustomFieldEntries({
+    fields,
+    post,
+    postMeta,
+  });
 
   return (
     <main className="container mx-auto max-w-4xl space-y-6 py-10">
@@ -121,6 +158,23 @@ function PostDetail({ post, postType }: PostDetailProps) {
             This {contextLabel.toLowerCase()} does not have any content yet.
           </p>
         )}
+        {customFieldEntries.length > 0 ? (
+          <section className="rounded-lg border bg-card p-6">
+            <h2 className="text-xl font-semibold text-foreground">
+              Custom Fields
+            </h2>
+            <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+              {customFieldEntries.map((entry) => (
+                <div key={entry.key} className="space-y-1">
+                  <dt className="text-sm font-medium text-muted-foreground">
+                    {entry.label}
+                  </dt>
+                  <dd className="text-base text-foreground">{entry.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        ) : null}
       </article>
     </main>
   );
@@ -191,6 +245,115 @@ function PostMetaSummary({
   );
 }
 
+function deriveSystemFieldValue(
+  field: PostFieldDoc,
+  post: Doc<"posts">,
+): string | number | boolean | null {
+  switch (field.key) {
+    case "_id":
+      return post._id;
+    case "_creationTime":
+      return typeof post._creationTime === "number" ? post._creationTime : null;
+    case "createdAt":
+      return typeof post.createdAt === "number"
+        ? post.createdAt
+        : typeof post._creationTime === "number"
+          ? post._creationTime
+          : null;
+    case "updatedAt":
+      return typeof post.updatedAt === "number"
+        ? post.updatedAt
+        : typeof post._creationTime === "number"
+          ? post._creationTime
+          : null;
+    case "slug":
+      return typeof post.slug === "string" ? post.slug : "";
+    case "status":
+      return typeof post.status === "string" ? post.status : "";
+    default:
+      return null;
+  }
+}
+
+function formatFieldValue(
+  field: PostFieldDoc,
+  value: string | number | boolean | null,
+): string {
+  if (value === null || value === undefined || value === "") {
+    return "Not set";
+  }
+
+  switch (field.type) {
+    case "boolean":
+      return value ? "Yes" : "No";
+    case "date":
+    case "datetime": {
+      const date = Number(value);
+      if (!Number.isNaN(date)) {
+        return new Date(date).toLocaleString();
+      }
+      return String(value);
+    }
+    case "json":
+      return typeof value === "string" ? value : JSON.stringify(value, null, 2);
+    default:
+      return String(value);
+  }
+}
+
+function buildCustomFieldEntries({
+  fields,
+  post,
+  postMeta,
+}: {
+  fields: PostFieldDoc[];
+  post: Doc<"posts">;
+  postMeta: PostMetaDoc[];
+}) {
+  if (!fields.length) {
+    return [];
+  }
+
+  const metaMap = new Map<string, string | number | boolean | null>();
+  postMeta.forEach((record) => {
+    metaMap.set(record.key, record.value ?? null);
+  });
+
+  const sorted = [...fields].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  return sorted.map((field) => {
+    const defaultValue = coerceFieldDefault(field);
+    const metaValue = metaMap.has(field.key)
+      ? metaMap.get(field.key)
+      : defaultValue;
+    const rawValue = field.isSystem
+      ? deriveSystemFieldValue(field, post)
+      : (metaValue ?? null);
+    return {
+      key: field._id,
+      label: field.name,
+      value: formatFieldValue(field, rawValue),
+    };
+  });
+}
+
+function coerceFieldDefault(
+  field: PostFieldDoc,
+): string | number | boolean | null | undefined {
+  const { defaultValue } = field;
+  if (
+    typeof defaultValue === "string" ||
+    typeof defaultValue === "number" ||
+    typeof defaultValue === "boolean"
+  ) {
+    return defaultValue;
+  }
+  if (defaultValue === null) {
+    return null;
+  }
+  return undefined;
+}
+
 async function resolveArchiveContext(
   segments: string[],
   organizationId?: Doc<"organizations">["_id"],
@@ -199,10 +362,13 @@ async function resolveArchiveContext(
     return null;
   }
   const path = segments.join("/");
-  const postTypes = await fetchQuery(api.core.postTypes.queries.list, {
-    includeBuiltIn: true,
-    ...(organizationId ? { organizationId } : {}),
-  });
+  const postTypes: PostTypeDoc[] = await fetchQuery(
+    api.core.postTypes.queries.list,
+    {
+      includeBuiltIn: true,
+      ...(organizationId ? { organizationId } : {}),
+    },
+  );
 
   const match = postTypes.find((type) => {
     if (!type.rewrite?.hasArchive) {
