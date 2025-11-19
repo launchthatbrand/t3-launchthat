@@ -4,7 +4,7 @@
     "t3-launchthat-portal": {
       "development": {
         "local": 3000,
-        "fallback": "microfrontends-marketing.labs.vercel.dev"
+        "fallback": "www.launchthat.app"
       }
     },
     "t3-launchthat-puck": {
