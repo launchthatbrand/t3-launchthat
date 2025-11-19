@@ -10,7 +10,7 @@ import { Button } from "@acme/ui/button";
 import type { Data } from "@measured/puck";
 import { Puck } from "@measured/puck";
 import { Skeleton } from "@acme/ui";
-import { api } from "@convex-config/_generated/api";
+import { api } from "../../../../../portal/convexApi1763516584458";
 import { puckConfig } from "@acme/puck-config";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
