@@ -6,7 +6,7 @@ import {
   loggerLink,
 } from "@trpc/client";
 
-import type { AppRouter } from "../../../../packages/api.bak/dist";
+import type { AppRouter } from "../../../../packages/api/dist";
 import type { QueryClient } from "@tanstack/react-query";
 import { QueryClientProvider } from "@tanstack/react-query";
 import SuperJSON from "superjson";

@@ -1,7 +1,7 @@
 import {
   appRouter,
   createTRPCContext,
-} from "../../../../../../../packages/api.bak/dist";
+} from "../../../../../../../packages/api/dist";
 
 import { auth } from "@acme/auth";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";

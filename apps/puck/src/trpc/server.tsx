@@ -1,10 +1,7 @@
 import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
-import {
-  appRouter,
-  createTRPCContext,
-} from "../../../../packages/api.bak/dist";
+import { appRouter, createTRPCContext } from "../../../../packages/api/dist";
 
-import type { AppRouter } from "../../../../packages/api.bak/dist";
+import type { AppRouter } from "../../../../packages/api/dist";
 import type { TRPCQueryOptions } from "@trpc/tanstack-react-query";
 import { auth } from "@acme/auth";
 import { cache } from "react";

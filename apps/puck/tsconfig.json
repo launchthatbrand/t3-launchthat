@@ -1,17 +1,25 @@
 {
   "extends": "@acme/tsconfig/base.json",
   "compilerOptions": {
+    "types": ["jest", "node"],
     "lib": ["ES2022", "dom", "dom.iterable"],
     "jsx": "preserve",
     "baseUrl": ".",
     "moduleResolution": "bundler",
     "paths": {
       "~/*": ["./src/*"],
-      "@convex-config/*": ["../portal/convex/*"],
-      "@acme/puck-config": ["../../packages/puck-config/src/index.tsx"]
+      "@convexcms-config": ["./src/convexcms.config.ts"],
+      "@convex-config/*": ["./convex/*"],
+      "react": ["./node_modules/@types/react"],
+      "@/*": ["./*"],
+      "@/components/*": ["./src/components/*"],
+      "@/hooks/*": ["./src/hooks/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@acme/ui/*": ["../../packages/ui/src/*"],
+      "@acme/puck-config": ["../../packages/puck-config/src"],
+      "@acme/puck-config/*": ["../../packages/puck-config/src/*"]
     },
-    "plugins": [{ "name": "next" }],
-    "module": "esnext"
+    "plugins": [{ "name": "next" }]
   },
   "include": [".", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]

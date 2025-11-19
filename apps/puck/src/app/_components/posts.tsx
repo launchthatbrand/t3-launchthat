@@ -17,7 +17,7 @@ import {
 import { Button } from "@acme/ui/button";
 import { CreatePostSchema } from "@acme/db/schema";
 import { Input } from "@acme/ui/input";
-import type { RouterOutputs } from "../../../../../packages/api.bak/dist";
+import type { RouterOutputs } from "../../../../../packages/api/dist";
 import { cn } from "@acme/ui";
 import { toast } from "@acme/ui/toast";
 import { useTRPC } from "~/trpc/react";
