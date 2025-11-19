@@ -15,7 +15,9 @@
       "@/components/*": ["./src/components/*"],
       "@/hooks/*": ["./src/hooks/*"],
       "@/lib/*": ["./src/lib/*"],
-      "@acme/ui/*": ["../../packages/ui/src/*"]
+      "@acme/ui/*": ["../../packages/ui/src/*"],
+      "@acme/puck-config": ["../../packages/puck-config/src"],
+      "@acme/puck-config/*": ["../../packages/puck-config/src/*"]
     },
     "plugins": [{ "name": "next" }]
   },

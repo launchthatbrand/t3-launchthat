@@ -1,10 +1,9 @@
-import type { Id } from "@convex-config/_generated/dataModel";
-import { notFound } from "next/navigation";
-import { getConvex } from "@/lib/convex";
-import { api } from "@convex-config/_generated/api";
-
-import { getPageIdentifier } from "~/utils/pageIdentifier";
 import { DashboardContent } from "./components/DashboardContent";
+import type { Id } from "@convex-config/_generated/dataModel";
+import { api } from "@convex-config/_generated/api";
+import { getConvex } from "@/lib/convex";
+import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
+import { notFound } from "next/navigation";
 
 interface GroupPageProps {
   params: Promise<{
@@ -57,7 +56,10 @@ export default async function GroupPage({ params }: GroupPageProps) {
 
     // Use the new utility to generate a consistent page identifier
     const pathname = `/admin/groups/${id}`;
-    const pageIdentifier = getPageIdentifier(pathname, id);
+    const pageIdentifier = getTenantScopedPageIdentifier(pathname, {
+      entityId: id,
+      organizationId: group.organizationId ?? null,
+    });
 
     // Safely handle the puckEditor data query with proper types
     let dashboardData = null;

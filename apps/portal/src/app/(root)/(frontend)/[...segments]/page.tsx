@@ -5,12 +5,17 @@ import {
 import { notFound, redirect } from "next/navigation";
 
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type { Doc } from "@/convex/_generated/dataModel";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { PuckContentRenderer } from "../../../../components/puckeditor/PuckContentRenderer";
+import type { Data as PuckData } from "@measured/puck";
 import { api } from "@/convex/_generated/api";
 import { fetchQuery } from "convex/nextjs";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
+import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
 
 interface PageProps {
   params: { segments?: string[] };
@@ -27,6 +32,18 @@ export default async function FrontendCatchAllPage({ params }: PageProps) {
 
   const archiveContext = await resolveArchiveContext(segments, organizationId);
   if (archiveContext) {
+    const archiveTemplateData = await loadTemplateContent(
+      "archive",
+      archiveContext.postType.slug,
+      organizationId,
+    );
+    if (archiveTemplateData) {
+      return (
+        <main className="min-h-screen bg-background">
+          <PuckContentRenderer data={archiveTemplateData} />
+        </main>
+      );
+    }
     const posts = await fetchQuery(api.core.posts.queries.getAllPosts, {
       ...(organizationId ? { organizationId } : {}),
       filters: {
@@ -81,6 +98,19 @@ export default async function FrontendCatchAllPage({ params }: PageProps) {
   );
   const postMeta = postMetaResult ?? [];
 
+  const pageIdentifier = getTenantScopedPageIdentifier("/admin/edit", {
+    organizationId: organizationId ?? null,
+    entityId: post._id,
+  });
+
+  const puckData =
+    (await loadPuckData(
+      pageIdentifier,
+      organizationId,
+      post._id,
+      post.postTypeSlug ?? null,
+    )) ?? null;
+
   const canonicalSegments = getCanonicalPostSegments(post, postType);
   if (canonicalSegments.length > 0) {
     const canonicalPath = canonicalSegments.join("/");
@@ -96,6 +126,7 @@ export default async function FrontendCatchAllPage({ params }: PageProps) {
       postType={postType}
       fields={postFields}
       postMeta={postMeta}
+      puckData={puckData}
     />
   );
 }
@@ -125,15 +156,31 @@ interface PostDetailProps {
   postType: PostTypeDoc | null;
   fields: PostFieldDoc[];
   postMeta: PostMetaDoc[];
+  puckData: PuckData | null;
 }
 
-function PostDetail({ post, postType, fields, postMeta }: PostDetailProps) {
+function PostDetail({
+  post,
+  postType,
+  fields,
+  postMeta,
+  puckData,
+}: PostDetailProps) {
   const contextLabel = resolveContextLabel(post, postType);
   const customFieldEntries = buildCustomFieldEntries({
     fields,
     post,
     postMeta,
   });
+  const hasPuckContent = Boolean(puckData?.content?.length);
+
+  if (hasPuckContent && puckData) {
+    return (
+      <main className="min-h-screen bg-background">
+        <PuckContentRenderer data={puckData} />
+      </main>
+    );
+  }
 
   return (
     <main className="container mx-auto max-w-4xl space-y-6 py-10">
@@ -389,6 +436,83 @@ async function resolveArchiveContext(
 }
 
 const trimSlashes = (value: string) => value.replace(/^\/+|\/+$/g, "");
+
+async function loadPuckData(
+  scopedIdentifier: string,
+  organizationId: Doc<"organizations">["_id"] | undefined,
+  postId: Doc<"posts">["_id"],
+  postTypeSlug: string | null,
+) {
+  try {
+    const primary = await fetchQuery(api.puckEditor.queries.getData, {
+      pageIdentifier: scopedIdentifier,
+    });
+    const parsedPrimary = parsePuckData(primary);
+    if (parsedPrimary) {
+      return parsedPrimary;
+    }
+
+    if (organizationId) {
+      const fallbackIdentifier = getTenantScopedPageIdentifier("/admin/edit", {
+        entityId: postId,
+      });
+      const fallback = await fetchQuery(api.puckEditor.queries.getData, {
+        pageIdentifier: fallbackIdentifier,
+      });
+      const parsedFallback = parsePuckData(fallback);
+      if (parsedFallback) {
+        return parsedFallback;
+      }
+    }
+
+    if (postTypeSlug) {
+      return await loadTemplateContent("single", postTypeSlug, organizationId);
+    }
+  } catch (error) {
+    console.error("Failed to load puck data", error);
+  }
+  return null;
+}
+
+async function loadTemplateContent(
+  templateType: "single" | "archive",
+  postTypeSlug: string,
+  organizationId: Doc<"organizations">["_id"] | undefined,
+) {
+  try {
+    const scopeKey = organizationId ?? "global";
+    const template = await fetchQuery(api.puckTemplates.queries.getTemplate, {
+      templateType,
+      postTypeSlug,
+      scopeKey,
+    });
+    if (!template) {
+      return null;
+    }
+    const stored = await fetchQuery(api.puckEditor.queries.getData, {
+      pageIdentifier: template.pageIdentifier,
+    });
+    return parsePuckData(stored);
+  } catch (error) {
+    console.error("Failed to load template content", error);
+    return null;
+  }
+}
+
+function parsePuckData(value: unknown): PuckData | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(value) as PuckData;
+    if (Array.isArray(parsed.content)) {
+      return parsed;
+    }
+  } catch (error) {
+    console.error("Failed to parse puck data", error);
+  }
+  return null;
+}
 
 function PostArchive({
   postType,

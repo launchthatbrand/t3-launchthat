@@ -1,9 +1,8 @@
+import { useParams, usePathname, useSearchParams } from "next/navigation";
+
 import type { Id } from "@/convex/_generated/dataModel";
 import { useEffect } from "react";
-import { useParams, usePathname, useSearchParams } from "next/navigation";
-import { api } from "@/convex/_generated/api";
 import { usePuckConfigStore } from "@/src/store/puckConfigStore";
-import { useQuery } from "convex/react";
 
 /**
  * Hook to fetch and populate dynamic data needed for Puck editor
@@ -15,10 +14,7 @@ export function usePuckDynamicData() {
   const searchParams = useSearchParams();
   const isEditorMode = searchParams?.get("editor") === "true";
 
-  const setGroupOptions = usePuckConfigStore((state) => state.setGroupOptions);
-  const setCurrentGroupId = usePuckConfigStore(
-    (state) => state.setCurrentGroupId,
-  );
+  const resetConfig = usePuckConfigStore((state) => state.resetConfig);
 
   // Extract current group ID from URL
   const currentGroupId = (() => {
@@ -36,52 +32,9 @@ export function usePuckDynamicData() {
     return undefined;
   })();
 
-  // Set current group ID in the store
   useEffect(() => {
-    if (currentGroupId) {
-      setCurrentGroupId(currentGroupId);
-    }
-  }, [currentGroupId, setCurrentGroupId]);
-
-  // Fetch all groups for dropdown options
-  const { groups = [] } = useQuery(api.groups.queries.listGroups, {
-    filters: { active: true },
-  }) || { groups: [] };
-
-  // Update store with group options
-  useEffect(() => {
-    if (groups.length > 0) {
-      // Convert groups to dropdown options
-      const options = groups.map((group) => ({
-        label: group.name,
-        value: group._id,
-      }));
-
-      // If current group exists, add it at the top with a special label
-      if (currentGroupId) {
-        const currentGroup = groups.find((g) => g._id === currentGroupId);
-        if (currentGroup) {
-          // Remove the current group from the list to avoid duplication
-          const filteredOptions = options.filter(
-            (o) => o.value !== currentGroupId,
-          );
-
-          // Add current group as first option
-          setGroupOptions(
-            [
-              { label: `Current: ${currentGroup.name}`, value: currentGroupId },
-              ...filteredOptions,
-            ],
-            currentGroupId,
-          );
-          return;
-        }
-      }
-
-      // If no current group or it wasn't found
-      setGroupOptions(options);
-    }
-  }, [groups, currentGroupId, setGroupOptions]);
+    resetConfig();
+  }, [resetConfig]);
 
   return {
     isEditorMode,

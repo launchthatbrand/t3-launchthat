@@ -1,29 +1,28 @@
 /* eslint-disable react-compiler/react-compiler */
 "use client";
 
-import type { TenantSummary } from "@/lib/tenant-fetcher";
-import type { SessionId, UseStorage } from "convex-helpers/react/sessions";
+import { ClerkProvider, useAuth } from "@clerk/clerk-react";
 // Import Clerk provider and hook
 import React, { Suspense, useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { ClerkProvider, useAuth } from "@clerk/clerk-react";
-import { SessionProvider } from "convex-helpers/react/sessions";
-import { ConvexReactClient } from "convex/react";
-import { ConvexProviderWithClerk } from "convex/react-clerk";
-
-import StandardLayout from "@acme/ui/layout/StandardLayout";
-import { SidebarProvider } from "@acme/ui/sidebar";
+import type { SessionId, UseStorage } from "convex-helpers/react/sessions";
 import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
-import { Toaster } from "@acme/ui/toast";
 
 import { ContentProtectionProvider } from "~/components/access/ContentProtectionProvider";
-import { TenantProvider } from "~/context/TenantContext";
-import { env } from "~/env";
-import { PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
-import useEditorStore from "~/store/useEditorStore";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ConvexReactClient } from "convex/react";
 import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
 // Import the correct Convex provider for Clerk integration
 import { GuestCartMerger } from "./GuestCartMerger";
+import { PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
+import { SessionProvider } from "convex-helpers/react/sessions";
+import { SidebarProvider } from "@acme/ui/sidebar";
+import StandardLayout from "@acme/ui/layout/StandardLayout";
+import { TenantProvider } from "~/context/TenantContext";
+import type { TenantSummary } from "@/lib/tenant-fetcher";
+import { Toaster } from "@acme/ui/toast";
+import { env } from "~/env";
+import useEditorStore from "~/store/useEditorStore";
+import { useSearchParams } from "next/navigation";
 
 // Ensure Clerk key exists, otherwise ClerkProvider will error
 if (!env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
@@ -110,7 +109,7 @@ export function Providers({ children, tenant }: ProvidersProps) {
             <TenantProvider value={effectiveTenant}>
               <SidebarProvider>
                 <ConvexUserEnsurer />
-                <GuestCartMerger />
+                {/* <GuestCartMerger /> */}
                 <ThemeProvider
                   attribute="class"
                   defaultTheme="system"

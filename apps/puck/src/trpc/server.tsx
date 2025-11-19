@@ -1,14 +1,16 @@
+import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
+import {
+  appRouter,
+  createTRPCContext,
+} from "../../../../packages/api.bak/dist";
+
+import type { AppRouter } from "../../../../packages/api.bak/dist";
 import type { TRPCQueryOptions } from "@trpc/tanstack-react-query";
-import { cache } from "react";
-import { headers } from "next/headers";
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
-
-import type { AppRouter } from "@acme/api";
-import { appRouter, createTRPCContext } from "@acme/api";
 import { auth } from "@acme/auth";
-
+import { cache } from "react";
 import { createQueryClient } from "./query-client";
+import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
+import { headers } from "next/headers";
 
 /**
  * This wraps the `createTRPCContext` helper and provides the required context for the tRPC API when

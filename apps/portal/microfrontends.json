@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/microfrontends.json",
+  "applications": {
+    "@acme/portal": {
+      "development": {
+        "local": 3000,
+        "fallback": "microfrontends-marketing.labs.vercel.dev"
+      }
+    },
+    "@acme/puck": {
+      "development": {
+        "local": 3001
+      },
+      "routing": [
+        {
+          "group": "puck",
+          "paths": ["/puck", "/puck/:path*"]
+        }
+      ]
+    }
+  }
+}

@@ -1,5 +1,3 @@
-import type { Id } from "@/convex/_generated/dataModel";
-
 /**
  * Represents the unique identifier for a page in the CMS
  */
@@ -57,16 +55,17 @@ export function getPageInfo(
     // Handle admin routes
     if (segments[0] === "admin") {
       if (segments.length > 1) {
-        type = segments[1];
+        type = segments[1] ?? "admin";
 
         // For groups, handle special case
         if (type === "groups" && segments.length > 2) {
           // If entityId is provided, use it
           // If not and there's an ID in the URL, use that
-          resolvedEntityId = entityId !== null ? entityId : segments[2];
+          const fallbackEntityId = segments[2] ?? null;
+          resolvedEntityId = entityId ?? fallbackEntityId;
 
           // Determine the section based on segments
-          section = segments.length > 3 ? segments[3] : "dashboard";
+          section = segments[3] ?? "dashboard";
 
           return {
             type,
@@ -78,7 +77,7 @@ export function getPageInfo(
         }
 
         // For other admin sections
-        section = segments.length > 2 ? segments[2] : "dashboard";
+        section = segments[2] ?? "dashboard";
 
         return {
           type,
@@ -96,8 +95,8 @@ export function getPageInfo(
       }
     } else {
       // Non-admin routes
-      type = segments[0];
-      section = segments.length > 1 ? segments[1] : "default";
+      type = segments[0] ?? "page";
+      section = segments[1] ?? "default";
     }
   } else {
     // Homepage
@@ -128,9 +127,23 @@ export function getPageInfo(
  */
 export function getPageIdentifier(
   path: string,
-  entityId: string | Id<"groups"> | Id<"products"> | null = null,
+  entityId: string | null = null,
 ): string {
-  return getPageInfo(path, entityId as string).identifier;
+  return getPageInfo(path, entityId).identifier;
+}
+
+export function getTenantScopedPageIdentifier(
+  path: string,
+  options: {
+    entityId?: string | null;
+    organizationId?: string | null;
+  } = {},
+): string {
+  const baseIdentifier = getPageIdentifier(path, options.entityId ?? null);
+  if (!options.organizationId) {
+    return baseIdentifier;
+  }
+  return `${options.organizationId}:${baseIdentifier}`;
 }
 
 /**

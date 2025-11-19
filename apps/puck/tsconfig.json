@@ -4,8 +4,11 @@
     "lib": ["ES2022", "dom", "dom.iterable"],
     "jsx": "preserve",
     "baseUrl": ".",
+    "moduleResolution": "bundler",
     "paths": {
-      "~/*": ["./src/*"]
+      "~/*": ["./src/*"],
+      "@convex-config/*": ["../portal/convex/*"],
+      "@acme/puck-config": ["../../packages/puck-config/src/index.tsx"]
     },
     "plugins": [{ "name": "next" }],
     "module": "esnext"

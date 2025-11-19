@@ -2,21 +2,23 @@
 
 import "@measured/puck/puck.css";
 
-import type { Id } from "@/convex/_generated/dataModel";
-import type { Data } from "@measured/puck";
 import React, { Suspense, useEffect, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { Puck } from "@measured/puck";
 import { useMutation, useQuery } from "convex/react";
-import { toast } from "sonner";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { useGroupData } from "~/hooks/useGroupData";
-import useEditorStore from "~/store/useEditorStore";
-import { getPageIdentifier } from "~/utils/pageIdentifier";
+import type { Data } from "@measured/puck";
+import type { Id } from "@/convex/_generated/dataModel";
+import { Puck } from "@measured/puck";
+import { TemplateDialog } from "./templates/TemplateDialog";
+import { api } from "@/convex/_generated/api";
 import { createConfig } from "./config/puck-config";
 import { getTemplateById } from "./templates/groupTemplates";
-import { TemplateDialog } from "./templates/TemplateDialog";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
+import { toast } from "sonner";
+import useEditorStore from "~/store/useEditorStore";
+import { useGroupData } from "~/hooks/useGroupData";
+import { useTenant } from "~/context/TenantContext";
 
 interface PuckEditorProps {
   children: React.ReactNode;
@@ -71,6 +73,8 @@ function PuckEditorInner({ children }: PuckEditorProps) {
 
   // Get group data for dropdown options
   const { groupOptions, currentGroupId, isLoading } = useGroupData();
+  const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant ?? undefined);
 
   // Explicitly get group ID from URL if missing from context
   const groupIdFromUrl = searchParams.get("groupId");
@@ -82,7 +86,10 @@ function PuckEditorInner({ children }: PuckEditorProps) {
   const pathname = usePathname();
 
   // Use the centralized page identifier utility
-  const pageIdentifier = getPageIdentifier(pathname, effectiveGroupId);
+  const pageIdentifier = getTenantScopedPageIdentifier(pathname, {
+    entityId: effectiveGroupId,
+    organizationId,
+  });
 
   // console.log("[PuckEditor] Page identifier:", pageIdentifier);
 

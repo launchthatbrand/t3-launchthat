@@ -1,14 +1,12 @@
 // import "@acme/ui/globals.css";
 import "./globals.css";
 
-import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
-
-import { cn } from "@acme/ui";
-import StandardLayout from "@acme/ui/layout/StandardLayout";
-
 import { Providers } from "./providers";
+import StandardLayout from "@acme/ui/layout/StandardLayout";
+import { cn } from "@acme/ui";
+import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 
 // const fontSans = Geist({
 //   subsets: ["latin"],
