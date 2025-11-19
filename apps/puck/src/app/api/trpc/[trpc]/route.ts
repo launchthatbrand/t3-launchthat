@@ -1,7 +1,4 @@
-import {
-  appRouter,
-  createTRPCContext,
-} from "../../../../../../../packages/api/dist";
+import { appRouter, createTRPCContext } from "@acme/api";
 
 import { auth } from "@acme/auth";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
