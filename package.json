@@ -8,7 +8,7 @@
   "packageManager": "pnpm@10.6.3",
   "scripts": {
     "dev:puck": "turbo watch dev -F @acme/puck...",
-    "dev:portal": "turbo watch dev -F @acme/portal... -F @acme/puck...",
+    "dev:portal": "turbo watch dev -F t3-launchthat-portal... -F t3-launchthat-puck...",
     "dev:payload": "turbo watch dev -F @acme/payload...",
     "dev:inventory": "turbo watch dev -F @acme/inventory...",
     "build": "turbo run build",
