@@ -7,15 +7,20 @@
     ".": {
       "types": "./src/index.tsx",
       "default": "./src/index.tsx"
+    },
+    "./components": {
+      "types": "./src/components/index.tsx",
+      "default": "./src/components/index.tsx"
     }
   },
   "dependencies": {
-    "@measured/puck": "^0.19.0"
+    "@measured/puck": "^0.20.2"
   },
   "devDependencies": {
     "@acme/eslint-config": "workspace:*",
     "@acme/prettier-config": "workspace:*",
     "@acme/tsconfig": "workspace:*",
+    "@acme/ui": "workspace:*",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:"

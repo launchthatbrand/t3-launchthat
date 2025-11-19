@@ -3,6 +3,14 @@ import { withMicrofrontends } from "@vercel/microfrontends/next/config";
 import { withVercelToolbar } from "@vercel/toolbar/plugins/next";
 
 const nextConfig: NextConfig = {
+  /** Enables hot reloading for local packages without a build step */
+  transpilePackages: [
+    "@acme/api",
+    "@acme/auth",
+    "@acme/db",
+    "@acme/ui",
+    "@acme/validators",
+  ],
   reactStrictMode: true,
   eslint: {
     ignoreDuringBuilds: true,
@@ -18,6 +26,20 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  allowedDevOrigins: [
+    "localhost:3004",
+    "127.0.0.1:3004",
+    "*.localhost:3004",
+    "*.localhost",
+    "*.localhost:3024",
+    "*.127.0.0.1:3004",
+    "launchthat.local:3004",
+    "*.launchthat.local:3004",
+    "*.launchthat.local:3000",
+    "launchthat.local:3000",
+    "*.launchthat.local",
+    "launchthat.local",
+  ],
 };
 
 export default withMicrofrontends(nextConfig, { debug: true });
@@ -30,40 +52,40 @@ export default withMicrofrontends(nextConfig, { debug: true });
 
 // /** @type {import("next").NextConfig} */
 // const config = {
-//   /** Enables hot reloading for local packages without a build step */
-//   transpilePackages: [
-//     "@acme/api",
-//     "@acme/auth",
-//     "@acme/db",
-//     "@acme/ui",
-//     "@acme/validators",
-//   ],
+/** Enables hot reloading for local packages without a build step */
+// transpilePackages: [
+//   "@acme/api",
+//   "@acme/auth",
+//   "@acme/db",
+//   "@acme/ui",
+//   "@acme/validators",
+// ],
 
-//   /** We already do linting and typechecking as separate tasks in CI */
-//   eslint: { ignoreDuringBuilds: true },
-//   typescript: { ignoreBuildErrors: true },
-//   images: {
-//     remotePatterns: [
-//       {
-//         protocol: "https",
-//         hostname: "*",
-//       },
-//     ],
-//   },
-
-//   allowedDevOrigins: [
-//     "localhost:3004",
-//     "127.0.0.1:3004",
-//     "*.localhost:3004",
-//     "*.localhost",
-//     "*.127.0.0.1:3004",
-//     "launchthat.local:3004",
-//     "*.launchthat.local:3004",
-//     "*.launchthat.local:3000",
-//     "launchthat.local:3000",
-//     "*.launchthat.local",
-//     "launchthat.local",
+// /** We already do linting and typechecking as separate tasks in CI */
+// eslint: { ignoreDuringBuilds: true },
+// typescript: { ignoreBuildErrors: true },
+// images: {
+//   remotePatterns: [
+//     {
+//       protocol: "https",
+//       hostname: "*",
+//     },
 //   ],
+// },
+
+// allowedDevOrigins: [
+//   "localhost:3004",
+//   "127.0.0.1:3004",
+//   "*.localhost:3004",
+//   "*.localhost",
+//   "*.127.0.0.1:3004",
+//   "launchthat.local:3004",
+//   "*.launchthat.local:3004",
+//   "*.launchthat.local:3000",
+//   "launchthat.local:3000",
+//   "*.launchthat.local",
+//   "launchthat.local",
+// ],
 
 //   // Add headers configuration to allow iframe embedding
 //   async headers() {

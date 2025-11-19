@@ -9,6 +9,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Button } from "@acme/ui/button";
 import type { Data } from "@measured/puck";
 import { Puck } from "@measured/puck";
+import { SearchableDrawer } from "~/app/_components/SearchableDrawer";
 import { Skeleton } from "@acme/ui";
 import { api } from "../../../../../portal/convexApi1763516584458";
 import { puckConfig } from "@acme/puck-config";
@@ -132,6 +133,9 @@ export default function EditPage() {
           config={puckConfig}
           data={initialData}
           onPublish={handlePublish}
+          overrides={{
+            drawer: SearchableDrawer,
+          }}
         />
       </section>
     </main>

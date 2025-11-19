@@ -7,6 +7,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
+      "@/core/lib/*": ["src/core/lib/*"],
       "@acme/puck-config/*": ["src/*"]
     }
   },

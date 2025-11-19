@@ -22,7 +22,7 @@
     "format:fix": "turbo run format --continue -- --write --cache --cache-location .cache/.prettiercache",
     "lint": "turbo run lint --continue -- --cache --cache-location .cache/.eslintcache",
     "lint:fix": "turbo run lint --continue -- --fix --cache --cache-location .cache/.eslintcache",
-    "lint:ws": "pnpm dlx sherif@latest",
+    "lint:ws": "pnpm dlx sherif@latest -f",
     "postinstall": "pnpm lint:ws",
     "typecheck": "turbo run typecheck",
     "ui-add": "turbo run ui-add",
@@ -35,14 +35,12 @@
     "@swc/jest": "0.2.37",
     "@turbo/gen": "^2.4.4",
     "@types/d3-hierarchy": "^3.1.7",
+    "convex-helpers": "^0.1.95",
+    "d3-hierarchy": "^3.1.2",
     "dependency-cruiser": "^12.10.0",
     "prettier": "catalog:",
     "turbo": "^2.4.4",
     "typescript": "catalog:"
   },
-  "prettier": "@acme/prettier-config",
-  "dependencies": {
-    "convex-helpers": "^0.1.95",
-    "d3-hierarchy": "^3.1.2"
-  }
+  "prettier": "@acme/prettier-config"
 }

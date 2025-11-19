@@ -59,13 +59,6 @@ catalogs:
 importers:
 
   .:
-    dependencies:
-      convex-helpers:
-        specifier: ^0.1.95
-        version: 0.1.95(convex@1.23.0(@clerk/clerk-react@5.30.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)(typescript@5.8.2)(zod@3.24.2)
-      d3-hierarchy:
-        specifier: ^3.1.2
-        version: 3.1.2
     devDependencies:
       '@acme/prettier-config':
         specifier: workspace:*
@@ -85,6 +78,12 @@ importers:
       '@types/d3-hierarchy':
         specifier: ^3.1.7
         version: 3.1.7
+      convex-helpers:
+        specifier: ^0.1.95
+        version: 0.1.95(convex@1.23.0(@clerk/clerk-react@5.30.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)(typescript@5.8.2)(zod@3.24.2)
+      d3-hierarchy:
+        specifier: ^3.1.2
+        version: 3.1.2
       dependency-cruiser:
         specifier: ^12.10.0
         version: 12.12.2
@@ -746,8 +745,8 @@ importers:
         specifier: ^0.31.2
         version: 0.31.2
       '@measured/puck':
-        specifier: ^0.19.0
-        version: 0.19.0(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(use-sync-external-store@1.5.0(react@19.0.0))
+        specifier: ^0.20.2
+        version: 0.20.2(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(use-sync-external-store@1.5.0(react@19.0.0))
       '@radix-ui/react-checkbox':
         specifier: ^1.2.3
         version: 1.2.3(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -1062,8 +1061,8 @@ importers:
         specifier: ^5.7.3
         version: 5.30.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@measured/puck':
-        specifier: ^0.19.0
-        version: 0.19.0(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(use-sync-external-store@1.5.0(react@19.0.0))
+        specifier: ^0.20.2
+        version: 0.20.2(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(use-sync-external-store@1.5.0(react@19.0.0))
       '@t3-oss/env-nextjs':
         specifier: ^0.12.0
         version: 0.12.0(typescript@5.8.2)(zod@3.24.2)
@@ -2007,8 +2006,8 @@ importers:
   packages/puck-config:
     dependencies:
       '@measured/puck':
-        specifier: ^0.19.0
-        version: 0.19.0(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(use-sync-external-store@1.5.0(react@19.0.0))
+        specifier: ^0.20.2
+        version: 0.20.2(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(use-sync-external-store@1.5.0(react@19.0.0))
     devDependencies:
       '@acme/eslint-config':
         specifier: workspace:*
@@ -2019,6 +2018,9 @@ importers:
       '@acme/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@acme/ui':
+        specifier: workspace:*
+        version: link:../ui
       eslint:
         specifier: 'catalog:'
         version: 9.23.0(jiti@2.4.2)
@@ -5085,8 +5087,8 @@ packages:
     peerDependencies:
       react: '>=16'
 
-  '@measured/puck@0.19.0':
-    resolution: {integrity: sha512-Nua5ckIjsQJEBHYUjekNG9Dly2kR+ZHbDueU+IEftxDj3I2faD4FI/+Ba6UtcwWRDly/BZ7s05VyWvRbwcFABA==}
+  '@measured/puck@0.20.2':
+    resolution: {integrity: sha512-/GuzlsGs1T2S3lY9so4GyHpDBlWnC1h/4rkYuelrLNHvacnXBZyn50hvgRhWAqlLn/xOuJvJeuY740Zemxdt3Q==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
 
@@ -20964,7 +20966,7 @@ snapshots:
       '@types/react': 19.0.12
       react: 19.0.0
 
-  '@measured/puck@0.19.0(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(use-sync-external-store@1.5.0(react@19.0.0))':
+  '@measured/puck@0.20.2(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(use-sync-external-store@1.5.0(react@19.0.0))':
     dependencies:
       '@dnd-kit/helpers': 0.1.18
       '@dnd-kit/react': 0.1.18(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
