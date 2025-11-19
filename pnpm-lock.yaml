@@ -139,7 +139,7 @@ importers:
     dependencies:
       '@acme/api':
         specifier: workspace:*
-        version: link:../../packages/api.bak
+        version: link:../../packages/api
       '@acme/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -157,7 +157,7 @@ importers:
         version: 5.1.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@clerk/nextjs':
         specifier: ^6.18.0
-        version: 6.18.0(next@15.2.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 6.18.0(next@15.2.3(@babel/core@7.26.10)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@t3-oss/env-nextjs':
         specifier: ^0.12.0
         version: 0.12.0(typescript@5.8.2)(zod@3.24.2)
@@ -330,7 +330,7 @@ importers:
     devDependencies:
       '@acme/api':
         specifier: workspace:*
-        version: link:../../packages/api.bak
+        version: link:../../packages/api
       '@acme/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint
@@ -375,7 +375,7 @@ importers:
     dependencies:
       '@acme/api':
         specifier: workspace:*
-        version: link:../../packages/api.bak
+        version: link:../../packages/api
       '@acme/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -475,7 +475,7 @@ importers:
     dependencies:
       '@acme/api':
         specifier: workspace:*
-        version: link:../../packages/api.bak
+        version: link:../../packages/api
       '@acme/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -496,7 +496,7 @@ importers:
         version: 5.67.5(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@clerk/nextjs':
         specifier: ^6.18.0
-        version: 6.18.0(next@15.2.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 6.18.0(next@15.2.3(@babel/core@7.26.10)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@t3-oss/env-nextjs':
         specifier: ^0.12.0
         version: 0.12.0(typescript@5.8.2)(zod@3.24.2)
@@ -581,7 +581,7 @@ importers:
     dependencies:
       '@acme/api':
         specifier: workspace:*
-        version: link:../../packages/api.bak
+        version: link:../../packages/api
       '@acme/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -690,7 +690,7 @@ importers:
         version: link:../../packages/validators
       '@clerk/nextjs':
         specifier: ^6.18.0
-        version: 6.18.0(next@15.2.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 6.18.0(next@15.2.3(@babel/core@7.26.10)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@convex-dev/action-cache':
         specifier: ^0.2.10
         version: 0.2.10(convex@1.23.0(@clerk/clerk-react@5.30.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
@@ -834,7 +834,7 @@ importers:
         version: 1.35.6
       '@vercel/microfrontends':
         specifier: ^1.2.4
-        version: 1.5.0(next@15.2.3(@babel/core@7.26.10)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 1.5.0(next@15.2.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@vercel/toolbar':
         specifier: ^0.1.41
         version: 0.1.41(next@15.2.3(@babel/core@7.26.10)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -1081,7 +1081,7 @@ importers:
         version: 11.0.0(@tanstack/react-query@5.69.0(react@19.0.0))(@trpc/client@11.0.0(@trpc/server@11.0.0(typescript@5.8.2))(typescript@5.8.2))(@trpc/server@11.0.0(typescript@5.8.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.8.2)
       '@vercel/microfrontends':
         specifier: ^1.2.4
-        version: 1.5.0(next@15.2.3(@babel/core@7.26.10)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 1.5.0(next@15.2.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       convex:
         specifier: ^1.23.0
         version: 1.23.0(@clerk/clerk-react@5.30.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -1148,7 +1148,7 @@ importers:
     dependencies:
       '@acme/api':
         specifier: workspace:*
-        version: link:../../packages/api.bak
+        version: link:../../packages/api
       '@acme/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -1241,7 +1241,7 @@ importers:
         specifier: 'catalog:'
         version: 5.8.2
 
-  packages/api.bak:
+  packages/api:
     dependencies:
       '@acme/auth':
         specifier: workspace:*
@@ -18995,7 +18995,7 @@ snapshots:
     dependencies:
       '@clerk/types': 4.59.3
 
-  '@clerk/nextjs@6.18.0(next@15.2.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@clerk/nextjs@6.18.0(next@15.2.3(@babel/core@7.26.10)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@clerk/backend': 1.34.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@clerk/clerk-react': 5.30.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -26320,7 +26320,7 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  '@vercel/microfrontends@1.5.0(next@15.2.3(@babel/core@7.26.10)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@vercel/microfrontends@1.5.0(next@15.2.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@next/env': 15.4.0-canary.41
       ajv: 8.17.1
