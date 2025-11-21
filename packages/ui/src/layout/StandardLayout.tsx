@@ -1,10 +1,7 @@
-"use client";
-
-import { cn } from "@acme/ui";
-import { SidebarInset } from "@acme/ui/sidebar";
-
 import AppHeader from "./AppHeader";
 import { AppSidebar } from "./AppSidebar";
+import { SidebarInset } from "@acme/ui/sidebar";
+import { cn } from "@acme/ui";
 
 export default function StandardLayout(props: {
   children?: React.ReactNode;

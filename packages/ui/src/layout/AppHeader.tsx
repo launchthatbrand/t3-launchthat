@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+"use client";
 
-import { cn, Separator } from "@acme/ui";
+import React, { useEffect, useState } from "react";
+import { Separator, cn } from "@acme/ui";
+import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+
+import Link from "next/link";
 import { Logo } from "@acme/ui/general/Logo";
 import { NavUser } from "@acme/ui/general/nav-user";
-import TopNavbar from "@acme/ui/general/TopNavbar";
 import { SidebarTrigger } from "@acme/ui/sidebar";
+import TopNavbar from "@acme/ui/general/TopNavbar";
 
 const SidebarTriggerWrapper = ({ className }: { className?: string }) => {
   // const { isInMonday } = useMondayContext();

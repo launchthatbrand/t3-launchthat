@@ -1,6 +1,3 @@
-import React from "react";
-import { ArrowUpCircleIcon } from "lucide-react";
-
 import {
   Sidebar,
   SidebarContent,
@@ -12,15 +9,17 @@ import {
   SidebarRail,
 } from "@acme/ui/sidebar";
 
+import { ArrowUpCircleIcon } from "lucide-react";
 import { NavMain } from "../general/nav-main";
 import { NavUser } from "../general/NavUser";
+import React from "react";
 
 export function AppSidebar({
   sidebar,
   ...props
 }: React.ComponentProps<typeof Sidebar> & { sidebar: React.ReactNode }) {
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <Sidebar collapsible="offcanvas">
       {sidebar}
       <SidebarRail />
       {/* <SidebarHeader className="h-14 justify-center bg-red-100">

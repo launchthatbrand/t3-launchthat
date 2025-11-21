@@ -5,8 +5,6 @@ import {
 import { notFound, redirect } from "next/navigation";
 
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type { Doc } from "@/convex/_generated/dataModel";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -15,20 +13,22 @@ import type { Data as PuckData } from "@measured/puck";
 import { api } from "@/convex/_generated/api";
 import { fetchQuery } from "convex/nextjs";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
 
 interface PageProps {
-  params: { segments?: string[] };
+  params: Promise<{ segments?: string[] }>;
 }
 
 export const metadata: Metadata = {
   title: "Post",
 };
 
-export default async function FrontendCatchAllPage({ params }: PageProps) {
-  const segments = normalizeSegments(params.segments ?? []);
+export default async function FrontendCatchAllPage(props: PageProps) {
+  const resolvedParams = await props.params;
+  const segments = normalizeSegments(resolvedParams?.segments ?? []);
   const tenant = await getActiveTenantFromHeaders();
-  const organizationId = tenant?._id;
+  const organizationId = getTenantOrganizationId(tenant);
 
   const archiveContext = await resolveArchiveContext(segments, organizationId);
   if (archiveContext) {
