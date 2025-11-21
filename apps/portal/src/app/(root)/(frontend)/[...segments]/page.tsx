@@ -133,8 +133,8 @@ export default async function FrontendCatchAllPage(props: PageProps) {
 
 function normalizeSegments(segments: string[]) {
   return segments
-    .map((segment) => segment.trim())
-    .filter((segment) => segment.length > 0);
+    ?.map((segment) => segment.trim())
+    ?.filter((segment) => segment?.length > 0);
 }
 
 function deriveSlugFromSegments(segments: string[]): string | null {
@@ -211,7 +211,7 @@ function PostDetail({
               Custom Fields
             </h2>
             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-              {customFieldEntries.map((entry) => (
+              {customFieldEntries?.map((entry) => (
                 <div key={entry.key} className="space-y-1">
                   <dt className="text-sm font-medium text-muted-foreground">
                     {entry.label}
@@ -279,7 +279,7 @@ function PostMetaSummary({
 
   return (
     <dl className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-      {details.map((item) => (
+      {details?.map((item) => (
         <div key={item.label}>
           <dt className="sr-only">{item.label}</dt>
           <dd>
@@ -368,7 +368,7 @@ function buildCustomFieldEntries({
 
   const sorted = [...fields].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-  return sorted.map((field) => {
+  return sorted?.map((field) => {
     const defaultValue = coerceFieldDefault(field);
     const metaValue = metaMap.has(field.key)
       ? metaMap.get(field.key)
@@ -541,7 +541,7 @@ function PostArchive({
         </div>
       ) : (
         <section className="grid gap-6 md:grid-cols-2">
-          {posts.map((post) => {
+          {posts?.map((post) => {
             const url = getCanonicalPostPath(post, postType, true);
             return (
               <article
