@@ -1,1 +1,1 @@
-export { createConfig, puckConfig } from "@acme/puck-config";
+export { default as puckConfig } from "@acme/puck-config";
