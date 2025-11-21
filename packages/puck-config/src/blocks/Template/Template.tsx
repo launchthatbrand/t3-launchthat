@@ -15,10 +15,18 @@ export type TemplateProps = {
 export const Template: PuckComponent<TemplateProps> = ({
   children: Children,
 }) => {
+  const canRenderSlot = typeof Children === "function";
+
   return (
     <Section>
-      <Children className={getClassName()} />
-    </Section>
+      {canRenderSlot ? (
+        <Children className={getClassName()} />
+      ) : (
+        <div className={getClassName("empty")}>
+          Select a template to see content.
+        </div>
+      )}
+  </Section>
   );
 };
 

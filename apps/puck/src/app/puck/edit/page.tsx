@@ -2,13 +2,13 @@
 
 import "@measured/puck/puck.css";
 
+import { AutoField, FieldLabel, Puck } from "@measured/puck";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
 import type { Data } from "@measured/puck";
-import { Puck } from "@measured/puck";
 import { SearchableDrawer } from "~/app/_components/SearchableDrawer";
 import { Skeleton } from "@acme/ui";
 import { api } from "../../../../../portal/convexApi1763516584458";
@@ -133,8 +133,28 @@ export default function EditPage() {
           config={puckConfig}
           data={initialData}
           onPublish={handlePublish}
+        
+          fieldTransforms={{
+            userField: ({ value }) => value, // Included to check types
+          }}
           overrides={{
             drawer: SearchableDrawer,
+            fieldTypes: {
+              // Example of user field provided via overrides
+              userField: ({ readOnly, field, name, value, onChange }) => (
+                <FieldLabel
+                  label={field.label || name}
+                  readOnly={readOnly}
+                  icon={<Type size={16} />}
+                >
+                  <AutoField
+                    field={{ type: "text" }}
+                    onChange={onChange}
+                    value={value}
+                  />
+                </FieldLabel>
+              ),
+            },
           }}
         />
       </section>

@@ -1,6 +1,7 @@
-import { DefaultRootProps, RootConfig } from "@/core";
-import { Header } from "./components/Header";
+import { DefaultRootProps, RootConfig } from "@measured/puck";
+
 import { Footer } from "./components/Footer";
+import { Header } from "./components/Header";
 
 export type RootProps = DefaultRootProps;
 
@@ -18,10 +19,10 @@ export const Root: RootConfig<{
       <div
         style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
       >
-        <Header editMode={isEditing} />
+        {/* <Header editMode={isEditing} /> */}
         <DropZone zone="default-zone" style={{ flexGrow: 1 }} />
 
-        <Footer>
+        {/* <Footer>
           <Footer.List title="Section">
             <Footer.Link href="#">Label</Footer.Link>
             <Footer.Link href="#">Label</Footer.Link>
@@ -46,7 +47,7 @@ export const Root: RootConfig<{
             <Footer.Link href="#">Label</Footer.Link>
             <Footer.Link href="#">Label</Footer.Link>
           </Footer.List>
-        </Footer>
+        </Footer> */}
       </div>
     );
   },

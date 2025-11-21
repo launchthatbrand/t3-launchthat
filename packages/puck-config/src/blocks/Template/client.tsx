@@ -23,7 +23,7 @@ async function createComponent<T extends keyof Components>(
   component: T,
   props?: Partial<Components[T]>,
 ): Promise<ComponentDataOptionalId<Components[T]>> {
-  const { conf: config } = await import("../../index");
+  const { puckConfig: config } = await import("../../index");
 
   return {
     type: component,
@@ -79,7 +79,7 @@ export const TemplateInternal: ComponentConfig<TemplateProps> = {
 
                   const templateId = generateId();
 
-                  const { conf: config } = await import("../../index");
+                  const { puckConfig: config } = await import("../../index");
 
                   const data = props.children.map((child) =>
                     walkTree(
@@ -192,7 +192,7 @@ export const TemplateInternal: ComponentConfig<TemplateProps> = {
     };
 
     const children =
-      templates[data.props.template]?.data || templates["example_1"].data;
+      templates[data.props.template]?.data || templates["example_1"]?.data;
 
     return {
       ...data,

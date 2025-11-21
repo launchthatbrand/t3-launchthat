@@ -2,15 +2,16 @@ import { Button } from "./blocks/Button";
 import { Card } from "./blocks/Card";
 import { Flex } from "./blocks/Flex";
 import { Grid } from "./blocks/Grid";
+import { Heading } from "./blocks/Heading";
 import { Hero } from "./blocks/Hero";
 import { Logos } from "./blocks/Logos";
+import Root from "./root";
 import { Space } from "./blocks/Space";
 import { Stats } from "./blocks/Stats";
 import { Template } from "./blocks/Template";
 import { Text } from "./blocks/Text";
-import { initialData } from "./initial-data";
-import Root from "./root";
 import { UserConfig } from "./types";
+import { initialData } from "./initial-data";
 
 // We avoid the name config as next gets confused
 export const puckConfig: UserConfig = {
@@ -36,6 +37,7 @@ export const puckConfig: UserConfig = {
     Card,
     Grid,
     Hero,
+    Heading,
     Flex,
     Logos,
     Stats,
