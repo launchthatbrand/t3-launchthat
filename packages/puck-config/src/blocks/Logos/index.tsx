@@ -1,9 +1,9 @@
+import { ComponentConfig } from "@measured/puck";
 /* eslint-disable @next/next/no-img-element */
 import React from "react";
-import { ComponentConfig } from "@/core";
-import styles from "./styles.module.css";
-import { getClassNameFactory } from "@/core/lib";
 import { Section } from "../../components/Section";
+import { getClassNameFactory } from "@/core/lib";
+import styles from "./styles.module.css";
 
 const getClassName = getClassNameFactory("Logos", styles);
 

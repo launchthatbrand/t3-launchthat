@@ -1,9 +1,10 @@
-import React from "react";
-import { ComponentConfig, Slot } from "@/core/types";
-import styles from "./styles.module.css";
-import { getClassNameFactory } from "@/core/lib";
-import { Section } from "../../components/Section";
+import { ComponentConfig, Slot } from "@measured/puck";
 import { WithLayout, withLayout } from "../../components/Layout";
+
+import React from "react";
+import { Section } from "../../components/Section";
+import { getClassNameFactory } from "@/core/lib";
+import styles from "./styles.module.css";
 
 const getClassName = getClassNameFactory("Flex", styles);
 

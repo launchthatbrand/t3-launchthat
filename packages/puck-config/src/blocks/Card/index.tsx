@@ -1,11 +1,12 @@
 /* eslint-disable @next/next/no-img-element */
 import React, { ReactElement } from "react";
-import { ComponentConfig } from "@/core/types";
-import styles from "./styles.module.css";
-import { getClassNameFactory } from "@/core/lib";
+import { WithLayout, withLayout } from "../../components/Layout";
+
+import { ComponentConfig } from "@measured/puck";
 import dynamic from "next/dynamic";
 import dynamicIconImports from "lucide-react/dynamicIconImports";
-import { withLayout, WithLayout } from "../../components/Layout";
+import { getClassNameFactory } from "@/core/lib";
+import styles from "./styles.module.css";
 
 const getClassName = getClassNameFactory("Card", styles);
 

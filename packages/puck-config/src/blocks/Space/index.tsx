@@ -1,9 +1,7 @@
+import { ComponentConfig } from "@measured/puck";
 import React from "react";
-
-import { ComponentConfig } from "@/core";
-import { spacingOptions } from "../../options";
 import { getClassNameFactory } from "@/core/lib";
-
+import { spacingOptions } from "../../options";
 import styles from "./styles.module.css";
 
 const getClassName = getClassNameFactory("Space", styles);
