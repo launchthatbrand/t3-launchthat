@@ -1,21 +1,11 @@
 "use client";
 
-import { SignInButton, useClerk, useSession } from "@clerk/nextjs";
-import {
-  BadgeCheck,
-  Bell,
-  ChevronsUpDown,
-  CreditCard,
-  LogOut,
-  Sparkles,
-} from "lucide-react";
-
-import { cn } from "@acme/ui";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "@acme/ui/components/avatar";
+import { ChevronsUpDown, LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,27 +22,59 @@ import {
   useSidebar,
 } from "@acme/ui/sidebar";
 
+import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
+import { cn } from "@acme/ui";
+
 interface NavUserProps {
   user?: {
-    name: string;
-    email: string;
-    avatar: string;
-  };
+    name?: string | null;
+    email?: string | null;
+    avatar?: string | null;
+  } | null;
   className?: string;
+  isAuthenticated?: boolean;
+  onSignIn?: () => void;
+  signInLabel?: string;
+  onSignOut?: () => void;
+  menuItems?: {
+    label: string;
+    icon?: LucideIcon;
+    onClick?: () => void;
+  }[];
+  unauthenticatedSlot?: ReactNode;
 }
 
-export function NavUser({ user, className }: NavUserProps = {}) {
+export function NavUser({
+  user,
+  className,
+  isAuthenticated,
+  onSignIn,
+  signInLabel = "Sign In",
+  onSignOut,
+  menuItems,
+  unauthenticatedSlot,
+}: NavUserProps = {}) {
   const { isMobile } = useSidebar();
-  const { session } = useSession();
-  const { signOut } = useClerk();
+  const authenticated = isAuthenticated ?? Boolean(user);
+  const displayName = user?.name ?? "User";
+  const email = user?.email ?? "";
+  const avatar = user?.avatar ?? undefined;
+  const fallbackInitial = displayName.trim().charAt(0) || "U";
 
-  if (!session) {
+  if (!authenticated) {
+    if (unauthenticatedSlot) {
+      return <>{unauthenticatedSlot}</>;
+    }
     return (
-      <SignInButton>
-        <button className="ml-auto flex items-center justify-center rounded-md bg-gradient-to-r from-orange-400 via-pink-500 to-purple-600 px-4 py-1 text-sm font-medium text-white transition-colors hover:from-pink-600 hover:to-purple-600">
-          Sign In
-        </button>
-      </SignInButton>
+      <button
+        className="ml-auto flex items-center justify-center rounded-md bg-gradient-to-r from-orange-400 via-pink-500 to-purple-600 px-4 py-1 text-sm font-medium text-white transition-colors hover:from-pink-600 hover:to-purple-600 disabled:opacity-60"
+        onClick={onSignIn}
+        disabled={!onSignIn}
+        type="button"
+      >
+        {signInLabel}
+      </button>
     );
   }
 
@@ -69,14 +91,14 @@ export function NavUser({ user, className }: NavUserProps = {}) {
               )}
             >
               <Avatar className="border-gradient-to-r h-8 w-8 rounded-lg border-2 from-pink-500 to-purple-500">
-                <AvatarImage src={session.user.imageUrl} />
+                <AvatarImage src={avatar} />
                 <AvatarFallback className="bg-gradient-to-r from-pink-500 to-purple-500">
-                  {session.user.firstName?.[0] ?? "U"}
+                  {fallbackInitial}
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold text-black">
-                  {session.user.fullName ?? session.user.username}
+                  {displayName}
                 </span>
               </div>
               <ChevronsUpDown className="ml-auto size-4 text-black/70" />
@@ -91,36 +113,48 @@ export function NavUser({ user, className }: NavUserProps = {}) {
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 rounded-t-lg bg-gradient-to-r from-pink-500/10 to-purple-500/10 px-3 py-2">
                 <Avatar className="border-gradient-to-r h-8 w-8 rounded-lg border-2 from-pink-500 to-purple-500">
-                  <AvatarImage src={session.user.imageUrl} />
+                  <AvatarImage src={avatar} />
                   <AvatarFallback className="bg-gradient-to-r from-pink-500 to-purple-500">
-                    {session.user.firstName?.[0] || "U"}
+                    {fallbackInitial}
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">
-                    {session.user.fullName || session.user.username}
-                  </span>
-                  <span className="truncate text-xs">
-                    {session.user.emailAddresses[0]?.emailAddress}
-                  </span>
+                  <span className="truncate font-semibold">{displayName}</span>
+                  {email ? (
+                    <span className="truncate text-xs">{email}</span>
+                  ) : null}
                 </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-white/[0.08]" />
-            <DropdownMenuGroup>
-              <DropdownMenuItem className="focus:bg-gradient-to-r focus:from-pink-500/20 focus:to-purple-500/20">
-                <Sparkles className="mr-2 h-4 w-4 text-pink-500" />
-                <span>Upgrade to Pro</span>
+            {menuItems && menuItems.length > 0 ? (
+              <>
+                <DropdownMenuGroup>
+                  {menuItems.map((item) => (
+                    <DropdownMenuItem
+                      key={item.label}
+                      className="focus:bg-gradient-to-r focus:from-pink-500/20 focus:to-purple-500/20"
+                      onClick={item.onClick}
+                    >
+                      {item.icon ? (
+                        <item.icon className="mr-2 h-4 w-4 text-pink-500" />
+                      ) : null}
+                      <span>{item.label}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator className="bg-white/[0.08]" />
+              </>
+            ) : null}
+            {onSignOut ? (
+              <DropdownMenuItem
+                onClick={onSignOut}
+                className="focus:bg-gradient-to-r focus:from-pink-500/20 focus:to-purple-500/20"
+              >
+                <LogOut className="mr-2 h-4 w-4 text-pink-500" />
+                <span>Log out</span>
               </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator className="bg-white/[0.08]" />
-            <DropdownMenuItem
-              onClick={() => signOut()}
-              className="focus:bg-gradient-to-r focus:from-pink-500/20 focus:to-purple-500/20"
-            >
-              <LogOut className="mr-2 h-4 w-4 text-pink-500" />
-              <span>Log out</span>
-            </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

@@ -1,8 +1,7 @@
-import { useAuth } from "@clerk/clerk-react";
-import { useQuery } from "convex/react";
-
 import type { Id } from "../../convex/_generated/dataModel";
 import { api } from "../../convex/_generated/api";
+import { useAuth } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
 
 /**
  * A hook that returns the Convex user object and ID corresponding to the currently logged-in Clerk user.

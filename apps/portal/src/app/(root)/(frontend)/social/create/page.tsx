@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@clerk/clerk-react";
-import { useConvexAuth } from "convex/react";
-import { toast } from "sonner";
-
 import { PostCreator } from "~/components/social/PostCreator";
+import { toast } from "sonner";
+import { useAuth } from "@clerk/nextjs";
+import { useConvexAuth } from "convex/react";
+import { useRouter } from "next/navigation";
 
 export default function CreatePostPage() {
   const router = useRouter();

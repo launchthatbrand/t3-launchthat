@@ -1,9 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useAuth } from "@clerk/clerk-react";
-import { useMutation, useQuery } from "convex/react";
-import { formatDistanceToNow } from "date-fns";
 import {
   AlertCircle,
   ChevronDown,
@@ -17,11 +13,7 @@ import {
   UserMinus,
   X,
 } from "lucide-react";
-import { toast } from "sonner";
-
 import { Avatar, AvatarFallback, AvatarImage } from "@acme/ui/avatar";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,18 +26,25 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@acme/ui/hover-card";
-import { Input } from "@acme/ui/input";
-import { Skeleton } from "@acme/ui/skeleton";
-import { Textarea } from "@acme/ui/textarea";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@acme/ui/tooltip";
+import { useEffect, useRef, useState } from "react";
+import { useMutation, useQuery } from "convex/react";
 
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { Input } from "@acme/ui/input";
+import { Skeleton } from "@acme/ui/skeleton";
+import { Textarea } from "@acme/ui/textarea";
 import { api } from "../../../convex/_generated/api";
+import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
+import { useAuth } from "@clerk/nextjs";
 
 // Sorting options for comments
 type SortOption = "newest" | "oldest" | "popular";

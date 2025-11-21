@@ -15,7 +15,9 @@
   },
   "dependencies": {
     "@measured/puck": "^0.20.2",
-    "lucide-react": "^0.503.0"
+    "classnames": "^2.5.1",
+    "lucide-react": "^0.503.0",
+    "uuid": "10.0.0"
   },
   "devDependencies": {
     "@acme/eslint-config": "workspace:*",

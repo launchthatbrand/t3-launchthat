@@ -2,13 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { Separator, cn } from "@acme/ui";
-import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 import Link from "next/link";
 import { Logo } from "@acme/ui/general/Logo";
-import { NavUser } from "@acme/ui/general/nav-user";
 import { SidebarTrigger } from "@acme/ui/sidebar";
-import TopNavbar from "@acme/ui/general/TopNavbar";
 
 const SidebarTriggerWrapper = ({ className }: { className?: string }) => {
   // const { isInMonday } = useMondayContext();
@@ -48,17 +45,21 @@ const SidebarTriggerWrapper = ({ className }: { className?: string }) => {
   ) : null;
 };
 
+interface AppHeaderProps {
+  appName: string;
+  sidebarToggle: boolean;
+  className?: string;
+  image?: string;
+  rightSlot?: React.ReactNode;
+}
+
 function AppHeader({
   appName,
   sidebarToggle,
   className,
   image,
-}: {
-  appName: string;
-  sidebarToggle: boolean;
-  className?: string;
-  image?: string;
-}) {
+  rightSlot,
+}: AppHeaderProps) {
   return (
     // <header
     //   className={cn(
@@ -85,7 +86,12 @@ function AppHeader({
     //       </SignedIn> */}
     //   </div>
     // </header>
-    <header className="group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 flex h-14 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear">
+    <header
+      className={cn(
+        "group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 flex h-14 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear",
+        className,
+      )}
+    >
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         {sidebarToggle ? <SidebarTriggerWrapper className="-ml-1" /> : null}
         <Separator
@@ -96,13 +102,7 @@ function AppHeader({
           <Link href="/" className="flex items-center gap-2">
             <Logo appName={appName} image={image} />
           </Link>
-          <NavUser className="!ml-auto" />
-          {/* <SignedOut>
-            <SignInButton />
-          </SignedOut> */}
-          {/* <SignedIn>
-            <UserButton />
-          </SignedIn> */}
+          <div className="ml-auto flex items-center gap-2">{rightSlot}</div>
         </div>
       </div>
     </header>

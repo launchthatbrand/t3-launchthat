@@ -1,20 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { useAuth } from "@clerk/clerk-react";
-import { useQuery } from "convex/react";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { HashIcon, SearchIcon, TrendingUp } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { TopicCard, TopicCardSkeleton } from "./TopicCard";
 
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { Input } from "@acme/ui/input";
 import { Skeleton } from "@acme/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-
-import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
+import { useAuth } from "@clerk/nextjs";
 import { useConvexUser } from "../../hooks/useConvexUser";
-import { TopicCard, TopicCardSkeleton } from "./TopicCard";
+import { useQuery } from "convex/react";
+import { useState } from "react";
 
 // Define the pagination response type
 interface PaginationResponse<T> {

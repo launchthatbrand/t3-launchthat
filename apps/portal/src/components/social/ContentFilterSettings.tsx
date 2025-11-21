@@ -1,13 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAuth } from "@clerk/clerk-react";
-import { useMutation } from "convex/react";
-import { AlertCircle, Save, ShieldAlert } from "lucide-react";
-import { toast } from "sonner";
-
 import { Alert, AlertDescription, AlertTitle } from "@acme/ui/alert";
-import { Button } from "@acme/ui/button";
+import { AlertCircle, Save, ShieldAlert } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -16,15 +10,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { useEffect, useState } from "react";
+
+import { Button } from "@acme/ui/button";
 import { Checkbox } from "@acme/ui/checkbox";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { Label } from "@acme/ui/label";
 import { Separator } from "@acme/ui/separator";
 import { Slider } from "@acme/ui/slider";
 import { Switch } from "@acme/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-
-import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
+import { toast } from "sonner";
+import { useAuth } from "@clerk/nextjs";
+import { useMutation } from "convex/react";
 
 export interface ContentFilterSettingsProps {
   className?: string;

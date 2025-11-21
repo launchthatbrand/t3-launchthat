@@ -1,17 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Editor } from "@/components/blocks/editor-x/editor";
-import { useAuth } from "@clerk/clerk-react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "convex/react";
 import { Calendar, Loader2, Send } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { z } from "zod";
-
-import type { SerializedEditorState } from "@acme/ui/components/blocks/editor-00";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -27,16 +16,26 @@ import {
   FormMessage,
 } from "@acme/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-
-import type { Id } from "../../../../convex/_generated/dataModel";
-import type { MediaItem } from "./MediaUpload";
 import type {
   Visibility,
   ModuleType as VisibilitySelectorModuleType,
 } from "./VisibilitySelector";
-import { api } from "../../../../convex/_generated/api";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+
+import { Button } from "@acme/ui/button";
+import { Editor } from "@/components/blocks/editor-x/editor";
+import type { Id } from "../../../../convex/_generated/dataModel";
+import type { MediaItem } from "./MediaUpload";
 import { MediaUpload } from "./MediaUpload";
+import type { SerializedEditorState } from "@acme/ui/components/blocks/editor-00";
 import { VisibilitySelector } from "./VisibilitySelector";
+import { api } from "../../../../convex/_generated/api";
+import { toast } from "sonner";
+import { useAuth } from "@clerk/nextjs";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 // Form validation schema
 const postFormSchema = z.object({

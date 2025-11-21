@@ -1,8 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 import {
   Breadcrumb,
@@ -12,7 +10,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@acme/ui/breadcrumb";
-import AppHeader from "@acme/ui/layout/AppHeader";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -22,6 +19,11 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@acme/ui/navigation-menu";
+
+import AppHeader from "@acme/ui/layout/AppHeader";
+import Link from "next/link";
+import { PortalNavUser } from "~/components/auth/PortalNavUser";
+import { usePathname } from "next/navigation";
 
 export default function HeaderLayout({
   children: _children,
@@ -46,6 +48,7 @@ const TopHeader = () => {
       appName="WallStreet Academy"
       sidebarToggle={true}
       image="https://app.wsatraining.com/wp-content/uploads/2018/03/wsa_logo-01.png"
+      rightSlot={<PortalNavUser />}
     />
   );
 };

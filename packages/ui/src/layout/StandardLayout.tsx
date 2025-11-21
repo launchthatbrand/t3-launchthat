@@ -12,6 +12,7 @@ export default function StandardLayout(props: {
   header?: React.ReactNode;
   sidebarVariant?: "inset" | "floating" | "sidebar";
   showSidebar?: boolean;
+  headerRightSlot?: React.ReactNode;
 }) {
   const sidebarToggle = props.sidebar !== undefined;
   // If showSidebar is explicitly set to false, hide the sidebar
@@ -38,6 +39,7 @@ export default function StandardLayout(props: {
               appName={props.appName}
               sidebarToggle={sidebarToggle}
               className=""
+              rightSlot={props.headerRightSlot}
             />
           )}
           <div className="flex flex-1 flex-col">

@@ -1,10 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { useAuth } from "@clerk/clerk-react";
-import { useQuery } from "convex/react";
-
-import { Button } from "@acme/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -21,12 +16,16 @@ import {
   SelectValue,
 } from "@acme/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-import { Textarea } from "@acme/ui/textarea";
 
+import { Button } from "@acme/ui/button";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { api } from "../../../convex/_generated/api";
-import { useContentSharing } from "../../hooks/useContentSharing";
 import { SharedContentCard } from "./SharedContentCard";
+import { Textarea } from "@acme/ui/textarea";
+import { api } from "../../../convex/_generated/api";
+import { useAuth } from "@clerk/nextjs";
+import { useContentSharing } from "../../hooks/useContentSharing";
+import { useQuery } from "convex/react";
+import { useState } from "react";
 
 export interface ContentToShare {
   id: string;

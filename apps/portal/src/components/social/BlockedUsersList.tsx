@@ -1,14 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAuth } from "@clerk/clerk-react";
-import { useMutation } from "convex/react";
-import { AlertCircle, Search, Trash2, UserX } from "lucide-react";
-import { toast } from "sonner";
-
 import { Alert, AlertDescription, AlertTitle } from "@acme/ui/alert";
+import { AlertCircle, Search, Trash2, UserX } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@acme/ui/avatar";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -24,12 +18,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@acme/ui/dialog";
+import { useEffect, useState } from "react";
+
+import { Button } from "@acme/ui/button";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { Input } from "@acme/ui/input";
 import { ScrollArea } from "@acme/ui/scroll-area";
 import { Separator } from "@acme/ui/separator";
-
-import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
+import { toast } from "sonner";
+import { useAuth } from "@clerk/nextjs";
+import { useMutation } from "convex/react";
 
 export interface BlockedUsersListProps {
   className?: string;

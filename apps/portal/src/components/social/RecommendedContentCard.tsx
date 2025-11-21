@@ -1,12 +1,7 @@
 "use client";
 
-import { useAuth } from "@clerk/clerk-react";
-import { useMutation } from "convex/react";
-import { Info, ThumbsDown, ThumbsUp, XCircle } from "lucide-react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@acme/ui/card";
+import { Info, ThumbsDown, ThumbsUp, XCircle } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -14,11 +9,15 @@ import {
   TooltipTrigger,
 } from "@acme/ui/tooltip";
 
-import type { Id } from "../../../convex/_generated/dataModel";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import type { FeedItemWithCounts } from "./FeedList";
-import { api } from "../../../convex/_generated/api";
-import { useConvexUser } from "../../hooks/useConvexUser";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { PostCard } from "./PostCard";
+import { api } from "../../../convex/_generated/api";
+import { useAuth } from "@clerk/nextjs";
+import { useConvexUser } from "../../hooks/useConvexUser";
+import { useMutation } from "convex/react";
 
 interface RecommendedContentCardProps {
   recommendation: FeedItemWithCounts & {

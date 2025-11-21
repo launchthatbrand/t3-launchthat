@@ -1,19 +1,18 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import Link from "next/link";
-import { useAuth } from "@clerk/clerk-react";
-import { useConvexAuth } from "convex/react";
-import { Plus } from "lucide-react";
-
-import { Button } from "@acme/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
-import type { Id } from "../../../../../../convex/_generated/dataModel";
-import type { FilterValue } from "~/components/shared/EntityList/types";
-import type { FeedType } from "~/components/social";
-import { FeedStream } from "~/components/social";
+import { Button } from "@acme/ui/button";
 import { FeedFilters } from "~/components/social/FeedFilters";
+import { FeedStream } from "~/components/social";
+import type { FeedType } from "~/components/social";
+import type { FilterValue } from "~/components/shared/EntityList/types";
+import type { Id } from "../../../../../../convex/_generated/dataModel";
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { useAuth } from "@clerk/nextjs";
+import { useConvexAuth } from "convex/react";
 
 // Wrapper component for FeedFilters to handle Suspense
 function FeedFiltersWrapper({

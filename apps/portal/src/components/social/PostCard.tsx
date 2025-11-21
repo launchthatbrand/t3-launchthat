@@ -1,11 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@clerk/clerk-react";
-import { useMutation, useQuery } from "convex/react";
-import { formatDistanceToNow } from "date-fns";
+import { Avatar, AvatarFallback, AvatarImage } from "@acme/ui/avatar";
 import {
   Bookmark,
   BookmarkCheck,
@@ -26,11 +21,6 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { toast } from "sonner";
-
-import { Avatar, AvatarFallback, AvatarImage } from "@acme/ui/avatar";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@acme/ui/card";
 import { Dialog, DialogContent, DialogTrigger } from "@acme/ui/dialog";
 import {
@@ -40,13 +30,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@acme/ui/dropdown-menu";
+import { useEffect, useRef, useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { CommentThread } from "./CommentThread";
+import type { Id } from "../../../convex/_generated/dataModel";
+import Link from "next/link";
+import { ShareButton } from "./ShareButton";
 import { Skeleton } from "@acme/ui/skeleton";
 import { Textarea } from "@acme/ui/textarea";
-
-import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
-import { CommentThread } from "./CommentThread";
-import { ShareButton } from "./ShareButton";
+import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
+import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 export interface PostCardProps {
   post: {

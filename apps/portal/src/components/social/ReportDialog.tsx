@@ -1,13 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useAuth } from "@clerk/clerk-react";
-import { useMutation } from "convex/react";
-import { AlertCircle, Flag } from "lucide-react";
-import { toast } from "sonner";
-
 import { Alert, AlertDescription, AlertTitle } from "@acme/ui/alert";
-import { Button } from "@acme/ui/button";
+import { AlertCircle, Flag } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -25,10 +18,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { Textarea } from "@acme/ui/textarea";
 
+import { Button } from "@acme/ui/button";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { Label } from "@acme/ui/label";
+import { Textarea } from "@acme/ui/textarea";
 import { api } from "../../../convex/_generated/api";
+import { toast } from "sonner";
+import { useAuth } from "@clerk/nextjs";
+import { useMutation } from "convex/react";
+import { useState } from "react";
 
 // Report categories for content moderation
 const REPORT_CATEGORIES = [

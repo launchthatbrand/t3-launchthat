@@ -1,21 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useSignIn } from "@clerk/nextjs";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import * as z from "zod";
 
-import { Button } from "@acme/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@acme/ui/components/card";
+} from "@acme/ui/card";
 import {
   Form,
   FormControl,
@@ -23,23 +16,21 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@acme/ui/components/form";
-import { Input } from "@acme/ui/components/input";
-import { cn } from "@acme/ui/lib/utils";
+} from "@acme/ui/form";
+import { useEffect, useState } from "react";
 
-interface WordPressAuthResponse {
-  email: string;
-  password: string;
-  wordpressToken: string;
-  message?: string;
-}
+import { Button } from "@acme/ui/button";
+import { Input } from "@acme/ui/input";
+import { cn } from "@acme/ui";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(1, "Password is required"),
 });
 
-type FormData = z.infer<typeof formSchema>;
+export type LoginFormValues = z.infer<typeof formSchema>;
 
 export interface SSOProvider {
   id: string;
@@ -54,7 +45,12 @@ export interface LoginFormProps {
   providers?: SSOProvider[];
   title?: string;
   description?: string;
-  onSubmit?: (data: FormData) => Promise<void>;
+  onSubmit?: (data: LoginFormValues) => Promise<void> | void;
+  isSubmitting?: boolean;
+  onForgotPassword?: () => void;
+  onSignUp?: () => void;
+  forgotPasswordLabel?: string;
+  signUpLabel?: string;
 }
 
 export function LoginForm({
@@ -63,14 +59,16 @@ export function LoginForm({
   title = "Welcome back",
   description = "Sign in to your account",
   onSubmit: customOnSubmit,
+  isSubmitting,
+  onForgotPassword,
+  onSignUp,
+  forgotPasswordLabel = "Forgot your password?",
+  signUpLabel = "Sign up",
 }: LoginFormProps) {
-  const { isLoaded, signIn, setActive } = useSignIn();
-  const [isLoading, setIsLoading] = useState(false);
+  const [internalLoading, setInternalLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const router = useRouter();
-  // const { setOpen } = useModal();
 
-  const form = useForm<FormData>({
+  const form = useForm<LoginFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
@@ -78,64 +76,25 @@ export function LoginForm({
     },
   });
 
-  // Prevent hydration issues
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted || !isLoaded) {
+  if (!mounted) {
     return null;
   }
 
-  async function onSubmit(data: FormData) {
-    setIsLoading(true);
+  async function handleSubmit(data: LoginFormValues) {
+    if (!customOnSubmit) return;
+    setInternalLoading(true);
     try {
-      if (customOnSubmit) {
-        await customOnSubmit(data);
-      } else if (signIn) {
-        // Default WordPress + Clerk authentication logic
-        const wpResponse = await fetch("/api/auth", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            username: data.email,
-            password: data.password,
-          }),
-        });
-
-        const wpResult = (await wpResponse.json()) as WordPressAuthResponse;
-        console.log("WP Result:", wpResult);
-
-        if (!wpResponse.ok) {
-          throw new Error(wpResult.message ?? "Failed to login");
-        }
-
-        const result = await signIn.create({
-          identifier: wpResult.email,
-          password: wpResult.password,
-        });
-
-        if (result.status === "complete") {
-          await setActive({ session: result.createdSessionId });
-          router.push("/");
-        } else {
-          console.error("Unexpected Clerk response:", result);
-          throw new Error("Failed to complete login");
-        }
-      }
-    } catch (err) {
-      console.error("Login error:", err);
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again.";
-      toast(errorMessage);
+      await customOnSubmit(data);
     } finally {
-      setIsLoading(false);
+      setInternalLoading(false);
     }
   }
+
+  const pending = isSubmitting ?? internalLoading;
 
   return (
     <Card className={cn("w-full", className)}>
@@ -152,6 +111,7 @@ export function LoginForm({
                   key={provider.id}
                   variant="outline"
                   className="w-full"
+                  disabled={pending}
                   onClick={() => {
                     if (provider.signIn) {
                       const result = provider.signIn();
@@ -174,7 +134,10 @@ export function LoginForm({
           </>
         )}
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="email"
@@ -185,7 +148,7 @@ export function LoginForm({
                     <Input
                       placeholder="m@example.com"
                       type="email"
-                      disabled={isLoading}
+                      disabled={pending}
                       {...field}
                     />
                   </FormControl>
@@ -200,41 +163,41 @@ export function LoginForm({
                 <FormItem>
                   <div className="flex items-center justify-between">
                     <FormLabel>Password</FormLabel>
-                    <a
-                      href="#"
-                      className="text-sm underline-offset-4 hover:underline"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        router.push("/reset-password");
-                      }}
-                    >
-                      Forgot your password?
-                    </a>
+                    {onForgotPassword ? (
+                      <button
+                        type="button"
+                        className="text-sm underline-offset-4 hover:underline"
+                        onClick={onForgotPassword}
+                      >
+                        {forgotPasswordLabel}
+                      </button>
+                    ) : null}
                   </div>
                   <FormControl>
-                    <Input type="password" disabled={isLoading} {...field} />
+                    <Input type="password" disabled={pending} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Login"}
+            <Button type="submit" className="w-full" disabled={pending}>
+              {pending ? "Signing in..." : "Login"}
             </Button>
           </form>
         </Form>
         <div className="text-center text-sm">
           Don&apos;t have an account?{" "}
-          <a
-            href="#"
-            className="underline underline-offset-4"
-            onClick={(e) => {
-              e.preventDefault();
-              router.push("/sign-up");
-            }}
-          >
-            Sign up
-          </a>
+          {onSignUp ? (
+            <button
+              type="button"
+              className="underline underline-offset-4"
+              onClick={onSignUp}
+            >
+              {signUpLabel}
+            </button>
+          ) : (
+            <span className="underline underline-offset-4">{signUpLabel}</span>
+          )}
         </div>
       </CardContent>
     </Card>
