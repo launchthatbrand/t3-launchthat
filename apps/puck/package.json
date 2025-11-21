@@ -29,9 +29,11 @@
     "@vercel/microfrontends": "^1.2.4",
     "convex": "^1.23.0",
     "geist": "^1.5.1",
+    "lucide-react": "^0.503.0",
     "next": "15.2.3",
     "react": "catalog:react19",
     "react-dom": "catalog:react19",
+    "sonner": "^2.0.1",
     "superjson": "2.2.2",
     "zod": "catalog:"
   },
