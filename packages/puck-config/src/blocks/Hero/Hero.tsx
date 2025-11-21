@@ -2,7 +2,7 @@ import { PuckComponent, Slot } from "@measured/puck";
 /* eslint-disable @next/next/no-img-element */
 import React, { ReactNode } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@acme/ui/button";
 import { Section } from "../../components/Section";
 import { getClassNameFactory } from "../../core/lib";
 import styles from "./styles.module.css";
@@ -68,7 +68,6 @@ export const Hero: PuckComponent<HeroProps> = ({
                 key={i}
                 href={button.href}
                 variant={button.variant}
-                size="large"
                 tabIndex={puck.isEditing ? -1 : undefined}
               >
                 {button.label}

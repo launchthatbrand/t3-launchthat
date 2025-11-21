@@ -2,7 +2,7 @@
 import React, { Children, isValidElement, useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
 
-import { Input } from "@acme/puck-config/components/ui/input";
+import { Input } from "@acme/ui";
 import { cn } from "@acme/puck-config/lib/utils";
 
 /**
