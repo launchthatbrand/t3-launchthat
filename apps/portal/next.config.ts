@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
     "@acme/db",
     "@acme/ui",
     "@acme/validators",
+    "@acme/puck-config",
   ],
   reactStrictMode: true,
   eslint: {

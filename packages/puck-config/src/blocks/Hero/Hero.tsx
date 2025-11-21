@@ -4,7 +4,7 @@ import React, { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Section } from "../../components/Section";
-import { getClassNameFactory } from "@/core/lib";
+import { getClassNameFactory } from "../../core/lib";
 import styles from "./styles.module.css";
 
 const getClassName = getClassNameFactory("Hero", styles);

@@ -3,7 +3,7 @@ import { WithLayout, withLayout } from "../../components/Layout";
 
 import React from "react";
 import { Section } from "../../components/Section";
-import { getClassNameFactory } from "@/core/lib";
+import { getClassNameFactory } from "../../core/lib";
 import styles from "./styles.module.css";
 
 const getClassName = getClassNameFactory("Flex", styles);

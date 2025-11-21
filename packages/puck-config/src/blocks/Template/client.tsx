@@ -1,6 +1,5 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import React, { useState } from "react";
-import { generateId } from "@/core/lib/generate-id";
 import {
   AutoField,
   Button,
@@ -13,6 +12,7 @@ import {
 } from "@measured/puck";
 
 import { withLayout } from "../../components/Layout";
+import { generateId } from "../../core/lib/generate-id";
 import { componentKey } from "../../index";
 import { type Components } from "../../types";
 import TemplateComponent, { TemplateProps } from "./Template";

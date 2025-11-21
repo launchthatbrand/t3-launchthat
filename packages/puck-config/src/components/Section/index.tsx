@@ -1,6 +1,7 @@
-import { CSSProperties, forwardRef, ReactNode } from "react";
+import { CSSProperties, ReactNode, forwardRef } from "react";
+
+import { getClassNameFactory } from "../../core/lib";
 import styles from "./styles.module.css";
-import { getClassNameFactory } from "@/core/lib";
 
 const getClassName = getClassNameFactory("Section", styles);
 
@@ -26,5 +27,5 @@ export const Section = forwardRef<HTMLDivElement, SectionProps>(
         </div>
       </div>
     );
-  }
+  },
 );

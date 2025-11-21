@@ -2,7 +2,7 @@ import { ComponentConfig } from "@measured/puck";
 /* eslint-disable @next/next/no-img-element */
 import React from "react";
 import { Section } from "../../components/Section";
-import { getClassNameFactory } from "@/core/lib";
+import { getClassNameFactory } from "../../core/lib";
 import styles from "./styles.module.css";
 
 const getClassName = getClassNameFactory("Stats", styles);

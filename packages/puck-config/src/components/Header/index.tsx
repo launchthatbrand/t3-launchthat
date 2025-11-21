@@ -1,5 +1,4 @@
-import { getClassNameFactory } from "@/core/lib";
-
+import { getClassNameFactory } from "../../core/lib";
 import styles from "./styles.module.css";
 
 const getClassName = getClassNameFactory("Header", styles);

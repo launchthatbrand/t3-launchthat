@@ -1,11 +1,12 @@
-import { CSSProperties, forwardRef, ReactNode } from "react";
+import { CSSProperties, ReactNode, forwardRef } from "react";
 import {
   ComponentConfig,
   DefaultComponentProps,
   ObjectField,
 } from "@/core/types";
+
+import { getClassNameFactory } from "../../core/lib";
 import { spacingOptions } from "../../options";
-import { getClassNameFactory } from "@/core/lib";
 import styles from "./styles.module.css";
 
 const getClassName = getClassNameFactory("Layout", styles);
@@ -80,7 +81,7 @@ const Layout = forwardRef<HTMLDivElement, LayoutProps>(
         {children}
       </div>
     );
-  }
+  },
 );
 
 Layout.displayName = "Layout";
@@ -88,7 +89,7 @@ Layout.displayName = "Layout";
 export { Layout };
 
 export function withLayout<
-  ThisComponentConfig extends ComponentConfig<any> = ComponentConfig
+  ThisComponentConfig extends ComponentConfig<any> = ComponentConfig,
 >(componentConfig: ThisComponentConfig): ThisComponentConfig {
   return {
     ...componentConfig,

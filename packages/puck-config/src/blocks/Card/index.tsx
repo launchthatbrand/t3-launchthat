@@ -5,7 +5,7 @@ import { WithLayout, withLayout } from "../../components/Layout";
 import { ComponentConfig } from "@measured/puck";
 import dynamic from "next/dynamic";
 import dynamicIconImports from "lucide-react/dynamicIconImports";
-import { getClassNameFactory } from "@/core/lib";
+import { getClassNameFactory } from "../../core/lib";
 import styles from "./styles.module.css";
 
 const getClassName = getClassNameFactory("Card", styles);

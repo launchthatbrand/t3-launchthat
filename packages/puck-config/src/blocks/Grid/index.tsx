@@ -2,7 +2,7 @@ import { ComponentConfig, Slot } from "@measured/puck";
 
 import React from "react";
 import { Section } from "../../components/Section";
-import { getClassNameFactory } from "@/core/lib";
+import { getClassNameFactory } from "../../core/lib";
 import styles from "./styles.module.css";
 import { withLayout } from "../../components/Layout";
 
