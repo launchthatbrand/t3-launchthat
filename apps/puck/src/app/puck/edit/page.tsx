@@ -256,17 +256,7 @@ export default function EditPage() {
 
   return (
     <main className="flex min-h-screen flex-col bg-background">
-      {/* <header className="flex flex-col border-b px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">Puck Visual Builder</p>
-          <h1 className="text-2xl font-semibold">{title}</h1>
-        </div>
-        <div className="mt-4 flex gap-2 lg:mt-0">
-          <Button variant="secondary" onClick={() => window.close()}>
-            Exit Editor
-          </Button>
-        </div>
-      </header> */}
+
 
       <section className="flex-1 overflow-auto">
         <Puck
