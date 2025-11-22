@@ -1,15 +1,5 @@
 "use client";
 
-import React, { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { Doc, Id } from "@/convex/_generated/dataModel";
-import { useUser } from "@clerk/nextjs";
-import { useMutation, useQuery } from "convex/react";
-import { format } from "date-fns";
-import { Calendar, Globe, MapPin, Tag, Users } from "lucide-react";
-import { toast } from "sonner";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,8 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@acme/ui/alert-dialog";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
+import { Calendar, Globe, MapPin, Tag, Users } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -30,10 +19,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Separator } from "@acme/ui/separator";
+import { Doc, Id } from "@/convex/_generated/dataModel";
+import React, { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { useParams, useRouter } from "next/navigation";
 
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 // Import local loading spinner component
 import { LoadingSpinner } from "../../_components/LoadingSpinner";
+import { Separator } from "@acme/ui/separator";
+import { api } from "@/convex/_generated/api";
+import { format } from "date-fns";
+import { toast } from "sonner";
+import { useUser } from "@clerk/nextjs";
 
 export default function EventDetailsPage() {
   const router = useRouter();

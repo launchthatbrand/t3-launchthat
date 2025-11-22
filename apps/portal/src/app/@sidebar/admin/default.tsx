@@ -34,7 +34,9 @@ interface NavItem {
   items?: NavChildItem[];
 }
 
-type GroupedNavItem = NavItem & { group?: "lms" | "postTypes" };
+type GroupedNavItem = NavItem & {
+  group?: "lms" | "postTypes" | "shop" | "helpdesk" | "calendar";
+};
 
 interface TaxonomyNavDefinition {
   slug: string;
@@ -205,12 +207,33 @@ export default function DefaultSidebar() {
           : undefined;
 
       const parentGroup = type.adminMenu?.parent?.toLowerCase();
-      const group: "lms" | "postTypes" =
+      const slugLower = adminSlug?.toLowerCase();
+      let group: GroupedNavItem["group"] = "postTypes";
+      if (
         parentGroup === "lms" ||
-        adminSlug?.toLowerCase().startsWith("lms") ||
-        adminSlug?.toLowerCase() === "lms"
-          ? "lms"
-          : "postTypes";
+        slugLower?.startsWith("lms") ||
+        slugLower === "lms"
+      ) {
+        group = "lms";
+      } else if (
+        parentGroup === "shop" ||
+        slugLower?.startsWith("store") ||
+        slugLower === "shop"
+      ) {
+        group = "shop";
+      } else if (
+        parentGroup === "helpdesk" ||
+        slugLower?.startsWith("helpdesk") ||
+        slugLower === "helpdesk"
+      ) {
+        group = "helpdesk";
+      } else if (
+        parentGroup === "calendar" ||
+        slugLower?.startsWith("calendar") ||
+        slugLower === "calendar"
+      ) {
+        group = "calendar";
+      }
 
       return {
         title: type.adminMenu?.label ?? type.name,
@@ -288,9 +311,27 @@ export default function DefaultSidebar() {
   }
 
   const lmsItems = dynamicItems.filter((item) => item.group === "lms");
-  const postTypeItems = dynamicItems.filter((item) => item.group !== "lms");
+  const shopItems = dynamicItems.filter((item) => item.group === "shop");
+  const helpdeskItems = dynamicItems.filter(
+    (item) => item.group === "helpdesk",
+  );
+  const calendarItems = dynamicItems.filter(
+    (item) => item.group === "calendar",
+  );
+  const postTypeItems = dynamicItems.filter(
+    (item) => item.group !== "lms" && item.group !== "shop",
+  );
   const lmsSettingsItems = pluginSettingsMenus
     .filter((entry) => entry.pluginId === "lms")
+    .map((entry) => entry.item);
+  const shopSettingsItems = pluginSettingsMenus
+    .filter((entry) => entry.pluginId === "commerce")
+    .map((entry) => entry.item);
+  const helpdeskSettingsItems = pluginSettingsMenus
+    .filter((entry) => entry.pluginId === "helpdesk")
+    .map((entry) => entry.item);
+  const calendarSettingsItems = pluginSettingsMenus
+    .filter((entry) => entry.pluginId === "calendar")
     .map((entry) => entry.item);
 
   if (postTypeItems.length > 0 || lmsItems.length > 0) {
@@ -301,6 +342,27 @@ export default function DefaultSidebar() {
         items: [...lmsItems, ...lmsSettingsItems],
       });
     }
+  }
+
+  if (shopItems.length > 0 || shopSettingsItems.length > 0) {
+    sections.push({
+      label: "Shop",
+      items: [...shopItems, ...shopSettingsItems],
+    });
+  }
+
+  if (calendarItems.length > 0 || calendarSettingsItems.length > 0) {
+    sections.push({
+      label: "Campaign Calendar",
+      items: [...calendarItems, ...calendarSettingsItems],
+    });
+  }
+
+  if (helpdeskItems.length > 0 || helpdeskSettingsItems.length > 0) {
+    sections.push({
+      label: "Helpdesk",
+      items: [...helpdeskItems, ...helpdeskSettingsItems],
+    });
   }
 
   if (adminNavItems.length > 0) {

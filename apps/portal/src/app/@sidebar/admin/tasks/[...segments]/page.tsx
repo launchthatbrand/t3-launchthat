@@ -1,9 +1,5 @@
 "use client";
 
-import { useRouter, useSelectedLayoutSegment } from "next/navigation";
-import { api } from "@convex-config/_generated/api";
-import { Doc } from "@convex-config/_generated/dataModel";
-import { useQuery } from "convex/react";
 import {
   AudioWaveform,
   BookOpen,
@@ -24,9 +20,6 @@ import {
   User,
   Users,
 } from "lucide-react";
-
-import { NavMain } from "@acme/ui/general/nav-main";
-import { TeamSwitcher } from "@acme/ui/general/team-switcher";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -35,6 +28,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@acme/ui/sidebar";
+import { useRouter, useSelectedLayoutSegment } from "next/navigation";
+
+import { Doc } from "@convex-config/_generated/dataModel";
+import { NavMain } from "@acme/ui/general/nav-main";
+import { TeamSwitcher } from "@acme/ui/general/team-switcher";
+import { api } from "@convex-config/_generated/api";
+import { useQuery } from "convex/react";
 
 // import { useLearndash } from "../hooks/useLearndash";
 

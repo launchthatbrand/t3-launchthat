@@ -46,28 +46,6 @@ export const navItems = [
   // },
 
   {
-    title: "Campaign Calendar",
-    url: "/admin/calendar",
-    icon: BookOpen,
-    items: [
-      {
-        title: "Create Calendar",
-        url: "/admin/calendar/create",
-        icon: BookOpen,
-      },
-      {
-        title: "Create Event",
-        url: "/admin/calendar/event/create",
-        icon: BookOpen,
-      },
-      {
-        title: "Categories",
-        url: "/admin/calendar/category",
-        icon: BookOpen,
-      },
-    ],
-  },
-  {
     title: "Shop",
     url: "/admin/store",
     icon: User,

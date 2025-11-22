@@ -1,15 +1,5 @@
 "use client";
 
-import React from "react";
-import { useParams, useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-import { useUser } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
-import { format } from "date-fns";
-import { ArrowLeft } from "lucide-react";
-
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -17,9 +7,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-
 import EventForm, { EventFormValues } from "../../../_components/EventForm";
+import { useParams, useRouter } from "next/navigation";
+
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@acme/ui/button";
+import { Id } from "@/convex/_generated/dataModel";
 import { LoadingSpinner } from "../../../_components/LoadingSpinner";
+import React from "react";
+import { api } from "@/convex/_generated/api";
+import { format } from "date-fns";
+import { useQuery } from "convex/react";
+import { useUser } from "@clerk/nextjs";
 
 // Define valid day types
 type DayOfWeek = "MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU";
