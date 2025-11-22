@@ -269,9 +269,10 @@ export default function DefaultSidebar() {
   const [dashboardItem, ...staticNavItems] = typedNavItems;
   const adminNavTitles = new Set([
     "Users",
-    "Settings",
     "Tools",
     "Integrations",
+    "Plugins",
+    "Settings",
   ]);
   const adminNavItems = staticNavItems.filter((item) =>
     adminNavTitles.has(item.title),

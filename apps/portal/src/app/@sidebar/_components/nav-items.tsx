@@ -214,6 +214,11 @@ export const navItems = [
   },
   { title: "Tools", url: "/admin/tools", icon: HammerIcon },
   {
+    title: "Plugins",
+    url: "/admin/plugins",
+    icon: BookOpen,
+  },
+  {
     title: "Integrations",
     url: "/admin/integrations",
     icon: Share2,
@@ -229,11 +234,6 @@ export const navItems = [
       {
         title: "Scenarios",
         url: "/admin/integrations?tab=scenarios",
-      },
-      {
-        title: "Plugins",
-        url: "/admin/integrations/plugins",
-        icon: BookOpen,
       },
       {
         title: "Logs",
