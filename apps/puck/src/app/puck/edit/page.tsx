@@ -265,41 +265,30 @@ export default function EditPage() {
           onPublish={handlePublish}
           onChange={setEditorData}
           plugins={[objectAccordionPlugin]}
-          fieldTransforms={
-            {
-              userField: ({ value }: { value: unknown }) => value,
-            } as any
-          }
+          // fieldTransforms={
+          //   {
+          //     userField: ({ value }: { value: unknown }) => value,
+          //   } as any
+          // }
           overrides={
             {
               drawer: SearchableDrawer,
-              fieldTypes: {
-                userField: ({
-                  readOnly,
-                  field,
-                  name,
-                  value,
-                  onChange,
-                }: {
-                  readOnly?: boolean;
-                  field: { label?: string };
-                  name: string;
-                  value: unknown;
-                  onChange: (next: unknown) => void;
-                }) => (
-                  <FieldLabel
-                    label={field.label || name}
-                    readOnly={readOnly}
-                    icon={<Type size={16} />}
-                  >
-                    <AutoField
-                      field={{ type: "text" }}
-                      onChange={onChange}
-                      value={value}
-                    />
-                  </FieldLabel>
-                ),
-              },
+              // fieldTypes: {
+              //   // Example of user field provided via overrides
+              //   userField: ({ readOnly, field, name, value, onChange }) => (
+              //     <FieldLabel
+              //       label={field.label || name}
+              //       readOnly={readOnly}
+              //       icon={<Type size={16} />}
+              //     >
+              //       <AutoField
+              //         field={{ type: "text" }}
+              //         onChange={onChange}
+              //         value={value}
+              //       />
+              //     </FieldLabel>
+              //   ),
+              // },
             } as any
           }
         />

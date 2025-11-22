@@ -5,7 +5,15 @@ import {
   AdminLayoutMain,
   AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
-import { ArrowLeft, Loader2, PenSquare, Save, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  ExternalLink,
+  Loader2,
+  PenSquare,
+  Pencil,
+  Save,
+  Sparkles,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -41,6 +49,8 @@ import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 import { api } from "@/convex/_generated/api";
 import { formatDistanceToNow } from "date-fns";
+import { getCanonicalPostPath } from "~/lib/postTypes/routing";
+import { getFrontendBaseUrl } from "./permalink";
 import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import { usePostTypeFields } from "../../settings/post-types/_api/postTypes";
@@ -155,10 +165,19 @@ export function AdminSinglePostView({
     ? queriedTab
     : defaultTab;
   const [activeTab, setActiveTab] = useState(normalizedTab);
+  const [isSlugEditing, setIsSlugEditing] = useState(false);
+  const slugInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setActiveTab(normalizedTab);
   }, [normalizedTab]);
+
+  useEffect(() => {
+    if (isSlugEditing) {
+      slugInputRef.current?.focus();
+      slugInputRef.current?.select();
+    }
+  }, [isSlugEditing]);
 
   const { data: postTypeFields = [], isLoading: postTypeFieldsLoading } =
     usePostTypeFields(slug, true);
@@ -180,6 +199,26 @@ export function AdminSinglePostView({
       return acc;
     }, {});
   }, [postMeta]);
+
+  const slugPreviewUrl = useMemo(() => {
+    if (!slugValue) {
+      return null;
+    }
+
+    const previewPost = (post
+      ? { ...post, slug: slugValue }
+      : ({
+          _id: slugValue || "preview-id",
+          slug: slugValue,
+        } as Doc<"posts">)) as Doc<"posts">;
+
+    const path = getCanonicalPostPath(previewPost, postType ?? null, true);
+    if (!path) {
+      return null;
+    }
+    const baseUrl = getFrontendBaseUrl();
+    return baseUrl ? `${baseUrl}${path}` : path;
+  }, [post, postType, slugValue]);
 
   const [customFieldValues, setCustomFieldValues] = useState<
     Record<string, CustomFieldValue>
@@ -246,8 +285,9 @@ export function AdminSinglePostView({
           next[field.key] = deriveSystemFieldValue(field, post, isNewRecord);
           return;
         }
-        if (postMetaMap[field.key] !== undefined) {
-          next[field.key] = postMetaMap[field.key];
+        const storedValue = postMetaMap[field.key];
+        if (storedValue !== undefined) {
+          next[field.key] = storedValue;
         } else if (field.defaultValue !== undefined) {
           next[field.key] = field.defaultValue as CustomFieldValue;
         } else if (field.type === "boolean") {
@@ -291,10 +331,7 @@ export function AdminSinglePostView({
       const normalizedOptions = normalizeFieldOptions(field.options);
 
       if (field.isSystem) {
-        const displayValue =
-          typeof value === "string" || typeof value === "number"
-            ? String(value)
-            : (value ?? "");
+        const displayValue = value == null ? "" : String(value);
         return (
           <Input
             id={controlId}
@@ -313,7 +350,7 @@ export function AdminSinglePostView({
             <Textarea
               id={controlId}
               rows={4}
-              value={typeof value === "string" ? value : (value ?? "")}
+              value={value == null ? "" : String(value)}
               onChange={(event) =>
                 handleCustomFieldChange(field.key, event.target.value)
               }
@@ -406,7 +443,7 @@ export function AdminSinglePostView({
           return (
             <Input
               id={controlId}
-              value={typeof value === "string" ? value : (value ?? "")}
+              value={value == null ? "" : String(value)}
               onChange={(event) =>
                 handleCustomFieldChange(field.key, event.target.value)
               }
@@ -419,7 +456,9 @@ export function AdminSinglePostView({
               value={
                 typeof value === "string" || typeof value === "number"
                   ? String(value)
-                  : (value ?? "")
+                  : value == null
+                  ? ""
+                  : String(value)
               }
               onChange={(event) =>
                 handleCustomFieldChange(field.key, event.target.value)
@@ -685,13 +724,70 @@ export function AdminSinglePostView({
           </div>
           {supportsPostsTable && (
             <div className="space-y-2">
-              <Label htmlFor="post-slug">Frontend Slug</Label>
-              <Input
-                id="post-slug"
-                value={slugValue}
-                onChange={(event) => setSlugValue(event.target.value)}
-                placeholder="friendly-url-slug"
-              />
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="post-slug">Frontend Slug</Label>
+            {!isSlugEditing && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsSlugEditing(true)}
+                className="text-xs"
+              >
+                <Pencil className="mr-2 h-3.5 w-3.5" />
+                Edit
+              </Button>
+            )}
+          </div>
+          {isSlugEditing ? (
+            <Input
+              id="post-slug"
+              ref={slugInputRef}
+              value={slugValue}
+              onChange={(event) => setSlugValue(event.target.value)}
+              placeholder="friendly-url-slug"
+              onBlur={() => setIsSlugEditing(false)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  slugInputRef.current?.blur();
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  setSlugValue(post?.slug ?? "");
+                  setIsSlugEditing(false);
+                }
+              }}
+            />
+          ) : (
+            <div className="flex items-center justify-between gap-3 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
+              {slugPreviewUrl ? (
+                <a
+                  className="min-w-0 flex-1 truncate font-medium text-primary hover:underline"
+                  href={slugPreviewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {slugPreviewUrl}
+                </a>
+              ) : (
+                <span className="text-muted-foreground">
+                  Slug will be generated after saving.
+                </span>
+              )}
+              {slugPreviewUrl ? (
+                <a
+                  href={slugPreviewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:text-primary/80"
+                  aria-label="Open public page"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              ) : null}
+            </div>
+          )}
               <p className="text-xs text-muted-foreground">
                 Must be unique; determines the public URL.
               </p>
@@ -913,6 +1009,10 @@ export function AdminSinglePostView({
   return (
     <AdminLayoutContent withSidebar>
       <AdminLayoutMain>{defaultMain}</AdminLayoutMain>
+      asdasdasd asdasd
+      asd
+      asd
+      asd
       <AdminLayoutSidebar>{defaultSidebar}</AdminLayoutSidebar>
     </AdminLayoutContent>
   );
