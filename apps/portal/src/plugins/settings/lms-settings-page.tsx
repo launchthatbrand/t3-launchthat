@@ -1,13 +1,12 @@
 "use client";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-
-import type { PluginSettingComponentProps } from "~/lib/plugins/types";
 import { LmsGeneralSettings } from "./lms-general-settings";
 import { LmsPermalinksSettings } from "./lms-permalinks-settings";
+import type { PluginSettingComponentProps } from "~/lib/plugins/types";
 
 export function LmsSettingsPage(props: PluginSettingComponentProps) {
   const router = useRouter();
@@ -49,7 +48,7 @@ export function LmsSettingsPage(props: PluginSettingComponentProps) {
       className="space-y-6"
       data-loading={isNavigating ? "true" : "false"}
     >
-      <TabsList className="bg-transparent">
+      <TabsList>
         <TabsTrigger value="general">General</TabsTrigger>
         <TabsTrigger value="permalinks">Permalinks</TabsTrigger>
       </TabsList>

@@ -17,33 +17,33 @@ export const navItems = [
     icon: TerminalSquare,
     isActive: true,
   },
-  {
-    title: "LMS",
-    url: "/admin/lms",
-    icon: Users,
-    items: [
-      {
-        title: "Courses",
-        url: "/admin/lms/courses",
-        icon: BookOpen,
-      },
-      {
-        title: "Lessons",
-        url: "/admin/lms/lessons",
-        icon: BookOpen,
-      },
-      {
-        title: "Topics",
-        url: "/admin/lms/topics",
-        icon: BookOpen,
-      },
-      {
-        title: "Quizzes",
-        url: "/admin/lms/quizzes",
-        icon: BookOpen,
-      },
-    ],
-  },
+  // {
+  //   title: "LMS",
+  //   url: "/admin/lms",
+  //   icon: Users,
+  //   items: [
+  //     {
+  //       title: "Courses",
+  //       url: "/admin/lms/courses",
+  //       icon: BookOpen,
+  //     },
+  //     {
+  //       title: "Lessons",
+  //       url: "/admin/lms/lessons",
+  //       icon: BookOpen,
+  //     },
+  //     {
+  //       title: "Topics",
+  //       url: "/admin/lms/topics",
+  //       icon: BookOpen,
+  //     },
+  //     {
+  //       title: "Quizzes",
+  //       url: "/admin/lms/quizzes",
+  //       icon: BookOpen,
+  //     },
+  //   ],
+  // },
 
   {
     title: "Campaign Calendar",

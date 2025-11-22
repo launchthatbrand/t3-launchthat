@@ -24,10 +24,13 @@ import {
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 
+import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import Image from "next/image";
 import { api } from "@/convex/_generated/api";
 import { formatDistanceToNow } from "date-fns";
+import type { ColumnDef } from "@tanstack/react-table";
+import { EntityList } from "~/components/shared/EntityList/EntityList";
 
 type PostTypeDoc = Doc<"postTypes">;
 type MediaItemDoc = Doc<"mediaItems"> & { url?: string | null };
@@ -118,6 +121,38 @@ export function AttachmentsArchiveView({
       "Upload high-resolution assets for the best results. Attachments automatically land in your WordPress-style media library.",
     [description],
   );
+  const columns = useMemo<ColumnDef<MediaItemDoc>[]>(
+    () => [
+      {
+        accessorKey: "title",
+        header: "Title",
+        cell: ({ row }) => (
+          <div className="font-medium">{row.original.title ?? "Untitled"}</div>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => (
+          <Badge
+            variant={row.original.status === "published" ? "default" : "secondary"}
+          >
+            {row.original.status ?? "draft"}
+          </Badge>
+        ),
+      },
+      {
+        id: "created",
+        header: "Uploaded",
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">
+            {formatDistanceToNow(row.original._creationTime, { addSuffix: true })}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
 
   return (
     <AdminLayoutContent withSidebar>
@@ -167,61 +202,64 @@ export function AttachmentsArchiveView({
 
           <Card>
             <CardHeader>
-              <CardTitle>Media Grid</CardTitle>
+              <CardTitle>Media Library</CardTitle>
               <CardDescription>
-                Preview recently uploaded files. Click “Upload” to add new media
-                directly from your computer.
+                Preview recently uploaded files. Switch between grid and list views to
+                find the right asset faster.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex h-48 items-center justify-center text-muted-foreground">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Loading attachments…
-                </div>
-              ) : mediaItems.length === 0 ? (
-                <div className="flex h-48 flex-col items-center justify-center text-center text-muted-foreground">
-                  <Sparkles className="mb-2 h-6 w-6" />
-                  <p>No attachments yet. Upload your first media item.</p>
-                </div>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {mediaItems.map((item) => (
-                    <Card key={item._id}>
-                      <CardContent className="space-y-3 p-4">
-                        <div className="relative aspect-video overflow-hidden rounded-md bg-muted">
-                          {item.url ? (
-                            <Image
-                              src={item.url}
-                              alt={item.title ?? "Attachment"}
-                              fill
-                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                              No preview
-                            </div>
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium">
-                            {item.title ?? "Untitled"}
-                          </p>
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>{item.status ?? "draft"}</span>
-                            <span>
-                              {formatDistanceToNow(item._creationTime, {
-                                addSuffix: true,
-                              })}
-                            </span>
+            <CardContent className="p-0">
+              <EntityList
+                data={mediaItems}
+                columns={columns}
+                isLoading={isLoading}
+                enableFooter={false}
+                viewModes={["grid", "list"]}
+                defaultViewMode="grid"
+                enableSearch
+                gridColumns={{ sm: 2, md: 3, lg: 4 }}
+                emptyState={
+                  <div className="flex h-48 flex-col items-center justify-center text-center text-muted-foreground">
+                    <Sparkles className="mb-2 h-6 w-6" />
+                    <p>No attachments yet. Upload your first media item.</p>
+                  </div>
+                }
+                className="p-4"
+                itemRender={(item) => (
+                  <Card key={item._id}>
+                    <CardContent className="space-y-3 p-4">
+                      <div className="relative aspect-video overflow-hidden rounded-md bg-muted">
+                        {item.url ? (
+                          <Image
+                            src={item.url}
+                            alt={item.title ?? "Attachment"}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                            No preview
                           </div>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">
+                          {item.title ?? "Untitled"}
+                        </p>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{item.status ?? "draft"}</span>
+                          <span>
+                            {formatDistanceToNow(item._creationTime, {
+                              addSuffix: true,
+                            })}
+                          </span>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              />
             </CardContent>
           </Card>
         </div>
