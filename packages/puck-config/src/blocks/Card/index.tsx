@@ -1,30 +1,29 @@
-/* eslint-disable @next/next/no-img-element */
-import React, { ReactElement } from "react";
 import { WithLayout, withLayout } from "../../components/Layout";
 
 import { ComponentConfig } from "@measured/puck";
-import dynamic from "next/dynamic";
+/* eslint-disable @next/next/no-img-element */
+import React from "react";
 import dynamicIconImports from "lucide-react/dynamicIconImports";
 import { getClassNameFactory } from "../../core/lib";
 import styles from "./styles.module.css";
 
 const getClassName = getClassNameFactory("Card", styles);
 
-const icons = Object.keys(dynamicIconImports).reduce<
-  Record<string, ReactElement>
->((acc, iconName) => {
-  const El = dynamic((dynamicIconImports as any)[iconName]);
-
-  return {
-    ...acc,
-    [iconName]: <El />,
-  };
-}, {});
+type IconImporter = () => Promise<{
+  default: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+}>;
 
 const iconOptions = Object.keys(dynamicIconImports).map((iconName) => ({
   label: iconName,
   value: iconName,
 }));
+
+const lazyIcons = Object.entries(dynamicIconImports).reduce<
+  Record<string, React.LazyExoticComponent<React.ComponentType>>
+>((acc, [name, importer]) => {
+  acc[name] = React.lazy(importer as IconImporter);
+  return acc;
+}, {});
 
 export type CardProps = WithLayout<{
   title: string;
@@ -32,6 +31,7 @@ export type CardProps = WithLayout<{
   icon?: string;
   mode: "flat" | "card";
 }>;
+
 
 const CardInner: ComponentConfig<CardProps> = {
   fields: {
@@ -62,10 +62,18 @@ const CardInner: ComponentConfig<CardProps> = {
     mode: "flat",
   },
   render: ({ title, icon, description, mode }) => {
+    const Icon = icon ? lazyIcons[icon] : undefined;
+
     return (
       <div className={getClassName({ [mode]: mode })}>
         <div className={getClassName("inner")}>
-          <div className={getClassName("icon")}>{icon && icons[icon]}</div>
+          <div className={getClassName("icon")}>
+            {Icon ? (
+              <React.Suspense fallback={null}>
+                <Icon />
+              </React.Suspense>
+            ) : null}
+          </div>
 
           <div className={getClassName("title")}>{title}</div>
           <div className={getClassName("description")}>{description}</div>

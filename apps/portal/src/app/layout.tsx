@@ -36,7 +36,7 @@ export default async function RootLayout(props: {
       >
         <Providers tenant={tenant}>
           <StandardLayout
-            appName="Wall Street Academy"
+            appName="Wall Street Academys"
             sidebar={props.sidebar}
             header={props.header}
             sidebarVariant="inset"

@@ -32,6 +32,8 @@ const nextConfig: NextConfig = {
     "127.0.0.1:3004",
     "*.localhost:3004",
     "*.localhost",
+    "*.localhost:3000",
+    "*.localhost:3001",
     "*.localhost:3024",
     "*.127.0.0.1:3004",
     "launchthat.local:3004",

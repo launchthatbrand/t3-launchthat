@@ -10,10 +10,10 @@ import {
   PORTAL_TENANT_ID,
   getTenantOrganizationId,
 } from "~/lib/tenant-fetcher";
+import { useCallback, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 
 import { api } from "@/convex/_generated/api";
-import { useCallback } from "react";
 import { useTenant } from "~/context/TenantContext";
 
 const resolvePortalAwareOrganizationId = (
@@ -28,6 +28,21 @@ export function usePostTypes(includeBuiltIn = true): {
   isLoading: boolean;
 } {
   const tenant = useTenant();
+  const ensureDefaults = useMutation(
+    api.core.postTypes.mutations.ensureDefaults,
+  );
+  const hasEnsuredRef = useRef(false);
+  useEffect(() => {
+    if (hasEnsuredRef.current) {
+      return;
+    }
+    hasEnsuredRef.current = true;
+    ensureDefaults({})
+      .then(() => {})
+      .catch((error) => {
+        console.error("Failed to ensure default post types", error);
+      });
+  }, [ensureDefaults]);
   const organizationId = getTenantOrganizationId(tenant);
   const args = organizationId
     ? { includeBuiltIn, organizationId }

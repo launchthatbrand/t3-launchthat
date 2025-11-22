@@ -1,16 +1,12 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Button, cn } from "@acme/ui";
 import {
   ChevronRight,
   MailIcon,
   MoveLeftIcon,
   PlusCircleIcon,
 } from "lucide-react";
-
-import { Button, cn } from "@acme/ui";
 import {
   Collapsible,
   CollapsibleContent,
@@ -28,7 +24,10 @@ import {
   SidebarMenuSubItem,
 } from "@acme/ui/sidebar";
 
+import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import { QuickCreateDialog } from "./quick-create-dialog";
+import { usePathname } from "next/navigation";
 
 interface SubItem {
   title: string;
@@ -194,7 +193,7 @@ export function NavMain({ items, sections }: NavMainProps) {
           return (
             <Collapsible
               key={section.label}
-              defaultOpen={isSectionActive}
+              defaultOpen={true}
               className="group/collapsible flex flex-col gap-2"
             >
               <SidebarGroupLabel
@@ -206,7 +205,7 @@ export function NavMain({ items, sections }: NavMainProps) {
                   <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                 </CollapsibleTrigger>
               </SidebarGroupLabel>
-              <CollapsibleContent>
+              <CollapsibleContent className="pl-4">
                 {renderMenuItems(section.items)}
               </CollapsibleContent>
             </Collapsible>

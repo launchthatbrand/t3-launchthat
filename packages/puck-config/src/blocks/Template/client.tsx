@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/rules-of-hooks */
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   AutoField,
   Button,
@@ -16,6 +16,10 @@ import { generateId } from "../../core/lib/generate-id";
 import { componentKey } from "../../index";
 import { type Components } from "../../types";
 import TemplateComponent, { TemplateProps } from "./Template";
+import {
+  getTemplateStorage,
+  type TemplateData,
+} from "./storage";
 
 const usePuck = createUsePuck();
 
@@ -34,22 +38,37 @@ async function createComponent<T extends keyof Components>(
   } as ComponentDataOptionalId<Components[T]>;
 }
 
-type TemplateData = Record<string, { label: string; data: Slot }>;
-
 export const TemplateInternal: ComponentConfig<TemplateProps> = {
   fields: {
     template: {
       type: "custom",
       render: ({ name, value, onChange }) => {
         const templateKey = `puck-demo-templates:${componentKey}`;
+        const storage = useMemo(
+          () => getTemplateStorage(templateKey),
+          [templateKey],
+        );
 
         const props = usePuck((s) => s.selectedItem?.props) as
           | TemplateProps
           | undefined;
 
-        const [templates, setTemplates] = useState<TemplateData>(
-          JSON.parse(localStorage.getItem(templateKey) ?? "{}"),
-        );
+        const [templates, setTemplates] = useState<TemplateData>({});
+
+        useEffect(() => {
+          let mounted = true;
+          (async () => {
+            const storedTemplates = await storage.load();
+            if (mounted) {
+              setTemplates(storedTemplates);
+            }
+          })().catch(() => {
+            // ignore load errors and fall back to empty state
+          });
+          return () => {
+            mounted = false;
+          };
+        }, [storage]);
 
         return (
           <FieldLabel label={name}>
@@ -62,9 +81,9 @@ export const TemplateInternal: ComponentConfig<TemplateProps> = {
                   { label: "Blank", value: "blank" },
                   { label: "Example 1", value: "example_1" },
                   { label: "Example 2", value: "example_2" },
-                  ...Object.entries(templates).map(([key, template]) => ({
+                  ...Object.keys(templates).map((key) => ({
                     value: key,
-                    label: template.label,
+                    label: templates[key]?.label ?? key,
                   })),
                 ],
               }}
@@ -104,10 +123,7 @@ export const TemplateInternal: ComponentConfig<TemplateProps> = {
                     },
                   };
 
-                  localStorage.setItem(
-                    templateKey,
-                    JSON.stringify(templateData),
-                  );
+                  await storage.save(templateData);
 
                   setTemplates(templateData);
 
@@ -133,9 +149,12 @@ export const TemplateInternal: ComponentConfig<TemplateProps> = {
     if (!changed.template || trigger === "load") return data;
 
     const templateKey = `puck-demo-templates:${componentKey}`;
+    const storage = getTemplateStorage(templateKey);
+
+    const storedTemplates = await storage.load();
 
     const templates: TemplateData = {
-      ...JSON.parse(localStorage.getItem(templateKey) ?? "{}"),
+      ...storedTemplates,
       blank: {
         label: "Blank",
         data: [],
@@ -191,8 +210,13 @@ export const TemplateInternal: ComponentConfig<TemplateProps> = {
       },
     };
 
+    const selectedTemplate =
+      typeof data.props.template === "string"
+        ? data.props.template
+        : "example_1";
+
     const children =
-      templates[data.props.template]?.data || templates["example_1"]?.data;
+      templates[selectedTemplate]?.data || templates["example_1"]?.data || [];
 
     return {
       ...data,

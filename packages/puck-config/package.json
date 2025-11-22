@@ -11,6 +11,10 @@
     "./components": {
       "types": "./src/components/index.tsx",
       "default": "./src/components/index.tsx"
+    },
+    "./plugins": {
+      "types": "./src/plugins/index.tsx",
+      "default": "./src/plugins/index.tsx"
     }
   },
   "dependencies": {

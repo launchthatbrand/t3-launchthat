@@ -1,6 +1,6 @@
+import createJiti from "jiti";
 import { fileURLToPath } from "url";
 import { withMicrofrontends } from "@vercel/microfrontends/next/config";
-import createJiti from "jiti";
 
 // Import env files to validate at build time. Use jiti so we can load .ts files in here.
 createJiti(fileURLToPath(import.meta.url))("./src/env");
@@ -24,8 +24,11 @@ const baseConfig = {
   allowedDevOrigins: [
     "localhost:3004",
     "127.0.0.1:3004",
+    "desmond-tatilian.localhost",
     "*.localhost:3004",
     "*.localhost",
+    "*.localhost:3000",
+    "*.localhost:3001",
     "*.localhost:3024",
     "*.127.0.0.1:3004",
     "launchthat.local:3004",

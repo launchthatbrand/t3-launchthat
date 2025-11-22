@@ -11,7 +11,9 @@ import { Button } from "@acme/ui/button";
 import type { Data } from "@measured/puck";
 import { SearchableDrawer } from "~/app/_components/SearchableDrawer";
 import { Skeleton } from "@acme/ui";
+import { Type } from "lucide-react";
 import { api } from "../../../../../portal/convexApi1763516584458";
+import { objectAccordionPlugin } from "@acme/puck-config/plugins";
 import { puckConfig } from "@acme/puck-config";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
@@ -133,7 +135,7 @@ export default function EditPage() {
           config={puckConfig}
           data={initialData}
           onPublish={handlePublish}
-        
+          plugins={[ objectAccordionPlugin]}
           fieldTransforms={{
             userField: ({ value }) => value, // Included to check types
           }}

@@ -19,7 +19,7 @@ export function AppSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar> & { sidebar: React.ReactNode }) {
   return (
-    <Sidebar collapsible="offcanvas">
+    <Sidebar collapsible="offcanvas" {...props}>
       {sidebar}
       <SidebarRail />
       {/* <SidebarHeader className="h-14 justify-center bg-red-100">

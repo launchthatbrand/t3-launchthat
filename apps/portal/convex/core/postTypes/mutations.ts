@@ -145,6 +145,32 @@ const DEFAULT_POST_TYPES = [
       enabled: false,
     },
   },
+  {
+    name: "Page Templates",
+    slug: "page-templates",
+    description:
+      "Reusable Puck templates that control single and archive layouts.",
+    isPublic: false,
+    supports: {
+      title: true,
+      customFields: true,
+      revisions: true,
+      postMeta: true,
+    },
+    rewrite: {
+      hasArchive: false,
+      withFront: false,
+      feeds: false,
+      pages: false,
+    },
+    adminMenu: {
+      enabled: true,
+      label: "Templates",
+      slug: "page-templates",
+      icon: "LayoutTemplate",
+      position: 25,
+    },
+  },
 ];
 
 async function seedDefaultPostTypes(ctx: MutationCtx) {
@@ -205,6 +231,14 @@ export const resetSystem = mutation({
     await seedDefaultPostTypes(ctx);
     await seedDefaultTaxonomies(ctx);
     return true;
+  },
+});
+
+export const ensureDefaults = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const created = await seedDefaultPostTypes(ctx);
+    return { created };
   },
 });
 

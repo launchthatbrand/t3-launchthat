@@ -52,6 +52,7 @@ import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import Link from "next/link";
+import { PageTemplatesManager } from "~/components/admin/templates/PageTemplatesManager";
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 import { toast } from "sonner";
@@ -1275,23 +1276,7 @@ export default function PostTypesSettingsPage() {
         </TabsContent>
 
         <TabsContent value="templates">
-          <Card>
-            <CardHeader>
-              <CardTitle>Content Templates</CardTitle>
-              <CardDescription>
-                Create and manage templates for post types
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="py-12 text-center">
-              <p className="mb-4 text-muted-foreground">
-                Templates feature coming soon
-              </p>
-              <p className="text-sm text-muted-foreground">
-                This feature will allow you to create reusable templates for
-                post types.
-              </p>
-            </CardContent>
-          </Card>
+          <PageTemplatesManager />
         </TabsContent>
       </Tabs>
     </div>
