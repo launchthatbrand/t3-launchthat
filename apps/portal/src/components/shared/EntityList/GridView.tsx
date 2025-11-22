@@ -1,7 +1,13 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  useMemo,
+  type MouseEvent,
+  type ReactElement,
+} from "react";
 
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@acme/ui/card";
@@ -83,13 +89,39 @@ export function GridView<T extends object>({
     <div className={gridClasses}>
       {data.map((item, index) => {
         if (cardRenderer) {
+          const renderedCard = cardRenderer(item);
+
+          if (isValidElement(renderedCard)) {
+            const cardElement = renderedCard as ReactElement<{
+              onClick?: (event: MouseEvent) => void;
+            }>;
+            const existingOnClick = cardElement.props.onClick;
+
+            const mergedOnClick = (event: MouseEvent) => {
+              existingOnClick?.(event);
+              if (!event.defaultPrevented && onCardClick) {
+                onCardClick(item);
+              }
+            };
+
+            const elementProps: Record<string, unknown> = {
+              key: cardElement.key ?? `card-${index}`,
+            };
+
+            if (onCardClick) {
+              elementProps.onClick = mergedOnClick;
+            }
+
+            return cloneElement(cardElement, elementProps);
+          }
+
           return (
             <div
-              key={index}
+              key={`card-${index}`}
               onClick={() => onCardClick && onCardClick(item)}
-              className="cursor-pointer"
+              className={onCardClick ? "cursor-pointer" : ""}
             >
-              {cardRenderer(item)}
+              {renderedCard}
             </div>
           );
         }

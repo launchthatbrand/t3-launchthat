@@ -1,4 +1,4 @@
-import type { ColumnDef, SortingState } from "@tanstack/react-table";
+import type { ColumnDef, Row, SortingState } from "@tanstack/react-table";
 import * as React from "react";
 import { Id } from "@convex-config/_generated/dataModel";
 import {
@@ -7,6 +7,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -33,6 +34,7 @@ import {
 } from "@acme/ui/table";
 
 import { useReorderTasks } from "../_api/tasks";
+import { EntityList } from "~/components/shared/EntityList/EntityList";
 
 // Drag handle for the first column
 function DragHandle() {
@@ -48,7 +50,7 @@ function SortableRow<T extends { _id: string }>({
   row,
   children,
 }: {
-  row: ReturnType<typeof table.getRowModel>["rows"][number];
+  row: Row<T>;
   children: React.ReactNode;
 }) {
   const {
@@ -114,14 +116,13 @@ export function TasksTable<T extends { _id: string }>({
   const sensors = useSensors(useSensor(PointerSensor));
 
   // Handle drag end: update order locally and persist to Convex
-  const handleDragEnd = async (event: {
-    active: { id: string };
-    over: { id: string } | null;
-  }) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = rowOrder.indexOf(active.id);
-    const newIndex = rowOrder.indexOf(over.id);
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    const oldIndex = rowOrder.indexOf(activeId);
+    const newIndex = rowOrder.indexOf(overId);
     if (oldIndex === -1 || newIndex === -1) return;
     const newOrder = arrayMove(rowOrder, oldIndex, newIndex);
     setRowOrder(newOrder);
@@ -139,9 +140,9 @@ export function TasksTable<T extends { _id: string }>({
     .map((id) =>
       table.getRowModel().rows.find((row) => row.original._id === id),
     )
-    .filter(Boolean);
+    .filter((row): row is Row<T> => Boolean(row));
 
-  return (
+  const tableContent = (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
@@ -182,7 +183,6 @@ export function TasksTable<T extends { _id: string }>({
                       ))}
                     </SortableRow>
                   ))}
-                  {/* Add Task Row */}
                   <TableRow
                     className="cursor-pointer hover:bg-muted"
                     onClick={onAddTask}
@@ -212,5 +212,18 @@ export function TasksTable<T extends { _id: string }>({
         </div>
       </SortableContext>
     </DndContext>
+  );
+
+  return (
+    <EntityList
+      data={tasks}
+      columns={columns}
+      enableSearch={false}
+      enableFooter={false}
+      hideFilters
+      viewModes={["list"]}
+      defaultViewMode="list"
+      customRender={() => tableContent}
+    />
   );
 }

@@ -36,15 +36,29 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import Link from "next/link";
 import type { PermalinkSettings } from "./permalink";
 import { PlaceholderState } from "./PlaceholderState";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { buildPermalink } from "./permalink";
 import { formatDistanceToNow } from "date-fns";
 import { getCanonicalPostPath } from "~/lib/postTypes/routing";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import { useGetAllPosts } from "@/lib/blog";
+import type { ColumnDef } from "@tanstack/react-table";
+import { EntityList } from "~/components/shared/EntityList/EntityList";
+import type { EntityAction } from "~/components/shared/EntityList/types";
 
 type PostDoc = Doc<"posts">;
 type PostTypeDoc = Doc<"postTypes">;
+
+type ArchiveDisplayRow = {
+  id: string;
+  title: string;
+  statusLabel: string;
+  statusVariant: "default" | "secondary";
+  owner: string;
+  updatedAt: number;
+  permalink?: string;
+  isPlaceholder?: boolean;
+};
 
 interface PlaceholderRow {
   id: string;
@@ -102,6 +116,97 @@ export function GenericArchiveView({
     ? (posts as ArchiveRow[])
     : FALLBACK_ROWS;
   const tableLoading = shouldLoadPosts ? postsLoading : isLoading;
+  const displayRows = useMemo<ArchiveDisplayRow[]>(() => {
+    return rows.map((row) => {
+      if (isPostRow(row)) {
+        const statusValue = row.status ?? "draft";
+        const statusVariant =
+          statusValue === "published" ? "default" : "secondary";
+        const updatedValue = row.updatedAt ?? row.createdAt ?? Date.now();
+        const permalink = buildPermalink(row, permalinkSettings, postType);
+        return {
+          id: row._id,
+          title: row.title || "Untitled",
+          statusLabel: statusValue,
+          statusVariant,
+          owner: row.authorId ?? "—",
+          updatedAt: updatedValue,
+          permalink,
+        };
+      }
+      return {
+        id: row.id,
+        title: row.title,
+        statusLabel: row.status,
+        statusVariant: row.status === "Published" ? "default" : "secondary",
+        owner: row.author,
+        updatedAt: row.updatedAt,
+        isPlaceholder: true,
+      };
+    });
+  }, [rows, permalinkSettings, postType]);
+  const columns = useMemo<ColumnDef<ArchiveDisplayRow>[]>(
+    () => [
+      {
+        accessorKey: "title",
+        header: "Title",
+        cell: ({ row }) => {
+          const item = row.original;
+          if (item.permalink) {
+            return (
+              <Link
+                href={`/admin/edit?post_type=${slug}&post_id=${item.id}`}
+                className="font-medium hover:underline"
+              >
+                {item.title}
+              </Link>
+            );
+          }
+          return <span className="font-medium">{item.title}</span>;
+        },
+      },
+      {
+        accessorKey: "statusLabel",
+        header: "Status",
+        cell: ({ row }) => (
+          <Badge variant={row.original.statusVariant}>
+            {row.original.statusLabel}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: "owner",
+        header: "Owner",
+      },
+      {
+        id: "updatedAt",
+        header: "Updated",
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">
+            {formatDistanceToNow(row.original.updatedAt, { addSuffix: true })}
+          </span>
+        ),
+      },
+    ],
+    [slug],
+  );
+  const entityActions = useMemo<EntityAction<ArchiveDisplayRow>[]>(
+    () => [
+      {
+        id: "view",
+        label: "View",
+        icon: <Eye className="h-4 w-4" />,
+        onClick: (item) => {
+          if (item.permalink) {
+            window.open(item.permalink, "_blank", "noopener,noreferrer");
+          }
+        },
+        variant: "ghost",
+        isDisabled: (item) => !item.permalink,
+      },
+    ],
+    [],
+  );
 
   return (
     <AdminLayoutContent withSidebar>
@@ -147,48 +252,23 @@ export function GenericArchiveView({
                     scaffolding.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  {tableLoading ? (
-                    <div className="flex h-32 items-center justify-center text-muted-foreground">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading
-                      entries…
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Title</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Owner</TableHead>
-                          <TableHead className="text-right">Updated</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {rows.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={4} className="text-center">
-                              No entries yet. Click “Add New” to get started.
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          rows.map((row) =>
-                            isPostRow(row) ? (
-                              <PostRow
-                                key={row._id}
-                                row={row}
-                                slug={slug}
-                                permalinkSettings={permalinkSettings}
-                                postType={postType}
-                              />
-                            ) : (
-                              <PlaceholderArchiveRow key={row.id} row={row} />
-                            ),
-                          )
-                        )}
-                      </TableBody>
-                    </Table>
-                  )}
+                <CardContent className="p-0">
+                  <EntityList
+                    data={displayRows}
+                    columns={columns}
+                    entityActions={entityActions}
+                    isLoading={tableLoading}
+                    enableFooter={false}
+                    viewModes={["list"]}
+                    defaultViewMode="list"
+                    enableSearch
+                    emptyState={
+                      <div className="py-8 text-center text-muted-foreground">
+                        No entries yet. Click “Add New” to get started.
+                      </div>
+                    }
+                    className="p-4"
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -229,62 +309,3 @@ export function GenericArchiveView({
   );
 }
 
-interface PostRowProps {
-  row: PostDoc;
-  slug: string;
-  permalinkSettings: PermalinkSettings;
-  postType?: PostTypeDoc | null;
-}
-
-const PostRow = ({ row, slug, permalinkSettings, postType }: PostRowProps) => {
-  const statusValue = row.status ?? "draft";
-  const updatedValue = row.updatedAt ?? row.createdAt ?? Date.now();
-  const permalink = buildPermalink(row, permalinkSettings, postType);
-
-  return (
-    <TableRow>
-      <TableCell className="font-medium">
-        <Link
-          href={`/admin/edit?post_type=${slug}&post_id=${row._id}`}
-          className="hover:underline"
-        >
-          {row.title || "Untitled"}
-        </Link>
-      </TableCell>
-      <TableCell>
-        <Badge variant={statusValue === "published" ? "default" : "secondary"}>
-          {statusValue}
-        </Badge>
-      </TableCell>
-      <TableCell>{row.authorId ?? "—"}</TableCell>
-      <TableCell className="text-right text-sm text-muted-foreground">
-        {formatDistanceToNow(updatedValue, { addSuffix: true })}
-      </TableCell>
-      <TableCell className="text-right">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href={permalink} target="_blank" rel="noreferrer">
-            <Eye className="h-4 w-4" />
-          </Link>
-        </Button>
-      </TableCell>
-    </TableRow>
-  );
-};
-
-const PlaceholderArchiveRow = ({ row }: { row: PlaceholderRow }) => (
-  <TableRow>
-    <TableCell className="font-medium">{row.title}</TableCell>
-    <TableCell>
-      <Badge variant={row.status === "Published" ? "default" : "secondary"}>
-        {row.status}
-      </Badge>
-    </TableCell>
-    <TableCell>{row.author}</TableCell>
-    <TableCell className="text-right text-sm text-muted-foreground">
-      {formatDistanceToNow(row.updatedAt, { addSuffix: true })}
-    </TableCell>
-    <TableCell className="text-right text-sm text-muted-foreground">
-      —
-    </TableCell>
-  </TableRow>
-);

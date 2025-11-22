@@ -1,13 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ColumnDef } from "@tanstack/react-table";
-import { clsx } from "clsx";
-import { AlertCircle } from "lucide-react";
-
 import { Alert, AlertDescription, AlertTitle } from "@acme/ui/alert";
-import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
-
 import type {
   EntityAction,
   EntityListProps,
@@ -17,10 +10,16 @@ import type {
   TabHookResult,
   ViewMode,
 } from "./types";
+import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { useEffect, useMemo, useState } from "react";
+
+import { AlertCircle } from "lucide-react";
+import { ColumnDef } from "@tanstack/react-table";
 import { EntityListFilters } from "./EntityListFilters";
 import { EntityListHeader } from "./EntityListHeader";
 import { EntityListPagination } from "./EntityListPagination";
 import { EntityListView } from "./EntityListView";
+import { clsx } from "clsx";
 
 /**
  * EntityList is a universal component for displaying collections of data
@@ -60,6 +59,7 @@ export function EntityList<T extends object>({
   selectedId,
   enableSearch,
   enableFooter,
+  customRender,
 }: EntityListProps<T>) {
   // State for view mode
   const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
@@ -235,14 +235,19 @@ export function EntityList<T extends object>({
     console.log("filtered1", filtered);
     if (searchTerm.trim()) {
       const lower = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(
-        (item) =>
-          columns.some((col) => {
-            if (!col.accessorKey) return false;
-            const val = item[col.accessorKey];
-            return val != null && String(val).toLowerCase().includes(lower);
-          }),
-        console.log("filtered2", filtered),
+      filtered = filtered.filter((item) =>
+        columns.some((col) => {
+          const accessorKey =
+            typeof col === "object" &&
+            col !== null &&
+            "accessorKey" in col &&
+            typeof (col as { accessorKey?: unknown }).accessorKey === "string"
+              ? ((col as { accessorKey?: string }).accessorKey as string)
+              : undefined;
+          if (!accessorKey) return false;
+          const val = (item as Record<string, unknown>)[accessorKey];
+          return val != null && String(val).toLowerCase().includes(lower);
+        }),
       );
     }
     if (Object.keys(effectiveFilters).length && filters?.length) {
@@ -274,66 +279,61 @@ export function EntityList<T extends object>({
     );
   }
 
+  const headerSection = (
+    <EntityListHeader
+      title={title}
+      description={description}
+      searchTerm={searchTerm}
+      onSearchChange={handleSearchChange}
+      viewMode={viewMode}
+      viewModes={viewModes}
+      onViewModeChange={setViewMode}
+      actions={actions}
+      isSearching={isSearching || isLoading}
+      enableSearch={enableSearch}
+    />
+  );
+
   // If hook provided custom render, show it
   if (hookRender) {
     return (
-      <div className="w-full space-y-4">
-        <EntityListHeader
-          title={title}
-          description={description}
-          searchTerm={searchTerm}
-          onSearchChange={handleSearchChange}
-          viewMode={viewMode}
-          viewModes={viewModes}
-          onViewModeChange={setViewMode}
-          actions={actions}
-          isSearching={isSearching || isLoading}
-          enableSearch={enableSearch}
-        />
+      <div className={clsx("w-full space-y-4", className)}>
+        {headerSection}
         {filterUI}
         {hookRender}
       </div>
     );
   }
 
+  const mainContent = customRender ? (
+    customRender(filteredData)
+  ) : (
+    <EntityListView
+      data={filteredData}
+      columns={columns}
+      gridColumns={gridColumns}
+      viewMode={viewMode}
+      isLoading={isLoading}
+      onRowClick={onRowClick}
+      emptyState={emptyState}
+      entityActions={entityActions}
+      enableFooter={enableFooter}
+      sortConfig={sorting}
+      onSortChange={handleSortChange}
+      selectedId={selectedId}
+      itemRender={itemRender}
+    />
+  );
+
   // Default: render filtered list view
   return (
     <div className={clsx("w-full space-y-4", className)}>
-      {/* Header with title, search, and view toggles */}
-      <EntityListHeader
-        title={title}
-        description={description}
-        searchTerm={searchTerm}
-        onSearchChange={handleSearchChange}
-        viewMode={viewMode}
-        viewModes={viewModes}
-        onViewModeChange={setViewMode}
-        actions={actions}
-        isSearching={isSearching || isLoading}
-      />
-
-      {/* Render filter UI (tabs, custom, or default) */}
+      {headerSection}
       {filterUI}
-
-      {/* Main content - list or grid view */}
-      <EntityListView
-        data={filteredData}
-        columns={columns}
-        gridColumns={gridColumns}
-        viewMode={viewMode}
-        isLoading={isLoading}
-        onRowClick={onRowClick}
-        emptyState={emptyState}
-        entityActions={entityActions}
-        enableFooter={enableFooter}
-        sortConfig={sorting}
-        onSortChange={handleSortChange}
-        selectedId={selectedId}
-        itemRender={itemRender}
-      />
-
-      {/* Pagination controls */}
-      {pagination && <EntityListPagination {...pagination} />}
+      {mainContent}
+      {!customRender && pagination && (
+        <EntityListPagination {...pagination} />
+      )}
     </div>
   );
 }

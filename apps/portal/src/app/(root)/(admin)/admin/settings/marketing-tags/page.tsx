@@ -29,24 +29,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@acme/ui/table";
+import { useMemo, useState } from "react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
+import { ColumnDef } from "@tanstack/react-table";
+import type { EntityAction } from "~/components/shared/EntityList/types";
+import { EntityList } from "~/components/shared/EntityList/EntityList";
 import { Id } from "@convex-config/_generated/dataModel";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import { Textarea } from "@acme/ui/textarea";
+import { format } from "date-fns";
 import { toast } from "@acme/ui/toast";
 import { useMarketingTags } from "@/hooks/useMarketingTags";
-import { useState } from "react";
+
+type MarketingTag = NonNullable<
+  ReturnType<typeof useMarketingTags>["marketingTags"]
+>[number];
 
 interface MarketingTagFormData {
   name: string;
@@ -89,12 +89,14 @@ const PREDEFINED_CATEGORIES = [
 
 export default function MarketingTagsAdminPage() {
   const { marketingTags, createTag } = useMarketingTags();
+  const marketingTagList: MarketingTag[] = marketingTags ?? [];
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<Id<"marketingTags"> | null>(
     null,
   );
+  const [tagToDelete, setTagToDelete] = useState<MarketingTag | null>(null);
 
   // Form state
   const [formData, setFormData] = useState<MarketingTagFormData>({
@@ -142,23 +144,106 @@ export default function MarketingTagsAdminPage() {
   };
 
   // Filter tags based on search and category
-  const filteredTags =
-    marketingTags?.filter((tag) => {
-      const matchesSearch =
-        tag.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        tag.description?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory =
-        categoryFilter === "all" || tag.category === categoryFilter;
-      return matchesSearch && matchesCategory;
-    }) ?? [];
+  const filteredTags = marketingTagList.filter((tag) => {
+    const matchesSearch =
+      tag.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tag.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory =
+      categoryFilter === "all" || tag.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
   // Get unique categories from existing tags
   const existingCategories = [
-    ...new Set(marketingTags?.map((tag) => tag.category).filter(Boolean) ?? []),
+    ...new Set(
+      marketingTagList
+        .map((tag) => tag.category)
+        .filter((category): category is string => Boolean(category)),
+    ),
   ];
   const allCategories = [
     ...new Set([...PREDEFINED_CATEGORIES, ...existingCategories]),
   ];
+
+  const columns = useMemo<ColumnDef<MarketingTag>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Tag",
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <div
+              className="h-3 w-3 rounded-full"
+              style={{ backgroundColor: row.original.color || "#3b82f6" }}
+            />
+            <span className="font-medium">{row.original.name}</span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "category",
+        header: "Category",
+        cell: ({ row }) =>
+          row.original.category ? (
+            <Badge variant="outline">{row.original.category}</Badge>
+          ) : (
+            "-"
+          ),
+      },
+      {
+        accessorKey: "description",
+        header: "Description",
+        cell: ({ row }) => (
+          <span className="line-clamp-2 text-sm text-muted-foreground">
+            {row.original.description ?? "-"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "isActive",
+        header: "Status",
+        cell: ({ row }) => (
+          <Badge variant={row.original.isActive !== false ? "default" : "secondary"}>
+            {row.original.isActive !== false ? "Active" : "Inactive"}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: "_creationTime",
+        header: "Created",
+        cell: ({ row }) =>
+          format(new Date(row.original._creationTime), "MMM d, yyyy"),
+      },
+    ],
+    [],
+  );
+
+  const entityActions: EntityAction<MarketingTag>[] = [
+    {
+      id: "edit",
+      label: "Edit Tag",
+      icon: <Pencil className="h-4 w-4" />,
+      onClick: (tag: MarketingTag) => {
+        toast.info(`Editing "${tag.name}" coming soon`);
+      },
+    },
+    {
+      id: "delete",
+      label: "Delete Tag",
+      icon: <Trash2 className="h-4 w-4 text-destructive" />,
+      onClick: (tag) => {
+        setTagToDelete(tag);
+      },
+    },
+  ];
+
+  const emptyState = (
+    <div className="py-8 text-center text-muted-foreground">
+      {searchTerm || categoryFilter !== "all"
+        ? "No tags match your filters"
+        : "No marketing tags created yet"}
+    </div>
+  );
 
   return (
     <div className="container mx-auto space-y-6 p-6">
@@ -282,7 +367,7 @@ export default function MarketingTagsAdminPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {marketingTags?.length ?? 0}
+              {marketingTagList.length}
             </div>
           </CardContent>
         </Card>
@@ -293,8 +378,7 @@ export default function MarketingTagsAdminPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {marketingTags?.filter((tag) => tag.isActive !== false).length ??
-                0}
+              {marketingTagList.filter((tag) => tag.isActive !== false).length}
             </div>
           </CardContent>
         </Card>
@@ -349,101 +433,54 @@ export default function MarketingTagsAdminPage() {
             Marketing Tags ({filteredTags.length})
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tag</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTags.map((tag) => (
-                <TableRow key={tag._id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: tag.color || "#3b82f6" }}
-                      />
-                      <span className="font-medium">{tag.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {tag.category && (
-                      <Badge variant="outline">{tag.category}</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate">
-                    {tag.description}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={tag.isActive !== false ? "default" : "secondary"}
-                    >
-                      {tag.isActive !== false ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(tag._creationTime).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="space-x-2 text-right">
-                    <Button variant="ghost" size="sm">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            Delete Marketing Tag
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{tag.name}"? This
-                            action cannot be undone and will remove this tag
-                            from all users.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => {
-                              // TODO: Implement delete functionality
-                              toast.success("Tag deleted successfully!");
-                            }}
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredTags.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="py-8 text-center text-muted-foreground"
-                  >
-                    {searchTerm || categoryFilter !== "all"
-                      ? "No tags match your filters"
-                      : "No marketing tags created yet"}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+        <CardContent className="p-0">
+          <EntityList
+            data={filteredTags}
+            columns={columns}
+            entityActions={entityActions}
+            viewModes={["list"]}
+            defaultViewMode="list"
+            enableFooter={false}
+            enableSearch={false}
+            hideFilters
+            emptyState={emptyState}
+            className="p-4"
+          />
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={!!tagToDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTagToDelete(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Marketing Tag</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tagToDelete
+                ? `Are you sure you want to delete "${tagToDelete.name}"? This action cannot be undone and will remove this tag from all users.`
+                : "Are you sure you want to delete this tag?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setTagToDelete(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                toast.success("Tag deleted successfully!");
+                setTagToDelete(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

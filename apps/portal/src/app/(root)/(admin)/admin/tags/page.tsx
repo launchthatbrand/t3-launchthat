@@ -1,10 +1,5 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent } from "@acme/ui/card";
 import {
   Dialog,
@@ -13,19 +8,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import { Skeleton } from "@acme/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@acme/ui/table";
-import { toast } from "@acme/ui/toast";
-
-import { useMarketingTags } from "~/hooks/useMarketingTags";
 import TagForm, { TagFormValues } from "./_components/TagForm";
+import { useMemo, useState } from "react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import type { ColumnDef } from "@tanstack/react-table";
+import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { Plus } from "lucide-react";
+import { toast } from "@acme/ui/toast";
+import { useMarketingTags } from "~/hooks/useMarketingTags";
 
 const slugify = (value: string) =>
   value
@@ -37,6 +29,7 @@ export default function TagsAdminPage() {
   const { marketingTags, createTag } = useMarketingTags();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  type MarketingTag = NonNullable<typeof marketingTags>[number];
 
   const sortedTags = useMemo(() => {
     if (!marketingTags) {
@@ -44,6 +37,67 @@ export default function TagsAdminPage() {
     }
     return [...marketingTags].sort((a, b) => a.name.localeCompare(b.name));
   }, [marketingTags]);
+  const columns = useMemo<ColumnDef<MarketingTag>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Name",
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2 font-medium">
+            <div
+              className="h-3 w-3 rounded-full"
+              style={{ backgroundColor: row.original.color ?? "#6366f1" }}
+            />
+            {row.original.name}
+            {row.original.category && (
+              <Badge variant="outline" className="text-xs">
+                {row.original.category}
+              </Badge>
+            )}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "description",
+        header: "Description",
+        cell: ({ row }) => (
+          <span className="max-w-md truncate text-sm text-muted-foreground">
+            {row.original.description ?? "—"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "slug",
+        header: "Slug",
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">
+            {row.original.slug ?? slugify(row.original.name)}
+          </span>
+        ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        cell: ({ row }) => (
+          <Badge
+            variant={row.original.isActive === false ? "secondary" : "default"}
+          >
+            {row.original.isActive === false ? "Inactive" : "Active"}
+          </Badge>
+        ),
+      },
+      {
+        id: "created",
+        header: "Created",
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">
+            {formatDate(row.original.createdAt ?? row.original._creationTime)}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
 
   const handleCreateTag = async (values: TagFormValues) => {
     setIsSubmitting(true);
@@ -102,75 +156,21 @@ export default function TagsAdminPage() {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Slug</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {marketingTags === undefined && (
-                <TableRow>
-                  <TableCell colSpan={5}>
-                    <div className="flex items-center gap-4 p-4">
-                      <Skeleton className="h-4 w-1/4" />
-                      <Skeleton className="h-4 w-1/3" />
-                      <Skeleton className="h-4 w-16" />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-
-              {marketingTags !== undefined && sortedTags.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      No tags yet. Create your first tag to get started.
-                    </p>
-                  </TableCell>
-                </TableRow>
-              )}
-
-              {sortedTags.map((tag) => (
-                <TableRow key={tag._id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: tag.color ?? "#6366f1" }}
-                      />
-                      {tag.name}
-                      {tag.category && (
-                        <Badge variant="outline" className="text-xs">
-                          {tag.category}
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="max-w-md truncate text-sm text-muted-foreground">
-                    {tag.description ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {tag.slug ?? slugify(tag.name)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={tag.isActive === false ? "secondary" : "default"}
-                    >
-                      {tag.isActive === false ? "Inactive" : "Active"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(tag.createdAt ?? tag._creationTime)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <EntityList
+            data={sortedTags}
+            columns={columns}
+            isLoading={marketingTags === undefined}
+            enableFooter={false}
+            enableSearch
+            viewModes={["list"]}
+            defaultViewMode="list"
+            emptyState={
+              <div className="py-10 text-center text-muted-foreground">
+                No tags yet. Create your first tag to get started.
+              </div>
+            }
+            className="p-4"
+          />
         </CardContent>
       </Card>
     </div>

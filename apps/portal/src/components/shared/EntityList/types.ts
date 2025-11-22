@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
 import { ColumnDef } from "@tanstack/react-table";
+import { ReactNode } from "react";
 
 /**
  * Possible view modes for the EntityList
@@ -177,6 +177,9 @@ export interface EntityListProps<T extends object> {
 
   /** Custom item renderer (optional) */
   itemRender?: (item: T) => ReactNode;
+
+  /** Custom renderer for replacing the default list/grid view */
+  customRender?: (items: T[]) => ReactNode;
 
   /** Default view mode (default: "list") */
   defaultViewMode?: ViewMode;

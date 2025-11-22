@@ -25,14 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@acme/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import {
   useAddPostTypeField,
@@ -49,10 +41,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
+import type { ColumnDef } from "@tanstack/react-table";
+import { EntityList } from "~/components/shared/EntityList/EntityList";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import Link from "next/link";
-import { PageTemplatesManager } from "~/components/admin/templates/PageTemplatesManager";
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 import { toast } from "sonner";
@@ -72,7 +65,7 @@ type FieldType =
   | "relation"
   | "json";
 
-const TAB_VALUES = ["types", "fields", "taxonomies", "templates"] as const;
+const TAB_VALUES = ["types", "fields", "taxonomies"] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 const DEFAULT_TAB: TabValue = "types";
 
@@ -534,6 +527,659 @@ export default function PostTypesSettingsPage() {
     });
   };
 
+  const postTypes = postTypesQuery ?? [];
+
+  const createPostTypeDialog = (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Content Type
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[550px]">
+        <DialogHeader>
+          <DialogTitle>Create New Content Type</DialogTitle>
+          <DialogDescription>
+            Define a new post type for your site
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              placeholder="e.g., Blog Post"
+              value={newPostType.name}
+              onChange={(e) => {
+                setNewPostType({
+                  ...newPostType,
+                  name: e.target.value,
+                });
+                if (!newPostType.slug) {
+                  handleSlugChange(e.target.value);
+                }
+              }}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="slug">Slug</Label>
+            <Input
+              id="slug"
+              placeholder="e.g., blog-posts"
+              value={newPostType.slug}
+              onChange={(e) =>
+                setNewPostType({
+                  ...newPostType,
+                  slug: e.target.value,
+                })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Used in URLs and API endpoints. Use only lowercase letters,
+              numbers, and hyphens.
+            </p>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              placeholder="What kind of content will this type contain?"
+              value={newPostType.description}
+              onChange={(e) =>
+                setNewPostType({
+                  ...newPostType,
+                  description: e.target.value,
+                })
+              }
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="api-enabled"
+              checked={newPostType.enableApi}
+              onCheckedChange={(checked) =>
+                setNewPostType({
+                  ...newPostType,
+                  enableApi: checked,
+                })
+              }
+            />
+            <Label htmlFor="api-enabled">Enable API Access</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="create-timestamps"
+              checked={newPostType.includeTimestamps}
+              onCheckedChange={(checked) =>
+                setNewPostType({
+                  ...newPostType,
+                  includeTimestamps: checked,
+                })
+              }
+            />
+            <Label htmlFor="create-timestamps">Include Timestamps</Label>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            type="submit"
+            onClick={handleCreatePostType}
+            disabled={isCreating}
+          >
+            {isCreating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              <>Create Content Type</>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const postTypeListActions = (
+    <div className="flex flex-wrap gap-2">
+      <Button
+        variant="outline"
+        onClick={handleRefreshCounts}
+        disabled={isRefreshing}
+      >
+        {isRefreshing ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Refreshing...
+          </>
+        ) : (
+          <>Refresh Counts</>
+        )}
+      </Button>
+      {createPostTypeDialog}
+    </div>
+  );
+
+  const postTypesEmptyState = (
+    <div className="flex h-40 w-full flex-col items-center justify-center gap-2">
+      <p className="text-muted-foreground">No post types found</p>
+      <Button onClick={() => handleInitializeCms()} disabled={isInitializing}>
+        {isInitializing ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Initializing...
+          </>
+        ) : (
+          <>Create built-in types</>
+        )}
+      </Button>
+    </div>
+  );
+
+  const postTypeColumns: ColumnDef<PostType>[] = [
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
+    },
+    {
+      accessorKey: "slug",
+      header: "Slug",
+    },
+    {
+      accessorKey: "description",
+      header: "Description",
+      cell: ({ row }) => (
+        <span className="line-clamp-1 text-muted-foreground">
+          {row.original.description ?? "—"}
+        </span>
+      ),
+    },
+    {
+      id: "fieldCount",
+      header: () => <div className="text-center">Fields</div>,
+      cell: ({ row }) => (
+        <div className="text-center">{row.original.fieldCount ?? 0}</div>
+      ),
+    },
+    {
+      id: "entryCount",
+      header: () => <div className="text-center">Entries</div>,
+      cell: ({ row }) => (
+        <div className="text-center">{row.original.entryCount ?? 0}</div>
+      ),
+    },
+    {
+      id: "type",
+      header: () => <div className="text-center">Type</div>,
+      cell: ({ row }) => (
+        <div className="text-center">
+          {row.original.isBuiltIn ? (
+            <Badge variant="secondary">Built-in</Badge>
+          ) : (
+            <Badge>Custom</Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Actions</div>,
+      enableSorting: false,
+      enableHiding: false,
+      cell: ({ row }) => {
+        const type = row.original;
+        return (
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="icon" asChild>
+              <Link href={`/admin/settings/post-types/${type._id}`}>
+                <Edit className="h-4 w-4" />
+              </Link>
+            </Button>
+            {!type.isBuiltIn && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDeletePostType(type)}
+                disabled={deletingId === type._id}
+              >
+                {deletingId === type._id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+  const taxonomyColumns: ColumnDef<TaxonomyDefinition>[] = useMemo(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Taxonomy",
+        cell: ({ row }) => (
+          <div>
+            <div className="font-medium">{row.original.name}</div>
+            <div className="font-mono text-xs text-muted-foreground">
+              {row.original.slug}
+            </div>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "hierarchical",
+        header: "Structure",
+        cell: ({ row }) => (
+          <Badge variant="outline">
+            {row.original.hierarchical ? "Hierarchical" : "Flat"}
+          </Badge>
+        ),
+      },
+      {
+        id: "assignment",
+        header: "Assigned",
+        cell: ({ row }) => (
+          <Switch
+            checked={assignedTaxonomies.includes(row.original.slug)}
+            onCheckedChange={(checked) =>
+              handleToggleTaxonomyAssignment(row.original.slug, checked)
+            }
+            disabled={!selectedTaxonomyPostType}
+          />
+        ),
+      },
+      {
+        accessorKey: "description",
+        header: "Description",
+        cell: ({ row }) => (
+          <p className="text-sm text-muted-foreground">
+            {row.original.description || "No description"}
+          </p>
+        ),
+      },
+    ],
+    [assignedTaxonomies, handleToggleTaxonomyAssignment, selectedTaxonomyPostType],
+  );
+
+  const addTaxonomyDialog = (
+    <Dialog open={isTaxonomyDialogOpen} onOpenChange={setIsTaxonomyDialogOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="whitespace-nowrap">
+          <Plus className="mr-2 h-4 w-4" />
+          Add Taxonomy
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Taxonomy</DialogTitle>
+          <DialogDescription>
+            Create a taxonomy that can be assigned to this post type.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="taxonomy-name">Name</Label>
+            <Input
+              id="taxonomy-name"
+              value={taxonomyForm.name}
+              onChange={(event) =>
+                setTaxonomyForm((prev) => ({
+                  ...prev,
+                  name: event.target.value,
+                }))
+              }
+              placeholder="e.g., Industries"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="taxonomy-slug">Slug</Label>
+            <Input
+              id="taxonomy-slug"
+              value={taxonomyForm.slug}
+              onChange={(event) =>
+                setTaxonomyForm((prev) => ({
+                  ...prev,
+                  slug: event.target.value,
+                }))
+              }
+              placeholder="e.g., industries"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="taxonomy-description">Description</Label>
+            <Textarea
+              id="taxonomy-description"
+              value={taxonomyForm.description}
+              onChange={(event) =>
+                setTaxonomyForm((prev) => ({
+                  ...prev,
+                  description: event.target.value,
+                }))
+              }
+              placeholder="How is this taxonomy used?"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="taxonomy-hierarchical"
+              checked={taxonomyForm.hierarchical}
+              onCheckedChange={(checked) =>
+                setTaxonomyForm((prev) => ({
+                  ...prev,
+                  hierarchical: checked,
+                }))
+              }
+            />
+            <Label htmlFor="taxonomy-hierarchical">
+              Hierarchical (like categories)
+            </Label>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            onClick={handleAddTaxonomy}
+            disabled={!taxonomyForm.name.trim()}
+          >
+            Save Taxonomy
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const taxonomyActions = (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <Select
+        value={taxonomyPostType ?? ""}
+        onValueChange={(value) => setTaxonomyPostType(value)}
+        disabled={!postTypesQuery.length}
+      >
+        <SelectTrigger className="w-[220px]">
+          <SelectValue placeholder="Select post type" />
+        </SelectTrigger>
+        <SelectContent>
+          {postTypesQuery.map((type) => (
+            <SelectItem key={type.slug} value={type.slug}>
+              {type.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {addTaxonomyDialog}
+    </div>
+  );
+
+  const taxonomyTitle = selectedTaxonomyPostType
+    ? `Taxonomies for ${selectedTaxonomyPostType.name}`
+    : "Taxonomies";
+
+  const fieldColumns: ColumnDef<Doc<"postTypeFields">>[] = useMemo(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Field",
+        cell: ({ row }) => (
+          <div>
+            <div className="font-medium">{row.original.name}</div>
+            {row.original.description ? (
+              <div className="text-xs text-muted-foreground">
+                {row.original.description}
+              </div>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "key",
+        header: "Meta Key",
+        cell: ({ row }) => (
+          <span className="font-mono text-sm">{row.original.key}</span>
+        ),
+      },
+      {
+        accessorKey: "type",
+        header: "Type",
+        cell: ({ row }) => (
+          <span className="capitalize">
+            {FIELD_TYPE_OPTIONS.find(
+              (option) => option.value === (row.original.type as FieldType),
+            )?.label ?? row.original.type}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "required",
+        header: "Required",
+        cell: ({ row }) =>
+          row.original.required ? (
+            <Badge>Required</Badge>
+          ) : (
+            <Badge variant="outline">Optional</Badge>
+          ),
+      },
+      {
+        accessorKey: "searchable",
+        header: "Searchable",
+        cell: ({ row }) => (row.original.searchable ? "Yes" : "No"),
+      },
+      {
+        accessorKey: "filterable",
+        header: "Filterable",
+        cell: ({ row }) => (row.original.filterable ? "Yes" : "No"),
+      },
+      {
+        accessorKey: "isSystem",
+        header: "Source",
+        cell: ({ row }) => (
+          <Badge variant={row.original.isSystem ? "secondary" : "default"}>
+            {row.original.isSystem ? "System" : "Custom"}
+          </Badge>
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="icon" disabled>
+              <Edit className="h-4 w-4" />
+            </Button>
+            {!row.original.isSystem && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() =>
+                  handleRemoveField(row.original._id, row.original.isSystem)
+                }
+              >
+                <Trash className="h-4 w-4 text-destructive" />
+              </Button>
+            )}
+          </div>
+        ),
+      },
+    ],
+    [handleRemoveField],
+  );
+
+  const addFieldDialog = (
+    <Dialog
+      open={isFieldDialogOpen}
+      onOpenChange={(open) => {
+        setIsFieldDialogOpen(open);
+        if (!open) {
+          resetFieldForm();
+        }
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button disabled={!selectedPostType}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Field
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Field</DialogTitle>
+          <DialogDescription>
+            Attach a new meta field to the {selectedPostType?.name ?? "selected"}{" "}
+            post type.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="field-name">Field Label</Label>
+            <Input
+              id="field-name"
+              value={fieldForm.name}
+              onChange={(event) =>
+                handleFieldFormChange("name", event.target.value)
+              }
+              placeholder="e.g., Hero Heading"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="field-key">Meta Key</Label>
+            <Input
+              id="field-key"
+              value={fieldForm.key}
+              onChange={(event) =>
+                handleFieldFormChange(
+                  "key",
+                  normalizeMetaKey(event.target.value),
+                )
+              }
+              placeholder="e.g., hero_heading"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used in the API and stored alongside `post_meta`.
+            </p>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="field-type">Field Type</Label>
+            <Select
+              value={fieldForm.type}
+              onValueChange={(value: FieldType) =>
+                handleFieldFormChange("type", value)
+              }
+            >
+              <SelectTrigger id="field-type">
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                {FIELD_TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="field-description">Description</Label>
+            <Textarea
+              id="field-description"
+              value={fieldForm.description}
+              onChange={(event) =>
+                handleFieldFormChange("description", event.target.value)
+              }
+              placeholder="Explain how editors should use this field."
+            />
+          </div>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="field-required"
+                checked={fieldForm.required}
+                onCheckedChange={(checked) =>
+                  handleFieldFormChange("required", checked)
+                }
+              />
+              <Label htmlFor="field-required">Required field</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="field-searchable"
+                checked={fieldForm.searchable}
+                onCheckedChange={(checked) =>
+                  handleFieldFormChange("searchable", checked)
+                }
+              />
+              <Label htmlFor="field-searchable">Include in search index</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="field-filterable"
+                checked={fieldForm.filterable}
+                onCheckedChange={(checked) =>
+                  handleFieldFormChange("filterable", checked)
+                }
+              />
+              <Label htmlFor="field-filterable">
+                Expose as filter/facet
+              </Label>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            onClick={handleAddField}
+            disabled={
+              !selectedType || !fieldForm.name.trim() || !fieldForm.key.trim()
+            }
+          >
+            Save Field
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const fieldActions = (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <Select
+        value={selectedType ?? ""}
+        onValueChange={handlePostTypeChange}
+        disabled={!postTypesQuery.length}
+      >
+        <SelectTrigger className="w-[220px]">
+          <SelectValue placeholder="Select post type" />
+        </SelectTrigger>
+        <SelectContent>
+          {postTypesQuery.map((type) => (
+            <SelectItem key={type._id} value={type.slug}>
+              {type.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {addFieldDialog}
+    </div>
+  );
+
+  const fieldEmptyState = selectedPostType ? (
+    <div className="flex flex-col items-center justify-center gap-3 py-8 text-sm text-muted-foreground">
+      <p>No custom fields yet. Click “Add Field” to register the first meta key.</p>
+      <Button onClick={() => setIsFieldDialogOpen(true)}>Add Field</Button>
+    </div>
+  ) : (
+    <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+      <p className="text-muted-foreground">
+        Create a post type to begin attaching custom fields.
+      </p>
+      <Button onClick={() => setActiveTab("types")}>Go to Post Types</Button>
+    </div>
+  );
+
   return (
     <div className="container py-6">
       <div className="mb-6">
@@ -559,725 +1205,90 @@ export default function PostTypesSettingsPage() {
           <TabsTrigger value="types">Post Types</TabsTrigger>
           <TabsTrigger value="fields">Fields</TabsTrigger>
           <TabsTrigger value="taxonomies">Taxonomies</TabsTrigger>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
         </TabsList>
 
         <TabsContent value="types">
-          <div className="mb-4 flex justify-between">
-            <h2 className="text-xl font-semibold">All Post Types</h2>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={handleRefreshCounts}
-                disabled={isRefreshing}
-              >
-                {isRefreshing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Refreshing...
-                  </>
-                ) : (
-                  <>Refresh Counts</>
-                )}
-              </Button>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Content Type
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[550px]">
-                  <DialogHeader>
-                    <DialogTitle>Create New Content Type</DialogTitle>
-                    <DialogDescription>
-                      Define a new post type for your site
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="name">Name</Label>
-                      <Input
-                        id="name"
-                        placeholder="e.g., Blog Post"
-                        value={newPostType.name}
-                        onChange={(e) => {
-                          setNewPostType({
-                            ...newPostType,
-                            name: e.target.value,
-                          });
-                          if (!newPostType.slug) {
-                            handleSlugChange(e.target.value);
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="slug">Slug</Label>
-                      <Input
-                        id="slug"
-                        placeholder="e.g., blog-posts"
-                        value={newPostType.slug}
-                        onChange={(e) =>
-                          setNewPostType({
-                            ...newPostType,
-                            slug: e.target.value,
-                          })
-                        }
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Used in URLs and API endpoints. Use only lowercase
-                        letters, numbers, and hyphens.
-                      </p>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        placeholder="What kind of content will this type contain?"
-                        value={newPostType.description}
-                        onChange={(e) =>
-                          setNewPostType({
-                            ...newPostType,
-                            description: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id="api-enabled"
-                        checked={newPostType.enableApi}
-                        onCheckedChange={(checked) =>
-                          setNewPostType({
-                            ...newPostType,
-                            enableApi: checked,
-                          })
-                        }
-                      />
-                      <Label htmlFor="api-enabled">Enable API Access</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id="create-timestamps"
-                        checked={newPostType.includeTimestamps}
-                        onCheckedChange={(checked) =>
-                          setNewPostType({
-                            ...newPostType,
-                            includeTimestamps: checked,
-                          })
-                        }
-                      />
-                      <Label htmlFor="create-timestamps">
-                        Include Timestamps
-                      </Label>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      type="submit"
-                      onClick={handleCreatePostType}
-                      disabled={isCreating}
-                    >
-                      {isCreating ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        <>Create Content Type</>
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-
           <Card>
             <CardContent className="p-6">
-              {postTypesLoading ? (
-                <div className="flex h-40 w-full items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <>
-                  {Array.isArray(postTypesQuery) &&
-                  postTypesQuery.length > 0 ? (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Slug</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead className="text-center">Fields</TableHead>
-                          <TableHead className="text-center">Entries</TableHead>
-                          <TableHead className="text-center">Type</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {postTypesQuery.map((type: PostType) => (
-                          <TableRow key={type._id}>
-                            <TableCell className="font-medium">
-                              {type.name}
-                            </TableCell>
-                            <TableCell>{type.slug}</TableCell>
-                            <TableCell className="max-w-[250px] truncate">
-                              {type.description ?? "—"}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {type.fieldCount ?? 0}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {type.entryCount ?? 0}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {type.isBuiltIn ? (
-                                <Badge variant="secondary">Built-in</Badge>
-                              ) : (
-                                <Badge>Custom</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button variant="ghost" size="icon" asChild>
-                                  <Link
-                                    href={`/admin/settings/post-types/${type._id}`}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Link>
-                                </Button>
-                                {!type.isBuiltIn && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleDeletePostType(type)}
-                                    disabled={deletingId === type._id}
-                                  >
-                                    {deletingId === type._id ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      <Trash className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  ) : Array.isArray(postTypesQuery) &&
-                    postTypesQuery.length === 0 ? (
-                    <div className="flex h-40 w-full flex-col items-center justify-center gap-2">
-                      <p className="text-muted-foreground">
-                        No post types found
-                      </p>
-                      <Button
-                        onClick={() => handleInitializeCms()}
-                        disabled={isInitializing}
-                      >
-                        {isInitializing ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Initializing...
-                          </>
-                        ) : (
-                          <>Initialize CMS</>
-                        )}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex h-40 w-full flex-col items-center justify-center gap-2">
-                      <p className="text-destructive">
-                        Error loading post types
-                      </p>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleInitializeCms()}
-                        disabled={isInitializing}
-                      >
-                        {isInitializing ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Initializing...
-                          </>
-                        ) : (
-                          <>Initialize CMS</>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
+              <EntityList<PostType>
+                data={postTypes}
+                columns={postTypeColumns}
+                title="All Post Types"
+                description="Overview of your built-in and custom content types"
+                actions={postTypeListActions}
+                isLoading={postTypesLoading}
+                enableSearch
+                viewModes={["list"]}
+                emptyState={postTypesEmptyState}
+              />
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="taxonomies">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold">Taxonomies</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Assign hierarchical or flat taxonomies to each post type—just
-                like WordPress categories and tags.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Select
-                value={taxonomyPostType ?? ""}
-                onValueChange={setTaxonomyPostType}
-                disabled={!postTypesQuery.length}
-              >
-                <SelectTrigger className="w-[220px]">
-                  <SelectValue placeholder="Select post type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {postTypesQuery.map((type) => (
-                    <SelectItem key={type._id} value={type.slug}>
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Dialog
-                open={isTaxonomyDialogOpen}
-                onOpenChange={setIsTaxonomyDialogOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Taxonomy
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create Taxonomy</DialogTitle>
-                    <DialogDescription>
-                      Register a taxonomy that can be shared across post types.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="taxonomy-name">Label</Label>
-                      <Input
-                        id="taxonomy-name"
-                        value={taxonomyForm.name}
-                        onChange={(event) =>
-                          setTaxonomyForm((prev) => ({
-                            ...prev,
-                            name: event.target.value,
-                          }))
-                        }
-                        placeholder="e.g., Industries"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="taxonomy-slug">Slug</Label>
-                      <Input
-                        id="taxonomy-slug"
-                        value={taxonomyForm.slug}
-                        onChange={(event) =>
-                          setTaxonomyForm((prev) => ({
-                            ...prev,
-                            slug: event.target.value,
-                          }))
-                        }
-                        placeholder="e.g., industries"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="taxonomy-description">Description</Label>
-                      <Textarea
-                        id="taxonomy-description"
-                        value={taxonomyForm.description}
-                        onChange={(event) =>
-                          setTaxonomyForm((prev) => ({
-                            ...prev,
-                            description: event.target.value,
-                          }))
-                        }
-                        placeholder="How is this taxonomy used?"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id="taxonomy-hierarchical"
-                        checked={taxonomyForm.hierarchical}
-                        onCheckedChange={(checked) =>
-                          setTaxonomyForm((prev) => ({
-                            ...prev,
-                            hierarchical: checked,
-                          }))
-                        }
-                      />
-                      <Label htmlFor="taxonomy-hierarchical">
-                        Hierarchical (like categories)
-                      </Label>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      type="button"
-                      onClick={handleAddTaxonomy}
-                      disabled={!taxonomyForm.name.trim()}
-                    >
-                      Save Taxonomy
+          <p className="mb-4 text-sm text-muted-foreground">
+            Assign hierarchical or flat taxonomies to each post type—just like
+            WordPress categories and tags.
+          </p>
+          <Card>
+            <CardContent className="p-6">
+              <EntityList<TaxonomyDefinition>
+                data={selectedTaxonomyPostType ? taxonomies : []}
+                columns={taxonomyColumns}
+                title={taxonomyTitle}
+                description={
+                  selectedTaxonomyPostType
+                    ? `Toggle which taxonomies apply to ${selectedTaxonomyPostType.name}.`
+                    : undefined
+                }
+                actions={taxonomyActions}
+                enableSearch={false}
+                viewModes={["list"]}
+                emptyState={
+                  <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+                    <p className="text-muted-foreground">
+                      Choose a post type to manage taxonomy relationships.
+                    </p>
+                    <Button onClick={() => setActiveTab("types")}>
+                      Go to Post Types
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-
-          {selectedTaxonomyPostType ? (
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Taxonomy</TableHead>
-                      <TableHead>Structure</TableHead>
-                      <TableHead>Assigned</TableHead>
-                      <TableHead>Description</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {taxonomies.map((taxonomy) => {
-                      const isAssigned = assignedTaxonomies.includes(
-                        taxonomy.slug,
-                      );
-                      return (
-                        <TableRow key={taxonomy.slug}>
-                          <TableCell>
-                            <div className="font-medium">{taxonomy.name}</div>
-                            <div className="font-mono text-xs text-muted-foreground">
-                              {taxonomy.slug}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {taxonomy.hierarchical ? "Hierarchical" : "Flat"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Switch
-                              checked={isAssigned}
-                              onCheckedChange={(checked) =>
-                                handleToggleTaxonomyAssignment(
-                                  taxonomy.slug,
-                                  checked,
-                                )
-                              }
-                            />
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {taxonomy.description}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center gap-4 py-12">
-                <p className="text-muted-foreground">
-                  Choose a post type to manage taxonomy relationships.
-                </p>
-                <Button onClick={() => setActiveTab("types")}>
-                  Go to Post Types
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+                  </div>
+                }
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="fields">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold">
-                {selectedPostType
-                  ? `Fields for ${selectedPostType.name}`
-                  : "Fields"}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Define field metadata, meta keys, and storage options similar to
-                WordPress custom fields.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Select
-                value={selectedType ?? ""}
-                onValueChange={handlePostTypeChange}
-                disabled={!postTypesQuery.length}
-              >
-                <SelectTrigger className="w-[220px]">
-                  <SelectValue placeholder="Select post type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {postTypesQuery.map((type) => (
-                    <SelectItem key={type._id} value={type.slug}>
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Dialog
-                open={isFieldDialogOpen}
-                onOpenChange={(open) => {
-                  setIsFieldDialogOpen(open);
-                  if (!open) {
-                    resetFieldForm();
-                  }
-                }}
-              >
-                <DialogTrigger asChild>
-                  <Button disabled={!selectedPostType}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Field
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Field</DialogTitle>
-                    <DialogDescription>
-                      Attach a new meta field to the{" "}
-                      {selectedPostType?.name ?? "selected"} post type.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="field-name">Field Label</Label>
-                      <Input
-                        id="field-name"
-                        value={fieldForm.name}
-                        onChange={(event) =>
-                          handleFieldFormChange("name", event.target.value)
-                        }
-                        placeholder="e.g., Hero Heading"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="field-key">Meta Key</Label>
-                      <Input
-                        id="field-key"
-                        value={fieldForm.key}
-                        onChange={(event) =>
-                          handleFieldFormChange(
-                            "key",
-                            normalizeMetaKey(event.target.value),
-                          )
-                        }
-                        placeholder="e.g., hero_heading"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Used in the API and stored alongside `post_meta`.
-                      </p>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="field-type">Field Type</Label>
-                      <Select
-                        value={fieldForm.type}
-                        onValueChange={(value: FieldType) =>
-                          handleFieldFormChange("type", value)
-                        }
-                      >
-                        <SelectTrigger id="field-type">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {FIELD_TYPE_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="field-description">Description</Label>
-                      <Textarea
-                        id="field-description"
-                        value={fieldForm.description}
-                        onChange={(event) =>
-                          handleFieldFormChange(
-                            "description",
-                            event.target.value,
-                          )
-                        }
-                        placeholder="Explain how editors should use this field."
-                      />
-                    </div>
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          id="field-required"
-                          checked={fieldForm.required}
-                          onCheckedChange={(checked) =>
-                            handleFieldFormChange("required", checked)
-                          }
-                        />
-                        <Label htmlFor="field-required">Required field</Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          id="field-searchable"
-                          checked={fieldForm.searchable}
-                          onCheckedChange={(checked) =>
-                            handleFieldFormChange("searchable", checked)
-                          }
-                        />
-                        <Label htmlFor="field-searchable">
-                          Include in search index
-                        </Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          id="field-filterable"
-                          checked={fieldForm.filterable}
-                          onCheckedChange={(checked) =>
-                            handleFieldFormChange("filterable", checked)
-                          }
-                        />
-                        <Label htmlFor="field-filterable">
-                          Expose as filter/facet
-                        </Label>
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      type="button"
-                      onClick={handleAddField}
-                      disabled={
-                        !selectedType ||
-                        !fieldForm.name.trim() ||
-                        !fieldForm.key.trim()
-                      }
-                    >
-                      Save Field
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-
-          {selectedPostType ? (
-            <Card>
-              <CardContent className="p-0">
-                {postTypeFieldsLoading ? (
-                  <div className="flex flex-col items-center justify-center gap-3 py-8 text-sm text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Loading fields…
-                  </div>
-                ) : currentFields.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center gap-3 py-8 text-sm text-muted-foreground">
-                    No custom fields yet. Click “Add Field” to register the
-                    first meta key.
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Field</TableHead>
-                        <TableHead>Meta Key</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Required</TableHead>
-                        <TableHead>Searchable</TableHead>
-                        <TableHead>Filterable</TableHead>
-                        <TableHead>Source</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {currentFields.map((field) => (
-                        <TableRow key={field._id}>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{field.name}</div>
-                              {field.description ? (
-                                <div className="text-xs text-muted-foreground">
-                                  {field.description}
-                                </div>
-                              ) : null}
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-mono text-sm">
-                            {field.key}
-                          </TableCell>
-                          <TableCell className="capitalize">
-                            {FIELD_TYPE_OPTIONS.find(
-                              (option) =>
-                                option.value === (field.type as FieldType),
-                            )?.label ?? field.type}
-                          </TableCell>
-                          <TableCell>
-                            {field.required ? (
-                              <Badge>Required</Badge>
-                            ) : (
-                              <Badge variant="outline">Optional</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {field.searchable ? "Yes" : "No"}
-                          </TableCell>
-                          <TableCell>
-                            {field.filterable ? "Yes" : "No"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={field.isSystem ? "secondary" : "default"}
-                            >
-                              {field.isSystem ? "System" : "Custom"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button variant="ghost" size="icon" disabled>
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              {!field.isSystem && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() =>
-                                    handleRemoveField(field._id, field.isSystem)
-                                  }
-                                >
-                                  <Trash className="h-4 w-4 text-destructive" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center gap-4 py-12">
-                <p className="text-muted-foreground">
-                  Create a post type to begin attaching custom fields.
-                </p>
-                <Button onClick={() => setActiveTab("types")}>
-                  Go to Post Types
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+          <p className="mb-4 text-sm text-muted-foreground">
+            Define field metadata, meta keys, and storage options similar to
+            WordPress custom fields.
+          </p>
+          <Card>
+            <CardContent className="p-6">
+              <EntityList<Doc<"postTypeFields">>
+                data={selectedPostType ? currentFields : []}
+                columns={fieldColumns}
+                title={
+                  selectedPostType
+                    ? `Fields for ${selectedPostType.name}`
+                    : "Fields"
+                }
+                description={
+                  selectedPostType
+                    ? `Manage custom meta for ${selectedPostType.name}.`
+                    : undefined
+                }
+                actions={fieldActions}
+                isLoading={postTypeFieldsLoading}
+                enableSearch
+                viewModes={["list"]}
+                emptyState={fieldEmptyState}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="templates">
-          <PageTemplatesManager />
-        </TabsContent>
       </Tabs>
     </div>
   );

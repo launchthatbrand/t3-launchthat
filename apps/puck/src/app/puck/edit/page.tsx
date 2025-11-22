@@ -14,10 +14,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@acme/ui/button";
 import type { Data } from "@measured/puck";
+import type { Plugin } from "@measured/puck";
 import { SearchableDrawer } from "~/app/_components/SearchableDrawer";
 import { Skeleton } from "@acme/ui";
 import { Type } from "lucide-react";
 import { api } from "../../../../../portal/convexspec";
+import { convexDataSourcePlugin } from "@acme/puck-config/plugins/registerConvexDataSource";
 import { createConvexTemplateStorage } from "~/lib/createConvexTemplateStorage";
 import { objectAccordionPlugin } from "@acme/puck-config/plugins";
 import { toast } from "sonner";
@@ -60,6 +62,10 @@ export default function EditPage() {
   const postIdParam = searchParams.get("postId");
   const postId = postIdParam ? (postIdParam as Id<"posts">) : null;
   const postTypeSlug = searchParams.get("postType") ?? undefined;
+  const organizationIdParam = searchParams.get("organizationId");
+  const organizationIdFromQuery = organizationIdParam
+    ? (organizationIdParam as Id<"organizations">)
+    : undefined;
 
   const [tenantSlug, setTenantSlug] = useState<string | null>(null);
   const [slugResolved, setSlugResolved] = useState(false);
@@ -77,19 +83,20 @@ export default function EditPage() {
     tenantSlug ? { slug: tenantSlug } : "skip",
   ) as Doc<"organizations"> | null | undefined;
 
-  const organizationId = tenantRecord?._id as Id<"organizations"> | undefined;
+  const tenantOrganizationId = tenantRecord?._id as Id<"organizations"> | undefined;
+  const effectiveOrganizationId = tenantOrganizationId ?? organizationIdFromQuery;
   const organizationLoading = tenantSlug ? tenantRecord === undefined : false;
   const organizationNotFound = tenantSlug ? tenantRecord === null : false;
-  const missingTenant = slugResolved && !tenantSlug;
-  console.log("[EditPage] Params", {
-    pageIdentifier,
-    title,
-    organizationId,
-    postId,
-    postTypeSlug,
-    tenantSlug,
-  });
-  const scopeKey = organizationId ?? "global";
+  const missingTenant = slugResolved && !tenantSlug && !organizationIdFromQuery;
+  // console.log("[EditPage] Params", {
+  //   pageIdentifier,
+  //   title,
+  //   organizationId,
+  //   postId,
+  //   postTypeSlug,
+  //   tenantSlug,
+  // });
+  const scopeKey = effectiveOrganizationId ?? "global";
   const convex = useConvex();
   const templateScopeRef = useRef<string | null>(null);
 
@@ -103,6 +110,87 @@ export default function EditPage() {
     templateScopeRef.current = scopeKey;
   }
 
+  const [convexPlugin, setConvexPlugin] = useState<Plugin | null>(null);
+  const postTypesCacheRef = useRef<Array<{ slug: string; name: string }>>([]);
+  useEffect(() => {
+    if (!slugResolved) {
+      return;
+    }
+    if (tenantSlug && tenantRecord === undefined) {
+      return;
+    }
+    const fetchPostTypes = async ({ query }: { query?: string }) => {
+      if (postTypesCacheRef.current.length === 0) {
+        try {
+          const list =
+            (await convex.query(api.core.postTypes.queries.list, {
+              ...(effectiveOrganizationId ? { organizationId: effectiveOrganizationId } : {}),
+            })) ?? [];
+          postTypesCacheRef.current = list.map((postType) => ({
+            slug: postType.slug,
+            name: postType.name,
+          }));
+        } catch (error) {
+          console.error("Failed to load post types for Puck data source", error);
+          return [];
+        }
+      }
+
+      try {
+        const needle = query?.toLowerCase().trim();
+        return postTypesCacheRef.current
+          .filter((type) => !needle || type.name.toLowerCase().includes(needle))
+          .map((type) => ({
+            value: type.slug,
+            title: type.name,
+          }));
+      } catch (error) {
+        return [];
+      }
+    };
+
+    const fetchPosts = async ({
+      postTypeSlug,
+      limit,
+      organizationId: overrideOrgId,
+    }: {
+      postTypeSlug: string;
+      limit: number;
+      organizationId?: string;
+    }) => {
+      const scopedOrganizationIdInput = overrideOrgId ?? effectiveOrganizationId;
+      const scopedOrganizationId = scopedOrganizationIdInput
+        ? (scopedOrganizationIdInput as Id<"organizations">)
+        : undefined;
+      const posts =
+        (await convex.query(api.core.posts.queries.getAllPosts, {
+          ...(scopedOrganizationId ? { organizationId: scopedOrganizationId } : {}),
+          filters: {
+            status: "published",
+            postTypeSlug,
+            limit,
+          },
+        })) ?? [];
+
+      return posts.map((post: any) => ({
+        id: post._id,
+        title: post.title ?? "Untitled",
+        description: post.excerpt ?? "",
+        link: post.slug ? `/${post.slug}` : undefined,
+        imageUrl: post.featuredImageUrl ?? undefined,
+        date: post.createdAt ?? undefined,
+        _raw: post,
+      }));
+    };
+
+    const plugin = convexDataSourcePlugin({
+      fetchPostTypes,
+      fetchPosts,
+      config: puckConfig,
+    });
+    setConvexPlugin(plugin);
+  }, [convex, effectiveOrganizationId, slugResolved, tenantSlug, tenantRecord]);
+
   const puckPayload = useQuery(
     api.puckEditor.queries.getData,
     pageIdentifier
@@ -111,26 +199,25 @@ export default function EditPage() {
         : { pageIdentifier }
       : "skip",
   );
-  console.log("[EditPage] useQuery result", { puckPayload });
-  const saveMutation = useMutation(api.puckEditor.mutations.updateData);
+ const saveMutation = useMutation(api.puckEditor.mutations.updateData);
   const shouldFetchPost =
     Boolean(postId) &&
     slugResolved &&
     !missingTenant &&
     !organizationNotFound &&
-    Boolean(organizationId);
+    Boolean(effectiveOrganizationId);
   const primaryPostRecord = useQuery(
     api.core.posts.queries.getPostById,
     shouldFetchPost
-      ? organizationId
-        ? { id: postId as Id<"posts">, organizationId }
+      ? effectiveOrganizationId
+        ? { id: postId as Id<"posts">, organizationId: effectiveOrganizationId }
         : { id: postId as Id<"posts"> }
       : "skip",
   ) as Doc<"posts"> | null | undefined;
 
   const fallbackPostRecord = useQuery(
     api.core.posts.queries.getPostById,
-    shouldFetchPost && organizationId
+    shouldFetchPost && effectiveOrganizationId
       ? {
           id: postId as Id<"posts">,
         }
@@ -245,6 +332,14 @@ export default function EditPage() {
     );
   }
 
+  const activePlugins = useMemo(
+    () =>
+      convexPlugin
+        ? [objectAccordionPlugin, convexPlugin]
+        : [objectAccordionPlugin],
+    [convexPlugin],
+  );
+
   if (tenantSlug && slugResolved && organizationNotFound) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center px-4">
@@ -287,8 +382,6 @@ export default function EditPage() {
       </main>
     );
   }
-
-  console.log("[EditPage] editorData", editorData);
 
   if (isDataLoading || editorData === null) {
     return (
@@ -335,7 +428,7 @@ export default function EditPage() {
         pageIdentifier,
         data: payload,
         ...(postId ? { postId } : {}),
-        ...(organizationId ? { organizationId } : {}),
+        ...(effectiveOrganizationId ? { organizationId: effectiveOrganizationId } : {}),
         ...(postTypeSlug ? { postTypeSlug } : {}),
         title,
       });
@@ -363,7 +456,7 @@ export default function EditPage() {
           data={editorData}
           onPublish={handlePublish}
           onChange={setEditorData}
-          plugins={[objectAccordionPlugin]}
+          plugins={activePlugins}
           // fieldTransforms={
           //   {
           //     userField: ({ value }: { value: unknown }) => value,

@@ -1,7 +1,3 @@
-// Export all plugins
-// export { dataSourceRegistry } from "./dataSourceRegistry";
-// export { wordPressDataSource } from "./wordPressDataSource";
-// export { graphQLDataSource } from "./graphQLDataSource";
-// export { mediaDataSource } from "./mediaDataSource";
-// export { wordPressPlugin } from "./wordPressPlugin";
+// Ensure data sources register themselves for global use
 export { objectAccordionPlugin } from "./objectAccordionPlugin";
+export { dataSourceRegistry } from "./dataSourceRegistry";

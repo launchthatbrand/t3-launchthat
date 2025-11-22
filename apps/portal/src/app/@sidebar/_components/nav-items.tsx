@@ -188,7 +188,11 @@ export const navItems = [
       },
       {
         title: "Templates",
-        url: "/admin/settings/post-types?tab=templates",
+        url: "/admin/settings/templates",
+      },
+      {
+        title: "Marketing Tags",
+        url: "/admin/settings/marketing-tags",
       },
       {
         title: "Menus",

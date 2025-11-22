@@ -1,11 +1,16 @@
 "use client";
 
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import type { OrganizationMember } from "@/convex/core/organizations/types";
-import React from "react";
-import { useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@acme/ui/alert-dialog";
 import {
   ArrowLeft,
   Building2,
@@ -18,21 +23,6 @@ import {
   Trash2,
   UserPlus,
 } from "lucide-react";
-import { toast } from "sonner";
-
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@acme/ui/alert-dialog";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -40,7 +30,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Input } from "@acme/ui/input";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
   Select,
   SelectContent,
@@ -48,18 +38,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { Separator } from "@acme/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@acme/ui/table";
+import { useMutation, useQuery } from "convex/react";
+import { useParams, useRouter } from "next/navigation";
 
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { EntityAction } from "~/components/shared/EntityList/types";
+import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { Input } from "@acme/ui/input";
 import { LoadingSpinner } from "~/components/ui/loading-spinner";
 import { OrganizationForm } from "../_components/OrganizationForm";
+import type { OrganizationMember } from "@/convex/core/organizations/types";
+import React from "react";
+import { Separator } from "@acme/ui/separator";
+import { api } from "@/convex/_generated/api";
+import { toast } from "sonner";
 
 type OrganizationMeta = Doc<"organizations"> & {
   memberCount?: number;
@@ -73,18 +67,10 @@ const MEMBER_ROLE_OPTIONS = [
   { value: "student", label: "Student" },
 ] as const;
 
-interface OrganizationDetailPageProps {
-  params: Promise<{
-    organizationId: string;
-  }>;
-}
-
-export default function OrganizationDetailPage({
-  params,
-}: OrganizationDetailPageProps) {
-  const resolvedParams = React.use(params);
+export default function OrganizationDetailPage() {
+  const params = useParams<{ organizationId: string }>();
   const router = useRouter();
-  const organizationId = resolvedParams.organizationId as Id<"organizations">;
+  const organizationId = params.organizationId as Id<"organizations">;
 
   // State
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -178,45 +164,125 @@ export default function OrganizationDetailPage({
     }
   };
 
-  const handleRoleChange = async (
-    userId: Id<"users">,
-    role: (typeof MEMBER_ROLE_OPTIONS)[number]["value"],
-  ) => {
-    try {
-      setRoleUpdatingUserId(userId);
-      await updateMemberRole({
-        organizationId,
-        userId,
-        role,
-      });
-      toast.success("Member role updated");
-    } catch (error) {
-      console.error("Error updating member role:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to update role",
-      );
-    } finally {
-      setRoleUpdatingUserId(null);
-    }
-  };
+  const handleRoleChange = React.useCallback(
+    async (
+      userId: Id<"users">,
+      role: (typeof MEMBER_ROLE_OPTIONS)[number]["value"],
+    ) => {
+      try {
+        setRoleUpdatingUserId(userId);
+        await updateMemberRole({
+          organizationId,
+          userId,
+          role,
+        });
+        toast.success("Member role updated");
+      } catch (error) {
+        console.error("Error updating member role:", error);
+        toast.error(
+          error instanceof Error ? error.message : "Failed to update role",
+        );
+      } finally {
+        setRoleUpdatingUserId(null);
+      }
+    },
+    [organizationId, updateMemberRole],
+  );
 
-  const handleRemoveMember = async (userId: Id<"users">) => {
-    try {
-      setRemovingUserId(userId);
-      await removeOrganizationMember({
-        organizationId,
-        userId,
-      });
-      toast.success("Member removed");
-    } catch (error) {
-      console.error("Error removing member:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to remove member",
-      );
-    } finally {
-      setRemovingUserId(null);
-    }
-  };
+  const handleRemoveMember = React.useCallback(
+    async (userId: Id<"users">) => {
+      try {
+        setRemovingUserId(userId);
+        await removeOrganizationMember({
+          organizationId,
+          userId,
+        });
+        toast.success("Member removed");
+      } catch (error) {
+        console.error("Error removing member:", error);
+        toast.error(
+          error instanceof Error ? error.message : "Failed to remove member",
+        );
+      } finally {
+        setRemovingUserId(null);
+      }
+    },
+    [organizationId, removeOrganizationMember],
+  );
+
+  const memberList = React.useMemo<OrganizationMember[]>(
+    () => (Array.isArray(members) ? (members as OrganizationMember[]) : []),
+    [members],
+  );
+  const memberColumns = React.useMemo<ColumnDef<OrganizationMember>[]>(
+    () => [
+      {
+        id: "name",
+        header: "Name",
+        cell: ({ row }) => (
+          <div className="font-medium">
+            {row.original.user.name ?? "Unnamed"}
+          </div>
+        ),
+      },
+      {
+        id: "email",
+        header: "Email",
+        cell: ({ row }) => row.original.user.email ?? "—",
+      },
+      {
+        id: "role",
+        header: "Role",
+        cell: ({ row }) => {
+          const member = row.original;
+          const isOwner = member.role === "owner";
+          return (
+            <Select
+              value={member.role}
+              onValueChange={(value) =>
+                handleRoleChange(
+                  member.userId,
+                  value as (typeof MEMBER_ROLE_OPTIONS)[number]["value"],
+                )
+              }
+              disabled={isOwner || roleUpdatingUserId === member.userId}
+            >
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {isOwner ? (
+                  <SelectItem value="owner">Owner</SelectItem>
+                ) : null}
+                {MEMBER_ROLE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+        },
+      },
+    ],
+    [handleRoleChange, roleUpdatingUserId],
+  );
+  const memberActions = React.useMemo<EntityAction<OrganizationMember>[]>(
+    () => [
+      {
+        id: "remove",
+        label: "Remove",
+        icon: <Trash2 className="h-4 w-4" />,
+        onClick: (member) => {
+          void handleRemoveMember(member.userId);
+        },
+        variant: "ghost",
+        isDisabled: (member) =>
+          member.role === "owner" || removingUserId === member.userId,
+      },
+    ],
+    [handleRemoveMember, removingUserId],
+  );
 
   if (organization === undefined) {
     return <LoadingSpinner />;
@@ -255,9 +321,6 @@ export default function OrganizationDetailPage({
   const currentPlan = planList.find(
     (plan) => org.planId && plan._id === org.planId,
   );
-  const memberList: OrganizationMember[] = Array.isArray(members)
-    ? (members as OrganizationMember[])
-    : [];
 
   return (
     <div className="container mx-auto space-y-6 py-6">
@@ -521,80 +584,21 @@ export default function OrganizationDetailPage({
             <div className="py-8 text-center">
               <LoadingSpinner />
             </div>
-          ) : members.length === 0 ? (
+          ) : memberList.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No members yet. Add someone using their email address.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {members.map((member) => (
-                    <TableRow key={member._id}>
-                      <TableCell>
-                        <div className="font-medium">
-                          {member.user.name ?? "Unnamed"}
-                        </div>
-                      </TableCell>
-                      <TableCell>{member.user.email}</TableCell>
-                      <TableCell>
-                        <Select
-                          value={member.role}
-                          onValueChange={(value) =>
-                            handleRoleChange(
-                              member.userId,
-                              value as (typeof MEMBER_ROLE_OPTIONS)[number]["value"],
-                            )
-                          }
-                          disabled={
-                            member.role === "owner" ||
-                            roleUpdatingUserId === member.userId
-                          }
-                        >
-                          <SelectTrigger className="w-[160px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {member.role === "owner" ? (
-                              <SelectItem value="owner">Owner</SelectItem>
-                            ) : null}
-                            {MEMBER_ROLE_OPTIONS.map((option) => (
-                              <SelectItem
-                                key={option.value}
-                                value={option.value}
-                              >
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveMember(member.userId)}
-                          disabled={
-                            member.role === "owner" ||
-                            removingUserId === member.userId
-                          }
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <EntityList
+              data={memberList}
+              columns={memberColumns}
+              entityActions={memberActions}
+              enableFooter={false}
+              viewModes={["list"]}
+              defaultViewMode="list"
+              enableSearch
+              className="p-0"
+            />
           )}
         </CardContent>
       </Card>

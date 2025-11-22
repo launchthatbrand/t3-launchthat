@@ -5,6 +5,7 @@ import { Grid } from "./blocks/Grid";
 import { Heading } from "./blocks/Heading";
 import { Hero } from "./blocks/Hero";
 import { Logos } from "./blocks/Logos";
+import { LoopGrid } from "./blocks/LoopGrid";
 import Root from "./root";
 import { Space } from "./blocks/Space";
 import { Stats } from "./blocks/Stats";
@@ -29,7 +30,7 @@ export const puckConfig: UserConfig = {
     },
     other: {
       title: "Other",
-      components: ["Card", "Hero", "Logos", "Stats", "Template"],
+      components: ["Card", "Hero", "Logos", "LoopGrid", "Stats", "Template"],
     },
   },
   components: {
@@ -40,6 +41,7 @@ export const puckConfig: UserConfig = {
     Heading,
     Flex,
     Logos,
+    LoopGrid,
     Stats,
     Template,
     Text,

@@ -1,12 +1,7 @@
 "use client";
 
-import type { Doc } from "@/convex/_generated/dataModel";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Edit, Plus } from "lucide-react";
-
-import { Button } from "@acme/ui/button";
 import { Card, CardContent } from "@acme/ui/card";
+import { ChevronLeft, Edit, Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,8 +17,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@acme/ui/dropdown-menu";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -31,16 +24,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@acme/ui/table";
-
 import { useCreateMenu, useMenus, useUpdateMenu } from "./_api/menus";
+
+import { Button } from "@acme/ui/button";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { Doc } from "@/convex/_generated/dataModel";
+import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 const MENU_LOCATIONS = [
   { value: "primary", label: "Primary Navigation" },
@@ -59,7 +53,10 @@ export default function MenusSettingsPage() {
   const [editingName, setEditingName] = useState("");
   const [editingLocation, setEditingLocation] = useState<string>("primary");
 
-  const { data: menus } = useMenus();
+  const {
+    data: menus,
+    isLoading: menusLoading,
+  } = useMenus();
   const createMenu = useCreateMenu();
   const updateMenu = useUpdateMenu();
 
@@ -75,119 +72,158 @@ export default function MenusSettingsPage() {
     setEditingLocation("primary");
   };
 
-  return (
-    <div className="container mx-auto py-10">
-      <div className="mb-4 flex justify-between">
-        <h1 className="text-2xl font-semibold">Menus</h1>
-
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Menu
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Menu</DialogTitle>
-              <DialogDescription>
-                Create a new menu for your site
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="menu-name">Menu Name</Label>
-                <Input
-                  id="menu-name"
-                  placeholder="e.g., Main Navigation"
-                  value={newMenuName}
-                  onChange={(e) => setNewMenuName(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="menu-location">Location</Label>
-                <Select
-                  value={newMenuLocation}
-                  onValueChange={setNewMenuLocation}
+  const menuColumns: ColumnDef<Doc<"menus">>[] = [
+    {
+      accessorKey: "name",
+      header: "Menu Name",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
+    },
+    {
+      accessorKey: "location",
+      header: "Location",
+      cell: ({ row }) => getLocationLabel(row.original.location),
+    },
+    {
+      accessorKey: "itemCount",
+      header: () => <div className="text-center">Items</div>,
+      cell: ({ row }) => (
+        <div className="text-center">{row.original.itemCount ?? 0}</div>
+      ),
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Actions</div>,
+      enableSorting: false,
+      enableHiding: false,
+      cell: ({ row }) => {
+        const menu = row.original;
+        return (
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => {
+                    router.push(`/admin/settings/menus/${menu._id}`);
+                  }}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MENU_LOCATIONS.map((location) => (
-                      <SelectItem key={location.value} value={location.value}>
-                        {location.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                onClick={async (e) => {
-                  e.preventDefault();
-                  if (!newMenuName || !newMenuLocation) return;
-                  await createMenu({
-                    name: newMenuName,
-                    location: newMenuLocation,
-                  });
-                  setNewMenuName("");
-                  setNewMenuLocation("");
-                }}
-              >
-                Create Menu
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                  Edit Menu Items
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openEditDialog(menu)}>
+                  Edit Details
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive">
+                  Delete Menu
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+  ];
+
+  const renderCreateMenuDialog = () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Menu
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create Menu</DialogTitle>
+          <DialogDescription>Create a new menu for your site</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="menu-name">Menu Name</Label>
+            <Input
+              id="menu-name"
+              placeholder="e.g., Main Navigation"
+              value={newMenuName}
+              onChange={(e) => setNewMenuName(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="menu-location">Location</Label>
+            <Select value={newMenuLocation} onValueChange={setNewMenuLocation}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select location" />
+              </SelectTrigger>
+              <SelectContent>
+                {MENU_LOCATIONS.map((location) => (
+                  <SelectItem key={location.value} value={location.value}>
+                    {location.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={async (e) => {
+              e.preventDefault();
+              if (!newMenuName || !newMenuLocation) return;
+              await createMenu({
+                name: newMenuName,
+                location: newMenuLocation,
+              });
+              setNewMenuName("");
+              setNewMenuLocation("");
+            }}
+          >
+            Create Menu
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  return (
+    <div className="container py-6">
+      <div className="mb-6">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/admin/settings">
+              <ChevronLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <h1 className="text-3xl font-bold">Menus</h1>
+        </div>
+        <p className="mt-2 text-muted-foreground">
+          Manage navigation structures and assign them to site locations
+        </p>
       </div>
 
       <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Menu Name</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {menus.map((menu) => (
-                <TableRow key={menu._id}>
-                  <TableCell className="font-medium">{menu.name}</TableCell>
-                  <TableCell>{getLocationLabel(menu.location)}</TableCell>
-                  <TableCell>{menu.itemCount}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => {
-                            router.push(`/admin/settings/menus/${menu._id}`);
-                          }}
-                        >
-                          Edit Menu Items
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openEditDialog(menu)}>
-                          Edit Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
-                          Delete Menu
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <CardContent className="p-6">
+          <EntityList<Doc<"menus">>
+            data={menus}
+            columns={menuColumns}
+            title="All Menus"
+            description="Overview of your registered navigation menus"
+            actions={renderCreateMenuDialog()}
+            isLoading={menusLoading}
+            enableSearch
+            viewModes={["list"]}
+            emptyState={
+              <div className="flex flex-col items-center justify-center gap-2 py-6">
+                <p className="text-muted-foreground">
+                  No menus yet. Use &ldquo;Create Menu&rdquo; to add your first
+                  navigation.
+                </p>
+              </div>
+            }
+          />
         </CardContent>
       </Card>
 

@@ -1,29 +1,7 @@
 "use client";
 
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import type { DragEndEvent } from "@dnd-kit/core";
-import React, { use, useEffect, useState } from "react";
-import Link from "next/link";
-import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { ChevronLeft, Edit, Plus, Trash } from "lucide-react";
-
-import { Button } from "@acme/ui/button";
 import { Card, CardContent } from "@acme/ui/card";
+import { ChevronLeft, Edit, GripVertical, Plus, Trash } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -33,8 +11,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -43,14 +29,12 @@ import {
   SelectValue,
 } from "@acme/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@acme/ui/table";
-
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import {
   useAddMenuItem,
   useMenu,
@@ -60,19 +44,34 @@ import {
   useUpdateMenuItem,
 } from "../_api/menus";
 
-interface SortableTableRowProps {
+import { Button } from "@acme/ui/button";
+import { CSS } from "@dnd-kit/utilities";
+import { ColumnDef } from "@tanstack/react-table";
+import type { DragEndEvent } from "@dnd-kit/core";
+import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+
+const getOrderValue = (value: number | null | undefined) =>
+  typeof value === "number" ? value : 0;
+
+interface SortableMenuCardProps {
   item: Doc<"menuItems">;
+  depth: number;
   parentItemLabel: string | null;
   onDeleteItem: (id: Id<"menuItems">) => void;
   onEditItem: (item: Doc<"menuItems">) => void;
 }
 
-const SortableTableRow = ({
+const SortableMenuCard = ({
   item,
+  depth,
   parentItemLabel,
   onDeleteItem,
   onEditItem,
-}: SortableTableRowProps) => {
+}: SortableMenuCardProps) => {
   const {
     attributes,
     listeners,
@@ -82,26 +81,40 @@ const SortableTableRow = ({
     isDragging,
   } = useSortable({ id: item._id });
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    zIndex: isDragging ? 10 : 0,
-    position: "relative",
-  } as React.CSSProperties;
+  };
 
   return (
-    <TableRow ref={setNodeRef} style={style} {...attributes}>
-      <TableCell
-        className="cursor-grab font-medium"
-        {...listeners} // Apply listeners for dragging
-      >
-        {item.parentId && <span className="ml-4">↳ </span>}
-        {item.label}
-      </TableCell>
-      <TableCell>{item.url}</TableCell>
-      <TableCell>{parentItemLabel ?? "-"}</TableCell>
-      <TableCell>{item.order}</TableCell>
-      <TableCell className="text-right">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`w-full border-b bg-card px-4 py-3 transition-shadow ${
+        isDragging ? "shadow-lg ring-2 ring-primary/30" : ""
+      }`}
+    >
+      <div className="grid gap-3 md:grid-cols-[auto_minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,0.5fr)_auto] md:items-center">
+        <button
+          type="button"
+          className="flex h-10 w-10 items-center justify-center rounded border bg-muted text-muted-foreground"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <div
+          className="font-medium"
+          style={{ marginLeft: depth > 0 ? depth * 16 : 0 }}
+        >
+          {depth > 0 && <span className="mr-2 text-muted-foreground">↳</span>}
+          {item.label}
+        </div>
+        <div className="truncate text-sm text-muted-foreground">{item.url}</div>
+        <div>{parentItemLabel ?? "-"}</div>
+        <div className="font-mono text-sm text-muted-foreground">
+          {item.order ?? 0}
+        </div>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="icon" onClick={() => onEditItem(item)}>
             <Edit className="h-4 w-4" />
@@ -115,17 +128,16 @@ const SortableTableRow = ({
             <Trash className="h-4 w-4 text-destructive" />
           </Button>
         </div>
-      </TableCell>
-    </TableRow>
+      </div>
+    </div>
   );
 };
 
-const getOrderValue = (value: number | null | undefined) =>
-  typeof value === "number" ? value : 0;
-
-export default function MenuItemsPage({ params }: { params: { id: string } }) {
-  const { id } = use(params);
-  const menuId = id as Id<"menus">;
+export default function MenuItemsPage() {
+  const params = useParams<{ id: string }>();
+  const idParam = params?.id;
+  const menuId =
+    typeof idParam === "string" ? (idParam as Id<"menus">) : undefined;
   const menu = useMenu(menuId);
   const fetchedMenuItems = useMenuItems(menuId);
   const addMenuItem = useAddMenuItem();
@@ -232,7 +244,11 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
           order: index,
         }));
 
-        // Call mutation to update backend
+        if (!menuId) {
+          console.error("Menu ID is missing. Unable to reorder menu items.");
+          return currentItems;
+        }
+
         void reorderMenuItems({
           menuId,
           updates,
@@ -259,20 +275,52 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
     setItemToDelete(id);
   };
 
+  const menuColumns = useMemo<ColumnDef<Doc<"menuItems">>[]>(() => {
+    return [
+      { accessorKey: "label", header: "Label" },
+      { accessorKey: "url", header: "URL" },
+      { accessorKey: "parentId", header: "Parent" },
+      { accessorKey: "order", header: "Order" },
+    ];
+  }, []);
+
+  const { orderedMenuItems, depthMap, parentLabelMap } = useMemo(() => {
+    const depth = new Map<Id<"menuItems">, number>();
+    const parentLabels = new Map<Id<"menuItems">, string>();
+    const ordered: Doc<"menuItems">[] = [];
+
+    const traverse = (
+      parentId: Id<"menuItems"> | null,
+      currentDepth: number,
+    ) => {
+      const children = menuItems
+        .filter((item) => item.parentId === parentId)
+        .sort((a, b) => getOrderValue(a.order) - getOrderValue(b.order));
+
+      children.forEach((child) => {
+        depth.set(child._id, currentDepth);
+        if (child.parentId) {
+          const parent = menuItems.find((item) => item._id === child.parentId);
+          if (parent) {
+            parentLabels.set(child._id, parent.label);
+          }
+        }
+        ordered.push(child);
+        traverse(child._id, currentDepth + 1);
+      });
+    };
+
+    traverse(null, 0);
+
+    return { orderedMenuItems: ordered, depthMap: depth, parentLabelMap: parentLabels };
+  }, [menuItems]);
+
   if (!menu) return null;
 
   // These are now directly using the fetchedMenuItems (which are sorted hierarchically from backend)
   // And the `handleDragEnd` will handle re-ordering locally until the next fetch.
   // The local `menuItems` state should always reflect what's passed from `fetchedMenuItems` initially,
   // and then be updated by DND logic.
-  const topLevelMenuItems = menuItems.filter((item) => item.parentId === null);
-  // Helper function to get children of a parent
-  const getChildren = (parentId: Id<"menuItems"> | null) => {
-    return menuItems
-      .filter((item) => item.parentId === parentId)
-      .sort((a, b) => getOrderValue(a.order) - getOrderValue(b.order));
-  };
-
   return (
     <div className="container mx-auto py-10">
       <div className="mb-6">
@@ -358,9 +406,11 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
             <DialogFooter>
               <Button
                 onClick={async () => {
-                  if (!newItemLabel || !newItemUrl) return;
+                  if (!newItemLabel || !newItemUrl || !menuId) {
+                    return;
+                  }
                   await addMenuItem({
-                    menuId: menuId,
+                    menuId,
                     label: newItemLabel,
                     url: newItemUrl,
                     parentId: newItemParent,
@@ -492,7 +542,7 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
                 variant="destructive"
                 onClick={async () => {
                   if (itemToDelete) {
-                    await removeMenuItem({ menuItemId: itemToDelete });
+                    await removeMenuItem({ itemId: itemToDelete });
                     setItemToDelete(null);
                   }
                 }}
@@ -512,42 +562,35 @@ export default function MenuItemsPage({ params }: { params: { id: string } }) {
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={menuItems.map((item) => item._id)} // Include all items for sorting
+              items={orderedMenuItems.map((item) => item._id)}
               strategy={verticalListSortingStrategy}
             >
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Label</TableHead>
-                    <TableHead>URL</TableHead>
-                    <TableHead>Parent</TableHead>
-                    <TableHead>Order</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {topLevelMenuItems.map((item) => (
-                    <React.Fragment key={item._id}>
-                      <SortableTableRow
-                        key={item._id}
-                        item={item}
-                        parentItemLabel={null}
-                        onDeleteItem={handleDeleteItem}
-                        onEditItem={openEditDialog}
-                      />
-                      {getChildren(item._id).map((childItem) => (
-                        <SortableTableRow
-                          key={childItem._id}
-                          item={childItem}
-                          parentItemLabel={item.label}
-                          onDeleteItem={handleDeleteItem}
-                          onEditItem={openEditDialog}
-                        />
-                      ))}
-                    </React.Fragment>
-                  ))}
-                </TableBody>
-              </Table>
+              <EntityList
+                data={orderedMenuItems}
+                columns={menuColumns}
+                enableSearch={false}
+                enableFooter={false}
+                hideFilters
+                isLoading={!fetchedMenuItems}
+                emptyState={
+                  <div className="py-8 text-center text-muted-foreground">
+                    No menu items yet
+                  </div>
+                }
+                viewModes={["grid"]}
+                defaultViewMode="grid"
+                gridColumns={{ sm: 1, md: 1, lg: 1, xl: 1 }}
+                className="p-0"
+                itemRender={(item) => (
+                  <SortableMenuCard
+                    item={item}
+                    depth={depthMap.get(item._id) ?? 0}
+                    parentItemLabel={parentLabelMap.get(item._id) ?? null}
+                    onDeleteItem={handleDeleteItem}
+                    onEditItem={openEditDialog}
+                  />
+                )}
+              />
             </SortableContext>
           </DndContext>
         </CardContent>
