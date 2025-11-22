@@ -35,119 +35,112 @@ import { useMutation, useQuery } from "convex/react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import type { Doc } from "@/convex/_generated/dataModel";
+import type { Id } from "@/convex/_generated/dataModel";
 import { Input } from "@acme/ui/input";
+import { Textarea } from "@acme/ui/textarea";
 import { api } from "@/convex/_generated/api";
-import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
 import { toast } from "sonner";
 import { usePostTypes } from "~/app/(root)/(admin)/admin/settings/post-types/_api/postTypes";
 import { useTenant } from "~/context/TenantContext";
 
-type TemplateType = "single" | "archive";
+const TEMPLATE_CATEGORY_OPTIONS = [
+  { value: "single", label: "Single (individual entry)" },
+  { value: "archive", label: "Archive (listing page)" },
+  { value: "loop", label: "Loop Item (grid/carousel item)" },
+  { value: "container", label: "Container / Section" },
+] as const;
 
-const TEMPLATE_LABEL: Record<TemplateType, string> = {
-  single: "Single post",
-  archive: "Archive",
+type TemplateCategory = (typeof TEMPLATE_CATEGORY_OPTIONS)[number]["value"];
+
+const categoryRequiresTarget = (category: TemplateCategory) =>
+  category === "single" || category === "archive" || category === "loop";
+
+type TemplateListItem = {
+  _id: Id<"posts">;
+  title: string;
+  slug: string;
+  status: "draft" | "published" | "archived";
+  templateCategory: TemplateCategory;
+  targetPostType: string | null;
+  pageIdentifier: string;
+  loopContext: unknown | null;
+  organizationId?: Id<"organizations"> | null;
+  updatedAt: number;
 };
-
-const TEMPLATE_POST_TYPE_SLUG = "page-templates";
 
 export function PageTemplatesManager() {
   const tenant = useTenant();
-  const organizationId = tenant?._id;
-  const scopeKey = organizationId ?? "global";
+  const organizationId = tenant?._id ?? null;
   const { data: postTypesData } = usePostTypes();
-  const templates = useQuery(api.puckTemplates.queries.list, {
-    scopeKey,
-  }) as Doc<"puckTemplates">[] | undefined;
-  const createTemplate = useMutation(api.puckTemplates.mutations.create);
+
+  const templates = useQuery(api.core.posts.queries.listTemplates, {
+    organizationId: organizationId ?? undefined,
+  }) as TemplateListItem[] | undefined;
+
+  const createTemplate = useMutation(
+    api.core.posts.mutations.createTemplate,
+  );
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [templateType, setTemplateType] = useState<TemplateType>("single");
+  const [templateCategory, setTemplateCategory] =
+    useState<TemplateCategory>("single");
   const [postTypeSlug, setPostTypeSlug] = useState<string>("");
   const [customName, setCustomName] = useState("");
+  const [loopContext, setLoopContext] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
-  const postTypeOptions = useMemo<Doc<"postTypes">[]>(() => {
+  const postTypeOptions = useMemo(() => {
     return (postTypesData ?? []).filter(
-      (type) =>
-        Boolean(type.slug) && type.slug !== TEMPLATE_POST_TYPE_SLUG,
+      (type) => Boolean(type.slug) && type.slug !== "templates",
     );
   }, [postTypesData]);
 
-  const selectedPostType = postTypeOptions.find(
-    (type) => type.slug === postTypeSlug,
-  );
+  const postTypeLabel = (slug?: string | null) =>
+    postTypeOptions.find((type) => type.slug === slug)?.name ?? slug ?? "—";
 
-  interface TemplateRow {
-    id: string;
-    name: string;
-    templateType: TemplateType;
-    postType: string;
-    postTypeSlug: string;
-    pageIdentifier: string;
-    updatedAt: number;
-  }
-
-  const rows = useMemo<TemplateRow[]>(() => {
-    if (!templates) {
-      return [];
-    }
-    return templates.map((template) => {
-      const matchedPostType = postTypeOptions.find(
-        (type) => type.slug === template.postTypeSlug,
-      );
-      return {
-        id: template._id,
-        name: template.name,
-        templateType: template.templateType as TemplateType,
-        postType: matchedPostType?.name ?? template.postTypeSlug,
-        postTypeSlug: template.postTypeSlug,
-        pageIdentifier: template.pageIdentifier,
-        updatedAt: template._creationTime,
-      };
-    });
-  }, [templates, postTypeOptions]);
+  const rows = useMemo(() => {
+    if (!templates) return [];
+    return templates;
+  }, [templates]);
 
   const handleCreate = async () => {
-    if (!postTypeSlug) {
-      toast.error("Select a post type");
+    const needsTarget = categoryRequiresTarget(templateCategory);
+    if (needsTarget && !postTypeSlug) {
+      toast.error("Select the post type this template applies to.");
       return;
     }
-    const postTypeName =
-      selectedPostType?.name ??
-      postTypeOptions.find((type) => type.slug === postTypeSlug)?.name ??
-      postTypeSlug;
-    const name =
-      customName.trim() || `${TEMPLATE_LABEL[templateType]} · ${postTypeName}`;
-    const pageIdentifier = getTenantScopedPageIdentifier(
-      `/templates/${templateType}/${postTypeSlug}`,
-      { organizationId },
-    );
+
+    const templateName =
+      customName.trim() ||
+      `${TEMPLATE_CATEGORY_OPTIONS.find(
+        (opt) => opt.value === templateCategory,
+      )?.label ?? "Template"} · ${postTypeLabel(postTypeSlug)}`;
+
     setIsCreating(true);
     try {
-      const template = await Promise.resolve(
-        createTemplate({
-          name,
-          templateType,
-          postTypeSlug,
-          pageIdentifier,
-          organizationId: organizationId ?? undefined,
-          scopeKey,
-        }),
-      );
-      if (!template) {
+      const result = await createTemplate({
+        title: templateName,
+        templateCategory,
+        targetPostType: needsTarget ? postTypeSlug : undefined,
+        loopContext: loopContext.trim() || undefined,
+        organizationId: organizationId ?? undefined,
+        status: "draft",
+      });
+
+      if (!result) {
         toast.error("Unable to create template");
         return;
       }
+
       toast.success("Template created");
       setDialogOpen(false);
       setCustomName("");
+      setLoopContext("");
+
       const params = new URLSearchParams({
-        pageIdentifier: template.pageIdentifier,
+        pageIdentifier: result.pageIdentifier,
         organizationId: organizationId ?? "public",
-        postType: template.postTypeSlug,
-        title: template.name,
+        title: templateName,
       });
       window.open(`/puck/edit?${params.toString()}`, "_blank", "noreferrer");
     } finally {
@@ -155,14 +148,11 @@ export function PageTemplatesManager() {
     }
   };
 
-  const handleOpenTemplate = (
-    template: Pick<TemplateRow, "pageIdentifier" | "postTypeSlug" | "name">,
-  ) => {
+  const handleOpenTemplate = (template: TemplateListItem) => {
     const params = new URLSearchParams({
       pageIdentifier: template.pageIdentifier,
-      organizationId: organizationId ?? "public",
-      postType: template.postTypeSlug,
-      title: template.name,
+      organizationId: template.organizationId ?? "public",
+      title: template.title,
     });
     window.open(`/puck/edit?${params.toString()}`, "_blank", "noreferrer");
   };
@@ -172,10 +162,10 @@ export function PageTemplatesManager() {
       <Card>
         <CardHeader className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <CardTitle>Puck Templates</CardTitle>
+            <CardTitle>Templates</CardTitle>
             <CardDescription>
-              Create Elementor-style templates that control single post or
-              archive layouts.
+              Build reusable layouts for single entries, archives, loop items,
+              or standalone sections.
             </CardDescription>
           </div>
           <Button onClick={() => setDialogOpen(true)}>
@@ -184,7 +174,7 @@ export function PageTemplatesManager() {
           </Button>
         </CardHeader>
         <CardContent>
-          {rows.length === 0 ? (
+          {!rows.length ? (
             <p className="text-sm text-muted-foreground">
               No templates yet. Click &ldquo;New template&rdquo; to start
               designing one in Puck.
@@ -194,22 +184,34 @@ export function PageTemplatesManager() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Post Type</TableHead>
-                  <TableHead>Last Updated</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Target</TableHead>
+                  <TableHead>Scope</TableHead>
+                  <TableHead>Updated</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.name}</TableCell>
+                  <TableRow key={row._id}>
+                    <TableCell className="font-medium">{row.title}</TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {TEMPLATE_LABEL[row.templateType]}
+                        {
+                          TEMPLATE_CATEGORY_OPTIONS.find(
+                            (opt) => opt.value === row.templateCategory,
+                          )?.label
+                        }
                       </Badge>
                     </TableCell>
-                    <TableCell>{row.postType}</TableCell>
+                    <TableCell>{postTypeLabel(row.targetPostType)}</TableCell>
+                    <TableCell>
+                      {row.organizationId ? (
+                        <Badge variant="secondary">Tenant</Badge>
+                      ) : (
+                        <Badge variant="outline">Global</Badge>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {new Date(row.updatedAt).toLocaleString()}
                     </TableCell>
@@ -217,13 +219,7 @@ export function PageTemplatesManager() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          handleOpenTemplate({
-                            pageIdentifier: row.pageIdentifier,
-                            postTypeSlug: row.postTypeSlug,
-                            name: row.name,
-                          })
-                        }
+                        onClick={() => handleOpenTemplate(row)}
                       >
                         <PencilLine className="mr-2 h-4 w-4" />
                         Edit
@@ -246,38 +242,45 @@ export function PageTemplatesManager() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Template type</label>
               <Select
-                value={templateType}
+                value={templateCategory}
                 onValueChange={(value) =>
-                  setTemplateType(value as TemplateType)
+                  setTemplateCategory(value as TemplateCategory)
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Choose template type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="single">Single post</SelectItem>
-                  <SelectItem value="archive">Archive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Post type</label>
-              <Select
-                value={postTypeSlug}
-                onValueChange={(value) => setPostTypeSlug(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a post type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {postTypeOptions.map((type) => (
-                    <SelectItem key={type.slug} value={type.slug}>
-                      {type.name}
+                  {TEMPLATE_CATEGORY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {categoryRequiresTarget(templateCategory) && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Post type</label>
+                <Select
+                  value={postTypeSlug}
+                  onValueChange={(value) => setPostTypeSlug(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a post type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {postTypeOptions.map((type) => (
+                      <SelectItem key={type.slug} value={type.slug}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-sm font-medium">
                 Template name (optional)
@@ -288,6 +291,20 @@ export function PageTemplatesManager() {
                 onChange={(event) => setCustomName(event.target.value)}
               />
             </div>
+
+            {templateCategory === "loop" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Loop context (JSON, optional)
+                </label>
+                <Textarea
+                  value={loopContext}
+                  placeholder='e.g. {"order":"asc","limit":8}'
+                  onChange={(event) => setLoopContext(event.target.value)}
+                  rows={3}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button

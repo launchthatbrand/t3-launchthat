@@ -4,7 +4,6 @@ import {
   AutoField,
   Button,
   ComponentConfig,
-  ComponentDataOptionalId,
   createUsePuck,
   FieldLabel,
   Slot,
@@ -13,8 +12,6 @@ import {
 
 import { withLayout } from "../../components/Layout";
 import { generateId } from "../../core/lib/generate-id";
-import { componentKey } from "../../index";
-import { type Components } from "../../types";
 import TemplateComponent, { TemplateProps } from "./Template";
 import {
   getTemplateStorage,
@@ -22,28 +19,14 @@ import {
 } from "./storage";
 
 const usePuck = createUsePuck();
-
-async function createComponent<T extends keyof Components>(
-  component: T,
-  props?: Partial<Components[T]>,
-): Promise<ComponentDataOptionalId<Components[T]>> {
-  const { puckConfig: config } = await import("../../index");
-
-  return {
-    type: component,
-    props: {
-      ...config.components[component].defaultProps,
-      ...props,
-    },
-  } as ComponentDataOptionalId<Components[T]>;
-}
+const DEFAULT_STORAGE_SCOPE = "puck-template-storage";
 
 export const TemplateInternal: ComponentConfig<TemplateProps> = {
   fields: {
     template: {
       type: "custom",
       render: ({ name, value, onChange }) => {
-        const templateKey = `puck-demo-templates:${componentKey}`;
+        const templateKey = `puck-demo-templates:${DEFAULT_STORAGE_SCOPE}`;
         const storage = useMemo(
           () => getTemplateStorage(templateKey),
           [templateKey],
@@ -53,14 +36,19 @@ export const TemplateInternal: ComponentConfig<TemplateProps> = {
           | TemplateProps
           | undefined;
 
-        const [templates, setTemplates] = useState<TemplateData>({});
+        const [templates, setTemplates] = useState<TemplateData>({
+          blank: { label: "Blank", data: [] },
+        });
 
         useEffect(() => {
           let mounted = true;
           (async () => {
             const storedTemplates = await storage.load();
             if (mounted) {
-              setTemplates(storedTemplates);
+              setTemplates({
+                blank: { label: "Blank", data: [] },
+                ...storedTemplates,
+              });
             }
           })().catch(() => {
             // ignore load errors and fall back to empty state
@@ -70,6 +58,8 @@ export const TemplateInternal: ComponentConfig<TemplateProps> = {
           };
         }, [storage]);
 
+        const templateEntries = Object.entries(templates);
+
         return (
           <FieldLabel label={name}>
             <AutoField
@@ -77,15 +67,13 @@ export const TemplateInternal: ComponentConfig<TemplateProps> = {
               onChange={onChange}
               field={{
                 type: "select",
-                options: [
-                  { label: "Blank", value: "blank" },
-                  { label: "Example 1", value: "example_1" },
-                  { label: "Example 2", value: "example_2" },
-                  ...Object.keys(templates).map((key) => ({
-                    value: key,
-                    label: templates[key]?.label ?? key,
-                  })),
-                ],
+                options:
+                  templateEntries.length > 0
+                    ? templateEntries.map(([key, template]) => ({
+                        value: key,
+                        label: template?.label ?? key,
+                      }))
+                    : [{ label: "Blank", value: "blank" }],
               }}
             />
             <div style={{ marginLeft: "auto", marginTop: 16 }}>
@@ -142,81 +130,32 @@ export const TemplateInternal: ComponentConfig<TemplateProps> = {
     },
   },
   defaultProps: {
-    template: "example_1",
+    template: "blank",
     children: [],
   },
   resolveData: async (data, { changed, trigger }) => {
     if (!changed.template || trigger === "load") return data;
 
-    const templateKey = `puck-demo-templates:${componentKey}`;
+    const templateKey = `puck-demo-templates:${DEFAULT_STORAGE_SCOPE}`;
     const storage = getTemplateStorage(templateKey);
 
     const storedTemplates = await storage.load();
 
     const templates: TemplateData = {
-      ...storedTemplates,
       blank: {
         label: "Blank",
         data: [],
       },
-      example_1: {
-        label: "Example 1",
-        data: [
-          await createComponent("Heading", {
-            text: "Template example.",
-            size: "xl",
-          }),
-          await createComponent("Text", {
-            text: "This component uses the slots API. Try changing template, or saving a new one via the template field.",
-          }),
-        ],
-      },
-      example_2: {
-        label: "Example 2",
-        data: [
-          await createComponent("Grid", {
-            numColumns: 2,
-            items: [
-              await createComponent("Card", { title: "A card", mode: "card" }),
-              await createComponent("Flex", {
-                direction: "column",
-                gap: 0,
-                items: [
-                  await createComponent("Space", {
-                    size: "32px",
-                  }),
-                  await createComponent("Heading", {
-                    text: "Template example",
-                    size: "xl",
-                  }),
-                  await createComponent("Text", {
-                    text: "Dynamically create components using the new slots API.",
-                  }),
-                  await createComponent("Space", {
-                    size: "16px",
-                  }),
-                  await createComponent("Button", {
-                    variant: "secondary",
-                    label: "Learn more",
-                  }),
-                  await createComponent("Space", {
-                    size: "32px",
-                  }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      },
+      ...storedTemplates,
     };
 
     const selectedTemplate =
       typeof data.props.template === "string"
         ? data.props.template
-        : "example_1";
+        : "blank";
 
     const children =
-      templates[selectedTemplate]?.data || templates["example_1"]?.data || [];
+      templates[selectedTemplate]?.data || templates["blank"]?.data || [];
 
     return {
       ...data,

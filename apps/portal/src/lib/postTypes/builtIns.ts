@@ -5,8 +5,6 @@ const BUILT_IN_POST_TYPE_SLUGS = new Set<string>([
   "pages",
   "template",
   "templates",
-  "page-template",
-  "page-templates",
   "attachment",
   "attachments",
   "revision",

@@ -1,13 +1,21 @@
+import {
+  TEMPLATE_META_KEYS,
+  TEMPLATE_POST_TYPE_SLUG,
+  buildTemplatePageIdentifier,
+  requiresTargetPostType,
+  templateCategoryValidator
+} from "./templates";
+
+import type { Id } from "../../_generated/dataModel";
+import type { MutationCtx } from "../../_generated/server";
+import type {TemplateCategory} from "./templates";
+import { mutation } from "../../_generated/server";
 /**
  * Posts Mutations
  *
  * This module provides mutation endpoints for posts.
  */
 import { v } from "convex/values";
-
-import type { Id } from "../../_generated/dataModel";
-import type { MutationCtx } from "../../_generated/server";
-import { mutation } from "../../_generated/server";
 
 const metaValueValidator = v.union(
   v.string(),
@@ -112,6 +120,70 @@ export const createPost = mutation({
   },
 });
 
+export const createTemplate = mutation({
+  args: {
+    title: v.string(),
+    templateCategory: templateCategoryValidator,
+    targetPostType: v.optional(v.string()),
+    loopContext: v.optional(v.string()),
+    organizationId: v.optional(v.id("organizations")),
+    status: v.optional(
+      v.union(v.literal("draft"), v.literal("published")),
+    ),
+  },
+  handler: async (ctx, args) => {
+    if (
+      requiresTargetPostType(args.templateCategory as TemplateCategory) &&
+      !args.targetPostType
+    ) {
+      throw new Error("Target post type is required for this template type");
+    }
+
+    const normalizedSlug =
+      sanitizeSlug(args.title) ||
+      `${args.templateCategory}-${args.targetPostType ?? "general"}`;
+    const uniqueSlug = await ensureUniqueSlug(
+      ctx,
+      normalizedSlug,
+      args.organizationId ?? undefined,
+    );
+
+    const timestamp = Date.now();
+    const postId = await ctx.db.insert("posts", {
+      title: args.title,
+      slug: uniqueSlug,
+      status: args.status ?? "draft",
+      postTypeSlug: TEMPLATE_POST_TYPE_SLUG,
+      organizationId: args.organizationId ?? undefined,
+      createdAt: timestamp,
+    });
+
+    const pageIdentifier = buildTemplatePageIdentifier({
+      organizationId: args.organizationId ?? null,
+      templateCategory: args.templateCategory as TemplateCategory,
+      targetPostType: args.targetPostType ?? null,
+      postId,
+    });
+
+    const metaPayload: Record<string, string | number | boolean | null> = {
+      [TEMPLATE_META_KEYS.category]: args.templateCategory,
+      [TEMPLATE_META_KEYS.targetPostType]: args.targetPostType ?? "",
+      [TEMPLATE_META_KEYS.pageIdentifier]: pageIdentifier,
+    };
+
+    if (typeof args.loopContext === "string" && args.loopContext.length > 0) {
+      metaPayload[TEMPLATE_META_KEYS.loopContext] = args.loopContext;
+    }
+
+    await upsertPostMeta(ctx, postId, metaPayload);
+
+    return {
+      id: postId,
+      pageIdentifier,
+    };
+  },
+});
+
 /**
  * Update an existing post
  */
@@ -144,7 +216,11 @@ export const updatePost = mutation({
     }
 
     if (updates.slug) {
-      const normalizedSlug = sanitizeSlug(updates.slug) || post.slug;
+      const sanitizedUpdate = sanitizeSlug(updates.slug);
+      const normalizedSlug =
+        sanitizedUpdate.length > 0
+          ? sanitizedUpdate
+          : post.slug ?? `post-${Date.now()}`;
       if (normalizedSlug !== post.slug) {
         updates.slug = await ensureUniqueSlug(
           ctx,

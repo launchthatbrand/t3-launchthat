@@ -57,6 +57,7 @@ import type * as core_postTypes_queries from "../core/postTypes/queries.js";
 import type * as core_postTypes_types from "../core/postTypes/types.js";
 import type * as core_posts_mutations from "../core/posts/mutations.js";
 import type * as core_posts_queries from "../core/posts/queries.js";
+import type * as core_posts_templates from "../core/posts/templates.js";
 import type * as core_tags_mutations from "../core/tags/mutations.js";
 import type * as core_tags_queries from "../core/tags/queries.js";
 import type * as core_taxonomies_mutations from "../core/taxonomies/mutations.js";
@@ -263,6 +264,7 @@ declare const fullApi: ApiFromModules<{
   "core/postTypes/types": typeof core_postTypes_types;
   "core/posts/mutations": typeof core_posts_mutations;
   "core/posts/queries": typeof core_posts_queries;
+  "core/posts/templates": typeof core_posts_templates;
   "core/tags/mutations": typeof core_tags_mutations;
   "core/tags/queries": typeof core_tags_queries;
   "core/taxonomies/mutations": typeof core_taxonomies_mutations;

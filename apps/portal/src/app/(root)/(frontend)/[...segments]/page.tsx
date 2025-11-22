@@ -476,16 +476,18 @@ async function loadPuckData(
 
 async function loadTemplateContent(
   templateType: "single" | "archive",
-  postTypeSlug: string,
+  postTypeSlug: string | null,
   organizationId: Doc<"organizations">["_id"] | undefined,
 ) {
   try {
-    const scopeKey = organizationId ?? "global";
-    const template = await fetchQuery(api.puckTemplates.queries.getTemplate, {
-      templateType,
-      postTypeSlug,
-      scopeKey,
-    });
+    const template = await fetchQuery(
+      api.core.posts.queries.getTemplateForPostType,
+      {
+        templateCategory: templateType,
+        postTypeSlug: postTypeSlug ?? undefined,
+        ...(organizationId ? { organizationId } : {}),
+      },
+    );
     if (!template) {
       return null;
     }

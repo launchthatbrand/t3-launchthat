@@ -4221,6 +4221,19 @@ export type PublicApiType = {
           },
           any
         >;
+        createTemplate: FunctionReference<
+          "mutation",
+          "public",
+          {
+            loopContext?: string;
+            organizationId?: Id<"organizations">;
+            status?: "draft" | "published";
+            targetPostType?: string;
+            templateCategory: "single" | "archive" | "loop" | "container";
+            title: string;
+          },
+          any
+        >;
         updatePost: FunctionReference<
           "mutation",
           "public",
@@ -4315,6 +4328,22 @@ export type PublicApiType = {
           "query",
           "public",
           { organizationId?: Id<"organizations"> },
+          any
+        >;
+        listTemplates: FunctionReference<
+          "query",
+          "public",
+          { organizationId?: Id<"organizations"> },
+          any
+        >;
+        getTemplateForPostType: FunctionReference<
+          "query",
+          "public",
+          {
+            organizationId?: Id<"organizations">;
+            postTypeSlug?: string;
+            templateCategory: "single" | "archive" | "loop" | "container";
+          },
           any
         >;
       };
@@ -5227,6 +5256,12 @@ export type PublicApiType = {
           any
         >;
         resetSystem: FunctionReference<
+          "mutation",
+          "public",
+          Record<string, never>,
+          any
+        >;
+        ensureDefaults: FunctionReference<
           "mutation",
           "public",
           Record<string, never>,
@@ -7879,6 +7914,36 @@ export type PublicApiType = {
         "mutation",
         "public",
         { data: string; pageIdentifier: string },
+        any
+      >;
+    };
+  };
+  puckTemplates: {
+    queries: {
+      list: FunctionReference<"query", "public", { scopeKey: string }, any>;
+      getTemplate: FunctionReference<
+        "query",
+        "public",
+        {
+          postTypeSlug: string;
+          scopeKey: string;
+          templateType: "single" | "archive";
+        },
+        any
+      >;
+    };
+    mutations: {
+      create: FunctionReference<
+        "mutation",
+        "public",
+        {
+          name: string;
+          organizationId?: Id<"organizations">;
+          pageIdentifier: string;
+          postTypeSlug: string;
+          scopeKey: string;
+          templateType: "single" | "archive";
+        },
         any
       >;
     };

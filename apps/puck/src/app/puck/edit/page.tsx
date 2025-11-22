@@ -4,17 +4,18 @@ import "@measured/puck/puck.css";
 
 import { AutoField, FieldLabel, Puck } from "@measured/puck";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import puckConfig, { setTemplateStorage } from "@acme/puck-config";
+import { useConvex, useMutation, useQuery } from "convex/react";
+import { useMemo, useRef, useState } from "react";
 
 import { Button } from "@acme/ui/button";
 import type { Data } from "@measured/puck";
 import { SearchableDrawer } from "~/app/_components/SearchableDrawer";
 import { Skeleton } from "@acme/ui";
 import { Type } from "lucide-react";
-import { api } from "../../../../../portal/convexApi1763516584458";
+import { api } from "../../../../../portal/convexspec";
+import { createConvexTemplateStorage } from "~/lib/createConvexTemplateStorage";
 import { objectAccordionPlugin } from "@acme/puck-config/plugins";
-import { puckConfig } from "@acme/puck-config";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 
@@ -24,6 +25,23 @@ export default function EditPage() {
   const searchParams = useSearchParams();
   const pageIdentifier = searchParams.get("pageIdentifier");
   const title = searchParams.get("title") ?? "Puck Editor";
+  const organizationIdParam = searchParams.get("organizationId");
+  const scopeKey =
+    organizationIdParam && organizationIdParam !== "public"
+      ? organizationIdParam
+      : "global";
+  const convex = useConvex();
+  const templateScopeRef = useRef<string | null>(null);
+
+  if (templateScopeRef.current !== scopeKey) {
+    setTemplateStorage((_key) =>
+      createConvexTemplateStorage({
+        convex,
+        scopeKey,
+      }),
+    );
+    templateScopeRef.current = scopeKey;
+  }
 
   const storedData = useQuery(
     api.puckEditor.queries.getData,
@@ -135,29 +153,44 @@ export default function EditPage() {
           config={puckConfig}
           data={initialData}
           onPublish={handlePublish}
-          plugins={[ objectAccordionPlugin]}
-          fieldTransforms={{
-            userField: ({ value }) => value, // Included to check types
-          }}
-          overrides={{
-            drawer: SearchableDrawer,
-            fieldTypes: {
-              // Example of user field provided via overrides
-              userField: ({ readOnly, field, name, value, onChange }) => (
-                <FieldLabel
-                  label={field.label || name}
-                  readOnly={readOnly}
-                  icon={<Type size={16} />}
-                >
-                  <AutoField
-                    field={{ type: "text" }}
-                    onChange={onChange}
-                    value={value}
-                  />
-                </FieldLabel>
-              ),
-            },
-          }}
+          plugins={[objectAccordionPlugin]}
+          fieldTransforms={
+            {
+              userField: ({ value }: { value: unknown }) => value,
+            } as any
+          }
+          overrides={
+            {
+              drawer: SearchableDrawer,
+              fieldTypes: {
+                userField: ({
+                  readOnly,
+                  field,
+                  name,
+                  value,
+                  onChange,
+                }: {
+                  readOnly?: boolean;
+                  field: { label?: string };
+                  name: string;
+                  value: unknown;
+                  onChange: (next: unknown) => void;
+                }) => (
+                  <FieldLabel
+                    label={field.label || name}
+                    readOnly={readOnly}
+                    icon={<Type size={16} />}
+                  >
+                    <AutoField
+                      field={{ type: "text" }}
+                      onChange={onChange}
+                      value={value}
+                    />
+                  </FieldLabel>
+                ),
+              },
+            } as any
+          }
         />
       </section>
     </main>

@@ -146,8 +146,8 @@ const DEFAULT_POST_TYPES = [
     },
   },
   {
-    name: "Page Templates",
-    slug: "page-templates",
+    name: "Templates",
+    slug: "templates",
     description:
       "Reusable Puck templates that control single and archive layouts.",
     isPublic: false,
@@ -166,7 +166,7 @@ const DEFAULT_POST_TYPES = [
     adminMenu: {
       enabled: true,
       label: "Templates",
-      slug: "page-templates",
+      slug: "templates",
       icon: "LayoutTemplate",
       position: 25,
     },
