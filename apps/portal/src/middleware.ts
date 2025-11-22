@@ -5,62 +5,55 @@ import { NextResponse } from "next/server";
 import { fetchTenantBySlug } from "@/lib/tenant-fetcher";
 import { rootDomain } from "@/lib/utils";
 
+// Routes requiring authentication
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/forum(.*)"]);
 const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
-const isEmbedRoute = createRouteMatcher([
-  "/embed(.*)",
-  "/api/embed(.*)",
-  "/api/auth/monday(.*)",
-]);
 
+// Skip middleware for internal routes like microfrontends, puck, etc.
 const shouldBypassMiddleware = (req: NextRequest) => {
   const pathname = req.nextUrl.pathname;
   if (!pathname) return false;
 
-  if (pathname.startsWith("/_microfrontends")) {
-    return true;
-  }
-
-  if (pathname.startsWith("/puck")) {
-    return true;
-  }
+  if (pathname.startsWith("/_microfrontends")) return true;
+  if (pathname.startsWith("/puck")) return true;
 
   return false;
 };
 
+// Extract subdomain from localhost, Vercel, and custom domains
 function extractSubdomain(request: NextRequest): string | null {
   const url = request.url;
   const host = request.headers.get("host") ?? "";
   const hostname = host.split(":")[0];
 
+  // Localhost handling (e.g., http://tenant.localhost:3000)
   if (url.includes("localhost") || url.includes("127.0.0.1")) {
-    const fullUrlMatch = /http:\/\/([^.]+)\.localhost/.exec(url);
-    if (fullUrlMatch?.[1]) {
-      return fullUrlMatch[1];
-    }
+    const match = /http:\/\/([^.]+)\.localhost/.exec(url);
+    if (match?.[1]) return match[1];
 
-    if (hostname?.includes(".localhost")) {
+    if (hostname.includes(".localhost")) {
       return hostname.split(".")[0] ?? null;
     }
 
     return null;
   }
 
-  const rootDomainFormatted = rootDomain.split(":")[0];
-
-  if (hostname?.includes("---") && hostname.endsWith(".vercel.app")) {
+  // Vercel preview handling: slug---project.vercel.app
+  if (hostname.includes("---") && hostname.endsWith(".vercel.app")) {
     const parts = hostname.split("---");
-    return parts.length > 0 ? (parts[0] ?? null) : null;
+    return parts[0] ?? null;
   }
 
+  const rootDomainFormatted = rootDomain.split(":")[0];
+
+  // Real subdomain (tenant.example.com)
   const isSubdomain =
-    (hostname !== rootDomainFormatted &&
-      hostname !== `www.${rootDomainFormatted}` &&
-      hostname?.endsWith(`.${rootDomainFormatted}`)) ??
-    false;
+    hostname !== rootDomainFormatted &&
+    hostname !== `www.${rootDomainFormatted}` &&
+    hostname.endsWith(`.${rootDomainFormatted}`);
 
   return isSubdomain
-    ? (hostname?.replace(`.${rootDomainFormatted}`, "") ?? null)
+    ? hostname.replace(`.${rootDomainFormatted}`, "") ?? null
     : null;
 }
 
@@ -73,6 +66,7 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   const subdomain = extractSubdomain(req);
   const tenant = await fetchTenantBySlug(subdomain);
   const host = req.headers.get("host") ?? "unknown-host";
+
   console.log("[middleware] incoming request", {
     host,
     pathname,
@@ -80,24 +74,20 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     tenantId: tenant?._id,
   });
 
+  // Subdomain exists but no tenant → redirect home
   if (subdomain && !tenant) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
-  const url = new URL(req.url);
-  const isEmbed = isEmbedRoute(req);
-
+  // Inject tenant headers so all routes/server components can read them
   const requestHeaders = new Headers(req.headers);
   if (tenant) {
     requestHeaders.set("x-tenant-id", tenant._id);
     requestHeaders.set("x-tenant-slug", tenant.slug);
-    requestHeaders.set("x-tenant-name", encodeURIComponent(tenant.name));
-    if (tenant.planId) {
-      requestHeaders.set("x-tenant-plan-id", tenant.planId);
-    }
-    if (tenant.customDomain) {
+    requestHeaders.set("x-tenant-name", tenant.name); // safe UTF-8
+    if (tenant.planId) requestHeaders.set("x-tenant-plan-id", tenant.planId);
+    if (tenant.customDomain)
       requestHeaders.set("x-tenant-custom-domain", tenant.customDomain);
-    }
   }
 
   const response = NextResponse.next({
@@ -106,34 +96,13 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     },
   });
 
-  response.headers.set("x-pathname", req.nextUrl.pathname);
+  response.headers.set("x-pathname", pathname);
   if (tenant) {
     response.headers.set("x-tenant-id", tenant._id);
     response.headers.set("x-tenant-slug", tenant.slug);
   }
 
-  if (isEmbed) {
-    response.headers.set(
-      "Content-Security-Policy",
-      "frame-ancestors 'self' https://*.monday.com https://monday.com https://*.monday.app *",
-    );
-    response.headers.set("X-Frame-Options", "ALLOW-FROM https://monday.com");
-
-    if (url.pathname.startsWith("/api/")) {
-      response.headers.set("Access-Control-Allow-Origin", "*");
-      response.headers.set(
-        "Access-Control-Allow-Methods",
-        "GET, POST, OPTIONS",
-      );
-      response.headers.set(
-        "Access-Control-Allow-Headers",
-        "Content-Type, Authorization",
-      );
-    }
-
-    return response;
-  }
-
+  // Protected + Admin route logic
   if (isProtectedRoute(req) || isAdminRoute(req)) {
     try {
       await auth.protect();
@@ -149,6 +118,7 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     }
 
     const authState = await auth();
+
     console.log("[middleware] authenticated user", {
       userId: authState.userId,
       role: authState.sessionClaims?.metadata.role,
@@ -156,17 +126,14 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
       subdomain,
       tenantId: tenant?._id,
     });
-    if (isAdminRoute(req)) {
-      const { sessionClaims } = authState;
 
-      if (
-        !sessionClaims?.metadata.role ||
-        sessionClaims.metadata.role !== "admin"
-      ) {
+    if (isAdminRoute(req)) {
+      const role = authState.sessionClaims?.metadata.role;
+
+      if (role !== "admin") {
         const dashboardUrl = new URL("/dashboard", req.url);
-        const { userId } = await auth();
         console.log(
-          `Redirecting non-admin user ${userId} from admin route ${req.url} to dashboard.`,
+          `Redirecting non-admin user ${authState.userId} from admin route ${req.url} to dashboard.`
         );
         return NextResponse.redirect(dashboardUrl);
       }
@@ -182,4 +149,3 @@ export const config = {
     "/(api|trpc)(.*)",
   ],
 };
-

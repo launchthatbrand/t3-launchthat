@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  allowedDevOrigins: ["http://*.localhost:*", "desmond-tatilian.localhost"],
 };
 
 export default withMicrofrontends(nextConfig, { debug: true });

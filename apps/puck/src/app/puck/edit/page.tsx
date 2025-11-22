@@ -25,33 +25,75 @@ import { useSearchParams } from "next/navigation";
 
 const EMPTY_DATA: Data = { root: {}, content: [] };
 
+const resolveTenantSlugFromHost = (host?: string | null): string | null => {
+  if (!host) {
+    return null;
+  }
+
+  const normalized = host.toLowerCase();
+
+  if (normalized.includes("localhost")) {
+    const localMatch = /^([^.]+)\.localhost$/.exec(normalized);
+    if (localMatch?.[1]) {
+      return localMatch[1];
+    }
+    return null;
+  }
+
+  if (normalized.includes("---") && normalized.endsWith(".vercel.app")) {
+    const [tenant] = normalized.split("---");
+    return tenant ?? null;
+  }
+
+  const segments = normalized.split(".");
+  if (segments.length <= 2) {
+    return null;
+  }
+
+  return segments[0] ?? null;
+};
+
 export default function EditPage() {
   const searchParams = useSearchParams();
   const pageIdentifier = searchParams.get("pageIdentifier");
   const title = searchParams.get("title") ?? "Puck Editor";
-  const organizationIdParam = searchParams.get("organizationId");
   const postIdParam = searchParams.get("postId");
   const postId = postIdParam ? (postIdParam as Id<"posts">) : null;
   const postTypeSlug = searchParams.get("postType") ?? undefined;
-  const organizationId =
-    organizationIdParam && organizationIdParam !== "public"
-      ? (organizationIdParam as Id<"organizations">)
-      : undefined;
+
+  const [tenantSlug, setTenantSlug] = useState<string | null>(null);
+  const [slugResolved, setSlugResolved] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    setTenantSlug(resolveTenantSlugFromHost(window.location.hostname));
+    setSlugResolved(true);
+  }, []);
+
+  const tenantRecord = useQuery(
+    api.core.organizations.queries.getBySlug,
+    tenantSlug ? { slug: tenantSlug } : "skip",
+  ) as Doc<"organizations"> | null | undefined;
+
+  const organizationId = tenantRecord?._id as Id<"organizations"> | undefined;
+  const organizationLoading = tenantSlug ? tenantRecord === undefined : false;
+  const organizationNotFound = tenantSlug ? tenantRecord === null : false;
+  const missingTenant = slugResolved && !tenantSlug;
   console.log("[EditPage] Params", {
     pageIdentifier,
     title,
     organizationId,
     postId,
     postTypeSlug,
+    tenantSlug,
   });
-  const scopeKey =
-    organizationIdParam && organizationIdParam !== "public"
-      ? organizationIdParam
-      : "global";
+  const scopeKey = organizationId ?? "global";
   const convex = useConvex();
   const templateScopeRef = useRef<string | null>(null);
 
-  if (templateScopeRef.current !== scopeKey) {
+  if (slugResolved && templateScopeRef.current !== scopeKey) {
     setTemplateStorage((_key) =>
       createConvexTemplateStorage({
         convex,
@@ -71,20 +113,26 @@ export default function EditPage() {
   );
   console.log("[EditPage] useQuery result", { puckPayload });
   const saveMutation = useMutation(api.puckEditor.mutations.updateData);
+  const shouldFetchPost =
+    Boolean(postId) &&
+    slugResolved &&
+    !missingTenant &&
+    !organizationNotFound &&
+    Boolean(organizationId);
   const primaryPostRecord = useQuery(
     api.core.posts.queries.getPostById,
-    postId
+    shouldFetchPost
       ? organizationId
-        ? { id: postId, organizationId }
-        : { id: postId }
+        ? { id: postId as Id<"posts">, organizationId }
+        : { id: postId as Id<"posts"> }
       : "skip",
   ) as Doc<"posts"> | null | undefined;
 
   const fallbackPostRecord = useQuery(
     api.core.posts.queries.getPostById,
-    postId && organizationId
+    shouldFetchPost && organizationId
       ? {
-          id: postId,
+          id: postId as Id<"posts">,
         }
       : "skip",
   ) as Doc<"posts"> | null | undefined;
@@ -95,9 +143,13 @@ export default function EditPage() {
     | undefined;
   const [isSaving, setIsSaving] = useState(false);
 
-  const isPostLoading = Boolean(postId) && postRecord === undefined;
+  const isPostLoading = shouldFetchPost && postRecord === undefined;
   const isPuckDataLoading = pageIdentifier ? puckPayload === undefined : false;
-  const isDataLoading = isPostLoading || isPuckDataLoading;
+  const isDataLoading =
+    isPostLoading ||
+    isPuckDataLoading ||
+    organizationLoading ||
+    !slugResolved;
 
   const parsedPostContent = useMemo<Data | null>(() => {
     if (!postRecord || !postRecord.content) {
@@ -158,6 +210,53 @@ export default function EditPage() {
             <p>
               We couldn&apos;t determine which page you&apos;re trying to edit.
               Close this tab and relaunch the Puck editor from the portal.
+            </p>
+            <Button onClick={() => window.close()} variant="outline">
+              Close tab
+            </Button>
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
+
+  if (missingTenant) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center px-4">
+        <Card className="w-full max-w-lg">
+          <CardHeader>
+            <CardTitle>Access denied</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-muted-foreground">
+            <p>
+              This editor can only be opened from an organization subdomain.
+              Launch it from your tenant (e.g.
+              <code className="mx-1 rounded bg-muted px-1">
+                tenant.localhost
+              </code>
+              ) and try again.
+            </p>
+            <Button onClick={() => window.close()} variant="outline">
+              Close tab
+            </Button>
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
+
+  if (tenantSlug && slugResolved && organizationNotFound) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center px-4">
+        <Card className="w-full max-w-lg">
+          <CardHeader>
+            <CardTitle>Organization not found</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-muted-foreground">
+            <p>
+              The tenant <span className="font-semibold">{tenantSlug}</span>{" "}
+              could not be found. Open the editor from a valid organization
+              subdomain.
             </p>
             <Button onClick={() => window.close()} variant="outline">
               Close tab

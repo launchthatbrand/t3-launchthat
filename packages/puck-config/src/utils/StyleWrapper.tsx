@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 import type { CSSProperties, HTMLAttributes, ReactNode, Ref } from "react";
 
 import {
@@ -34,11 +34,13 @@ export const StyleWrapper: React.FC<StyleWrapperProps> = ({
   widgetId = null,
   ...restProps
 }) => {
+  const reactGeneratedId = useId();
   const wrapperClasses = getWrapperClasses(styleProps);
   const overlayElement = getOverlayElement(styleProps);
   const backgroundImageStyles = getBackgroundImageStyles(styleProps);
 
-  const uniqueWidgetId = widgetId ?? `puck-${Math.random().toString(36).slice(2, 11)}`;
+  const uniqueWidgetId =
+    widgetId ?? `puck-${reactGeneratedId.replace(/[^a-z0-9]/gi, "")}`;
   const advancedCss = getAdvancedCssStyles(styleProps, uniqueWidgetId);
 
   const combinedStyles: CSSProperties = {

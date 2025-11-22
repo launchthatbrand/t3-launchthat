@@ -21,6 +21,7 @@
     "@acme/validators": "workspace:*",
     "@clerk/clerk-react": "^5.7.3",
     "@measured/puck": "^0.20.2",
+    "@react-pdf/renderer": "^4.3.0",
     "@t3-oss/env-nextjs": "^0.12.0",
     "@tanstack/react-query": "catalog:",
     "@trpc/client": "catalog:",

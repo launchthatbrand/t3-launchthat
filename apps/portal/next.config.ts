@@ -27,6 +27,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  allowedDevOrigins: ["http://*.localhost:*", "desmond-tatilian.localhost"],
 };
 
 export default withMicrofrontends(nextConfig, { debug: true });

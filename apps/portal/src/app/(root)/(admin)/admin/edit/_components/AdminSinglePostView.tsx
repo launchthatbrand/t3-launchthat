@@ -545,17 +545,15 @@ export function AdminSinglePostView({
       return null;
     }
 
-    const scopedOrg = organizationId ?? "public";
     const params = new URLSearchParams({
       pageIdentifier,
-      organizationId: scopedOrg,
       postId: post._id,
       postType: slug,
       title: title || headerLabel,
     });
 
     return `/puck/edit?${params.toString()}`;
-  }, [headerLabel, organizationId, pageIdentifier, post?._id, slug, title]);
+  }, [headerLabel, pageIdentifier, post?._id, slug, title]);
 
   if (!isNewRecord && post === undefined) {
     return (
@@ -1010,6 +1008,7 @@ export function AdminSinglePostView({
     <AdminLayoutContent withSidebar>
       <AdminLayoutMain>{defaultMain}</AdminLayoutMain>
       asdasdasd asdasd
+      asd
       asd
       asd
       asd
