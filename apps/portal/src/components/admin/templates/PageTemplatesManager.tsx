@@ -141,6 +141,8 @@ export function PageTemplatesManager() {
         pageIdentifier: result.pageIdentifier,
         organizationId: organizationId ?? "public",
         title: templateName,
+        postId: result.id,
+        postType: templateCategory,
       });
       window.open(`/puck/edit?${params.toString()}`, "_blank", "noreferrer");
     } finally {
@@ -153,6 +155,8 @@ export function PageTemplatesManager() {
       pageIdentifier: template.pageIdentifier,
       organizationId: template.organizationId ?? "public",
       title: template.title,
+      postId: template._id,
+      postType: template.templateCategory,
     });
     window.open(`/puck/edit?${params.toString()}`, "_blank", "noreferrer");
   };

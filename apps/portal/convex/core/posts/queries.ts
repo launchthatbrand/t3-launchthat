@@ -262,6 +262,7 @@ type TemplateMeta = {
   targetPostType: string | null;
   loopContext: unknown | null;
   pageIdentifier: string;
+  puckData: string | null;
 };
 
 type TemplateRecord = Doc<"posts"> & TemplateMeta;
@@ -310,11 +311,18 @@ const loadTemplateMeta = async (
           postId: post._id,
         });
 
+  const puckDataRaw = metaMap.get("puck_data");
+  const puckData =
+    typeof puckDataRaw === "string" && puckDataRaw.length > 0
+      ? puckDataRaw
+      : null;
+
   return {
     templateCategory: category,
     targetPostType,
     loopContext,
     pageIdentifier,
+    puckData,
   };
 };
 

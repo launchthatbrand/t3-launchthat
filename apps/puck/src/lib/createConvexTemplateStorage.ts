@@ -1,15 +1,21 @@
 "use client";
 
-import type { TemplateData, TemplateStorage } from "@acme/puck-config/blocks/Template";
+import type {
+  TemplateData,
+  TemplateStorage,
+} from "@acme/puck-config/blocks/Template";
 import { walkTree, type Data, type Slot } from "@measured/puck";
 import type { ConvexReactClient } from "convex/react";
 import { generateId } from "@acme/puck-config/core/lib/generate-id";
 import { api, type PublicApiType } from "../../../portal/convexspec";
+import type { Id } from "../../../portal/convex/_generated/dataModel";
 import { puckConfig } from "@acme/puck-config";
 
 type TemplateListItem = {
   _id: string;
-  name: string;
+  title: string;
+  content?: string | null;
+  puckData?: string | null;
   pageIdentifier: string;
 };
 
@@ -61,21 +67,22 @@ export const createConvexTemplateStorage = ({
 
   return {
     async load() {
+      const organizationId =
+        scopeKey !== "global" ? (scopeKey as Id<"organizations">) : undefined;
       const templates =
-        ((await convex.query(api.puckTemplates.queries.list, { scopeKey })) as
-          | TemplateListItem[]
-          | undefined) ?? [];
+        ((await convex.query(api.core.posts.queries.listTemplates, {
+          ...(organizationId ? { organizationId } : {}),
+        })) as TemplateListItem[] | undefined) ?? [];
 
       const entries = await Promise.all(
         templates.map(async (template) => {
-          const raw = await convex.query(api.puckEditor.queries.getData, {
-            pageIdentifier: template.pageIdentifier,
-          });
+          const raw = template.puckData ?? template.content ?? null;
+          const data = parsePuckData(raw);
           return [
             template._id,
             {
-              label: template.name,
-              data: parsePuckData(raw),
+              label: template.title,
+              data,
             },
           ] as const;
         }),

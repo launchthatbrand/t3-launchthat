@@ -1,6 +1,6 @@
-import type { Id } from "@/convex/_generated/dataModel";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
+
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 
@@ -18,7 +18,7 @@ export function useGroupData() {
   const currentGroupId = useMemo(() => {
     // Direct group ID from params
     if (params?.groupId && typeof params.groupId === "string") {
-      return params.groupId as Id<"groups">;
+      return params.groupId;
     }
 
     // For /groups/[id] pattern
@@ -27,13 +27,13 @@ export function useGroupData() {
       typeof params.id === "string" &&
       pathname?.includes("/groups/")
     ) {
-      return params.id as Id<"groups">;
+      return params.id;
     }
 
     // Extract from URL path patterns like /groups/[groupId]
     const groupPathMatch = pathname?.match(/\/groups\/([^\/]+)/);
     if (groupPathMatch && groupPathMatch[1]) {
-      return groupPathMatch[1] as Id<"groups">;
+      return groupPathMatch[1];
     }
 
     return undefined;

@@ -7905,7 +7905,11 @@ export type PublicApiType = {
       getData: FunctionReference<
         "query",
         "public",
-        { pageIdentifier: string },
+        {
+          organizationId?: Id<"organizations">;
+          pageIdentifier: string;
+          postId?: Id<"posts">;
+        },
         any
       >;
     };
@@ -7913,36 +7917,13 @@ export type PublicApiType = {
       updateData: FunctionReference<
         "mutation",
         "public",
-        { data: string; pageIdentifier: string },
-        any
-      >;
-    };
-  };
-  puckTemplates: {
-    queries: {
-      list: FunctionReference<"query", "public", { scopeKey: string }, any>;
-      getTemplate: FunctionReference<
-        "query",
-        "public",
         {
-          postTypeSlug: string;
-          scopeKey: string;
-          templateType: "single" | "archive";
-        },
-        any
-      >;
-    };
-    mutations: {
-      create: FunctionReference<
-        "mutation",
-        "public",
-        {
-          name: string;
+          data: string;
           organizationId?: Id<"organizations">;
           pageIdentifier: string;
-          postTypeSlug: string;
-          scopeKey: string;
-          templateType: "single" | "archive";
+          postId?: Id<"posts">;
+          postTypeSlug?: string;
+          title?: string;
         },
         any
       >;

@@ -185,8 +185,6 @@ import type * as plugins_lms_mutations from "../plugins/lms/mutations.js";
 import type * as plugins_lms_queries from "../plugins/lms/queries.js";
 import type * as puckEditor_mutations from "../puckEditor/mutations.js";
 import type * as puckEditor_queries from "../puckEditor/queries.js";
-import type * as puckTemplates_mutations from "../puckTemplates/mutations.js";
-import type * as puckTemplates_queries from "../puckTemplates/queries.js";
 import type * as shared_auth from "../shared/auth.js";
 import type * as shared_constants from "../shared/constants.js";
 import type * as shared_dates from "../shared/dates.js";
@@ -392,8 +390,6 @@ declare const fullApi: ApiFromModules<{
   "plugins/lms/queries": typeof plugins_lms_queries;
   "puckEditor/mutations": typeof puckEditor_mutations;
   "puckEditor/queries": typeof puckEditor_queries;
-  "puckTemplates/mutations": typeof puckTemplates_mutations;
-  "puckTemplates/queries": typeof puckTemplates_queries;
   "shared/auth": typeof shared_auth;
   "shared/constants": typeof shared_constants;
   "shared/dates": typeof shared_dates;

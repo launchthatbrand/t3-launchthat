@@ -1,16 +1,16 @@
 "use client";
 
-import type { Id } from "@/convex/_generated/dataModel";
-import type { Data as PuckData } from "@measured/puck";
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
-import { Edit } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
+import { Edit } from "lucide-react";
+import Link from "next/link";
+import type { Id as PortalId } from "@/convex/_generated/dataModel";
+import type { Data as PuckData } from "@measured/puck";
+import { api } from "@/convex/_generated/api";
+import dynamic from "next/dynamic";
+import { useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
 
 // Dynamically import the PuckRenderer to avoid server/client mismatch
 const PuckRenderer = dynamic(
@@ -23,10 +23,11 @@ const PuckRenderer = dynamic(
 
 interface DashboardContentProps {
   pageIdentifier: string;
-  groupId?: Id<"groups">;
+  groupId?: string;
   title?: string;
   editUrl?: string;
   showEditButton?: boolean;
+  organizationId?: PortalId<"organizations">;
 }
 
 /**
@@ -39,14 +40,21 @@ export function DashboardContent({
   title,
   editUrl,
   showEditButton = true,
+  organizationId,
 }: DashboardContentProps) {
   const router = useRouter();
   const [parsedData, setParsedData] = useState<PuckData | null>(null);
 
   // Query dashboard data from the puckEditor table
-  const dashboardDataResult = useQuery(api.puckEditor.queries.getData, {
-    pageIdentifier,
-  });
+  const dashboardDataResult = useQuery(
+    api.puckEditor.queries.getData,
+    pageIdentifier
+      ? {
+          pageIdentifier,
+          ...(organizationId ? { organizationId } : {}),
+        }
+      : "skip",
+  );
 
   // Parse dashboard data when it changes
   useEffect(() => {
@@ -119,7 +127,7 @@ export function DashboardContent({
 
       {/* Parse the JSON string from dashboardData safely */}
       {parsedData && groupId && (
-        <PuckRenderer data={parsedData} groupId={groupId} />
+        <PuckRenderer data={parsedData} groupId={groupId as any} />
       )}
 
       {/* For non-group pages, we need to adapt the PuckRenderer or use a different renderer */}

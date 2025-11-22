@@ -1,14 +1,5 @@
 "use client";
 
-import type { GroupWithDetails } from "@convex-config/groups/schema/types";
-import type { Data as PuckData } from "@measured/puck";
-import dynamic from "next/dynamic";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
-import { api } from "@convex-config/_generated/api";
-import { useMutation, useQuery } from "convex/react";
-import { formatDistanceToNow } from "date-fns";
 import {
   Activity,
   Calendar,
@@ -17,11 +8,20 @@ import {
   MessageSquare,
   Users,
 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { useMutation, useQuery } from "convex/react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import type { GroupWithDetails } from "@convex-config/groups/schema/types";
+import Link from "next/link";
+import type { Data as PuckData } from "@measured/puck";
+import { api } from "@convex-config/_generated/api";
+import dynamic from "next/dynamic";
+import { formatDistanceToNow } from "date-fns";
+import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 
 // Dynamically import the PuckRenderer to avoid server/client mismatch
 const PuckRenderer = dynamic(
@@ -48,9 +48,15 @@ export function DashboardContent({
   const joinGroup = useMutation(api.groups.mutations.joinGroup);
 
   // Query dashboard data from the puckEditor table with type safety
-  const dashboardDataResult = useQuery(api.puckEditor.queries.getData, {
-    pageIdentifier,
-  });
+  const dashboardDataResult = useQuery(
+    api.puckEditor.queries.getData,
+    pageIdentifier
+      ? {
+          pageIdentifier,
+          ...(group.organizationId ? { organizationId: group.organizationId } : {}),
+        }
+      : "skip",
+  );
 
   // Query additional group data
   const membersData = useQuery(api.groups.queries.getGroupMembers, {

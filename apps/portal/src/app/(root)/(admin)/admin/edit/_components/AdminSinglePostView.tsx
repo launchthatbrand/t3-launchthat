@@ -775,6 +775,29 @@ export function AdminSinglePostView({
                 {renderCustomFieldControl(field)}
               </div>
             ))}
+            <div className="space-y-2 rounded-md border p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label htmlFor="custom-field-puck-data">Puck Data (JSON)</Label>
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                  system
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Read-only representation of the stored Puck layout. Updates are
+                managed automatically when using the Puck editor.
+              </p>
+              <Textarea
+                id="custom-field-puck-data"
+                value={
+                  typeof postMetaMap.puck_data === "string"
+                    ? postMetaMap.puck_data
+                    : ""
+                }
+                readOnly
+                rows={8}
+                className="font-mono text-xs"
+              />
+            </div>
           </CardContent>
         </Card>
       ) : (

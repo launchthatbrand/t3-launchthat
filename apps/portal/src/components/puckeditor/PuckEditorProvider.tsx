@@ -7,11 +7,11 @@ import { useMutation, useQuery } from "convex/react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { Data } from "@measured/puck";
-import type { Id } from "@/convex/_generated/dataModel";
+import type { Id as PortalId } from "@/convex/_generated/dataModel";
 import { Puck } from "@measured/puck";
 import { TemplateDialog } from "./templates/TemplateDialog";
 import { api } from "@/convex/_generated/api";
-import { createConfig } from "./config/puck-config";
+import { createConfig } from "@acme/puck-config";
 import { getTemplateById } from "./templates/groupTemplates";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
@@ -74,7 +74,8 @@ function PuckEditorInner({ children }: PuckEditorProps) {
   // Get group data for dropdown options
   const { groupOptions, currentGroupId, isLoading } = useGroupData();
   const tenant = useTenant();
-  const organizationId = getTenantOrganizationId(tenant ?? undefined);
+  const organizationId: PortalId<"organizations"> | undefined =
+    getTenantOrganizationId(tenant ?? undefined) ?? undefined;
 
   // Explicitly get group ID from URL if missing from context
   const groupIdFromUrl = searchParams.get("groupId");
@@ -96,7 +97,12 @@ function PuckEditorInner({ children }: PuckEditorProps) {
   // Fetch existing dashboard data if available from the new table
   const existingData = useQuery(
     api.puckEditor.queries.getData,
-    pageIdentifier ? { pageIdentifier } : "skip",
+    pageIdentifier
+      ? {
+          pageIdentifier,
+          ...(organizationId ? { organizationId } : {}),
+        }
+      : "skip",
   );
   // console.log("[PuckEditor] Existing data:", existingData);
 
@@ -116,12 +122,7 @@ function PuckEditorInner({ children }: PuckEditorProps) {
   const savePuckPage = useMutation(api.puckEditor.mutations.updateData);
 
   // Create Puck configuration with dynamic options
-  const config = createConfig({
-    groupOptions,
-    currentGroupId: effectiveGroupId
-      ? (effectiveGroupId as Id<"groups">)
-      : undefined,
-  });
+  const config = createConfig();
 
   // Handle publishing/saving editor content
   const handlePublish = async (data: Data) => {
@@ -145,6 +146,9 @@ function PuckEditorInner({ children }: PuckEditorProps) {
       await savePuckPage({
         pageIdentifier,
         data: JSON.stringify(safeData),
+        ...(organizationId ? { organizationId } : {}),
+        postTypeSlug: "pages",
+        title: pathname,
       });
 
       // Show success message but don't redirect
@@ -172,7 +176,7 @@ function PuckEditorInner({ children }: PuckEditorProps) {
 
     // Apply the template with the current group ID
     try {
-      const templateData = template.data(effectiveGroupId as Id<"groups">);
+      const templateData = template.data(effectiveGroupId as any);
       setEditorData(templateData);
       setEditorKey((prev) => prev + 1); // Force re-render of the Puck editor
       toast.success(`Template "${template.name}" applied successfully!`);
@@ -251,10 +255,7 @@ export function PuckContent({ data }: { data: Data }) {
   const { groupOptions, currentGroupId } = useGroupData();
 
   // Create config with dynamic options
-  const config = createConfig({
-    groupOptions,
-    currentGroupId: currentGroupId ?? undefined,
-  });
+  const config = createConfig();
 
   return (
     <div className="puck-content">

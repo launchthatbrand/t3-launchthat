@@ -66,6 +66,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
     try {
       dashboardData = await convex.query(api.puckEditor.queries.getData, {
         pageIdentifier,
+        ...(group.organizationId ? { organizationId: group.organizationId } : {}),
       });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -82,6 +83,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
           group={group}
           hasCustomDashboard={hasCustomDashboard}
           pageIdentifier={pageIdentifier}
+          organizationId={group.organizationId ?? undefined}
         />
       </div>
     );

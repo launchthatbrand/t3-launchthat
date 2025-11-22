@@ -8,8 +8,6 @@ import { integrationsSchema } from "./integrations/schema";
 import { lmsSchema } from "./lms/schema";
 import { notificationsSchema } from "./notifications/schema";
 import { postsSchema } from "./core/posts/schema";
-import { puckEditorTable } from "./puckEditor/schema";
-import { puckTemplatesTable } from "./puckTemplates/schema";
 import { socialFeedSchema } from "./socialfeed/schema";
 import { tasksSchema } from "./tasks/schema";
 import { usersSchema } from "./core/users/schema";
@@ -50,7 +48,4 @@ export default defineSchema({
   // Core options (site/store settings)
   ...coreSchema,
 
-  // Visual page builder documents
-  puckEditor: puckEditorTable,
-  puckTemplates: puckTemplatesTable,
 });

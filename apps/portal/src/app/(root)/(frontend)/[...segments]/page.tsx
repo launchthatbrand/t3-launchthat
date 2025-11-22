@@ -14,7 +14,6 @@ import { api } from "@/convex/_generated/api";
 import { fetchQuery } from "convex/nextjs";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
-import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
 
 interface PageProps {
   params: Promise<{ segments?: string[] }>;
@@ -66,6 +65,8 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     ...(organizationId ? { organizationId } : {}),
   });
 
+  console.log("[FrontendCatchAllPage] Post:", post);
+
   if (!post) {
     notFound();
   }
@@ -97,19 +98,12 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     },
   );
   const postMeta = postMetaResult ?? [];
+  console.log("[FrontendCatchAllPage] Post Meta:", postMeta);
 
-  const pageIdentifier = getTenantScopedPageIdentifier("/admin/edit", {
-    organizationId: organizationId ?? null,
-    entityId: post._id,
-  });
-
-  const puckData =
-    (await loadPuckData(
-      pageIdentifier,
-      organizationId,
-      post._id,
-      post.postTypeSlug ?? null,
-    )) ?? null;
+  const puckMetaEntry = postMeta.find((meta) => meta.key === "puck_data");
+  const puckData = parsePuckData(
+    typeof puckMetaEntry?.value === "string" ? puckMetaEntry.value : null,
+  );
 
   const canonicalSegments = getCanonicalPostSegments(post, postType);
   if (canonicalSegments.length > 0) {
@@ -437,43 +431,6 @@ async function resolveArchiveContext(
 
 const trimSlashes = (value: string) => value.replace(/^\/+|\/+$/g, "");
 
-async function loadPuckData(
-  scopedIdentifier: string,
-  organizationId: Doc<"organizations">["_id"] | undefined,
-  postId: Doc<"posts">["_id"],
-  postTypeSlug: string | null,
-) {
-  try {
-    const primary = await fetchQuery(api.puckEditor.queries.getData, {
-      pageIdentifier: scopedIdentifier,
-    });
-    const parsedPrimary = parsePuckData(primary);
-    if (parsedPrimary) {
-      return parsedPrimary;
-    }
-
-    if (organizationId) {
-      const fallbackIdentifier = getTenantScopedPageIdentifier("/admin/edit", {
-        entityId: postId,
-      });
-      const fallback = await fetchQuery(api.puckEditor.queries.getData, {
-        pageIdentifier: fallbackIdentifier,
-      });
-      const parsedFallback = parsePuckData(fallback);
-      if (parsedFallback) {
-        return parsedFallback;
-      }
-    }
-
-    if (postTypeSlug) {
-      return await loadTemplateContent("single", postTypeSlug, organizationId);
-    }
-  } catch (error) {
-    console.error("Failed to load puck data", error);
-  }
-  return null;
-}
-
 async function loadTemplateContent(
   templateType: "single" | "archive",
   postTypeSlug: string | null,
@@ -491,10 +448,12 @@ async function loadTemplateContent(
     if (!template) {
       return null;
     }
-    const stored = await fetchQuery(api.puckEditor.queries.getData, {
-      pageIdentifier: template.pageIdentifier,
-    });
-    return parsePuckData(stored);
+
+    const source = template.puckData ?? template.content ?? null;
+    const content = parsePuckData(source);
+    if (content) {
+      return content;
+    }
   } catch (error) {
     console.error("Failed to load template content", error);
     return null;
@@ -502,11 +461,14 @@ async function loadTemplateContent(
 }
 
 function parsePuckData(value: unknown): PuckData | null {
-  if (typeof value !== "string") {
+  if (!value) {
     return null;
   }
+
+  const payload = typeof value === "string" ? value : String(value);
+
   try {
-    const parsed = JSON.parse(value) as PuckData;
+    const parsed = JSON.parse(payload) as PuckData;
     if (Array.isArray(parsed.content)) {
       return parsed;
     }

@@ -52,4 +52,5 @@ export const componentKey = Buffer.from(
 ).toString("base64");
 
 export default puckConfig;
+export const createConfig = () => puckConfig;
 export { setTemplateStorage } from "./blocks/Template/storage";

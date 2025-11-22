@@ -4,9 +4,13 @@ import "@measured/puck/puck.css";
 
 import { AutoField, FieldLabel, Puck } from "@measured/puck";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import type {
+  Doc,
+  Id,
+} from "../../../../../portal/convex/_generated/dataModel";
 import puckConfig, { setTemplateStorage } from "@acme/puck-config";
 import { useConvex, useMutation, useQuery } from "convex/react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@acme/ui/button";
 import type { Data } from "@measured/puck";
@@ -26,6 +30,20 @@ export default function EditPage() {
   const pageIdentifier = searchParams.get("pageIdentifier");
   const title = searchParams.get("title") ?? "Puck Editor";
   const organizationIdParam = searchParams.get("organizationId");
+  const postIdParam = searchParams.get("postId");
+  const postId = postIdParam ? (postIdParam as Id<"posts">) : null;
+  const postTypeSlug = searchParams.get("postType") ?? undefined;
+  const organizationId =
+    organizationIdParam && organizationIdParam !== "public"
+      ? (organizationIdParam as Id<"organizations">)
+      : undefined;
+  console.log("[EditPage] Params", {
+    pageIdentifier,
+    title,
+    organizationId,
+    postId,
+    postTypeSlug,
+  });
   const scopeKey =
     organizationIdParam && organizationIdParam !== "public"
       ? organizationIdParam
@@ -43,28 +61,93 @@ export default function EditPage() {
     templateScopeRef.current = scopeKey;
   }
 
-  const storedData = useQuery(
+  const puckPayload = useQuery(
     api.puckEditor.queries.getData,
-    pageIdentifier ? { pageIdentifier } : "skip",
+    pageIdentifier
+      ? postId
+        ? { pageIdentifier, postId }
+        : { pageIdentifier }
+      : "skip",
   );
+  console.log("[EditPage] useQuery result", { puckPayload });
   const saveMutation = useMutation(api.puckEditor.mutations.updateData);
+  const primaryPostRecord = useQuery(
+    api.core.posts.queries.getPostById,
+    postId
+      ? organizationId
+        ? { id: postId, organizationId }
+        : { id: postId }
+      : "skip",
+  ) as Doc<"posts"> | null | undefined;
+
+  const fallbackPostRecord = useQuery(
+    api.core.posts.queries.getPostById,
+    postId && organizationId
+      ? {
+          id: postId,
+        }
+      : "skip",
+  ) as Doc<"posts"> | null | undefined;
+
+  const postRecord = (primaryPostRecord ?? fallbackPostRecord) as
+    | Doc<"posts">
+    | null
+    | undefined;
   const [isSaving, setIsSaving] = useState(false);
 
-  const isDataLoading = storedData === undefined;
+  const isPostLoading = Boolean(postId) && postRecord === undefined;
+  const isPuckDataLoading = pageIdentifier ? puckPayload === undefined : false;
+  const isDataLoading = isPostLoading || isPuckDataLoading;
 
-  const initialData = useMemo<Data>(() => {
-    if (typeof storedData !== "string") {
-      return EMPTY_DATA;
+  const parsedPostContent = useMemo<Data | null>(() => {
+    if (!postRecord || !postRecord.content) {
+      return null;
     }
     try {
-      return JSON.parse(storedData) as Data;
+      return JSON.parse(postRecord.content) as Data;
     } catch (error) {
-      console.error("Failed to parse saved Puck data", error);
-      return EMPTY_DATA;
+      console.error("Failed to parse stored post content", error);
+      return null;
     }
-  }, [storedData]);
+  }, [postRecord]);
 
-  if (!pageIdentifier) {
+  const [editorData, setEditorData] = useState<Data | null>(null);
+  const hasHydrated = useRef(false);
+
+  useEffect(() => {
+    if (hasHydrated.current || isDataLoading) {
+      return;
+    }
+
+    let resolvedData: Data | null = null;
+
+    if (typeof puckPayload === "string") {
+      try {
+        const parsed = JSON.parse(puckPayload) as Data;
+        if (parsed?.content) {
+          console.log("[EditPage] Hydrating from puckPayload", parsed);
+          resolvedData = parsed;
+        }
+      } catch (error) {
+        console.error("Failed to parse stored Puck data", error);
+      }
+    }
+
+    if (!resolvedData && parsedPostContent) {
+      console.log("[EditPage] Hydrating from post.content");
+      resolvedData = parsedPostContent;
+    }
+
+    if (!resolvedData) {
+      console.log("[EditPage] No stored data found, using blank state");
+      resolvedData = EMPTY_DATA;
+    }
+
+    setEditorData(resolvedData);
+    hasHydrated.current = true;
+  }, [isDataLoading, parsedPostContent, puckPayload]);
+
+  if (!postId && !pageIdentifier) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center px-4">
         <Card className="w-full max-w-lg">
@@ -85,7 +168,30 @@ export default function EditPage() {
     );
   }
 
-  if (isDataLoading) {
+  if (postId && postRecord === null) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center px-4">
+        <Card className="w-full max-w-lg">
+          <CardHeader>
+            <CardTitle>Post not found</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-muted-foreground">
+            <p>
+              The post associated with this editor could not be located. Close
+              this tab and try again.
+            </p>
+            <Button onClick={() => window.close()} variant="outline">
+              Close tab
+            </Button>
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
+
+  console.log("[EditPage] editorData", editorData);
+
+  if (isDataLoading || editorData === null) {
     return (
       <main className="flex min-h-screen flex-col bg-muted">
         <div className="z-10 h-16 w-full bg-white shadow-sm"></div>
@@ -115,19 +221,34 @@ export default function EditPage() {
   }
 
   const handlePublish = async (data: Data) => {
-    console.log("Saving data", data);
     setIsSaving(true);
     try {
-      await Promise.resolve(
-        saveMutation({
-          pageIdentifier,
-          data: JSON.stringify({
-            root: { ...data.root },
-            content: [...data.content],
-          }),
-        }),
-      );
+      const payload = JSON.stringify({
+        root: { ...data.root },
+        content: [...data.content],
+      });
+
+      if (!pageIdentifier) {
+        throw new Error("Missing target for save operation");
+      }
+
+      await saveMutation({
+        pageIdentifier,
+        data: payload,
+        ...(postId ? { postId } : {}),
+        ...(organizationId ? { organizationId } : {}),
+        ...(postTypeSlug ? { postTypeSlug } : {}),
+        title,
+      });
+
       toast.success("Page saved successfully");
+    } catch (error) {
+      console.error("Failed to save Puck data", error);
+      toast.error(
+        `Failed to save: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      );
     } finally {
       setIsSaving(false);
     }
@@ -149,10 +270,10 @@ export default function EditPage() {
 
       <section className="flex-1 overflow-auto">
         <Puck
-          key={pageIdentifier}
           config={puckConfig}
-          data={initialData}
+          data={editorData}
           onPublish={handlePublish}
+          onChange={setEditorData}
           plugins={[objectAccordionPlugin]}
           fieldTransforms={
             {
