@@ -1,6 +1,8 @@
+import type { Control } from "react-hook-form";
 import React, { useState } from "react";
+import Image from "next/image";
 import { ImageIcon, X } from "lucide-react";
-import { Control, Controller, useFormContext } from "react-hook-form";
+import { Controller, useFormContext } from "react-hook-form";
 
 import { Button } from "@acme/ui/button";
 import {
@@ -11,7 +13,8 @@ import {
 } from "@acme/ui/dialog";
 
 import type { LessonFormValues } from "~/app/(root)/(admin)/admin/lessons/_components/LessonForm";
-import { MediaItem, MediaLibrary } from "~/app/(root)/(admin)/admin/media/page";
+import type { MediaItem } from "~/components/media/MediaLibrary";
+import { MediaLibrary } from "~/components/media/MediaLibrary";
 
 interface MediaPickerProps {
   control: Control<LessonFormValues>;
@@ -26,8 +29,8 @@ function MediaPicker({
   control,
   name,
   placeholder = "Choose media",
-  postType,
-  postId,
+  postType: _postType,
+  postId: _postId,
   _value,
 }: MediaPickerProps) {
   const { setValue } = useFormContext();
@@ -52,10 +55,12 @@ function MediaPicker({
           {fieldValue ? (
             <div className="relative h-20 w-20 overflow-hidden rounded-md">
               {fieldValue && (
-                <img
+                <Image
                   src={fieldValue}
                   alt="Featured"
-                  className="h-full w-full object-cover"
+                  fill
+                  sizes="80px"
+                  className="object-cover"
                 />
               )}
               <Button

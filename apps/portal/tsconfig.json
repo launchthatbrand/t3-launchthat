@@ -18,6 +18,7 @@
       "@acme/ui/*": ["../../packages/ui/src/*"],
       "@acme/puck-config": ["../../packages/puck-config/src"],
       "@acme/puck-config/*": ["../../packages/puck-config/src/*"],
+      "@portal/convexspec": ["./convexspec.ts"],
       "launchthat-plugin-core": ["../../packages/launchthat-plugin-core/src/index"],
       "launchthat-plugin-calendar": [
         "../../packages/launchthat-plugin-calendar/src/index"
