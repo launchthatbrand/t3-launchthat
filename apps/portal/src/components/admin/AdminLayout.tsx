@@ -1,5 +1,11 @@
 "use client";
 
+import type { ReactNode } from "react";
+import React, { createContext, useContext } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -10,18 +16,17 @@ import {
   TabsList,
   TabsTrigger,
 } from "@acme/ui";
-import {
-  ENTITY_PATTERNS,
-  NavigationContext,
-  detectNavigationContext,
-  getEntityInfo,
-  getSectionFromPathname,
-} from "./NavigationContext";
-import React, { ReactNode, createContext, useContext } from "react";
+import { Button } from "@acme/ui/button";
 
-import Link from "next/link";
 // Import the new navigation context
 import type { TabConfig } from "./NavigationContext";
+import {
+  detectNavigationContext,
+  ENTITY_PATTERNS,
+  getEntityInfo,
+  getSectionFromPathname,
+  NavigationContext,
+} from "./NavigationContext";
 
 // Context for sharing admin layout state
 interface AdminLayoutContextValue {
@@ -163,7 +168,7 @@ const AdminLayoutInner: React.FC<AdminLayoutInnerProps> = ({
 
   // For now, we'll work without the navigation context
   // This can be enhanced later when NavigationProvider is consistently used
-  const contextPlugins: { tab: TabConfig }[] = [];
+  const contextPlugins = React.useMemo<{ tab: TabConfig }[]>(() => [], []);
 
   // Merge provided tabs with plugin tabs
   const allTabs = React.useMemo(() => {
@@ -277,10 +282,11 @@ interface AdminLayoutHeaderProps {
 }
 
 const AdminLayoutHeader: React.FC<AdminLayoutHeaderProps> = ({
-  className = "space-y-6 rounded-t-none bg-primary/10",
+  className = "space-y-6 rounded-none bg-muted/50 shadow-sm",
   contentClassName = "",
   customTabs,
 }) => {
+  const router = useRouter();
   const {
     title,
     description,
@@ -294,9 +300,21 @@ const AdminLayoutHeader: React.FC<AdminLayoutHeaderProps> = ({
 
   return (
     <Card className={className}>
-      <CardHeader className="container py-6 pb-0">
-        <CardTitle className="text-2xl font-bold">{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+      <CardHeader className="container flex flex-col flex-wrap items-start justify-start gap-4 py-6">
+        <div>
+          <CardTitle className="text-2xl font-bold">{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => router.back()}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
       </CardHeader>
       {finalShowTabs && (
         <CardContent
@@ -323,11 +341,7 @@ const AdminLayoutContent: React.FC<AdminLayoutContentProps> = ({
 }) => {
   if (withSidebar) {
     // Grid layout for sidebar + main content
-    return (
-      <div className={`grid md:grid-cols-4 ${className}`}>
-        {children}
-      </div>
-    );
+    return <div className={`grid md:grid-cols-4 ${className}`}>{children}</div>;
   }
 
   // Original single-column layout

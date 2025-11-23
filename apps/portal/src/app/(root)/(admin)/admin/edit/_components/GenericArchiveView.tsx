@@ -1,10 +1,15 @@
 "use client";
 
-import {
-  AdminLayoutContent,
-  AdminLayoutMain,
-  AdminLayoutSidebar,
-} from "~/components/admin/AdminLayout";
+import type { Doc } from "@/convex/_generated/dataModel";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useMemo } from "react";
+import Link from "next/link";
+import { useGetAllPosts } from "@/lib/blog";
+import { formatDistanceToNow } from "date-fns";
+import { Eye, Info, Plus, Sparkles } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -12,7 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Eye, Info, Loader2, Plus, Sparkles } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -20,36 +24,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@acme/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import type { Doc } from "@/convex/_generated/dataModel";
-import Link from "next/link";
 import type { PermalinkSettings } from "./permalink";
-import { PlaceholderState } from "./PlaceholderState";
-import { useMemo, type ReactNode } from "react";
-import { buildPermalink } from "./permalink";
-import { formatDistanceToNow } from "date-fns";
-import { getCanonicalPostPath } from "~/lib/postTypes/routing";
-import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
-import { useGetAllPosts } from "@/lib/blog";
-import type { ColumnDef } from "@tanstack/react-table";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
 import type { EntityAction } from "~/components/shared/EntityList/types";
+import {
+  AdminLayout,
+  AdminLayoutContent,
+  AdminLayoutHeader,
+  AdminLayoutMain,
+  AdminLayoutSidebar,
+} from "~/components/admin/AdminLayout";
+import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
+import { buildPermalink } from "./permalink";
+import { PlaceholderState } from "./PlaceholderState";
 
 type PostDoc = Doc<"posts">;
 type PostTypeDoc = Doc<"postTypes">;
 
-type ArchiveDisplayRow = {
+interface ArchiveDisplayRow {
   id: string;
   title: string;
   statusLabel: string;
@@ -58,7 +52,7 @@ type ArchiveDisplayRow = {
   updatedAt: number;
   permalink?: string;
   isPlaceholder?: boolean;
-};
+}
 
 interface PlaceholderRow {
   id: string;
@@ -209,18 +203,18 @@ export function GenericArchiveView({
   );
 
   return (
-    <AdminLayoutContent withSidebar>
-      <AdminLayoutMain>
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Admin / Edit</p>
-              <h1 className="text-3xl font-bold">{label}</h1>
-              <p className="text-muted-foreground">{description}</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
+    <AdminLayout
+      title={`${label} Archive`}
+      description={description}
+      pathname={`/admin/edit?post_type=${slug}`}
+    >
+      <AdminLayoutContent withSidebar>
+        <AdminLayoutMain>
+          <AdminLayoutHeader />
+          <div className="container space-y-6 py-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <Select value={slug} onValueChange={onPostTypeChange}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-[240px]">
                   <SelectValue placeholder="Select post type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -235,77 +229,76 @@ export function GenericArchiveView({
                 <Plus className="h-4 w-4" /> Add New {label}
               </Button>
             </div>
-          </div>
 
-          <Tabs defaultValue="list">
-            <TabsList>
-              <TabsTrigger value="list">List</TabsTrigger>
-              <TabsTrigger value="drafts">Drafts</TabsTrigger>
-              <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
-            </TabsList>
-            <TabsContent value="list">
-              <Card>
-                <CardHeader>
-                  <CardTitle>{label} overview</CardTitle>
-                  <CardDescription>
-                    WordPress-style management powered by reusable post type
-                    scaffolding.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <EntityList
-                    data={displayRows}
-                    columns={columns}
-                    entityActions={entityActions}
-                    isLoading={tableLoading}
-                    enableFooter={false}
-                    viewModes={["list"]}
-                    defaultViewMode="list"
-                    enableSearch
-                    emptyState={
-                      <div className="py-8 text-center text-muted-foreground">
-                        No entries yet. Click “Add New” to get started.
-                      </div>
-                    }
-                    className="p-4"
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="drafts">
-              <PlaceholderState label="Drafts" />
-            </TabsContent>
-            <TabsContent value="scheduled">
-              <PlaceholderState label="Scheduled" />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </AdminLayoutMain>
-      <AdminLayoutSidebar>
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-3">
-            <Info className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <CardTitle className="text-base">Need custom fields?</CardTitle>
-              <CardDescription>
-                Connect post types to marketing tags, menus, and integrations.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button variant="outline" asChild>
-              <Link href="/admin/settings/post-types">
-                <Sparkles className="mr-2 h-4 w-4" /> Configure Post Types
-              </Link>
-            </Button>
-            <p className="text-sm text-muted-foreground">
-              This scaffold reuses the same Shadcn table primitives as the LMS
-              Courses view so every post type feels consistent.
-            </p>
-          </CardContent>
-        </Card>
-      </AdminLayoutSidebar>
-    </AdminLayoutContent>
+            <Tabs defaultValue="list">
+              <TabsList>
+                <TabsTrigger value="list">List</TabsTrigger>
+                <TabsTrigger value="drafts">Drafts</TabsTrigger>
+                <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
+              </TabsList>
+              <TabsContent value="list">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{label} overview</CardTitle>
+                    <CardDescription>
+                      WordPress-style management powered by reusable post type
+                      scaffolding.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <EntityList
+                      data={displayRows}
+                      columns={columns}
+                      entityActions={entityActions}
+                      isLoading={tableLoading}
+                      enableFooter={false}
+                      viewModes={["list"]}
+                      defaultViewMode="list"
+                      enableSearch
+                      emptyState={
+                        <div className="py-8 text-center text-muted-foreground">
+                          No entries yet. Click “Add New” to get started.
+                        </div>
+                      }
+                      className="p-4"
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="drafts">
+                <PlaceholderState label="Drafts" />
+              </TabsContent>
+              <TabsContent value="scheduled">
+                <PlaceholderState label="Scheduled" />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </AdminLayoutMain>
+        <AdminLayoutSidebar className="border-l p-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center gap-3">
+              <Info className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-base">Need custom fields?</CardTitle>
+                <CardDescription>
+                  Connect post types to marketing tags, menus, and integrations.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button variant="outline" asChild>
+                <Link href="/admin/settings/post-types">
+                  <Sparkles className="mr-2 h-4 w-4" /> Configure Post Types
+                </Link>
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                This scaffold reuses the same Shadcn table primitives as the LMS
+                Courses view so every post type feels consistent.
+              </p>
+            </CardContent>
+          </Card>
+        </AdminLayoutSidebar>
+      </AdminLayoutContent>
+    </AdminLayout>
   );
 }
-

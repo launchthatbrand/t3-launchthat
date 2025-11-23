@@ -1,10 +1,10 @@
 "use client";
 
-import {
-  AdminLayoutContent,
-  AdminLayoutMain,
-  AdminLayoutSidebar,
-} from "~/components/admin/AdminLayout";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { useEffect, useMemo, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+
 import {
   Badge,
   Button,
@@ -28,7 +28,15 @@ import {
   SelectValue,
   Textarea,
 } from "@acme/ui";
-import type { Doc, Id } from "@/convex/_generated/dataModel";
+
+import type { TaxonomyTerm } from "../../settings/taxonomies/_api/taxonomies";
+import {
+  AdminLayout,
+  AdminLayoutContent,
+  AdminLayoutHeader,
+  AdminLayoutMain,
+  AdminLayoutSidebar,
+} from "~/components/admin/AdminLayout";
 import {
   useCreateTaxonomyTerm,
   useDeleteTaxonomyTerm,
@@ -37,11 +45,8 @@ import {
   useTaxonomyTerms,
   useUpdateTaxonomyTerm,
 } from "../../settings/taxonomies/_api/taxonomies";
-import { useEffect, useMemo, useState } from "react";
 
-import type { PostTypeDoc } from "./GenericArchiveView";
-import type { TaxonomyTerm } from "../../settings/taxonomies/_api/taxonomies";
-import { toast } from "sonner";
+type PostTypeDoc = Doc<"postTypes">;
 
 type TaxonomyTermRow = TaxonomyTerm;
 
@@ -230,25 +235,21 @@ export function TaxonomyTermsView({
 
   return (
     <>
-      <AdminLayoutContent withSidebar>
-        <AdminLayoutMain>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  Admin / Taxonomies
-                </p>
-                <h1 className="text-3xl font-bold">
-                  {taxonomyDoc?.name ?? taxonomySlug}
-                </h1>
-                <p className="text-muted-foreground">
-                  {taxonomyDoc?.description ??
-                    "Structure content using categories and tags."}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
+      <AdminLayout
+        title={`${taxonomyDoc?.name ?? taxonomySlug} Terms`}
+        description={
+          taxonomyDoc?.description ??
+          "Structure content using categories and tags."
+        }
+        pathname={`/admin/edit/taxonomy?taxonomy=${taxonomySlug}`}
+      >
+        <AdminLayoutContent withSidebar>
+          <AdminLayoutMain>
+            <AdminLayoutHeader />
+            <div className="container space-y-6 py-6">
+              <div className="flex flex-wrap items-center justify-between gap-4">
                 <Select value={postTypeSlug} onValueChange={onPostTypeChange}>
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className="w-[240px]">
                     <SelectValue placeholder="Select post type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -263,113 +264,113 @@ export function TaxonomyTermsView({
                   Add term
                 </Button>
               </div>
-            </div>
 
+              <Card>
+                <CardHeader>
+                  <CardTitle>Terms</CardTitle>
+                  <CardDescription>
+                    Manage hierarchical taxonomies similar to WordPress.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="flex h-32 items-center justify-center text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading taxonomy…
+                    </div>
+                  ) : terms.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No terms yet. Create one to start organizing entries.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {terms.map((term) => (
+                        <div
+                          key={term._id}
+                          className="flex flex-wrap items-center justify-between rounded-md border p-3"
+                        >
+                          <div>
+                            <p className="font-medium text-foreground">
+                              {term.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              slug: {term.slug}
+                            </p>
+                            {term.parentId && (
+                              <p className="text-xs text-muted-foreground">
+                                Parent: {parentLookup.get(term.parentId)?.name}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEditTerm(term)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => void handleDeleteTerm(term)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </AdminLayoutMain>
+          <AdminLayoutSidebar className="border-l p-4">
             <Card>
               <CardHeader>
-                <CardTitle>Terms</CardTitle>
+                <CardTitle>Settings</CardTitle>
                 <CardDescription>
-                  Manage hierarchical taxonomies similar to WordPress.
+                  Configure how this taxonomy relates to custom post types.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="flex h-32 items-center justify-center text-muted-foreground">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Loading taxonomy…
-                  </div>
-                ) : terms.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No terms yet. Create one to start organizing entries.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {terms.map((term) => (
-                      <div
-                        key={term._id}
-                        className="flex flex-wrap items-center justify-between rounded-md border p-3"
-                      >
-                        <div>
-                          <p className="font-medium text-foreground">
-                            {term.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            slug: {term.slug}
-                          </p>
-                          {term.parentId && (
-                            <p className="text-xs text-muted-foreground">
-                              Parent: {parentLookup.get(term.parentId)?.name}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEditTerm(term)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => void handleDeleteTerm(term)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </div>
+              <CardContent className="space-y-4">
+                <Select value={postTypeSlug} onValueChange={onPostTypeChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select post type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {postTypes.map((type) => (
+                      <SelectItem key={type._id} value={type.slug}>
+                        {type.name}
+                      </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  <p>
+                    Assigned to:
+                    {taxonomyDoc?.postTypeSlugs?.length ? (
+                      <span className="ml-1 font-medium text-foreground">
+                        {taxonomyDoc.postTypeSlugs.join(", ")}
+                      </span>
+                    ) : (
+                      <span className="ml-1 font-medium text-foreground">
+                        All post types
+                      </span>
+                    )}
+                  </p>
+                  <div>
+                    <Badge variant="outline">
+                      {taxonomyDoc?.hierarchical ? "Hierarchical" : "Flat"}
+                    </Badge>
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
-          </div>
-        </AdminLayoutMain>
-        <AdminLayoutSidebar>
-          <Card>
-            <CardHeader>
-              <CardTitle>Settings</CardTitle>
-              <CardDescription>
-                Configure how this taxonomy relates to custom post types.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Select value={postTypeSlug} onValueChange={onPostTypeChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select post type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {postTypes.map((type) => (
-                    <SelectItem key={type._id} value={type.slug}>
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="space-y-1 text-sm text-muted-foreground">
-                <p>
-                  Assigned to:
-                  {taxonomyDoc?.postTypeSlugs?.length ? (
-                    <span className="ml-1 font-medium text-foreground">
-                      {taxonomyDoc.postTypeSlugs.join(", ")}
-                    </span>
-                  ) : (
-                    <span className="ml-1 font-medium text-foreground">
-                      All post types
-                    </span>
-                  )}
-                </p>
-                <div>
-                  <Badge variant="outline">
-                    {taxonomyDoc?.hierarchical ? "Hierarchical" : "Flat"}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </AdminLayoutSidebar>
-      </AdminLayoutContent>
+          </AdminLayoutSidebar>
+        </AdminLayoutContent>
+      </AdminLayout>
 
       <Dialog open={termDialogOpen} onOpenChange={setTermDialogOpen}>
         <DialogContent className="sm:max-w-[480px]">
@@ -463,4 +464,3 @@ export function TaxonomyTermsView({
     </>
   );
 }
-

@@ -308,7 +308,7 @@ export default function EventDetailsPage() {
                   ))}
                 </div>
               )}
-            </CardContent>
+            </CardContent><div></div>
             <CardFooter>
               <Button className="w-full" variant="outline">
                 Invite More People

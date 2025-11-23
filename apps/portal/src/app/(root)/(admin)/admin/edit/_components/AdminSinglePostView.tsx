@@ -1,11 +1,29 @@
 "use client";
 
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { api } from "@/convex/_generated/api";
 import {
-  AdminLayoutContent,
-  AdminLayoutMain,
-  AdminLayoutSidebar,
-} from "~/components/admin/AdminLayout";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+  generateSlugFromTitle,
+  useCreatePost,
+  useUpdatePost,
+} from "@/lib/blog";
+import { useQuery } from "convex/react";
+import { formatDistanceToNow } from "date-fns";
+import {
+  ArrowLeft,
+  ExternalLink,
+  Loader2,
+  Pencil,
+  PenSquare,
+  Save,
+  Sparkles,
+} from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -13,7 +31,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -21,31 +40,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-import {
-  generateSlugFromTitle,
-  useCreatePost,
-  useUpdatePost,
-} from "@/lib/blog";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-
-import { AdminSinglePostDefaultContent } from "./AdminSinglePostDefaultContent";
-import { AdminSinglePostHeader } from "./AdminSinglePostHeader";
-import { AdminSinglePostSidebar } from "./AdminSinglePostSidebar";
-import { Button } from "@acme/ui/button";
-import { Input } from "@acme/ui/input";
-import { PlaceholderState } from "../PlaceholderState";
-import type { PluginPostSingleViewConfig } from "~/lib/plugins/types";
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
-import { api } from "@/convex/_generated/api";
-import { getCanonicalPostPath } from "~/lib/postTypes/routing";
-import { getFrontendBaseUrl } from "../permalink";
-import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
+
+import type { PluginPostSingleViewConfig } from "~/lib/plugins/types";
+import {
+  AdminLayout,
+  AdminLayoutContent,
+  AdminLayoutHeader,
+  AdminLayoutMain,
+  AdminLayoutSidebar,
+} from "~/components/admin/AdminLayout";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
-import { usePostTypeFields } from "../../../settings/post-types/_api/postTypes";
-import { useQuery } from "convex/react";
+import { getCanonicalPostPath } from "~/lib/postTypes/routing";
+import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
+import { usePostTypeFields } from "../../settings/post-types/_api/postTypes";
+import { getFrontendBaseUrl } from "./permalink";
+import { PlaceholderState } from "./PlaceholderState";
 
 type CustomFieldValue = string | number | boolean | null;
 
@@ -196,12 +207,14 @@ export function AdminSinglePostView({
       return null;
     }
 
-    const previewPost = (post
-      ? { ...post, slug: slugValue }
-      : ({
-          _id: slugValue || "preview-id",
-          slug: slugValue,
-        } as Doc<"posts">)) as Doc<"posts">;
+    const previewPost = (
+      post
+        ? { ...post, slug: slugValue }
+        : ({
+            _id: slugValue || "preview-id",
+            slug: slugValue,
+          } as Doc<"posts">)
+    ) as Doc<"posts">;
 
     const path = getCanonicalPostPath(previewPost, postType ?? null, true);
     if (!path) {
@@ -448,8 +461,8 @@ export function AdminSinglePostView({
                 typeof value === "string" || typeof value === "number"
                   ? String(value)
                   : value == null
-                  ? ""
-                  : String(value)
+                    ? ""
+                    : String(value)
               }
               onChange={(event) =>
                 handleCustomFieldChange(field.key, event.target.value)
@@ -560,7 +573,9 @@ export function AdminSinglePostView({
         <AdminLayoutMain>
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="mb-4 text-muted-foreground">The requested entry was not found or no longer exists.</p>
+              <p className="mb-4 text-muted-foreground">
+                The requested entry was not found or no longer exists.
+              </p>
               <Button variant="outline" onClick={onBack}>
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to archive
               </Button>
@@ -588,8 +603,10 @@ export function AdminSinglePostView({
       const metaPayload = buildMetaPayload();
       const hasMetaEntries = Object.keys(metaPayload).length > 0;
       const manualSlug = slugValue.trim();
-      const baseSlug = manualSlug || generateSlugFromTitle(normalizedTitle) || "";
-      const normalizedSlug = generateSlugFromTitle(baseSlug) || `post-${Date.now()}`;
+      const baseSlug =
+        manualSlug || generateSlugFromTitle(normalizedTitle) || "";
+      const normalizedSlug =
+        generateSlugFromTitle(baseSlug) || `post-${Date.now()}`;
       setSlugValue(normalizedSlug);
       const status = isPublished ? "published" : "draft";
 
@@ -622,7 +639,9 @@ export function AdminSinglePostView({
         setSaveError(null);
       }
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "Failed to save post.");
+      setSaveError(
+        error instanceof Error ? error.message : "Failed to save post.",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -648,50 +667,338 @@ export function AdminSinglePostView({
     </Button>
   );
 
-  const puckDataJson =
-    typeof postMetaMap.puck_data === "string" ? postMetaMap.puck_data : "";
-
-  const sidebar = (
-    <AdminSinglePostSidebar
-      supportsPostsTable={supportsPostsTable}
-      puckEditorHref={puckEditorHref}
-      isNewRecord={isNewRecord}
-      saveButton={renderSaveButton({ fullWidth: true })}
-      headerLabel={headerLabel}
-      post={post}
-    />
+  const renderHeader = ({
+    showActions,
+    showSaveInHeader = false,
+    tabsSlot,
+  }: {
+    showActions: boolean;
+    showSaveInHeader?: boolean;
+    tabsSlot?: React.ReactNode;
+  }) => (
+    <div className="border-b bg-muted/40">
+      <div className="container flex flex-wrap items-center justify-between gap-4 py-6">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Admin / {pluginBreadcrumb}
+          </p>
+          <h1 className="text-3xl font-bold">
+            {isNewRecord ? `New ${headerLabel}` : title || headerLabel}
+          </h1>
+          <p className="text-muted-foreground">
+            {postType?.description ?? "Update metadata for this entry."}
+          </p>
+        </div>
+        {showActions && (
+          <div className="flex flex-shrink-0 gap-2">
+            <Button variant="outline" onClick={onBack}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back
+            </Button>
+            {showSaveInHeader && renderSaveButton()}
+          </div>
+        )}
+      </div>
+      {tabsSlot ? <div className="container pb-4">{tabsSlot}</div> : null}
+    </div>
   );
 
-  const headerHeading = isNewRecord ? `New ${headerLabel}` : title || headerLabel;
-  const headerDescription =
-    postType?.description ?? "Update metadata for this entry.";
+  const renderDefaultContent = () => (
+    <div className="space-y-6">
+      {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+      <Card className="relative">
+        <CardHeader>
+          <CardTitle>General</CardTitle>
+          <CardDescription>
+            Fundamental settings for this {headerLabel} entry.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* <div className="grid gap-4 md:grid-cols-2"> */}
+          <div className="space-y-2">
+            <Label htmlFor="post-title">Title</Label>
+            <Input
+              id="post-title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="Add a descriptive title"
+            />
+          </div>
+          {supportsPostsTable && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="post-slug">Frontend Slug</Label>
+                {!isSlugEditing && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsSlugEditing(true)}
+                    className="text-xs"
+                  >
+                    <Pencil className="mr-2 h-3.5 w-3.5" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+              {isSlugEditing ? (
+                <Input
+                  id="post-slug"
+                  ref={slugInputRef}
+                  value={slugValue}
+                  onChange={(event) => setSlugValue(event.target.value)}
+                  placeholder="friendly-url-slug"
+                  onBlur={() => setIsSlugEditing(false)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      slugInputRef.current?.blur();
+                    }
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setSlugValue(post?.slug ?? "");
+                      setIsSlugEditing(false);
+                    }
+                  }}
+                />
+              ) : (
+                <div className="flex items-center justify-between gap-3 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
+                  {slugPreviewUrl ? (
+                    <a
+                      className="min-w-0 flex-1 truncate font-medium text-primary hover:underline"
+                      href={slugPreviewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {slugPreviewUrl}
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      Slug will be generated after saving.
+                    </span>
+                  )}
+                  {slugPreviewUrl ? (
+                    <a
+                      href={slugPreviewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:text-primary/80"
+                      aria-label="Open public page"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  ) : null}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Must be unique; determines the public URL.
+              </p>
+            </div>
+          )}
+          <div className="absolute right-6 top-0 space-y-2">
+            {/* <Label htmlFor="post-status">Status</Label> */}
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <p className="text-sm font-medium">Published</p>
+                <p className="text-xs text-muted-foreground">
+                  Toggle visibility for this entry.
+                </p>
+              </div>
+              <Switch
+                id="post-status"
+                checked={isPublished}
+                onCheckedChange={(checked) => setIsPublished(checked)}
+              />
+            </div>
+          </div>
+          {/* </div> */}
+          <div className="space-y-2">
+            <Label htmlFor="post-content">Content</Label>
+            <Textarea
+              id="post-content"
+              rows={8}
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              placeholder="Compose the main body content"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="post-excerpt">Excerpt</Label>
+            <Textarea
+              id="post-excerpt"
+              rows={3}
+              value={excerpt}
+              onChange={(event) => setExcerpt(event.target.value)}
+              placeholder="Short summary for listing views"
+            />
+          </div>
+        </CardContent>
+      </Card>
+      {postTypeFieldsLoading ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Custom Fields</CardTitle>
+            <CardDescription>Loading field definitions…</CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Fetching the latest custom fields for this post type.
+          </CardContent>
+        </Card>
+      ) : sortedCustomFields.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Custom Fields</CardTitle>
+            <CardDescription>
+              These fields come from Post Type settings and save into post_meta.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {sortedCustomFields.map((field) => (
+              <div key={field._id} className="space-y-2 rounded-md border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Label htmlFor={`custom-field-${field._id}`}>
+                    {field.name}
+                    {field.required ? " *" : ""}
+                  </Label>
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {field.type}
+                  </span>
+                </div>
+                {field.description ? (
+                  <p className="text-sm text-muted-foreground">
+                    {field.description}
+                  </p>
+                ) : null}
+                {renderCustomFieldControl(field)}
+              </div>
+            ))}
+            <div className="space-y-2 rounded-md border p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label htmlFor="custom-field-puck-data">Puck Data (JSON)</Label>
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                  system
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Read-only representation of the stored Puck layout. Updates are
+                managed automatically when using the Puck editor.
+              </p>
+              <Textarea
+                id="custom-field-puck-data"
+                value={
+                  typeof postMetaMap.puck_data === "string"
+                    ? postMetaMap.puck_data
+                    : ""
+                }
+                readOnly
+                rows={8}
+                className="font-mono text-xs"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <Sparkles className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <CardTitle className="text-base">Need custom fields?</CardTitle>
+              <CardDescription>
+                Connect this post type to marketing tags, menu builders, or
+                plugin data by defining post_meta keys.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button variant="outline" asChild>
+              <Link
+                href={`/admin/settings/post-types?tab=fields&post_type=${slug}`}
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                Configure Fields
+              </Link>
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              Custom fields mirror WordPress&apos; post_meta table so plugins
+              can rely on a familiar contract.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 
-  const renderDefaultContentNode = () => (
-    <AdminSinglePostDefaultContent
-      headerLabel={headerLabel}
-      postTypeSlug={slug}
-      saveError={saveError}
-      title={title}
-      onTitleChange={setTitle}
-      supportsPostsTable={supportsPostsTable}
-      isSlugEditing={isSlugEditing}
-      onSlugEditingChange={setIsSlugEditing}
-      slugValue={slugValue}
-      onSlugValueChange={setSlugValue}
-      slugInputRef={slugInputRef}
-      slugPreviewUrl={slugPreviewUrl}
-      isPublished={isPublished}
-      onPublishedChange={setIsPublished}
-      content={content}
-      onContentChange={setContent}
-      excerpt={excerpt}
-      onExcerptChange={setExcerpt}
-      postTypeFieldsLoading={postTypeFieldsLoading}
-      sortedCustomFields={sortedCustomFields}
-      renderCustomFieldControl={renderCustomFieldControl}
-      puckDataJson={puckDataJson}
-      initialSlugValue={post?.slug ?? ""}
-    />
+  const defaultSidebar = (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Actions</CardTitle>
+          <CardDescription>Save or publish this entry.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {renderSaveButton({ fullWidth: true })}
+          <Button
+            variant="outline"
+            disabled={!puckEditorHref || isNewRecord}
+            asChild={Boolean(puckEditorHref && !isNewRecord)}
+            className="w-full gap-2"
+          >
+            {puckEditorHref && !isNewRecord ? (
+              <Link href={puckEditorHref} target="_blank" rel="noreferrer">
+                <PenSquare className="h-4 w-4" />
+                Edit with Puck
+              </Link>
+            ) : (
+              <>
+                <PenSquare className="h-4 w-4" />
+                Edit with Puck
+              </>
+            )}
+          </Button>
+          {!supportsPostsTable ? (
+            <p className="text-xs text-muted-foreground">
+              Saving is not available for this post type.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Saved content is available across all tabs.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Metadata</CardTitle>
+          <CardDescription>
+            High-level attributes for this entry.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm text-muted-foreground">
+          <div>
+            <p className="font-medium text-foreground">Post Type</p>
+            <p>{headerLabel}</p>
+          </div>
+          {!isNewRecord && post ? (
+            <>
+              <div>
+                <p className="font-medium text-foreground">Status</p>
+                <p className="capitalize">{post.status ?? "draft"}</p>
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Updated</p>
+                <p>
+                  {post.updatedAt
+                    ? formatDistanceToNow(post.updatedAt, { addSuffix: true })
+                    : "Not updated"}
+                </p>
+              </div>
+            </>
+          ) : (
+            <p>This entry has not been saved yet.</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 
   if (pluginSingleView && pluginTabs.length > 0) {
@@ -705,62 +1012,57 @@ export function AdminSinglePostView({
       postTypeSlug: slug,
       organizationId,
     };
-
-    const tabsSlot = (
-      <TabsList className="inline-flex flex-wrap items-start justify-start w-auto">
-        {pluginTabs.map((tab) => (
-          <TabsTrigger key={tab.id} value={tab.slug}>
-            {tab.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    );
+    const layoutTabs = pluginTabs.map((tab) => ({
+      value: tab.slug,
+      label: tab.label,
+      onClick: () => handleTabChange(tab.slug),
+    }));
 
     return (
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
+      <AdminLayout
+        title={`Edit ${headerLabel}`}
+        description={postType?.description ?? "Manage this post entry."}
+        activeTab={activeTab}
+        pathname={pathname}
+      >
         <AdminLayoutContent withSidebar={showSidebar}>
           <AdminLayoutMain>
-            <AdminSinglePostHeader
-              pluginBreadcrumb={pluginBreadcrumb}
-              heading={headerHeading}
-              description={headerDescription}
-              onBack={onBack}
-              showActions={showSidebar}
-              tabsSlot={tabsSlot}
-            />
+            <AdminLayoutHeader customTabs={layoutTabs} />
             <div className="container py-6">
-              {pluginTabs.map((tab) => (
-                <TabsContent key={tab.id} value={tab.slug} className="space-y-6">
-                  {tab.usesDefaultEditor
-                    ? renderDefaultContentNode()
-                    : tab.render
-                    ? tab.render(pluginTabProps)
-                    : <PlaceholderState label={tab.label} />}
-                </TabsContent>
-              ))}
+              {activeTabDefinition?.usesDefaultEditor ? (
+                renderDefaultContent()
+              ) : activeTabDefinition?.render ? (
+                activeTabDefinition.render(pluginTabProps)
+              ) : (
+                <PlaceholderState label={activeTabDefinition?.label ?? ""} />
+              )}
             </div>
           </AdminLayoutMain>
           {showSidebar && (
-            <AdminLayoutSidebar>{sidebar}</AdminLayoutSidebar>
+            <AdminLayoutSidebar className="border-l p-4">
+              {defaultSidebar}
+            </AdminLayoutSidebar>
           )}
         </AdminLayoutContent>
-      </Tabs>
+      </AdminLayout>
     );
   }
 
   return (
-    <AdminLayoutContent withSidebar>
-      <AdminLayoutMain>
-        <AdminSinglePostHeader
-          pluginBreadcrumb={pluginBreadcrumb}
-          heading={headerHeading}
-          description={headerDescription}
-          onBack={onBack}
-          showActions
-        />
-        <div className="container py-6">{renderDefaultContentNode()}</div>
-      </AdminLayoutMain>
-      <AdminLayoutSidebar>{sidebar}</AdminLayoutSidebar>
-    </AdminLayoutContent>
+    <AdminLayout
+      title={`Edit ${headerLabel}`}
+      description={postType?.description ?? "Manage this post entry."}
+      pathname={pathname}
+    >
+      <AdminLayoutContent withSidebar>
+        <AdminLayoutMain>
+          <AdminLayoutHeader />
+          <div className="container py-6">{renderDefaultContent()}</div>
+        </AdminLayoutMain>
+        <AdminLayoutSidebar className="border-l p-4">
+          {defaultSidebar}
+        </AdminLayoutSidebar>
+      </AdminLayoutContent>
+    </AdminLayout>
   );
 }
