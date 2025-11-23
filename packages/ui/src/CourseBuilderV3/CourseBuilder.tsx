@@ -1,16 +1,6 @@
 "use client";
 
-import type {
-  AccessibilityConfig,
-  I18nConfig,
-  SidebarConfig,
-  ThemeConfig,
-} from "./types/theme";
-// Restore ContentItemRenderer for props
-import type {
-  ContentItemRenderer,
-  SidebarItemRenderer,
-} from "./types/callbacks";
+import React from "react";
 import {
   DndContext,
   DragOverlay,
@@ -19,18 +9,28 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+
+import type { CourseBuilderState } from "./store/useCourseBuilderStore";
+// Restore ContentItemRenderer for props
+import type {
+  ContentItemRenderer,
+  SidebarItemRenderer,
+} from "./types/callbacks";
 // Import types needed for props and mapping
 // Remove unused store types (Lesson, Quiz, Topic)
 import type { LessonItem, QuizItem, TopicItem } from "./types/content";
-
-import type { CourseBuilderState } from "./store/useCourseBuilderStore";
+import type { SidebarItem } from "./types/navigation";
 // Restore CourseStructure for props
 import type { CourseStructure } from "./types/structure";
+import type {
+  AccessibilityConfig,
+  I18nConfig,
+  SidebarConfig,
+  ThemeConfig,
+} from "./types/theme";
 import DragOverlayContent from "./components/DragOverlayContent";
 import MainContent from "./components/MainContent";
-import React from "react";
 import Sidebar from "./components/Sidebar";
-import type { SidebarItem } from "./types/navigation";
 // Import the new layout components
 import TopBar from "./components/TopBar";
 // Import the new DND hook
@@ -138,7 +138,7 @@ const noopAsyncWithArgs = async (..._args: unknown[]): Promise<void> => {
  *
  * Note: Not all callbacks are used in the minimal layout. They will be used as the component is built out.
  */
- 
+
 const CourseBuilder: React.FC<CourseBuilderProps> = ({
   // Destructure the restored props (even if not used directly below)
   courseStructure: _courseStructure,

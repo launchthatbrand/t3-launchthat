@@ -1,12 +1,12 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 
 import type { Id } from "../lib/convexId";
-import type { ReactNode } from "react";
 import { SortableItem } from "./SortableItem";
 
 interface DraggedItemData<T> {
@@ -81,4 +81,3 @@ export const NestedSortableList = <T extends { _id: Id<"posts"> }>({
     </div>
   );
 };
-

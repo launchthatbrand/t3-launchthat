@@ -1,5 +1,13 @@
 "use client";
 
+import { useCallback, useMemo } from "react";
+import { api } from "@portal/convexspec";
+import { useMutation, useQuery } from "convex/react";
+
+import { CourseBuilder } from "@acme/ui";
+import { toast } from "@acme/ui/toast";
+
+import type { Id } from "../lib/convexId";
 import type {
   LmsBuilderLesson,
   LmsBuilderQuiz,
@@ -7,13 +15,6 @@ import type {
   LmsCourseBuilderData,
   LmsCourseStructureItem,
 } from "../types";
-import { useCallback, useMemo } from "react";
-import { useMutation, useQuery } from "convex/react";
-
-import { CourseBuilder } from "@acme/ui";
-import type { Id } from "../lib/convexId";
-import { api } from "@portal/convexspec";
-import { toast } from "@acme/ui/toast";
 
 interface CourseBuilderScreenProps {
   courseId?: Id<"posts">;
@@ -310,4 +311,3 @@ export const CourseBuilderScreen = ({
     />
   );
 };
-
