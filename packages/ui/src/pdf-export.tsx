@@ -1,22 +1,22 @@
 "use client";
 
-import React, { useCallback, useRef, useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog";
 import {
   Document,
   Font,
-  Page,
-  pdf,
   PDFDownloadLink,
+  Page,
   StyleSheet,
   Text,
   View,
+  pdf,
 } from "@react-pdf/renderer";
 import { Download, FileText, Loader2 } from "lucide-react";
+import React, { useCallback, useRef, useState } from "react";
 
-import { cn } from ".";
 import { Badge } from "./badge";
 import { Button } from "./button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog";
+import { cn } from ".";
 
 // Register fonts for PDF
 Font.register({
@@ -486,7 +486,7 @@ export function PDFPreview({
           {/* Default Save Button */}
           {(config.showSaveButton ?? true) && (
             <Button
-              variant="default"
+              variant="primary"
               onClick={handleSave}
               disabled={!pdfBlob || isActionLoading === "save"}
             >

@@ -1,0 +1,75 @@
+"use client";
+
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+
+import type { Id } from "../lib/convexId";
+import type { ReactNode } from "react";
+import { SortableItem } from "./SortableItem";
+
+interface DraggedItemData<T> {
+  type: string;
+  item: T;
+}
+
+interface NestedSortableListProps<T extends { _id: Id<"posts"> }> {
+  title: string;
+  items: T[];
+  emptyMessage: string;
+  renderItem: (item: T) => ReactNode;
+  DropzoneComponent: React.FC<{
+    id: string;
+    lessonId: Id<"posts">;
+    children: ReactNode;
+  }>;
+  lessonId: Id<"posts">;
+  dropzoneType: "topicDropzone" | "quizDropzone";
+}
+
+export const NestedSortableList = <T extends { _id: Id<"posts"> }>({
+  title,
+  items,
+  emptyMessage,
+  renderItem,
+  DropzoneComponent,
+  lessonId,
+  dropzoneType,
+}: NestedSortableListProps<T>) => {
+  return (
+    <div className="mt-4">
+      <h4 className="text-md mb-2 font-semibold">{title}:</h4>
+      {items.length > 0 ? (
+        <SortableContext
+          items={items.map((i) => i._id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {items.map((item) => (
+            <SortableItem
+              key={item._id}
+              id={item._id}
+              className="bg-white"
+              data={
+                {
+                  type: dropzoneType === "topicDropzone" ? "topic" : "quiz",
+                  item,
+                } as DraggedItemData<T>
+              }
+            >
+              {renderItem(item)}
+            </SortableItem>
+          ))}
+        </SortableContext>
+      ) : (
+        <DropzoneComponent
+          id={`lesson-${lessonId}-${dropzoneType}`}
+          lessonId={lessonId}
+        >
+          <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+        </DropzoneComponent>
+      )}
+    </div>
+  );
+};
+

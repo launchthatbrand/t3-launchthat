@@ -216,11 +216,16 @@ export function MemberOnly({
 }
 
 // Component to conditionally render a button based on permissions
+type PermissionButtonChild = React.ReactElement<{
+  disabled?: boolean;
+  className?: string;
+}>;
+
 export function PermissionButton({
   children,
   ...props
 }: PermissionCheck & {
-  children: React.ReactElement;
+  children: PermissionButtonChild;
 }) {
   // Check if the user has permissions
   const hasPermission = React.useMemo(() => {

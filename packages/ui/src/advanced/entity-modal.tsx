@@ -286,7 +286,7 @@ export function EntityModalActions({
   const getButtonVariant = () => {
     if (isDanger || actionType === "delete") return "destructive";
     if (actionType === "view") return "outline";
-    return "default";
+    return "primary";
   };
 
   return (

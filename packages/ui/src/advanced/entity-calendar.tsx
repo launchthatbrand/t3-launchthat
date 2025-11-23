@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "../card";
 import { ChevronDown, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import type { DayContentProps, DayProps } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import { addDays, format, isSameDay, isSameMonth, startOfWeek } from "date-fns";
 
@@ -51,14 +52,10 @@ export interface EntityCalendarProps
 
 export type CalendarViewType = "month" | "week" | "day" | "agenda";
 
-// Define additional props for the Calendar Day component
-interface CalendarDayProps {
-  day: Date;
-  displayMonth: Date;
-  date: Date;
-  isSelected?: boolean;
-  isToday?: boolean;
-}
+// Extend DayProps with optional activeModifiers for convenience
+type CalendarDayProps = DayProps & {
+  activeModifiers?: DayContentProps["activeModifiers"];
+};
 
 export function EntityCalendar({
   events = [],
@@ -135,7 +132,12 @@ export function EntityCalendar({
         month={currentDate}
         className="rounded-md border"
         components={{
-          Day: ({ date, displayMonth, ...dayProps }: CalendarDayProps) => {
+          Day: ({
+            date,
+            displayMonth,
+            activeModifiers = {},
+            ...dayProps
+          }: CalendarDayProps) => {
             const dayEvents = getDayEvents(date);
             const isCurrentMonth = isSameMonth(date, displayMonth);
             return (
@@ -143,10 +145,10 @@ export function EntityCalendar({
                 variant="ghost"
                 className={cn(
                   "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
-                  dayProps.isSelected &&
+                  activeModifiers?.selected &&
                     "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
                   !isCurrentMonth && "text-muted-foreground opacity-50",
-                  dayProps.isToday && "bg-accent",
+                  activeModifiers?.today && "bg-accent",
                 )}
                 {...dayProps}
               >

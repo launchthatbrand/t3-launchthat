@@ -1,8 +1,9 @@
 "use client";
 
+import { CourseBuilderScreen } from "launchthat-plugin-lms";
 import type { Id } from "@convex-config/_generated/dataModel";
-
-import { CourseBuilderScreen } from "~/plugins/lms/screens/CourseBuilderScreen";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { useTenant } from "~/context/TenantContext";
 
 interface CourseBuilderRouteProps {
   params: { courseId: string };
@@ -11,5 +12,13 @@ interface CourseBuilderRouteProps {
 export default function CourseBuilderRoute({
   params,
 }: CourseBuilderRouteProps) {
-  return <CourseBuilderScreen courseId={params.courseId as Id<"posts">} />;
+  const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant);
+
+  return (
+    <CourseBuilderScreen
+      courseId={params.courseId as Id<"posts">}
+      organizationId={organizationId ?? undefined}
+    />
+  );
 }

@@ -1,8 +1,5 @@
 "use client";
 
-import React, { createContext, ReactNode, useContext } from "react";
-import Link from "next/link";
-
 import {
   Card,
   CardContent,
@@ -13,16 +10,18 @@ import {
   TabsList,
   TabsTrigger,
 } from "@acme/ui";
-
-// Import the new navigation context
-import type { TabConfig } from "./NavigationContext";
 import {
-  detectNavigationContext,
   ENTITY_PATTERNS,
+  NavigationContext,
+  detectNavigationContext,
   getEntityInfo,
   getSectionFromPathname,
-  NavigationContext,
 } from "./NavigationContext";
+import React, { ReactNode, createContext, useContext } from "react";
+
+import Link from "next/link";
+// Import the new navigation context
+import type { TabConfig } from "./NavigationContext";
 
 // Context for sharing admin layout state
 interface AdminLayoutContextValue {
@@ -332,7 +331,7 @@ const AdminLayoutContent: React.FC<AdminLayoutContentProps> = ({
   }
 
   // Original single-column layout
-  return <div className={`w-full ${className}`}>{children}</div>;
+  return <div className={`container py-4 w-full ${className}`}>{children}</div>;
 };
 
 // AdminLayoutMain - Main content area (when using sidebar layout)

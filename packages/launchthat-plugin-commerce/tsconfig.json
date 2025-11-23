@@ -1,0 +1,12 @@
+{
+  "extends": "@acme/tsconfig/internal-package.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "paths": {
+      "launchthat-plugin-core": ["../launchthat-plugin-core/src/index"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}
+

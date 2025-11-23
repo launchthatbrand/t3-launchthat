@@ -100,8 +100,7 @@ export function NotificationsProvider({
 
       // Optionally show a toast
       if (showToasts) {
-        toast({
-          title: notification.title,
+        toast(notification.title, {
           description: notification.description,
           duration: 5000,
         });
@@ -481,8 +480,7 @@ export function NotificationCenter({
 export function showNotificationToast(
   notification: Omit<Notification, "id" | "timestamp" | "read">,
 ) {
-  toast({
-    title: notification.title,
+  toast(notification.title, {
     description: notification.description,
     duration: 5000,
   });

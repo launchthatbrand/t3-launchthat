@@ -698,9 +698,9 @@ export function AdminSinglePostView({
     </div>
   );
 
-  const defaultMain = (
+  const renderDefaultMain = (includeHeader: boolean = true) => (
     <div className="flex flex-col gap-6">
-      {defaultHeader}
+      {includeHeader && defaultHeader}
       {saveError && <p className="text-sm text-destructive">{saveError}</p>}
       <Card className="relative">
         <CardHeader>
@@ -986,7 +986,7 @@ export function AdminSinglePostView({
               {pluginTabs.map((tab) => (
                 <TabsContent key={tab.id} value={tab.slug}>
                   {tab.usesDefaultEditor ? (
-                    defaultMain
+                    renderDefaultMain(false)
                   ) : tab.render ? (
                     tab.render(pluginTabProps)
                   ) : (
@@ -1006,12 +1006,7 @@ export function AdminSinglePostView({
 
   return (
     <AdminLayoutContent withSidebar>
-      <AdminLayoutMain>{defaultMain}</AdminLayoutMain>
-      asdasdasd asdasd
-      asd
-      asd
-      asd
-      asd
+      <AdminLayoutMain>{renderDefaultMain()}</AdminLayoutMain>
       <AdminLayoutSidebar>{defaultSidebar}</AdminLayoutSidebar>
     </AdminLayoutContent>
   );

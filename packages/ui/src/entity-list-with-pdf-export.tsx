@@ -1,15 +1,14 @@
 "use client";
 
-import type { PDFColumn} from "./pdf-export";
-import { usePDFExport } from "./pdf-export";
-
 import { Button } from "./button";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Download } from "lucide-react";
+import type { PDFColumn } from "./pdf-export";
 import React from "react";
 import { toast } from "./toast";
+import { usePDFExport } from "./pdf-export";
 
-interface EntityListWithPDFExportProps<T> {
+interface EntityListWithPDFExportProps<T extends Record<string, unknown>> {
   data: T[];
   columns: ColumnDef<T>[];
   entityListComponent: React.ComponentType<{
@@ -35,7 +34,7 @@ interface EntityListWithPDFExportProps<T> {
  * Helper function to convert table columns to PDF columns with better width management
  * This provides a basic conversion, but you may want to customize this for specific use cases
  */
-export function convertTableColumnsToPDFColumns<T>(
+export function convertTableColumnsToPDFColumns<T extends Record<string, unknown>>(
   columns: ColumnDef<T>[],
   pageOrientation: "portrait" | "landscape" = "portrait",
 ): PDFColumn[] {
@@ -91,15 +90,19 @@ export function convertTableColumnsToPDFColumns<T>(
       }
     }
 
+    const widthValue = Math.max(
+      60,
+      Math.min(estimatedWidth, availableWidth * 0.4),
+    );
+
     return {
       key: accessorKey ?? col.id ?? `column_${index}`,
       header,
-      width: Math.max(60, Math.min(estimatedWidth, availableWidth * 0.4)), // Min 60px, max 40% of page
-      getValue: (row: T) => {
+      width: `${Math.round(widthValue)}px`, // Min 60px, max 40% of page
+      getValue: (row) => {
+        const typedRow = row as T;
         if ("accessorKey" in col && col.accessorKey) {
-          const value = (row as Record<string, unknown>)[
-            col.accessorKey as string
-          ];
+          const value = typedRow[col.accessorKey as keyof T];
           if (value == null) return "";
 
           // Handle different data types
@@ -122,7 +125,7 @@ export function convertTableColumnsToPDFColumns<T>(
           return String(value);
         }
         if ("accessorFn" in col && col.accessorFn) {
-          const value = col.accessorFn(row, 0);
+          const value = col.accessorFn(typedRow, 0);
           return value?.toString() ?? "";
         }
         return "";
@@ -157,7 +160,7 @@ export function convertTableColumnsToPDFColumns<T>(
  * />
  * ```
  */
-export function EntityListWithPDFExport<T>({
+export function EntityListWithPDFExport<T extends Record<string, unknown>>({
   data,
   columns,
   entityListComponent: EntityListComponent,
@@ -262,7 +265,7 @@ export function EntityListWithPDFExport<T>({
  * }
  * ```
  */
-export function useEntityListPDFExport<T>({
+export function useEntityListPDFExport<T extends Record<string, unknown>>({
   data,
   columns,
   pdfTitle,

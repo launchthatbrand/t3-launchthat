@@ -17,7 +17,18 @@
       "@/lib/*": ["./src/lib/*"],
       "@acme/ui/*": ["../../packages/ui/src/*"],
       "@acme/puck-config": ["../../packages/puck-config/src"],
-      "@acme/puck-config/*": ["../../packages/puck-config/src/*"]
+      "@acme/puck-config/*": ["../../packages/puck-config/src/*"],
+      "launchthat-plugin-core": ["../../packages/launchthat-plugin-core/src/index"],
+      "launchthat-plugin-calendar": [
+        "../../packages/launchthat-plugin-calendar/src/index"
+      ],
+      "launchthat-plugin-lms": ["../../packages/launchthat-plugin-lms/src/index"],
+      "launchthat-plugin-commerce": [
+        "../../packages/launchthat-plugin-commerce/src/index"
+      ],
+      "launchthat-plugin-helpdesk": [
+        "../../packages/launchthat-plugin-helpdesk/src/index"
+      ]
     },
     "plugins": [{ "name": "next" }]
   },
