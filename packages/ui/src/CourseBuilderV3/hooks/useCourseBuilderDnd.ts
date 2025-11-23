@@ -4,23 +4,21 @@ import type {
   DragEndEvent,
   DragStartEvent,
 } from "@dnd-kit/core";
-import { useState } from "react";
-
+import type {
+  CourseBuilderState,
+  Lesson,
+  Topic,
+} from "../store/useCourseBuilderStore";
 import type { LessonItem, QuizItem, TopicItem } from "../types/content";
 
-// Remove unused import if useCourseBuilderStore is not needed directly here
-// import { useCourseBuilderStore } from "../store/useCourseBuilderStore";
+import type { CourseBuilderProps } from "../CourseBuilder";
+import { useState } from "react";
 
-// Remove unused type derivation
-// type CourseBuilderStoreType = ReturnType<typeof useCourseBuilderStore>;
-
-// Define props with individual actions
 interface UseCourseBuilderDndProps {
+  mainContentItems: CourseBuilderState["mainContentItems"];
   availableLessons: LessonItem[];
   availableTopics: TopicItem[];
   availableQuizzes: QuizItem[];
-
-  // Nested actions
   addTopicToLesson: (lessonId: string, topic: TopicItem) => void;
   addQuizToTopic: (topicId: string, quiz: QuizItem) => void;
   addQuizToLesson: (lessonId: string, quiz: QuizItem) => void;
@@ -29,25 +27,28 @@ interface UseCourseBuilderDndProps {
     activeId: string,
     overId: string,
   ) => void;
-
-  // Unified lesson content reorder action
   reorderLessonContentItems: (
     lessonId: string,
     activeId: string,
     overId: string,
   ) => void;
-
-  // Top-level actions
   addMainContentItem: (item: LessonItem | QuizItem) => void;
   reorderMainContentItems: (activeId: string, overId: string) => void;
-
-  // Add onAttachLesson callback
   onAttachLesson?: (
     lessonId: string,
     courseId: string,
     order: number,
   ) => Promise<void>;
   courseId?: string;
+  onAttachTopic?: CourseBuilderProps["onAttachTopic"];
+  onAttachQuizToTopic?: CourseBuilderProps["onAttachQuizToTopic"];
+  onAttachQuizToFinal?: CourseBuilderProps["onAttachQuizToFinal"];
+  onAttachQuizToLesson?: CourseBuilderProps["onAttachQuizToLesson"];
+  onReorderLessons?: CourseBuilderProps["onReorderLessons"];
+  onReorderLessonTopics?: CourseBuilderProps["onReorderLessonTopics"];
+  onReorderLessonQuizzes?: CourseBuilderProps["onReorderLessonQuizzes"];
+  onReorderTopicQuizzes?: CourseBuilderProps["onReorderTopicQuizzes"];
+  onAddQuiz?: CourseBuilderProps["onAddQuiz"];
 }
 
 interface DropzoneData {
@@ -60,22 +61,44 @@ interface DropzoneData {
   order?: number;
 }
 
+const reorderIds = (ids: string[], activeId: string, overId: string) => {
+  const from = ids.indexOf(activeId);
+  const to = ids.indexOf(overId);
+  if (from === -1 || to === -1 || from === to) {
+    return ids;
+  }
+  const next = [...ids];
+  const [moved] = next.splice(from, 1);
+  if (moved === undefined) {
+    return ids;
+  }
+  next.splice(to, 0, moved);
+  return next;
+};
+
 export const useCourseBuilderDnd = ({
+  mainContentItems,
   availableLessons,
   availableTopics,
   availableQuizzes,
-  // Destructure nested actions
   addTopicToLesson,
   addQuizToTopic,
   addQuizToLesson,
   reorderQuizzesInTopic,
-  // Destructure unified actions
   addMainContentItem,
   reorderMainContentItems,
   reorderLessonContentItems,
-  // Add new props
   onAttachLesson,
   courseId,
+  onAttachTopic,
+  onAttachQuizToTopic,
+  onAttachQuizToFinal,
+  onAttachQuizToLesson,
+  onReorderLessons,
+  onReorderLessonTopics,
+  onReorderLessonQuizzes,
+  onReorderTopicQuizzes,
+  onAddQuiz,
 }: UseCourseBuilderDndProps) => {
   const [activeItem, setActiveItem] = useState<Active | null>(null);
 
@@ -106,64 +129,85 @@ export const useCourseBuilderDnd = ({
 
     if (currentActiveId === currentOverId) return;
 
-    // Handle Dropping Items from Sidebar onto Dropzones
     if (overKind) {
       switch (overKind) {
-        case "main-content-root": // Drop on main canvas
+        case "main-content-root": {
           if (currentActiveType === "lesson") {
             const lessonData = availableLessons.find(
               (l) => l.id === currentActiveId,
             );
             if (lessonData) {
-              // Get the current order
               const order = overData.order ?? 0;
-
-              // Call onAttachLesson first if available
               if (onAttachLesson && courseId) {
                 await onAttachLesson(currentActiveId, courseId, order);
               }
-
-              // Then update the store
               addMainContentItem(lessonData);
             }
           } else if (currentActiveType === "quiz") {
             const quizData = availableQuizzes.find(
               (q) => q.id === currentActiveId,
             );
-            if (quizData) addMainContentItem(quizData);
-          }
-          break;
-        case "lesson-content": // Drop into a lesson
-          if (overData.lessonId) {
-            if (currentActiveType === "topic") {
-              const topic = availableTopics.find(
-                (t) => t.id === currentActiveId,
-              );
-              // Call updated action
-              if (topic) addTopicToLesson(overData.lessonId, topic);
-            }
-            if (currentActiveType === "quiz") {
-              const quiz = availableQuizzes.find(
-                (q) => q.id === currentActiveId,
-              );
-              // Call updated action
-              if (quiz) addQuizToLesson(overData.lessonId, quiz);
+            if (quizData) {
+              if (onAttachQuizToFinal && courseId) {
+                await onAttachQuizToFinal(quizData.id, courseId, 0);
+              } else if (onAddQuiz) {
+                await onAddQuiz({
+                  isFinalQuiz: true,
+                  courseId: courseId ?? "",
+                  order: 0,
+                });
+              }
+              addMainContentItem(quizData);
             }
           }
           break;
-        case "topic-quiz": // Drop into a topic
+        }
+        case "lesson-content": {
+          if (!overData.lessonId) break;
+          const targetLessonId = overData.lessonId;
+          if (currentActiveType === "topic") {
+            const topic = availableTopics.find((t) => t.id === currentActiveId);
+            if (topic) {
+              if (onAttachTopic) {
+                  await onAttachTopic(topic.id, targetLessonId, 0);
+              }
+              addTopicToLesson(targetLessonId, topic);
+            }
+          }
+          if (currentActiveType === "quiz") {
+            const quiz = availableQuizzes.find((q) => q.id === currentActiveId);
+            if (quiz) {
+              if (onAttachQuizToLesson) {
+                  await onAttachQuizToLesson(
+                    targetLessonId,
+                    quiz.id,
+                    0,
+                  );
+              } else if (onAddQuiz) {
+                await onAddQuiz({ lessonId: targetLessonId, order: 0 });
+              }
+              addQuizToLesson(targetLessonId, quiz);
+            }
+          }
+          break;
+        }
+        case "topic-quiz": {
           if (currentActiveType === "quiz" && overData.topicId) {
             const quiz = availableQuizzes.find((q) => q.id === currentActiveId);
-            if (quiz) addQuizToTopic(overData.topicId, quiz);
+            if (quiz) {
+              if (onAttachQuizToTopic) {
+                await onAttachQuizToTopic(quiz.id, overData.topicId, 0);
+              }
+              addQuizToTopic(overData.topicId, quiz);
+            }
           }
           break;
+        }
       }
-      return; // Exit after handling dropzone drop
+      return;
     }
 
-    // Handle Reordering Existing Items
     if (currentActiveType && overType) {
-      // Reorder top-level items (Lessons or top-level Quizzes)
       if (
         (currentActiveType === "lesson" ||
           (currentActiveType === "quiz" &&
@@ -175,9 +219,18 @@ export const useCourseBuilderDnd = ({
             !overData.parentTopicId))
       ) {
         reorderMainContentItems(currentActiveId, currentOverId);
-      }
-      // Reorder items WITHIN a Lesson (Topics or lesson-level Quizzes)
-      else if (
+        if (
+          onReorderLessons &&
+          currentActiveType === "lesson" &&
+          overType === "lesson"
+        ) {
+          const lessonIds = mainContentItems
+            .filter((item) => item.type === "lesson")
+            .map((item) => item.id);
+          const nextOrder = reorderIds(lessonIds, currentActiveId, currentOverId);
+          await onReorderLessons(nextOrder);
+        }
+      } else if (
         (currentActiveType === "topic" ||
           (currentActiveType === "quiz" &&
             activeData.parentLessonId &&
@@ -187,28 +240,68 @@ export const useCourseBuilderDnd = ({
             overData.parentLessonId &&
             !overData.parentTopicId)) &&
         activeData.parentLessonId &&
-        activeData.parentLessonId === overData.parentLessonId // Must be in the same lesson
+        activeData.parentLessonId === overData.parentLessonId
       ) {
         reorderLessonContentItems(
           activeData.parentLessonId,
           currentActiveId,
           currentOverId,
         );
-      }
-      // Reorder quizzes WITHIN a Topic
-      else if (
+        const lesson = mainContentItems.find(
+          (item) =>
+            item.type === "lesson" && item.id === activeData.parentLessonId,
+        ) as Lesson | undefined;
+        if (lesson) {
+          if (
+            currentActiveType === "topic" &&
+            onReorderLessonTopics
+          ) {
+            const topicIds = lesson.contentItems
+              .filter((item) => item.type === "topic")
+              .map((item) => item.id);
+            const nextOrder = reorderIds(topicIds, currentActiveId, currentOverId);
+            await onReorderLessonTopics(lesson.id, nextOrder);
+          } else if (
+            currentActiveType === "quiz" &&
+            onReorderLessonQuizzes
+          ) {
+            const quizIds = lesson.contentItems
+              .filter((item) => item.type === "quiz")
+              .map((item) => item.id);
+            const nextOrder = reorderIds(quizIds, currentActiveId, currentOverId);
+            await onReorderLessonQuizzes(lesson.id, nextOrder);
+          }
+        }
+      } else if (
         currentActiveType === "quiz" &&
         overType === "quiz" &&
         activeData.parentTopicId &&
-        activeData.parentTopicId === overData.parentTopicId // Must be in the same topic
+        activeData.parentTopicId === overData.parentTopicId
       ) {
         reorderQuizzesInTopic(
           activeData.parentTopicId,
           currentActiveId,
           currentOverId,
         );
+        if (onReorderTopicQuizzes) {
+          const topic = (mainContentItems
+            .find((item) => item.type === "lesson" &&
+              (item as Lesson).contentItems.some(
+                (content) =>
+                  content.type === "topic" &&
+                  content.id === activeData.parentTopicId,
+              )) as Lesson | undefined)?.contentItems.find(
+            (content) =>
+              content.type === "topic" &&
+              content.id === activeData.parentTopicId,
+          ) as Topic | undefined;
+          if (topic) {
+            const quizIds = (topic.quizzes ?? []).map((quiz) => quiz.id);
+            const nextOrder = reorderIds(quizIds, currentActiveId, currentOverId);
+            await onReorderTopicQuizzes(topic.id, nextOrder);
+          }
+        }
       }
-      // NOTE: Explicitly handle other cases like moving from lesson to topic, topic to lesson etc. if needed
     }
   };
 

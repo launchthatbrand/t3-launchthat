@@ -37,37 +37,46 @@ export const NestedSortableList = <T extends { _id: Id<"posts"> }>({
   lessonId,
   dropzoneType,
 }: NestedSortableListProps<T>) => {
+  const dropzoneId = `lesson-${lessonId}-${dropzoneType}`;
+  const dropzone = (
+    <DropzoneComponent id={dropzoneId} lessonId={lessonId}>
+      <p className="text-sm text-muted-foreground">
+        {items.length === 0
+          ? emptyMessage
+          : "Drop and release here to attach new items"}
+      </p>
+    </DropzoneComponent>
+  );
+
   return (
     <div className="mt-4">
       <h4 className="text-md mb-2 font-semibold">{title}:</h4>
       {items.length > 0 ? (
-        <SortableContext
-          items={items.map((i) => i._id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {items.map((item) => (
-            <SortableItem
-              key={item._id}
-              id={item._id}
-              className="bg-white"
-              data={
-                {
-                  type: dropzoneType === "topicDropzone" ? "topic" : "quiz",
-                  item,
-                } as DraggedItemData<T>
-              }
-            >
-              {renderItem(item)}
-            </SortableItem>
-          ))}
-        </SortableContext>
+        <>
+          <SortableContext
+            items={items.map((i) => i._id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {items.map((item) => (
+              <SortableItem
+                key={item._id}
+                id={item._id}
+                className="bg-white"
+                data={
+                  {
+                    type: dropzoneType === "topicDropzone" ? "topic" : "quiz",
+                    item,
+                  } as DraggedItemData<T>
+                }
+              >
+                {renderItem(item)}
+              </SortableItem>
+            ))}
+          </SortableContext>
+          {dropzone}
+        </>
       ) : (
-        <DropzoneComponent
-          id={`lesson-${lessonId}-${dropzoneType}`}
-          lessonId={lessonId}
-        >
-          <p className="text-sm text-muted-foreground">{emptyMessage}</p>
-        </DropzoneComponent>
+        dropzone
       )}
     </div>
   );

@@ -324,14 +324,14 @@ const AdminLayoutContent: React.FC<AdminLayoutContentProps> = ({
   if (withSidebar) {
     // Grid layout for sidebar + main content
     return (
-      <div className={`container grid gap-8 py-4 md:grid-cols-4 ${className}`}>
+      <div className={`grid md:grid-cols-4 ${className}`}>
         {children}
       </div>
     );
   }
 
   // Original single-column layout
-  return <div className={`container py-4 w-full ${className}`}>{children}</div>;
+  return <div className={`w-full ${className}`}>{children}</div>;
 };
 
 // AdminLayoutMain - Main content area (when using sidebar layout)

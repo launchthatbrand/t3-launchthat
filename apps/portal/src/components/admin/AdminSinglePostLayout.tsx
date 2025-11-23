@@ -1,20 +1,19 @@
 "use client";
 
-import React, { createContext, useContext, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
+import { Card, CardContent } from "@acme/ui/card";
+import React, { createContext, useContext, useRef, useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 import { Button } from "@acme/ui/button";
-import { Card, CardContent } from "@acme/ui/card";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-import { Textarea } from "@acme/ui/textarea";
-
-import type { ProductImage } from "~/app/(root)/(admin)/admin/store/products/_components/FeaturedImagesUpload";
-import type { HookContext } from "~/lib/hooks";
 // Import and re-export the FeaturedImagesUpload component for convenience
 import { FeaturedImagesUpload } from "~/app/(root)/(admin)/admin/store/products/_components/FeaturedImagesUpload";
+import type { HookContext } from "~/lib/hooks";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import type { ProductImage } from "~/app/(root)/(admin)/admin/store/products/_components/FeaturedImagesUpload";
+import { Textarea } from "@acme/ui/textarea";
+import { useRouter } from "next/navigation";
 
 export { FeaturedImagesUpload };
 export type { ProductImage };
@@ -257,7 +256,7 @@ const AdminSinglePostLayout = React.forwardRef<
     return (
       <div
         ref={ref}
-        className={`grid gap-8 md:grid-cols-4 ${className ?? ""}`}
+        className={`grid md:grid-cols-4 ${className ?? ""}`}
         // Don't spread restProps to prevent custom props from reaching DOM
       >
         {children}

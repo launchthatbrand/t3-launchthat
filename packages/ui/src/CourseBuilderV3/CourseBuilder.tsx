@@ -1,6 +1,16 @@
 "use client";
 
-import React from "react";
+import type {
+  AccessibilityConfig,
+  I18nConfig,
+  SidebarConfig,
+  ThemeConfig,
+} from "./types/theme";
+// Restore ContentItemRenderer for props
+import type {
+  ContentItemRenderer,
+  SidebarItemRenderer,
+} from "./types/callbacks";
 import {
   DndContext,
   DragOverlay,
@@ -9,28 +19,18 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-
-import type { CourseBuilderState } from "./store/useCourseBuilderStore";
-// Restore ContentItemRenderer for props
-import type {
-  ContentItemRenderer,
-  SidebarItemRenderer,
-} from "./types/callbacks";
 // Import types needed for props and mapping
 // Remove unused store types (Lesson, Quiz, Topic)
 import type { LessonItem, QuizItem, TopicItem } from "./types/content";
-import type { SidebarItem } from "./types/navigation";
+
+import type { CourseBuilderState } from "./store/useCourseBuilderStore";
 // Restore CourseStructure for props
 import type { CourseStructure } from "./types/structure";
-import type {
-  AccessibilityConfig,
-  I18nConfig,
-  SidebarConfig,
-  ThemeConfig,
-} from "./types/theme";
 import DragOverlayContent from "./components/DragOverlayContent";
 import MainContent from "./components/MainContent";
+import React from "react";
 import Sidebar from "./components/Sidebar";
+import type { SidebarItem } from "./types/navigation";
 // Import the new layout components
 import TopBar from "./components/TopBar";
 // Import the new DND hook
@@ -59,6 +59,7 @@ export interface CourseBuilderProps {
   onAddQuiz?: (
     context:
       | { topicId: string; order: number }
+      | { lessonId: string; order: number }
       | { isFinalQuiz: true; courseId: string; order: number },
   ) => Promise<void>;
   onRemoveLesson?: (lessonId: string) => Promise<void>;
@@ -104,6 +105,24 @@ export interface CourseBuilderProps {
   sidebarConfig?: SidebarConfig;
   accessibilityConfig?: AccessibilityConfig;
   i18nConfig?: I18nConfig;
+  onAttachQuizToLesson?: (
+    lessonId: string,
+    quizId: string,
+    order: number,
+  ) => Promise<void>;
+  onReorderLessons?: (orderedLessonIds: string[]) => Promise<void>;
+  onReorderLessonTopics?: (
+    lessonId: string,
+    orderedTopicIds: string[],
+  ) => Promise<void>;
+  onReorderLessonQuizzes?: (
+    lessonId: string,
+    orderedQuizIds: string[],
+  ) => Promise<void>;
+  onReorderTopicQuizzes?: (
+    topicId: string,
+    orderedQuizIds: string[],
+  ) => Promise<void>;
 }
 
 // Default no-op async function for callbacks
@@ -147,6 +166,11 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
   // sidebarConfig,
   // accessibilityConfig,
   // i18nConfig,
+  onAttachQuizToLesson = noopAsyncWithArgs,
+  onReorderLessons = noopAsyncWithArgs,
+  onReorderLessonTopics = noopAsyncWithArgs,
+  onReorderLessonQuizzes = noopAsyncWithArgs,
+  onReorderTopicQuizzes = noopAsyncWithArgs,
 }) => {
   // 1. Get state and actions from the store
   const {
@@ -188,6 +212,7 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
   // 2. Initialize the DND hook with correct actions
   const { activeItem, handleDragStart, handleDragEnd, handleDragCancel } =
     useCourseBuilderDnd({
+      mainContentItems,
       addTopicToLesson,
       addQuizToTopic,
       addQuizToLesson,
@@ -200,6 +225,15 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
       availableQuizzes,
       onAttachLesson: _onAttachLesson,
       courseId: _courseStructure?.id,
+      onAttachQuizToLesson,
+      onReorderLessons,
+      onReorderLessonTopics,
+      onReorderLessonQuizzes,
+      onReorderTopicQuizzes,
+      onAttachTopic: _onAttachTopic,
+      onAttachQuizToTopic: _onAttachQuizToTopic,
+      onAttachQuizToFinal: _onAttachQuizToFinal,
+      onAddQuiz: _onAddQuiz,
     });
 
   // 3. Set up sensors
