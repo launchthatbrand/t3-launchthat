@@ -83,12 +83,13 @@ const SortableQuizItem: React.FC<SortableQuizItemProps> = ({
       : "bg-purple-500";
 
   const isOverQuiz = isOver && activeItem?.data.current?.type === "quiz";
+  const quizViewUrl = quiz.viewUrl;
+  const quizEditUrl = quiz.editUrl;
 
   const handleOpenLink = (
     event: React.MouseEvent<HTMLButtonElement>,
-    url?: string,
+    url: string,
   ) => {
-    if (!url) return;
     event.preventDefault();
     event.stopPropagation();
     window.open(url, "_blank", "noopener,noreferrer");
@@ -138,22 +139,22 @@ const SortableQuizItem: React.FC<SortableQuizItemProps> = ({
             </span>
           </AccordionTrigger>
           <div className="ml-auto flex items-center gap-1 pr-1">
-            {quiz.viewUrl && (
+            {typeof quizViewUrl === "string" && (
               <Button
                 variant="ghost"
                 size="icon"
                 aria-label={`View ${quiz.title}`}
-                onClick={(event) => handleOpenLink(event, quiz.viewUrl)}
+                onClick={(event) => handleOpenLink(event, quizViewUrl)}
               >
                 <Eye className="h-4 w-4" />
               </Button>
             )}
-            {quiz.editUrl && (
+            {typeof quizEditUrl === "string" && (
               <Button
                 variant="ghost"
                 size="icon"
                 aria-label={`Edit ${quiz.title}`}
-                onClick={(event) => handleOpenLink(event, quiz.editUrl)}
+                onClick={(event) => handleOpenLink(event, quizEditUrl)}
               >
                 <Pencil className="h-4 w-4" />
               </Button>

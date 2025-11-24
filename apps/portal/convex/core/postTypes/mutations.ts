@@ -1,5 +1,4 @@
-import type { Doc } from "@convex-config/_generated/dataModel";
-/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import { v } from "convex/values";
 
 import type { MutationCtx } from "../../_generated/server";
@@ -10,6 +9,8 @@ import { seedDefaultTaxonomies } from "../taxonomies/mutations";
 import {
   createSystemFields,
   getPostTypeFieldByKey,
+  getScopedPostTypeBySlug,
+  resolveScopedOrganizationId,
   updateEntryCount,
   updateFieldCount,
   validateField,
@@ -257,20 +258,31 @@ export const create = mutation({
     organizationId: v.optional(v.id("organizations")),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("postTypes")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique();
-    if (existing) {
-      throw new Error(`Post type with slug ${args.slug} already exists`);
+    const resolvedOrgId = resolveScopedOrganizationId(args.organizationId);
+
+    if (resolvedOrgId) {
+      const existingScoped = await ctx.db
+        .query("postTypes")
+        .withIndex("by_slug_organization", (q) =>
+          q.eq("slug", args.slug).eq("organizationId", resolvedOrgId),
+        )
+        .unique();
+      if (existingScoped) {
+        throw new Error(
+          `Post type with slug ${args.slug} already exists for this organization`,
+        );
+      }
+    } else {
+      const existingGlobal = await fetchScopedPostType(ctx, args.slug);
+      if (existingGlobal && existingGlobal.organizationId === undefined) {
+        throw new Error(`Post type with slug ${args.slug} already exists`);
+      }
     }
 
     const timestamp = Date.now();
     const id = await ctx.db.insert("postTypes", {
-      organizationId: args.organizationId ?? undefined,
-      enabledOrganizationIds: args.organizationId
-        ? [args.organizationId]
-        : undefined,
+      organizationId: resolvedOrgId ?? undefined,
+      enabledOrganizationIds: resolvedOrgId ? [resolvedOrgId] : undefined,
       name: args.name,
       slug: args.slug,
       description: args.description,
@@ -304,23 +316,52 @@ const organizationAccessValidator = v.union(
   v.literal(PORTAL_TENANT_ID),
 );
 
+const fetchScopedPostType = async (
+  ctx: MutationCtx,
+  slug: string,
+  organizationId?: Id<"organizations">,
+): Promise<Doc<"postTypes"> | null> => {
+  return await getScopedPostTypeBySlug(ctx, slug, organizationId);
+};
+
 export const enableForOrganization = mutation({
   args: {
     slug: v.string(),
     organizationId: organizationAccessValidator,
   },
   handler: async (ctx, args) => {
-    const postType = await ctx.db
-      .query("postTypes")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique();
+    const resolvedOrgId = resolveScopedOrganizationId(args.organizationId);
+    const isPortal = args.organizationId === PORTAL_TENANT_ID;
 
-    if (!postType) {
+    const postType = await fetchScopedPostType(
+      ctx,
+      args.slug,
+      resolvedOrgId ?? undefined,
+    );
+
+    if (
+      !postType ||
+      (resolvedOrgId &&
+        postType.organizationId &&
+        postType.organizationId !== resolvedOrgId)
+    ) {
       throw new Error(`Post type with slug ${args.slug} not found`);
     }
 
     const existing = postType.enabledOrganizationIds ?? [];
-    const isPortal = args.organizationId === PORTAL_TENANT_ID;
+
+    if (resolvedOrgId && postType.organizationId === resolvedOrgId) {
+      if (existing.includes(resolvedOrgId) && existing.length > 0) {
+        return { updated: false };
+      }
+      await ctx.db.patch(postType._id, {
+        enabledOrganizationIds: existing.includes(resolvedOrgId)
+          ? existing
+          : [...existing, resolvedOrgId],
+        updatedAt: Date.now(),
+      });
+      return { updated: true };
+    }
 
     if (isPortal) {
       if (postType.enabledOrganizationIds?.length === 0) {
@@ -333,12 +374,15 @@ export const enableForOrganization = mutation({
       return { updated: false };
     }
 
-    if (existing.includes(args.organizationId)) {
+    if (existing.includes(args.organizationId as Id<"organizations">)) {
       return { updated: false };
     }
 
     await ctx.db.patch(postType._id, {
-      enabledOrganizationIds: [...existing, args.organizationId],
+      enabledOrganizationIds: [
+        ...existing,
+        args.organizationId as Id<"organizations">,
+      ],
       updatedAt: Date.now(),
     });
 
@@ -352,24 +396,47 @@ export const disableForOrganization = mutation({
     organizationId: organizationAccessValidator,
   },
   handler: async (ctx, args) => {
-    const postType = await ctx.db
-      .query("postTypes")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique();
+    const resolvedOrgId = resolveScopedOrganizationId(args.organizationId);
+    const isPortal = args.organizationId === PORTAL_TENANT_ID;
 
-    if (!postType) {
+    const postType = await fetchScopedPostType(
+      ctx,
+      args.slug,
+      resolvedOrgId ?? undefined,
+    );
+
+    if (
+      !postType ||
+      (resolvedOrgId &&
+        postType.organizationId &&
+        postType.organizationId !== resolvedOrgId)
+    ) {
       throw new Error(`Post type with slug ${args.slug} not found`);
     }
 
     const enabledOrgIds = postType.enabledOrganizationIds;
     const existing = enabledOrgIds ?? [];
-    const isPortal = args.organizationId === PORTAL_TENANT_ID;
     const hasLegacyOwnership =
       enabledOrgIds === undefined &&
       (postType.organizationId === args.organizationId ||
         (isPortal && postType.organizationId === undefined));
 
-    if (!existing.includes(args.organizationId) && !hasLegacyOwnership) {
+    if (resolvedOrgId && postType.organizationId === resolvedOrgId) {
+      if (!existing.includes(resolvedOrgId) || existing.length === 0) {
+        return { updated: false };
+      }
+      const next = existing.filter((id) => id !== resolvedOrgId);
+      await ctx.db.patch(postType._id, {
+        enabledOrganizationIds: next,
+        updatedAt: Date.now(),
+      });
+      return { updated: true };
+    }
+
+    if (
+      !existing.includes(args.organizationId as Id<"organizations">) &&
+      !hasLegacyOwnership
+    ) {
       return { updated: false };
     }
 
@@ -381,7 +448,9 @@ export const disableForOrganization = mutation({
       return { updated: true };
     }
 
-    const next = existing.filter((id) => id !== args.organizationId);
+    const next = existing.filter(
+      (id) => id !== (args.organizationId as Id<"organizations">),
+    );
 
     await ctx.db.patch(postType._id, {
       enabledOrganizationIds: next,
@@ -416,12 +485,30 @@ export const update = mutation({
 
     const nextSlug = args.data.slug;
     if (nextSlug && nextSlug !== postType.slug) {
-      const existing = await ctx.db
-        .query("postTypes")
-        .withIndex("by_slug", (q) => q.eq("slug", nextSlug))
-        .unique();
-      if (existing) {
-        throw new Error(`Slug ${nextSlug} is already in use`);
+      if (postType.organizationId) {
+        const conflict = await ctx.db
+          .query("postTypes")
+          .withIndex("by_slug_organization", (q) =>
+            q
+              .eq("slug", nextSlug)
+              .eq("organizationId", postType.organizationId),
+          )
+          .unique();
+        if (conflict && conflict._id !== postType._id) {
+          throw new Error(`Slug ${nextSlug} is already in use`);
+        }
+      } else {
+        const matches = await ctx.db
+          .query("postTypes")
+          .withIndex("by_slug", (q) => q.eq("slug", nextSlug))
+          .collect();
+        const conflict = matches.find(
+          (type) =>
+            type.organizationId === undefined && type._id !== postType._id,
+        );
+        if (conflict) {
+          throw new Error(`Slug ${nextSlug} is already in use`);
+        }
       }
     }
 
@@ -513,7 +600,6 @@ export const addField = mutation({
       createdAt: now,
     };
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-expect-error Field payload is runtime validated via validators above
     await ctx.db.insert("postTypeFields", fieldPayload);
 
@@ -572,13 +658,20 @@ export const updateField = mutation({
       updates.filterable = args.data.filterable;
     }
     if (args.data.defaultValue !== undefined) {
-      updates.defaultValue = args.data.defaultValue;
+      updates.defaultValue = args.data
+        .defaultValue as Doc<"postTypeFields">["defaultValue"];
     }
     if (args.data.validationRules !== undefined) {
-      updates.validationRules = args.data.validationRules;
+      updates.validationRules = args.data
+        .validationRules as Doc<"postTypeFields">["validationRules"];
     }
-    if (args.data.options !== undefined) updates.options = args.data.options;
-    if (args.data.uiConfig !== undefined) updates.uiConfig = args.data.uiConfig;
+    if (args.data.options !== undefined) {
+      updates.options = args.data.options as Doc<"postTypeFields">["options"];
+    }
+    if (args.data.uiConfig !== undefined) {
+      updates.uiConfig = args.data
+        .uiConfig as Doc<"postTypeFields">["uiConfig"];
+    }
     if (args.data.order !== undefined) updates.order = args.data.order;
 
     await ctx.db.patch(args.fieldId, {

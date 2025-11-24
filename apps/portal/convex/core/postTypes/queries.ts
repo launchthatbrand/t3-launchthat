@@ -1,16 +1,17 @@
-import {
-  postTypeAdminMenuValidator,
-  postTypeRewriteValidator,
-  postTypeSupportsValidator,
-} from "./schema";
-
-import { query } from "../../_generated/server";
 /**
  * Content Types Queries
  *
  * This module provides query endpoints for content types.
  */
 import { v } from "convex/values";
+
+import { query } from "../../_generated/server";
+import { getScopedPostTypeBySlug } from "./lib/contentTypes";
+import {
+  postTypeAdminMenuValidator,
+  postTypeRewriteValidator,
+  postTypeSupportsValidator,
+} from "./schema";
 
 /**
  * List all content types
@@ -49,13 +50,19 @@ export const list = query({
     const allPostTypes = await ctx.db.query("postTypes").collect();
 
     const filtered = allPostTypes.filter((type) => {
-      const hasAccess =
-        !organizationId ||
-        !type.enabledOrganizationIds ||
-        type.enabledOrganizationIds.includes(organizationId);
+      if (organizationId) {
+        if (type.organizationId && type.organizationId !== organizationId) {
+          return false;
+        }
 
-      if (!hasAccess) {
-        return false;
+        if (type.enabledOrganizationIds) {
+          if (type.enabledOrganizationIds.length === 0) {
+            return false;
+          }
+          if (!type.enabledOrganizationIds.includes(organizationId)) {
+            return false;
+          }
+        }
       }
 
       if (!includeBuiltIn && type.isBuiltIn) {
@@ -110,8 +117,17 @@ export const get = query({
 
     if (
       args.organizationId &&
+      postType.organizationId &&
+      postType.organizationId !== args.organizationId
+    ) {
+      return null;
+    }
+
+    if (
+      args.organizationId &&
       postType.enabledOrganizationIds &&
-      !postType.enabledOrganizationIds.includes(args.organizationId)
+      (!postType.enabledOrganizationIds.includes(args.organizationId) ||
+        postType.enabledOrganizationIds.length === 0)
     ) {
       return null;
     }
@@ -154,16 +170,18 @@ export const getBySlug = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
-    const postType = await ctx.db
-      .query("postTypes")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique();
+    const postType = await getScopedPostTypeBySlug(
+      ctx,
+      args.slug,
+      args.organizationId,
+    );
 
     if (
       postType &&
       args.organizationId &&
       postType.enabledOrganizationIds &&
-      !postType.enabledOrganizationIds.includes(args.organizationId)
+      !postType.enabledOrganizationIds.includes(args.organizationId) &&
+      postType.organizationId !== args.organizationId
     ) {
       return null;
     }
@@ -203,10 +221,11 @@ export const fieldsBySlug = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const postType = await ctx.db
-      .query("postTypes")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique();
+    const postType = await getScopedPostTypeBySlug(
+      ctx,
+      args.slug,
+      args.organizationId,
+    );
 
     if (!postType) {
       return [];
@@ -215,7 +234,8 @@ export const fieldsBySlug = query({
     if (
       args.organizationId &&
       postType.enabledOrganizationIds &&
-      !postType.enabledOrganizationIds.includes(args.organizationId)
+      !postType.enabledOrganizationIds.includes(args.organizationId) &&
+      postType.organizationId !== args.organizationId
     ) {
       return [];
     }

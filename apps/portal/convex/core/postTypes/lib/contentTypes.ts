@@ -3,8 +3,10 @@
  *
  * This module provides helper functions for working with content types in the CMS.
  */
-import type { Id } from "../../_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "../../_generated/server";
+import type { Doc, Id } from "@convex-config/_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "@convex-config/_generated/server";
+
+import { PORTAL_TENANT_ID } from "../../../constants";
 import { FIELD_TYPES } from "../schema";
 
 /**
@@ -30,11 +32,63 @@ export interface PostTypeField {
 /**
  * Get a content type by its slug
  */
-export async function getPostTypeBySlug(ctx: QueryCtx, slug: string) {
-  return await ctx.db
+export type ConvexCtx = QueryCtx | MutationCtx;
+
+export const resolveScopedOrganizationId = (
+  organizationId?: Id<"organizations">,
+) => {
+  if (!organizationId || organizationId === PORTAL_TENANT_ID) {
+    return undefined;
+  }
+  return organizationId;
+};
+
+export async function getScopedPostTypeBySlug(
+  ctx: ConvexCtx,
+  slug: string,
+  organizationId?: Id<"organizations">,
+): Promise<Doc<"postTypes"> | null> {
+  const resolvedOrgId = resolveScopedOrganizationId(organizationId);
+
+  if (resolvedOrgId) {
+    const orgSpecific = await ctx.db
+      .query("postTypes")
+      .withIndex("by_slug_organization", (q) =>
+        q.eq("slug", slug).eq("organizationId", resolvedOrgId),
+      )
+      .unique();
+    if (orgSpecific) {
+      return orgSpecific;
+    }
+  }
+
+  const matches = await ctx.db
     .query("postTypes")
     .withIndex("by_slug", (q) => q.eq("slug", slug))
-    .unique();
+    .collect();
+
+  if (matches.length === 0) {
+    return null;
+  }
+
+  const global = matches.find((type) => type.organizationId === undefined);
+  if (global) {
+    return global;
+  }
+
+  // No global definition. If we were looking for a specific org and still
+  // didn't find one, treat as not found.
+  if (resolvedOrgId) {
+    return null;
+  }
+
+  // Fallback to the first match (should only happen when no org-specific
+  // context was requested).
+  return matches[0] ?? null;
+}
+
+export async function getPostTypeBySlug(ctx: QueryCtx, slug: string) {
+  return await getScopedPostTypeBySlug(ctx, slug);
 }
 
 /**
@@ -204,10 +258,7 @@ export function generateTableName(slug: string) {
 /**
  * Update the entry count for a content type
  */
-export async function updateEntryCount(
-  ctx: MutationCtx,
-  postTypeSlug: string,
-) {
+export async function updateEntryCount(ctx: MutationCtx, postTypeSlug: string) {
   // Get the content type by slug
   const postType = await getPostTypeBySlug(ctx, postTypeSlug);
   if (!postType) throw new Error(`Post type ${postTypeSlug} not found`);
@@ -220,8 +271,7 @@ export async function updateEntryCount(
   try {
     switch (postTypeSlug) {
       case "downloads": {
-        entries = await ctx.db.query("downloads").collect();
-        entryCount = entries.length;
+        entryCount = 0;
         console.log(`Found ${entryCount} downloads`);
         break;
       }
@@ -238,8 +288,7 @@ export async function updateEntryCount(
         break;
       }
       case "groups": {
-        entries = await ctx.db.query("groups").collect();
-        entryCount = entries.length;
+        entryCount = 0;
         break;
       }
       case "products": {
@@ -265,14 +314,12 @@ export async function updateEntryCount(
       default: {
         // For custom content types, we'd need a more generic approach
         // This could be by querying a dynamic table name or using a registry
-        console.log(
-          `No specific count handler for post type: ${postTypeSlug}`,
-        );
+        console.log(`No specific count handler for post type: ${postTypeSlug}`);
         break;
       }
     }
   } catch (error) {
-    console.error(`Error counting entries for ${contentTypeSlug}:`, error);
+    console.error(`Error counting entries for ${postTypeSlug}:`, error);
   }
 
   // Update the content type with the entry count

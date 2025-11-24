@@ -59,14 +59,15 @@ const SortableTopicItem: React.FC<SortableTopicItemProps> = ({
   };
 
   const quizIds = topic.quizzes.map((q) => q.id);
+  const topicViewUrl = topic.viewUrl;
+  const topicEditUrl = topic.editUrl;
 
   const isOverTopic = isOver && activeItem?.data.current?.type === "topic";
 
   const handleOpenLink = (
     event: React.MouseEvent<HTMLButtonElement>,
-    url?: string,
+    url: string,
   ) => {
-    if (!url) return;
     event.preventDefault();
     event.stopPropagation();
     window.open(url, "_blank", "noopener,noreferrer");
@@ -121,22 +122,22 @@ const SortableTopicItem: React.FC<SortableTopicItemProps> = ({
             )}
           </AccordionTrigger>
           <div className="ml-auto flex items-center gap-1 pr-1">
-            {topic.viewUrl && (
+            {typeof topicViewUrl === "string" && (
               <Button
                 variant="ghost"
                 size="icon"
                 aria-label={`View ${topic.title}`}
-                onClick={(event) => handleOpenLink(event, topic.viewUrl)}
+                onClick={(event) => handleOpenLink(event, topicViewUrl)}
               >
                 <Eye className="h-4 w-4" />
               </Button>
             )}
-            {topic.editUrl && (
+            {typeof topicEditUrl === "string" && (
               <Button
                 variant="ghost"
                 size="icon"
                 aria-label={`Edit ${topic.title}`}
-                onClick={(event) => handleOpenLink(event, topic.editUrl)}
+                onClick={(event) => handleOpenLink(event, topicEditUrl)}
               >
                 <Pencil className="h-4 w-4" />
               </Button>

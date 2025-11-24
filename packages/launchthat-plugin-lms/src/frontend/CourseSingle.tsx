@@ -16,10 +16,8 @@ import type {
   LmsBuilderTopic,
   LmsCourseBuilderData,
 } from "../types";
-import {
-  CourseStructure,
-  type StructuredLessonEntry,
-} from "./components/CourseStructure";
+import type { StructuredLessonEntry } from "./components/CourseStructure";
+import { CourseStructure } from "./components/CourseStructure";
 import { HeroStat } from "./components/HeroStat";
 
 interface CourseSingleProps {

@@ -71,14 +71,15 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
   };
 
   const contentItemIds = lesson.contentItems.map((item) => item.id);
+  const lessonViewUrl = lesson.viewUrl;
+  const lessonEditUrl = lesson.editUrl;
 
   const isOverLesson = isOver && activeItem?.data.current?.type === "lesson";
 
   const handleOpenLink = (
     event: React.MouseEvent<HTMLButtonElement>,
-    url?: string,
+    url: string,
   ) => {
-    if (!url) return;
     event.preventDefault();
     event.stopPropagation();
     window.open(url, "_blank", "noopener,noreferrer");
@@ -111,22 +112,22 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
             <span className="flex-grow text-left">{lesson.title}</span>
           </AccordionTrigger>
           <div className="ml-auto flex items-center gap-1 pr-1">
-            {lesson.viewUrl && (
+            {typeof lessonViewUrl === "string" && (
               <Button
                 variant="ghost"
                 size="icon"
                 aria-label={`View ${lesson.title}`}
-                onClick={(event) => handleOpenLink(event, lesson.viewUrl)}
+                onClick={(event) => handleOpenLink(event, lessonViewUrl)}
               >
                 <Eye className="h-4 w-4" />
               </Button>
             )}
-            {lesson.editUrl && (
+            {typeof lessonEditUrl === "string" && (
               <Button
                 variant="ghost"
                 size="icon"
                 aria-label={`Edit ${lesson.title}`}
-                onClick={(event) => handleOpenLink(event, lesson.editUrl)}
+                onClick={(event) => handleOpenLink(event, lessonEditUrl)}
               >
                 <Pencil className="h-4 w-4" />
               </Button>
