@@ -1,14 +1,22 @@
 import type {
   PluginDefinition,
+  PluginFrontendSingleRendererProps,
   PluginSingleViewComponentProps,
 } from "launchthat-plugin-core";
-
 import type { ComponentType } from "react";
+
+import type { CourseSummary } from "./frontend/CoursesArchive";
+import type { Id } from "./lib/convexId";
+import { CourseNav } from "./frontend/CourseNav";
+import { CoursesArchive } from "./frontend/CoursesArchive";
+import { CourseSingle } from "./frontend/CourseSingle";
 import { CourseBuilderScreen } from "./screens/CourseBuilderScreen";
+import { LmsSettingsPage } from "./settings/LmsSettingsPage";
 import { CourseBuilderTab } from "./tabs/CourseBuilderTab";
 import { CourseLinkedProductTab } from "./tabs/CourseLinkedProductTab";
 import { CourseMembersTab } from "./tabs/CourseMembersTab";
-import { LmsSettingsPage } from "./settings/LmsSettingsPage";
+
+export type { CourseSummary } from "./frontend/CoursesArchive";
 
 export {
   CourseBuilderScreen,
@@ -16,6 +24,9 @@ export {
   CourseLinkedProductTab,
   CourseMembersTab,
   LmsSettingsPage,
+  CoursesArchive,
+  CourseSingle,
+  CourseNav,
 };
 
 export interface LmsPluginComponents {
@@ -64,6 +75,31 @@ export const createLmsPluginDefinition = ({
         withFront: true,
         feeds: false,
         pages: true,
+      },
+      frontend: {
+        archive: {
+          render: ({ posts }) => (
+            <CoursesArchive courses={(posts ?? []) as CourseSummary[]} />
+          ),
+        },
+        single: {
+          render: ({ post }: PluginFrontendSingleRendererProps) => {
+            const typedPost = post as {
+              _id: string;
+              slug?: string | null;
+              organizationId?: string | null;
+            };
+            return (
+              <CourseSingle
+                courseId={typedPost._id as Id<"posts">}
+                courseSlug={typedPost.slug ?? undefined}
+                organizationId={
+                  typedPost.organizationId as Id<"organizations"> | undefined
+                }
+              />
+            );
+          },
+        },
       },
       adminMenu: {
         enabled: true,
@@ -128,6 +164,10 @@ export const createLmsPluginDefinition = ({
         withFront: true,
         feeds: false,
         pages: true,
+        permalink: {
+          canonical: "/course/{meta.courseSlug}/lesson/{slug}",
+          aliases: ["/lesson/{slug}"],
+        },
       },
       adminMenu: {
         enabled: true,
@@ -156,6 +196,11 @@ export const createLmsPluginDefinition = ({
         withFront: true,
         feeds: false,
         pages: true,
+        permalink: {
+          canonical:
+            "/course/{meta.courseSlug}/lesson/{meta.lessonSlug}/topic/{slug}",
+          aliases: ["/topic/{slug}"],
+        },
       },
       adminMenu: {
         enabled: true,
@@ -184,6 +229,11 @@ export const createLmsPluginDefinition = ({
         withFront: true,
         feeds: false,
         pages: true,
+        permalink: {
+          canonical:
+            "/course/{meta.courseSlug}/lesson/{meta.lessonSlug}/quiz/{slug}",
+          aliases: ["/quiz/{slug}"],
+        },
       },
       adminMenu: {
         enabled: true,
@@ -235,4 +285,3 @@ export const configureLmsPlugin = ({
 };
 
 export default createLmsPluginDefinition;
-

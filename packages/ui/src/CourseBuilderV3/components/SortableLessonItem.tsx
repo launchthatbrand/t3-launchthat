@@ -6,7 +6,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Trash2 } from "lucide-react";
 
 import {
   AccordionContent,
@@ -34,11 +34,19 @@ import SortableTopicItem from "./SortableTopicItem";
 interface SortableLessonItemProps {
   lesson: Lesson;
   activeItem: Active | null;
+  onRemoveLesson?: (lessonId: string) => void;
+  onRemoveTopic?: (lessonId: string, topicId: string) => void;
+  onRemoveLessonQuiz?: (lessonId: string, quizId: string) => void;
+  onRemoveTopicQuiz?: (topicId: string, quizId: string) => void;
 }
 
 const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
   lesson,
   activeItem,
+  onRemoveLesson,
+  onRemoveTopic,
+  onRemoveLessonQuiz,
+  onRemoveTopicQuiz,
 }) => {
   const {
     attributes,
@@ -75,9 +83,7 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
         value={lesson.id}
         className="rounded border bg-background shadow-sm"
       >
-        {/* <div className="flex items-center"> */}
-
-        <AccordionTrigger className="w-full flex-1 py-2 pr-2">
+        <div className="flex items-center pr-2">
           <div
             {...listeners}
             className="cursor-grab touch-none p-2 text-muted-foreground hover:text-foreground"
@@ -85,15 +91,31 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
           >
             <GripVertical className="h-5 w-5" />
           </div>
-          <Badge
-            variant="outline"
-            className="ml-2 mr-2 shrink-0 whitespace-nowrap"
-          >
-            Lesson
-          </Badge>
-          <span className="flex-grow text-left">{lesson.title}</span>
-        </AccordionTrigger>
-        {/* </div> */}
+          <AccordionTrigger className="flex flex-1 items-center gap-2 py-2 text-left">
+            <Badge
+              variant="outline"
+              className="ml-1 shrink-0 whitespace-nowrap"
+            >
+              Lesson
+            </Badge>
+            <span className="flex-grow text-left">{lesson.title}</span>
+          </AccordionTrigger>
+          {onRemoveLesson && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-auto text-destructive hover:text-destructive"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onRemoveLesson(lesson.id);
+              }}
+              aria-label={`Remove ${lesson.title}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
         <AccordionContent className="border-t px-4 pb-4 pt-2">
           {/* Single Sortable Context for Topics and Quizzes */}
           <SortableContext
@@ -109,6 +131,8 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
                       topic={item}
                       parentLessonId={lesson.id}
                       activeItem={activeItem}
+                      onRemoveTopic={onRemoveTopic}
+                      onRemoveQuiz={onRemoveTopicQuiz}
                     />
                   );
                 } else {
@@ -119,6 +143,11 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
                       parentLessonId={lesson.id}
                       isFinalQuiz={false}
                       activeItem={activeItem}
+                      onRemoveQuiz={
+                        onRemoveLessonQuiz
+                          ? () => onRemoveLessonQuiz(lesson.id, item.id)
+                          : undefined
+                      }
                     />
                   );
                 }

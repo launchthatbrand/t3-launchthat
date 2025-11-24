@@ -1,19 +1,22 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { Data as PuckData } from "@measured/puck";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import { api } from "@/convex/_generated/api";
+import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
+import { fetchQuery } from "convex/nextjs";
+
+import { findPostTypeBySlug } from "~/lib/plugins/frontend";
 import {
   getCanonicalPostPath,
   getCanonicalPostSegments,
 } from "~/lib/postTypes/routing";
-import { notFound, redirect } from "next/navigation";
-
-/* eslint-disable @typescript-eslint/no-unnecessary-condition */
-import type { Doc } from "@/convex/_generated/dataModel";
-import Link from "next/link";
-import type { Metadata } from "next";
-import { PuckContentRenderer } from "../../../../components/puckeditor/PuckContentRenderer";
-import type { Data as PuckData } from "@measured/puck";
-import { api } from "@/convex/_generated/api";
-import { fetchQuery } from "convex/nextjs";
-import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { PuckContentRenderer } from "../../../../components/puckeditor/PuckContentRenderer";
+
+type PluginMatch = ReturnType<typeof findPostTypeBySlug>;
 
 interface PageProps {
   params: Promise<{ segments?: string[] }>;
@@ -51,6 +54,14 @@ export default async function FrontendCatchAllPage(props: PageProps) {
         limit: 50,
       },
     });
+    const pluginMatch = findPostTypeBySlug(archiveContext.postType.slug);
+    const pluginArchive = pluginMatch?.postType.frontend?.archive;
+    if (pluginMatch && pluginArchive?.render) {
+      return pluginArchive.render({
+        posts,
+        postType: pluginMatch.postType,
+      });
+    }
     return <PostArchive postType={archiveContext.postType} posts={posts} />;
   }
 
@@ -60,10 +71,17 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     notFound();
   }
 
-  const post = await fetchQuery(api.core.posts.queries.getPostBySlug, {
+  let post = await fetchQuery(api.core.posts.queries.getPostBySlug, {
     slug,
     ...(organizationId ? { organizationId } : {}),
   });
+
+  if (!post && isConvexId(slug)) {
+    post = await fetchQuery(api.core.posts.queries.getPostById, {
+      id: slug as Id<"posts">,
+      ...(organizationId ? { organizationId } : {}),
+    });
+  }
 
   console.log("[FrontendCatchAllPage] Post:", post);
 
@@ -98,6 +116,7 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     },
   );
   const postMeta = postMetaResult ?? [];
+  const postMetaMap = buildPostMetaMap(postMeta);
   console.log("[FrontendCatchAllPage] Post Meta:", postMeta);
 
   const puckMetaEntry = postMeta.find((meta) => meta.key === "puck_data");
@@ -105,13 +124,53 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     typeof puckMetaEntry?.value === "string" ? puckMetaEntry.value : null,
   );
 
-  const canonicalSegments = getCanonicalPostSegments(post, postType);
-  if (canonicalSegments.length > 0) {
-    const canonicalPath = canonicalSegments.join("/");
-    const requestedPath = segments.join("/");
-    if (canonicalPath !== requestedPath) {
-      redirect(`/${canonicalPath}`);
+  const pluginMatch: PluginMatch = post.postTypeSlug
+    ? findPostTypeBySlug(post.postTypeSlug)
+    : null;
+  const permalinkConfig = pluginMatch?.postType.rewrite?.permalink;
+  const pathContext: PermalinkTemplateContext = {
+    post,
+    postType,
+    meta: postMetaMap,
+  };
+  const customCanonicalPath =
+    permalinkConfig?.canonical &&
+    buildPathFromTemplate(permalinkConfig.canonical, pathContext);
+  const customAliasPaths =
+    permalinkConfig?.aliases
+      ?.map((template) => buildPathFromTemplate(template, pathContext))
+      .filter(
+        (value): value is string =>
+          typeof value === "string" && value.length > 0,
+      ) ?? [];
+  const requestedPath = segments.join("/");
+
+  if (customCanonicalPath) {
+    const normalizedCanonical = normalizePath(customCanonicalPath);
+    const normalizedRequested = normalizePath(requestedPath);
+    const normalizedAliases = customAliasPaths.map((alias) =>
+      normalizePath(alias),
+    );
+    const matchesCanonical = normalizedRequested === normalizedCanonical;
+    const matchesAlias = normalizedAliases.includes(normalizedRequested);
+    if (!matchesCanonical && !matchesAlias) {
+      redirect(`/${normalizedCanonical}`);
     }
+  } else {
+    const canonicalSegments = getCanonicalPostSegments(post, postType);
+    if (canonicalSegments.length > 0) {
+      const canonicalPath = canonicalSegments.join("/");
+      if (canonicalPath !== requestedPath) {
+        redirect(`/${canonicalPath}`);
+      }
+    }
+  }
+  const pluginSingle = pluginMatch?.postType.frontend?.single;
+  if (pluginMatch && pluginSingle?.render) {
+    return pluginSingle.render({
+      post,
+      postType: pluginMatch.postType,
+    });
   }
 
   return (
@@ -141,9 +200,93 @@ function deriveSlugFromSegments(segments: string[]): string | null {
   return null;
 }
 
+function isConvexId(value: string): boolean {
+  return /^[a-z0-9]{32}$/.test(value);
+}
+
 type PostTypeDoc = Doc<"postTypes">;
 type PostFieldDoc = Doc<"postTypeFields">;
 type PostMetaDoc = Doc<"postsMeta">;
+type PostMetaValue = string | number | boolean | null | undefined;
+
+interface PermalinkTemplateContext {
+  post: Doc<"posts">;
+  postType: PostTypeDoc | null;
+  meta: Map<string, PostMetaValue>;
+}
+
+function buildPostMetaMap(meta: PostMetaDoc[]): Map<string, PostMetaValue> {
+  const map = new Map<string, PostMetaValue>();
+  meta.forEach((entry) => {
+    map.set(entry.key, entry.value ?? null);
+  });
+  return map;
+}
+
+function buildPathFromTemplate(
+  template: string,
+  ctx: PermalinkTemplateContext,
+): string | null {
+  if (!template) {
+    return null;
+  }
+  const segments = template
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0);
+  if (segments.length === 0) {
+    return null;
+  }
+  const resolvedSegments: string[] = [];
+  for (const segment of segments) {
+    if (segment.startsWith("{") && segment.endsWith("}")) {
+      const token = segment.slice(1, -1).trim();
+      const value = resolveTemplateToken(token, ctx);
+      if (!value) {
+        return null;
+      }
+      resolvedSegments.push(value);
+    } else {
+      resolvedSegments.push(segment);
+    }
+  }
+  return resolvedSegments.join("/");
+}
+
+function resolveTemplateToken(
+  token: string,
+  ctx: PermalinkTemplateContext,
+): string | null {
+  if (!token) {
+    return null;
+  }
+  switch (token) {
+    case "slug":
+      return ctx.post.slug ?? ctx.post._id;
+    case "id":
+      return ctx.post._id;
+    case "postType":
+      return ctx.post.postTypeSlug ?? ctx.postType?.slug ?? null;
+    default:
+      if (token.startsWith("meta.")) {
+        const key = token.slice(5);
+        const metaValue = ctx.meta.get(key);
+        if (metaValue === null || metaValue === undefined || metaValue === "") {
+          return null;
+        }
+        return String(metaValue);
+      }
+      return null;
+  }
+}
+
+function normalizePath(path: string): string {
+  return path
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0)
+    .join("/");
+}
 
 interface PostDetailProps {
   post: Doc<"posts">;
@@ -461,14 +604,12 @@ async function loadTemplateContent(
 }
 
 function parsePuckData(value: unknown): PuckData | null {
-  if (!value) {
+  if (!value || typeof value !== "string") {
     return null;
   }
 
-  const payload = typeof value === "string" ? value : String(value);
-
   try {
-    const parsed = JSON.parse(payload) as PuckData;
+    const parsed = JSON.parse(value) as PuckData;
     if (Array.isArray(parsed.content)) {
       return parsed;
     }

@@ -23,6 +23,7 @@ export interface PluginPostTypeRewrite {
   withFront?: boolean;
   feeds?: boolean;
   pages?: boolean;
+  permalink?: PluginPermalinkConfig;
 }
 
 export interface PluginPostTypeAdminMenu {
@@ -33,6 +34,30 @@ export interface PluginPostTypeAdminMenu {
   icon?: string;
   position?: number;
   parent?: string;
+}
+
+export interface PluginFrontendArchiveRendererProps {
+  posts: unknown;
+  postType: PluginPostTypeConfig;
+}
+
+export interface PluginFrontendSingleRendererProps {
+  post: unknown;
+  postType: PluginPostTypeConfig;
+}
+
+export interface PluginPostTypeFrontendConfig {
+  archive?: {
+    render: (props: PluginFrontendArchiveRendererProps) => ReactNode;
+  };
+  single?: {
+    render: (props: PluginFrontendSingleRendererProps) => ReactNode;
+  };
+}
+
+export interface PluginPermalinkConfig {
+  canonical?: string;
+  aliases?: string[];
 }
 
 export interface PluginPostTypeConfig {
@@ -48,6 +73,7 @@ export interface PluginPostTypeConfig {
   rewrite?: PluginPostTypeRewrite;
   adminMenu: PluginPostTypeAdminMenu;
   singleView?: PluginPostSingleViewConfig;
+  frontend?: PluginPostTypeFrontendConfig;
 }
 
 export interface PluginSettingComponentProps {
@@ -156,4 +182,3 @@ export interface PluginRegistryConfig {
   enabledPlugins?: string[];
   pluginConfigs?: Record<string, unknown>;
 }
-

@@ -93,6 +93,15 @@ export const CourseBuilderScreen = ({
   const attachQuizToLesson = useMutation(
     api.plugins.lms.mutations.attachQuizToLesson,
   );
+  const removeLessonFromCourse = useMutation(
+    api.plugins.lms.mutations.removeLessonFromCourseStructure,
+  );
+  const removeTopicFromLesson = useMutation(
+    api.plugins.lms.mutations.removeTopicFromLesson,
+  );
+  const removeQuizFromLesson = useMutation(
+    api.plugins.lms.mutations.removeQuizFromLesson,
+  );
 
   const builderInitialState = useMemo(() => {
     if (!courseData) return undefined;
@@ -271,6 +280,53 @@ export const CourseBuilderScreen = ({
     [reorderTopicsInLesson],
   );
 
+  const handleRemoveLesson = useCallback(
+    async (lessonId: string) => {
+      if (!courseId) return;
+      try {
+        await removeLessonFromCourse({
+          courseId: courseId as Id<"posts">,
+          lessonId: lessonId as Id<"posts">,
+        });
+        toast.success("Lesson removed.");
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to remove lesson.");
+      }
+    },
+    [courseId, removeLessonFromCourse],
+  );
+
+  const handleRemoveTopic = useCallback(
+    async (topicId: string) => {
+      try {
+        await removeTopicFromLesson({
+          topicId: topicId as Id<"posts">,
+        });
+        toast.success("Topic removed.");
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to remove topic.");
+      }
+    },
+    [removeTopicFromLesson],
+  );
+
+  const handleRemoveQuiz = useCallback(
+    async (quizId: string) => {
+      try {
+        await removeQuizFromLesson({
+          quizId: quizId as Id<"posts">,
+        });
+        toast.success("Quiz removed.");
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to remove quiz.");
+      }
+    },
+    [removeQuizFromLesson],
+  );
+
   if (!courseId) {
     return (
       <div className="rounded-md border p-6 text-sm text-muted-foreground">
@@ -308,6 +364,9 @@ export const CourseBuilderScreen = ({
       onAttachQuizToLesson={handleAttachQuizToLesson}
       onReorderLessons={handleReorderLessons}
       onReorderLessonTopics={handleReorderLessonTopics}
+      onRemoveLesson={handleRemoveLesson}
+      onRemoveTopic={handleRemoveTopic}
+      onRemoveQuiz={handleRemoveQuiz}
     />
   );
 };

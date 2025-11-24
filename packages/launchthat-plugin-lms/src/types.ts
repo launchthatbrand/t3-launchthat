@@ -12,7 +12,7 @@ export interface LmsBuilderLesson {
   content?: string;
   excerpt?: string;
   status?: string;
-  order?: number | null;
+  order?: number;
   slug?: string;
 }
 
@@ -21,8 +21,9 @@ export interface LmsBuilderTopic {
   title: string;
   excerpt?: string;
   content?: string;
+  slug?: string;
   lessonId?: Id<"posts">;
-  order?: number | null;
+  order?: number;
 }
 
 export interface LmsBuilderQuiz {
@@ -30,15 +31,19 @@ export interface LmsBuilderQuiz {
   title: string;
   excerpt?: string;
   content?: string;
+  slug?: string;
   lessonId?: Id<"posts">;
-  order?: number | null;
+  topicId?: Id<"posts">;
+  order?: number;
   isFinal?: boolean;
 }
 
 export interface LmsCourseBuilderData {
   course: {
     _id: Id<"posts">;
+    slug?: string;
     title: string;
+    excerpt?: string;
     status?: string;
     courseStructure: LmsCourseStructureItem[];
   };
@@ -46,4 +51,3 @@ export interface LmsCourseBuilderData {
   attachedTopics: LmsBuilderTopic[];
   attachedQuizzes: LmsBuilderQuiz[];
 }
-

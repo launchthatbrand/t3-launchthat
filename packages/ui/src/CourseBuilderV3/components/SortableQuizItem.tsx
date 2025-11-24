@@ -2,7 +2,7 @@ import type { Active } from "@dnd-kit/core";
 import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Trash2 } from "lucide-react";
 
 import {
   AccordionContent,
@@ -10,6 +10,7 @@ import {
   AccordionTrigger,
 } from "@acme/ui/accordion";
 import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 
 import type { Quiz } from "../store/useCourseBuilderStore";
 
@@ -22,6 +23,7 @@ interface SortableQuizItemProps {
   parentTopicId?: string;
   isFinalQuiz?: boolean;
   activeItem: Active | null;
+  onRemoveQuiz?: () => void;
 }
 
 const SortableQuizItem: React.FC<SortableQuizItemProps> = ({
@@ -30,6 +32,7 @@ const SortableQuizItem: React.FC<SortableQuizItemProps> = ({
   parentTopicId,
   isFinalQuiz,
   activeItem,
+  onRemoveQuiz,
 }) => {
   const {
     attributes,
@@ -101,18 +104,17 @@ const SortableQuizItem: React.FC<SortableQuizItemProps> = ({
           >
             <GripVertical className="h-4 w-4" />
           </div>
-          {/* Add Badge here */}
-          <Badge
-            variant={isFinalQuiz ? "destructive" : "outline"}
-            className="ml-2 mr-2 whitespace-nowrap"
-          >
-            Quiz
-          </Badge>
-          {/* Accordion Trigger */}
+          {/* Badge + trigger */}
           <AccordionTrigger
-            className="flex-grow px-1 py-2 text-sm font-medium hover:no-underline data-[state=open]:border-b"
+            className="flex flex-1 items-center gap-2 px-1 py-2 text-sm font-medium hover:no-underline data-[state=open]:border-b"
             aria-label={`Quiz: ${quiz.title}`}
           >
+            <Badge
+              variant={isFinalQuiz ? "destructive" : "outline"}
+              className="ml-2 whitespace-nowrap"
+            >
+              Quiz
+            </Badge>
             <span
               className={
                 isFinalQuiz
@@ -125,6 +127,21 @@ const SortableQuizItem: React.FC<SortableQuizItemProps> = ({
               {quiz.title}
             </span>
           </AccordionTrigger>
+          {onRemoveQuiz && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-auto text-destructive hover:text-destructive"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onRemoveQuiz();
+              }}
+              aria-label={`Remove ${quiz.title}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
         <AccordionContent className="px-4 pb-4 pt-0 text-xs text-muted-foreground">
           {/* Placeholder for potential future quiz content/settings/dropzones */}

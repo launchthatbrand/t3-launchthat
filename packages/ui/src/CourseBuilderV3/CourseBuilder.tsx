@@ -186,6 +186,11 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
     reorderMainContentItems,
     reorderLessonContentItems,
     initialize,
+    removeLesson,
+    removeTopicFromLesson,
+    removeQuizFromLesson,
+    removeQuizFromTopic,
+    removeFinalQuiz,
   } = useCourseBuilderStore();
 
   // Initialize store with initial state
@@ -247,6 +252,66 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
     console.log("Current Structure:", { mainContentItems });
   };
 
+  const handleRemoveLesson = React.useCallback(
+    async (lessonId: string) => {
+      try {
+        await _onRemoveLesson(lessonId);
+        removeLesson(lessonId);
+      } catch (error) {
+        console.error("Failed to remove lesson", error);
+      }
+    },
+    [_onRemoveLesson, removeLesson],
+  );
+
+  const handleRemoveTopic = React.useCallback(
+    async (lessonId: string, topicId: string) => {
+      try {
+        await _onRemoveTopic(topicId);
+        removeTopicFromLesson(lessonId, topicId);
+      } catch (error) {
+        console.error("Failed to remove topic", error);
+      }
+    },
+    [_onRemoveTopic, removeTopicFromLesson],
+  );
+
+  const handleRemoveLessonQuiz = React.useCallback(
+    async (lessonId: string, quizId: string) => {
+      try {
+        await _onRemoveQuiz(quizId);
+        removeQuizFromLesson(lessonId, quizId);
+      } catch (error) {
+        console.error("Failed to remove quiz from lesson", error);
+      }
+    },
+    [_onRemoveQuiz, removeQuizFromLesson],
+  );
+
+  const handleRemoveTopicQuiz = React.useCallback(
+    async (topicId: string, quizId: string) => {
+      try {
+        await _onRemoveQuiz(quizId);
+        removeQuizFromTopic(topicId, quizId);
+      } catch (error) {
+        console.error("Failed to remove quiz from topic", error);
+      }
+    },
+    [_onRemoveQuiz, removeQuizFromTopic],
+  );
+
+  const handleRemoveFinalQuiz = React.useCallback(
+    async (quizId: string) => {
+      try {
+        await _onRemoveQuiz(quizId);
+        removeFinalQuiz(quizId);
+      } catch (error) {
+        console.error("Failed to remove final quiz", error);
+      }
+    },
+    [_onRemoveQuiz, removeFinalQuiz],
+  );
+
   // 5. Render the component structure
   return (
     <DndContext
@@ -270,6 +335,11 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
             // Pass the unified items array
             mainContentItems={mainContentItems}
             activeItem={activeItem}
+            onRemoveLesson={handleRemoveLesson}
+            onRemoveTopic={handleRemoveTopic}
+            onRemoveLessonQuiz={handleRemoveLessonQuiz}
+            onRemoveTopicQuiz={handleRemoveTopicQuiz}
+            onRemoveFinalQuiz={handleRemoveFinalQuiz}
           />
         </div>
       </div>

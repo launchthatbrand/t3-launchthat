@@ -150,28 +150,28 @@ http.route({
 });
 
 // ---- Lessons webhook ----
-http.route({
-  path: "/lessons",
-  method: "POST",
-  handler: httpAction(async (ctx, req) => {
-    try {
-      const json = await req.json();
-      const lessonId = await ctx.runMutation(
-        api.lms.lessons.mutations.createViaWebhook,
-        json,
-      );
-      return new Response(JSON.stringify({ lessonId }), {
-        status: 201,
-        headers: { ...createCorsHeaders(), "Content-Type": "application/json" },
-      });
-    } catch (err) {
-      return new Response(JSON.stringify({ error: (err as Error).message }), {
-        status: 400,
-        headers: { ...createCorsHeaders(), "Content-Type": "application/json" },
-      });
-    }
-  }),
-});
+// http.route({
+//   path: "/lessons",
+//   method: "POST",
+//   handler: httpAction(async (ctx, req) => {
+//     try {
+//       const json = await req.json();
+//       const lessonId = await ctx.runMutation(
+//         api.lms.lessons.mutations.createViaWebhook,
+//         json,
+//       );
+//       return new Response(JSON.stringify({ lessonId }), {
+//         status: 201,
+//         headers: { ...createCorsHeaders(), "Content-Type": "application/json" },
+//       });
+//     } catch (err) {
+//       return new Response(JSON.stringify({ error: (err as Error).message }), {
+//         status: 400,
+//         headers: { ...createCorsHeaders(), "Content-Type": "application/json" },
+//       });
+//     }
+//   }),
+// });
 
 http.route({
   path: "/uploadMedia",

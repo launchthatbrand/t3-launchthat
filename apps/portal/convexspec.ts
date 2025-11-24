@@ -4494,32 +4494,6 @@ export type PublicApiType = {
       };
     };
     media: {
-      categories: {
-        listMediaCategories: FunctionReference<
-          "query",
-          "public",
-          Record<string, never>,
-          any
-        >;
-        createMediaCategory: FunctionReference<
-          "mutation",
-          "public",
-          { description?: string; name: string },
-          any
-        >;
-        updateMediaCategory: FunctionReference<
-          "mutation",
-          "public",
-          { categoryId: Id<"categories">; description?: string; name: string },
-          any
-        >;
-        deleteMediaCategory: FunctionReference<
-          "mutation",
-          "public",
-          { categoryId: Id<"categories"> },
-          any
-        >;
-      };
       integration: {
         linkMediaToPost: FunctionReference<
           "mutation",
@@ -7765,7 +7739,11 @@ export type PublicApiType = {
         getCourseStructureWithItems: FunctionReference<
           "query",
           "public",
-          { courseId: Id<"posts">; organizationId?: Id<"organizations"> },
+          {
+            courseId?: Id<"posts">;
+            courseSlug?: string;
+            organizationId?: Id<"organizations">;
+          },
           {
             attachedLessons: Array<{
               _id: Id<"posts">;
@@ -7796,6 +7774,7 @@ export type PublicApiType = {
             course: {
               _id: Id<"posts">;
               courseStructure: Array<{ lessonId: Id<"posts"> }>;
+              slug?: string;
               status?: string;
               title: string;
             };

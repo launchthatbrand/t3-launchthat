@@ -20,11 +20,21 @@ import SortableQuizItem from "./SortableQuizItem";
 interface MainContentProps {
   mainContentItems: (Lesson | Quiz)[];
   activeItem: Active | null;
+  onRemoveLesson?: (lessonId: string) => void;
+  onRemoveTopic?: (lessonId: string, topicId: string) => void;
+  onRemoveLessonQuiz?: (lessonId: string, quizId: string) => void;
+  onRemoveTopicQuiz?: (topicId: string, quizId: string) => void;
+  onRemoveFinalQuiz?: (quizId: string) => void;
 }
 
 const MainContent: React.FC<MainContentProps> = ({
   mainContentItems,
   activeItem,
+  onRemoveLesson,
+  onRemoveTopic,
+  onRemoveLessonQuiz,
+  onRemoveTopicQuiz,
+  onRemoveFinalQuiz,
 }) => {
   return (
     <div className="flex-grow space-y-4 overflow-y-auto p-6">
@@ -53,6 +63,10 @@ const MainContent: React.FC<MainContentProps> = ({
                       key={item.id}
                       lesson={item}
                       activeItem={activeItem}
+                      onRemoveLesson={onRemoveLesson}
+                      onRemoveTopic={onRemoveTopic}
+                      onRemoveLessonQuiz={onRemoveLessonQuiz}
+                      onRemoveTopicQuiz={onRemoveTopicQuiz}
                     />
                   );
                 } else {
@@ -62,6 +76,11 @@ const MainContent: React.FC<MainContentProps> = ({
                       quiz={item}
                       isFinalQuiz={true}
                       activeItem={activeItem}
+                      onRemoveQuiz={
+                        onRemoveFinalQuiz
+                          ? () => onRemoveFinalQuiz(item.id)
+                          : undefined
+                      }
                     />
                   );
                 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 // If you see a type error for 'zustand', run: pnpm add -D @types/zustand
 import type { StateCreator } from "zustand";
 import { create } from "zustand";
@@ -23,6 +24,13 @@ export interface Lesson {
   contentItems: (Topic | Quiz)[]; // Unified content array
   type: "lesson";
 }
+
+const isLesson = (item: Lesson | Quiz): item is Lesson =>
+  item.type === "lesson";
+
+const isTopic = (item: Topic | Quiz): item is Topic => item.type === "topic";
+
+const isQuiz = (item: Topic | Quiz): item is Quiz => item.type === "quiz";
 
 export interface CourseBuilderState {
   mainContentItems: (Lesson | Quiz)[];
@@ -51,6 +59,12 @@ export interface CourseBuilderState {
     activeId: string,
     overId: string,
   ) => void;
+
+  removeLesson: (lessonId: string) => void;
+  removeTopicFromLesson: (lessonId: string, topicId: string) => void;
+  removeQuizFromLesson: (lessonId: string, quizId: string) => void;
+  removeQuizFromTopic: (topicId: string, quizId: string) => void;
+  removeFinalQuiz: (quizId: string) => void;
 
   // Keep top-level actions
   addMainContentItem: (item: LessonItem | QuizItem) => void;
@@ -271,6 +285,220 @@ const courseBuilderStore: StateCreator<CourseBuilderState> = (set) => {
           overId,
         ),
       })),
+
+    removeLesson: (lessonId) =>
+      set((state: CourseBuilderState) => {
+        const lessonIndex = state.mainContentItems.findIndex(
+          (item) => item.type === "lesson" && item.id === lessonId,
+        );
+        if (lessonIndex === -1) {
+          return state;
+        }
+        const lesson = state.mainContentItems[lessonIndex] as Lesson;
+        const remainingItems = state.mainContentItems.filter(
+          (item) => item.id !== lessonId,
+        );
+
+        const lessonAsItem: LessonItem = {
+          id: lesson.id,
+          title: lesson.title,
+          type: "lesson",
+        };
+
+        const lessonTopics = lesson.contentItems.filter(
+          (item): item is Topic => item.type === "topic",
+        );
+        const lessonQuizzes = lesson.contentItems.filter(
+          (item): item is Quiz => item.type === "quiz",
+        );
+
+        return {
+          ...state,
+          mainContentItems: remainingItems,
+          availableLessons: [
+            ...state.availableLessons.filter((l) => l.id !== lessonId),
+            lessonAsItem,
+          ],
+          availableTopics: [
+            ...state.availableTopics.filter(
+              (topic) => !lessonTopics.some((lt) => lt.id === topic.id),
+            ),
+            ...lessonTopics.map((topic) => ({
+              id: topic.id,
+              title: topic.title,
+              type: "topic" as const,
+            })),
+          ],
+          availableQuizzes: [
+            ...state.availableQuizzes.filter(
+              (quiz) => !lessonQuizzes.some((lq) => lq.id === quiz.id),
+            ),
+            ...lessonQuizzes.map((quiz) => ({
+              id: quiz.id,
+              title: quiz.title,
+              type: "quiz" as const,
+            })),
+          ],
+        };
+      }),
+
+    removeTopicFromLesson: (lessonId, topicId) =>
+      set((state: CourseBuilderState) => {
+        let topicToRestore: Topic | undefined;
+        const updatedItems = state.mainContentItems.map((item) => {
+          if (!isLesson(item) || item.id !== lessonId) {
+            return item;
+          }
+          const remainingContent = item.contentItems.filter((content) => {
+            const keep = content.id !== topicId;
+            if (!keep && isTopic(content)) {
+              topicToRestore = content;
+            }
+            return keep;
+          });
+          return {
+            ...item,
+            contentItems: remainingContent,
+          };
+        });
+
+        const topicQuizzes =
+          topicToRestore?.quizzes.map((quiz) => ({
+            id: quiz.id,
+            title: quiz.title,
+            type: "quiz" as const,
+          })) ?? [];
+
+        return {
+          ...state,
+          mainContentItems: updatedItems,
+          availableTopics:
+            topicToRestore !== undefined
+              ? [
+                  ...state.availableTopics.filter(
+                    (topic) => topic.id !== topicId,
+                  ),
+                  {
+                    id: topicToRestore.id,
+                    title: topicToRestore.title,
+                    type: "topic" as const,
+                  },
+                ]
+              : state.availableTopics,
+          availableQuizzes:
+            topicQuizzes.length > 0
+              ? [
+                  ...state.availableQuizzes.filter(
+                    (quiz) => !topicQuizzes.some((tq) => tq.id === quiz.id),
+                  ),
+                  ...topicQuizzes,
+                ]
+              : state.availableQuizzes,
+        };
+      }),
+
+    removeQuizFromLesson: (lessonId, quizId) =>
+      set((state: CourseBuilderState) => {
+        let removedQuizTitle: string | undefined;
+
+        const updatedItems = state.mainContentItems.map((item) => {
+          if (!isLesson(item) || item.id !== lessonId) {
+            return item;
+          }
+
+          const updatedContentItems = item.contentItems.filter((content) => {
+            const keep = content.id !== quizId;
+            if (!keep && isQuiz(content)) {
+              removedQuizTitle = content.title;
+            }
+            return keep;
+          });
+
+          return {
+            ...item,
+            contentItems: updatedContentItems,
+          };
+        });
+
+        return {
+          ...state,
+          mainContentItems: updatedItems,
+          availableQuizzes: [
+            ...state.availableQuizzes.filter((quiz) => quiz.id !== quizId),
+            {
+              id: quizId,
+              title: removedQuizTitle ?? "Quiz",
+              type: "quiz" as const,
+            },
+          ],
+        };
+      }),
+
+    removeQuizFromTopic: (topicId, quizId) =>
+      set((state: CourseBuilderState) => {
+        let removedQuizTitle: string | undefined;
+        const updatedItems = state.mainContentItems.map((item) => {
+          if (!isLesson(item)) {
+            return item;
+          }
+
+          const updatedContentItems = item.contentItems.map((contentItem) => {
+            if (isTopic(contentItem) && contentItem.id === topicId) {
+              const quizzes = contentItem.quizzes.filter((quiz) => {
+                const keep = quiz.id !== quizId;
+                if (!keep) {
+                  removedQuizTitle = quiz.title;
+                }
+                return keep;
+              });
+              return {
+                ...contentItem,
+                quizzes,
+              };
+            }
+            return contentItem;
+          });
+
+          return { ...item, contentItems: updatedContentItems };
+        });
+
+        return {
+          ...state,
+          mainContentItems: updatedItems,
+          availableQuizzes: [
+            ...state.availableQuizzes.filter((quiz) => quiz.id !== quizId),
+            {
+              id: quizId,
+              title: removedQuizTitle ?? "Quiz",
+              type: "quiz" as const,
+            },
+          ],
+        };
+      }),
+
+    removeFinalQuiz: (quizId) =>
+      set((state: CourseBuilderState) => {
+        const quiz = state.mainContentItems.find(
+          (item) => item.type === "quiz" && item.id === quizId,
+        ) as Quiz | undefined;
+        if (!quiz) {
+          return state;
+        }
+        return {
+          ...state,
+          mainContentItems: state.mainContentItems.filter(
+            (item) => item.id !== quizId,
+          ),
+          availableQuizzes: [
+            ...state.availableQuizzes.filter((q) => q.id !== quizId),
+            {
+              id: quiz.id,
+              title: quiz.title,
+              type: "quiz" as const,
+            },
+          ],
+        };
+      }),
 
     reset: () =>
       set(() => ({

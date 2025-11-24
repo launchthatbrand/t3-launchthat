@@ -1,13 +1,14 @@
 import { v } from "convex/values";
 
 import type { Id } from "../../_generated/dataModel";
+import type { QueryCtx } from "../../_generated/server";
 import type {
   LmsBuilderLesson,
   LmsBuilderQuiz,
   LmsBuilderTopic,
   LmsCourseBuilderData,
   LmsCourseStructureItem,
-} from "../../../src/plugins/lms/types";
+} from "../../../../../packages/launchthat-plugin-lms/src/types";
 import { query } from "../../_generated/server";
 import { getPostMetaMap, parseCourseStructureMeta } from "./helpers";
 
@@ -26,6 +27,7 @@ const builderTopicValidator = v.object({
   title: v.string(),
   excerpt: v.optional(v.string()),
   content: v.optional(v.string()),
+  slug: v.optional(v.string()),
   lessonId: v.optional(v.id("posts")),
   order: v.optional(v.number()),
 });
@@ -35,7 +37,9 @@ const builderQuizValidator = v.object({
   title: v.string(),
   excerpt: v.optional(v.string()),
   content: v.optional(v.string()),
+  slug: v.optional(v.string()),
   lessonId: v.optional(v.id("posts")),
+  topicId: v.optional(v.id("posts")),
   order: v.optional(v.number()),
   isFinal: v.optional(v.boolean()),
 });
@@ -48,12 +52,14 @@ const courseStructureValidator = v.array(
 
 export const getCourseStructureWithItems = query({
   args: {
-    courseId: v.id("posts"),
+    courseId: v.optional(v.id("posts")),
+    courseSlug: v.optional(v.string()),
     organizationId: v.optional(v.id("organizations")),
   },
   returns: v.object({
     course: v.object({
       _id: v.id("posts"),
+      slug: v.optional(v.string()),
       title: v.string(),
       status: v.optional(v.string()),
       courseStructure: courseStructureValidator,
@@ -63,11 +69,11 @@ export const getCourseStructureWithItems = query({
     attachedQuizzes: v.array(builderQuizValidator),
   }),
   handler: async (ctx, args): Promise<LmsCourseBuilderData> => {
-    const course = await ctx.db.get(args.courseId);
-    if (!course || course.postTypeSlug !== "courses") {
-      throw new Error("Course not found");
+    if (!args.courseId && !args.courseSlug) {
+      throw new Error("courseId or courseSlug is required");
     }
 
+    const course = await resolveCourse(ctx, args);
     const organizationId = course.organizationId ?? undefined;
     if (
       args.organizationId &&
@@ -88,7 +94,9 @@ export const getCourseStructureWithItems = query({
       structureIds,
     );
 
-    const lessonIdSet = new Set(attachedLessons.map((lesson) => lesson._id));
+    const lessonIdSet: Set<Id<"posts">> = new Set(
+      attachedLessons.map((lesson) => lesson._id),
+    );
     const attachedTopics = await fetchTopicsForLessons(
       ctx,
       lessonIdSet,
@@ -107,6 +115,7 @@ export const getCourseStructureWithItems = query({
     return {
       course: {
         _id: course._id,
+        slug: course.slug ?? undefined,
         title: course.title,
         status: course.status ?? undefined,
         courseStructure: structure,
@@ -117,6 +126,30 @@ export const getCourseStructureWithItems = query({
     };
   },
 });
+
+const resolveCourse = async (
+  ctx: QueryCtx,
+  args: { courseId?: Id<"posts">; courseSlug?: string },
+) => {
+  if (args.courseId) {
+    const course = await ctx.db.get(args.courseId);
+    if (course && course.postTypeSlug === "courses") {
+      return course;
+    }
+  }
+
+  if (args.courseSlug) {
+    const course = await ctx.db
+      .query("posts")
+      .withIndex("by_slug", (q) => q.eq("slug", args.courseSlug as string))
+      .first();
+    if (course && course.postTypeSlug === "courses") {
+      return course;
+    }
+  }
+
+  throw new Error("Course not found");
+};
 
 export const getAvailableLessons = query({
   args: {
@@ -300,6 +333,7 @@ async function fetchTopicsByType(
         title: topic.title,
         excerpt: topic.excerpt ?? undefined,
         content: topic.content ?? undefined,
+        slug: topic.slug ?? undefined,
         lessonId: lessonId as Id<"posts">,
         order:
           typeof meta.get("order") === "number"
@@ -312,6 +346,7 @@ async function fetchTopicsByType(
         title: topic.title,
         excerpt: topic.excerpt ?? undefined,
         content: topic.content ?? undefined,
+        slug: topic.slug ?? undefined,
         lessonId: undefined,
         order: undefined,
       });
@@ -358,6 +393,7 @@ async function fetchQuizzesByType(
     const lessonMatches =
       lessonIds.size === 0 ||
       (lessonId && lessonIds.has(lessonId as Id<"posts">));
+    const topicId = meta.get("topicId");
 
     if (lessonMatches) {
       attached.push({
@@ -365,8 +401,11 @@ async function fetchQuizzesByType(
         title: quiz.title,
         excerpt: quiz.excerpt ?? undefined,
         content: quiz.content ?? undefined,
+        slug: quiz.slug ?? undefined,
         lessonId:
           typeof lessonId === "string" ? (lessonId as Id<"posts">) : undefined,
+        topicId:
+          typeof topicId === "string" ? (topicId as Id<"posts">) : undefined,
         order:
           typeof meta.get("order") === "number"
             ? (meta.get("order") as number)
@@ -380,11 +419,3 @@ async function fetchQuizzesByType(
   }
   return attached;
 }
-
-
-
-
-
-
-
-

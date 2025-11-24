@@ -14,6 +14,7 @@ import { useQuery } from "convex/react";
 import { formatDistanceToNow } from "date-fns";
 import {
   ArrowLeft,
+  Copy,
   ExternalLink,
   Loader2,
   Pencil,
@@ -22,7 +23,6 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import {
   Card,
@@ -157,6 +157,7 @@ export function AdminSinglePostView({
   const [content, setContent] = useState(post?.content ?? "");
   const [isPublished, setIsPublished] = useState(post?.status === "published");
   const [isSaving, setIsSaving] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const supportsPostsTable = Boolean(postType) || isBuiltInPostTypeSlug(slug);
   const pluginTabs = pluginSingleView?.config.tabs ?? [];
@@ -667,6 +668,47 @@ export function AdminSinglePostView({
     </Button>
   );
 
+  const handleDuplicate = async () => {
+    if (!supportsPostsTable || !post?._id || isNewRecord) {
+      return;
+    }
+    setIsDuplicating(true);
+    try {
+      const duplicateTitle =
+        title.trim() || `${post.title ?? headerLabel} (copy)`;
+      const baseSlug =
+        slugValue.trim() ||
+        post.slug ||
+        generateSlugFromTitle(duplicateTitle) ||
+        "";
+      const duplicateSlug =
+        generateSlugFromTitle(`${baseSlug}-copy`) ||
+        `${baseSlug}-${Date.now()}`;
+      const duplicateStatus: "draft" | "published" | "archived" =
+        post.status ?? "draft";
+      const metaPayload = buildMetaPayload();
+      const hasMetaEntries = Object.keys(metaPayload).length > 0;
+      const newId = await createPost({
+        title: duplicateTitle,
+        content,
+        excerpt,
+        slug: duplicateSlug,
+        status: duplicateStatus,
+        postTypeSlug: slug,
+        ...(hasMetaEntries ? { meta: metaPayload } : {}),
+      });
+      router.replace(`/admin/edit?post_type=${slug}&post_id=${newId}`);
+    } catch (error) {
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : "Failed to duplicate this entry.",
+      );
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
   const renderHeader = ({
     showActions,
     showSaveInHeader = false,
@@ -937,6 +979,26 @@ export function AdminSinglePostView({
         </CardHeader>
         <CardContent className="space-y-3">
           {renderSaveButton({ fullWidth: true })}
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            disabled={
+              isDuplicating || isSaving || isNewRecord || !supportsPostsTable
+            }
+            onClick={handleDuplicate}
+          >
+            {isDuplicating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Duplicating…
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4" />
+                Duplicate Entry
+              </>
+            )}
+          </Button>
           <Button
             variant="outline"
             disabled={!puckEditorHref || isNewRecord}

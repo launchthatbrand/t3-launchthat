@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 
 import type { Id } from "../../_generated/dataModel";
+import type { MutationCtx } from "../../_generated/server";
 import { mutation } from "../../_generated/server";
 import {
   deletePostMetaValue,
@@ -11,7 +12,7 @@ import {
 } from "./helpers";
 
 const ensureCourseAndLesson = async (
-  ctx: Parameters<typeof mutation>[0]["handler"]["ctx"],
+  ctx: MutationCtx,
   courseId: Id<"posts">,
   lessonId: Id<"posts">,
 ) => {
@@ -31,6 +32,17 @@ const ensureCourseAndLesson = async (
   }
 
   return { course, lesson };
+};
+
+type PostMetaMap = Awaited<ReturnType<typeof getPostMetaMap>>;
+
+const getMetaString = (map: PostMetaMap, key: string): string | null => {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const rawValue = map.get(key);
+  if (typeof rawValue === "string" && rawValue.length > 0) {
+    return rawValue;
+  }
+  return null;
 };
 
 export const addLessonToCourse = mutation({
@@ -69,6 +81,12 @@ export const addLessonToCourse = mutation({
       "courseOrder",
       structure.indexOf(args.lessonId),
     );
+    await setPostMetaValue(
+      ctx,
+      args.lessonId,
+      "courseSlug",
+      course.slug ?? course._id,
+    );
     return { success: true };
   },
 });
@@ -101,6 +119,7 @@ export const removeLessonFromCourseStructure = mutation({
 
     await deletePostMetaValue(ctx, args.lessonId, "courseId");
     await deletePostMetaValue(ctx, args.lessonId, "courseOrder");
+    await deletePostMetaValue(ctx, args.lessonId, "courseSlug");
     return { success: true };
   },
 });
@@ -162,6 +181,32 @@ export const attachTopicToLesson = mutation({
     }
 
     await setPostMetaValue(ctx, args.topicId, "lessonId", args.lessonId);
+    await setPostMetaValue(
+      ctx,
+      args.topicId,
+      "lessonSlug",
+      lesson.slug ?? lesson._id,
+    );
+    const lessonMeta: PostMetaMap = await getPostMetaMap(ctx, args.lessonId);
+    let courseSlugValue = getMetaString(lessonMeta, "courseSlug");
+    if (!courseSlugValue) {
+      const courseIdMeta = getMetaString(lessonMeta, "courseId");
+      if (courseIdMeta) {
+        const parentCourse = await ctx.db.get(courseIdMeta as Id<"posts">);
+        if (parentCourse) {
+          courseSlugValue = parentCourse.slug ?? parentCourse._id;
+          await setPostMetaValue(
+            ctx,
+            args.lessonId,
+            "courseSlug",
+            courseSlugValue,
+          );
+        }
+      }
+    }
+    if (courseSlugValue) {
+      await setPostMetaValue(ctx, args.topicId, "courseSlug", courseSlugValue);
+    }
     if (typeof args.order === "number") {
       await setPostMetaValue(ctx, args.topicId, "order", args.order);
     }
@@ -179,6 +224,8 @@ export const removeTopicFromLesson = mutation({
   handler: async (ctx, args) => {
     await deletePostMetaValue(ctx, args.topicId, "lessonId");
     await deletePostMetaValue(ctx, args.topicId, "order");
+    await deletePostMetaValue(ctx, args.topicId, "lessonSlug");
+    await deletePostMetaValue(ctx, args.topicId, "courseSlug");
     return { success: true };
   },
 });
@@ -233,6 +280,34 @@ export const attachQuizToLesson = mutation({
     }
 
     await setPostMetaValue(ctx, args.quizId, "lessonId", args.lessonId);
+    await setPostMetaValue(
+      ctx,
+      args.quizId,
+      "lessonSlug",
+      lesson.slug ?? lesson._id,
+    );
+    const lessonMeta: PostMetaMap = await getPostMetaMap(ctx, args.lessonId);
+    let lessonCourseSlug = getMetaString(lessonMeta, "courseSlug");
+    if (!lessonCourseSlug) {
+      const lessonCourseIdMeta = getMetaString(lessonMeta, "courseId");
+      if (lessonCourseIdMeta) {
+        const parentCourse = await ctx.db.get(
+          lessonCourseIdMeta as Id<"posts">,
+        );
+        if (parentCourse) {
+          lessonCourseSlug = parentCourse.slug ?? parentCourse._id;
+          await setPostMetaValue(
+            ctx,
+            args.lessonId,
+            "courseSlug",
+            lessonCourseSlug,
+          );
+        }
+      }
+    }
+    if (lessonCourseSlug) {
+      await setPostMetaValue(ctx, args.quizId, "courseSlug", lessonCourseSlug);
+    }
     if (typeof args.order === "number") {
       await setPostMetaValue(ctx, args.quizId, "order", args.order);
     }
@@ -254,6 +329,8 @@ export const removeQuizFromLesson = mutation({
     await deletePostMetaValue(ctx, args.quizId, "lessonId");
     await deletePostMetaValue(ctx, args.quizId, "order");
     await deletePostMetaValue(ctx, args.quizId, "isFinal");
+    await deletePostMetaValue(ctx, args.quizId, "lessonSlug");
+    await deletePostMetaValue(ctx, args.quizId, "courseSlug");
     return { success: true };
   },
 });

@@ -6,7 +6,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Trash2 } from "lucide-react";
 
 import {
   AccordionContent,
@@ -14,6 +14,7 @@ import {
   AccordionTrigger,
 } from "@acme/ui/accordion";
 import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 
 import type { Topic } from "../store/useCourseBuilderStore";
 import Dropzone from "./Dropzone";
@@ -25,12 +26,16 @@ interface SortableTopicItemProps {
   topic: Topic;
   parentLessonId: string;
   activeItem: Active | null;
+  onRemoveTopic?: (lessonId: string, topicId: string) => void;
+  onRemoveQuiz?: (topicId: string, quizId: string) => void;
 }
 
 const SortableTopicItem: React.FC<SortableTopicItemProps> = ({
   topic,
   parentLessonId,
   activeItem,
+  onRemoveTopic,
+  onRemoveQuiz,
 }) => {
   const {
     attributes,
@@ -87,23 +92,39 @@ const SortableTopicItem: React.FC<SortableTopicItemProps> = ({
           </div>
 
           {/* Add Badge here */}
-          <Badge variant="secondary" className="ml-2 mr-2 whitespace-nowrap">
-            Topic
-          </Badge>
-
           <AccordionTrigger
-            className="flex-grow px-1 py-2 text-sm font-medium hover:no-underline data-[state=open]:border-b"
+            className="flex flex-1 items-center gap-2 px-1 py-2 text-sm font-medium hover:no-underline data-[state=open]:border-b"
             aria-label={`Topic: ${topic.title}`}
           >
-            <span className="text-accent-foreground">{topic.title}</span>
+            <Badge variant="secondary" className="ml-2 whitespace-nowrap">
+              Topic
+            </Badge>
+            <span className="flex-grow text-accent-foreground">
+              {topic.title}
+            </span>
             {/* Optional: Show quiz count? */}
             {topic.quizzes.length > 0 && (
-              <span className="ml-2 text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 ({topic.quizzes.length}{" "}
                 {topic.quizzes.length === 1 ? "quiz" : "quizzes"})
               </span>
             )}
           </AccordionTrigger>
+          {onRemoveTopic && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-auto text-destructive hover:text-destructive"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onRemoveTopic(parentLessonId, topic.id);
+              }}
+              aria-label={`Remove ${topic.title}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         {/* Content contains nested quizzes and dropzone */}
@@ -122,6 +143,11 @@ const SortableTopicItem: React.FC<SortableTopicItemProps> = ({
                       quiz={quiz}
                       parentTopicId={topic.id}
                       activeItem={activeItem}
+                      onRemoveQuiz={
+                        onRemoveQuiz
+                          ? () => onRemoveQuiz(topic.id, quiz.id)
+                          : undefined
+                      }
                     />
                   ))}
                 </ul>

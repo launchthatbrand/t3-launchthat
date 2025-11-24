@@ -36,7 +36,6 @@ import type * as core_categories_queries from "../core/categories/queries.js";
 import type * as core_lib_auth from "../core/lib/auth.js";
 import type * as core_lib_index from "../core/lib/index.js";
 import type * as core_lib_permissions from "../core/lib/permissions.js";
-import type * as core_media_categories from "../core/media/categories.js";
 import type * as core_media_http from "../core/media/http.js";
 import type * as core_media_integration from "../core/media/integration.js";
 import type * as core_media_mutations from "../core/media/mutations.js";
@@ -241,7 +240,6 @@ declare const fullApi: ApiFromModules<{
   "core/lib/auth": typeof core_lib_auth;
   "core/lib/index": typeof core_lib_index;
   "core/lib/permissions": typeof core_lib_permissions;
-  "core/media/categories": typeof core_media_categories;
   "core/media/http": typeof core_media_http;
   "core/media/integration": typeof core_media_integration;
   "core/media/mutations": typeof core_media_mutations;
