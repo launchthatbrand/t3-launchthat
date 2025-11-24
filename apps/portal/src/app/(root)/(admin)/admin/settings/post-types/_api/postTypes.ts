@@ -141,7 +141,6 @@ export function useCreatePostType() {
 type PostTypeDefinitionPayload = Pick<
   PluginPostTypeConfig,
   | "name"
-  | "slug"
   | "description"
   | "isPublic"
   | "enableApi"
@@ -156,7 +155,6 @@ const pickPostTypeDefinition = (
   definition: PluginPostTypeConfig,
 ): PostTypeDefinitionPayload => ({
   name: definition.name,
-  slug: definition.slug,
   description: definition.description,
   isPublic: definition.isPublic,
   enableApi: definition.enableApi,

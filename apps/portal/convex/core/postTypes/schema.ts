@@ -20,6 +20,12 @@ export const postTypeRewriteValidator = v.object({
   withFront: v.optional(v.boolean()),
   feeds: v.optional(v.boolean()),
   pages: v.optional(v.boolean()),
+  permalink: v.optional(
+    v.object({
+      canonical: v.string(),
+      aliases: v.optional(v.array(v.string())),
+    }),
+  ),
 });
 
 export const postTypeAdminMenuValidator = v.object({
