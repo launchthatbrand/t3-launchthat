@@ -106,6 +106,49 @@ export const CourseBuilderScreen = ({
   const builderInitialState = useMemo(() => {
     if (!courseData) return undefined;
 
+    const courseSlug = courseData.course.slug ?? undefined;
+
+    const slugOrId = (slug: string | null | undefined, id: string) =>
+      slug && slug.length > 0 ? slug : id;
+
+    const buildLessonViewUrl = (lesson: LmsBuilderLesson) => {
+      const lessonSegment = slugOrId(lesson.slug, lesson._id);
+      if (courseSlug) {
+        return `/course/${courseSlug}/lesson/${lessonSegment}`;
+      }
+      return `/lesson/${lessonSegment}`;
+    };
+
+    const buildTopicViewUrl = (
+      topic: LmsBuilderTopic,
+      parentLesson?: LmsBuilderLesson | null,
+    ) => {
+      const topicSegment = slugOrId(topic.slug, topic._id);
+      if (courseSlug && parentLesson?.slug) {
+        return `/course/${courseSlug}/lesson/${parentLesson.slug}/topic/${topicSegment}`;
+      }
+      return `/topic/${topicSegment}`;
+    };
+
+    const buildQuizViewUrl = (
+      quiz: LmsBuilderQuiz,
+      parentLesson?: LmsBuilderLesson | null,
+      parentTopic?: LmsBuilderTopic | null,
+    ) => {
+      const quizSegment = slugOrId(quiz.slug, quiz._id);
+      if (courseSlug && parentLesson?.slug) {
+        const lessonBase = `/course/${courseSlug}/lesson/${parentLesson.slug}`;
+        if (parentTopic?.slug) {
+          return `${lessonBase}/topic/${parentTopic.slug}/quiz/${quizSegment}`;
+        }
+        return `${lessonBase}/quiz/${quizSegment}`;
+      }
+      return `/quiz/${quizSegment}`;
+    };
+
+    const buildEditUrl = (postType: string, id: string) =>
+      `/admin/edit?post_type=${postType}&post_id=${id}`;
+
     const lessonsById = new Map(
       courseData.attachedLessons.map((lesson) => [lesson._id, lesson]),
     );
@@ -126,6 +169,9 @@ export const CourseBuilderScreen = ({
     const allLessons = [...orderedLessons, ...orphanLessons];
 
     const lessonItems = allLessons.map((lesson) => {
+      const lessonViewUrl = buildLessonViewUrl(lesson);
+      const lessonEditUrl = buildEditUrl("lessons", lesson._id);
+
       const topics =
         (courseData.attachedTopics ?? [])
           .filter((topic) => topic.lessonId === lesson._id)
@@ -135,6 +181,8 @@ export const CourseBuilderScreen = ({
             title: topic.title ?? "Untitled topic",
             type: "topic" as const,
             quizzes: [],
+            viewUrl: buildTopicViewUrl(topic, lesson),
+            editUrl: buildEditUrl("topics", topic._id),
           })) ?? [];
 
       const lessonQuizzes =
@@ -148,12 +196,16 @@ export const CourseBuilderScreen = ({
             id: quiz._id,
             title: quiz.title ?? "Untitled quiz",
             type: "quiz" as const,
+            viewUrl: buildQuizViewUrl(quiz, lesson, null),
+            editUrl: buildEditUrl("quizzes", quiz._id),
           })) ?? [];
 
       return {
         id: lesson._id,
         title: lesson.title ?? "Untitled lesson",
         type: "lesson" as const,
+        viewUrl: lessonViewUrl,
+        editUrl: lessonEditUrl,
         contentItems: [...topics, ...lessonQuizzes],
       };
     });
@@ -166,12 +218,16 @@ export const CourseBuilderScreen = ({
           id: quiz._id,
           title: quiz.title ?? "Untitled quiz",
           type: "quiz" as const,
+          viewUrl: buildQuizViewUrl(quiz),
+          editUrl: buildEditUrl("quizzes", quiz._id),
         })) ?? [];
 
     const normalizeLesson = (lesson: LmsBuilderLesson) => ({
       id: lesson._id,
       title: lesson.title ?? "Untitled lesson",
       type: "lesson" as const,
+      viewUrl: buildLessonViewUrl(lesson),
+      editUrl: buildEditUrl("lessons", lesson._id),
     });
 
     const normalizeTopic = (topic: LmsBuilderTopic) => ({
@@ -179,12 +235,16 @@ export const CourseBuilderScreen = ({
       title: topic.title ?? "Untitled topic",
       type: "topic" as const,
       description: topic.excerpt,
+      viewUrl: buildTopicViewUrl(topic),
+      editUrl: buildEditUrl("topics", topic._id),
     });
 
     const normalizeQuiz = (quiz: LmsBuilderQuiz) => ({
       id: quiz._id,
       title: quiz.title ?? "Untitled quiz",
       type: "quiz" as const,
+      viewUrl: buildQuizViewUrl(quiz),
+      editUrl: buildEditUrl("quizzes", quiz._id),
     });
 
     return {

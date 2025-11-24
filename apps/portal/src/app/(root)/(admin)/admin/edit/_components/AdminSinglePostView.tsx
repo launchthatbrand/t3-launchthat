@@ -1,6 +1,8 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-type-assertion */
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { SerializedEditorState } from "lexical";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -51,6 +53,11 @@ import {
   AdminLayoutMain,
   AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
+import { Editor } from "~/components/blocks/editor-x/editor";
+import {
+  createLexicalStateFromPlainText,
+  parseLexicalSerializedState,
+} from "~/lib/editor/lexical";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import { getCanonicalPostPath } from "~/lib/postTypes/routing";
 import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
@@ -60,6 +67,8 @@ import { PlaceholderState } from "./PlaceholderState";
 
 type CustomFieldValue = string | number | boolean | null;
 
+const stripHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
+
 const normalizeFieldOptions = (
   options: Doc<"postTypeFields">["options"],
 ): { label: string; value: string }[] | null => {
@@ -67,8 +76,8 @@ const normalizeFieldOptions = (
   if (Array.isArray(options)) {
     return options.map((option) => {
       if (
-        option &&
         typeof option === "object" &&
+        option !== null &&
         "label" in option &&
         "value" in option
       ) {
@@ -81,7 +90,10 @@ const normalizeFieldOptions = (
   if (typeof options === "object") {
     return Object.entries(options).map(([key, value]) => ({
       label: key,
-      value: String(value),
+      value:
+        typeof value === "string" || typeof value === "number"
+          ? String(value)
+          : "",
     }));
   }
   return null;
@@ -159,7 +171,7 @@ export function AdminSinglePostView({
   const [isSaving, setIsSaving] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const supportsPostsTable = Boolean(postType) || isBuiltInPostTypeSlug(slug);
+  const supportsPostsTable = !!postType || isBuiltInPostTypeSlug(slug);
   const pluginTabs = pluginSingleView?.config.tabs ?? [];
   const defaultTab =
     pluginSingleView?.config.defaultTab ?? pluginTabs[0]?.slug ?? "edit";
@@ -170,6 +182,44 @@ export function AdminSinglePostView({
   const [activeTab, setActiveTab] = useState(normalizedTab);
   const [isSlugEditing, setIsSlugEditing] = useState(false);
   const slugInputRef = useRef<HTMLInputElement | null>(null);
+  const derivedEditorState = useMemo<SerializedEditorState | undefined>(() => {
+    console.log("[AdminSinglePostView] deriving editor state", {
+      postId: post?._id,
+      hasContent: Boolean(post?.content),
+    });
+    const parsed = parseLexicalSerializedState(post?.content ?? null);
+    if (parsed) {
+      console.log("[AdminSinglePostView] parsed lexical content", {
+        postId: post?._id,
+      });
+      return parsed;
+    }
+    if (!post?.content) {
+      console.log("[AdminSinglePostView] no content to derive", {
+        postId: post?._id,
+      });
+      return undefined;
+    }
+    const fallbackText = stripHtmlTags(post.content);
+    if (!fallbackText) {
+      console.log("[AdminSinglePostView] stripped content empty", {
+        postId: post?._id,
+      });
+      return undefined;
+    }
+    console.log(
+      "[AdminSinglePostView] creating lexical state from plain text",
+      {
+        postId: post?._id,
+      },
+    );
+    return createLexicalStateFromPlainText(fallbackText);
+  }, [post]);
+  const editorKey = useMemo(() => {
+    const base = post?._id ?? (isNewRecord ? "new" : slug);
+    const contentHash = post?.content ? post.content.length : 0;
+    return `${base}-${contentHash}`;
+  }, [isNewRecord, post?._id, post?.content, slug]);
 
   useEffect(() => {
     setActiveTab(normalizedTab);
@@ -367,13 +417,13 @@ export function AdminSinglePostView({
             <div className="flex items-center gap-2">
               <Switch
                 id={controlId}
-                checked={Boolean(value)}
+                checked={value === true}
                 onCheckedChange={(checked) =>
                   handleCustomFieldChange(field.key, checked)
                 }
               />
               <span className="text-sm text-muted-foreground">
-                {Boolean(value) ? "Enabled" : "Disabled"}
+                {value === true ? "Enabled" : "Disabled"}
               </span>
             </div>
           );
@@ -533,9 +583,6 @@ export function AdminSinglePostView({
   }, [post, isNewRecord]);
 
   const headerLabel = postType?.name ?? slug;
-  const pluginBreadcrumb = pluginSingleView
-    ? pluginSingleView.pluginName
-    : "Edit";
   const pageIdentifier = useMemo(
     () =>
       getTenantScopedPageIdentifier(pathname, {
@@ -684,8 +731,11 @@ export function AdminSinglePostView({
       const duplicateSlug =
         generateSlugFromTitle(`${baseSlug}-copy`) ||
         `${baseSlug}-${Date.now()}`;
+      const allowedStatuses = new Set(["draft", "published", "archived"]);
       const duplicateStatus: "draft" | "published" | "archived" =
-        post.status ?? "draft";
+        allowedStatuses.has(post.status ?? "")
+          ? (post.status as "draft" | "published" | "archived")
+          : "draft";
       const metaPayload = buildMetaPayload();
       const hasMetaEntries = Object.keys(metaPayload).length > 0;
       const newId = await createPost({
@@ -708,41 +758,6 @@ export function AdminSinglePostView({
       setIsDuplicating(false);
     }
   };
-
-  const renderHeader = ({
-    showActions,
-    showSaveInHeader = false,
-    tabsSlot,
-  }: {
-    showActions: boolean;
-    showSaveInHeader?: boolean;
-    tabsSlot?: React.ReactNode;
-  }) => (
-    <div className="border-b bg-muted/40">
-      <div className="container flex flex-wrap items-center justify-between gap-4 py-6">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            Admin / {pluginBreadcrumb}
-          </p>
-          <h1 className="text-3xl font-bold">
-            {isNewRecord ? `New ${headerLabel}` : title || headerLabel}
-          </h1>
-          <p className="text-muted-foreground">
-            {postType?.description ?? "Update metadata for this entry."}
-          </p>
-        </div>
-        {showActions && (
-          <div className="flex flex-shrink-0 gap-2">
-            <Button variant="outline" onClick={onBack}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
-            </Button>
-            {showSaveInHeader && renderSaveButton()}
-          </div>
-        )}
-      </div>
-      {tabsSlot ? <div className="container pb-4">{tabsSlot}</div> : null}
-    </div>
-  );
 
   const renderDefaultContent = () => (
     <div className="space-y-6">
@@ -854,13 +869,13 @@ export function AdminSinglePostView({
           </div>
           {/* </div> */}
           <div className="space-y-2">
-            <Label htmlFor="post-content">Content</Label>
-            <Textarea
-              id="post-content"
-              rows={8}
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-              placeholder="Compose the main body content"
+            <Label>Content</Label>
+            <Editor
+              key={editorKey}
+              editorSerializedState={derivedEditorState}
+              onSerializedChange={(state) => {
+                setContent(JSON.stringify(state));
+              }}
             />
           </div>
           <div className="space-y-2">
@@ -1002,7 +1017,7 @@ export function AdminSinglePostView({
           <Button
             variant="outline"
             disabled={!puckEditorHref || isNewRecord}
-            asChild={Boolean(puckEditorHref && !isNewRecord)}
+            asChild={!!(puckEditorHref && !isNewRecord)}
             className="w-full gap-2"
           >
             {puckEditorHref && !isNewRecord ? (

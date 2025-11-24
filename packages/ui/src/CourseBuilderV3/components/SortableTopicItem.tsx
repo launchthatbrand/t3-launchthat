@@ -6,7 +6,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Trash2 } from "lucide-react";
+import { Eye, GripVertical, Pencil, Trash2 } from "lucide-react";
 
 import {
   AccordionContent,
@@ -62,6 +62,16 @@ const SortableTopicItem: React.FC<SortableTopicItemProps> = ({
 
   const isOverTopic = isOver && activeItem?.data.current?.type === "topic";
 
+  const handleOpenLink = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    url?: string,
+  ) => {
+    if (!url) return;
+    event.preventDefault();
+    event.stopPropagation();
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   return (
     // Change root from li to div for sortable
     <div
@@ -110,21 +120,43 @@ const SortableTopicItem: React.FC<SortableTopicItemProps> = ({
               </span>
             )}
           </AccordionTrigger>
-          {onRemoveTopic && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="ml-auto text-destructive hover:text-destructive"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                onRemoveTopic(parentLessonId, topic.id);
-              }}
-              aria-label={`Remove ${topic.title}`}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
+          <div className="ml-auto flex items-center gap-1 pr-1">
+            {topic.viewUrl && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`View ${topic.title}`}
+                onClick={(event) => handleOpenLink(event, topic.viewUrl)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+            )}
+            {topic.editUrl && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Edit ${topic.title}`}
+                onClick={(event) => handleOpenLink(event, topic.editUrl)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+            {onRemoveTopic && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive hover:text-destructive"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onRemoveTopic(parentLessonId, topic.id);
+                }}
+                aria-label={`Remove ${topic.title}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Content contains nested quizzes and dropzone */}

@@ -19,6 +19,7 @@ import { CollapsibleContainerNode } from "~/components/editor/nodes/collapsible-
 import { CollapsibleContentNode } from "~/components/editor/nodes/collapsible-content-node";
 import { CollapsibleTitleNode } from "~/components/editor/nodes/collapsible-title-node";
 import { FigmaNode } from "~/components/editor/nodes/embeds/figma-node";
+import { OEmbedNode } from "~/components/editor/nodes/embeds/oembed-node";
 import { TweetNode } from "~/components/editor/nodes/embeds/tweet-node";
 import { YouTubeNode } from "~/components/editor/nodes/embeds/youtube-node";
 import { EmojiNode } from "~/components/editor/nodes/emoji-node";
@@ -68,6 +69,7 @@ export const nodes: readonly (Klass<LexicalNode> | LexicalNodeReplacement)[] = [
   FigmaNode,
   TweetNode,
   YouTubeNode,
+  OEmbedNode,
   AutocompleteNode,
   MermaidNode,
 ];

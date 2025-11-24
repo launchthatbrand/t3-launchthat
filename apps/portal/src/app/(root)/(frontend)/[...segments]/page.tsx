@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { Data as PuckData } from "@measured/puck";
 import type { Metadata } from "next";
@@ -8,6 +8,8 @@ import { api } from "@/convex/_generated/api";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
 
+import { EditorViewer } from "~/components/blocks/editor-x/viewer";
+import { parseLexicalSerializedState } from "~/lib/editor/lexical";
 import { findPostTypeBySlug } from "~/lib/plugins/frontend";
 import {
   getCanonicalPostPath,
@@ -310,6 +312,7 @@ function PostDetail({
     postMeta,
   });
   const hasPuckContent = Boolean(puckData?.content?.length);
+  const lexicalContent = parseLexicalSerializedState(post.content ?? null);
 
   if (hasPuckContent && puckData) {
     return (
@@ -332,7 +335,12 @@ function PostDetail({
           )}
           <PostMetaSummary post={post} postType={postType} />
         </header>
-        {post.content ? (
+        {lexicalContent ? (
+          <EditorViewer
+            editorSerializedState={lexicalContent}
+            className="prose max-w-none"
+          />
+        ) : post.content ? (
           <div
             className="prose max-w-none"
             dangerouslySetInnerHTML={{ __html: post.content }}

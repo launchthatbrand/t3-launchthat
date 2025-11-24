@@ -2,7 +2,7 @@ import type { Active } from "@dnd-kit/core";
 import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Trash2 } from "lucide-react";
+import { Eye, GripVertical, Pencil, Trash2 } from "lucide-react";
 
 import {
   AccordionContent,
@@ -84,6 +84,16 @@ const SortableQuizItem: React.FC<SortableQuizItemProps> = ({
 
   const isOverQuiz = isOver && activeItem?.data.current?.type === "quiz";
 
+  const handleOpenLink = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    url?: string,
+  ) => {
+    if (!url) return;
+    event.preventDefault();
+    event.stopPropagation();
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
       {isOverQuiz && (
@@ -127,21 +137,43 @@ const SortableQuizItem: React.FC<SortableQuizItemProps> = ({
               {quiz.title}
             </span>
           </AccordionTrigger>
-          {onRemoveQuiz && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="ml-auto text-destructive hover:text-destructive"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                onRemoveQuiz();
-              }}
-              aria-label={`Remove ${quiz.title}`}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
+          <div className="ml-auto flex items-center gap-1 pr-1">
+            {quiz.viewUrl && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`View ${quiz.title}`}
+                onClick={(event) => handleOpenLink(event, quiz.viewUrl)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+            )}
+            {quiz.editUrl && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Edit ${quiz.title}`}
+                onClick={(event) => handleOpenLink(event, quiz.editUrl)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+            {onRemoveQuiz && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive hover:text-destructive"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onRemoveQuiz();
+                }}
+                aria-label={`Remove ${quiz.title}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
         <AccordionContent className="px-4 pb-4 pt-0 text-xs text-muted-foreground">
           {/* Placeholder for potential future quiz content/settings/dropzones */}

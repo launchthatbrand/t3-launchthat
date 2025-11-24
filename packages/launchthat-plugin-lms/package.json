@@ -26,6 +26,7 @@
     "convex": "^1.23.0",
     "launchthat-plugin-core": "workspace:*",
     "lucide-react": "^0.503.0",
+    "motion": "^12.23.24",
     "sonner": "^2.0.1"
   },
   "devDependencies": {

@@ -3,7 +3,14 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Badge } from "@acme/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 
 export type CourseSummary = {
@@ -47,53 +54,105 @@ export function CoursesArchive({
   }, [courses, search]);
 
   if (!courses) {
-    return <div>{loadingLabel}</div>;
+    return (
+      <div className="py-12 text-center text-muted-foreground">
+        {loadingLabel}
+      </div>
+    );
   }
 
   if (courses.length === 0) {
-    return <div>{emptyLabel}</div>;
+    return (
+      <div className="py-12 text-center text-muted-foreground">
+        {emptyLabel}
+      </div>
+    );
   }
 
   return (
-    <div className="container py-8">
-      <h1 className="mb-6 text-2xl font-bold">{title}</h1>
-      <div className="mb-6 max-w-md">
-        <Input
-          placeholder={searchPlaceholder}
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-      </div>
-      <div className="grid gap-6 md:grid-cols-3">
-        {filteredCourses.map((course, index) => {
-          const derivedHref =
-            course.href ??
-            (course.slug
-              ? `/course/${course.slug}`
-              : course.id
-                ? `/course/${course.id}`
-                : "/courses");
-          const cardKey =
-            course.id ??
-            course.slug ??
-            course.href ??
-            `${course.title}-${index}`;
+    <div className="bg-muted/30 py-10">
+      <div className="container space-y-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-wider text-muted-foreground">
+              Learn with confidence
+            </p>
+            <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+            <p className="text-sm text-muted-foreground">
+              Curated courses for every stage of your learning journey.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 md:flex-row">
+            <Input
+              placeholder={searchPlaceholder}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="md:w-64"
+            />
+          </div>
+        </div>
 
-          return (
-            <Card key={cardKey} className="transition-shadow hover:shadow-lg">
-              <Link href={derivedHref} className="block h-full">
-                <CardHeader>
-                  <CardTitle>{course.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="line-clamp-3 text-sm text-muted-foreground">
-                    {course.description ?? "No description available."}
-                  </p>
-                </CardContent>
-              </Link>
-            </Card>
-          );
-        })}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredCourses.map((course, index) => {
+            const derivedHref =
+              course.href ??
+              (course.slug
+                ? `/course/${course.slug}`
+                : course.id
+                  ? `/course/${course.id}`
+                  : "/courses");
+            const cardKey =
+              course.id ??
+              course.slug ??
+              course.href ??
+              `${course.title}-${index}`;
+
+            return (
+              <Card
+                key={cardKey}
+                className="group flex h-full flex-col border-border/80 bg-background shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+              >
+                <Link href={derivedHref} className="flex h-full flex-col">
+                  <CardHeader className="space-y-1 pb-3">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="secondary" className="text-xs uppercase">
+                        Course
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        Updated recently
+                      </span>
+                    </div>
+                    <CardTitle className="text-xl font-semibold leading-tight">
+                      {course.title}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex-1 space-y-4 text-sm text-muted-foreground">
+                    <p className="line-clamp-3">
+                      {course.description ?? "No description available."}
+                    </p>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      {["Self paced", "Certificate", "On demand"].map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant="outline"
+                          className="rounded-full px-3 py-1"
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="border-t border-border/60">
+                    <div className="flex w-full items-center justify-between pt-3 text-sm font-medium">
+                      <span>View details</span>
+                      <span className="text-primary">Get started →</span>
+                    </div>
+                  </CardFooter>
+                </Link>
+              </Card>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

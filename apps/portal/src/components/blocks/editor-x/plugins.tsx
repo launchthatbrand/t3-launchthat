@@ -43,6 +43,7 @@ import { DragDropPastePlugin } from "~/components/editor/plugins/drag-drop-paste
 import { DraggableBlockPlugin } from "~/components/editor/plugins/draggable-block-plugin";
 import { AutoEmbedPlugin } from "~/components/editor/plugins/embeds/auto-embed-plugin";
 import { FigmaPlugin } from "~/components/editor/plugins/embeds/figma-plugin";
+import { OEmbedPlugin } from "~/components/editor/plugins/embeds/oembed-plugin";
 import { TwitterPlugin } from "~/components/editor/plugins/embeds/twitter-plugin";
 import { YouTubePlugin } from "~/components/editor/plugins/embeds/youtube-plugin";
 import { EmojiPickerPlugin } from "~/components/editor/plugins/emoji-picker-plugin";
@@ -263,6 +264,7 @@ export function Plugins() {
         <FigmaPlugin />
         <TwitterPlugin />
         <YouTubePlugin />
+        <OEmbedPlugin />
 
         <CodeHighlightPlugin />
         <CodeActionMenuPlugin anchorElem={floatingAnchorElem} />
@@ -308,6 +310,7 @@ export function Plugins() {
             EmbedsPickerPlugin({ embed: "figma" }),
             EmbedsPickerPlugin({ embed: "tweet" }),
             EmbedsPickerPlugin({ embed: "youtube-video" }),
+            EmbedsPickerPlugin({ embed: "oembed" }),
             EquationPickerPlugin(),
             ImagePickerPlugin(),
             CollapsiblePickerPlugin(),

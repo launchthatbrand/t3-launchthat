@@ -9,6 +9,8 @@ export interface Quiz {
   id: string;
   title: string;
   type: "quiz"; // Add type discriminator
+  viewUrl?: string;
+  editUrl?: string;
 }
 
 export interface Topic {
@@ -16,6 +18,8 @@ export interface Topic {
   title: string;
   quizzes: Quiz[];
   type: "topic"; // Add type for consistency if needed later
+  viewUrl?: string;
+  editUrl?: string;
 }
 
 export interface Lesson {
@@ -23,6 +27,8 @@ export interface Lesson {
   title: string;
   contentItems: (Topic | Quiz)[]; // Unified content array
   type: "lesson";
+  viewUrl?: string;
+  editUrl?: string;
 }
 
 const isLesson = (item: Lesson | Quiz): item is Lesson =>

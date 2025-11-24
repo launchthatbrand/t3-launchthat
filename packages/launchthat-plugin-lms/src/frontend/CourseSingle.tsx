@@ -1,19 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import { useMemo } from "react";
 import { api } from "@portal/convexspec";
 import { useQuery } from "convex/react";
+import { ClipboardList, Layers, PlayCircle } from "lucide-react";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@acme/ui/accordion";
 import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Card, CardContent } from "@acme/ui/card";
 import { Skeleton } from "@acme/ui/skeleton";
 
 import type { Id } from "../lib/convexId";
@@ -23,6 +16,11 @@ import type {
   LmsBuilderTopic,
   LmsCourseBuilderData,
 } from "../types";
+import {
+  CourseStructure,
+  type StructuredLessonEntry,
+} from "./components/CourseStructure";
+import { HeroStat } from "./components/HeroStat";
 
 interface CourseSingleProps {
   courseId: Id<"posts">;
@@ -43,10 +41,6 @@ export function CourseSingle({
           courseId,
         },
   );
-  const [expandedLessons, setExpandedLessons] = useState<string[]>([]);
-  const [expandedTopics, setExpandedTopics] = useState<string[]>([]);
-  const [expandedQuizzes, setExpandedQuizzes] = useState<string[]>([]);
-
   const isLoading = data === undefined;
   const isMissing = data === null;
 
@@ -97,180 +91,145 @@ export function CourseSingle({
     return map;
   }, [attachedQuizzes]);
 
+  const totalTopics = lessons.reduce((sum, lesson) => {
+    const lessonTopics = topicsByLesson.get(lesson._id) ?? [];
+    return sum + lessonTopics.length;
+  }, 0);
+
+  const totalQuizzes = lessons.reduce((sum, lesson) => {
+    const lessonQuizzes = quizzesByLesson.get(lesson._id) ?? [];
+    return sum + lessonQuizzes.length;
+  }, 0);
+
+  const structuredLessons = useMemo<StructuredLessonEntry[]>(() => {
+    return course.courseStructure
+      .map((item) => {
+        const lesson = attachedLessons.find((l) => l._id === item.lessonId);
+        if (!lesson) {
+          return null;
+        }
+
+        const lessonTopics = [...(topicsByLesson.get(lesson._id) ?? [])].sort(
+          sortByOrderThenTitle,
+        );
+        const lessonQuizzes = [...(quizzesByLesson.get(lesson._id) ?? [])].sort(
+          sortByOrderThenTitle,
+        );
+
+        return {
+          lesson,
+          topics: lessonTopics,
+          quizzes: lessonQuizzes,
+        };
+      })
+      .filter(Boolean) as StructuredLessonEntry[];
+  }, [
+    course.courseStructure,
+    attachedLessons,
+    topicsByLesson,
+    quizzesByLesson,
+  ]);
+
+  const standaloneQuizzes = useMemo(
+    () =>
+      attachedQuizzes
+        .filter((quiz) => !quiz.lessonId)
+        .map((quiz) => ({ ...quiz }))
+        .sort(sortByOrderThenTitle),
+    [attachedQuizzes],
+  );
+
   if (isLoading) {
     return (
-      <div className="container py-12">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="mt-4 h-20 w-full" />
+      <div className="container space-y-4 py-16">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-12 w-3/4" />
+        <Skeleton className="h-32 w-full" />
       </div>
     );
   }
 
   if (isMissing) {
     return (
-      <div className="container py-12 text-center text-muted-foreground">
+      <div className="container py-16 text-center text-muted-foreground">
         Course not found.
       </div>
     );
   }
 
   return (
-    <div className="container space-y-10 py-8">
-      <header className="space-y-4">
-        <Badge variant="secondary" className="rounded-full">
-          Course
-        </Badge>
-        <h1 className="text-4xl font-bold">{course.title}</h1>
-        {course.excerpt && (
-          <p className="text-lg text-muted-foreground">{course.excerpt}</p>
+    <div className="space-y-10 bg-gradient-to-b from-muted/50 via-transparent to-transparent py-10">
+      <div className="container space-y-6">
+        <header className="rounded-3xl bg-background/90 p-8 shadow-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge variant="secondary" className="rounded-full">
+              Course
+            </Badge>
+            <span className="text-sm text-muted-foreground">
+              Updated recently
+            </span>
+          </div>
+          <h1 className="mt-4 text-4xl font-bold tracking-tight">
+            {course.title}
+          </h1>
+          {course.excerpt && (
+            <p className="mt-3 text-lg text-muted-foreground">
+              {course.excerpt}
+            </p>
+          )}
+          <div className="relative mt-6 grid gap-4 md:grid-cols-3">
+            <HeroStat
+              label="Lessons"
+              value={lessons.length}
+              icon={<Layers className="size-5" />}
+            />
+            <HeroStat
+              label="Topics"
+              value={totalTopics}
+              icon={<PlayCircle className="size-5" />}
+            />
+            <HeroStat
+              label="Quizzes"
+              value={totalQuizzes}
+              icon={<ClipboardList className="size-5" />}
+            />
+          </div>
+        </header>
+
+        {structuredLessons.length === 0 ? (
+          <Card>
+            <CardContent className="py-10 text-center text-muted-foreground">
+              This course does not have any lessons yet.
+            </CardContent>
+          </Card>
+        ) : (
+          <section className="space-y-4">
+            <div className="space-y-2">
+              <h2 className="text-2xl font-semibold">Course outline</h2>
+              <p className="text-sm text-muted-foreground">
+                Lessons display their topics and quizzes following the structure
+                you defined in the course builder.
+              </p>
+            </div>
+            <CourseStructure
+              lessons={structuredLessons}
+              standaloneQuizzes={standaloneQuizzes}
+              baseCoursePath={baseCoursePath}
+            />
+          </section>
         )}
-      </header>
-
-      {lessons.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            This course does not have any lessons yet.
-          </CardContent>
-        </Card>
-      ) : (
-        <Accordion
-          type="multiple"
-          value={expandedLessons}
-          onValueChange={setExpandedLessons}
-          className="space-y-4"
-        >
-          {lessons.map((lesson) => {
-            const lessonTopics = topicsByLesson.get(lesson._id) ?? [];
-            const lessonQuizzes = quizzesByLesson.get(lesson._id) ?? [];
-            const lessonPath = `${baseCoursePath}/lesson/${lesson.slug ?? lesson._id}`;
-
-            return (
-              <AccordionItem key={lesson._id} value={lesson._id}>
-                <AccordionTrigger className="items-start gap-4 text-left text-lg font-semibold">
-                  <div className="flex flex-1 flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <span>{lesson.title}</span>
-                        <Badge variant="outline">Lesson</Badge>
-                      </div>
-                      {lesson.excerpt && (
-                        <p className="text-sm font-normal text-muted-foreground">
-                          {lesson.excerpt}
-                        </p>
-                      )}
-                    </div>
-                    <Button asChild size="sm" variant="secondary">
-                      <Link href={lessonPath}>View lesson</Link>
-                    </Button>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <Card className="border bg-card">
-                    <CardContent className="space-y-6 pt-6">
-                      {lessonTopics.length > 0 && (
-                        <div className="space-y-3">
-                          <h3 className="text-sm font-medium text-muted-foreground">
-                            Topics
-                          </h3>
-                          <Accordion
-                            type="multiple"
-                            value={expandedTopics}
-                            onValueChange={setExpandedTopics}
-                            className="space-y-3"
-                          >
-                            {lessonTopics.map((topic) => {
-                              const topicPath = `${lessonPath}/topic/${topic.slug ?? topic._id}`;
-                              return (
-                                <AccordionItem
-                                  key={topic._id}
-                                  value={topic._id}
-                                >
-                                  <AccordionTrigger className="text-left text-base font-medium">
-                                    {topic.title}
-                                  </AccordionTrigger>
-                                  <AccordionContent>
-                                    <div className="flex flex-col gap-3 rounded-md border bg-muted/40 p-4">
-                                      {topic.excerpt && (
-                                        <p className="text-sm text-muted-foreground">
-                                          {topic.excerpt}
-                                        </p>
-                                      )}
-                                      <div className="flex flex-wrap gap-2">
-                                        <Badge variant="secondary">Topic</Badge>
-                                        <Button
-                                          asChild
-                                          size="sm"
-                                          variant="outline"
-                                        >
-                                          <Link href={topicPath}>
-                                            View topic
-                                          </Link>
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </AccordionContent>
-                                </AccordionItem>
-                              );
-                            })}
-                          </Accordion>
-                        </div>
-                      )}
-
-                      {lessonQuizzes.length > 0 && (
-                        <div className="space-y-3">
-                          <h3 className="text-sm font-medium text-muted-foreground">
-                            Quizzes
-                          </h3>
-                          <Accordion
-                            type="multiple"
-                            value={expandedQuizzes}
-                            onValueChange={setExpandedQuizzes}
-                            className="space-y-3"
-                          >
-                            {lessonQuizzes.map((quiz) => {
-                              const quizPath = `${lessonPath}/quiz/${quiz.slug ?? quiz._id}`;
-                              return (
-                                <AccordionItem key={quiz._id} value={quiz._id}>
-                                  <AccordionTrigger className="text-left text-base font-medium">
-                                    <span className="flex items-center gap-2">
-                                      {quiz.title}
-                                      <Badge variant="outline">
-                                        {quiz.isFinal ? "Final Quiz" : "Quiz"}
-                                      </Badge>
-                                    </span>
-                                  </AccordionTrigger>
-                                  <AccordionContent>
-                                    <div className="flex flex-col gap-3 rounded-md border bg-muted/40 p-4">
-                                      {quiz.excerpt && (
-                                        <p className="text-sm text-muted-foreground">
-                                          {quiz.excerpt}
-                                        </p>
-                                      )}
-                                      <div className="flex flex-wrap gap-2">
-                                        <Button
-                                          asChild
-                                          size="sm"
-                                          variant="outline"
-                                        >
-                                          <Link href={quizPath}>View quiz</Link>
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </AccordionContent>
-                                </AccordionItem>
-                              );
-                            })}
-                          </Accordion>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </AccordionContent>
-              </AccordionItem>
-            );
-          })}
-        </Accordion>
-      )}
+      </div>
     </div>
   );
+}
+
+function sortByOrderThenTitle<
+  T extends { order?: number | null; title: string },
+>(a: T, b: T) {
+  const aOrder = a.order ?? Number.MAX_SAFE_INTEGER;
+  const bOrder = b.order ?? Number.MAX_SAFE_INTEGER;
+  if (aOrder === bOrder) {
+    return a.title.localeCompare(b.title);
+  }
+  return aOrder - bOrder;
 }

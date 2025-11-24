@@ -7761,7 +7761,9 @@ export type PublicApiType = {
               isFinal?: boolean;
               lessonId?: Id<"posts">;
               order?: number;
+              slug?: string;
               title: string;
+              topicId?: Id<"posts">;
             }>;
             attachedTopics: Array<{
               _id: Id<"posts">;
@@ -7769,6 +7771,7 @@ export type PublicApiType = {
               excerpt?: string;
               lessonId?: Id<"posts">;
               order?: number;
+              slug?: string;
               title: string;
             }>;
             course: {
@@ -7804,6 +7807,7 @@ export type PublicApiType = {
             excerpt?: string;
             lessonId?: Id<"posts">;
             order?: number;
+            slug?: string;
             title: string;
           }>
         >;
@@ -7818,7 +7822,9 @@ export type PublicApiType = {
             isFinal?: boolean;
             lessonId?: Id<"posts">;
             order?: number;
+            slug?: string;
             title: string;
+            topicId?: Id<"posts">;
           }>
         >;
       };

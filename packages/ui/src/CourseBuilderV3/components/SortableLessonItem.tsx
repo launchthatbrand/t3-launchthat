@@ -6,7 +6,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Trash2 } from "lucide-react";
+import { Eye, GripVertical, Pencil, Trash2 } from "lucide-react";
 
 import {
   AccordionContent,
@@ -74,6 +74,16 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
 
   const isOverLesson = isOver && activeItem?.data.current?.type === "lesson";
 
+  const handleOpenLink = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    url?: string,
+  ) => {
+    if (!url) return;
+    event.preventDefault();
+    event.stopPropagation();
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
       {isOverLesson && (
@@ -100,21 +110,43 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
             </Badge>
             <span className="flex-grow text-left">{lesson.title}</span>
           </AccordionTrigger>
-          {onRemoveLesson && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="ml-auto text-destructive hover:text-destructive"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                onRemoveLesson(lesson.id);
-              }}
-              aria-label={`Remove ${lesson.title}`}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
+          <div className="ml-auto flex items-center gap-1 pr-1">
+            {lesson.viewUrl && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`View ${lesson.title}`}
+                onClick={(event) => handleOpenLink(event, lesson.viewUrl)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+            )}
+            {lesson.editUrl && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Edit ${lesson.title}`}
+                onClick={(event) => handleOpenLink(event, lesson.editUrl)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+            {onRemoveLesson && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive hover:text-destructive"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onRemoveLesson(lesson.id);
+                }}
+                aria-label={`Remove ${lesson.title}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
         <AccordionContent className="border-t px-4 pb-4 pt-2">
           {/* Single Sortable Context for Topics and Quizzes */}
