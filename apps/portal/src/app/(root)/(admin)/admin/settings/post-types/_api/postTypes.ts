@@ -6,15 +6,16 @@
  * This module provides client functions to interact with the post types API.
  */
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-import {
-  PORTAL_TENANT_ID,
-  getTenantOrganizationId,
-} from "~/lib/tenant-fetcher";
 import { useCallback, useEffect, useRef } from "react";
+import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 
-import { api } from "@/convex/_generated/api";
+import type { PluginPostTypeConfig } from "~/lib/plugins/types";
 import { useTenant } from "~/context/TenantContext";
+import {
+  getTenantOrganizationId,
+  PORTAL_TENANT_ID,
+} from "~/lib/tenant-fetcher";
 
 const resolvePortalAwareOrganizationId = (
   tenant: ReturnType<typeof useTenant>,
@@ -37,11 +38,9 @@ export function usePostTypes(includeBuiltIn = true): {
       return;
     }
     hasEnsuredRef.current = true;
-    ensureDefaults({})
-      .then(() => {})
-      .catch((error) => {
-        console.error("Failed to ensure default post types", error);
-      });
+    void ensureDefaults({}).catch((error) => {
+      console.error("Failed to ensure default post types", error);
+    });
   }, [ensureDefaults]);
   const organizationId = getTenantOrganizationId(tenant);
   const args = organizationId
@@ -104,9 +103,7 @@ export function usePostTypeFields(
         ...(organizationId ? { organizationId } : {}),
       }
     : "skip";
-  const result = useQuery(api.core.postTypes.queries.fieldsBySlug, args) as
-    | Doc<"postTypeFields">[]
-    | undefined;
+  const result = useQuery(api.core.postTypes.queries.fieldsBySlug, args);
   if (!slug) {
     return { data: [], isLoading: false };
   }
@@ -141,6 +138,35 @@ export function useCreatePostType() {
   );
 }
 
+type PostTypeDefinitionPayload = Pick<
+  PluginPostTypeConfig,
+  | "name"
+  | "slug"
+  | "description"
+  | "isPublic"
+  | "enableApi"
+  | "includeTimestamps"
+  | "enableVersioning"
+  | "supports"
+  | "rewrite"
+  | "adminMenu"
+>;
+
+const pickPostTypeDefinition = (
+  definition: PluginPostTypeConfig,
+): PostTypeDefinitionPayload => ({
+  name: definition.name,
+  slug: definition.slug,
+  description: definition.description,
+  isPublic: definition.isPublic,
+  enableApi: definition.enableApi,
+  includeTimestamps: definition.includeTimestamps,
+  enableVersioning: definition.enableVersioning,
+  supports: definition.supports,
+  rewrite: definition.rewrite,
+  adminMenu: definition.adminMenu,
+});
+
 export function useEnsurePostTypeAccess() {
   const tenant = useTenant();
   const organizationId = resolvePortalAwareOrganizationId(tenant);
@@ -150,13 +176,18 @@ export function useEnsurePostTypeAccess() {
   type MutationArgs = Parameters<typeof mutate>[0];
 
   return useCallback(
-    async (slug: string) => {
+    async (slugOrDefinition: string | PluginPostTypeConfig) => {
       if (!organizationId) {
         throw new Error("No tenant selected");
       }
+      const hasDefinition = typeof slugOrDefinition !== "string";
+      const slug = hasDefinition ? slugOrDefinition.slug : slugOrDefinition;
       const payload: MutationArgs = {
         slug,
         organizationId,
+        definition: hasDefinition
+          ? pickPostTypeDefinition(slugOrDefinition)
+          : undefined,
       };
       return await mutate(payload);
     },

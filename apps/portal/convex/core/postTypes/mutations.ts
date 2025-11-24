@@ -281,7 +281,7 @@ export const create = mutation({
 
     const timestamp = Date.now();
     const id = await ctx.db.insert("postTypes", {
-      organizationId: resolvedOrgId ?? undefined,
+      organizationId: resolvedOrgId,
       enabledOrganizationIds: resolvedOrgId ? [resolvedOrgId] : undefined,
       name: args.name,
       slug: args.slug,
@@ -324,20 +324,131 @@ const fetchScopedPostType = async (
   return await getScopedPostTypeBySlug(ctx, slug, organizationId);
 };
 
+const clonePostTypeForOrganization = async (
+  ctx: MutationCtx,
+  slug: string,
+  organizationId: Id<"organizations">,
+): Promise<Doc<"postTypes">> => {
+  const baseDefinition = await fetchScopedPostType(ctx, slug);
+  if (!baseDefinition) {
+    throw new Error(`Post type with slug ${slug} not found`);
+  }
+
+  const timestamp = Date.now();
+  const {
+    _id: basePostTypeId,
+    _creationTime: _baseCreationTime,
+    organizationId: _baseOrgId,
+    enabledOrganizationIds: _baseEnabledIds,
+    createdAt: _baseCreatedAt,
+    updatedAt: _baseUpdatedAt,
+    ...basePayload
+  } = baseDefinition;
+
+  const clonedPostTypeId = await ctx.db.insert("postTypes", {
+    ...basePayload,
+    organizationId,
+    enabledOrganizationIds: [organizationId],
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+
+  const baseFields = await ctx.db
+    .query("postTypeFields")
+    .withIndex("by_postType", (q) => q.eq("postTypeId", basePostTypeId))
+    .collect();
+
+  await Promise.all(
+    baseFields.map((field) => {
+      const {
+        _id: _fieldId,
+        _creationTime: _fieldCreationTime,
+        postTypeId: _fieldPostTypeId,
+        createdAt: fieldCreatedAt,
+        updatedAt: fieldUpdatedAt,
+        ...fieldPayload
+      } = field;
+
+      return ctx.db.insert("postTypeFields", {
+        ...fieldPayload,
+        postTypeId: clonedPostTypeId,
+        createdAt: fieldCreatedAt,
+        updatedAt: fieldUpdatedAt ?? timestamp,
+      });
+    }),
+  );
+
+  const clonedPostType = await ctx.db.get(clonedPostTypeId);
+  if (!clonedPostType) {
+    throw new Error(
+      `Failed to load cloned post type for ${slug} and organization ${organizationId}`,
+    );
+  }
+  return clonedPostType;
+};
+
 export const enableForOrganization = mutation({
   args: {
     slug: v.string(),
     organizationId: organizationAccessValidator,
+    definition: v.optional(
+      v.object({
+        name: v.string(),
+        description: v.optional(v.string()),
+        isPublic: v.boolean(),
+        enableApi: v.optional(v.boolean()),
+        includeTimestamps: v.optional(v.boolean()),
+        enableVersioning: v.optional(v.boolean()),
+        supports: v.optional(postTypeSupportsValidator),
+        rewrite: v.optional(postTypeRewriteValidator),
+        adminMenu: v.optional(postTypeAdminMenuValidator),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
     const resolvedOrgId = resolveScopedOrganizationId(args.organizationId);
     const isPortal = args.organizationId === PORTAL_TENANT_ID;
 
-    const postType = await fetchScopedPostType(
-      ctx,
-      args.slug,
-      resolvedOrgId ?? undefined,
-    );
+    let postType = await fetchScopedPostType(ctx, args.slug, resolvedOrgId);
+
+    if (!postType) {
+      if (args.definition) {
+        const timestamp = Date.now();
+        const id = await ctx.db.insert("postTypes", {
+          organizationId: resolvedOrgId ?? undefined,
+          enabledOrganizationIds: resolvedOrgId ? [resolvedOrgId] : undefined,
+          name: args.definition.name,
+          slug: args.slug,
+          description: args.definition.description,
+          isPublic: args.definition.isPublic,
+          isBuiltIn: false,
+          enableApi: args.definition.enableApi ?? true,
+          includeTimestamps: args.definition.includeTimestamps ?? true,
+          enableVersioning: args.definition.enableVersioning ?? false,
+          supports: args.definition.supports,
+          rewrite: args.definition.rewrite,
+          adminMenu:
+            args.definition.adminMenu ??
+            ({
+              enabled: false,
+              label: args.definition.name,
+              slug: args.slug,
+            } satisfies Doc<"postTypes">["adminMenu"]),
+          fieldCount: 0,
+          entryCount: 0,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+        await createSystemFields(ctx, id);
+        postType = await ctx.db.get(id);
+      } else if (resolvedOrgId) {
+        postType = await clonePostTypeForOrganization(
+          ctx,
+          args.slug,
+          resolvedOrgId,
+        );
+      }
+    }
 
     if (
       !postType ||
@@ -399,11 +510,7 @@ export const disableForOrganization = mutation({
     const resolvedOrgId = resolveScopedOrganizationId(args.organizationId);
     const isPortal = args.organizationId === PORTAL_TENANT_ID;
 
-    const postType = await fetchScopedPostType(
-      ctx,
-      args.slug,
-      resolvedOrgId ?? undefined,
-    );
+    const postType = await fetchScopedPostType(ctx, args.slug, resolvedOrgId);
 
     if (
       !postType ||

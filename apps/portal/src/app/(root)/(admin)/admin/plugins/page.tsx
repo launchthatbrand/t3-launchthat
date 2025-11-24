@@ -1,5 +1,11 @@
 "use client";
 
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useCallback, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { toast } from "sonner";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,6 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@acme/ui/alert-dialog";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -18,29 +26,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { Separator } from "@acme/ui/separator";
+
+import type { EntityAction } from "~/components/shared/EntityList/types";
 import type {
   PluginDefinition,
   PluginPostTypeConfig,
 } from "~/lib/plugins/types";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { useTenant } from "~/context/TenantContext";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
 import {
   useCreatePostType,
   useDisablePostTypeAccess,
   useEnsurePostTypeAccess,
   usePostTypes,
 } from "../settings/post-types/_api/postTypes";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import type { ColumnDef } from "@tanstack/react-table";
-import type { EntityAction } from "~/components/shared/EntityList/types";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
-import Link from "next/link";
-import { Separator } from "@acme/ui/separator";
-import { pluginDefinitions } from "~/lib/plugins/definitions";
-import { toast } from "sonner";
-import { useTenant } from "~/context/TenantContext";
 
 const isPostTypeEnabledForTenant = (
   postType: Doc<"postTypes">,
@@ -84,7 +85,9 @@ export default function PluginsPage() {
   const ensurePostTypeAccess = useEnsurePostTypeAccess();
   const disablePostTypeAccess = useDisablePostTypeAccess();
   const [isPending, startTransition] = useTransition();
-  const [pluginToDisable, setPluginToDisable] = useState<PluginRow | null>(null);
+  const [pluginToDisable, setPluginToDisable] = useState<PluginRow | null>(
+    null,
+  );
   const tenant = useTenant();
   const tenantId = tenant?._id;
 
@@ -136,7 +139,7 @@ export default function PluginsPage() {
         try {
           for (const type of plugin.postTypes) {
             try {
-              await ensurePostTypeAccess(type.slug);
+              await ensurePostTypeAccess(type);
             } catch (error: unknown) {
               const normalizedError = normalizeError(error);
               if (normalizedError.message.includes("not found")) {
@@ -201,9 +204,7 @@ export default function PluginsPage() {
 
   const pluginRows = useMemo<PluginRow[]>(() => {
     return plugins.map((plugin) => {
-      const status = pluginStatus.find(
-        (state) => state.pluginId === plugin.id,
-      );
+      const status = pluginStatus.find((state) => state.pluginId === plugin.id);
       return {
         ...plugin,
         isEnabled: status?.isEnabled ?? false,
@@ -422,9 +423,7 @@ export default function PluginsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (pluginToDisable) {
