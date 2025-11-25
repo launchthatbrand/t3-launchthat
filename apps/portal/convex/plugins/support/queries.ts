@@ -358,6 +358,8 @@ export const listMessages = query({
         ),
       ),
       subject: v.optional(v.string()),
+      htmlBody: v.optional(v.string()),
+      textBody: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -382,6 +384,8 @@ export const listMessages = query({
         contactName: entry.contactName ?? undefined,
         messageType: entry.messageType ?? undefined,
         subject: entry.subject ?? undefined,
+        htmlBody: entry.htmlBody ?? undefined,
+        textBody: entry.textBody ?? undefined,
       }))
       .sort((a, b) => a.createdAt - b.createdAt);
   },

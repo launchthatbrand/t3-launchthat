@@ -14,18 +14,18 @@ type ConversationDoc = Doc<"supportConversations">;
 type EmailSettingsDoc = Doc<"supportEmailSettings">;
 type DnsRecord = NonNullable<EmailSettingsDoc["dnsRecords"]>[number];
 
-const verificationStatusValidator = v.union(
-  v.literal("unverified"),
-  v.literal("pending"),
-  v.literal("verified"),
-  v.literal("failed"),
-);
+// const verificationStatusValidator = v.union(
+//   v.literal("unverified"),
+//   v.literal("pending"),
+//   v.literal("verified"),
+//   v.literal("failed"),
+// );
 
-const dnsRecordShape = v.object({
-  type: v.string(),
-  host: v.string(),
-  value: v.string(),
-});
+// const dnsRecordShape = v.object({
+//   type: v.string(),
+//   host: v.string(),
+//   value: v.string(),
+// });
 
 async function ensureEmailSettings(
   ctx: MutationCtx,
@@ -162,6 +162,8 @@ export const recordMessageHelper = async (
     contactName?: string;
     messageType?: "chat" | "email_inbound" | "email_outbound";
     subject?: string;
+    htmlBody?: string;
+    textBody?: string;
   },
 ) => {
   const lastMessage = await ctx.db
@@ -221,6 +223,8 @@ export const recordMessage = mutation({
       ),
     ),
     subject: v.optional(v.string()),
+    htmlBody: v.optional(v.string()),
+    textBody: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return recordMessageHelper(ctx, args);

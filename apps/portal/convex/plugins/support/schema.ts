@@ -40,6 +40,8 @@ const supportMessagesTable = defineTable({
   emailMessageId: v.optional(v.string()),
   inReplyToId: v.optional(v.string()),
   attachments: v.optional(v.array(v.id("_storage"))),
+  htmlBody: v.optional(v.string()),
+  textBody: v.optional(v.string()),
 })
   .index("by_session", ["organizationId", "sessionId"])
   .index("by_organization", ["organizationId"]);

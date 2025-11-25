@@ -6,7 +6,7 @@ import Link from "next/link";
 
 import { Button } from "@acme/ui/button";
 
-import { ConversationsView } from "./views/ConversationsView";
+import { ConversationsView } from "./views/ConversationView";
 import { DashboardView } from "./views/DashboardView";
 import { ResponsesView } from "./views/ResponsesView";
 import { SettingsView } from "./views/SettingsView";

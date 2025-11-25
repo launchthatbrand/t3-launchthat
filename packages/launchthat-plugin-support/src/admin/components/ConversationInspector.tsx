@@ -38,6 +38,8 @@ export interface ConversationSummary {
   contactId?: string;
   contactName?: string;
   contactEmail?: string;
+  origin: "chat" | "email";
+  status?: "open" | "snoozed" | "closed";
 }
 
 export interface ContactDoc {

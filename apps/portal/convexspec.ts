@@ -5992,6 +5992,7 @@ export type PublicApiType = {
             search?: string;
           },
           Array<{
+            _creationTime: number;
             _id: Id<"contacts">;
             company?: string;
             createdAt: number;
@@ -6010,6 +6011,7 @@ export type PublicApiType = {
           "public",
           { contactId: Id<"contacts"> },
           {
+            _creationTime: number;
             _id: Id<"contacts">;
             company?: string;
             createdAt: number;
@@ -6028,6 +6030,7 @@ export type PublicApiType = {
           "public",
           { email: string; organizationId: Id<"organizations"> },
           {
+            _creationTime: number;
             _id: Id<"contacts">;
             company?: string;
             createdAt: number;
@@ -8033,6 +8036,43 @@ export type PublicApiType = {
     };
     support: {
       queries: {
+        getEmailSettings: FunctionReference<
+          "query",
+          "public",
+          { organizationId: Id<"organizations"> },
+          {
+            allowEmailIntake: boolean;
+            customDomain?: string;
+            defaultAlias: string;
+            dnsRecords?: Array<{ host: string; type: string; value: string }>;
+            isCustomDomainConnected: boolean;
+            lastSyncedAt?: number;
+            resendDomainId?: string;
+            verificationStatus:
+              | "unverified"
+              | "pending"
+              | "verified"
+              | "failed";
+          }
+        >;
+        listConversations: FunctionReference<
+          "query",
+          "public",
+          { limit?: number; organizationId: Id<"organizations"> },
+          Array<{
+            contactEmail?: string;
+            contactId?: Id<"contacts">;
+            contactName?: string;
+            firstAt: number;
+            lastAt: number;
+            lastMessage: string;
+            lastRole: "user" | "assistant";
+            origin: "chat" | "email";
+            sessionId: string;
+            status?: "open" | "snoozed" | "closed";
+            totalMessages: number;
+          }>
+        >;
         listKnowledge: FunctionReference<
           "query",
           "public",
@@ -8049,17 +8089,6 @@ export type PublicApiType = {
             title: string;
             type?: string;
           }>
-        >;
-        matchCannedResponse: FunctionReference<
-          "query",
-          "public",
-          { organizationId: Id<"organizations">; question: string },
-          {
-            content: string;
-            entryId: Id<"supportKnowledge">;
-            slug?: string;
-            title: string;
-          } | null
         >;
         listKnowledgeEntries: FunctionReference<
           "query",
@@ -8091,43 +8120,23 @@ export type PublicApiType = {
             contactName?: string;
             content: string;
             createdAt: number;
+            htmlBody?: string;
             messageType?: "chat" | "email_inbound" | "email_outbound";
             role: "user" | "assistant";
             subject?: string;
+            textBody?: string;
           }>
         >;
-        listConversations: FunctionReference<
+        matchCannedResponse: FunctionReference<
           "query",
           "public",
-          { limit?: number; organizationId: Id<"organizations"> },
-          Array<{
-            contactEmail?: string;
-            contactId?: Id<"contacts">;
-            contactName?: string;
-            firstAt: number;
-            lastAt: number;
-            lastMessage: string;
-            lastRole: "user" | "assistant";
-            origin: "chat" | "email";
-            sessionId: string;
-            status?: "open" | "snoozed" | "closed";
-            totalMessages: number;
-          }>
-        >;
-        getEmailSettings: FunctionReference<
-          "query",
-          "public",
-          { organizationId: Id<"organizations"> },
+          { organizationId: Id<"organizations">; question: string },
           {
-            allowEmailIntake: boolean;
-            customDomain?: string;
-            defaultAlias: string;
-            dnsRecords?: Array<{ host: string; type: string; value: string }>;
-            isCustomDomainConnected: boolean;
-            lastSyncedAt?: number;
-            resendDomainId?: string;
-            verificationStatus: "unverified" | "pending" | "verified" | "failed";
-          }
+            content: string;
+            entryId: Id<"supportKnowledge">;
+            slug?: string;
+            title: string;
+          } | null
         >;
       };
       mutations: {
@@ -8139,11 +8148,13 @@ export type PublicApiType = {
             contactId?: Id<"contacts">;
             contactName?: string;
             content: string;
+            htmlBody?: string;
             messageType?: "chat" | "email_inbound" | "email_outbound";
             organizationId: Id<"organizations">;
             role: "user" | "assistant";
             sessionId: string;
             subject?: string;
+            textBody?: string;
           },
           any
         >;
@@ -8182,17 +8193,13 @@ export type PublicApiType = {
             customDomain?: string | null;
             organizationId: Id<"organizations">;
           },
-          { success: boolean }
+          any
         >;
         beginDomainVerification: FunctionReference<
           "mutation",
           "public",
           { domain: string; organizationId: Id<"organizations"> },
-          {
-            customDomain: string;
-            dnsRecords: Array<{ host: string; type: string; value: string }>;
-            verificationStatus: "pending";
-          }
+          any
         >;
       };
     };
