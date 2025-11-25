@@ -401,6 +401,27 @@ export default function DefaultSidebar() {
   const supportItems = pluginNavItems.filter(
     (item) => item.group === "support",
   );
+  const supportSectionItems =
+    supportItems.length > 0
+      ? [
+          ...supportItems,
+          {
+            title: "Canned Responses",
+            url: "/admin/support/responses",
+            icon: resolveIcon("NotebookPen"),
+          },
+          {
+            title: "Conversations",
+            url: "/admin/support/conversations",
+            icon: resolveIcon("MessageSquare"),
+          },
+          {
+            title: "Settings",
+            url: "/admin/support/settings",
+            icon: resolveIcon("Settings"),
+          },
+        ]
+      : [];
   const lmsSettingsItems = pluginSettingsMenus
     .filter((entry) => entry.pluginId === "lms")
     .map((entry) => entry.item);
@@ -445,10 +466,10 @@ export default function DefaultSidebar() {
     });
   }
 
-  if (supportItems.length > 0) {
+  if (supportSectionItems.length > 0) {
     sections.push({
       label: "Support",
-      items: supportItems,
+      items: supportSectionItems,
     });
   }
 

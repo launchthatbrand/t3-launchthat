@@ -12,6 +12,9 @@ export const recordMessage = mutation({
     sessionId: v.string(),
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
+    contactId: v.optional(v.id("contacts")),
+    contactEmail: v.optional(v.string()),
+    contactName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const lastMessage = await ctx.db

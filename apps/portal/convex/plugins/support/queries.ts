@@ -266,6 +266,9 @@ export const listMessages = query({
       role: v.union(v.literal("user"), v.literal("assistant")),
       content: v.string(),
       createdAt: v.number(),
+      contactId: v.optional(v.id("contacts")),
+      contactEmail: v.optional(v.string()),
+      contactName: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -285,7 +288,84 @@ export const listMessages = query({
         role: entry.role,
         content: entry.content,
         createdAt: entry.createdAt,
+        contactId: entry.contactId,
+        contactEmail: entry.contactEmail ?? undefined,
+        contactName: entry.contactName ?? undefined,
       }))
       .sort((a, b) => a.createdAt - b.createdAt);
+  },
+});
+
+export const listConversations = query({
+  args: {
+    organizationId: v.id("organizations"),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      sessionId: v.string(),
+      lastMessage: v.string(),
+      lastRole: v.union(v.literal("user"), v.literal("assistant")),
+      lastAt: v.number(),
+      firstAt: v.number(),
+      totalMessages: v.number(),
+      contactId: v.optional(v.id("contacts")),
+      contactName: v.optional(v.string()),
+      contactEmail: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(args.limit ?? 50, 100));
+    const rows = (await ctx.db
+      .query("supportMessages")
+      .withIndex("by_organization", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .order("desc")
+      .take(500)) as MessageDoc[];
+
+    const conversations = new Map<
+      string,
+      {
+        sessionId: string;
+        lastMessage: string;
+        lastRole: "user" | "assistant";
+        lastAt: number;
+        firstAt: number;
+        totalMessages: number;
+        contactId?: Id<"contacts">;
+        contactName?: string;
+        contactEmail?: string;
+      }
+    >();
+
+    for (const row of rows) {
+      const existing = conversations.get(row.sessionId);
+      if (existing) {
+        existing.totalMessages += 1;
+        existing.firstAt = row.createdAt;
+        if (!existing.contactId && row.contactId) {
+          existing.contactId = row.contactId;
+          existing.contactName = row.contactName ?? undefined;
+          existing.contactEmail = row.contactEmail ?? undefined;
+        }
+        continue;
+      }
+      conversations.set(row.sessionId, {
+        sessionId: row.sessionId,
+        lastMessage: row.content,
+        lastRole: row.role,
+        lastAt: row.createdAt,
+        firstAt: row.createdAt,
+        totalMessages: 1,
+        contactId: row.contactId ?? undefined,
+        contactName: row.contactName ?? undefined,
+        contactEmail: row.contactEmail ?? undefined,
+      });
+    }
+
+    return Array.from(conversations.values())
+      .sort((a, b) => b.lastAt - a.lastAt)
+      .slice(0, limit);
   },
 });

@@ -2,6 +2,11 @@ import type { PluginDefinition } from "launchthat-plugin-core";
 
 export { SupportChatWidget } from "./components/SupportChatWidget";
 export type { SupportChatWidgetProps } from "./components/SupportChatWidget";
+export type { SupportChatSettings, SupportChatFieldToggles } from "./settings";
+export {
+  defaultSupportChatSettings,
+  supportChatSettingsOptionKey,
+} from "./settings";
 
 export const supportPlugin: PluginDefinition = {
   id: "support",

@@ -1,15 +1,16 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
-"use client";
-
-import type { Id } from "@/convex/_generated/dataModel";
-import { useState, useTransition } from "react";
+import React from "react";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
+import {
+  Activity,
+  ArrowRight,
+  MessageSquareText,
+  NotebookPen,
+} from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
@@ -20,437 +21,203 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@acme/ui/select";
-import { Switch } from "@acme/ui/switch";
-import { Textarea } from "@acme/ui/textarea";
-import { toast } from "@acme/ui/toast";
 
 import {
   AdminLayout,
   AdminLayoutContent,
   AdminLayoutMain,
-  AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
 import { useTenant } from "~/context/TenantContext";
 
-type MatchMode = "contains" | "exact" | "regex";
-
-interface FormState {
-  entryId?: string;
-  title: string;
-  slug: string;
-  content: string;
-  matchMode: MatchMode;
-  matchPhrases: string;
-  priority: number;
-  isActive: boolean;
-  tags: string;
+interface ConversationSummary {
+  sessionId: string;
+  lastMessage: string;
+  lastRole: "user" | "assistant";
+  lastAt: number;
+  firstAt: number;
+  totalMessages: number;
 }
 
-interface KnowledgeEntry {
-  _id: Id<"supportKnowledge">;
-  title: string;
-  slug?: string | null;
-  content: string;
-  matchMode?: MatchMode | null;
-  matchPhrases?: string[] | null;
-  priority?: number | null;
-  isActive?: boolean | null;
-  tags?: string[] | null;
+interface KnowledgeEntrySummary {
+  _id: string;
 }
 
-const defaultFormState: FormState = {
-  title: "",
-  slug: "",
-  content: "",
-  matchMode: "contains",
-  matchPhrases: "",
-  priority: 0,
-  isActive: true,
-  tags: "",
-};
-
-export default function SupportAdminPage() {
+export default function SupportDashboardPage() {
   const tenant = useTenant();
   const organizationId = tenant?._id;
-  const [formState, setFormState] = useState<FormState>(defaultFormState);
-  const [isPending, startTransition] = useTransition();
 
-  const knowledgeQueryArgs = organizationId
-    ? ({ organizationId } as const)
-    : ("skip" as const);
-  const entries = useQuery(
+  const knowledgeEntries = (useQuery(
     api.plugins.support.queries.listKnowledgeEntries,
-    knowledgeQueryArgs,
-  );
+    organizationId ? { organizationId } : "skip",
+  ) ?? []) as KnowledgeEntrySummary[];
+  const conversations = (useQuery(
+    api.plugins.support.queries.listConversations,
+    organizationId ? { organizationId, limit: 50 } : "skip",
+  ) ?? []) as ConversationSummary[];
 
-  const upsertKnowledge = useMutation(
-    api.plugins.support.mutations.upsertKnowledgeEntry,
-  );
-  const deleteKnowledge = useMutation(
-    api.plugins.support.mutations.deleteKnowledgeEntry,
-  );
-
-  const editing = formState.entryId !== undefined;
-
-  const knowledgeEntries: KnowledgeEntry[] = entries ?? [];
-
-  const handleChange = <K extends keyof FormState>(
-    key: K,
-    value: FormState[K],
-  ) => {
-    setFormState((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const resetForm = () => setFormState(defaultFormState);
-
-  const handleEdit = (entry: KnowledgeEntry) => {
-    setFormState({
-      entryId: entry._id,
-      title: entry.title,
-      slug: entry.slug ?? "",
-      content: entry.content,
-      matchMode: entry.matchMode ?? "contains",
-      matchPhrases: (entry.matchPhrases ?? []).join(", "),
-      priority: entry.priority ?? 0,
-      isActive: entry.isActive !== false,
-      tags: (entry.tags ?? []).join(", "),
-    });
-  };
-
-  const upsert = () => {
-    if (!organizationId) {
-      toast.error("Missing organization context");
-      return;
-    }
-
-    if (!formState.title.trim() || !formState.content.trim()) {
-      toast.error("Title and response content are required");
-      return;
-    }
-
-    const matchPhrases = formState.matchPhrases
-      .split(/[\n,]+/)
-      .map((phrase) => phrase.trim())
-      .filter(Boolean);
-
-    startTransition(() => {
-      void upsertKnowledge({
-        organizationId,
-        entryId: formState.entryId,
-        title: formState.title.trim(),
-        slug: formState.slug.trim() || undefined,
-        content: formState.content.trim(),
-        tags: formState.tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
-        type: "canned",
-        matchMode: formState.matchMode,
-        matchPhrases,
-        priority: formState.priority,
-        isActive: formState.isActive,
-      })
-        .then(() => {
-          toast.success(
-            formState.entryId ? "Response updated." : "Response created.",
-          );
-          resetForm();
-        })
-        .catch((error) => {
-          console.error("Failed to save canned response", error);
-          toast.error("Unable to save response. Please try again.");
-        });
-    });
-  };
-
-  const removeEntry = (entryId: Id<"supportKnowledge">) => {
-    if (!organizationId) return;
-    startTransition(() => {
-      void deleteKnowledge({ organizationId, entryId })
-        .then(() => {
-          toast.success("Response deleted.");
-          if (formState.entryId === entryId) {
-            resetForm();
-          }
-        })
-        .catch((error) => {
-          console.error("Failed to delete canned response", error);
-          toast.error("Unable to delete response. Please try again.");
-        });
-    });
-  };
+  const totalResponses = knowledgeEntries.length;
+  const activeConversations = conversations.length;
+  const openConversations = conversations.filter(
+    (conversation) => conversation.lastRole === "user",
+  ).length;
 
   return (
     <AdminLayout
-      title="Support Assistant"
-      description="Configure canned answers before the AI model runs."
+      title="Support dashboard"
+      description="Monitor how the assistant is performing and jump into key workflows."
     >
-      <AdminLayoutContent withSidebar>
-        <AdminLayoutMain>
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                {editing ? "Edit response" : "Add canned response"}
-              </CardTitle>
-              <CardDescription>
-                Define trigger phrases and the exact response that should be
-                sent before contacting the LLM.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!organizationId ? (
-                <p className="text-sm text-muted-foreground">
-                  Select an organization to manage canned responses.
-                </p>
-              ) : (
-                <form
-                  className="space-y-4"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    upsert();
-                  }}
-                >
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Title</Label>
-                      <Input
-                        id="title"
-                        value={formState.title}
-                        onChange={(event) =>
-                          handleChange("title", event.target.value)
-                        }
-                        placeholder="Return policy overview"
-                        disabled={isPending}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="slug">Slug (optional)</Label>
-                      <Input
-                        id="slug"
-                        value={formState.slug}
-                        onChange={(event) =>
-                          handleChange("slug", event.target.value)
-                        }
-                        placeholder="return-policy"
-                        disabled={isPending}
-                      />
-                    </div>
-                  </div>
+      <AdminLayoutContent>
+        <AdminLayoutMain className="space-y-8 py-6">
+          <section>
+            <div className="grid gap-4 md:grid-cols-3">
+              <StatCard
+                title="Canned responses"
+                value={totalResponses}
+                description="Pre-programmed answers ready to serve instantly."
+                icon={<NotebookPen className="h-5 w-5 text-primary" />}
+              />
+              <StatCard
+                title="Active conversations"
+                value={activeConversations}
+                description="Unique sessions currently tracked for this tenant."
+                icon={<MessageSquareText className="h-5 w-5 text-primary" />}
+              />
+              <StatCard
+                title="Waiting on reply"
+                value={openConversations}
+                description="Conversations where the last message was from a visitor."
+                icon={<Activity className="h-5 w-5 text-primary" />}
+              />
+            </div>
+          </section>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="matchMode">Match mode</Label>
-                    <Select
-                      value={formState.matchMode}
-                      onValueChange={(value: MatchMode) =>
-                        handleChange("matchMode", value)
-                      }
-                      disabled={isPending}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Match mode" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="contains">
-                          Contains keywords
-                        </SelectItem>
-                        <SelectItem value="exact">Exact question</SelectItem>
-                        <SelectItem value="regex">Regex</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="matchPhrases">Trigger phrases</Label>
-                    <Textarea
-                      id="matchPhrases"
-                      value={formState.matchPhrases}
-                      onChange={(event) =>
-                        handleChange("matchPhrases", event.target.value)
-                      }
-                      placeholder="what is your return policy, refund window"
-                      disabled={isPending}
-                      rows={2}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Separate phrases with commas or new lines.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="content">Response</Label>
-                    <Textarea
-                      id="content"
-                      value={formState.content}
-                      onChange={(event) =>
-                        handleChange("content", event.target.value)
-                      }
-                      placeholder="We offer a 30-day refund..."
-                      disabled={isPending}
-                      rows={5}
-                      required
-                    />
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="tags">Tags (optional)</Label>
-                      <Input
-                        id="tags"
-                        value={formState.tags}
-                        onChange={(event) =>
-                          handleChange("tags", event.target.value)
-                        }
-                        placeholder="policy, refunds"
-                        disabled={isPending}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="priority">Priority</Label>
-                      <Input
-                        id="priority"
-                        type="number"
-                        value={formState.priority}
-                        onChange={(event) =>
-                          handleChange("priority", Number(event.target.value))
-                        }
-                        disabled={isPending}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id="isActive"
-                        checked={formState.isActive}
-                        onCheckedChange={(checked) =>
-                          handleChange("isActive", checked)
-                        }
-                        disabled={isPending}
-                      />
-                      <Label htmlFor="isActive">Active</Label>
-                    </div>
-                    <div className="flex gap-2">
-                      {editing && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={resetForm}
-                          disabled={isPending}
-                        >
-                          Cancel
-                        </Button>
-                      )}
-                      <Button type="submit" disabled={isPending}>
-                        {editing ? "Update response" : "Create response"}
-                      </Button>
-                    </div>
-                  </div>
-                </form>
-              )}
-            </CardContent>
-          </Card>
-        </AdminLayoutMain>
-        <AdminLayoutSidebar className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Existing responses</CardTitle>
-              <CardDescription>
-                {knowledgeEntries.length === 0
-                  ? "No canned answers yet."
-                  : "Click a card to edit or delete it."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {knowledgeEntries.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Create your first canned response to answer FAQs instantly.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {knowledgeEntries.map((entry) => (
-                    <div
-                      key={entry._id}
-                      className="rounded-lg border border-border/70 p-3"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="font-medium">{entry.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Match: {entry.matchMode ?? "contains"} · Priority:{" "}
-                            {entry.priority ?? 0}
-                          </p>
-                        </div>
-                        <Badge
-                          variant={
-                            entry.isActive === false ? "secondary" : "default"
-                          }
-                        >
-                          {entry.isActive === false ? "Inactive" : "Active"}
-                        </Badge>
-                      </div>
-                      {entry.matchPhrases && entry.matchPhrases.length > 0 && (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Triggers: {entry.matchPhrases.join(", ")}
-                        </p>
-                      )}
-                      <div className="mt-3 flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEdit(entry)}
-                          disabled={isPending}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => removeEntry(entry._id)}
-                          disabled={isPending}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+          <section className="grid gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Quick actions</CardTitle>
+                  <CardDescription>
+                    Triage responses, inspect transcripts, and configure the
+                    assistant.
+                  </CardDescription>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>API & docs</CardTitle>
-              <CardDescription>
-                Need to seed data programmatically?
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-2 text-sm text-muted-foreground">
-              <Button asChild size="sm">
-                <Link
-                  href="https://stack.convex.dev/ai-chat-with-convex-vector-search"
-                  target="_blank"
-                >
-                  Convex RAG Guide
-                </Link>
-              </Button>
-              <Button asChild size="sm" variant="outline">
-                <Link href="/api/support-chat">Chat endpoint</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </AdminLayoutSidebar>
+                <Badge variant="outline">{tenant?.name ?? "Org"}</Badge>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <QuickLink
+                  href="/admin/support/responses"
+                  label="Manage canned responses"
+                  description="Add triggers, edit copy, and control priority."
+                />
+                <QuickLink
+                  href="/admin/support/conversations"
+                  label="Review live conversations"
+                  description="Inspect transcripts, escalate, or follow up."
+                />
+                <QuickLink
+                  href="/admin/plugins"
+                  label="Plugin configuration"
+                  description="Toggle support assistance and related features."
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Latest conversations</CardTitle>
+                <CardDescription>
+                  Snapshot of the most recent visitor sessions.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {conversations.length > 0 ? (
+                  conversations.slice(0, 5).map((conversation) => (
+                    <div
+                      key={conversation.sessionId}
+                      className="flex items-start justify-between rounded-md border p-3 text-sm"
+                    >
+                      <div className="space-y-1">
+                        <p className="font-medium">
+                          Session {conversation.sessionId.slice(-6)}
+                        </p>
+                        <p className="line-clamp-2 text-muted-foreground">
+                          {conversation.lastMessage}
+                        </p>
+                      </div>
+                      <div className="text-right text-xs text-muted-foreground">
+                        <p>
+                          {new Date(conversation.lastAt).toLocaleDateString()}
+                        </p>
+                        <p>
+                          {conversation.totalMessages} message
+                          {conversation.totalMessages === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Conversations will appear here once visitors start chatting.
+                  </p>
+                )}
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/admin/support/conversations">
+                    View all conversations
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
+        </AdminLayoutMain>
       </AdminLayoutContent>
     </AdminLayout>
+  );
+}
+
+function StatCard({
+  title,
+  value,
+  description,
+  icon,
+}: {
+  title: string;
+  value: number;
+  description: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        {icon}
+      </CardHeader>
+      <CardContent>
+        <div className="text-3xl font-bold">{value}</div>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function QuickLink({
+  href,
+  label,
+  description,
+}: {
+  href: string;
+  label: string;
+  description: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center justify-between rounded-md border px-4 py-3 transition hover:bg-muted"
+    >
+      <div>
+        <p className="font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+    </Link>
   );
 }

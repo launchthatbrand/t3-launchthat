@@ -26,6 +26,9 @@ const supportMessagesTable = defineTable({
   role: v.union(v.literal("user"), v.literal("assistant")),
   content: v.string(),
   createdAt: v.number(),
+  contactId: v.optional(v.id("contacts")),
+  contactEmail: v.optional(v.string()),
+  contactName: v.optional(v.string()),
 })
   .index("by_session", ["organizationId", "sessionId"])
   .index("by_organization", ["organizationId"]);

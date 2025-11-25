@@ -1,4 +1,5 @@
 import type { Id } from "@/convex/_generated/dataModel";
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { api } from "@/convex/_generated/api";
 import { createOpenAI } from "@ai-sdk/openai";
@@ -31,6 +32,9 @@ type SupportMessage = z.infer<typeof messageSchema>;
 const requestSchema = z.object({
   organizationId: z.string().min(1),
   sessionId: z.string().optional(),
+  contactId: z.string().optional(),
+  contactEmail: z.string().email().optional(),
+  contactName: z.string().optional(),
   messages: z.array(messageSchema),
 });
 
@@ -42,6 +46,11 @@ export async function POST(req: Request) {
     const sessionId =
       parsed.sessionId ??
       `support-${organizationId}-${crypto.randomUUID().slice(0, 8)}`;
+    const contactId = parsed.contactId
+      ? (parsed.contactId as Id<"contacts">)
+      : undefined;
+    const contactEmail = parsed.contactEmail;
+    const contactName = parsed.contactName;
 
     const convex = getConvex();
     const userMessages = parsed.messages.filter(
@@ -60,6 +69,9 @@ export async function POST(req: Request) {
         sessionId,
         role: "user",
         content: latestUserMessage,
+        contactId,
+        contactEmail,
+        contactName,
       });
     }
 
@@ -82,6 +94,9 @@ export async function POST(req: Request) {
         sessionId,
         role: "assistant",
         content: cannedResponse.content,
+        contactId,
+        contactEmail,
+        contactName,
       });
       return streamTextResponse(cannedResponse.content);
     }
@@ -140,6 +155,9 @@ export async function POST(req: Request) {
         sessionId,
         role: "assistant",
         content: noKeyMessage,
+        contactId,
+        contactEmail,
+        contactName,
       });
       return streamTextResponse(noKeyMessage);
     }
@@ -168,6 +186,9 @@ export async function POST(req: Request) {
           sessionId,
           role: "assistant",
           content: text,
+          contactId,
+          contactEmail,
+          contactName,
         });
       },
     });
@@ -177,6 +198,40 @@ export async function POST(req: Request) {
     console.error("[support-chat] error", error);
     return NextResponse.json(
       { error: "Unable to generate a response at this time." },
+      { status: 500 },
+    );
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const organizationIdParam = searchParams.get("organizationId");
+    const sessionId = searchParams.get("sessionId");
+
+    if (!organizationIdParam || !sessionId) {
+      return NextResponse.json(
+        { error: "organizationId and sessionId are required" },
+        { status: 400 },
+      );
+    }
+
+    const organizationId = organizationIdParam as Id<"organizations">;
+    const convex = getConvex();
+
+    const messages = await convex.query(
+      api.plugins.support.queries.listMessages,
+      {
+        organizationId,
+        sessionId,
+      },
+    );
+
+    return NextResponse.json({ messages });
+  } catch (error) {
+    console.error("[support-chat] history error", error);
+    return NextResponse.json(
+      { error: "Unable to load chat history." },
       { status: 500 },
     );
   }

@@ -1,0 +1,134 @@
+"use client";
+
+import type { ComponentType } from "react";
+import { BadgeCheck, Bell, Loader, Share2, UserRound } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Avatar, AvatarFallback } from "@acme/ui/index";
+import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+
+import type { ContactDoc, ConversationSummary } from "./ConversationInspector";
+
+type TabKey = "messages" | "dashboard";
+
+interface ConversationHeaderProps {
+  contact: ContactDoc | null;
+  conversation: ConversationSummary | undefined;
+  tenantName?: string;
+  activeTab: TabKey;
+  onTabChange: (tab: TabKey) => void;
+}
+
+const initialsFrom = (input?: string) => {
+  if (!input) return "??";
+  return input
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase())
+    .slice(0, 2)
+    .join("");
+};
+
+const StatusPill = ({
+  icon: Icon,
+  label,
+  tone,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  tone: "waiting" | "responded";
+}) => (
+  <span
+    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
+      tone === "waiting"
+        ? "bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-200"
+        : "bg-emerald-100 text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-200"
+    }`}
+  >
+    <Icon className="h-3 w-3" />
+    {label}
+  </span>
+);
+
+export default function ConversationHeader({
+  contact,
+  conversation,
+  tenantName,
+  activeTab,
+  onTabChange,
+}: ConversationHeaderProps) {
+  const name =
+    contact?.fullName ??
+    contact?.firstName ??
+    contact?.lastName ??
+    "Unknown visitor";
+  const email = contact?.email ?? "No email on file";
+  const company = contact?.company ?? tenantName ?? "Visitor";
+
+  const awaitingReply = conversation?.lastRole === "user";
+
+  return (
+    <div className="border-b bg-background px-6 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Avatar className="h-14 w-14">
+            <AvatarFallback>{initialsFrom(name)}</AvatarFallback>
+          </Avatar>
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-semibold">{name}</h2>
+              <Badge variant="outline">{company}</Badge>
+            </div>
+            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+              <span>{email}</span>
+              {contact?.phone ? (
+                <>
+                  <span>•</span>
+                  <span>{contact.phone}</span>
+                </>
+              ) : null}
+              {conversation ? (
+                <>
+                  <span>•</span>
+                  <span>Session {conversation.sessionId.slice(-6)}</span>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusPill
+            icon={awaitingReply ? Loader : BadgeCheck}
+            label={
+              awaitingReply ? "Awaiting agent reply" : "Assistant responded"
+            }
+            tone={awaitingReply ? "waiting" : "responded"}
+          />
+          <Button size="sm" variant="outline" className="gap-1">
+            <Bell className="h-4 w-4" />
+            Mute
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1">
+            <Share2 className="h-4 w-4" />
+            Share
+          </Button>
+          <Button size="sm" className="gap-1">
+            <UserRound className="h-4 w-4" />
+            Update status
+          </Button>
+        </div>
+      </div>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => onTabChange(value as TabKey)}
+        className="mt-4"
+      >
+        <TabsList>
+          <TabsTrigger value="messages">Messages</TabsTrigger>
+          <TabsTrigger value="dashboard">Customer Dashboard</TabsTrigger>
+        </TabsList>
+      </Tabs>
+    </div>
+  );
+}

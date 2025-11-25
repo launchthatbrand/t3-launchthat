@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./src/index.tsx"
+    },
+    "./settings": {
+      "types": "./dist/settings.d.ts",
+      "default": "./src/settings.ts"
     }
   },
   "license": "MIT",

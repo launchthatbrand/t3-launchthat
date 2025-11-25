@@ -1,4 +1,5 @@
-import { type FunctionReference, anyApi } from "convex/server";
+import type { FunctionReference } from "convex/server";
+import { anyApi } from "convex/server";
 import { type GenericId as Id } from "convex/values";
 
 export const api: PublicApiType = anyApi as unknown as PublicApiType;
@@ -4121,6 +4122,66 @@ export type PublicApiType = {
           type?: "store" | "site";
         },
         any
+      >;
+    };
+    contacts: {
+      list: FunctionReference<
+        "query",
+        "public",
+        {
+          limit?: number;
+          organizationId: Id<"organizations">;
+          search?: string;
+        },
+        Array<{
+          _id: Id<"contacts">;
+          organizationId: Id<"organizations">;
+          email?: string;
+          phone?: string;
+          firstName?: string;
+          lastName?: string;
+          fullName?: string;
+          company?: string;
+          tags?: Array<string>;
+          createdAt: number;
+          updatedAt: number;
+        }>
+      >;
+      get: FunctionReference<
+        "query",
+        "public",
+        { contactId: Id<"contacts"> },
+        {
+          _id: Id<"contacts">;
+          organizationId: Id<"organizations">;
+          email?: string;
+          phone?: string;
+          firstName?: string;
+          lastName?: string;
+          fullName?: string;
+          company?: string;
+          tags?: Array<string>;
+          createdAt: number;
+          updatedAt: number;
+        } | null
+      >;
+      findByEmail: FunctionReference<
+        "query",
+        "public",
+        { organizationId: Id<"organizations">; email: string },
+        {
+          _id: Id<"contacts">;
+          organizationId: Id<"organizations">;
+          email?: string;
+          phone?: string;
+          firstName?: string;
+          lastName?: string;
+          fullName?: string;
+          company?: string;
+          tags?: Array<string>;
+          createdAt: number;
+          updatedAt: number;
+        } | null
       >;
     };
     permissions: {
