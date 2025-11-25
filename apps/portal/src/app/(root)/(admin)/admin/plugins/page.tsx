@@ -1,9 +1,16 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { api } from "@/convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 
 import {
@@ -77,6 +84,7 @@ const normalizeError = (error: unknown): Error => {
 type PluginRow = PluginDefinition & {
   isEnabled: boolean;
   missingSlugs: string[];
+  activationEnabled: boolean;
 };
 
 export default function PluginsPage() {
@@ -84,6 +92,7 @@ export default function PluginsPage() {
   const createPostType = useCreatePostType();
   const ensurePostTypeAccess = useEnsurePostTypeAccess();
   const disablePostTypeAccess = useDisablePostTypeAccess();
+  const setOption = useMutation(api.core.options.set);
   const [isPending, startTransition] = useTransition();
   const [pluginToDisable, setPluginToDisable] = useState<PluginRow | null>(
     null,
@@ -92,6 +101,37 @@ export default function PluginsPage() {
   const tenantId = tenant?._id;
 
   const plugins = useMemo<PluginDefinition[]>(() => pluginDefinitions, []);
+
+  const pluginOptions = useQuery(
+    api.core.options.getByType,
+    tenantId ? { orgId: tenantId, type: "site" } : "skip",
+  );
+
+  const pluginOptionMap = useMemo(() => {
+    if (!Array.isArray(pluginOptions)) {
+      return new Map<string, boolean>();
+    }
+    return new Map<string, boolean>(
+      pluginOptions.map((option) => [
+        option.metaKey,
+        Boolean(option.metaValue),
+      ]),
+    );
+  }, [pluginOptions]);
+
+  const isActivationEnabled = useCallback(
+    (plugin: PluginDefinition) => {
+      if (!plugin.activation) {
+        return true;
+      }
+      const stored = pluginOptionMap.get(plugin.activation.optionKey);
+      if (stored === undefined) {
+        return plugin.activation.defaultEnabled ?? false;
+      }
+      return stored;
+    },
+    [pluginOptionMap],
+  );
 
   const pluginStatus = useMemo(() => {
     console.log("[plugins] recompute status", {
@@ -115,13 +155,15 @@ export default function PluginsPage() {
         pluginId: plugin.id,
         missingSlugs: missing.map((type) => type.slug),
       });
+      const activationEnabled = isActivationEnabled(plugin);
       return {
         pluginId: plugin.id,
-        isEnabled: missing.length === 0,
+        isEnabled: missing.length === 0 && activationEnabled,
         missingSlugs: missing.map((type) => type.slug),
+        activationEnabled,
       };
     });
-  }, [postTypes, plugins, tenantId]);
+  }, [postTypes, plugins, tenantId, isActivationEnabled]);
 
   const handleEnablePlugin = useCallback(
     (plugin: PluginDefinition) => {
@@ -151,6 +193,14 @@ export default function PluginsPage() {
               }
             }
           }
+          if (plugin.activation) {
+            await setOption({
+              metaKey: plugin.activation.optionKey,
+              metaValue: true,
+              orgId: tenantId,
+              type: plugin.activation.optionType ?? "site",
+            });
+          }
           toast.success(`${plugin.name} plugin enabled`);
           console.log("[plugins] enable success", {
             tenantId,
@@ -165,7 +215,13 @@ export default function PluginsPage() {
         }
       });
     },
-    [tenantId, startTransition, ensurePostTypeAccess, createPostType],
+    [
+      tenantId,
+      startTransition,
+      ensurePostTypeAccess,
+      createPostType,
+      setOption,
+    ],
   );
 
   const handleDisablePlugin = useCallback(
@@ -185,6 +241,14 @@ export default function PluginsPage() {
           for (const type of plugin.postTypes) {
             await disablePostTypeAccess(type.slug);
           }
+          if (plugin.activation) {
+            await setOption({
+              metaKey: plugin.activation.optionKey,
+              metaValue: false,
+              orgId: tenantId,
+              type: plugin.activation.optionType ?? "site",
+            });
+          }
           toast.success(`${plugin.name} plugin disabled`);
           console.log("[plugins] disable success", {
             tenantId,
@@ -199,7 +263,7 @@ export default function PluginsPage() {
         }
       });
     },
-    [tenantId, startTransition, disablePostTypeAccess],
+    [tenantId, startTransition, disablePostTypeAccess, setOption],
   );
 
   const pluginRows = useMemo<PluginRow[]>(() => {
@@ -209,6 +273,7 @@ export default function PluginsPage() {
         ...plugin,
         isEnabled: status?.isEnabled ?? false,
         missingSlugs: status?.missingSlugs ?? [],
+        activationEnabled: status?.activationEnabled ?? false,
       };
     });
   }, [plugins, pluginStatus]);

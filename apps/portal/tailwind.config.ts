@@ -10,6 +10,7 @@ export default {
     ...baseConfig.content,
     "../../packages/ui/src/*.{ts,tsx}",
     "../../packages/launchthat-plugin-lms/src/**/*.{ts,tsx}",
+    "../../packages/launchthat-plugin-support/src/**/*.{ts,tsx}",
   ],
   presets: [baseConfig],
   theme: {

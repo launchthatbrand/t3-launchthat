@@ -28,6 +28,19 @@ const nextConfig: NextConfig = {
     ],
   },
   allowedDevOrigins: ["http://*.localhost:*", "desmond-tatilian.localhost"],
+  experimental: {
+    turbo: {
+      resolveAlias: {
+        "zod/v3": "zod",
+      },
+    },
+  },
+  webpack: (config) => {
+    config.resolve = config.resolve ?? {};
+    config.resolve.alias = config.resolve.alias ?? {};
+    config.resolve.alias["zod/v3"] = require.resolve("zod");
+    return config;
+  },
 };
 
 export default withMicrofrontends(nextConfig, { debug: true });

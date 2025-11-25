@@ -182,6 +182,8 @@ import type * as notifications_types from "../notifications/types.js";
 import type * as plugins_lms_helpers from "../plugins/lms/helpers.js";
 import type * as plugins_lms_mutations from "../plugins/lms/mutations.js";
 import type * as plugins_lms_queries from "../plugins/lms/queries.js";
+import type * as plugins_support_mutations from "../plugins/support/mutations.js";
+import type * as plugins_support_queries from "../plugins/support/queries.js";
 import type * as puckEditor_mutations from "../puckEditor/mutations.js";
 import type * as puckEditor_queries from "../puckEditor/queries.js";
 import type * as shared_auth from "../shared/auth.js";
@@ -386,6 +388,8 @@ declare const fullApi: ApiFromModules<{
   "plugins/lms/helpers": typeof plugins_lms_helpers;
   "plugins/lms/mutations": typeof plugins_lms_mutations;
   "plugins/lms/queries": typeof plugins_lms_queries;
+  "plugins/support/mutations": typeof plugins_support_mutations;
+  "plugins/support/queries": typeof plugins_support_queries;
   "puckEditor/mutations": typeof puckEditor_mutations;
   "puckEditor/queries": typeof puckEditor_queries;
   "shared/auth": typeof shared_auth;

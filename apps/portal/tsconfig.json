@@ -33,6 +33,9 @@
       ],
       "launchthat-plugin-helpdesk": [
         "../../packages/launchthat-plugin-helpdesk/src/index"
+      ],
+      "launchthat-plugin-support": [
+        "../../packages/launchthat-plugin-support/src/index"
       ]
     },
     "plugins": [{ "name": "next" }]

@@ -1,23 +1,26 @@
 /* eslint-disable react-compiler/react-compiler */
 "use client";
 
-import { ClerkProvider, useAuth } from "@clerk/nextjs";
-import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
-
-import { ContentProtectionProvider } from "~/components/access/ContentProtectionProvider";
-import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { ConvexReactClient } from "convex/react";
-import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
-import { PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
+import type { TenantSummary } from "@/lib/tenant-fetcher";
 // Import Clerk provider and hook
 import React from "react";
+import { usePathname } from "next/navigation";
+import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { SessionProvider } from "convex-helpers/react/sessions";
-import { SidebarProvider } from "@acme/ui/sidebar";
-import { TenantProvider } from "~/context/TenantContext";
-import type { TenantSummary } from "@/lib/tenant-fetcher";
-import { Toaster } from "@acme/ui/toast";
-import { env } from "~/env";
+import { ConvexReactClient } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { useLocalStorage } from "usehooks-ts";
+
+import { SidebarProvider } from "@acme/ui/sidebar";
+import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
+import { Toaster } from "@acme/ui/toast";
+
+import { ContentProtectionProvider } from "~/components/access/ContentProtectionProvider";
+import { SupportChatWidget } from "~/components/support/SupportChatWidget";
+import { TenantProvider } from "~/context/TenantContext";
+import { env } from "~/env";
+import { PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
+import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
 
 // Import the correct Convex provider for Clerk integration
 
@@ -36,6 +39,9 @@ interface ProvidersProps {
 
 export function Providers({ children, tenant }: ProvidersProps) {
   const effectiveTenant = tenant ?? PORTAL_TENANT_SUMMARY;
+  const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith("/admin");
+
   return (
     // Wrap everything with ClerkProvider - key is now guaranteed to be a string
     <ClerkProvider publishableKey={env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
@@ -52,6 +58,7 @@ export function Providers({ children, tenant }: ProvidersProps) {
                   enableSystem
                 >
                   {children}
+                  {!isAdminRoute && <SupportChatWidget />}
                   <div className="absolute bottom-4 right-4">
                     <ThemeToggle />
                   </div>

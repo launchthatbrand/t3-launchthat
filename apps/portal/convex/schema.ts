@@ -1,20 +1,25 @@
-import { calendarSchema } from "./calendar/schema";
-import { coreSchema } from "./core/schema";
 import { defineSchema } from "convex/server";
+
+import { calendarSchema } from "./calendar/schema";
+import { postsSchema } from "./core/posts/schema";
+import { coreSchema } from "./core/schema";
+import { usersSchema } from "./core/users/schema";
 import { ecommerceSchema } from "./ecommerce/schema";
 import { integrationsSchema } from "./integrations/schema";
 // Add integrations schema
 // import { integrationsSchema } from "./integrations/schema";
 import { lmsSchema } from "./lms/schema";
 import { notificationsSchema } from "./notifications/schema";
-import { postsSchema } from "./core/posts/schema";
+import { supportSchema } from "./plugins/support/schema";
 import { socialFeedSchema } from "./socialfeed/schema";
 import { tasksSchema } from "./tasks/schema";
-import { usersSchema } from "./core/users/schema";
 import { vimeoSchema } from "./vimeo/schema";
 
 // Define the main schema that includes all tables
 export default defineSchema({
+  // Support plugin tables
+  ...supportSchema,
+
   // Calendar tables
   ...calendarSchema,
 
@@ -47,5 +52,4 @@ export default defineSchema({
 
   // Core options (site/store settings)
   ...coreSchema,
-
 });

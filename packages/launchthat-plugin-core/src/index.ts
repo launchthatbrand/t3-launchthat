@@ -91,6 +91,20 @@ export interface PluginSettingDefinition {
   render: (props: PluginSettingComponentProps) => ReactNode;
 }
 
+export interface PluginActivationConfig {
+  optionKey: string;
+  optionType?: "store" | "site";
+  defaultEnabled?: boolean;
+}
+
+export interface PluginAdminMenuEntry {
+  label: string;
+  slug: string;
+  icon?: string;
+  position?: number;
+  group?: string;
+}
+
 export interface PluginSingleViewComponentProps {
   pluginId: string;
   pluginName: string;
@@ -122,6 +136,8 @@ export interface PluginDefinition {
   features: string[];
   postTypes: PluginPostTypeConfig[];
   settingsPages?: PluginSettingDefinition[];
+  activation?: PluginActivationConfig;
+  adminMenus?: PluginAdminMenuEntry[];
 }
 
 export interface PluginContext {

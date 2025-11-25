@@ -6,12 +6,17 @@ import { useParams, usePathname } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
 import { useQuery } from "convex/react";
 import { CourseNav } from "launchthat-plugin-lms";
+import { ArrowLeft, LayoutDashboardIcon } from "lucide-react";
 
 import {
   TeamSwitcher,
   TeamSwitcherOrganization,
 } from "@acme/ui/general/team-switcher";
-import { SidebarHeader } from "@acme/ui/sidebar";
+import {
+  SidebarGroup,
+  SidebarHeader,
+  SidebarMenuButton,
+} from "@acme/ui/sidebar";
 
 import { useTenant } from "~/context/TenantContext";
 
@@ -23,6 +28,14 @@ export default function CourseSidebar() {
   const slugOrId = Array.isArray(courseParam) ? courseParam[0] : courseParam;
   const pathname = usePathname();
   const tenant = useTenant();
+
+  const handleGoToDashboard = useCallback(() => {
+    if (!tenant) {
+      return;
+    }
+    window.location.href = `/`;
+  }, [tenant]);
+
   const [switchingOrganizationId, setSwitchingOrganizationId] = useState<
     string | null
   >(null);
@@ -208,6 +221,13 @@ export default function CourseSidebar() {
           createHref="/admin/settings/organizations"
         />
       </SidebarHeader>
+      <SidebarGroup>
+        <SidebarMenuButton onClick={handleGoToDashboard}>
+          <ArrowLeft />
+          Go to Dashboard
+        </SidebarMenuButton>
+      </SidebarGroup>
+
       <CourseNav courseId={courseId} courseSlug={slugOrId} />
     </>
   );

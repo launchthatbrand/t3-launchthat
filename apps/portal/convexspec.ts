@@ -5266,6 +5266,7 @@ export type PublicApiType = {
               feeds?: boolean;
               hasArchive?: boolean;
               pages?: boolean;
+              permalink?: { aliases?: Array<string>; canonical: string };
               singleSlug?: string;
               withFront?: boolean;
             };
@@ -5287,7 +5288,47 @@ export type PublicApiType = {
         enableForOrganization: FunctionReference<
           "mutation",
           "public",
-          { organizationId: Id<"organizations"> | "portal-root"; slug: string },
+          {
+            definition?: {
+              adminMenu?: {
+                enabled: boolean;
+                icon?: string;
+                label?: string;
+                menuId?: string;
+                parent?: string;
+                position?: number;
+                slug?: string;
+              };
+              description?: string;
+              enableApi?: boolean;
+              enableVersioning?: boolean;
+              includeTimestamps?: boolean;
+              isPublic: boolean;
+              name: string;
+              rewrite?: {
+                archiveSlug?: string;
+                feeds?: boolean;
+                hasArchive?: boolean;
+                pages?: boolean;
+                permalink?: { aliases?: Array<string>; canonical: string };
+                singleSlug?: string;
+                withFront?: boolean;
+              };
+              supports?: {
+                comments?: boolean;
+                customFields?: boolean;
+                editor?: boolean;
+                excerpt?: boolean;
+                featuredImage?: boolean;
+                postMeta?: boolean;
+                revisions?: boolean;
+                taxonomy?: boolean;
+                title?: boolean;
+              };
+            };
+            organizationId: Id<"organizations"> | "portal-root";
+            slug: string;
+          },
           any
         >;
         disableForOrganization: FunctionReference<
@@ -5321,6 +5362,7 @@ export type PublicApiType = {
                 feeds?: boolean;
                 hasArchive?: boolean;
                 pages?: boolean;
+                permalink?: { aliases?: Array<string>; canonical: string };
                 singleSlug?: string;
                 withFront?: boolean;
               };
@@ -5441,6 +5483,7 @@ export type PublicApiType = {
               feeds?: boolean;
               hasArchive?: boolean;
               pages?: boolean;
+              permalink?: { aliases?: Array<string>; canonical: string };
               singleSlug?: string;
               withFront?: boolean;
             };
@@ -5493,6 +5536,7 @@ export type PublicApiType = {
               feeds?: boolean;
               hasArchive?: boolean;
               pages?: boolean;
+              permalink?: { aliases?: Array<string>; canonical: string };
               singleSlug?: string;
               withFront?: boolean;
             };
@@ -5545,6 +5589,7 @@ export type PublicApiType = {
               feeds?: boolean;
               hasArchive?: boolean;
               pages?: boolean;
+              permalink?: { aliases?: Array<string>; canonical: string };
               singleSlug?: string;
               withFront?: boolean;
             };
@@ -7909,6 +7954,45 @@ export type PublicApiType = {
           postId?: Id<"posts">;
           postTypeSlug?: string;
           title?: string;
+        },
+        any
+      >;
+    };
+  };
+  ai: {
+    support: {
+      listKnowledge: FunctionReference<
+        "query",
+        "public",
+        { limit?: number; organizationId: Id<"organizations">; query?: string },
+        Array<{
+          content: string;
+          slug?: string;
+          source?: string;
+          tags?: Array<string>;
+          title: string;
+          type?: string;
+        }>
+      >;
+      listMessages: FunctionReference<
+        "query",
+        "public",
+        { organizationId: Id<"organizations">; sessionId: string },
+        Array<{
+          _id: Id<"supportMessages">;
+          content: string;
+          createdAt: number;
+          role: "user" | "assistant";
+        }>
+      >;
+      recordMessage: FunctionReference<
+        "mutation",
+        "public",
+        {
+          content: string;
+          organizationId: Id<"organizations">;
+          role: "user" | "assistant";
+          sessionId: string;
         },
         any
       >;
