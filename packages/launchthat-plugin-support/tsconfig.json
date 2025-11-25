@@ -8,7 +8,8 @@
     "paths": {
       "launchthat-plugin-core": ["../launchthat-plugin-core/src/index"],
       "@acme/ui": ["../ui/src/index"],
-      "@acme/ui/*": ["../ui/src/*"]
+      "@acme/ui/*": ["../ui/src/*"],
+      "@portal/convexspec": ["../../apps/portal/convexspec.ts"]
     }
   },
   "include": ["src"],

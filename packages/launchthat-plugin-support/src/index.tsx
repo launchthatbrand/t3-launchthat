@@ -2,6 +2,7 @@ import type { PluginDefinition } from "launchthat-plugin-core";
 
 export { SupportChatWidget } from "./components/SupportChatWidget";
 export type { SupportChatWidgetProps } from "./components/SupportChatWidget";
+export { SupportSystem } from "./admin/SupportSystem";
 export type { SupportChatSettings, SupportChatFieldToggles } from "./settings";
 export {
   defaultSupportChatSettings,

@@ -51,13 +51,13 @@ const StatusPill = ({
   </span>
 );
 
-export default function ConversationHeader({
+export const ConversationHeader = ({
   contact,
   conversation,
   tenantName,
   activeTab,
   onTabChange,
-}: ConversationHeaderProps) {
+}: ConversationHeaderProps) => {
   const name =
     contact?.fullName ??
     contact?.firstName ??
@@ -131,4 +131,4 @@ export default function ConversationHeader({
       </Tabs>
     </div>
   );
-}
+};

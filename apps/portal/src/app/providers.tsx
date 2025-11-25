@@ -9,6 +9,7 @@ import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { SessionProvider } from "convex-helpers/react/sessions";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { SupportChatWidget } from "launchthat-plugin-support";
 import { useLocalStorage } from "usehooks-ts";
 
 import { SidebarProvider } from "@acme/ui/sidebar";
@@ -16,7 +17,6 @@ import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
 import { Toaster } from "@acme/ui/toast";
 
 import { ContentProtectionProvider } from "~/components/access/ContentProtectionProvider";
-import { SupportChatWidget } from "~/components/support/SupportChatWidget";
 import { TenantProvider } from "~/context/TenantContext";
 import { env } from "~/env";
 import { PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
@@ -40,7 +40,7 @@ interface ProvidersProps {
 export function Providers({ children, tenant }: ProvidersProps) {
   const effectiveTenant = tenant ?? PORTAL_TENANT_SUMMARY;
   const pathname = usePathname();
-  const isAdminRoute = pathname?.startsWith("/admin");
+  const isAdminRoute = pathname.startsWith("/admin");
 
   return (
     // Wrap everything with ClerkProvider - key is now guaranteed to be a string
@@ -58,7 +58,12 @@ export function Providers({ children, tenant }: ProvidersProps) {
                   enableSystem
                 >
                   {children}
-                  {!isAdminRoute && <SupportChatWidget />}
+                  {!isAdminRoute && (
+                    <SupportChatWidget
+                      organizationId={effectiveTenant._id}
+                      tenantName={effectiveTenant.name}
+                    />
+                  )}
                   <div className="absolute bottom-4 right-4">
                     <ThemeToggle />
                   </div>

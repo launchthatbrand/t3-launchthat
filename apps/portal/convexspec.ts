@@ -1,5 +1,4 @@
-import type { FunctionReference } from "convex/server";
-import { anyApi } from "convex/server";
+import { type FunctionReference, anyApi } from "convex/server";
 import { type GenericId as Id } from "convex/values";
 
 export const api: PublicApiType = anyApi as unknown as PublicApiType;
@@ -4124,66 +4123,6 @@ export type PublicApiType = {
         any
       >;
     };
-    contacts: {
-      list: FunctionReference<
-        "query",
-        "public",
-        {
-          limit?: number;
-          organizationId: Id<"organizations">;
-          search?: string;
-        },
-        Array<{
-          _id: Id<"contacts">;
-          organizationId: Id<"organizations">;
-          email?: string;
-          phone?: string;
-          firstName?: string;
-          lastName?: string;
-          fullName?: string;
-          company?: string;
-          tags?: Array<string>;
-          createdAt: number;
-          updatedAt: number;
-        }>
-      >;
-      get: FunctionReference<
-        "query",
-        "public",
-        { contactId: Id<"contacts"> },
-        {
-          _id: Id<"contacts">;
-          organizationId: Id<"organizations">;
-          email?: string;
-          phone?: string;
-          firstName?: string;
-          lastName?: string;
-          fullName?: string;
-          company?: string;
-          tags?: Array<string>;
-          createdAt: number;
-          updatedAt: number;
-        } | null
-      >;
-      findByEmail: FunctionReference<
-        "query",
-        "public",
-        { organizationId: Id<"organizations">; email: string },
-        {
-          _id: Id<"contacts">;
-          organizationId: Id<"organizations">;
-          email?: string;
-          phone?: string;
-          firstName?: string;
-          lastName?: string;
-          fullName?: string;
-          company?: string;
-          tags?: Array<string>;
-          createdAt: number;
-          updatedAt: number;
-        } | null
-      >;
-    };
     permissions: {
       mutations: {
         createRole: FunctionReference<
@@ -6039,6 +5978,108 @@ export type PublicApiType = {
             tokenIdentifier?: string;
             username?: string;
           }
+        >;
+      };
+    };
+    contacts: {
+      queries: {
+        list: FunctionReference<
+          "query",
+          "public",
+          {
+            limit?: number;
+            organizationId: Id<"organizations">;
+            search?: string;
+          },
+          Array<{
+            _id: Id<"contacts">;
+            company?: string;
+            createdAt: number;
+            email?: string;
+            firstName?: string;
+            fullName?: string;
+            lastName?: string;
+            organizationId: Id<"organizations">;
+            phone?: string;
+            tags?: Array<string>;
+            updatedAt: number;
+          }>
+        >;
+        get: FunctionReference<
+          "query",
+          "public",
+          { contactId: Id<"contacts"> },
+          {
+            _id: Id<"contacts">;
+            company?: string;
+            createdAt: number;
+            email?: string;
+            firstName?: string;
+            fullName?: string;
+            lastName?: string;
+            organizationId: Id<"organizations">;
+            phone?: string;
+            tags?: Array<string>;
+            updatedAt: number;
+          } | null
+        >;
+        findByEmail: FunctionReference<
+          "query",
+          "public",
+          { email: string; organizationId: Id<"organizations"> },
+          {
+            _id: Id<"contacts">;
+            company?: string;
+            createdAt: number;
+            email?: string;
+            firstName?: string;
+            fullName?: string;
+            lastName?: string;
+            organizationId: Id<"organizations">;
+            phone?: string;
+            tags?: Array<string>;
+            updatedAt: number;
+          } | null
+        >;
+      };
+      mutations: {
+        upsert: FunctionReference<
+          "mutation",
+          "public",
+          {
+            company?: string;
+            email?: string;
+            firstName?: string;
+            fullName?: string;
+            lastName?: string;
+            metadata?: any;
+            organizationId: Id<"organizations">;
+            phone?: string;
+            tags?: Array<string>;
+          },
+          any
+        >;
+        update: FunctionReference<
+          "mutation",
+          "public",
+          {
+            company?: string;
+            contactId: Id<"contacts">;
+            email?: string;
+            firstName?: string;
+            fullName?: string;
+            lastName?: string;
+            metadata?: any;
+            phone?: string;
+            tags?: Array<string>;
+          },
+          any
+        >;
+        remove: FunctionReference<
+          "mutation",
+          "public",
+          { contactId: Id<"contacts"> },
+          any
         >;
       };
     };
@@ -7990,6 +8031,130 @@ export type PublicApiType = {
         >;
       };
     };
+    support: {
+      queries: {
+        listKnowledge: FunctionReference<
+          "query",
+          "public",
+          {
+            limit?: number;
+            organizationId: Id<"organizations">;
+            query?: string;
+          },
+          Array<{
+            content: string;
+            slug?: string;
+            source?: string;
+            tags?: Array<string>;
+            title: string;
+            type?: string;
+          }>
+        >;
+        matchCannedResponse: FunctionReference<
+          "query",
+          "public",
+          { organizationId: Id<"organizations">; question: string },
+          {
+            content: string;
+            entryId: Id<"supportKnowledge">;
+            slug?: string;
+            title: string;
+          } | null
+        >;
+        listKnowledgeEntries: FunctionReference<
+          "query",
+          "public",
+          { organizationId: Id<"organizations"> },
+          Array<{
+            _id: Id<"supportKnowledge">;
+            content: string;
+            createdAt: number;
+            isActive?: boolean;
+            matchMode?: "contains" | "exact" | "regex";
+            matchPhrases?: Array<string>;
+            priority?: number;
+            slug: string;
+            tags?: Array<string>;
+            title: string;
+            type?: string;
+            updatedAt: number;
+          }>
+        >;
+        listMessages: FunctionReference<
+          "query",
+          "public",
+          { organizationId: Id<"organizations">; sessionId: string },
+          Array<{
+            _id: Id<"supportMessages">;
+            contactEmail?: string;
+            contactId?: Id<"contacts">;
+            contactName?: string;
+            content: string;
+            createdAt: number;
+            role: "user" | "assistant";
+          }>
+        >;
+        listConversations: FunctionReference<
+          "query",
+          "public",
+          { limit?: number; organizationId: Id<"organizations"> },
+          Array<{
+            contactEmail?: string;
+            contactId?: Id<"contacts">;
+            contactName?: string;
+            firstAt: number;
+            lastAt: number;
+            lastMessage: string;
+            lastRole: "user" | "assistant";
+            sessionId: string;
+            totalMessages: number;
+          }>
+        >;
+      };
+      mutations: {
+        recordMessage: FunctionReference<
+          "mutation",
+          "public",
+          {
+            contactEmail?: string;
+            contactId?: Id<"contacts">;
+            contactName?: string;
+            content: string;
+            organizationId: Id<"organizations">;
+            role: "user" | "assistant";
+            sessionId: string;
+          },
+          any
+        >;
+        upsertKnowledgeEntry: FunctionReference<
+          "mutation",
+          "public",
+          {
+            content: string;
+            entryId?: Id<"supportKnowledge">;
+            isActive?: boolean;
+            matchMode?: "contains" | "exact" | "regex";
+            matchPhrases?: Array<string>;
+            organizationId: Id<"organizations">;
+            priority?: number;
+            slug?: string;
+            tags?: Array<string>;
+            title: string;
+            type?: string;
+          },
+          any
+        >;
+        deleteKnowledgeEntry: FunctionReference<
+          "mutation",
+          "public",
+          {
+            entryId: Id<"supportKnowledge">;
+            organizationId: Id<"organizations">;
+          },
+          any
+        >;
+      };
+    };
   };
   puckEditor: {
     queries: {
@@ -8015,45 +8180,6 @@ export type PublicApiType = {
           postId?: Id<"posts">;
           postTypeSlug?: string;
           title?: string;
-        },
-        any
-      >;
-    };
-  };
-  ai: {
-    support: {
-      listKnowledge: FunctionReference<
-        "query",
-        "public",
-        { limit?: number; organizationId: Id<"organizations">; query?: string },
-        Array<{
-          content: string;
-          slug?: string;
-          source?: string;
-          tags?: Array<string>;
-          title: string;
-          type?: string;
-        }>
-      >;
-      listMessages: FunctionReference<
-        "query",
-        "public",
-        { organizationId: Id<"organizations">; sessionId: string },
-        Array<{
-          _id: Id<"supportMessages">;
-          content: string;
-          createdAt: number;
-          role: "user" | "assistant";
-        }>
-      >;
-      recordMessage: FunctionReference<
-        "mutation",
-        "public",
-        {
-          content: string;
-          organizationId: Id<"organizations">;
-          role: "user" | "assistant";
-          sessionId: string;
         },
         any
       >;

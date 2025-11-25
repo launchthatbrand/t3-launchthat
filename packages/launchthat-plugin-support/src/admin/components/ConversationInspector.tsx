@@ -1,6 +1,6 @@
 "use client";
 
-import type { Id } from "@/convex/_generated/dataModel";
+import type { GenericId as Id } from "convex/values";
 import type { ComponentType } from "react";
 import {
   BadgeCheck,
@@ -134,10 +134,7 @@ export const ConversationInspector = ({
             </CardContent>
           </Card>
 
-          <Accordion
-            type="multiple"
-            defaultValue={["overview", "actions", "details"]}
-          >
+          <Accordion type="single" className="space-y-3">
             <AccordionItem value="overview" className="rounded-lg border">
               <AccordionTrigger className="px-4">
                 Conversation overview
