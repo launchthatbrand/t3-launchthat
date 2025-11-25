@@ -1,0 +1,125 @@
+Title: Support System Email Integration (Resend)
+Owner: Support Platform
+Last Updated: 2025-... (replace with current date)
+
+1. Overview
+   - Extend the LaunchThat support system so conversations can originate via live chat or inbound email.
+   - Centralize all customer communication inside the existing admin UI.
+   - Use Resend for outbound/inbound email handling, including domain verification and webhooks.
+
+2. Goals
+   1. Capture inbound emails, convert them to support conversations, and display them alongside chatbot threads.
+   2. Allow support agents to reply inside the dashboard; Resend sends the email response to the customer.
+   3. Support per-organization sending domains with DNS-based verification (DKIM/TXT) through Resend.
+   4. Track conversation origin, email metadata, and attachments for auditing.
+   5. Maintain deliverability safeguards (bounce handling, spam checks).
+
+3. Non-Goals
+   - Building a generic email client (no drafts, CC/BCC forwarding rules beyond MVP).
+   - Support for multiple outbound providers.
+   - Complex routing rules (e.g., keyword-based auto assignments).
+
+4. Personas
+   - Tenant Admin: configures email domain, monitors verification status.
+   - Support Agent: responds to chats/emails, sees unified conversation timeline.
+   - Customer/Contact: sends messages via chat widget or email alias.
+
+5. Key Concepts
+   - Conversation Origin: enum { "chat", "email" } stored with metadata.
+   - Email Alias: auto-generated address per organization (e.g., orgSlug@s.support.launchthat.io) used until custom domain verified.
+   - Sending Domain: optional custom domain connected via Resend domain API.
+   - Message Types: chat message, inbound email, outbound email (from agent).
+
+6. High-Level Architecture
+   - Inbound Flow:
+     1. Resend Inbound Parse webhook receives email for alias/custom domain.
+     2. New serverless endpoint validates signature, finds org by alias/domain.
+     3. System either appends to existing conversation (match by Message-ID/In-Reply-To) or creates new conversation with origin=email.
+     4. Attachments stored via existing storage (Convex file or external bucket) and referenced in message record.
+   - Outbound Flow:
+     1. Agent replies from ConversationsView (new rich-text email composer when origin=email).
+     2. API stores the outbound message, enqueues send job.
+     3. Worker calls Resend /emails API using either org-specific domain or default fallback domain.
+     4. Delivery/bounce webhooks update status and surface warnings in UI.
+
+7. Detailed Requirements
+   7.1 Data Model (Convex)
+       - conversations table:
+         • origin: "chat" | "email"
+         • emailThreadId: string (nullable) – maps to Message-ID / thread key.
+         • inboundAlias: string – alias that received the email.
+         • sendingDomainId: string (Ref to new table) optional.
+       - messages table:
+         • messageType: "chat" | "email_inbound" | "email_outbound".
+         • rawHeaders (json or string) for email items.
+         • attachments: array of storageIds.
+         • status: "sent" | "delivered" | "bounced" (for outbound).
+       - organizations_support_settings table (new or extend existing):
+         • defaultAlias (system generated).
+         • customDomain (string).
+         • resendDomainId (string).
+         • verificationStatus: "unverified" | "pending" | "verified" | "failed".
+         • forwardingInstructions (structured data for UI).
+   7.2 Admin UI (Support -> Settings tab)
+       - Domain Setup section:
+         • shows default alias.
+         • wizard to "Connect custom domain".
+         • when clicked, call backend to create Resend domain -> returns DNS records (TXT, CNAME DKIM).
+         • UI displays records with copy buttons and verification state.
+         • Provide fallback instructions for manual forwarding.
+       - Email preferences:
+         • Toggle "Allow email intake".
+         • Option "Auto-assign new email threads to queue XYZ" (future).
+   7.3 Conversations UI
+       - Conversation list indicates origin via badge icon (envelope for email).
+       - Transcript shows email bodies with minimal quoting.
+       - When origin=email:
+         • Reply composer defaults to email mode (subject, attachments).
+         • Show metadata (from, to, cc) inside inspector panel.
+       - Agents can switch between “Email” and “Chat” tabs but only email threads allow email composer.
+   7.4 Webhooks & Workers
+       - Inbound handler (Next.js API route or Convex action):
+         • Validate Resend signature.
+         • Parse payload, attachments.
+         • Link to conversation or create new.
+       - Outbound send worker:
+         • Handles Resend API calls with retries.
+         • Updates message status.
+       - Bounce/Delivery webhooks:
+         • Update message status.
+         • If bounce occurs, show flag near contact record.
+   7.5 Security & Compliance
+       - Store Resend API key server-side only; never expose to clients.
+       - Encrypt per-org tokens if supporting sub-accounts (future).
+       - Sanitize inbound HTML to prevent XSS in transcript.
+       - Rate limit inbound hits per alias to avoid abuse.
+       - Log all webhook events for auditing.
+
+8. Edge Cases
+   - Email with large attachments: enforce size limit (e.g., 10MB); reject gracefully.
+   - Customer replying from different email -> treat as new contact unless matching existing contact record.
+   - Duplicate messages due to retries -> dedupe by Message-ID + timestamp.
+   - Domain verification failing -> fall back to default alias; display error.
+
+9. Dependencies
+   - Resend account with Inbound Parse enabled.
+   - Storage layer for attachments (Convex storage or S3).
+   - Existing Convex functions for conversations/messages.
+
+10. Analytics & Monitoring
+   - Track count of inbound email threads per org.
+   - Monitor deliverability metrics (sent, delivered, bounced).
+   - Alert on webhook failures or DNS verification timeouts.
+
+11. Rollout Plan
+   Phase 1: Backend + data model + inbound/outbound scaffolding (hidden UI).
+   Phase 2: Admin UI for domain setup + conversation UI toggles for origin.
+   Phase 3: Beta with select tenants; log deliverability stats.
+   Phase 4: General availability; documentation and support playbooks.
+
+12. Open Questions
+   - Do we support CC/BCC in MVP?
+   - Should we auto-create contacts for every new inbound email?
+   - Do we need SLA timers/notifications for email threads?
+   - Any compliance requirements (HIPAA/GDPR) for storing email content?
+

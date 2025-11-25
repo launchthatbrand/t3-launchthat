@@ -1,7 +1,4 @@
-// Keep httpAction import from generated server
-
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-// Correct import for httpRouter according to docs
 import { httpRouter } from "convex/server";
 
 import { api, internal } from "./_generated/api";
@@ -11,6 +8,7 @@ import {
   uploadMediaOptions,
   uploadMediaPost,
 } from "./core/media/http";
+import { supportEmailInbound } from "./plugins/support/http";
 
 /**
  * Request body structure expected by the createAuthNetTransaction endpoint.
@@ -125,28 +123,49 @@ const createAuthNetTransactionHttpAction = httpAction(async (ctx, request) => {
 // Create an HTTP router using the correct import
 const http = httpRouter();
 
-// Define routes
-// Example: POST /createAuthNetTransaction will call our action
-// Remove eslint-disable comments here, covered by file-level disable
+const allowedOrigin = "*";
+
+const corsPreflight = httpAction(async () => {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": allowedOrigin,
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
+});
+
+http.route({
+  path: "/healthz",
+  method: "GET",
+  handler: httpAction(async () => {
+    return new Response("ok");
+  }),
+});
+
+http.route({
+  path: "/api/support/email/inbound",
+  method: "POST",
+  handler: supportEmailInbound,
+});
+
+http.route({
+  path: "/api/support/email/inbound",
+  method: "OPTIONS",
+  handler: corsPreflight,
+});
+
 http.route({
   path: "/createAuthNetTransaction",
   method: "POST",
   handler: createAuthNetTransactionHttpAction, // Use the defined action function
 });
 
-// Handle OPTIONS preflight requests for CORS
 http.route({
   path: "/createAuthNetTransaction",
   method: "OPTIONS",
-  // Wrap the handler in httpAction and make it async to satisfy the type signature
-  // eslint-disable-next-line @typescript-eslint/require-await -- Required by httpAction type, even if no await is present
-  handler: httpAction(async () => {
-    // Return the standard preflight response
-    return new Response(null, {
-      status: 204,
-      headers: createCorsHeaders(),
-    });
-  }),
+  handler: corsPreflight,
 });
 
 // ---- Lessons webhook ----

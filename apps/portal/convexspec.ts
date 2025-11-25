@@ -8091,7 +8091,9 @@ export type PublicApiType = {
             contactName?: string;
             content: string;
             createdAt: number;
+            messageType?: "chat" | "email_inbound" | "email_outbound";
             role: "user" | "assistant";
+            subject?: string;
           }>
         >;
         listConversations: FunctionReference<
@@ -8106,9 +8108,26 @@ export type PublicApiType = {
             lastAt: number;
             lastMessage: string;
             lastRole: "user" | "assistant";
+            origin: "chat" | "email";
             sessionId: string;
+            status?: "open" | "snoozed" | "closed";
             totalMessages: number;
           }>
+        >;
+        getEmailSettings: FunctionReference<
+          "query",
+          "public",
+          { organizationId: Id<"organizations"> },
+          {
+            allowEmailIntake: boolean;
+            customDomain?: string;
+            defaultAlias: string;
+            dnsRecords?: Array<{ host: string; type: string; value: string }>;
+            isCustomDomainConnected: boolean;
+            lastSyncedAt?: number;
+            resendDomainId?: string;
+            verificationStatus: "unverified" | "pending" | "verified" | "failed";
+          }
         >;
       };
       mutations: {
@@ -8120,9 +8139,11 @@ export type PublicApiType = {
             contactId?: Id<"contacts">;
             contactName?: string;
             content: string;
+            messageType?: "chat" | "email_inbound" | "email_outbound";
             organizationId: Id<"organizations">;
             role: "user" | "assistant";
             sessionId: string;
+            subject?: string;
           },
           any
         >;
@@ -8152,6 +8173,26 @@ export type PublicApiType = {
             organizationId: Id<"organizations">;
           },
           any
+        >;
+        saveEmailSettings: FunctionReference<
+          "mutation",
+          "public",
+          {
+            allowEmailIntake?: boolean;
+            customDomain?: string | null;
+            organizationId: Id<"organizations">;
+          },
+          { success: boolean }
+        >;
+        beginDomainVerification: FunctionReference<
+          "mutation",
+          "public",
+          { domain: string; organizationId: Id<"organizations"> },
+          {
+            customDomain: string;
+            dnsRecords: Array<{ host: string; type: string; value: string }>;
+            verificationStatus: "pending";
+          }
         >;
       };
     };

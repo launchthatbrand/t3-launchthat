@@ -2,9 +2,26 @@
 import { v } from "convex/values";
 
 import type { Doc, Id } from "../../_generated/dataModel";
-import { query } from "../../_generated/server";
+import { internalQuery, query } from "../../_generated/server";
+import { getEmailSettingsByAliasHelper } from "./helpers";
 
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+
+const verificationStatusValidator = v.union(
+  v.literal("unverified"),
+  v.literal("pending"),
+  v.literal("verified"),
+  v.literal("failed"),
+);
+
+const dnsRecordShape = v.object({
+  type: v.string(),
+  host: v.string(),
+  value: v.string(),
+});
+
+const DEFAULT_EMAIL_DOMAIN =
+  process.env.SUPPORT_EMAIL_DOMAIN ?? "support.launchthat.dev";
 
 const resultShape = v.object({
   title: v.string(),
@@ -16,6 +33,70 @@ const resultShape = v.object({
 });
 
 type KnowledgeDoc = Doc<"supportKnowledge">;
+
+const sanitizeOrganizationId = (organizationId: Id<"organizations">) => {
+  return organizationId
+    .toString()
+    .replace(/[^a-z0-9]/gi, "")
+    .toLowerCase();
+};
+
+const randomSuffix = (length: number) => {
+  return Array.from({ length }, () =>
+    Math.floor(Math.random() * 36)
+      .toString(36)
+      .charAt(0),
+  ).join("");
+};
+
+export const generateDefaultAliasParts = (
+  organizationId: Id<"organizations">,
+) => {
+  const base = sanitizeOrganizationId(organizationId);
+  const suffix = randomSuffix(8);
+  const localPart = `${base}${suffix}`;
+  const address = `${localPart}@${DEFAULT_EMAIL_DOMAIN}`;
+  return { localPart, address };
+};
+
+export const getEmailSettingsByAlias = internalQuery({
+  args: {
+    aliasLocalPart: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return getEmailSettingsByAliasHelper(ctx, args.aliasLocalPart);
+  },
+});
+
+// export const getEmailSettingsByAlias = query({
+//   args: {
+//     aliasLocalPart: v.string(),
+//   },
+//   returns: v.union(
+//     v.object({
+//       organizationId: v.id("organizations"),
+//       defaultAlias: v.string(),
+//     }),
+//     v.null(),
+//   ),
+//   handler: async (ctx, args) => {
+//     const record = await ctx.db
+//       .query("supportEmailSettings")
+//       .withIndex("by_alias_local_part", (q) =>
+//         q.eq("defaultAliasLocalPart", args.aliasLocalPart.toLowerCase()),
+//       )
+//       .unique();
+
+//     if (!record) {
+//       return null;
+//     }
+
+//     return {
+//       organizationId: record.organizationId,
+//       defaultAlias: record.defaultAlias,
+//     };
+//   },
+// });
 
 export const listKnowledge = query({
   args: {
@@ -269,6 +350,14 @@ export const listMessages = query({
       contactId: v.optional(v.id("contacts")),
       contactEmail: v.optional(v.string()),
       contactName: v.optional(v.string()),
+      messageType: v.optional(
+        v.union(
+          v.literal("chat"),
+          v.literal("email_inbound"),
+          v.literal("email_outbound"),
+        ),
+      ),
+      subject: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -291,6 +380,8 @@ export const listMessages = query({
         contactId: entry.contactId,
         contactEmail: entry.contactEmail ?? undefined,
         contactName: entry.contactName ?? undefined,
+        messageType: entry.messageType ?? undefined,
+        subject: entry.subject ?? undefined,
       }))
       .sort((a, b) => a.createdAt - b.createdAt);
   },
@@ -312,10 +403,38 @@ export const listConversations = query({
       contactId: v.optional(v.id("contacts")),
       contactName: v.optional(v.string()),
       contactEmail: v.optional(v.string()),
+      origin: v.union(v.literal("chat"), v.literal("email")),
+      status: v.optional(
+        v.union(v.literal("open"), v.literal("snoozed"), v.literal("closed")),
+      ),
     }),
   ),
   handler: async (ctx, args) => {
     const limit = Math.max(1, Math.min(args.limit ?? 50, 100));
+    const stored = await ctx.db
+      .query("supportConversations")
+      .withIndex("by_organization", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .order("desc")
+      .take(limit);
+
+    if (stored.length > 0) {
+      return stored.map((conversation) => ({
+        sessionId: conversation.sessionId,
+        lastMessage: conversation.lastMessageSnippet ?? "",
+        lastRole: conversation.lastMessageAuthor ?? "user",
+        lastAt: conversation.lastMessageAt,
+        firstAt: conversation.firstMessageAt,
+        totalMessages: conversation.totalMessages,
+        contactId: conversation.contactId ?? undefined,
+        contactName: conversation.contactName ?? undefined,
+        contactEmail: conversation.contactEmail ?? undefined,
+        origin: conversation.origin,
+        status: conversation.status ?? "open",
+      }));
+    }
+
     const rows = (await ctx.db
       .query("supportMessages")
       .withIndex("by_organization", (q) =>
@@ -366,6 +485,64 @@ export const listConversations = query({
 
     return Array.from(conversations.values())
       .sort((a, b) => b.lastAt - a.lastAt)
-      .slice(0, limit);
+      .slice(0, limit)
+      .map((conversation) => ({
+        ...conversation,
+        origin: "chat" as const,
+        status: "open" as const,
+      }));
+  },
+});
+
+export const getEmailSettings = query({
+  args: {
+    organizationId: v.id("organizations"),
+  },
+  returns: v.object({
+    defaultAlias: v.string(),
+    allowEmailIntake: v.boolean(),
+    customDomain: v.optional(v.string()),
+    verificationStatus: verificationStatusValidator,
+    dnsRecords: v.optional(v.array(dnsRecordShape)),
+    resendDomainId: v.optional(v.string()),
+    lastSyncedAt: v.optional(v.number()),
+    isCustomDomainConnected: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("supportEmailSettings")
+      .withIndex("by_organization", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .unique();
+
+    if (!existing) {
+      const aliasParts = generateDefaultAliasParts(args.organizationId);
+      return {
+        defaultAlias: aliasParts.address,
+        allowEmailIntake: false,
+        verificationStatus: "unverified" as const,
+        dnsRecords: undefined,
+        resendDomainId: undefined,
+        lastSyncedAt: undefined,
+        customDomain: undefined,
+        isCustomDomainConnected: false,
+      };
+    }
+
+    const verificationStatus = existing.verificationStatus ?? "unverified";
+    const isCustomDomainConnected =
+      Boolean(existing.customDomain) && verificationStatus === "verified";
+
+    return {
+      defaultAlias: existing.defaultAlias,
+      allowEmailIntake: existing.allowEmailIntake,
+      customDomain: existing.customDomain ?? undefined,
+      verificationStatus,
+      dnsRecords: existing.dnsRecords ?? undefined,
+      resendDomainId: existing.resendDomainId ?? undefined,
+      lastSyncedAt: existing.lastSyncedAt ?? undefined,
+      isCustomDomainConnected,
+    };
   },
 });

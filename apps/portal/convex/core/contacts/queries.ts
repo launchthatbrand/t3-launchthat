@@ -6,6 +6,7 @@ import { query } from "../../_generated/server";
 type ContactDoc = Doc<"contacts">;
 
 const publicContactShape = v.object({
+  _creationTime: v.number(),
   _id: v.id("contacts"),
   organizationId: v.id("organizations"),
   email: v.optional(v.string()),
