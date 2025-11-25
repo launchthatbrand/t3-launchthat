@@ -1,14 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { v } from "convex/values";
 
 import type { Doc, Id } from "../../_generated/dataModel";
 import { query } from "../../_generated/server";
 
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 
 const resultShape = v.object({
@@ -248,15 +243,17 @@ export const listKnowledgeEntries = query({
       content: entry.content,
       tags: entry.tags ?? undefined,
       type: entry.type ?? undefined,
-      matchMode: entry.matchMode ?? undefined,
-      matchPhrases: entry.matchPhrases ?? undefined,
-      priority: entry.priority ?? undefined,
-      isActive: entry.isActive ?? undefined,
+      matchMode: entry.matchMode,
+      matchPhrases: entry.matchPhrases,
+      priority: entry.priority,
+      isActive: entry.isActive,
       updatedAt: entry.updatedAt,
       createdAt: entry.createdAt,
     }));
   },
 });
+
+type MessageDoc = Doc<"supportMessages">;
 
 export const listMessages = query({
   args: {
@@ -272,7 +269,7 @@ export const listMessages = query({
     }),
   ),
   handler: async (ctx, args) => {
-    return await ctx.db
+    const entries = (await ctx.db
       .query("supportMessages")
       .withIndex("by_session", (q) =>
         q
@@ -280,7 +277,15 @@ export const listMessages = query({
           .eq("sessionId", args.sessionId),
       )
       .order("desc")
-      .take(50)
-      .then((messages) => messages.sort((a, b) => a.createdAt - b.createdAt));
+      .take(50)) as MessageDoc[];
+
+    return entries
+      .map((entry) => ({
+        _id: entry._id,
+        role: entry.role,
+        content: entry.content,
+        createdAt: entry.createdAt,
+      }))
+      .sort((a, b) => a.createdAt - b.createdAt);
   },
 });

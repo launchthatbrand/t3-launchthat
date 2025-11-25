@@ -18,6 +18,8 @@ const openai = createOpenAI({
   apiKey: env.OPENAI_API_KEY,
 });
 
+const hasOpenAIApiKey = Boolean(env.OPENAI_API_KEY?.trim());
+
 const messageSchema = z.object({
   id: z.string().optional(),
   role: z.enum(["user", "assistant", "system"]),
@@ -81,7 +83,7 @@ export async function POST(req: Request) {
         role: "assistant",
         content: cannedResponse.content,
       });
-      return streamCannedResponse(cannedResponse.content);
+      return streamTextResponse(cannedResponse.content);
     }
 
     console.log("[support-chat] querying knowledge + history", {
@@ -129,6 +131,19 @@ export async function POST(req: Request) {
         content: message.content,
       }));
 
+    if (!hasOpenAIApiKey) {
+      const noKeyMessage =
+        "Support assistant is not fully configured yet (missing API key).";
+      console.warn("[support-chat] missing OPENAI_API_KEY");
+      await convex.mutation(api.plugins.support.mutations.recordMessage, {
+        organizationId,
+        sessionId,
+        role: "assistant",
+        content: noKeyMessage,
+      });
+      return streamTextResponse(noKeyMessage);
+    }
+
     console.log("[support-chat] streaming LLM response", {
       organizationId,
       sessionId,
@@ -167,7 +182,7 @@ export async function POST(req: Request) {
   }
 }
 
-function streamCannedResponse(content: string) {
+function streamTextResponse(content: string) {
   const encoder = new TextEncoder();
   const textPart = formatStreamPart("text", content);
   const finishPart = formatStreamPart("finish_message", {
