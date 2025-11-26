@@ -1,6 +1,6 @@
-import { $createImageNode, $isImageNode, ImageNode } from "../nodes/image-node";
-
 import type { TextMatchTransformer } from "@lexical/markdown";
+
+import { $createImageNode, $isImageNode, ImageNode } from "../nodes/image-node";
 
 export const IMAGE: TextMatchTransformer = {
   dependencies: [ImageNode],
@@ -16,9 +16,9 @@ export const IMAGE: TextMatchTransformer = {
   replace: (textNode, match) => {
     const [, altText, src] = match;
     const imageNode = $createImageNode({
-      altText,
+      altText: altText ?? "",
       maxWidth: 800,
-      src,
+      src: src ?? "",
     });
     textNode.replace(imageNode);
   },

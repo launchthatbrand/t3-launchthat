@@ -1,20 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-floating-promises */
 "use client";
-
-import * as React from "react";
-
-import {
-  $getNearestNodeFromDOMNode,
-  $getSelection,
-  $isRangeSelection,
-  COPY_COMMAND,
-  CUT_COMMAND,
-  PASTE_COMMAND,
-} from "lexical";
-import { $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
-import { Command, CommandItem, CommandList } from "../../../command";
-import type { JSX} from "react";
-import { useCallback, useMemo } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "../../../popover";
 
 /**
  * Copyright (c) Meta Platforms, Inc. and affiliates.
@@ -24,10 +10,25 @@ import { Popover, PopoverContent, PopoverTrigger } from "../../../popover";
  *
  */
 import type { LexicalNode } from "lexical";
+import type { JSX } from "react";
+import * as React from "react";
+import { useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
+import { $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { MenuOption } from "@lexical/react/LexicalContextMenuPlugin";
 import { PopoverPortal } from "@radix-ui/react-popover";
-import dynamic from "next/dynamic";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import {
+  $getNearestNodeFromDOMNode,
+  $getSelection,
+  $isRangeSelection,
+  COPY_COMMAND,
+  CUT_COMMAND,
+  PASTE_COMMAND,
+} from "lexical";
+
+import { Command, CommandItem, CommandList } from "../../../command";
+import { Popover, PopoverContent, PopoverTrigger } from "../../../popover";
 
 const LexicalContextMenuPlugin = dynamic(
   () => import("./default/lexical-context-menu-plugin"),
@@ -82,9 +83,11 @@ export function ContextMenuPlugin(): JSX.Element {
               return;
             }
 
-            for (const type of item.types) {
-              const dataString = await (await item.getType(type)).text();
-              data.setData(type, dataString);
+            for (const type of item?.types ?? []) {
+              const dataString = await (await item?.getType(type))?.text();
+              if (dataString) {
+                data.setData(type, dataString);
+              }
             }
 
             const event = new ClipboardEvent("paste", {

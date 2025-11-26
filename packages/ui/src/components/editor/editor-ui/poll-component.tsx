@@ -1,5 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import type { BaseSelection, NodeKey } from "lexical";
+import type { JSX } from "react";
 import * as React from "react";
-
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCollaborationContext } from "@lexical/react/LexicalCollaborationContext";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { useLexicalNodeSelection } from "@lexical/react/useLexicalNodeSelection";
+import { mergeRegister } from "@lexical/utils";
 import {
   $getNodeByKey,
   $getSelection,
@@ -9,18 +16,11 @@ import {
   KEY_BACKSPACE_COMMAND,
   KEY_DELETE_COMMAND,
 } from "lexical";
-import { $isPollNode, createPollOption } from "../../editor/nodes/poll-node";
-import type { BaseSelection, NodeKey } from "lexical";
-import type { Option, Options, PollNode } from "../../editor/nodes/poll-node";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import type { Option, Options, PollNode } from "../../editor/nodes/poll-node";
 import { Button } from "../../../button";
 import { Input } from "../../../input";
-import type { JSX } from "react";
-import { mergeRegister } from "@lexical/utils";
-import { useCollaborationContext } from "@lexical/react/LexicalCollaborationContext";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { useLexicalNodeSelection } from "@lexical/react/useLexicalNodeSelection";
+import { $isPollNode, createPollOption } from "../../editor/nodes/poll-node";
 
 function getTotalVotes(options: Options): number {
   return options.reduce((totalVotes, next) => {

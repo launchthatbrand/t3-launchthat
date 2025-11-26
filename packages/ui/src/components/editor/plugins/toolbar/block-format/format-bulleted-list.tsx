@@ -1,14 +1,14 @@
+import { INSERT_UNORDERED_LIST_COMMAND } from "@lexical/list";
+import { $setBlocksType } from "@lexical/selection";
 import {
   $createParagraphNode,
   $getSelection,
   $isRangeSelection,
 } from "lexical";
 
-import { $setBlocksType } from "@lexical/selection";
-import { INSERT_UNORDERED_LIST_COMMAND } from "@lexical/list";
 import { SelectItem } from "../../../../../select";
-import { blockTypeToBlockName } from "./block-format-data";
 import { useToolbarContext } from "../../../context/toolbar-context";
+import { blockTypeToBlockName } from "./block-format-data";
 
 const BLOCK_FORMAT_VALUE = "bullet";
 
@@ -35,8 +35,8 @@ export function FormatBulletedList() {
   return (
     <SelectItem value={BLOCK_FORMAT_VALUE} onPointerDown={formatBulletedList}>
       <div className="flex items-center gap-1 font-normal">
-        {blockTypeToBlockName[BLOCK_FORMAT_VALUE].icon}
-        {blockTypeToBlockName[BLOCK_FORMAT_VALUE].label}
+        {blockTypeToBlockName[BLOCK_FORMAT_VALUE]?.icon}
+        {blockTypeToBlockName[BLOCK_FORMAT_VALUE]?.label}
       </div>
     </SelectItem>
   );

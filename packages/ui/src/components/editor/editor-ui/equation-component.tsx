@@ -1,5 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import type { NodeKey } from "lexical";
+import type { JSX } from "react";
 import * as React from "react";
-
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
+import { mergeRegister } from "@lexical/utils";
 import {
   $getNodeByKey,
   $getSelection,
@@ -8,17 +14,11 @@ import {
   KEY_ESCAPE_COMMAND,
   SELECTION_CHANGE_COMMAND,
 } from "lexical";
-import { useCallback, useEffect, useRef, useState } from "react";
-
-import { $isEquationNode } from "../../editor/nodes/equation-node";
-import EquationEditor from "../../editor/editor-ui/equation-editor";
 import { ErrorBoundary } from "react-error-boundary";
-import type { JSX } from "react";
+
+import EquationEditor from "../../editor/editor-ui/equation-editor";
 import KatexRenderer from "../../editor/editor-ui/katex-renderer";
-import type { NodeKey } from "lexical";
-import { mergeRegister } from "@lexical/utils";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
+import { $isEquationNode } from "../../editor/nodes/equation-node";
 
 interface EquationComponentProps {
   equation: string;

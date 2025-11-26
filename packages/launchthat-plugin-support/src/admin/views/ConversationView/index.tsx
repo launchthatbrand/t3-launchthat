@@ -3,8 +3,6 @@
 import type { GenericId as Id } from "convex/values";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
 import { ChevronsLeft, ChevronsRight } from "lucide-react";
 
 import { ResizablePanel, ResizablePanelGroup } from "@acme/ui/index";
@@ -15,6 +13,9 @@ import type {
 } from "../../components/ConversationInspector";
 import { ConversationHeader } from "../../components/ConversationHeader";
 import { ConversationInspector } from "../../components/ConversationInspector";
+import { useSupportContact } from "../../hooks/useSupportContact";
+import { useSupportConversations } from "../../hooks/useSupportConversations";
+import { useSupportSessionState } from "../../hooks/useSupportSessionState";
 import { CustomerDashboard } from "../CustomerDashboard";
 import { ConversationSidebar } from "./Sidebar";
 import { ConversationTranscript } from "./Transcript";
@@ -35,21 +36,15 @@ export function ConversationsView({
   initialSessionId,
   basePath,
 }: ConversationsViewProps) {
-  const conversations = (useQuery(
-    api.plugins.support.queries.listConversations,
-    { organizationId, limit: 100 },
-  ) ?? []) as ConversationSummary[];
+  const conversations = useSupportConversations(organizationId, 100);
+  const { activeSessionId, handleSelectConversation } = useSupportSessionState(
+    initialSessionId,
+    basePath,
+  );
 
   const [activeTab, setActiveTab] = useState<"messages" | "dashboard">(
     "messages",
   );
-  const [activeSessionId, setActiveSessionId] = useState<string | undefined>(
-    initialSessionId,
-  );
-
-  useEffect(() => {
-    setActiveSessionId((prev) => prev ?? initialSessionId);
-  }, [initialSessionId]);
 
   const selectedConversation = useMemo(() => {
     if (!activeSessionId) {
@@ -60,30 +55,17 @@ export function ConversationsView({
     );
   }, [activeSessionId, conversations]);
 
-  const contactsApi = api as any;
-  const contact = useQuery(
-    contactsApi.core.contacts.queries.get,
+  const contact = useSupportContact(
     selectedConversation?.contactId &&
       isContactId(selectedConversation.contactId)
-      ? { contactId: selectedConversation.contactId }
-      : "skip",
-  ) as ContactDoc | null;
+      ? (selectedConversation.contactId as Id<"contacts">)
+      : undefined,
+  );
 
-  const resolvedContact = contact ?? null;
+  const resolvedContact = (contact ?? null) as ContactDoc | null;
   const showInspector = Boolean(selectedConversation);
   const inspectorPanelRef = useRef<ImperativePanelHandle>(null);
   const [isInspectorCollapsed, setIsInspectorCollapsed] = useState(false);
-
-  const handleSelectConversation = (sessionId: string) => {
-    setActiveSessionId(sessionId);
-
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.pathname = basePath;
-      url.searchParams.set("sessionId", sessionId);
-      window.history.replaceState(null, "", url.toString());
-    }
-  };
 
   useEffect(() => {
     if (!showInspector) {

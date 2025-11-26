@@ -1,9 +1,20 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/prefer-promise-reject-errors */
 "use client";
 
-import {
-  $createAutocompleteNode,
-  AutocompleteNode,
-} from "../nodes/autocomplete-node";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+import type { BaseSelection, NodeKey } from "lexical";
+import type { JSX } from "react";
+import { useCallback, useEffect } from "react";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { $isAtNodeEnd } from "@lexical/selection";
+import { mergeRegister } from "@lexical/utils";
 import {
   $createTextNode,
   $getNodeByKey,
@@ -15,22 +26,13 @@ import {
   KEY_ARROW_RIGHT_COMMAND,
   KEY_TAB_COMMAND,
 } from "lexical";
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
-import type { BaseSelection, NodeKey } from "lexical";
-import type { JSX} from "react";
-import { useCallback, useEffect } from "react";
 
-import { $isAtNodeEnd } from "@lexical/selection";
-import { addSwipeRightListener } from "../utils/swipe";
-import { mergeRegister } from "@lexical/utils";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useSharedAutocompleteContext } from "../context/shared-autocomplete-context";
+import {
+  $createAutocompleteNode,
+  AutocompleteNode,
+} from "../nodes/autocomplete-node";
+import { addSwipeRightListener } from "../utils/swipe";
 
 interface SearchPromise {
   dismiss: () => void;
@@ -92,7 +94,7 @@ export function AutocompletePlugin(): JSX.Element | null {
         autocompleteNodeKey !== null
           ? $getNodeByKey(autocompleteNodeKey)
           : null;
-      if (autocompleteNode !== null && autocompleteNode.isAttached()) {
+      if (autocompleteNode?.isAttached()) {
         autocompleteNode.remove();
         autocompleteNodeKey = null;
       }
@@ -162,7 +164,7 @@ export function AutocompletePlugin(): JSX.Element | null {
               updateAsyncSuggestion(searchPromise, newSuggestion);
             }
           })
-          .catch((e) => {
+          .catch((_e) => {
             // console.error(e)
           });
         lastMatch = match;

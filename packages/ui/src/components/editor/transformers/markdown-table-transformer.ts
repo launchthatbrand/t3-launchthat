@@ -1,5 +1,5 @@
-import type {
-  ElementTransformer} from "@lexical/markdown";
+import type { ElementTransformer } from "@lexical/markdown";
+import type { LexicalNode } from "lexical";
 import {
   $convertFromMarkdownString,
   $convertToMarkdownString,
@@ -21,7 +21,6 @@ import {
   TableNode,
   TableRowNode,
 } from "@lexical/table";
-import type { LexicalNode } from "lexical";
 import { $isParagraphNode, $isTextNode } from "lexical";
 
 import { EMOJI } from "./markdown-emoji-transformer";
@@ -89,7 +88,7 @@ export const TABLE: ElementTransformer = {
   regExp: TABLE_ROW_REG_EXP,
   replace: (parentNode, _1, match) => {
     // Header row
-    if (TABLE_ROW_DIVIDER_REG_EXP.test(match[0])) {
+    if (TABLE_ROW_DIVIDER_REG_EXP.test(match[0] ?? "")) {
       const table = parentNode.getPreviousSibling();
       if (!table || !$isTableNode(table)) {
         return;
@@ -117,7 +116,7 @@ export const TABLE: ElementTransformer = {
       return;
     }
 
-    const matchCells = mapToTableCells(match[0]);
+    const matchCells = mapToTableCells(match[0] ?? "");
 
     if (matchCells == null) {
       return;
@@ -162,7 +161,11 @@ export const TABLE: ElementTransformer = {
       table.append(tableRow);
 
       for (let i = 0; i < maxCells; i++) {
-        tableRow.append(i < cells.length ? cells[i] : $createTableCell(""));
+        tableRow.append(
+          i < cells.length
+            ? (cells[i] ?? $createTableCell(""))
+            : $createTableCell(""),
+        );
       }
     }
 

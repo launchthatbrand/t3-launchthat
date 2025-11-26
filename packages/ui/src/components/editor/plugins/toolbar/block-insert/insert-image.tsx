@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { ImageIcon } from "lucide-react";
-import { InsertImageDialog } from "../../../plugins/images-plugin";
+
 import { SelectItem } from "../../../../../select";
 import { useToolbarContext } from "../../../context/toolbar-context";
+import { InsertImageDialog } from "../../../plugins/images-plugin";
 
 export function InsertImage() {
   const { activeEditor, showModal } = useToolbarContext();

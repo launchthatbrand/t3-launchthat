@@ -1,16 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 "use client";
 
-import {
-  $createExcalidrawNode,
-  ExcalidrawNode,
-} from "../nodes/excalidraw-node";
-import {
-  $createParagraphNode,
-  $insertNodes,
-  $isRootOrShadowRoot,
-  COMMAND_PRIORITY_EDITOR,
-  createCommand,
-} from "lexical";
 /**
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
@@ -18,15 +8,26 @@ import {
  * LICENSE file in the root directory of this source tree.
  *
  */
-import type { AppState, BinaryFiles } from "@excalidraw/excalidraw/types/types";
+import type { AppState, BinaryFiles } from "@excalidraw/excalidraw/types";
+import type { LexicalCommand } from "lexical";
+import type { JSX } from "react";
 import { useEffect, useState } from "react";
-
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $wrapNodeInElement } from "@lexical/utils";
+import {
+  $createParagraphNode,
+  $insertNodes,
+  $isRootOrShadowRoot,
+  COMMAND_PRIORITY_EDITOR,
+  createCommand,
+} from "lexical";
+
 import type { ExcalidrawInitialElements } from "../editor-ui/excalidraw-modal";
 import { ExcalidrawModal } from "../editor-ui/excalidraw-modal";
-import type { JSX } from "react";
-import type { LexicalCommand } from "lexical";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import {
+  $createExcalidrawNode,
+  ExcalidrawNode,
+} from "../nodes/excalidraw-node";
 
 export const INSERT_EXCALIDRAW_COMMAND: LexicalCommand<void> = createCommand(
   "INSERT_EXCALIDRAW_COMMAND",

@@ -1,5 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
+import { useEffect, useImperativeHandle, useState } from "react";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { mergeRegister } from "@lexical/utils";
 import {
   CAN_REDO_COMMAND,
   CAN_UNDO_COMMAND,
@@ -9,11 +14,8 @@ import {
   UNDO_COMMAND,
 } from "lexical";
 import { RedoIcon, UndoIcon } from "lucide-react";
-import { useEffect, useImperativeHandle, useState } from "react";
 
 import { Button } from "../../../../button";
-import { mergeRegister } from "@lexical/utils";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useToolbarContext } from "../../context/toolbar-context";
 
 const IS_APPLE = true;

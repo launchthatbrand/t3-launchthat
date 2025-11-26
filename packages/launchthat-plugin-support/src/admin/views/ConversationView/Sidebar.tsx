@@ -1,22 +1,23 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { MessageSquare } from "lucide-react";
 
 import {
-  Label,
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
   SidebarInput,
-  Switch,
   Tabs,
   TabsList,
   TabsTrigger,
 } from "@acme/ui/index";
 
 import type { ConversationSummary } from "../../components/ConversationInspector";
+
+type SidebarFilter = "mine" | "unassigned" | "all";
 
 interface ConversationSidebarProps {
   conversations: ConversationSummary[];
@@ -29,9 +30,25 @@ export function ConversationSidebar({
   activeSessionId,
   onSelect,
 }: ConversationSidebarProps) {
+  const [filter, setFilter] = useState<SidebarFilter>("all");
+
+  const filteredConversations = useMemo(() => {
+    switch (filter) {
+      case "mine":
+        return conversations.filter((conversation) => conversation.contactId);
+      case "unassigned":
+        return conversations.filter((conversation) => !conversation.contactId);
+      default:
+        return conversations;
+    }
+  }, [conversations, filter]);
+
   return (
     <Sidebar collapsible="none" className="hidden w-[350px] border-r md:flex">
-      <Tabs>
+      <Tabs
+        value={filter}
+        onValueChange={(value) => setFilter(value as SidebarFilter)}
+      >
         <SidebarHeader className="gap-2 border-b p-0">
           <div className="flex flex-col gap-2 p-4">
             <div className="flex w-full flex-col justify-between gap-3">
@@ -60,12 +77,13 @@ export function ConversationSidebar({
         <SidebarContent>
           <SidebarGroup className="max-h-[calc(100vh-340px)] overflow-y-scroll px-0">
             <SidebarGroupContent className="overflow-y-scroll">
-              {conversations.length > 0 ? (
-                conversations.map((conversation) => {
+              {filteredConversations.length > 0 ? (
+                filteredConversations.map((conversation) => {
                   const isActive =
                     activeSessionId === conversation.sessionId ||
                     (!activeSessionId &&
-                      conversations[0]?.sessionId === conversation.sessionId);
+                      filteredConversations[0]?.sessionId ===
+                        conversation.sessionId);
                   return (
                     <button
                       key={conversation.sessionId}

@@ -1,16 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 "use client";
 
-import * as React from "react";
-
-import {
-  MenuOption,
-  useBasicTypeaheadTriggerMatch,
-} from "@lexical/react/LexicalTypeaheadMenuPlugin";
-import { useCallback, useEffect, useMemo, useState } from "react";
-
-import { $createMentionNode } from "../nodes/mention-node";
-import { CircleUserRoundIcon } from "lucide-react";
-import type { JSX } from "react";
 /**
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
@@ -20,9 +13,25 @@ import type { JSX } from "react";
  */
 import type { MenuTextMatch } from "@lexical/react/LexicalTypeaheadMenuPlugin";
 import type { TextNode } from "lexical";
-import { createPortal } from "react-dom";
+import type { JSX } from "react";
+import * as React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import {
+  MenuOption,
+  useBasicTypeaheadTriggerMatch,
+} from "@lexical/react/LexicalTypeaheadMenuPlugin";
+import { CircleUserRoundIcon } from "lucide-react";
+import { createPortal } from "react-dom";
+
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "../../../command";
+import { $createMentionNode } from "../nodes/mention-node";
 
 const LexicalTypeaheadMenuPlugin = dynamic(
   () => import("./default/lexical-typeahead-menu-plugin"),
@@ -555,11 +564,11 @@ function checkForAtSignMentions(
     const maybeLeadingWhitespace = match[1];
 
     const matchingString = match[3];
-    if (matchingString.length >= minMatchLength) {
+    if (matchingString && matchingString.length >= minMatchLength) {
       return {
-        leadOffset: match.index + maybeLeadingWhitespace.length,
+        leadOffset: match.index + (maybeLeadingWhitespace?.length ?? 0),
         matchingString,
-        replaceableString: match[2],
+        replaceableString: match[2] ?? "",
       };
     }
   }
@@ -636,7 +645,7 @@ export function MentionsPlugin(): JSX.Element | null {
   );
 
   return (
-    // @ts-ignore
+    // @ts-expect-error ssd
     <LexicalTypeaheadMenuPlugin<MentionTypeaheadOption>
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}

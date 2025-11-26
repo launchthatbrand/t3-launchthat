@@ -1,5 +1,16 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import type { AppState, BinaryFiles } from "@excalidraw/excalidraw/types";
+import type { NodeKey } from "lexical";
+import type { JSX } from "react";
 import * as React from "react";
-
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
+import { useLexicalNodeSelection } from "@lexical/react/useLexicalNodeSelection";
+import { mergeRegister } from "@lexical/utils";
 import {
   $getNodeByKey,
   CLICK_COMMAND,
@@ -7,20 +18,12 @@ import {
   KEY_BACKSPACE_COMMAND,
   KEY_DELETE_COMMAND,
 } from "lexical";
-import type { AppState, BinaryFiles } from "@excalidraw/excalidraw/types/types";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { $isExcalidrawNode } from "../../editor/nodes/excalidraw-node";
-import ExcalidrawImage from "../../editor/editor-ui/excalidraw-image";
 import type { ExcalidrawInitialElements } from "../../editor/editor-ui/excalidraw-modal";
+import ExcalidrawImage from "../../editor/editor-ui/excalidraw-image";
 import { ExcalidrawModal } from "../../editor/editor-ui/excalidraw-modal";
 import { ImageResizer } from "../../editor/editor-ui/image-resizer";
-import type { JSX } from "react";
-import type { NodeKey } from "lexical";
-import { mergeRegister } from "@lexical/utils";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
-import { useLexicalNodeSelection } from "@lexical/react/useLexicalNodeSelection";
+import { $isExcalidrawNode } from "../../editor/nodes/excalidraw-node";
 
 export default function ExcalidrawComponent({
   nodeKey,
@@ -79,7 +82,7 @@ export default function ExcalidrawComponent({
             return true;
           }
 
-          if (buttonElem !== null && buttonElem.contains(eventTarget as Node)) {
+          if (buttonElem?.contains(eventTarget as Node)) {
             if (!event.shiftKey) {
               clearSelection();
             }

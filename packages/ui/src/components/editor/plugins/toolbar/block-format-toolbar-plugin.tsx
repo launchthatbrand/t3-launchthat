@@ -1,20 +1,20 @@
 "use client";
 
-import { $findMatchingParent, $getNearestNodeOfType } from "@lexical/utils";
+import type { BaseSelection } from "lexical";
 import { $isListNode, ListNode } from "@lexical/list";
+import { $isHeadingNode } from "@lexical/rich-text";
+import { $findMatchingParent, $getNearestNodeOfType } from "@lexical/utils";
 import { $isRangeSelection, $isRootOrShadowRoot } from "lexical";
+
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectTrigger,
 } from "../../../../select";
-
-import { $isHeadingNode } from "@lexical/rich-text";
-import type { BaseSelection } from "lexical";
-import { blockTypeToBlockName } from "../../plugins/toolbar/block-format/block-format-data";
 import { useToolbarContext } from "../../context/toolbar-context";
 import { useUpdateToolbarHandler } from "../../editor-hooks/use-update-toolbar";
+import { blockTypeToBlockName } from "../../plugins/toolbar/block-format/block-format-data";
 
 export function BlockFormatDropDown({
   children,
@@ -74,8 +74,8 @@ export function BlockFormatDropDown({
       }}
     >
       <SelectTrigger className="h-8 w-min gap-1">
-        {blockTypeToBlockName[blockType].icon}
-        <span>{blockTypeToBlockName[blockType].label}</span>
+        {blockTypeToBlockName[blockType]?.icon}
+        <span>{blockTypeToBlockName[blockType]?.label}</span>
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>{children}</SelectGroup>

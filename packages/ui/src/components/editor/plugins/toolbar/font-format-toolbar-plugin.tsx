@@ -1,12 +1,10 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 "use client";
 
-import type {
-  BaseSelection,
-  TextFormatType} from "lexical";
-import {
-  $isRangeSelection,
-  FORMAT_TEXT_COMMAND
-} from "lexical";
+import type { BaseSelection, TextFormatType } from "lexical";
+import { useState } from "react";
+import { $isTableSelection } from "@lexical/table";
+import { $isRangeSelection, FORMAT_TEXT_COMMAND } from "lexical";
 import {
   BoldIcon,
   CodeIcon,
@@ -15,9 +13,7 @@ import {
   UnderlineIcon,
 } from "lucide-react";
 
-import { $isTableSelection } from "@lexical/table";
 import { Toggle } from "../../../../toggle";
-import { useState } from "react";
 import { useToolbarContext } from "../../context/toolbar-context";
 import { useUpdateToolbarHandler } from "../../editor-hooks/use-update-toolbar";
 
@@ -39,7 +35,6 @@ export function FontFormatToolbarPlugin({
 
   const $updateToolbar = (selection: BaseSelection) => {
     if ($isRangeSelection(selection) || $isTableSelection(selection)) {
-      // @ts-ignore
       setIsSelected(selection.hasFormat(format as TextFormatType));
     }
   };

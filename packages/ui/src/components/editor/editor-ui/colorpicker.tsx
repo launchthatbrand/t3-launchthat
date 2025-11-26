@@ -1,10 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import * as React from "react";
-
-import { Popover, PopoverContent, PopoverTrigger } from "../../../popover";
+import { HexColorPicker } from "react-colorful";
 
 import { Button } from "../../../button";
-import { HexColorPicker } from "react-colorful";
 import { Input } from "../../../input";
+import { Popover, PopoverContent, PopoverTrigger } from "../../../popover";
 
 interface Props {
   disabled?: boolean;

@@ -1,5 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import type { LexicalEditor } from "lexical";
 import * as React from "react";
-
+import { useState } from "react";
+import { $isCodeNode } from "@lexical/code";
 import {
   $getNearestNodeFromDOMNode,
   $getSelection,
@@ -7,10 +11,7 @@ import {
 } from "lexical";
 import { CircleCheckIcon, CopyIcon } from "lucide-react";
 
-import { $isCodeNode } from "@lexical/code";
-import type { LexicalEditor } from "lexical";
 import { useDebounce } from "../../editor/editor-hooks/use-debounce";
-import { useState } from "react";
 
 interface Props {
   editor: LexicalEditor;

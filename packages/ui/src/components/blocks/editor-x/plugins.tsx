@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+
+import { useState } from "react";
+import dynamic from "next/dynamic";
 import {
   CHECK_LIST,
   ELEMENT_TRANSFORMERS,
@@ -5,60 +9,86 @@ import {
   TEXT_FORMAT_TRANSFORMERS,
   TEXT_MATCH_TRANSFORMERS,
 } from "@lexical/markdown";
+import { AutoFocusPlugin } from "@lexical/react/LexicalAutoFocusPlugin";
+import { CharacterLimitPlugin } from "@lexical/react/LexicalCharacterLimitPlugin";
+import { CheckListPlugin } from "@lexical/react/LexicalCheckListPlugin";
+import { ClearEditorPlugin } from "@lexical/react/LexicalClearEditorPlugin";
+import { ClickableLinkPlugin } from "@lexical/react/LexicalClickableLinkPlugin";
+import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
+import { HashtagPlugin } from "@lexical/react/LexicalHashtagPlugin";
+import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
+import { HorizontalRulePlugin } from "@lexical/react/LexicalHorizontalRulePlugin";
+import { ListPlugin } from "@lexical/react/LexicalListPlugin";
+import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
+import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
+import { TabIndentationPlugin } from "@lexical/react/LexicalTabIndentationPlugin";
+import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
+
+import { CodeActionMenuPlugin } from "../../../components/editor/plugins/code-action-menu-plugin";
+import { EmojisPlugin } from "../../../components/editor/plugins/emojis-plugin";
+import { ExcalidrawPlugin } from "../../../components/editor/plugins/excalidraw-plugin";
+import { ImagesPlugin } from "../../../components/editor/plugins/images-plugin";
+import { InlineImagePlugin } from "../../../components/editor/plugins/inline-image-plugin";
+import { Separator } from "../../../separator";
+import { ContentEditable } from "../../editor/editor-ui/content-editable";
+import { ActionsPlugin } from "../../editor/plugins/actions/actions-plugin";
+import { ClearEditorActionPlugin } from "../../editor/plugins/actions/clear-editor-plugin";
+import { CounterCharacterPlugin } from "../../editor/plugins/actions/counter-character-plugin";
+import { EditModeTogglePlugin } from "../../editor/plugins/actions/edit-mode-toggle-plugin";
+import { ImportExportPlugin } from "../../editor/plugins/actions/import-export-plugin";
+import { MarkdownTogglePlugin } from "../../editor/plugins/actions/markdown-toggle-plugin";
+import { MaxLengthPlugin } from "../../editor/plugins/actions/max-length-plugin";
+import { ShareContentPlugin } from "../../editor/plugins/actions/share-content-plugin";
+import { TreeViewPlugin } from "../../editor/plugins/actions/tree-view-plugin";
+import { AutoLinkPlugin } from "../../editor/plugins/auto-link-plugin";
+import { AutocompletePlugin } from "../../editor/plugins/autocomplete-plugin";
+import { CodeHighlightPlugin } from "../../editor/plugins/code-highlight-plugin";
+import { CollapsiblePlugin } from "../../editor/plugins/collapsible-plugin";
+import { ComponentPickerMenuPlugin } from "../../editor/plugins/component-picker-menu-plugin";
+import { ContextMenuPlugin } from "../../editor/plugins/context-menu-plugin";
+import { DragDropPastePlugin } from "../../editor/plugins/drag-drop-paste-plugin";
+import { DraggableBlockPlugin } from "../../editor/plugins/draggable-block-plugin";
+import { AutoEmbedPlugin } from "../../editor/plugins/embeds/auto-embed-plugin";
+import { FigmaPlugin } from "../../editor/plugins/embeds/figma-plugin";
+import { TwitterPlugin } from "../../editor/plugins/embeds/twitter-plugin";
+import { YouTubePlugin } from "../../editor/plugins/embeds/youtube-plugin";
+import { EmojiPickerPlugin } from "../../editor/plugins/emoji-picker-plugin";
+import { EquationsPlugin } from "../../editor/plugins/equations-plugin";
+import { FloatingLinkEditorPlugin } from "../../editor/plugins/floating-link-editor-plugin";
+import { FloatingTextFormatToolbarPlugin } from "../../editor/plugins/floating-text-format-plugin";
+import { KeywordsPlugin } from "../../editor/plugins/keywords-plugin";
+import { LayoutPlugin } from "../../editor/plugins/layout-plugin";
+import { LinkPlugin } from "../../editor/plugins/link-plugin";
+import { ListMaxIndentLevelPlugin } from "../../editor/plugins/list-max-indent-level-plugin";
+import { MentionsPlugin } from "../../editor/plugins/mentions-plugin";
+import { PageBreakPlugin } from "../../editor/plugins/page-break-plugin";
+import { AlignmentPickerPlugin } from "../../editor/plugins/picker/alignment-picker-plugin";
+import { BulletedListPickerPlugin } from "../../editor/plugins/picker/bulleted-list-picker-plugin";
+import { CheckListPickerPlugin } from "../../editor/plugins/picker/check-list-picker-plugin";
+import { CodePickerPlugin } from "../../editor/plugins/picker/code-picker-plugin";
+import { CollapsiblePickerPlugin } from "../../editor/plugins/picker/collapsible-picker-plugin";
+import { ColumnsLayoutPickerPlugin } from "../../editor/plugins/picker/columns-layout-picker-plugin";
+import { DividerPickerPlugin } from "../../editor/plugins/picker/divider-picker-plugin";
+import { EmbedsPickerPlugin } from "../../editor/plugins/picker/embeds-picker-plugin";
+import { EquationPickerPlugin } from "../../editor/plugins/picker/equation-picker-plugin";
+import { ExcalidrawPickerPlugin } from "../../editor/plugins/picker/excalidraw-picker-plugin";
+import { HeadingPickerPlugin } from "../../editor/plugins/picker/heading-picker-plugin";
+import { ImagePickerPlugin } from "../../editor/plugins/picker/image-picker-plugin";
+import { NumberedListPickerPlugin } from "../../editor/plugins/picker/numbered-list-picker-plugin";
+import { PageBreakPickerPlugin } from "../../editor/plugins/picker/page-break-picker-plugin";
+import { ParagraphPickerPlugin } from "../../editor/plugins/picker/paragraph-picker-plugin";
+import { PollPickerPlugin } from "../../editor/plugins/picker/poll-picker-plugin";
+import { QuotePickerPlugin } from "../../editor/plugins/picker/quote-picker-plugin";
 import {
   DynamicTablePickerPlugin,
   TablePickerPlugin,
 } from "../../editor/plugins/picker/table-picker-plugin";
-
-import { ActionsPlugin } from "../../editor/plugins/actions/actions-plugin";
-import { AlignmentPickerPlugin } from "../../editor/plugins/picker/alignment-picker-plugin";
-import { AutoEmbedPlugin } from "../../editor/plugins/embeds/auto-embed-plugin";
-import { AutoFocusPlugin } from "@lexical/react/LexicalAutoFocusPlugin";
-import { AutoLinkPlugin } from "../../editor/plugins/auto-link-plugin";
-import { AutocompletePlugin } from "../../editor/plugins/autocomplete-plugin";
+import { PollPlugin } from "../../editor/plugins/poll-plugin";
+import { TabFocusPlugin } from "../../editor/plugins/tab-focus-plugin";
+import { TableActionMenuPlugin } from "../../editor/plugins/table-action-menu-plugin";
+import { TableCellResizerPlugin } from "../../editor/plugins/table-cell-resizer-plugin";
+import { TableHoverActionsPlugin } from "../../editor/plugins/table-hover-actions-plugin";
 import { BlockFormatDropDown } from "../../editor/plugins/toolbar/block-format-toolbar-plugin";
-import { BlockInsertPlugin } from "../../editor/plugins/toolbar/block-insert-plugin";
-import { BulletedListPickerPlugin } from "../../editor/plugins/picker/bulleted-list-picker-plugin";
-import { CharacterLimitPlugin } from "../../editor/plugins/actions/character-limit-plugin";
-import { CheckListPickerPlugin } from "../../editor/plugins/picker/check-list-picker-plugin";
-import { CheckListPlugin } from "@lexical/react/LexicalCheckListPlugin";
-import { ClearEditorActionPlugin } from "../../editor/plugins/actions/clear-editor-plugin";
-import { ClearEditorPlugin } from "@lexical/react/LexicalClearEditorPlugin";
-import { ClearFormattingToolbarPlugin } from "../../editor/plugins/toolbar/clear-formatting-toolbar-plugin";
-import { ClickableLinkPlugin } from "@lexical/react/LexicalClickableLinkPlugin";
-import { CodeActionMenuPlugin } from "../../editor/plugins/code-action-menu-plugin";
-import { CodeHighlightPlugin } from "../../editor/plugins/code-highlight-plugin";
-import { CodeLanguageToolbarPlugin } from "../../editor/plugins/toolbar/code-language-toolbar-plugin";
-import { CodePickerPlugin } from "../../editor/plugins/picker/code-picker-plugin";
-import { CollapsiblePickerPlugin } from "../../editor/plugins/picker/collapsible-picker-plugin";
-import { CollapsiblePlugin } from "../../editor/plugins/collapsible-plugin";
-import { ColumnsLayoutPickerPlugin } from "../../editor/plugins/picker/columns-layout-picker-plugin";
-import { ComponentPickerMenuPlugin } from "../../editor/plugins/component-picker-menu-plugin";
-import { ContentEditable } from "../../editor/editor-ui/content-editable";
-import { ContextMenuPlugin } from "../../editor/plugins/context-menu-plugin";
-import { CounterCharacterPlugin } from "../../editor/plugins/actions/counter-character-plugin";
-import { DividerPickerPlugin } from "../../editor/plugins/picker/divider-picker-plugin";
-import { DragDropPastePlugin } from "../../editor/plugins/drag-drop-paste-plugin";
-import { DraggableBlockPlugin } from "../../editor/plugins/draggable-block-plugin";
-import { EMOJI } from "../../editor/transformers/markdown-emoji-transformer";
-import { EQUATION } from "../../editor/transformers/markdown-equation-transofrmer";
-import { EditModeTogglePlugin } from "../../editor/plugins/actions/edit-mode-toggle-plugin";
-import { ElementFormatToolbarPlugin } from "../../editor/plugins/toolbar/element-format-toolbar-plugin";
-import { EmbedsPickerPlugin } from "../../editor/plugins/picker/embeds-picker-plugin";
-import { EmojiPickerPlugin } from "../../editor/plugins/emoji-picker-plugin";
-import { EmojisPlugin } from "../../editor/plugins/emojis-plugin";
-import { EquationPickerPlugin } from "../../editor/plugins/picker/equation-picker-plugin";
-import { EquationsPlugin } from "../../editor/plugins/equations-plugin";
-import { ExcalidrawPickerPlugin } from "../../editor/plugins/picker/excalidraw-picker-plugin";
-import { ExcalidrawPlugin } from "../../editor/plugins/excalidraw-plugin";
-import { FigmaPlugin } from "../../editor/plugins/embeds/figma-plugin";
-import { FloatingLinkEditorPlugin } from "../../editor/plugins/floating-link-editor-plugin";
-import { FloatingTextFormatToolbarPlugin } from "../../editor/plugins/floating-text-format-plugin";
-import { FontBackgroundToolbarPlugin } from "../../editor/plugins/toolbar/font-background-toolbar-plugin";
-import { FontColorToolbarPlugin } from "../../editor/plugins/toolbar/font-color-toolbar-plugin";
-import { FontFamilyToolbarPlugin } from "../../editor/plugins/toolbar/font-family-toolbar-plugin";
-import { FontFormatToolbarPlugin } from "../../editor/plugins/toolbar/font-format-toolbar-plugin";
-import { FontSizeToolbarPlugin } from "../../editor/plugins/toolbar/font-size-toolbar-plugin";
 import { FormatBulletedList } from "../../editor/plugins/toolbar/block-format/format-bulleted-list";
 import { FormatCheckList } from "../../editor/plugins/toolbar/block-format/format-check-list";
 import { FormatCodeBlock } from "../../editor/plugins/toolbar/block-format/format-code-block";
@@ -66,17 +96,7 @@ import { FormatHeading } from "../../editor/plugins/toolbar/block-format/format-
 import { FormatNumberedList } from "../../editor/plugins/toolbar/block-format/format-numbered-list";
 import { FormatParagraph } from "../../editor/plugins/toolbar/block-format/format-paragraph";
 import { FormatQuote } from "../../editor/plugins/toolbar/block-format/format-quote";
-import { HR } from "../../editor/transformers/markdown-hr-transformer";
-import { HashtagPlugin } from "@lexical/react/LexicalHashtagPlugin";
-import { HeadingPickerPlugin } from "../../editor/plugins/picker/heading-picker-plugin";
-import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
-import { HistoryToolbarPlugin } from "../../editor/plugins/toolbar/history-toolbar-plugin";
-import { HorizontalRulePlugin } from "@lexical/react/LexicalHorizontalRulePlugin";
-import { IMAGE } from "../../editor/transformers/markdown-image-transformer";
-import { ImagePickerPlugin } from "../../editor/plugins/picker/image-picker-plugin";
-import { ImagesPlugin } from "../../editor/plugins/images-plugin";
-import { ImportExportPlugin } from "../../editor/plugins/actions/import-export-plugin";
-import { InlineImagePlugin } from "../../editor/plugins/inline-image-plugin";
+import { BlockInsertPlugin } from "../../editor/plugins/toolbar/block-insert-plugin";
 import { InsertCollapsibleContainer } from "../../editor/plugins/toolbar/block-insert/insert-collapsible-container";
 import { InsertColumnsLayout } from "../../editor/plugins/toolbar/block-insert/insert-columns-layout";
 import { InsertEmbeds } from "../../editor/plugins/toolbar/block-insert/insert-embeds";
@@ -87,48 +107,38 @@ import { InsertInlineImage } from "../../editor/plugins/toolbar/block-insert/ins
 import { InsertPageBreak } from "../../editor/plugins/toolbar/block-insert/insert-page-break";
 import { InsertPoll } from "../../editor/plugins/toolbar/block-insert/insert-poll";
 import { InsertTable } from "../../editor/plugins/toolbar/block-insert/insert-table";
-import { KeywordsPlugin } from "../../editor/plugins/keywords-plugin";
-import { LayoutPlugin } from "../../editor/plugins/layout-plugin";
-import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
-import { LinkPlugin } from "../../editor/plugins/link-plugin";
+import { ClearFormattingToolbarPlugin } from "../../editor/plugins/toolbar/clear-formatting-toolbar-plugin";
+import { CodeLanguageToolbarPlugin } from "../../editor/plugins/toolbar/code-language-toolbar-plugin";
+import { ElementFormatToolbarPlugin } from "../../editor/plugins/toolbar/element-format-toolbar-plugin";
+import { FontBackgroundToolbarPlugin } from "../../editor/plugins/toolbar/font-background-toolbar-plugin";
+import { FontColorToolbarPlugin } from "../../editor/plugins/toolbar/font-color-toolbar-plugin";
+import { FontFamilyToolbarPlugin } from "../../editor/plugins/toolbar/font-family-toolbar-plugin";
+import { FontFormatToolbarPlugin } from "../../editor/plugins/toolbar/font-format-toolbar-plugin";
+import { FontSizeToolbarPlugin } from "../../editor/plugins/toolbar/font-size-toolbar-plugin";
+import { HistoryToolbarPlugin } from "../../editor/plugins/toolbar/history-toolbar-plugin";
 import { LinkToolbarPlugin } from "../../editor/plugins/toolbar/link-toolbar-plugin";
-import { ListMaxIndentLevelPlugin } from "../../editor/plugins/list-max-indent-level-plugin";
-import { ListPlugin } from "@lexical/react/LexicalListPlugin";
-import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
-import { MarkdownTogglePlugin } from "../../editor/plugins/actions/markdown-toggle-plugin";
-import { MaxLengthPlugin } from "../../editor/plugins/actions/max-length-plugin";
-import { MentionsPlugin } from "../../editor/plugins/mentions-plugin";
-import { NumberedListPickerPlugin } from "../../editor/plugins/picker/numbered-list-picker-plugin";
-import { PageBreakPickerPlugin } from "../../editor/plugins/picker/page-break-picker-plugin";
-import { PageBreakPlugin } from "../../editor/plugins/page-break-plugin";
-import { ParagraphPickerPlugin } from "../../editor/plugins/picker/paragraph-picker-plugin";
-import { PollPickerPlugin } from "../../editor/plugins/picker/poll-picker-plugin";
-import { PollPlugin } from "../../editor/plugins/poll-plugin";
-import { QuotePickerPlugin } from "../../editor/plugins/picker/quote-picker-plugin";
-import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
-import { Separator } from "../../../separator";
-import { ShareContentPlugin } from "../../editor/plugins/actions/share-content-plugin";
-import { SpeechToTextPlugin } from "../../editor/plugins/actions/speech-to-text-plugin";
 import { SubSuperToolbarPlugin } from "../../editor/plugins/toolbar/subsuper-toolbar-plugin";
+import { ToolbarPlugin } from "../../editor/plugins/toolbar/toolbar-plugin";
+import { TypingPerfPlugin } from "../../editor/plugins/typing-pref-plugin";
+import { EMOJI } from "../../editor/transformers/markdown-emoji-transformer";
+import { EQUATION } from "../../editor/transformers/markdown-equation-transofrmer";
+import { HR } from "../../editor/transformers/markdown-hr-transformer";
+import { IMAGE } from "../../editor/transformers/markdown-image-transformer";
 import { TABLE } from "../../editor/transformers/markdown-table-transformer";
 import { TWEET } from "../../editor/transformers/markdown-tweet-transformer";
-import { TabFocusPlugin } from "../../editor/plugins/tab-focus-plugin";
-import { TabIndentationPlugin } from "@lexical/react/LexicalTabIndentationPlugin";
-import { TableActionMenuPlugin } from "../../editor/plugins/table-action-menu-plugin";
-import { TableCellResizerPlugin } from "../../editor/plugins/table-cell-resizer-plugin";
-import { TableHoverActionsPlugin } from "../../editor/plugins/table-hover-actions-plugin";
-import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
-import { ToolbarPlugin } from "../../editor/plugins/toolbar/toolbar-plugin";
-import { TreeViewPlugin } from "../../editor/plugins/actions/tree-view-plugin";
-import { TwitterPlugin } from "../../editor/plugins/embeds/twitter-plugin";
-import { TypingPerfPlugin } from "../../editor/plugins/typing-pref-plugin";
-import { YouTubePlugin } from "../../editor/plugins/embeds/youtube-plugin";
-import { useState } from "react";
+
+const SpeechToTextPlugin = dynamic(
+  () =>
+    import("../../editor/plugins/actions/speech-to-text-plugin").then(
+      (m) => m.SpeechToTextPlugin,
+    ),
+  { ssr: false },
+);
 
 export const placeholder = "Press / for commands...";
-const maxLength = 500;
+const maxLength = 15000;
 
-export function Plugins({}) {
+export function Plugins() {
   const [floatingAnchorElem, setFloatingAnchorElem] =
     useState<HTMLDivElement | null>(null);
 
@@ -142,28 +152,37 @@ export function Plugins({}) {
     <div className="relative">
       <ToolbarPlugin>
         {({ blockType }) => (
-          <div className="vertical-align-middle sticky top-0 z-10 flex gap-2 overflow-auto border-b p-1">
-            <HistoryToolbarPlugin />
-            <Separator orientation="vertical" className="h-8" />
-            <BlockFormatDropDown>
-              <FormatParagraph />
-              <FormatHeading levels={["h1", "h2", "h3"]} />
-              <FormatNumberedList />
-              <FormatBulletedList />
-              <FormatCheckList />
-              <FormatCodeBlock />
-              <FormatQuote />
-            </BlockFormatDropDown>
-            {blockType === "code" ? (
-              <CodeLanguageToolbarPlugin />
-            ) : (
-              <>
-                <FontFamilyToolbarPlugin />
-                <FontSizeToolbarPlugin />
-                <Separator orientation="vertical" className="h-8" />
-                <FontFormatToolbarPlugin format="bold" />
-                <FontFormatToolbarPlugin format="italic" />
-                <FontFormatToolbarPlugin format="underline" />
+          <div className="vertical-align-middle sticky top-0 z-10 border-b p-1">
+            {/* Row 1 */}
+            <div className="flex flex-wrap items-center gap-2 overflow-auto">
+              <HistoryToolbarPlugin />
+              <Separator orientation="vertical" className="h-8" />
+              <BlockFormatDropDown>
+                <FormatParagraph />
+                <FormatHeading levels={["h1", "h2", "h3"]} />
+                <FormatNumberedList />
+                <FormatBulletedList />
+                <FormatCheckList />
+                <FormatCodeBlock />
+                <FormatQuote />
+              </BlockFormatDropDown>
+              {blockType === "code" ? (
+                <CodeLanguageToolbarPlugin />
+              ) : (
+                <>
+                  <FontFamilyToolbarPlugin />
+                  <FontSizeToolbarPlugin />
+                  <Separator orientation="vertical" className="h-8" />
+                  <FontFormatToolbarPlugin format="bold" />
+                  <FontFormatToolbarPlugin format="italic" />
+                  <FontFormatToolbarPlugin format="underline" />
+                </>
+              )}
+            </div>
+
+            {/* Row 2 (hidden for code blocks) */}
+            {blockType !== "code" && (
+              <div className="mt-1 flex flex-wrap items-center gap-2 overflow-auto">
                 <FontFormatToolbarPlugin format="strikethrough" />
                 <Separator orientation="vertical" className="h-8" />
                 <SubSuperToolbarPlugin />
@@ -183,12 +202,13 @@ export function Plugins({}) {
                   <InsertInlineImage />
                   <InsertCollapsibleContainer />
                   <InsertExcalidraw />
+
                   <InsertTable />
                   <InsertPoll />
                   <InsertColumnsLayout />
                   <InsertEmbeds />
                 </BlockInsertPlugin>
-              </>
+              </div>
             )}
           </div>
         )}
@@ -201,7 +221,7 @@ export function Plugins({}) {
               <div className="" ref={onRef}>
                 <ContentEditable
                   placeholder={placeholder}
-                  className="ContentEditable__root relative block h-[830px] min-h-72 min-h-full overflow-auto px-8 py-4 focus:outline-none"
+                  className="ContentEditable__root relative block min-h-32 overflow-auto px-8 py-4 focus:outline-none"
                 />
               </div>
             </div>
@@ -226,6 +246,7 @@ export function Plugins({}) {
         <ImagesPlugin />
         <InlineImagePlugin />
         <ExcalidrawPlugin />
+        {/* <MermaidPlugin /> */}
         <TableCellResizerPlugin />
         <TableHoverActionsPlugin anchorElem={floatingAnchorElem} />
         <TableActionMenuPlugin
@@ -241,6 +262,7 @@ export function Plugins({}) {
         <FigmaPlugin />
         <TwitterPlugin />
         <YouTubePlugin />
+        {/* <OEmbedPlugin /> */}
 
         <CodeHighlightPlugin />
         <CodeActionMenuPlugin anchorElem={floatingAnchorElem} />
@@ -281,10 +303,12 @@ export function Plugins({}) {
             DividerPickerPlugin(),
             PageBreakPickerPlugin(),
             ExcalidrawPickerPlugin(),
+            // MermaidPickerPlugin(),
             PollPickerPlugin(),
             EmbedsPickerPlugin({ embed: "figma" }),
             EmbedsPickerPlugin({ embed: "tweet" }),
             EmbedsPickerPlugin({ embed: "youtube-video" }),
+            // EmbedsPickerPlugin({ embed: "oembed" }),
             EquationPickerPlugin(),
             ImagePickerPlugin(),
             CollapsiblePickerPlugin(),

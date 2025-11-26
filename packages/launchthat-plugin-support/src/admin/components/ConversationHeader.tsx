@@ -1,12 +1,14 @@
 "use client";
 
 import type { ComponentType } from "react";
+import { useCallback, useState } from "react";
 import { BadgeCheck, Bell, Loader, Share2, UserRound } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Avatar, AvatarFallback } from "@acme/ui/index";
 import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { toast } from "@acme/ui/toast";
 
 import type { ContactDoc, ConversationSummary } from "./ConversationInspector";
 
@@ -67,6 +69,40 @@ export const ConversationHeader = ({
   const company = contact?.company ?? tenantName ?? "Visitor";
 
   const awaitingReply = conversation?.lastRole === "user";
+  const [isMuted, setIsMuted] = useState(false);
+
+  const handleMuteToggle = () => {
+    setIsMuted((previous) => {
+      const next = !previous;
+      toast.info(
+        next
+          ? "You will no longer receive notifications for this conversation."
+          : "Notifications re-enabled for this conversation.",
+      );
+      return next;
+    });
+  };
+
+  const handleShareLink = useCallback(async () => {
+    if (typeof window === "undefined") return;
+    const shareUrl = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `Conversation with ${name}`,
+          url: shareUrl,
+        });
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Conversation link copied to clipboard.");
+      } else {
+        throw new Error("Share not supported");
+      }
+    } catch (error) {
+      console.error("[conversation-header] share failed", error);
+      toast.error("Unable to share the conversation right now.");
+    }
+  }, [name]);
 
   return (
     <div className="border-b bg-background px-6 py-4">
@@ -105,11 +141,22 @@ export const ConversationHeader = ({
             }
             tone={awaitingReply ? "waiting" : "responded"}
           />
-          <Button size="sm" variant="outline" className="gap-1">
+          <Button
+            size="sm"
+            variant={isMuted ? "secondary" : "outline"}
+            className="gap-1"
+            onClick={handleMuteToggle}
+            aria-pressed={isMuted}
+          >
             <Bell className="h-4 w-4" />
-            Mute
+            {isMuted ? "Muted" : "Mute"}
           </Button>
-          <Button size="sm" variant="outline" className="gap-1">
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1"
+            onClick={() => void handleShareLink()}
+          >
             <Share2 className="h-4 w-4" />
             Share
           </Button>

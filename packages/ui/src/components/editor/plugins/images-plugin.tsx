@@ -1,8 +1,19 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 "use client";
 
+import type { LexicalCommand, LexicalEditor } from "lexical";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+import type { JSX } from "react";
 import * as React from "react";
-
-import { $createImageNode, $isImageNode, ImageNode } from "../nodes/image-node";
+import { useEffect, useRef, useState } from "react";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { $wrapNodeInElement, mergeRegister } from "@lexical/utils";
 import {
   $createParagraphNode,
   $createRangeSelection,
@@ -14,36 +25,25 @@ import {
   COMMAND_PRIORITY_EDITOR,
   COMMAND_PRIORITY_HIGH,
   COMMAND_PRIORITY_LOW,
+  createCommand,
   DRAGOVER_COMMAND,
   DRAGSTART_COMMAND,
   DROP_COMMAND,
-  createCommand,
 } from "lexical";
-import { $wrapNodeInElement, mergeRegister } from "@lexical/utils";
-import type { LexicalCommand, LexicalEditor } from "lexical";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../tabs";
-import { useEffect, useRef, useState } from "react";
 
-import { Button } from "../../../button";
-import { CAN_USE_DOM } from "../shared/can-use-dom";
-import { DialogFooter } from "../../../dialog";
 import type { ImagePayload } from "../nodes/image-node";
+import { Button } from "../../../button";
+import { DialogFooter } from "../../../dialog";
 import { Input } from "../../../input";
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
-import type { JSX } from "react";
 import { Label } from "../../../label";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../tabs";
+import { $createImageNode, $isImageNode, ImageNode } from "../nodes/image-node";
+import { CAN_USE_DOM } from "../shared/can-use-dom";
 
 export type InsertImagePayload = Readonly<ImagePayload>;
 
 const getDOMSelection = (targetWindow: Window | null): Selection | null =>
-  CAN_USE_DOM ? (targetWindow || window).getSelection() : null;
+  CAN_USE_DOM ? (targetWindow ?? window).getSelection() : null;
 
 export const INSERT_IMAGE_COMMAND: LexicalCommand<InsertImagePayload> =
   createCommand("INSERT_IMAGE_COMMAND");
@@ -113,7 +113,7 @@ export function InsertImageUploadedDialogBody({
       return "";
     };
     if (files !== null) {
-      reader.readAsDataURL(files[0]);
+      reader.readAsDataURL(files[0] ?? new Blob());
     }
   };
 
@@ -333,7 +333,10 @@ function getDragImageData(event: DragEvent): null | InsertImagePayload {
   if (!dragData) {
     return null;
   }
-  const { type, data } = JSON.parse(dragData);
+  const { type, data } = JSON.parse(dragData) as {
+    type: string;
+    data: InsertImagePayload;
+  };
   if (type !== "image") {
     return null;
   }
@@ -354,8 +357,7 @@ function canDropImage(event: DragEvent): boolean {
     target &&
     target instanceof HTMLElement &&
     !target.closest("code, span.editor-image") &&
-    target.parentElement &&
-    target.parentElement.closest("div.ContentEditable__root")
+    target.parentElement?.closest("div.ContentEditable__root")
   );
 }
 
@@ -372,7 +374,7 @@ function getDragSelection(event: DragEvent): Range | null | undefined {
   if (document.caretRangeFromPoint) {
     range = document.caretRangeFromPoint(event.clientX, event.clientY);
   } else if (event.rangeParent && domSelection !== null) {
-    domSelection.collapse(event.rangeParent, event.rangeOffset || 0);
+    domSelection.collapse(event.rangeParent, event.rangeOffset ?? 0);
     range = domSelection.getRangeAt(0);
   } else {
     throw Error(`Cannot get the selection when dragging`);

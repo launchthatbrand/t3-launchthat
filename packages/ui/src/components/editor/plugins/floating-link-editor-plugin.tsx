@@ -1,13 +1,24 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
+import type { BaseSelection, LexicalEditor } from "lexical";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+import type { Dispatch, JSX } from "react";
 import * as React from "react";
-
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   $createLinkNode,
   $isAutoLinkNode,
   $isLinkNode,
   TOGGLE_LINK_COMMAND,
 } from "@lexical/link";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $findMatchingParent, mergeRegister } from "@lexical/utils";
 import {
   $getSelection,
@@ -20,26 +31,15 @@ import {
   KEY_ESCAPE_COMMAND,
   SELECTION_CHANGE_COMMAND,
 } from "lexical";
-import type { BaseSelection, LexicalEditor } from "lexical";
 import { Check, Pencil, Trash, X } from "lucide-react";
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
-import type { Dispatch, JSX} from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "../../../button";
 import { Input } from "../../../input";
-import { createPortal } from "react-dom";
-import { getSelectedNode } from "../utils/get-selected-node";
-import { sanitizeUrl } from "../utils/url";
-import { setFloatingElemPositionForLinkEditor } from "../utils/set-floating-elem-position-for-link-editor";
 import { useFloatingLinkContext } from "../context/floating-link-context";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { getSelectedNode } from "../utils/get-selected-node";
+import { setFloatingElemPositionForLinkEditor } from "../utils/set-floating-elem-position-for-link-editor";
+import { sanitizeUrl } from "../utils/url";
 
 function FloatingLinkEditor({
   editor,
@@ -319,9 +319,9 @@ function useFloatingLinkEditorToolbar(
             const linkNode = $findMatchingParent(node, $isLinkNode);
             const autoLinkNode = $findMatchingParent(node, $isAutoLinkNode);
             return (
-              (focusLinkNode && !focusLinkNode.is(linkNode)) ||
-              (linkNode && !linkNode.is(focusLinkNode)) ||
-              (focusAutoLinkNode && !focusAutoLinkNode.is(autoLinkNode)) ||
+              (focusLinkNode && !focusLinkNode.is(linkNode)) ??
+              (linkNode && !linkNode.is(focusLinkNode)) ??
+              (focusAutoLinkNode && !focusAutoLinkNode.is(autoLinkNode)) ??
               (autoLinkNode &&
                 (!autoLinkNode.is(focusAutoLinkNode) ||
                   autoLinkNode.getIsUnlinked()))

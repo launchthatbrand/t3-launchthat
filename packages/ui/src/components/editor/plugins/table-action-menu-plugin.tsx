@@ -1,16 +1,27 @@
+/* eslint-disable @typescript-eslint/prefer-for-of */
+
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
+import type {
+  HTMLTableElementWithWithTableSelectionState,
+  TableRowNode,
+  TableSelection,
+} from "@lexical/table";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+import type { ElementNode, LexicalEditor } from "lexical";
+import type { JSX, ReactPortal } from "react";
 import * as React from "react";
-
-import {
-  $createParagraphNode,
-  $getRoot,
-  $getSelection,
-  $isElementNode,
-  $isParagraphNode,
-  $isRangeSelection,
-  $isTextNode,
-} from "lexical";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import {
   $deleteTableColumn__EXPERIMENTAL,
   $deleteTableRow__EXPERIMENTAL,
@@ -25,11 +36,22 @@ import {
   $isTableRowNode,
   $isTableSelection,
   $unmergeCell,
+  getTableObserverFromTableElement,
   TableCellHeaderStates,
   TableCellNode,
-  getTableObserverFromTableElement,
 } from "@lexical/table";
+import {
+  $createParagraphNode,
+  $getRoot,
+  $getSelection,
+  $isElementNode,
+  $isParagraphNode,
+  $isRangeSelection,
+  $isTextNode,
+} from "lexical";
 import { ChevronDownIcon, PaintBucketIcon } from "lucide-react";
+import { createPortal } from "react-dom";
+
 import {
   Command,
   CommandGroup,
@@ -37,28 +59,9 @@ import {
   CommandList,
   CommandSeparator,
 } from "../../../command";
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
-import type { ElementNode, LexicalEditor } from "lexical";
-import type {
-  HTMLTableElementWithWithTableSelectionState,
-  TableRowNode,
-  TableSelection,
-} from "@lexical/table";
-import type { JSX, ReactPortal } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../popover";
-import { useCallback, useEffect, useRef, useState } from "react";
-
-import ColorPicker from "../editor-ui/colorpicker";
-import { createPortal } from "react-dom";
 import { useEditorModal } from "../editor-hooks/use-modal";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
+import ColorPicker from "../editor-ui/colorpicker";
 
 function computeSelectionCount(selection: TableSelection): {
   columns: number;
@@ -145,7 +148,7 @@ function TableActionMenu({
   const [canMergeCells, setCanMergeCells] = useState(false);
   const [canUnmergeCell, setCanUnmergeCell] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState(
-    () => currentCellBackgroundColor(editor) || "",
+    () => currentCellBackgroundColor(editor) ?? "",
   );
 
   useEffect(() => {
@@ -159,7 +162,7 @@ function TableActionMenu({
           editor.getEditorState().read(() => {
             updateTableCellNode(tableCellNode.getLatest());
           });
-          setBackgroundColor(currentCellBackgroundColor(editor) || "");
+          setBackgroundColor(currentCellBackgroundColor(editor) ?? "");
         }
       },
       { skipInitialization: true },
@@ -248,7 +251,7 @@ function TableActionMenu({
 
         const tableObserver = getTableObserverFromTableElement(tableElement);
         if (tableObserver !== null) {
-          tableObserver.clearHighlight();
+          tableObserver.$clearHighlight?.();
         }
 
         tableNode.markDirty();

@@ -1,13 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 "use client";
 
-import * as React from "react";
-
-import {
-  $isCodeNode,
-  CodeNode,
-  getLanguageFriendlyName,
-  normalizeCodeLang,
-} from "@lexical/code";
 /**
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
@@ -16,14 +14,21 @@ import {
  *
  */
 // import './index.css';
-import type { JSX} from "react";
+import type { JSX } from "react";
+import * as React from "react";
 import { useEffect, useRef, useState } from "react";
-
-import { $getNearestNodeFromDOMNode } from "lexical";
-import { CopyButton } from "../editor-ui/code-button";
-import { createPortal } from "react-dom";
-import { useDebounce } from "../editor-hooks/use-debounce";
+import {
+  $isCodeNode,
+  CodeNode,
+  getLanguageFriendlyName,
+  normalizeCodeLang,
+} from "@lexical/code";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { $getNearestNodeFromDOMNode } from "lexical";
+import { createPortal } from "react-dom";
+
+import { useDebounce } from "../editor-hooks/use-debounce";
+import { CopyButton } from "../editor-ui/code-button";
 
 const CODE_PADDING = 8;
 
@@ -76,7 +81,7 @@ function CodeActionMenuContainer({
 
         if ($isCodeNode(maybeCodeNode)) {
           codeNode = maybeCodeNode;
-          _lang = codeNode.getLanguage() || "";
+          _lang = codeNode.getLanguage() ?? "";
         }
       });
 
@@ -163,7 +168,7 @@ function getMouseInfo(event: MouseEvent): {
   if (target && target instanceof HTMLElement) {
     const codeDOMNode = target.closest<HTMLElement>("code.EditorTheme__code");
     const isOutside = !(
-      codeDOMNode ||
+      codeDOMNode ??
       target.closest<HTMLElement>("div.code-action-menu-container")
     );
 

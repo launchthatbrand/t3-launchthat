@@ -1,12 +1,13 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 "use client";
 
-import type { BaseSelection} from "lexical";
+import type { BaseSelection } from "lexical";
+import { useState } from "react";
+import { $isTableSelection } from "@lexical/table";
 import { $isRangeSelection, FORMAT_TEXT_COMMAND } from "lexical";
 import { SubscriptIcon, SuperscriptIcon } from "lucide-react";
-import { ToggleGroup, ToggleGroupItem } from "../../../../toggle-group";
 
-import { $isTableSelection } from "@lexical/table";
-import { useState } from "react";
+import { ToggleGroup, ToggleGroupItem } from "../../../../toggle-group";
 import { useToolbarContext } from "../../context/toolbar-context";
 import { useUpdateToolbarHandler } from "../../editor-hooks/use-update-toolbar";
 

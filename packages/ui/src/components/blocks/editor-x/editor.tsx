@@ -1,16 +1,17 @@
 "use client";
 
-import type { EditorState, SerializedEditorState } from "lexical";
-
-import { FloatingLinkContext } from "../../editor/context/floating-link-context";
 import type { InitialConfigType } from "@lexical/react/LexicalComposer";
+import type { EditorState, SerializedEditorState } from "lexical";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
-import { Plugins } from "./plugins";
-import { SharedAutocompleteContext } from "../../editor/context/shared-autocomplete-context";
+import { $getRoot } from "lexical";
+
 import { TooltipProvider } from "../../../tooltip";
+import { FloatingLinkContext } from "../../editor/context/floating-link-context";
+import { SharedAutocompleteContext } from "../../editor/context/shared-autocomplete-context";
 import { editorTheme } from "../../editor/themes/editor-theme";
 import { nodes } from "./nodes";
+import { Plugins } from "./plugins";
 
 const editorConfig: InitialConfigType = {
   namespace: "Editor",
@@ -26,11 +27,13 @@ export function Editor({
   editorSerializedState,
   onChange,
   onSerializedChange,
+  onTextContentChange,
 }: {
   editorState?: EditorState;
   editorSerializedState?: SerializedEditorState;
   onChange?: (editorState: EditorState) => void;
   onSerializedChange?: (editorSerializedState: SerializedEditorState) => void;
+  onTextContentChange?: (textContent: string) => void;
 }) {
   return (
     <div className="overflow-hidden rounded-lg border bg-background shadow">
@@ -53,6 +56,11 @@ export function Editor({
                 onChange={(editorState) => {
                   onChange?.(editorState);
                   onSerializedChange?.(editorState.toJSON());
+                  if (onTextContentChange) {
+                    editorState.read(() => {
+                      onTextContentChange($getRoot().getTextContent());
+                    });
+                  }
                 }}
               />
             </FloatingLinkContext>

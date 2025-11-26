@@ -1,23 +1,24 @@
-import * as React from "react";
-
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type {
   AppState,
   BinaryFiles,
   ExcalidrawImperativeAPI,
   ExcalidrawInitialDataState,
-} from "@excalidraw/excalidraw/types/types";
+} from "@excalidraw/excalidraw/types";
+import type { JSX, ReactElement } from "react";
+import * as React from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { DialogTrigger } from "@radix-ui/react-dialog";
+
+import { Button } from "../../../button";
 import {
   Dialog,
   DialogClose,
   DialogContent,
   DialogFooter,
 } from "../../../dialog";
-import type { JSX, ReactElement } from "react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-
-import { Button } from "../../../button";
-import { DialogTrigger } from "@radix-ui/react-dialog";
-import dynamic from "next/dynamic";
 
 const Excalidraw = dynamic(() => import("./excalidraw"), { ssr: false });
 

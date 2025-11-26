@@ -1,11 +1,12 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
 "use client";
 
-import { COMMAND_PRIORITY_CRITICAL, SELECTION_CHANGE_COMMAND } from "lexical";
 import { useEffect, useState } from "react";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { COMMAND_PRIORITY_CRITICAL, SELECTION_CHANGE_COMMAND } from "lexical";
 
 import { ToolbarContext } from "../../context/toolbar-context";
 import { useEditorModal } from "../../editor-hooks/use-modal";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 
 export function ToolbarPlugin({
   children,

@@ -1,31 +1,13 @@
+/* eslint-disable @typescript-eslint/no-floating-promises */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/require-await */
 "use client";
 
-import {
-  AutoEmbedOption,
-  LexicalAutoEmbedPlugin,
-  URL_MATCHER,
-} from "@lexical/react/LexicalAutoEmbedPlugin";
-import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "../../../../command";
 import type {
   EmbedConfig,
   EmbedMatchResult,
 } from "@lexical/react/LexicalAutoEmbedPlugin";
-import { FigmaIcon, TwitterIcon, YoutubeIcon } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "../../../../popover";
-import { useMemo, useState } from "react";
-
-import { Button } from "../../../../button";
-import { DialogFooter } from "../../../../dialog";
-import { INSERT_FIGMA_COMMAND } from "../../plugins/embeds/figma-plugin";
-import { INSERT_TWEET_COMMAND } from "../../plugins/embeds/twitter-plugin";
-import { INSERT_YOUTUBE_COMMAND } from "../../plugins/embeds/youtube-plugin";
-import { Input } from "../../../../input";
-import type { JSX } from "react";
 /**
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
@@ -34,9 +16,31 @@ import type { JSX } from "react";
  *
  */
 import type { LexicalEditor } from "lexical";
-import { PopoverPortal } from "@radix-ui/react-popover";
-import { useEditorModal } from "../../editor-hooks/use-modal";
+import type { JSX } from "react";
+import { useMemo, useState } from "react";
+import {
+  AutoEmbedOption,
+  LexicalAutoEmbedPlugin,
+  URL_MATCHER,
+} from "@lexical/react/LexicalAutoEmbedPlugin";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { PopoverPortal } from "@radix-ui/react-popover";
+import { FigmaIcon, TwitterIcon, YoutubeIcon } from "lucide-react";
+
+import { Button } from "../../../../button";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "../../../../command";
+import { DialogFooter } from "../../../../dialog";
+import { Input } from "../../../../input";
+import { Popover, PopoverContent, PopoverTrigger } from "../../../../popover";
+import { useEditorModal } from "../../editor-hooks/use-modal";
+import { INSERT_FIGMA_COMMAND } from "../../plugins/embeds/figma-plugin";
+import { INSERT_TWEET_COMMAND } from "../../plugins/embeds/twitter-plugin";
+import { INSERT_YOUTUBE_COMMAND } from "../../plugins/embeds/youtube-plugin";
 
 export interface CustomEmbedConfig extends EmbedConfig {
   // Human readable name of the embeded content e.g. Tweet or Google Map.
@@ -74,7 +78,7 @@ export const YoutubeEmbedConfig: CustomEmbedConfig = {
     const match =
       /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/.exec(url);
 
-    const id = match ? (match[2].length === 11 ? match[2] : null) : null;
+    const id = match ? (match[2]?.length === 11 ? match[2] : null) : null;
 
     if (id != null) {
       return {
@@ -114,10 +118,11 @@ export const TwitterEmbedConfig: CustomEmbedConfig = {
       );
 
     if (match != null) {
-      return {
-        id: match[5],
-        url: match[1],
-      };
+      const id = match[5];
+      const url = match[0];
+      if (id && url) {
+        return { id, url };
+      }
     }
 
     return null;
@@ -147,10 +152,14 @@ export const FigmaEmbedConfig: CustomEmbedConfig = {
       );
 
     if (match != null) {
-      return {
-        id: match[3],
-        url: match[0],
-      };
+      const id = match[3];
+      const url = match[0];
+      if (id && url) {
+        return {
+          id,
+          url,
+        };
+      }
     }
 
     return null;

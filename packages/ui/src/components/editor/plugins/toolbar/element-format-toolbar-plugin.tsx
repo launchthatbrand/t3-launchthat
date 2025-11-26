@@ -1,5 +1,9 @@
 "use client";
 
+import type { BaseSelection, ElementFormatType } from "lexical";
+import { useState } from "react";
+import { $isLinkNode } from "@lexical/link";
+import { $findMatchingParent } from "@lexical/utils";
 import {
   $isElementNode,
   $isRangeSelection,
@@ -15,22 +19,21 @@ import {
   IndentDecreaseIcon,
   IndentIncreaseIcon,
 } from "lucide-react";
-import type { BaseSelection, ElementFormatType } from "lexical";
-import { ToggleGroup, ToggleGroupItem } from "../../../../toggle-group";
 
-import { $findMatchingParent } from "@lexical/utils";
-import { $isLinkNode } from "@lexical/link";
 import { Separator } from "../../../../separator";
-import { getSelectedNode } from "../../utils/get-selected-node";
-import { useState } from "react";
+import { ToggleGroup, ToggleGroupItem } from "../../../../toggle-group";
 import { useToolbarContext } from "../../context/toolbar-context";
 import { useUpdateToolbarHandler } from "../../editor-hooks/use-update-toolbar";
+import { getSelectedNode } from "../../utils/get-selected-node";
 
-const ELEMENT_FORMAT_OPTIONS: Record<Exclude<ElementFormatType, "start" | "end" | "">, {
+const ELEMENT_FORMAT_OPTIONS: Record<
+  Exclude<ElementFormatType, "start" | "end" | "">,
+  {
     icon: React.ReactNode;
     iconRTL: string;
     name: string;
-  }> = {
+  }
+> = {
   left: {
     icon: <AlignLeftIcon className="size-4" />,
     iconRTL: "left-align",
@@ -75,7 +78,7 @@ export function ElementFormatToolbarPlugin() {
           ? matchingParent.getFormatType()
           : $isElementNode(node)
             ? node.getFormatType()
-            : parent?.getFormatType() || "left",
+            : (parent?.getFormatType() ?? "left"),
       );
     }
   };

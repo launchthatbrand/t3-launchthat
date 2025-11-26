@@ -2,6 +2,7 @@
 
 import type { GenericId as Id } from "convex/values";
 import type { ComponentType } from "react";
+import { useCallback } from "react";
 import {
   BadgeCheck,
   Briefcase,
@@ -27,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Avatar, AvatarFallback } from "@acme/ui/index";
 import { ScrollArea } from "@acme/ui/scroll-area";
 import { Separator } from "@acme/ui/separator";
+import { toast } from "@acme/ui/toast";
 
 export interface ConversationSummary {
   sessionId: string;
@@ -89,6 +91,28 @@ export const ConversationInspector = ({
   const contactName = contact?.fullName ?? fallbackName ?? "Unknown visitor";
   const contactEmail = contact?.email ?? fallbackEmail;
   const company = contact?.company;
+  const hasEmail = Boolean(contactEmail);
+  const hasContactRecord = Boolean(contact?._id);
+  const contactId = contact?._id;
+
+  const handleEmailContact = useCallback(() => {
+    if (!hasEmail || !contactEmail) {
+      toast.info("This contact does not have an email address yet.");
+      return;
+    }
+    if (typeof window === "undefined") return;
+    window.open(`mailto:${contactEmail}`, "_blank", "noopener,noreferrer");
+  }, [contactEmail, hasEmail]);
+
+  const handleViewContact = useCallback(() => {
+    if (!hasContactRecord || !contactId) {
+      toast.info("Contact record not found. Sync the contact to continue.");
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const targetUrl = `/admin/contacts?contactId=${contactId}`;
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
+  }, [contactId, hasContactRecord]);
 
   return (
     <div className="flex h-full flex-col border-l bg-background">
@@ -191,11 +215,33 @@ export const ConversationInspector = ({
               </AccordionTrigger>
               <AccordionContent>
                 <div className="flex flex-wrap gap-2 px-4 pb-4 pt-1">
-                  <Button size="sm" variant="outline" className="gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                    onClick={handleEmailContact}
+                    disabled={!hasEmail}
+                    title={
+                      hasEmail
+                        ? undefined
+                        : "No email available for this contact"
+                    }
+                  >
                     <Mail className="h-3.5 w-3.5" />
                     Email contact
                   </Button>
-                  <Button size="sm" variant="outline" className="gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                    onClick={handleViewContact}
+                    disabled={!hasContactRecord}
+                    title={
+                      hasContactRecord
+                        ? undefined
+                        : "Contact profile not available in this workspace"
+                    }
+                  >
                     <UserRound className="h-3.5 w-3.5" />
                     View contact
                   </Button>

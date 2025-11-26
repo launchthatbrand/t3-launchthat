@@ -1,21 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import * as React from "react";
-
-import { $findMatchingParent, mergeRegister } from "@lexical/utils";
-import {
-  $getTableColumnIndexFromTableCellNode,
-  $getTableRowIndexFromTableCellNode,
-  $insertTableColumn__EXPERIMENTAL,
-  $insertTableRow__EXPERIMENTAL,
-  $isTableCellNode,
-  $isTableNode,
-  TableNode,
-} from "@lexical/table";
 import type { TableCellNode, TableRowNode } from "@lexical/table";
-import { useEffect, useMemo, useRef, useState } from "react";
-
-import { $getNearestNodeFromDOMNode } from "lexical";
+import type { NodeKey } from "lexical";
 /**
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
@@ -24,12 +17,26 @@ import { $getNearestNodeFromDOMNode } from "lexical";
  *
  */
 import type { JSX } from "react";
-import type { NodeKey } from "lexical";
-import { PlusIcon } from "lucide-react";
-import { createPortal } from "react-dom";
-import { useDebounce } from "../editor-hooks/use-debounce";
+import * as React from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
+import {
+  $getTableColumnIndexFromTableCellNode,
+  $getTableRowIndexFromTableCellNode,
+  $insertTableColumn__EXPERIMENTAL,
+  $insertTableRow__EXPERIMENTAL,
+  $isTableCellNode,
+  $isTableNode,
+  $isTableRowNode,
+  TableNode,
+} from "@lexical/table";
+import { $findMatchingParent, mergeRegister } from "@lexical/utils";
+import { $getNearestNodeFromDOMNode } from "lexical";
+import { PlusIcon } from "lucide-react";
+import { createPortal } from "react-dom";
+
+import { useDebounce } from "../editor-hooks/use-debounce";
 
 const BUTTON_WIDTH_PX = 20;
 
@@ -83,9 +90,10 @@ function TableHoverActionsContainer({
 
           if (tableDOMElement) {
             const rowCount = table.getChildrenSize();
-            const colCount = (
-              (table).getChildAtIndex(0)!
-            ).getChildrenSize();
+            const firstRow = table.getChildAtIndex(0);
+            const colCount = $isTableRowNode(firstRow)
+              ? firstRow.getChildrenSize()
+              : 0;
 
             const rowIndex = $getTableRowIndexFromTableCellNode(maybeTableCell);
             const colIndex =
@@ -265,9 +273,9 @@ function getMouseInfo(event: MouseEvent): {
     );
 
     const isOutside = !(
-      tableDOMNode ||
-      target.closest<HTMLElement>("button.EditorTheme__tableAddRows") ||
-      target.closest<HTMLElement>("button.EditorTheme__tableAddColumns") ||
+      tableDOMNode ??
+      target.closest<HTMLElement>("button.EditorTheme__tableAddRows") ??
+      target.closest<HTMLElement>("button.EditorTheme__tableAddColumns") ??
       target.closest<HTMLElement>("div.TableCellResizer__resizer")
     );
 

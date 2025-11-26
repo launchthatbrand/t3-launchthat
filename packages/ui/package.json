@@ -156,6 +156,7 @@
     "@acme/tailwind-config": "workspace:*",
     "@acme/tsconfig": "workspace:*",
     "@dnd-kit/modifiers": "^9.0.0",
+    "@types/lodash-es": "^4.17.12",
     "@types/luxon": "^3.4.2",
     "@types/node": "^22.13.11",
     "@types/react": "catalog:react19",

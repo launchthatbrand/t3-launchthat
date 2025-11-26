@@ -1,35 +1,5 @@
 "use client";
 
-import * as React from "react";
-
-import {
-  $createLayoutContainerNode,
-  $isLayoutContainerNode,
-  LayoutContainerNode,
-} from "../nodes/layout-container-node";
-import {
-  $createLayoutItemNode,
-  $isLayoutItemNode,
-  LayoutItemNode,
-} from "../nodes/layout-item-node";
-import {
-  $createParagraphNode,
-  $getNodeByKey,
-  $getSelection,
-  $isRangeSelection,
-  COMMAND_PRIORITY_EDITOR,
-  COMMAND_PRIORITY_LOW,
-  KEY_ARROW_DOWN_COMMAND,
-  KEY_ARROW_LEFT_COMMAND,
-  KEY_ARROW_RIGHT_COMMAND,
-  KEY_ARROW_UP_COMMAND,
-  createCommand,
-} from "lexical";
-import {
-  $findMatchingParent,
-  $insertNodeToNearestRoot,
-  mergeRegister,
-} from "@lexical/utils";
 /**
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
@@ -44,6 +14,30 @@ import type {
   LexicalNode,
   NodeKey,
 } from "lexical";
+import type { JSX } from "react";
+import * as React from "react";
+import { useEffect, useState } from "react";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import {
+  $findMatchingParent,
+  $insertNodeToNearestRoot,
+  mergeRegister,
+} from "@lexical/utils";
+import {
+  $createParagraphNode,
+  $getNodeByKey,
+  $getSelection,
+  $isRangeSelection,
+  COMMAND_PRIORITY_EDITOR,
+  COMMAND_PRIORITY_LOW,
+  createCommand,
+  KEY_ARROW_DOWN_COMMAND,
+  KEY_ARROW_LEFT_COMMAND,
+  KEY_ARROW_RIGHT_COMMAND,
+  KEY_ARROW_UP_COMMAND,
+} from "lexical";
+
+import { Button } from "../../../button";
 import {
   Select,
   SelectContent,
@@ -51,11 +45,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../select";
-import { useEffect, useState } from "react";
-
-import { Button } from "../../../button";
-import type { JSX } from "react";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import {
+  $createLayoutContainerNode,
+  $isLayoutContainerNode,
+  LayoutContainerNode,
+} from "../nodes/layout-container-node";
+import {
+  $createLayoutItemNode,
+  $isLayoutItemNode,
+  LayoutItemNode,
+} from "../nodes/layout-item-node";
 
 const LAYOUTS = [
   { label: "2 columns (equal width)", value: "1fr 1fr" },
@@ -72,7 +71,7 @@ export function InsertLayoutDialog({
   activeEditor: LexicalEditor;
   onClose: () => void;
 }): JSX.Element {
-  const [layout, setLayout] = useState(LAYOUTS[0].value);
+  const [layout, setLayout] = useState(LAYOUTS[0]?.value ?? "");
   const buttonLabel = LAYOUTS.find((item) => item.value === layout)?.label;
 
   const onClick = () => {

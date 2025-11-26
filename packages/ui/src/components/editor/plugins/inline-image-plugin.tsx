@@ -1,12 +1,23 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+import type { LexicalCommand, LexicalEditor } from "lexical";
+import type { JSX } from "react";
 import * as React from "react";
-
-import {
-  $createInlineImageNode,
-  $isInlineImageNode,
-  InlineImageNode,
-} from "../nodes/inline-image-node";
+import { useEffect, useRef, useState } from "react";
+// import '../nodes/inline-image-node.css';
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { $wrapNodeInElement, mergeRegister } from "@lexical/utils";
 import {
   $createParagraphNode,
   $createRangeSelection,
@@ -18,21 +29,17 @@ import {
   COMMAND_PRIORITY_EDITOR,
   COMMAND_PRIORITY_HIGH,
   COMMAND_PRIORITY_LOW,
+  createCommand,
   DRAGOVER_COMMAND,
   DRAGSTART_COMMAND,
   DROP_COMMAND,
-  createCommand,
 } from "lexical";
-import { $wrapNodeInElement, mergeRegister } from "@lexical/utils";
+
 import type { InlineImagePayload, Position } from "../nodes/inline-image-node";
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
-import type { LexicalCommand, LexicalEditor } from "lexical";
+import { Button } from "../../../button";
+import { Checkbox } from "../../../checkbox";
+import { Input } from "../../../input";
+import { Label } from "../../../label";
 import {
   Select,
   SelectContent,
@@ -40,21 +47,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../select";
-import { useEffect, useRef, useState } from "react";
-
-import { Button } from "../../../button";
+import {
+  $createInlineImageNode,
+  $isInlineImageNode,
+  InlineImageNode,
+} from "../nodes/inline-image-node";
 import { CAN_USE_DOM } from "../shared/can-use-dom";
-import { Checkbox } from "../../../checkbox";
-import { Input } from "../../../input";
-import type { JSX } from "react";
-import { Label } from "../../../label";
-// import '../nodes/inline-image-node.css';
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 
 export type InsertInlineImagePayload = Readonly<InlineImagePayload>;
 
 const getDOMSelection = (targetWindow: Window | null): Selection | null =>
-  CAN_USE_DOM ? (targetWindow || window).getSelection() : null;
+  CAN_USE_DOM ? (targetWindow ?? window).getSelection() : null;
 
 export const INSERT_INLINE_IMAGE_COMMAND: LexicalCommand<InlineImagePayload> =
   createCommand("INSERT_INLINE_IMAGE_COMMAND");
@@ -92,7 +95,7 @@ export function InsertInlineImageDialog({
       return "";
     };
     if (files !== null) {
-      reader.readAsDataURL(files[0]);
+      reader.readAsDataURL(files[0] ?? new Blob());
     }
   };
 
@@ -323,8 +326,7 @@ function canDropImage(event: DragEvent): boolean {
     target &&
     target instanceof HTMLElement &&
     !target.closest("code, span.editor-image") &&
-    target.parentElement &&
-    target.parentElement.closest("div.ContentEditable__root")
+    target.parentElement?.closest("div.ContentEditable__root")
   );
 }
 
@@ -341,7 +343,7 @@ function getDragSelection(event: DragEvent): Range | null | undefined {
   if (document.caretRangeFromPoint) {
     range = document.caretRangeFromPoint(event.clientX, event.clientY);
   } else if (event.rangeParent && domSelection !== null) {
-    domSelection.collapse(event.rangeParent, event.rangeOffset || 0);
+    domSelection.collapse(event.rangeParent, event.rangeOffset ?? 0);
     range = domSelection.getRangeAt(0);
   } else {
     throw Error("Cannot get the selection when dragging");

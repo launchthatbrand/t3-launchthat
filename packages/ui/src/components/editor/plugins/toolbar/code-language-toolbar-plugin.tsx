@@ -1,23 +1,24 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 "use client";
 
-import { $getNodeByKey, $isRangeSelection, $isRootOrShadowRoot } from "lexical";
+import type { BaseSelection } from "lexical";
+import { useCallback, useState } from "react";
 import {
   $isCodeNode,
   CODE_LANGUAGE_FRIENDLY_NAME_MAP,
   CODE_LANGUAGE_MAP,
   getLanguageFriendlyName,
 } from "@lexical/code";
+import { $isListNode } from "@lexical/list";
+import { $findMatchingParent } from "@lexical/utils";
+import { $getNodeByKey, $isRangeSelection, $isRootOrShadowRoot } from "lexical";
+
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
 } from "../../../../select";
-import { useCallback, useState } from "react";
-
-import { $findMatchingParent } from "@lexical/utils";
-import { $isListNode } from "@lexical/list";
-import type { BaseSelection } from "lexical";
 import { useToolbarContext } from "../../context/toolbar-context";
 import { useUpdateToolbarHandler } from "../../editor-hooks/use-update-toolbar";
 
@@ -64,10 +65,9 @@ export function CodeLanguageToolbarPlugin() {
         setSelectedElementKey(elementKey);
 
         if (!$isListNode(element) && $isCodeNode(element)) {
-          const language =
-            element.getLanguage()!;
+          const language = element.getLanguage()!;
           setCodeLanguage(
-            language ? CODE_LANGUAGE_MAP[language] || language : "",
+            language ? (CODE_LANGUAGE_MAP[language] ?? language) : "",
           );
           return;
         }

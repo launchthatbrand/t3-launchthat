@@ -1,10 +1,10 @@
-import { $getSelection, $isRangeSelection } from "lexical";
-
 import { $createCodeNode } from "@lexical/code";
 import { $setBlocksType } from "@lexical/selection";
+import { $getSelection, $isRangeSelection } from "lexical";
+
 import { SelectItem } from "../../../../../select";
-import { blockTypeToBlockName } from "./block-format-data";
 import { useToolbarContext } from "../../../context/toolbar-context";
+import { blockTypeToBlockName } from "./block-format-data";
 
 const BLOCK_FORMAT_VALUE = "code";
 
@@ -36,8 +36,8 @@ export function FormatCodeBlock() {
   return (
     <SelectItem value="code" onPointerDown={formatCode}>
       <div className="flex items-center gap-1 font-normal">
-        {blockTypeToBlockName[BLOCK_FORMAT_VALUE].icon}
-        {blockTypeToBlockName[BLOCK_FORMAT_VALUE].label}
+        {blockTypeToBlockName[BLOCK_FORMAT_VALUE]?.icon}
+        {blockTypeToBlockName[BLOCK_FORMAT_VALUE]?.label}
       </div>
     </SelectItem>
   );

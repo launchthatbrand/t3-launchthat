@@ -1,5 +1,19 @@
-import * as React from "react";
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 
+/* eslint-disable @typescript-eslint/only-throw-error */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import type { BaseSelection, LexicalEditor, NodeKey } from "lexical";
+import type { JSX } from "react";
+import * as React from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { AutoFocusPlugin } from "@lexical/react/LexicalAutoFocusPlugin";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
+import { LexicalNestedComposer } from "@lexical/react/LexicalNestedComposer";
+import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
+import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
+import { useLexicalNodeSelection } from "@lexical/react/useLexicalNodeSelection";
+import { mergeRegister } from "@lexical/utils";
 import {
   $getNodeByKey,
   $getSelection,
@@ -14,11 +28,16 @@ import {
   KEY_ESCAPE_COMMAND,
   SELECTION_CHANGE_COMMAND,
 } from "lexical";
-import type { BaseSelection, LexicalEditor, NodeKey } from "lexical";
+
 import type {
   InlineImageNode,
   Position,
 } from "../../editor/nodes/inline-image-node";
+import { Button } from "../../../button";
+import { Checkbox } from "../../../checkbox";
+import { DialogFooter } from "../../../dialog";
+import { Input } from "../../../input";
+import { Label } from "../../../label";
 import {
   Select,
   SelectContent,
@@ -26,26 +45,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../select";
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-
-import { $isInlineImageNode } from "../../editor/nodes/inline-image-node";
-import { AutoFocusPlugin } from "@lexical/react/LexicalAutoFocusPlugin";
-import { Button } from "../../../button";
-import { Checkbox } from "../../../checkbox";
-import { ContentEditable } from "../../editor/editor-ui/content-editable";
-import { DialogFooter } from "../../../dialog";
-import { Input } from "../../../input";
-import type { JSX } from "react";
-import { Label } from "../../../label";
-import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
-import { LexicalNestedComposer } from "@lexical/react/LexicalNestedComposer";
-import { LinkPlugin } from "../../editor/plugins/link-plugin";
-import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
-import { mergeRegister } from "@lexical/utils";
 import { useEditorModal } from "../../editor/editor-hooks/use-modal";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
-import { useLexicalNodeSelection } from "@lexical/react/useLexicalNodeSelection";
+import { ContentEditable } from "../../editor/editor-ui/content-editable";
+import { $isInlineImageNode } from "../../editor/nodes/inline-image-node";
+import { LinkPlugin } from "../../editor/plugins/link-plugin";
 
 const imageCache = new Set();
 
@@ -82,7 +85,7 @@ function LazyImage({
   useSuspenseImage(src);
   return (
     <img
-      className={className || undefined}
+      className={className ?? undefined}
       src={src}
       alt={altText}
       ref={imageRef}
@@ -107,9 +110,13 @@ export function UpdateInlineImageDialog({
   onClose: () => void;
 }): JSX.Element {
   const editorState = activeEditor.getEditorState();
-  const node = editorState.read(
-    () => $getNodeByKey(nodeKey)!,
-  );
+  const node = editorState.read(() => {
+    const inlineNode = $getNodeByKey(nodeKey);
+    if (!$isInlineImageNode(inlineNode)) {
+      throw new Error("Inline image node not found");
+    }
+    return inlineNode;
+  });
   const [altText, setAltText] = useState(node.getAltText());
   const [showCaption, setShowCaption] = useState(node.getShowCaption());
   const [position, setPosition] = useState<Position>(node.getPosition());

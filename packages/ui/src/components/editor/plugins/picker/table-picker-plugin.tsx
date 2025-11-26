@@ -1,7 +1,9 @@
-import { ComponentPickerOption } from "../../plugins/picker/component-picker-option";
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { INSERT_TABLE_COMMAND } from "@lexical/table";
-import { InsertTableDialog } from "../../plugins/table-plugin";
 import { TableIcon } from "lucide-react";
+
+import { ComponentPickerOption } from "../../plugins/picker/component-picker-option";
+import { InsertTableDialog } from "../../plugins/table-plugin";
 
 export function TablePickerPlugin() {
   return new ComponentPickerOption("Table", {
@@ -40,7 +42,10 @@ export function DynamicTablePickerPlugin({
             icon: <i className="icon table" />,
             keywords: ["table"],
             onSelect: (_, editor) =>
-              editor.dispatchCommand(INSERT_TABLE_COMMAND, { columns, rows }),
+              editor.dispatchCommand(INSERT_TABLE_COMMAND, {
+                columns: columns ?? "1",
+                rows: rows ?? "1",
+              }),
           }),
       ),
     );

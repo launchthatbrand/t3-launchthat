@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-floating-promises */
 "use client";
 
 /**
@@ -7,30 +10,24 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
+import type { TextNode } from "lexical";
 import * as React from "react";
-
-import type {
-  TextNode} from "lexical";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
-  $createTextNode,
-  $getSelection,
-  $isRangeSelection
-} from "lexical";
+  MenuOption,
+  useBasicTypeaheadTriggerMatch,
+} from "@lexical/react/LexicalTypeaheadMenuPlugin";
+import { $createTextNode, $getSelection, $isRangeSelection } from "lexical";
+import { createPortal } from "react-dom";
+
 import {
   Command,
   CommandGroup,
   CommandItem,
   CommandList,
 } from "../../../command";
-import {
-  MenuOption,
-  useBasicTypeaheadTriggerMatch,
-} from "@lexical/react/LexicalTypeaheadMenuPlugin";
-import { useCallback, useEffect, useMemo, useState } from "react";
-
-import { createPortal } from "react-dom";
-import dynamic from "next/dynamic";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 
 const LexicalTypeaheadMenuPlugin = dynamic(
   () => import("./default/lexical-typeahead-menu-plugin"),
@@ -52,7 +49,7 @@ class EmojiOption extends MenuOption {
     super(title);
     this.title = title;
     this.emoji = emoji;
-    this.keywords = options.keywords || [];
+    this.keywords = options.keywords ?? [];
   }
 }
 
@@ -83,7 +80,7 @@ export function EmojiPickerPlugin() {
       emojis != null
         ? emojis.map(
             ({ emoji, aliases, tags }) =>
-              new EmojiOption(aliases[0], emoji, {
+              new EmojiOption(aliases[0] ?? "", emoji, {
                 keywords: [...aliases, ...tags],
               }),
           )

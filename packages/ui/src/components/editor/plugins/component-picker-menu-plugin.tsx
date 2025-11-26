@@ -1,14 +1,7 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
-import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "../../../command";
-import { useCallback, useMemo, useState } from "react";
-
-import type { ComponentPickerOption } from "../plugins/picker/component-picker-option";
+import type { TextNode } from "lexical";
 /**
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
@@ -17,12 +10,20 @@ import type { ComponentPickerOption } from "../plugins/picker/component-picker-o
  *
  */
 import type { JSX } from "react";
-import type { TextNode } from "lexical";
-import { createPortal } from "react-dom";
+import { useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { useBasicTypeaheadTriggerMatch } from "@lexical/react/LexicalTypeaheadMenuPlugin";
-import { useEditorModal } from "../editor-hooks/use-modal";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { useBasicTypeaheadTriggerMatch } from "@lexical/react/LexicalTypeaheadMenuPlugin";
+import { createPortal } from "react-dom";
+
+import type { ComponentPickerOption } from "../plugins/picker/component-picker-option";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "../../../command";
+import { useEditorModal } from "../editor-hooks/use-modal";
 
 const LexicalTypeaheadMenuPlugin = dynamic(
   () => import("./default/lexical-typeahead-menu-plugin"),
@@ -56,7 +57,7 @@ export function ComponentPickerMenuPlugin({
     const regex = new RegExp(queryString, "i");
 
     return [
-      ...(dynamicOptionsFn?.({ queryString }) || []),
+      ...(dynamicOptionsFn?.({ queryString }) ?? []),
       ...baseOptions.filter(
         (option) =>
           regex.test(option.title) ||

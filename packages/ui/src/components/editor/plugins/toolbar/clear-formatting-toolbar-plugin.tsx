@@ -1,19 +1,19 @@
 "use client";
 
+import { useCallback } from "react";
+import { $isDecoratorBlockNode } from "@lexical/react/LexicalDecoratorBlockNode";
+import { $isHeadingNode, $isQuoteNode } from "@lexical/rich-text";
+import { $isTableSelection } from "@lexical/table";
+import { $getNearestBlockElementAncestorOrThrow } from "@lexical/utils";
 import {
   $createParagraphNode,
   $getSelection,
   $isRangeSelection,
   $isTextNode,
 } from "lexical";
-import { $isHeadingNode, $isQuoteNode } from "@lexical/rich-text";
-
-import { $getNearestBlockElementAncestorOrThrow } from "@lexical/utils";
-import { $isDecoratorBlockNode } from "@lexical/react/LexicalDecoratorBlockNode";
-import { $isTableSelection } from "@lexical/table";
-import { Button } from "../../../../button";
 import { EraserIcon } from "lucide-react";
-import { useCallback } from "react";
+
+import { Button } from "../../../../button";
 import { useToolbarContext } from "../../context/toolbar-context";
 
 export function ClearFormattingToolbarPlugin() {
@@ -39,10 +39,10 @@ export function ClearFormattingToolbarPlugin() {
             // Use a separate variable to ensure TS does not lose the refinement
             let textNode = node;
             if (idx === 0 && anchor.offset !== 0) {
-              textNode = textNode.splitText(anchor.offset)[1] || textNode;
+              textNode = textNode.splitText(anchor.offset)[1] ?? textNode;
             }
             if (idx === nodes.length - 1) {
-              textNode = textNode.splitText(focus.offset)[0] || textNode;
+              textNode = textNode.splitText(focus.offset)[0] ?? textNode;
             }
             /**
              * If the selected text has one format applied

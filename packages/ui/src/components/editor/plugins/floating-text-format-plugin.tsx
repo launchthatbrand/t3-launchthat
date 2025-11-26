@@ -1,7 +1,21 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
+import type { LexicalEditor } from "lexical";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+import type { Dispatch, JSX } from "react";
 import * as React from "react";
-
+import { useCallback, useEffect, useRef, useState } from "react";
+import { $isCodeHighlightNode } from "@lexical/code";
+import { $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { mergeRegister } from "@lexical/utils";
 import {
   $getSelection,
   $isParagraphNode,
@@ -11,7 +25,6 @@ import {
   FORMAT_TEXT_COMMAND,
   SELECTION_CHANGE_COMMAND,
 } from "lexical";
-import { $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
 import {
   BoldIcon,
   CodeIcon,
@@ -22,27 +35,14 @@ import {
   SuperscriptIcon,
   UnderlineIcon,
 } from "lucide-react";
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
-import type { Dispatch, JSX} from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ToggleGroup, ToggleGroupItem } from "../../../toggle-group";
-
-import { $isCodeHighlightNode } from "@lexical/code";
-import type { LexicalEditor } from "lexical";
-import { Separator } from "../../../separator";
 import { createPortal } from "react-dom";
+
+import { Separator } from "../../../separator";
+import { ToggleGroup, ToggleGroupItem } from "../../../toggle-group";
+import { useFloatingLinkContext } from "../context/floating-link-context";
 import { getDOMRangeRect } from "../utils/get-dom-range-rect";
 import { getSelectedNode } from "../utils/get-selected-node";
-import { mergeRegister } from "@lexical/utils";
 import { setFloatingElemPosition } from "../utils/set-floating-elem-position";
-import { useFloatingLinkContext } from "../context/floating-link-context";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 
 function FloatingTextFormat({
   editor,
@@ -133,8 +133,7 @@ function FloatingTextFormat({
       selection !== null &&
       nativeSelection !== null &&
       !nativeSelection.isCollapsed &&
-      rootElement !== null &&
-      rootElement.contains(nativeSelection.anchorNode)
+      rootElement?.contains(nativeSelection.anchorNode)
     ) {
       const rangeRect = getDOMRangeRect(nativeSelection, rootElement);
 

@@ -124,7 +124,7 @@ export function ConversationTranscript({
         )}
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 mt-auto border-t bg-background">
+      <div className="mt-auto border-t bg-background">
         <ConversationComposer
           organizationId={organizationId}
           sessionId={sessionId}
