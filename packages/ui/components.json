@@ -9,9 +9,13 @@
     "baseColor": "zinc",
     "cssVariables": true
   },
+  "iconLibrary": "radix",
   "aliases": {
-    "utils": "@acme/ui",
     "components": "src/",
+    "utils": "@acme/ui",
     "ui": "src/"
+  },
+  "registries": {
+    "@aceternity": "https://ui.aceternity.com/registry/{name}.json"
   }
 }

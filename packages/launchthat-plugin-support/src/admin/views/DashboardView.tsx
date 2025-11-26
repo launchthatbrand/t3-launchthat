@@ -21,6 +21,8 @@ import {
   CardTitle,
 } from "@acme/ui/card";
 
+import { SUPPORT_COPY } from "../constants/supportCopy";
+
 interface ConversationSummary {
   sessionId: string;
   lastMessage: string;
@@ -153,7 +155,7 @@ export function DashboardView({
               ))
             ) : (
               <p className="text-sm text-muted-foreground">
-                Conversations will appear here once visitors start chatting.
+                {SUPPORT_COPY.sidebar.emptyState}
               </p>
             )}
             <Button asChild variant="outline" className="w-full">

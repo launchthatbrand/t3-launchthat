@@ -30,6 +30,8 @@ import { ScrollArea } from "@acme/ui/scroll-area";
 import { Separator } from "@acme/ui/separator";
 import { toast } from "@acme/ui/toast";
 
+import { SUPPORT_COPY } from "../constants/supportCopy";
+
 export interface ConversationSummary {
   sessionId: string;
   lastMessage: string;
@@ -173,7 +175,7 @@ export const ConversationInspector = ({
                     value={
                       conversation
                         ? conversation.sessionId.slice(-12)
-                        : "Select a conversation"
+                        : SUPPORT_COPY.inspector.sessionPlaceholder
                     }
                   />
                   <InfoRow

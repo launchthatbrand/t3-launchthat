@@ -16,6 +16,7 @@ import {
 } from "@acme/ui/index";
 
 import type { ConversationSummary } from "../../components/ConversationInspector";
+import { SUPPORT_COPY } from "../../constants/supportCopy";
 
 type SidebarFilter = "mine" | "unassigned" | "all";
 
@@ -49,8 +50,8 @@ export function ConversationSidebar({
         value={filter}
         onValueChange={(value) => setFilter(value as SidebarFilter)}
       >
-        <SidebarHeader className="gap-2 border-b p-0">
-          <div className="flex flex-col gap-2 p-4">
+        <SidebarHeader className="flex h-32 flex-col justify-between gap-1 border-b p-0">
+          <div className="flex flex-col gap-1 p-4">
             <div className="flex w-full flex-col justify-between gap-3">
               <div className="text-base font-medium text-foreground">
                 Conversations
@@ -63,13 +64,13 @@ export function ConversationSidebar({
             <SidebarInput placeholder="Search session ID…" />
           </div>
           <TabsList className="flex h-auto w-auto justify-start rounded-none p-0">
-            <TabsTrigger value="mine" className="rounded-none">
+            <TabsTrigger value="mine" className="rounded-none text-xs">
               Mine
             </TabsTrigger>
-            <TabsTrigger value="unassigned" className="rounded-none">
+            <TabsTrigger value="unassigned" className="rounded-none text-xs">
               Unassigned
             </TabsTrigger>
-            <TabsTrigger value="all" className="rounded-none">
+            <TabsTrigger value="all" className="rounded-none text-xs">
               All
             </TabsTrigger>
           </TabsList>
@@ -124,7 +125,7 @@ export function ConversationSidebar({
                 })
               ) : (
                 <div className="p-6 text-sm text-muted-foreground">
-                  Conversations will appear here once visitors start chatting.
+                  {SUPPORT_COPY.sidebar.emptyState}
                 </div>
               )}
             </SidebarGroupContent>

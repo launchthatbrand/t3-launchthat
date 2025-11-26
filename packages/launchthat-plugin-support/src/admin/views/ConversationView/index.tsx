@@ -13,6 +13,7 @@ import type {
 } from "../../components/ConversationInspector";
 import { ConversationHeader } from "../../components/ConversationHeader";
 import { ConversationInspector } from "../../components/ConversationInspector";
+import { SUPPORT_COPY } from "../../constants/supportCopy";
 import { useSupportContact } from "../../hooks/useSupportContact";
 import { useSupportConversations } from "../../hooks/useSupportConversations";
 import { useSupportSessionState } from "../../hooks/useSupportSessionState";
@@ -116,7 +117,7 @@ export function ConversationsView({
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                    Select a conversation to inspect the transcript.
+                    {SUPPORT_COPY.transcript.selectPrompt}
                   </div>
                 )}
               </div>

@@ -11,6 +11,7 @@ import type {
   ContactDoc,
   ConversationSummary,
 } from "../../components/ConversationInspector";
+import { SUPPORT_COPY } from "../../constants/supportCopy";
 import { ConversationComposer } from "./Composer";
 
 type SupportMessage = {
@@ -59,7 +60,7 @@ export function ConversationTranscript({
       >
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            No messages yet for this conversation.
+            {SUPPORT_COPY.transcript.emptyState}
           </div>
         ) : (
           messages.map((message) => {

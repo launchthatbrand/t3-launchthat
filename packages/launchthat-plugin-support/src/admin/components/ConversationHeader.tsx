@@ -105,7 +105,7 @@ export const ConversationHeader = ({
   }, [name]);
 
   return (
-    <div className="border-b bg-background px-6 py-4">
+    <div className="flex h-32 flex-col justify-between border-b bg-background px-6 py-4 pb-0">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Avatar className="h-14 w-14">
@@ -171,9 +171,13 @@ export const ConversationHeader = ({
         onValueChange={(value) => onTabChange(value as TabKey)}
         className="mt-4"
       >
-        <TabsList>
-          <TabsTrigger value="messages">Messages</TabsTrigger>
-          <TabsTrigger value="dashboard">Customer Dashboard</TabsTrigger>
+        <TabsList className="h-auto rounded-none pb-0">
+          <TabsTrigger className="rounded-none text-xs" value="messages">
+            Messages
+          </TabsTrigger>
+          <TabsTrigger className="rounded-none text-xs" value="dashboard">
+            Customer Dashboard
+          </TabsTrigger>
         </TabsList>
       </Tabs>
     </div>
