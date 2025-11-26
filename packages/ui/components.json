@@ -4,18 +4,14 @@
   "rsc": true,
   "tsx": true,
   "tailwind": {
-    "config": "../../tooling/tailwind/web.ts",
+    "config": "",
     "css": "unused.css",
     "baseColor": "zinc",
     "cssVariables": true
   },
-  "iconLibrary": "radix",
   "aliases": {
-    "components": "src/",
     "utils": "@acme/ui",
+    "components": "src/",
     "ui": "src/"
-  },
-  "registries": {
-    "@aceternity": "https://ui.aceternity.com/registry/{name}.json"
   }
 }

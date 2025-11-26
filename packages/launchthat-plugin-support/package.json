@@ -27,7 +27,7 @@
     "@ai-sdk/react": "^0.0.56",
     "convex": "^1.23.0",
     "launchthat-plugin-core": "workspace:*",
-    "lucide-react": "^0.503.0",
+    "lucide-react": "^0.555.0",
     "react": "catalog:react19",
     "react-dom": "catalog:react19"
   },

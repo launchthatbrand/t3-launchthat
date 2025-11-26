@@ -1,14 +1,14 @@
-import "~/app/globals.css";
-
 import type { Metadata, Viewport } from "next";
-import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
+import { Geist, Geist_Mono } from "next/font/google";
 
-import { GeistMono } from "geist/font/mono";
-import { GeistSans } from "geist/font/sans";
-import { TRPCReactProvider } from "~/trpc/react";
-import { Toaster } from "@acme/ui/toast";
 import { cn } from "@acme/ui";
+import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
+import { Toaster } from "@acme/ui/toast";
+
 import { env } from "~/env";
+import { TRPCReactProvider } from "~/trpc/react";
+
+import "~/app/styles.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -38,19 +38,28 @@ export const viewport: Viewport = {
   ],
 };
 
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+});
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+});
+
 export default function RootLayout(props: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
-          "min-h-screen bg-background font-sans text-foreground antialiased",
-          GeistSans.variable,
-          GeistMono.variable,
+          "bg-background text-foreground min-h-screen font-sans antialiased",
+          geistSans.variable,
+          geistMono.variable,
         )}
-      ><div></div><div></div>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      >
+        <ThemeProvider>
           <TRPCReactProvider>{props.children}</TRPCReactProvider>
-          <div className="absolute bottom-4 right-4">
+          <div className="absolute right-4 bottom-4">
             <ThemeToggle />
           </div>
           <Toaster />

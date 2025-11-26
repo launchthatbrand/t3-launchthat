@@ -1,11 +1,11 @@
 import { createEnv } from "@t3-oss/env-nextjs";
 import { vercel } from "@t3-oss/env-nextjs/presets-zod";
-import { z } from "zod";
+import { z } from "zod/v4";
 
-import { env as authEnv } from "@acme/auth/env";
+import { authEnv } from "../../../packages/auth/env";
 
 export const env = createEnv({
-  extends: [authEnv, vercel()],
+  extends: [authEnv(), vercel()],
   shared: {
     NODE_ENV: z
       .enum(["development", "production", "test"])
@@ -16,7 +16,7 @@ export const env = createEnv({
    * This way you can ensure the app isn't built with invalid env vars.
    */
   server: {
-    POSTGRES_URL: z.string().url(),
+    POSTGRES_URL: z.url(),
   },
 
   /**

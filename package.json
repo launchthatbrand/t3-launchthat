@@ -39,6 +39,7 @@
     "convex-helpers": "^0.1.95",
     "d3-hierarchy": "^3.1.2",
     "dependency-cruiser": "^12.10.0",
+    "dotenv-cli": "^10.0.0",
     "prettier": "catalog:",
     "turbo": "^2.4.4",
     "typescript": "catalog:"

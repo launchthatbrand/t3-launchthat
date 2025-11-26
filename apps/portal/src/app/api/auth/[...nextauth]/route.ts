@@ -1,7 +1,10 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-import { handlers, isSecureContext } from "@acme/auth";
+import {
+  handlers,
+  isSecureContext,
+} from "../../../../../../../packages/auth/src";
 
 const EXPO_COOKIE_NAME = "__acme-expo-redirect-state";
 const AUTH_COOKIE_PATTERN = /authjs\.session-token=([^;]+)/;
