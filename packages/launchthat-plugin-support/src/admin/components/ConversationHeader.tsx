@@ -1,16 +1,15 @@
 "use client";
 
-import type { ComponentType } from "react";
-import { useCallback, useState } from "react";
+import { Avatar, AvatarFallback } from "@acme/ui/avatar";
 import { BadgeCheck, Bell, Loader, Share2, UserRound } from "lucide-react";
+import type { ContactDoc, ConversationSummary } from "./ConversationInspector";
+import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { useCallback, useState } from "react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Avatar, AvatarFallback } from "@acme/ui/index";
-import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import type { ComponentType } from "react";
 import { toast } from "@acme/ui/toast";
-
-import type { ContactDoc, ConversationSummary } from "./ConversationInspector";
 
 type TabKey = "messages" | "dashboard";
 

@@ -1,8 +1,7 @@
 "use client";
 
 import { Label as LabelPrimitive } from "radix-ui";
-
-import { cn } from "@acme/ui";
+import { cn } from "./index";
 
 export function Label({
   className,

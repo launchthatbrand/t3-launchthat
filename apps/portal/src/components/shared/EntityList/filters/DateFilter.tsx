@@ -1,10 +1,10 @@
 "use client";
 
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-
-import { Calendar } from "@acme/ui";
-import { Button } from "@acme/ui/button";
+import {
+  BaseFilterProps,
+  DATE_FILTER_OPERATIONS,
+  DateFilterOperation,
+} from "./types";
 import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
 import {
   Select,
@@ -14,11 +14,10 @@ import {
   SelectValue,
 } from "@acme/ui/select";
 
-import {
-  BaseFilterProps,
-  DATE_FILTER_OPERATIONS,
-  DateFilterOperation,
-} from "./types";
+import { Button } from "@acme/ui/button";
+import { Calendar } from "@acme/ui/calendar";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 
 interface DateFilterValue {
   startDate: Date | null;

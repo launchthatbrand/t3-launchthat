@@ -102,3 +102,6 @@ const DetailRow = ({ label, value }: { label: string; value: string }) => (
     <span className="text-right font-medium text-foreground">{value}</span>
   </div>
 );
+
+
+

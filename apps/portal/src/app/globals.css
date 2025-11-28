@@ -1,112 +1,35 @@
+@import "tailwindcss";
 @import "tw-animate-css";
-/* @import "react-big-calendar/lib/css/react-big-calendar.css";
-@import "../styles/react-big-calendar-dark.css"; */
+@import "@acme/tailwind-config/theme";
 
-@custom-variant dark (&:is(.dark *));
+@source "../../../../packages/ui/src/**/*.{ts,tsx}";
+@source "../../../../packages/launchthat-plugin-support/src/**/*.{ts,tsx}";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant light (&:where(.light, .light *));
+@custom-variant auto (&:where(.auto, .auto *));
+
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+  @media (width >= --theme(--breakpoint-sm)) {
+    max-width: none;
   }
-}
-
-.container {
-  @apply mx-auto px-4 sm:px-6 lg:px-8;
-  max-width: 100%;
+  @media (width >= 1400px) {
+    max-width: 1400px;
+  }
 }
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 210.02 92.59% 13.38%;
-    --primary-foreground: 0 0% 98%; /* A light color for foreground on dark primary */
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 72.22% 50.59%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5% 64.9%;
-    --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 3.08% 91.1%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-    --sidebar-width: 16rem;
-    --sidebar-width-icon: 3rem;
-    --sidebar-width-mobile: 18rem;
-
-    --kanban-board-circle-blue: oklch(0.6232 0.1879 259.8);
-    --kanban-board-circle-cyan: oklch(0.7146 0.1256 215.13);
-    --kanban-board-circle-gray: oklch(0.5513 0.0233 264.36);
-    --kanban-board-circle-green: oklch(0.7229 0.1921 149.58);
-    --kanban-board-circle-indigo: oklch(0.586 0.2037 277.12);
-    --kanban-board-circle-pink: oklch(0.6559 0.2117 354.34);
-    --kanban-board-circle-purple: oklch(0.6267 0.2325 303.86);
-    --kanban-board-circle-red: oklch(0.6368 0.2078 25.33);
-    --kanban-board-circle-violet: oklch(0.6059 0.2187 292.72);
-    --kanban-board-circle-yellow: oklch(0.7959 0.1618 86.05);
-    --color-kanban-board-circle-blue: var(--kanban-board-circle-blue);
-    --color-kanban-board-circle-cyan: var(--kanban-board-circle-cyan);
-    --color-kanban-board-circle-gray: var(--kanban-board-circle-gray);
-    --color-kanban-board-circle-green: var(--kanban-board-circle-green);
-    --color-kanban-board-circle-indigo: var(--kanban-board-circle-indigo);
-    --color-kanban-board-circle-pink: var(--kanban-board-circle-pink);
-    --color-kanban-board-circle-primary: var(--kanban-board-circle-primary);
-    --color-kanban-board-circle-purple: var(--kanban-board-circle-purple);
-    --color-kanban-board-circle-red: var(--kanban-board-circle-red);
-    --color-kanban-board-circle-violet: var(--kanban-board-circle-violet);
-    --color-kanban-board-circle-yellow: var(--kanban-board-circle-yellow);
+  * {
+    @apply border-border;
   }
-
-  .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0.25 0.07 251.93;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 85.7% 97.3%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+  body {
+    letter-spacing: var(--tracking-normal);
   }
 }
 
-/* @theme inline {
+@theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -142,9 +65,9 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-} */
+}
 
-/* :root {
+:root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -211,13 +134,13 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
-} */
+}
 
-/* @layer base {
+@layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
   }
-} */
+}

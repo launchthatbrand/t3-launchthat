@@ -1,16 +1,15 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
-import { useMemo } from "react";
-import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
-import { BookOpen } from "lucide-react";
+import type { LmsBuilderQuiz, LmsBuilderTopic } from "../types";
 
+import { BookOpen } from "lucide-react";
+import type { Id } from "../lib/convexId";
+import type { LucideIcon } from "lucide-react";
 import type { NavItem } from "@acme/ui/general/nav-main";
 import { NavMain } from "@acme/ui/general/nav-main";
-
-import type { Id } from "../lib/convexId";
-import type { LmsBuilderQuiz, LmsBuilderTopic } from "../types";
+import { api } from "@portal/convexspec";
+import { useMemo } from "react";
+import { useQuery } from "convex/react";
 
 type ChildNavItem = { title: string; url: string };
 
@@ -66,10 +65,14 @@ export function CourseNav({
     }
 
     const derivedSlug =
-      courseSlug ??
-      (courseStructure.course as { slug?: string | null }).slug ??
-      undefined ??
-      (courseStructure.course._id as string);
+      (() => {
+        if (courseSlug) return courseSlug;
+        if (courseStructure.course && typeof courseStructure.course === "object") {
+          if (courseStructure.course.slug) return courseStructure.course.slug;
+          if (courseStructure.course._id) return courseStructure.course._id as string;
+        }
+        return "";
+      })();
 
     const baseUrl = `/course/${derivedSlug}`;
 

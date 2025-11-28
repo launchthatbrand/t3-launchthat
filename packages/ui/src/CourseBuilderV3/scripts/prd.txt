@@ -1,0 +1,56 @@
+<context>
+# Overview
+CourseBuilderV3 is a pure UI, prop-driven React component library for building and editing course structures. It is designed to be data-source-agnostic, allowing integration with any backend or state management solution. The component is highly extensible, supports custom renderers, and is optimized for use in a TypeScript monorepo. It enables drag-and-drop editing of lessons, topics, and quizzes, with all data and actions passed via props.
+
+# Core Features
+- Drag-and-drop course structure editing (lessons, topics, quizzes)
+- Sidebar for available items (lessons, topics, quizzes)
+- Final quizzes section
+- Customizable renderers for lessons, topics, quizzes
+- All data and mutations are prop-driven (no internal data fetching)
+- Strong TypeScript types/interfaces, no backend coupling
+- Theming with Tailwind and CSS variables, dark/light mode support
+- Accessibility-first design
+- Storybook stories and test harnesses for all components
+
+# User Experience
+- Target users: Course creators, curriculum designers, LMS admins, and developers integrating course editing into their apps
+- Key flows: Add/reorder/remove lessons, topics, quizzes; drag from sidebar to course; edit titles inline; customize UI via render props
+- UI/UX: Responsive, keyboard-accessible, visually clear drag-and-drop, error boundaries, loading states, and theming
+</context>
+<PRD>
+# Technical Architecture
+- Pure React (function components, hooks, context as needed)
+- TypeScript-first, generic interfaces for all data models
+- No direct backend or DB imports; all data flows through props
+- DnD Kit for drag-and-drop
+- Shadcn UI and Tailwind for styling
+- Custom renderer slots for extensibility
+- Storybook for documentation and visual testing
+
+# Development Roadmap
+- MVP: Generic types/interfaces, main CourseBuilder component, drag-and-drop, sidebar, callbacks for all mutations, basic theming, accessibility
+- Phase 2: Custom renderer slots, Storybook stories, error boundaries, dark/light mode
+- Phase 3: Support for additional item types (assignments, resources), advanced theming, more granular accessibility features
+
+# Logical Dependency Chain
+- Define generic types/interfaces first
+- Build core CourseBuilder component with prop-driven API
+- Implement drag-and-drop and sidebar
+- Add custom renderer support
+- Integrate Storybook and write stories
+- Add theming, accessibility, and error handling
+- Expand to support additional item types and advanced features
+
+# Risks and Mitigations
+- Risk: Over-coupling to a specific backend or data model
+  - Mitigation: Use only generic interfaces and prop-driven data
+- Risk: Complexity in supporting custom renderers and extensibility
+  - Mitigation: Design clear, well-typed render prop APIs and document usage
+- Risk: Accessibility or theming gaps
+  - Mitigation: Prioritize a11y and theming in MVP, add tests and stories
+
+# Appendix
+- See `CourseBuilderV2_analysis_and_V3_plan.md` for detailed analysis and migration plan
+- Reference: DnD Kit, Shadcn UI, Tailwind, Storybook documentation
+</PRD> 

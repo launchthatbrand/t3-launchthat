@@ -6,17 +6,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@acme/ui";
-import { Button } from "@acme/ui/button";
+} from "@acme/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 // Import the new navigation context
 import type { TabConfig } from "./NavigationContext";

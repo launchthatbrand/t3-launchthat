@@ -49,27 +49,25 @@ export function Providers({ children, tenant }: ProvidersProps) {
         <SessionProvider storageKey="cart-session" useStorage={useLocalStorage}>
           <ContentProtectionProvider>
             <TenantProvider value={effectiveTenant}>
-              <SidebarProvider>
-                <ConvexUserEnsurer />
-                {/* <GuestCartMerger /> */}
-                <ThemeProvider
-                  attribute="class"
-                  defaultTheme="system"
-                  enableSystem
-                >
-                  {children}
-                  {!isAdminRoute && (
-                    <SupportChatWidget
-                      organizationId={effectiveTenant._id}
-                      tenantName={effectiveTenant.name}
-                    />
-                  )}
-                  <div className="absolute bottom-4 right-4">
-                    <ThemeToggle />
-                  </div>
-                  <Toaster />
-                </ThemeProvider>
-              </SidebarProvider>
+              <ConvexUserEnsurer />
+              {/* <GuestCartMerger /> */}
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+              >
+                {children}
+                {!isAdminRoute && (
+                  <SupportChatWidget
+                    organizationId={effectiveTenant._id}
+                    tenantName={effectiveTenant.name}
+                  />
+                )}
+                {/* <div className="absolute right-4 bottom-4">
+                  <ThemeToggle />
+                </div> */}
+                <Toaster />
+              </ThemeProvider>
             </TenantProvider>
           </ContentProtectionProvider>
         </SessionProvider>

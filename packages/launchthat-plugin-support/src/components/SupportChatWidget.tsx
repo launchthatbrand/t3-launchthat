@@ -237,7 +237,7 @@ function SupportChatWidgetInner({
     return (
       <button
         type="button"
-        className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-muted px-4 py-3 text-sm font-medium text-muted-foreground shadow-lg"
+        className="bg-muted text-muted-foreground fixed right-4 bottom-4 z-50 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-medium shadow-lg"
         disabled
         aria-busy="true"
       >
@@ -384,13 +384,13 @@ function ChatSurface({
   return (
     <>
       {isOpen && (
-        <div className="fixed bottom-24 right-4 z-50 w-full max-w-sm rounded-2xl border border-border/60 bg-card shadow-2xl">
-          <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+        <div className="border-border/60 bg-card fixed right-4 bottom-24 z-50 w-full max-w-sm rounded-2xl border shadow-2xl">
+          <div className="border-border/60 flex items-center justify-between border-b px-4 py-3">
             <div>
               <p className="text-sm font-semibold">
                 {shouldCollectContact ? settings.introHeadline : "Ask Support"}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 {shouldCollectContact
                   ? settings.welcomeMessage
                   : `Answers tailored for ${tenantName}`}
@@ -468,9 +468,9 @@ function ChatSurface({
               )}
 
               {contactError && (
-                <p className="text-xs text-destructive">{contactError}</p>
+                <p className="text-destructive text-xs">{contactError}</p>
               )}
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-muted-foreground text-[11px]">
                 {settings.privacyMessage}
               </p>
               <div className="flex justify-end">
@@ -490,7 +490,7 @@ function ChatSurface({
             <>
               <div className="flex h-80 flex-col gap-4 overflow-y-auto px-4 py-4">
                 {displayedMessages.length === 0 && (
-                  <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
+                  <div className="bg-muted/40 text-muted-foreground rounded-lg p-3 text-xs">
                     Ask anything about {tenantName}—policies, orders, or your
                     course content. This assistant combines curated FAQs with
                     product details specific to your account.
@@ -519,14 +519,14 @@ function ChatSurface({
                 ))}
 
                 {isLoading && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="text-muted-foreground flex items-center gap-2 text-xs">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     Thinking...
                   </div>
                 )}
 
                 {error && (
-                  <div className="rounded-lg bg-destructive/10 p-2 text-xs text-destructive">
+                  <div className="bg-destructive/10 text-destructive rounded-lg p-2 text-xs">
                     Something went wrong.{" "}
                     <button
                       type="button"
@@ -541,14 +541,14 @@ function ChatSurface({
 
               <form
                 onSubmit={handleSubmit}
-                className="border-t border-border/60 p-3"
+                className="border-border/60 border-t p-3"
               >
                 <div className="flex items-center gap-2">
                   <textarea
                     value={input}
                     onChange={handleInputChange}
                     placeholder="Ask a question..."
-                    className="min-h-[40px] flex-1 resize-none rounded-xl border border-border/60 bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    className="border-border/60 bg-background focus:border-primary min-h-[40px] flex-1 resize-none rounded-xl border px-3 py-2 text-sm focus:outline-none"
                     rows={1}
                     disabled={isLoading}
                   />
@@ -564,7 +564,7 @@ function ChatSurface({
                     )}
                   </Button>
                 </div>
-                <p className="mt-2 text-center text-[10px] text-muted-foreground">
+                <p className="text-muted-foreground mt-2 text-center text-[10px]">
                   Responses may reference your courses, lessons, and FAQs.
                 </p>
               </form>
@@ -575,7 +575,7 @@ function ChatSurface({
 
       <button
         type="button"
-        className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/40 transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80"
+        className="bg-primary text-primary-foreground shadow-primary/40 focus-visible:ring-primary/80 fixed right-4 bottom-4 z-50 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-medium shadow-lg transition hover:scale-105 focus-visible:ring-2 focus-visible:outline-none"
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
         aria-label="Open support chat"

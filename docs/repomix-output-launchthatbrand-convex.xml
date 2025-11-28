@@ -113236,7 +113236,7 @@ export default [
 
 <file path="packages/api/tsconfig.json">
 {
-  "extends": "@acme/tsconfig/internal-package.json",
+  "extends": "@acme/tsconfig/compiled-package.json",
   "include": ["src"],
   "exclude": ["node_modules"]
 }
@@ -113634,7 +113634,7 @@ export default [
 
 <file path="packages/db/tsconfig.json">
 {
-  "extends": "@acme/tsconfig/internal-package.json",
+  "extends": "@acme/tsconfig/compiled-package.json",
   "include": ["src"],
   "exclude": ["node_modules"]
 }
@@ -114282,7 +114282,7 @@ export default [
 
 <file path="packages/ui/tsconfig.json">
 {
-  "extends": "@acme/tsconfig/internal-package.json",
+  "extends": "@acme/tsconfig/compiled-package.json",
   "compilerOptions": {
     "lib": ["ES2022", "dom", "dom.iterable"],
     "jsx": "preserve",
@@ -114354,7 +114354,7 @@ export default [
 
 <file path="packages/validators/tsconfig.json">
 {
-  "extends": "@acme/tsconfig/internal-package.json",
+  "extends": "@acme/tsconfig/compiled-package.json",
   "include": ["src"],
   "exclude": ["node_modules"]
 }
@@ -114970,7 +114970,7 @@ export default [
 
 <file path="turbo/generators/templates/tsconfig.json.hbs">
 {
-  "extends": "@acme/tsconfig/internal-package.json",
+  "extends": "@acme/tsconfig/compiled-package.json",
   "compilerOptions": {},
   "include": ["*.ts", "src"],
   "exclude": ["node_modules"]

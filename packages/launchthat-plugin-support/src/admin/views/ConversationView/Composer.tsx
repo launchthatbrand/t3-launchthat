@@ -1,19 +1,18 @@
 "use client";
 
-import type { GenericId as Id } from "convex/values";
-import { useState } from "react";
-import { api } from "@portal/convexspec";
-import { useMutation } from "convex/react";
-import { Loader2, SendHorizontal } from "lucide-react";
-
-import { Editor } from "@acme/ui/components/blocks/editor-x/editor";
-import { Button } from "@acme/ui/index";
-import { toast } from "@acme/ui/toast";
-
 import type {
   ContactDoc,
   ConversationSummary,
 } from "../../components/ConversationInspector";
+import { Loader2, SendHorizontal } from "lucide-react";
+
+import { Button } from "@acme/ui/button";
+import { Editor } from "@acme/ui-lexical/components/editor-x/editor";
+import type { GenericId as Id } from "convex/values";
+import { api } from "@portal/convexspec";
+import { toast } from "@acme/ui/toast";
+import { useMutation } from "convex/react";
+import { useState } from "react";
 
 interface ConversationComposerProps {
   organizationId: Id<"organizations">;

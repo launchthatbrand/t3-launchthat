@@ -13,6 +13,7 @@ import {
   TeamSwitcherOrganization,
 } from "@acme/ui/general/team-switcher";
 import {
+  Sidebar,
   SidebarGroup,
   SidebarHeader,
   SidebarMenuButton,
@@ -210,7 +211,11 @@ export default function CourseSidebar() {
     : undefined;
 
   return (
-    <>
+    <Sidebar
+      collapsible="icon"
+      className="overflow-hidden"
+      // {...props}
+    >
       <SidebarHeader>
         <TeamSwitcher
           organizations={effectiveOrganizations}
@@ -229,6 +234,6 @@ export default function CourseSidebar() {
       </SidebarGroup>
 
       <CourseNav courseId={courseId} courseSlug={slugOrId} />
-    </>
+    </Sidebar>
   );
 }

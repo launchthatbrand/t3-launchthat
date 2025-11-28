@@ -11,7 +11,7 @@ import { BookOpen, TerminalSquare } from "lucide-react";
 import type { TeamSwitcherOrganization } from "@acme/ui/general/team-switcher";
 import { NavMain } from "@acme/ui/general/nav-main";
 import { TeamSwitcher } from "@acme/ui/general/team-switcher";
-import { SidebarHeader } from "@acme/ui/sidebar";
+import { Sidebar, SidebarHeader } from "@acme/ui/sidebar";
 
 import { useTenant } from "~/context/TenantContext";
 
@@ -259,7 +259,11 @@ export default function DefaultSidebar() {
   }, [menuData, pathname]);
 
   return (
-    <>
+    <Sidebar
+      collapsible="icon"
+      className="overflow-hidden"
+      // {...props}
+    >
       <SidebarHeader>
         <TeamSwitcher
           organizations={effectiveOrganizations}
@@ -271,6 +275,6 @@ export default function DefaultSidebar() {
         />
       </SidebarHeader>
       <NavMain items={navItems} />
-    </>
+    </Sidebar>
   );
 }

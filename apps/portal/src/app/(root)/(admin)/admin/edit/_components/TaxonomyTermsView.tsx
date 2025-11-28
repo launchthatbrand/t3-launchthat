@@ -5,29 +5,33 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
-  Badge,
-  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+} from "@acme/ui/card";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Input,
-  Label,
+} from "@acme/ui/dialog";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Textarea,
-} from "@acme/ui";
+} from "@acme/ui/select";
+import { Textarea } from "@acme/ui/textarea";
 
 import type { TaxonomyTerm } from "../../settings/taxonomies/_api/taxonomies";
 import {
@@ -274,12 +278,12 @@ export function TaxonomyTermsView({
                 </CardHeader>
                 <CardContent>
                   {loading ? (
-                    <div className="flex h-32 items-center justify-center text-muted-foreground">
+                    <div className="text-muted-foreground flex h-32 items-center justify-center">
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Loading taxonomy…
                     </div>
                   ) : terms.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-muted-foreground text-sm">
                       No terms yet. Create one to start organizing entries.
                     </p>
                   ) : (
@@ -290,14 +294,14 @@ export function TaxonomyTermsView({
                           className="flex flex-wrap items-center justify-between rounded-md border p-3"
                         >
                           <div>
-                            <p className="font-medium text-foreground">
+                            <p className="text-foreground font-medium">
                               {term.name}
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-muted-foreground text-xs">
                               slug: {term.slug}
                             </p>
                             {term.parentId && (
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-muted-foreground text-xs">
                                 Parent: {parentLookup.get(term.parentId)?.name}
                               </p>
                             )}
@@ -347,15 +351,15 @@ export function TaxonomyTermsView({
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="space-y-1 text-sm text-muted-foreground">
+                <div className="text-muted-foreground space-y-1 text-sm">
                   <p>
                     Assigned to:
                     {taxonomyDoc?.postTypeSlugs?.length ? (
-                      <span className="ml-1 font-medium text-foreground">
+                      <span className="text-foreground ml-1 font-medium">
                         {taxonomyDoc.postTypeSlugs.join(", ")}
                       </span>
                     ) : (
-                      <span className="ml-1 font-medium text-foreground">
+                      <span className="text-foreground ml-1 font-medium">
                         All post types
                       </span>
                     )}

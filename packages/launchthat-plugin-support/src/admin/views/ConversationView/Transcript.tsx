@@ -1,18 +1,18 @@
 "use client";
 
-import type { GenericId as Id } from "convex/values";
-import { useEffect, useRef } from "react";
-import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
-
-import { Badge, cn } from "@acme/ui/index";
-
 import type {
   ContactDoc,
   ConversationSummary,
 } from "../../components/ConversationInspector";
-import { SUPPORT_COPY } from "../../constants/supportCopy";
+import { useEffect, useRef } from "react";
+
+import { Badge } from "@acme/ui/badge";
 import { ConversationComposer } from "./Composer";
+import type { GenericId as Id } from "convex/values";
+import { SUPPORT_COPY } from "../../constants/supportCopy";
+import { api } from "@portal/convexspec";
+import { cn } from "@acme/ui";
+import { useQuery } from "convex/react";
 
 type SupportMessage = {
   _id: string;

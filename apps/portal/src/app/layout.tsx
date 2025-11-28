@@ -1,12 +1,17 @@
 // import "@acme/ui/globals.css";
 import "./globals.css";
 
+import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
-import { Providers } from "./providers";
-import StandardLayout from "@acme/ui/layout/StandardLayout";
+import { SupportChatWidget } from "launchthat-plugin-support";
+
 import { cn } from "@acme/ui";
-import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
+import StandardLayout from "@acme/ui/layout/StandardLayout";
+
+import { AppSidebar } from "~/components/app-sidebar";
+import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar";
+import { Providers } from "./providers";
 
 // const fontSans = Geist({
 //   subsets: ["latin"],
@@ -29,7 +34,7 @@ export default async function RootLayout(props: {
     <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
-          "min-h-screen bg-background font-sans text-foreground antialiased",
+          "bg-background text-foreground min-h-screen font-sans antialiased",
           GeistSans.variable,
           GeistMono.variable,
         )}
@@ -42,6 +47,7 @@ export default async function RootLayout(props: {
             sidebarVariant="inset"
           >
             {props.children}
+            <SupportChatWidget />
           </StandardLayout>
         </Providers>
       </body>

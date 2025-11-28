@@ -1,0 +1,60 @@
+{
+  "name": "@acme/ui-lexical",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.tsx"
+  },
+  "license": "MIT",
+  "scripts": {
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "lint": "eslint --flag unstable_native_nodejs_ts_config",
+    "typecheck": "tsc --noEmit --emitDeclarationOnly false",
+    "ui-add": "pnpm dlx shadcn@latest add && prettier src --write --list-different"
+  },
+  "dependencies": {
+    "@acme/ui": "workspace:*",
+    "@excalidraw/excalidraw": "^0.18.0",
+    "@lexical/code": "^0.31.2",
+    "@lexical/file": "^0.31.2",
+    "@lexical/hashtag": "^0.31.2",
+    "@lexical/link": "^0.31.2",
+    "@lexical/list": "^0.31.2",
+    "@lexical/markdown": "^0.31.2",
+    "@lexical/overflow": "^0.31.2",
+    "@lexical/react": "^0.31.2",
+    "@lexical/rich-text": "^0.31.2",
+    "@lexical/selection": "^0.31.2",
+    "@lexical/table": "^0.31.2",
+    "@lexical/text": "^0.31.2",
+    "@lexical/utils": "^0.31.2",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-popover": "^1.1.11",
+    "@radix-ui/react-tooltip": "^1.2.8",
+    "class-variance-authority": "^0.7.1",
+    "katex": "^0.16.22",
+    "lexical": "^0.31.2",
+    "lodash-es": "^4.17.21",
+    "lucide-react": "^0.555.0",
+    "react-colorful": "^5.6.1",
+    "react-dom": "catalog:react19",
+    "react-error-boundary": "^6.0.0",
+    "tailwind-merge": "^3.3.1"
+    
+  },
+  "devDependencies": {
+    "@acme/eslint-config": "workspace:*",
+    "@acme/prettier-config": "workspace:*",
+    "@acme/tsconfig": "workspace:*",
+    "@types/lodash-es": "^4.17.12",
+    "@types/react": "catalog:react19",
+    "@types/react-dom": "catalog:react19",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "react": "catalog:react19",
+    "typescript": "catalog:",
+    "zod": "catalog:"
+  },
+  "prettier": "@acme/prettier-config"
+}

@@ -1,25 +1,24 @@
 "use client";
 
-import type { GenericId as Id } from "convex/values";
-import type { ImperativePanelHandle } from "react-resizable-panels";
-import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronsLeft, ChevronsRight } from "lucide-react";
-
-import { ResizablePanel, ResizablePanelGroup } from "@acme/ui/index";
-
 import type {
   ContactDoc,
   ConversationSummary,
 } from "../../components/ConversationInspector";
+import { ResizablePanel, ResizablePanelGroup } from "@acme/ui/resizable";
+import { useEffect, useMemo, useRef, useState } from "react";
+
 import { ConversationHeader } from "../../components/ConversationHeader";
 import { ConversationInspector } from "../../components/ConversationInspector";
+import { ConversationSidebar } from "./Sidebar";
+import { ConversationTranscript } from "./Transcript";
+import { CustomerDashboard } from "../CustomerDashboard";
+import type { GenericId as Id } from "convex/values";
+import type { ImperativePanelHandle } from "react-resizable-panels";
 import { SUPPORT_COPY } from "../../constants/supportCopy";
 import { useSupportContact } from "../../hooks/useSupportContact";
 import { useSupportConversations } from "../../hooks/useSupportConversations";
 import { useSupportSessionState } from "../../hooks/useSupportSessionState";
-import { CustomerDashboard } from "../CustomerDashboard";
-import { ConversationSidebar } from "./Sidebar";
-import { ConversationTranscript } from "./Transcript";
 
 interface ConversationsViewProps {
   organizationId: Id<"organizations">;

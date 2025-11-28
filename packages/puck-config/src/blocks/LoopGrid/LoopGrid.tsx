@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@acme/ui/button";
 import type { ComponentConfig } from "@measured/puck";
 import type { LoopGridProps } from "./types";
-import { Skeleton } from "@acme/ui";
+import { Skeleton } from "@acme/ui/skeleton";
 import { cardPlaceholderMap } from "./cards/PlaceholderCards";
 import { dataSourceRegistry } from "../../plugins/dataSourceRegistry";
 import { useLoopGridData } from "./useLoopGridData";

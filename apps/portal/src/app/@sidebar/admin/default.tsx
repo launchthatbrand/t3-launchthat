@@ -1,11 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 "use client";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
@@ -17,7 +13,7 @@ import * as LucideIcons from "lucide-react";
 import { BookOpen } from "lucide-react";
 
 import { NavMain } from "@acme/ui/general/nav-main";
-import { SidebarHeader } from "@acme/ui/sidebar";
+import { Sidebar, SidebarHeader } from "@acme/ui/sidebar";
 
 import type { PluginDefinition } from "~/lib/plugins/types";
 import { usePostTypes } from "~/app/(root)/(admin)/admin/settings/post-types/_api/postTypes";
@@ -482,11 +478,15 @@ export default function DefaultSidebar() {
   }
 
   return (
-    <>
+    <Sidebar
+      collapsible="icon"
+      className="overflow-hidden"
+      // {...props}
+    >
       <SidebarHeader>
         <AdminTeamSwitcher />
       </SidebarHeader>
       <NavMain sections={sections} />
-    </>
+    </Sidebar>
   );
 }

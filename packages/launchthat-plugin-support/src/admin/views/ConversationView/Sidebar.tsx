@@ -1,8 +1,5 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { MessageSquare } from "lucide-react";
-
 import {
   Sidebar,
   SidebarContent,
@@ -10,12 +7,12 @@ import {
   SidebarGroupContent,
   SidebarHeader,
   SidebarInput,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@acme/ui/index";
+} from "@acme/ui/sidebar";
+import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { useMemo, useState } from "react";
 
 import type { ConversationSummary } from "../../components/ConversationInspector";
+import { MessageSquare } from "lucide-react";
 import { SUPPORT_COPY } from "../../constants/supportCopy";
 
 type SidebarFilter = "mine" | "unassigned" | "all";

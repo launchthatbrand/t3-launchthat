@@ -24,22 +24,28 @@
   },
   "dependencies": {
     "@acme/ui": "workspace:*",
+    "@acme/ui-lexical": "workspace:*",
     "@ai-sdk/react": "^0.0.56",
     "convex": "^1.23.0",
     "launchthat-plugin-core": "workspace:*",
     "lucide-react": "^0.555.0",
     "react": "catalog:react19",
-    "react-dom": "catalog:react19"
+    "react-dom": "catalog:react19",
+    "react-resizable-panels": "^2.1.8"
   },
   "devDependencies": {
     "@acme/eslint-config": "workspace:*",
     "@acme/prettier-config": "workspace:*",
     "@acme/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
     "@types/react": "catalog:react19",
     "@types/react-dom": "catalog:react19",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "next": "catalog:"
   },
   "prettier": "@acme/prettier-config"
 }

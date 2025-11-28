@@ -1,8 +1,12 @@
 "use client";
 
-import type { GenericId as Id } from "convex/values";
-import type { ComponentType } from "react";
-import { useCallback } from "react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@acme/ui/accordion";
+import { Avatar, AvatarFallback } from "@acme/ui/avatar";
 import {
   BadgeCheck,
   Briefcase,
@@ -15,22 +19,17 @@ import {
   Phone,
   UserRound,
 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@acme/ui/accordion";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Avatar, AvatarFallback } from "@acme/ui/index";
+import type { ComponentType } from "react";
+import type { GenericId as Id } from "convex/values";
+import { SUPPORT_COPY } from "../constants/supportCopy";
 import { ScrollArea } from "@acme/ui/scroll-area";
 import { Separator } from "@acme/ui/separator";
 import { toast } from "@acme/ui/toast";
-
-import { SUPPORT_COPY } from "../constants/supportCopy";
+import { useCallback } from "react";
 
 export interface ConversationSummary {
   sessionId: string;
