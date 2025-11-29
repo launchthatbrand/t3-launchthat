@@ -3,6 +3,7 @@
 import type {
   ColumnDef,
   ColumnFiltersState,
+  Row,
   SortingState,
   VisibilityState,
 } from "@tanstack/react-table";
@@ -32,6 +33,36 @@ import {
 import type { ColumnDefinition, EntityListViewProps } from "./types";
 import { EmptyState } from "./EmptyState";
 import { GridView } from "./GridView";
+
+type LegacyCellRenderer<T extends Record<string, unknown>> = (context: {
+  row: Row<T>;
+}) => React.ReactNode;
+
+const shouldFallbackToLegacyRenderer = (error: unknown) => {
+  if (!(error instanceof TypeError)) return false;
+  const message = error.message ?? "";
+  if (typeof message !== "string") return false;
+  return (
+    message.includes("reading 'original'") ||
+    message.includes("reading 'row'") ||
+    message.includes("Cannot destructure property 'row'")
+  );
+};
+
+const renderCellWithFallback = <T extends Record<string, unknown>>(
+  cell: ColumnDefinition<T>["cell"],
+  row: Row<T>,
+) => {
+  if (!cell) return undefined;
+  try {
+    return (cell as (item: T) => React.ReactNode)(row.original as T);
+  } catch (error) {
+    if (shouldFallbackToLegacyRenderer(error)) {
+      return (cell as LegacyCellRenderer<T>)({ row });
+    }
+    throw error;
+  }
+};
 
 export function EntityListView<T extends Record<string, unknown>>({
   data,
@@ -64,7 +95,7 @@ export function EntityListView<T extends Record<string, unknown>>({
         header: () => column.header,
         enableSorting: column.sortable ?? false,
         cell: column.cell
-          ? ({ row }) => column.cell?.(row.original)
+          ? ({ row }) => renderCellWithFallback(column.cell, row)
           : column.accessorKey
             ? ({ row }) =>
                 String(row.original[column.accessorKey as keyof T] ?? "")

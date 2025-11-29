@@ -176,7 +176,7 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
       accessorKey: "title",
       header: "Response",
       sortable: true,
-      cell: (entry) => (
+      cell: (entry: KnowledgeEntry) => (
         <div>
           <p className="font-medium">{entry.title}</p>
           <p className="text-muted-foreground text-xs">{entry.slug ?? "—"}</p>
@@ -186,7 +186,7 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
     {
       id: "triggers",
       header: "Triggers",
-      cell: (entry) =>
+      cell: (entry: KnowledgeEntry) =>
         entry.matchPhrases?.length ? (
           <div className="text-sm">{entry.matchPhrases.join(", ")}</div>
         ) : (
@@ -197,7 +197,7 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
       id: "matchMode",
       accessorKey: "matchMode",
       header: "Mode",
-      cell: (entry) => (
+      cell: (entry: KnowledgeEntry) => (
         <Badge variant="outline" className="flex items-center gap-1">
           <CircleDot className="h-3 w-3" />
           {entry.matchMode ?? "contains"}
@@ -208,7 +208,7 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
       id: "priority",
       accessorKey: "priority",
       header: "Priority",
-      cell: (entry) => (
+      cell: (entry: KnowledgeEntry) => (
         <Badge variant="outline">
           {typeof entry.priority === "number" ? entry.priority : 0}
         </Badge>
@@ -217,7 +217,7 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
     {
       id: "status",
       header: "Status",
-      cell: (entry) => (
+      cell: (entry: KnowledgeEntry) => (
         <Badge variant={entry.isActive === false ? "secondary" : "default"}>
           {entry.isActive === false ? "Inactive" : "Active"}
         </Badge>
@@ -226,7 +226,7 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
     {
       id: "updatedAt",
       header: "Last updated",
-      cell: (entry) =>
+      cell: (entry: KnowledgeEntry) =>
         entry.updatedAt ? (
           <div className="text-muted-foreground flex items-center gap-1 text-sm">
             <CalendarClock className="h-3.5 w-3.5" />

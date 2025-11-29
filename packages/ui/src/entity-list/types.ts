@@ -1,5 +1,5 @@
+import type { ColumnDef } from "@tanstack/react-table";
 import { ReactNode } from "react";
-import { ColumnDef } from "@tanstack/react-table";
 
 /**
  * Possible view modes for the EntityList
@@ -12,13 +12,16 @@ export type ViewMode = "list" | "grid";
  * Configuration for a column in the EntityList
  * @template T - The type of data being displayed
  */
+type LegacyCellRenderer<T> = (context: { row: { original: T } }) => ReactNode;
+type ModernCellRenderer<T> = (item: T) => ReactNode;
+
 export interface ColumnDefinition<
   T extends Record<string, unknown> = Record<string, unknown>,
 > {
   id: string;
   header: ReactNode;
   accessorKey?: keyof T;
-  cell?: (item: T) => ReactNode;
+  cell?: ModernCellRenderer<T> | LegacyCellRenderer<T>;
   sortable?: boolean;
   description?: string;
 }

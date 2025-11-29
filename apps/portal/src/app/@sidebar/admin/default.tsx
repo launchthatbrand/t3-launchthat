@@ -6,14 +6,14 @@
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { LucideIcon } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import * as LucideIcons from "lucide-react";
 import { BookOpen } from "lucide-react";
 
 import { NavMain } from "@acme/ui/general/nav-main";
-import { Sidebar, SidebarHeader } from "@acme/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarHeader } from "@acme/ui/sidebar";
 
 import type { PluginDefinition } from "~/lib/plugins/types";
 import { usePostTypes } from "~/app/(root)/(admin)/admin/settings/post-types/_api/postTypes";
@@ -488,7 +488,9 @@ export default function DefaultSidebar() {
       <SidebarHeader>
         <AdminTeamSwitcher />
       </SidebarHeader>
-      <NavMain sections={sections} />
+      <SidebarContent>
+        <NavMain sections={sections} />
+      </SidebarContent>
     </Sidebar>
   );
 }

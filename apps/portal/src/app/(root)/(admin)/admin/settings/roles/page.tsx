@@ -1,7 +1,6 @@
 "use client";
 
 import type { Doc } from "@convex-config/_generated/dataModel";
-import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
@@ -33,8 +32,11 @@ import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
 
-import type { EntityAction } from "@acme/ui/entity-list/types";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
+import {
+  EntityList,
+  type ColumnDefinition,
+  type EntityAction,
+} from "@acme/ui/entity-list";
 
 // Define the data structure for roles
 type RoleData = Doc<"roles"> & {
@@ -136,103 +138,82 @@ export default function RolesAdminPage() {
   };
 
   // Define columns for EntityList
-  const columns: ColumnDef<RoleData>[] = [
+  const columns: ColumnDefinition<RoleData>[] = [
     {
       id: "name",
       header: "Name",
       accessorKey: "name",
-      cell: ({ row }) => {
-        const role = row.original;
-        return (
-          <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <div className="font-medium">{role.name}</div>
-              {role.isSystem && (
-                <Badge variant="secondary" className="text-xs">
-                  System
-                </Badge>
-              )}
-            </div>
+      cell: (role) => (
+        <div className="flex items-center gap-2">
+          <Shield className="h-4 w-4 text-muted-foreground" />
+          <div>
+            <div className="font-medium">{role.name}</div>
+            {role.isSystem && (
+              <Badge variant="secondary" className="text-xs">
+                System
+              </Badge>
+            )}
           </div>
-        );
-      },
+        </div>
+      ),
     },
     {
       id: "description",
       header: "Description",
       accessorKey: "description",
-      cell: ({ row }) => {
-        const role = row.original;
-        return (
-          <div className="line-clamp-2 text-sm text-muted-foreground">
-            {role.description || "No description"}
-          </div>
-        );
-      },
+      cell: (role) => (
+        <div className="line-clamp-2 text-sm text-muted-foreground">
+          {role.description || "No description"}
+        </div>
+      ),
     },
     {
       id: "scope",
       header: "Scope",
       accessorKey: "scope",
-      cell: ({ row }) => {
-        const role = row.original;
-        return (
-          <Badge variant="outline">
-            {role.scope.charAt(0).toUpperCase() + role.scope.slice(1)}
-          </Badge>
-        );
-      },
+      cell: (role) => (
+        <Badge variant="outline">
+          {role.scope.charAt(0).toUpperCase() + role.scope.slice(1)}
+        </Badge>
+      ),
     },
     {
       id: "priority",
       header: "Priority",
       accessorKey: "priority",
-      cell: ({ row }) => {
-        const role = row.original;
-        return <Badge variant="secondary">{role.priority}</Badge>;
-      },
+      cell: (role) => <Badge variant="secondary">{role.priority}</Badge>,
     },
     {
       id: "userCount",
       header: "Users",
       accessorKey: "userCount",
-      cell: ({ row }) => {
-        const role = row.original;
-        return (
-          <div className="flex items-center gap-1 text-sm">
-            <Users className="h-3 w-3" />
-            {role.userCount}
-          </div>
-        );
-      },
+      cell: (role) => (
+        <div className="flex items-center gap-1 text-sm">
+          <Users className="h-3 w-3" />
+          {role.userCount}
+        </div>
+      ),
     },
     {
       id: "permissionCount",
       header: "Permissions",
       accessorKey: "permissionCount",
-      cell: ({ row }) => {
-        const role = row.original;
-        return (
-          <div className="flex items-center gap-1 text-sm">
-            <Shield className="h-3 w-3" />
-            {role.permissionCount}
-          </div>
-        );
-      },
+      cell: (role) => (
+        <div className="flex items-center gap-1 text-sm">
+          <Shield className="h-3 w-3" />
+          {role.permissionCount}
+        </div>
+      ),
     },
     {
       id: "isAssignable",
       header: "Assignable",
       accessorKey: "isAssignable",
-      cell: ({ row }) => {
-        const role = row.original;
-        return (
-          <Badge variant={role.isAssignable ? "default" : "secondary"}>
-            {role.isAssignable ? "Yes" : "No"}
-          </Badge>
-        );
-      },
+      cell: (role) => (
+        <Badge variant={role.isAssignable ? "default" : "secondary"}>
+          {role.isAssignable ? "Yes" : "No"}
+        </Badge>
+      ),
     },
   ];
 

@@ -1,7 +1,14 @@
 "use client";
 
-import { Card, CardContent } from "@acme/ui/card";
+import type { Doc } from "@/convex/_generated/dataModel";
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, Edit, Plus } from "lucide-react";
+
+import type { ColumnDefinition } from "@acme/ui/entity-list";
+import { Button } from "@acme/ui/button";
+import { Card, CardContent } from "@acme/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +24,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@acme/ui/dropdown-menu";
+import { EntityList } from "@acme/ui/entity-list";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -24,17 +34,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { useCreateMenu, useMenus, useUpdateMenu } from "./_api/menus";
 
-import { Button } from "@acme/ui/button";
-import type { ColumnDef } from "@tanstack/react-table";
-import type { Doc } from "@/convex/_generated/dataModel";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCreateMenu, useMenus, useUpdateMenu } from "./_api/menus";
 
 const MENU_LOCATIONS = [
   { value: "primary", label: "Primary Navigation" },
@@ -53,10 +54,7 @@ export default function MenusSettingsPage() {
   const [editingName, setEditingName] = useState("");
   const [editingLocation, setEditingLocation] = useState<string>("primary");
 
-  const {
-    data: menus,
-    isLoading: menusLoading,
-  } = useMenus();
+  const { data: menus, isLoading: menusLoading } = useMenus();
   const createMenu = useCreateMenu();
   const updateMenu = useUpdateMenu();
 
@@ -72,33 +70,29 @@ export default function MenusSettingsPage() {
     setEditingLocation("primary");
   };
 
-  const menuColumns: ColumnDef<Doc<"menus">>[] = [
+  const menuColumns: ColumnDefinition<Doc<"menus">>[] = [
     {
+      id: "name",
       accessorKey: "name",
       header: "Menu Name",
-      cell: ({ row }) => (
-        <span className="font-medium">{row.original.name}</span>
-      ),
+      cell: (menu) => <span className="font-medium">{menu.name}</span>,
     },
     {
+      id: "location",
       accessorKey: "location",
       header: "Location",
-      cell: ({ row }) => getLocationLabel(row.original.location),
+      cell: (menu) => getLocationLabel(menu.location),
     },
     {
+      id: "itemCount",
       accessorKey: "itemCount",
-      header: () => <div className="text-center">Items</div>,
-      cell: ({ row }) => (
-        <div className="text-center">{row.original.itemCount ?? 0}</div>
-      ),
+      header: <div className="text-center">Items</div>,
+      cell: (menu) => <div className="text-center">{menu.itemCount ?? 0}</div>,
     },
     {
       id: "actions",
-      header: () => <div className="text-right">Actions</div>,
-      enableSorting: false,
-      enableHiding: false,
-      cell: ({ row }) => {
-        const menu = row.original;
+      header: <div className="text-right">Actions</div>,
+      cell: (menu) => {
         return (
           <div className="flex justify-end">
             <DropdownMenu>
@@ -199,7 +193,7 @@ export default function MenusSettingsPage() {
           </Button>
           <h1 className="text-3xl font-bold">Menus</h1>
         </div>
-        <p className="mt-2 text-muted-foreground">
+        <p className="text-muted-foreground mt-2">
           Manage navigation structures and assign them to site locations
         </p>
       </div>

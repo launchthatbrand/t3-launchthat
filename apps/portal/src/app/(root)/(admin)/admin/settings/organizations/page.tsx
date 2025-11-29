@@ -17,6 +17,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import type {
+  ColumnDefinition,
+  EntityAction,
+  FilterConfig,
+} from "@acme/ui/entity-list/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,13 +34,8 @@ import {
 } from "@acme/ui/alert-dialog";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-
-import type {
-  ColumnDef,
-  EntityAction,
-  FilterConfig,
-} from "@acme/ui/entity-list/types";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
+
 import { OrganizationForm } from "./_components/OrganizationForm";
 
 // Organization data type
@@ -97,21 +97,20 @@ export default function OrganizationsSettingsPage() {
   );
 
   // Column definitions for EntityList
-  const columns: ColumnDef<OrganizationData>[] = [
+  const columns: ColumnDefinition<OrganizationData>[] = [
     {
       id: "name",
       header: "Organization",
       accessorKey: "name",
-      cell: ({ row }) => {
-        const organization = row.original;
+      cell: (organization) => {
         return (
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <Building2 className="h-5 w-5 text-primary" />
+            <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-lg">
+              <Building2 className="text-primary h-5 w-5" />
             </div>
             <div>
               <div className="font-medium">{organization.name}</div>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-muted-foreground text-sm">
                 /{organization.slug}
               </div>
             </div>
@@ -339,9 +338,9 @@ export default function OrganizationsSettingsPage() {
         actions={headerActions}
         emptyState={
           <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed">
-            <Building2 className="mb-4 h-12 w-12 text-muted-foreground" />
+            <Building2 className="text-muted-foreground mb-4 h-12 w-12" />
             <h3 className="text-lg font-medium">No Organizations Found</h3>
-            <p className="mb-4 text-muted-foreground">
+            <p className="text-muted-foreground mb-4">
               Create your first organization to get started
             </p>
             <Button onClick={() => setIsFormOpen(true)}>

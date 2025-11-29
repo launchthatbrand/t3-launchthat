@@ -1,5 +1,15 @@
 "use client";
 
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ChevronLeft, Edit, Loader2, Plus, Trash } from "lucide-react";
+import { toast } from "sonner";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -7,7 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { ChevronLeft, Edit, Loader2, Plus, Trash } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +26,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -25,7 +36,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
+import { Switch } from "@acme/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { Textarea } from "@acme/ui/textarea";
+
 import {
   useAddPostTypeField,
   useCreatePostType,
@@ -36,19 +50,6 @@ import {
   useRemovePostTypeField,
   useUpdatePostTypeEntryCounts,
 } from "./_api/postTypes";
-import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import type { ColumnDef } from "@tanstack/react-table";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import Link from "next/link";
-import { Switch } from "@acme/ui/switch";
-import { Textarea } from "@acme/ui/textarea";
-import { toast } from "sonner";
 
 type FieldType =
   | "text"
@@ -575,7 +576,7 @@ export default function PostTypesSettingsPage() {
                 })
               }
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Used in URLs and API endpoints. Use only lowercase letters,
               numbers, and hyphens.
             </p>
@@ -677,13 +678,11 @@ export default function PostTypesSettingsPage() {
     </div>
   );
 
-  const postTypeColumns: ColumnDef<PostType>[] = [
+  const postTypeColumns: ColumnDefinition<PostType>[] = [
     {
       accessorKey: "name",
       header: "Name",
-      cell: ({ row }) => (
-        <span className="font-medium">{row.original.name}</span>
-      ),
+      cell: (postType) => <span className="font-medium">{postType.name}</span>,
     },
     {
       accessorKey: "slug",
@@ -692,32 +691,32 @@ export default function PostTypesSettingsPage() {
     {
       accessorKey: "description",
       header: "Description",
-      cell: ({ row }) => (
-        <span className="line-clamp-1 text-muted-foreground">
-          {row.original.description ?? "—"}
+      cell: (postType) => (
+        <span className="text-muted-foreground line-clamp-1">
+          {postType.description ?? "—"}
         </span>
       ),
     },
     {
       id: "fieldCount",
-      header: () => <div className="text-center">Fields</div>,
-      cell: ({ row }) => (
-        <div className="text-center">{row.original.fieldCount ?? 0}</div>
+      header: <div className="text-center">Fields</div>,
+      cell: (postType) => (
+        <div className="text-center">{postType.fieldCount ?? 0}</div>
       ),
     },
     {
       id: "entryCount",
-      header: () => <div className="text-center">Entries</div>,
-      cell: ({ row }) => (
-        <div className="text-center">{row.original.entryCount ?? 0}</div>
+      header: <div className="text-center">Entries</div>,
+      cell: (postType) => (
+        <div className="text-center">{postType.entryCount ?? 0}</div>
       ),
     },
     {
       id: "type",
-      header: () => <div className="text-center">Type</div>,
-      cell: ({ row }) => (
+      header: <div className="text-center">Type</div>,
+      cell: (postType) => (
         <div className="text-center">
-          {row.original.isBuiltIn ? (
+          {postType.isBuiltIn ? (
             <Badge variant="secondary">Built-in</Badge>
           ) : (
             <Badge>Custom</Badge>
@@ -727,11 +726,10 @@ export default function PostTypesSettingsPage() {
     },
     {
       id: "actions",
-      header: () => <div className="text-right">Actions</div>,
+      header: <div className="text-right">Actions</div>,
       enableSorting: false,
       enableHiding: false,
-      cell: ({ row }) => {
-        const type = row.original;
+      cell: (type) => {
         return (
           <div className="flex justify-end gap-2">
             <Button variant="ghost" size="icon" asChild>
@@ -759,16 +757,16 @@ export default function PostTypesSettingsPage() {
     },
   ];
 
-  const taxonomyColumns: ColumnDef<TaxonomyDefinition>[] = useMemo(
+  const taxonomyColumns: ColumnDefinition<TaxonomyDefinition>[] = useMemo(
     () => [
       {
         accessorKey: "name",
         header: "Taxonomy",
-        cell: ({ row }) => (
+        cell: (taxonomy) => (
           <div>
-            <div className="font-medium">{row.original.name}</div>
-            <div className="font-mono text-xs text-muted-foreground">
-              {row.original.slug}
+            <div className="font-medium">{taxonomy.name}</div>
+            <div className="text-muted-foreground font-mono text-xs">
+              {taxonomy.slug}
             </div>
           </div>
         ),
@@ -776,20 +774,20 @@ export default function PostTypesSettingsPage() {
       {
         accessorKey: "hierarchical",
         header: "Structure",
-        cell: ({ row }) => (
+        cell: (taxonomy) => (
           <Badge variant="outline">
-            {row.original.hierarchical ? "Hierarchical" : "Flat"}
+            {taxonomy.hierarchical ? "Hierarchical" : "Flat"}
           </Badge>
         ),
       },
       {
         id: "assignment",
         header: "Assigned",
-        cell: ({ row }) => (
+        cell: (taxonomy) => (
           <Switch
-            checked={assignedTaxonomies.includes(row.original.slug)}
+            checked={assignedTaxonomies.includes(taxonomy.slug)}
             onCheckedChange={(checked) =>
-              handleToggleTaxonomyAssignment(row.original.slug, checked)
+              handleToggleTaxonomyAssignment(taxonomy.slug, checked)
             }
             disabled={!selectedTaxonomyPostType}
           />
@@ -798,14 +796,18 @@ export default function PostTypesSettingsPage() {
       {
         accessorKey: "description",
         header: "Description",
-        cell: ({ row }) => (
-          <p className="text-sm text-muted-foreground">
-            {row.original.description || "No description"}
+        cell: (taxonomy) => (
+          <p className="text-muted-foreground text-sm">
+            {taxonomy.description || "No description"}
           </p>
         ),
       },
     ],
-    [assignedTaxonomies, handleToggleTaxonomyAssignment, selectedTaxonomyPostType],
+    [
+      assignedTaxonomies,
+      handleToggleTaxonomyAssignment,
+      selectedTaxonomyPostType,
+    ],
   );
 
   const addTaxonomyDialog = (
@@ -930,7 +932,7 @@ export default function PostTypesSettingsPage() {
           <div>
             <div className="font-medium">{row.original.name}</div>
             {row.original.description ? (
-              <div className="text-xs text-muted-foreground">
+              <div className="text-muted-foreground text-xs">
                 {row.original.description}
               </div>
             ) : null}
@@ -1000,7 +1002,7 @@ export default function PostTypesSettingsPage() {
                   handleRemoveField(row.original._id, row.original.isSystem)
                 }
               >
-                <Trash className="h-4 w-4 text-destructive" />
+                <Trash className="text-destructive h-4 w-4" />
               </Button>
             )}
           </div>
@@ -1030,8 +1032,8 @@ export default function PostTypesSettingsPage() {
         <DialogHeader>
           <DialogTitle>Add Field</DialogTitle>
           <DialogDescription>
-            Attach a new meta field to the {selectedPostType?.name ?? "selected"}{" "}
-            post type.
+            Attach a new meta field to the{" "}
+            {selectedPostType?.name ?? "selected"} post type.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -1059,7 +1061,7 @@ export default function PostTypesSettingsPage() {
               }
               placeholder="e.g., hero_heading"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Used in the API and stored alongside `post_meta`.
             </p>
           </div>
@@ -1123,9 +1125,7 @@ export default function PostTypesSettingsPage() {
                   handleFieldFormChange("filterable", checked)
                 }
               />
-              <Label htmlFor="field-filterable">
-                Expose as filter/facet
-              </Label>
+              <Label htmlFor="field-filterable">Expose as filter/facet</Label>
             </div>
           </div>
         </div>
@@ -1167,8 +1167,10 @@ export default function PostTypesSettingsPage() {
   );
 
   const fieldEmptyState = selectedPostType ? (
-    <div className="flex flex-col items-center justify-center gap-3 py-8 text-sm text-muted-foreground">
-      <p>No custom fields yet. Click “Add Field” to register the first meta key.</p>
+    <div className="text-muted-foreground flex flex-col items-center justify-center gap-3 py-8 text-sm">
+      <p>
+        No custom fields yet. Click “Add Field” to register the first meta key.
+      </p>
       <Button onClick={() => setIsFieldDialogOpen(true)}>Add Field</Button>
     </div>
   ) : (
@@ -1191,7 +1193,7 @@ export default function PostTypesSettingsPage() {
           </Button>
           <h1 className="text-3xl font-bold">Post Types</h1>
         </div>
-        <p className="mt-2 text-muted-foreground">
+        <p className="text-muted-foreground mt-2">
           Define and manage custom post types and their structure
         </p>
       </div>
@@ -1226,7 +1228,7 @@ export default function PostTypesSettingsPage() {
         </TabsContent>
 
         <TabsContent value="taxonomies">
-          <p className="mb-4 text-sm text-muted-foreground">
+          <p className="text-muted-foreground mb-4 text-sm">
             Assign hierarchical or flat taxonomies to each post type—just like
             WordPress categories and tags.
           </p>
@@ -1260,7 +1262,7 @@ export default function PostTypesSettingsPage() {
         </TabsContent>
 
         <TabsContent value="fields">
-          <p className="mb-4 text-sm text-muted-foreground">
+          <p className="text-muted-foreground mb-4 text-sm">
             Define field metadata, meta keys, and storage options similar to
             WordPress custom fields.
           </p>
@@ -1288,7 +1290,6 @@ export default function PostTypesSettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
       </Tabs>
     </div>
   );

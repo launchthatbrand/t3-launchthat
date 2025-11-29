@@ -15,6 +15,43 @@ import {
 
 import type { ColumnDefinition, EntityAction, SortConfig } from "./types";
 
+type LegacyCellRenderer<T extends Record<string, unknown>> = (context: {
+  row: { original: T };
+}) => React.ReactNode;
+
+const shouldFallbackToLegacyRenderer = (error: unknown) => {
+  if (!(error instanceof TypeError)) return false;
+  const message = error.message ?? "";
+  if (typeof message !== "string") return false;
+  return (
+    message.includes("reading 'original'") ||
+    message.includes("reading 'row'") ||
+    message.includes("Cannot destructure property 'row'")
+  );
+};
+
+const renderCellValue = <T extends Record<string, unknown>>(
+  column: ColumnDefinition<T>,
+  row: T,
+) => {
+  if (!column.cell) {
+    return column.accessorKey
+      ? String(row[column.accessorKey as keyof T] ?? "")
+      : "";
+  }
+
+  try {
+    return (column.cell as (value: T) => React.ReactNode)(row);
+  } catch (error) {
+    if (shouldFallbackToLegacyRenderer(error)) {
+      return (column.cell as LegacyCellRenderer<T>)({
+        row: { original: row },
+      });
+    }
+    throw error;
+  }
+};
+
 export interface ListViewProps<T extends Record<string, unknown>> {
   /** Data to display in the table */
   data: T[];
@@ -204,11 +241,7 @@ export function ListView<T extends Record<string, unknown>>({
 
                 {columns.map((column) => (
                   <TableCell key={column.id}>
-                    {column.cell
-                      ? column.cell(row)
-                      : column.accessorKey
-                        ? String(row[column.accessorKey as keyof T] ?? "")
-                        : ""}
+                    {renderCellValue(column, row)}
                   </TableCell>
                 ))}
 

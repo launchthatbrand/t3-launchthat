@@ -9,6 +9,21 @@ import { Checkbox } from "@acme/ui/checkbox";
 
 import type { ColumnDefinition, EntityAction } from "./types";
 
+type LegacyCellRenderer<T extends Record<string, unknown>> = (context: {
+  row: { original: T };
+}) => React.ReactNode;
+
+const shouldFallbackToLegacyRenderer = (error: unknown) => {
+  if (!(error instanceof TypeError)) return false;
+  const message = error.message ?? "";
+  if (typeof message !== "string") return false;
+  return (
+    message.includes("reading 'original'") ||
+    message.includes("reading 'row'") ||
+    message.includes("Cannot destructure property 'row'")
+  );
+};
+
 export interface GridViewProps<T extends Record<string, unknown>> {
   data: T[];
   columns: ColumnDefinition<T>[];
@@ -27,7 +42,16 @@ function renderCellValue<T extends Record<string, unknown>>(
   item: T,
 ) {
   if (column.cell) {
-    return column.cell(item);
+    try {
+      return (column.cell as (value: T) => React.ReactNode)(item);
+    } catch (error) {
+      if (shouldFallbackToLegacyRenderer(error)) {
+        return (column.cell as LegacyCellRenderer<T>)({
+          row: { original: item },
+        });
+      }
+      throw error;
+    }
   }
   const key = column.accessorKey;
   return key ? String(item[key] ?? "") : "";

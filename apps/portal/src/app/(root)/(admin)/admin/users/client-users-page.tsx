@@ -4,23 +4,23 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { ColumnDef } from "@tanstack/react-table";
 import { useQuery } from "convex/react";
 import { formatDistanceToNow } from "date-fns";
 import { Check, PencilIcon, Plus, UserCog, X } from "lucide-react";
 
+// Import EntityList components
+import type {
+  ColumnDefinition,
+  EntityAction,
+  FilterConfig,
+} from "@acme/ui/entity-list/types";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { CopyText } from "@acme/ui/copy-text";
-
-// Import EntityList components
-import type {
-  EntityAction,
-  FilterConfig,
-} from "@acme/ui/entity-list/types";
-import { UserForm } from "~/components/admin/UserForm";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
+
+import { UserForm } from "~/components/admin/UserForm";
 
 interface User {
   _id: Id<"users">;
@@ -73,7 +73,7 @@ export default function ClientUsersPage() {
   if (me && !isMeAdmin) {
     return (
       <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed">
-        <X className="mb-4 h-12 w-12 text-muted-foreground" />
+        <X className="text-muted-foreground mb-4 h-12 w-12" />
         <h3 className="text-lg font-medium">Access Denied</h3>
         <p className="text-muted-foreground">
           You must be an administrator to view this page.
@@ -83,13 +83,12 @@ export default function ClientUsersPage() {
   }
 
   // Define column configurations for EntityList
-  const columns: ColumnDef<User>[] = [
+  const columns: ColumnDefinition<User>[] = [
     {
       id: "user",
       header: "User",
       accessorKey: "name",
-      cell: ({ row }) => {
-        const user = row.original;
+      cell: (user) => {
         return (
           <div className="flex flex-col">
             <span className="font-medium">{user.name ?? "Unnamed User"}</span>
@@ -97,7 +96,7 @@ export default function ClientUsersPage() {
               <span className="text-xs text-blue-600">@{user.username}</span>
             )}
             {user.email && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-muted-foreground text-xs">
                 {user.email}
               </span>
             )}
@@ -109,15 +108,14 @@ export default function ClientUsersPage() {
       id: "email",
       header: "Email",
       accessorKey: "email",
-      cell: ({ row }) => {
-        const user = row.original;
+      cell: (user) => {
         return (
           <div className="flex flex-col gap-1">
             <CopyText value={user.email} className="max-w-fit">
               <span className="font-mono text-sm">{user.email}</span>
             </CopyText>
             <CopyText value={user._id} className="max-w-fit">
-              <span className="text-xs text-muted-foreground">{user._id}</span>
+              <span className="text-muted-foreground text-xs">{user._id}</span>
             </CopyText>
           </div>
         );
@@ -127,8 +125,7 @@ export default function ClientUsersPage() {
       id: "status",
       header: "Status",
       accessorKey: "isActive",
-      cell: ({ row }) => {
-        const user = row.original;
+      cell: (user) => {
         return user.isActive !== false ? (
           <Badge
             variant="outline"
@@ -150,8 +147,7 @@ export default function ClientUsersPage() {
       id: "joined",
       header: "Joined",
       accessorKey: "_creationTime",
-      cell: ({ row }) => {
-        const user = row.original;
+      cell: (user) => {
         return (
           <span className="text-muted-foreground">
             {user._creationTime
@@ -167,8 +163,7 @@ export default function ClientUsersPage() {
       id: "role",
       header: "Role",
       accessorKey: "role",
-      cell: ({ row }) => {
-        const user = row.original;
+      cell: (user) => {
         const roleConfig = {
           admin: { variant: "default" as const, label: "Admin" },
           user: { variant: "secondary" as const, label: "User" },
@@ -182,8 +177,7 @@ export default function ClientUsersPage() {
       id: "address",
       header: "Address",
       accessorKey: "addresses",
-      cell: ({ row }) => {
-        const user = row.original;
+      cell: (user) => {
         if (!user.addresses || user.addresses.length === 0) {
           return <span className="text-muted-foreground">No address</span>;
         }
@@ -191,11 +185,11 @@ export default function ClientUsersPage() {
         return (
           <div className="flex flex-col">
             <span className="text-sm">{address.fullName}</span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-muted-foreground text-xs">
               {address.city}, {address.stateOrProvince} {address.postalCode}
             </span>
             {address.phoneNumber && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-muted-foreground text-xs">
                 {address.phoneNumber}
               </span>
             )}
@@ -288,7 +282,7 @@ export default function ClientUsersPage() {
         entityActions={entityActions}
         emptyState={
           <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed">
-            <UserCog className="mb-4 h-12 w-12 text-muted-foreground" />
+            <UserCog className="text-muted-foreground mb-4 h-12 w-12" />
             <h3 className="text-lg font-medium">No Users Found</h3>
             <p className="text-muted-foreground">No users in the system yet</p>
             <Button className="mt-4" onClick={() => setIsFormOpen(true)}>

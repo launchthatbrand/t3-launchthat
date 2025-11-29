@@ -1,6 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -57,6 +58,7 @@ interface NavMainProps {
 
 export function NavMain({ items, sections }: NavMainProps) {
   const pathname = usePathname();
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Check if a given path is active
   const isActive = (url: string) => {
@@ -92,6 +94,56 @@ export function NavMain({ items, sections }: NavMainProps) {
     return null;
   }
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const scrollContainer =
+      container.closest<HTMLElement>("[data-sidebar='content']") ?? container;
+
+    const target =
+      scrollContainer.querySelector<HTMLElement>("[data-nav-exact='true']") ??
+      scrollContainer.querySelector<HTMLElement>("[data-nav-active='true']");
+
+    if (!target) return;
+
+    requestAnimationFrame(() => {
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+  }, [pathname]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || typeof window === "undefined") return;
+
+    const scrollContainer =
+      container.closest<HTMLElement>("[data-sidebar='content']") ?? container;
+
+    const storageKey = "admin-sidebar-scroll";
+    const saved = window.sessionStorage.getItem(storageKey);
+    if (saved) {
+      const parsed = Number(saved);
+      if (!Number.isNaN(parsed)) {
+        scrollContainer.scrollTop = parsed;
+      }
+    }
+
+    const handleScroll = () => {
+      window.sessionStorage.setItem(
+        storageKey,
+        String(scrollContainer.scrollTop),
+      );
+    };
+
+    scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
   const renderMenuItems = (menuItems: NavItem[]) => (
     <SidebarMenu>
       {menuItems.map((item) => {
@@ -112,6 +164,8 @@ export function NavMain({ items, sections }: NavMainProps) {
                   <SidebarMenuButton
                     isActive={isCurrentActive}
                     tooltip={item.title}
+                    data-nav-active={isCurrentActive ? "true" : undefined}
+                    data-nav-exact={itemActive ? "true" : undefined}
                   >
                     <Link
                       href={item.url}
@@ -136,6 +190,8 @@ export function NavMain({ items, sections }: NavMainProps) {
                               subItemActive &&
                                 "bg-accent/50 text-accent-foreground font-medium",
                             )}
+                            data-nav-active={subItemActive ? "true" : undefined}
+                            data-nav-exact={subItemActive ? "true" : undefined}
                           >
                             <Link href={subItem.url}>
                               <span>{subItem.title}</span>
@@ -157,6 +213,8 @@ export function NavMain({ items, sections }: NavMainProps) {
               tooltip={item.title}
               asChild
               className={cn(itemActive && "bg-accent text-accent-foreground")}
+              data-nav-active={itemActive ? "true" : undefined}
+              data-nav-exact={itemActive ? "true" : undefined}
             >
               <Link href={item.url}>
                 {item.icon && <item.icon />}
@@ -177,7 +235,10 @@ export function NavMain({ items, sections }: NavMainProps) {
 
   return (
     <SidebarGroup>
-      <SidebarGroupContent className="flex flex-col gap-4">
+      <SidebarGroupContent
+        ref={containerRef}
+        className="flex flex-col gap-4 overflow-y-auto"
+      >
         {normalizedSections.map((section, index) => {
           if (!section.label) {
             return (
