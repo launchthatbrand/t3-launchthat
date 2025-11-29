@@ -1,8 +1,11 @@
 "use client";
 
+import type { GenericId as Id } from "convex/values";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
+import { api } from "@portal/convexspec";
+import { useMutation, useQuery } from "convex/react";
 import { Loader2, MessageCircle, Send, X } from "lucide-react";
 
 import { cn } from "@acme/ui";
@@ -24,7 +27,16 @@ interface StoredMessage {
   role: "user" | "assistant";
   content: string;
   createdAt: number;
+  agentName?: string;
 }
+
+type LiveMessage = {
+  _id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: number;
+  agentName?: string;
+};
 
 interface StoredContact {
   contactId: string;
@@ -286,11 +298,22 @@ function ChatSurface({
   contact,
   onContactSaved,
 }: ChatSurfaceProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const openStorageKey = useMemo(
+    () => `support-chat-open-${organizationId}`,
+    [organizationId],
+  );
+  const [isOpen, setIsOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    const stored = window.localStorage.getItem(openStorageKey);
+    return stored === "true";
+  });
   const [contactForm, setContactForm] =
     useState<ContactFormState>(defaultContactForm);
   const [contactError, setContactError] = useState<string | null>(null);
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
+  const messageListRef = useRef<HTMLDivElement | null>(null);
 
   const shouldCollectContact = settings.requireContact && !contact;
 
@@ -302,6 +325,8 @@ function ChatSurface({
     isLoading,
     error,
     reload,
+    setMessages,
+    setInput,
   } = useChat({
     api: apiPath,
     id: sessionId,
@@ -317,6 +342,223 @@ function ChatSurface({
     () => messages.filter((message) => message.role !== "system"),
     [messages],
   );
+  const previousMessageCountRef = useRef(displayedMessages.length);
+
+  const liveMessages =
+    (useQuery(
+      api.plugins.support.queries.listMessages,
+      organizationId && sessionId
+        ? {
+            organizationId: organizationId as Id<"organizations">,
+            sessionId,
+          }
+        : "skip",
+    ) as LiveMessage[] | undefined) ?? [];
+
+  useEffect(() => {
+    if (!liveMessages) {
+      return;
+    }
+
+    const normalized = liveMessages.map((message) => {
+      const fallbackTimestamp =
+        ("createdAt" in message
+          ? (message as { createdAt?: number }).createdAt
+          : undefined) ?? Date.now();
+
+      return {
+        id: message._id ?? `${message.role}-${fallbackTimestamp}`,
+        role: message.role as "user" | "assistant" | "system",
+        content: message.content,
+      };
+    });
+
+    setMessages((current) => {
+      let next = current;
+      const existingIds = new Set(current.map((message) => message.id));
+
+      normalized.forEach((incoming) => {
+        if (existingIds.has(incoming.id)) {
+          return;
+        }
+
+        const duplicateIndex = next.findIndex(
+          (message) =>
+            message.role === incoming.role &&
+            message.content.trim() === incoming.content.trim(),
+        );
+
+        if (duplicateIndex >= 0) {
+          const updated = [...next];
+          updated[duplicateIndex] = incoming;
+          next = updated;
+          existingIds.add(incoming.id);
+          return;
+        }
+
+        next = [...next, incoming];
+        existingIds.add(incoming.id);
+      });
+
+      return next;
+    });
+  }, [liveMessages, setMessages]);
+
+  const agentMetadataByMessageId = useMemo(() => {
+    const map = new Map<string, string | undefined>();
+    for (const message of liveMessages) {
+      const messageId = message._id ?? `${message.role}-${message.createdAt}`;
+      if (message.agentName) {
+        map.set(messageId, message.agentName);
+      }
+    }
+    return map;
+  }, [liveMessages]);
+
+  const lastAssistantAgentName = useMemo(() => {
+    for (let i = liveMessages.length - 1; i >= 0; i--) {
+      const message = liveMessages[i];
+      if (!message) {
+        continue;
+      }
+      if (message.role === "assistant" && message.agentName) {
+        return message.agentName;
+      }
+    }
+    return undefined;
+  }, [liveMessages]);
+
+  const agentPresence = useQuery(
+    api.plugins.support.queries.getAgentPresence,
+    organizationId && sessionId
+      ? {
+          organizationId: organizationId as Id<"organizations">,
+          sessionId,
+        }
+      : "skip",
+  );
+
+  const resolvedAgentName =
+    agentPresence?.agentName ?? lastAssistantAgentName ?? "Support agent";
+
+  const agentIsTyping = agentPresence?.status === "typing";
+
+  const conversationMode = useQuery(
+    api.plugins.support.queries.getConversationMode,
+    organizationId && sessionId
+      ? {
+          organizationId: organizationId as Id<"organizations">,
+          sessionId,
+        }
+      : "skip",
+  );
+
+  const isManualMode = conversationMode?.mode === "manual";
+
+  const recordMessage = useMutation(
+    api.plugins.support.mutations.recordMessage,
+  );
+  const [isManualSending, setIsManualSending] = useState(false);
+
+  const assistantIsResponding = !isManualMode && isLoading;
+  const showSubmitSpinner = isManualMode ? isManualSending : isLoading;
+  const isSubmitDisabled = showSubmitSpinner || input.trim().length === 0;
+  const composerDisabled = assistantIsResponding || isManualSending;
+
+  useEffect(() => {
+    const list = messageListRef.current;
+    if (!list) {
+      return;
+    }
+
+    const previousCount = previousMessageCountRef.current;
+    const hasNewMessage = displayedMessages.length > previousCount;
+
+    if (
+      hasNewMessage ||
+      (assistantIsResponding && displayedMessages.length >= previousCount)
+    ) {
+      list.scrollTo({
+        top: list.scrollHeight,
+        behavior: previousCount > 0 ? "smooth" : "auto",
+      });
+    }
+
+    previousMessageCountRef.current = displayedMessages.length;
+  }, [assistantIsResponding, displayedMessages.length]);
+
+  const handleChatSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (input.trim().length === 0) {
+      return;
+    }
+
+    if (isManualMode) {
+      const content = input.trim();
+      const optimisticId = `manual-${Date.now()}`;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: optimisticId,
+          role: "user" as const,
+          content,
+        },
+      ]);
+      setInput("");
+      setIsManualSending(true);
+      try {
+        const insertedId = await recordMessage({
+          organizationId: organizationId as Id<"organizations">,
+          sessionId,
+          role: "user",
+          content,
+          contactId: contact?.contactId
+            ? (contact.contactId as Id<"contacts">)
+            : undefined,
+          contactName: contact?.fullName,
+          contactEmail: contact?.email,
+        });
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === optimisticId
+              ? { ...message, id: String(insertedId) }
+              : message,
+          ),
+        );
+      } catch (manualError) {
+        console.error("[support-chat] manual send failed", manualError);
+      } finally {
+        setIsManualSending(false);
+      }
+      return;
+    }
+
+    await handleSubmit(event);
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const stored = window.localStorage.getItem(openStorageKey);
+    setIsOpen(stored === "true");
+  }, [openStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(openStorageKey, JSON.stringify(isOpen));
+  }, [isOpen, openStorageKey]);
+
+  useEffect(() => {
+    if (isOpen && messageListRef.current) {
+      messageListRef.current.scrollTo({
+        top: messageListRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [isOpen]);
 
   const handleContactFieldChange = (
     field: keyof ContactFormState,
@@ -393,8 +635,13 @@ function ChatSurface({
               <p className="text-muted-foreground text-xs">
                 {shouldCollectContact
                   ? settings.welcomeMessage
-                  : `Answers tailored for ${tenantName}`}
+                  : `Connected with ${resolvedAgentName}`}
               </p>
+              {!shouldCollectContact ? (
+                <p className="text-muted-foreground/80 text-[11px]">
+                  Answers tailored for {tenantName}
+                </p>
+              ) : null}
             </div>
             <Button
               size="icon"
@@ -488,7 +735,10 @@ function ChatSurface({
             </form>
           ) : (
             <>
-              <div className="flex h-80 flex-col gap-4 overflow-y-auto px-4 py-4">
+              <div
+                className="flex h-80 flex-col gap-4 overflow-y-auto px-4 py-4"
+                ref={messageListRef}
+              >
                 {displayedMessages.length === 0 && (
                   <div className="bg-muted/40 text-muted-foreground rounded-lg p-3 text-xs">
                     Ask anything about {tenantName}—policies, orders, or your
@@ -497,28 +747,40 @@ function ChatSurface({
                   </div>
                 )}
 
-                {displayedMessages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      "flex",
-                      message.role === "user" ? "justify-end" : "justify-start",
-                    )}
-                  >
+                {displayedMessages.map((message) => {
+                  const assistantName = message.id
+                    ? agentMetadataByMessageId.get(message.id)
+                    : undefined;
+                  return (
                     <div
+                      key={message.id}
                       className={cn(
-                        "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
+                        "flex",
                         message.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-foreground",
+                          ? "justify-end"
+                          : "justify-start",
                       )}
                     >
-                      {message.content}
+                      <div
+                        className={cn(
+                          "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
+                          message.role === "user"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-foreground",
+                        )}
+                      >
+                        {message.role === "assistant" && assistantName ? (
+                          <p className="text-muted-foreground mb-1 text-[11px] font-semibold">
+                            {assistantName}
+                          </p>
+                        ) : null}
+                        {message.content}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
-                {isLoading && (
+                {assistantIsResponding && (
                   <div className="text-muted-foreground flex items-center gap-2 text-xs">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     Thinking...
@@ -537,10 +799,17 @@ function ChatSurface({
                     </button>
                   </div>
                 )}
+
+                {!shouldCollectContact && agentIsTyping && (
+                  <div className="text-muted-foreground flex items-center gap-2 text-xs">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {resolvedAgentName} is typing…
+                  </div>
+                )}
               </div>
 
               <form
-                onSubmit={handleSubmit}
+                onSubmit={handleChatSubmit}
                 className="border-border/60 border-t p-3"
               >
                 <div className="flex items-center gap-2">
@@ -550,14 +819,10 @@ function ChatSurface({
                     placeholder="Ask a question..."
                     className="border-border/60 bg-background focus:border-primary min-h-[40px] flex-1 resize-none rounded-xl border px-3 py-2 text-sm focus:outline-none"
                     rows={1}
-                    disabled={isLoading}
+                    disabled={composerDisabled}
                   />
-                  <Button
-                    type="submit"
-                    size="icon"
-                    disabled={isLoading || input.trim().length === 0}
-                  >
-                    {isLoading ? (
+                  <Button type="submit" size="icon" disabled={isSubmitDisabled}>
+                    {showSubmitSpinner ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Send className="h-4 w-4" />

@@ -8,5 +8,6 @@ export const SUPPORT_COPY = {
   },
   inspector: {
     sessionPlaceholder: "Select a conversation",
+    unassignedLabel: "Unassigned",
   },
 };

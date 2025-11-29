@@ -3,10 +3,12 @@
 import type { GenericId as Id } from "convex/values";
 import { useEffect, useRef } from "react";
 import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 
 import { cn } from "@acme/ui";
 import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { toast } from "@acme/ui/toast";
 
 import type {
   ContactDoc,
@@ -25,6 +27,7 @@ type SupportMessage = {
   subject?: string;
   htmlBody?: string;
   textBody?: string;
+  agentName?: string;
 };
 
 interface ConversationTranscriptProps {
@@ -40,6 +43,9 @@ export function ConversationTranscript({
   conversation,
   contact,
 }: ConversationTranscriptProps) {
+  const setConversationMode = useMutation(
+    api.plugins.support.mutations.setConversationMode,
+  );
   const messages = (useQuery(api.plugins.support.queries.listMessages, {
     organizationId,
     sessionId,
@@ -52,8 +58,49 @@ export function ConversationTranscript({
     listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [messages.length]);
 
+  const currentMode = conversation.mode ?? "agent";
+  const isAgentMode = currentMode === "agent";
+
+  const toggleMode = async () => {
+    try {
+      await setConversationMode({
+        organizationId,
+        sessionId,
+        mode: isAgentMode ? "manual" : "agent",
+      });
+      toast.success(
+        isAgentMode
+          ? "Switched to manual mode. The assistant will stop replying."
+          : "Agent mode re-enabled. The assistant can reply again.",
+      );
+    } catch (error) {
+      console.error("[conversation] toggle mode failed", error);
+      toast.error("Unable to update conversation mode. Please try again.");
+    }
+  };
+
   return (
     <div className="CONVERSATION-TRANSCRIPT relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="border-border/70 bg-muted/40 flex items-center justify-between border-b px-6 py-3 text-xs">
+        <div className="flex flex-col">
+          <span className="text-sm font-semibold">
+            {isAgentMode ? "Agent mode enabled" : "Manual reply mode"}
+          </span>
+          <span className="text-muted-foreground">
+            {isAgentMode
+              ? "Assistant responses will be sent automatically."
+              : "Assistant is bypassed. Respond manually in this conversation."}
+          </span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void toggleMode()}
+          aria-label="Toggle agent mode"
+        >
+          {isAgentMode ? "Switch to manual" : "Enable agent"}
+        </Button>
+      </div>
       <div
         ref={listRef}
         className="min-h-0 flex-1 space-y-3 overflow-y-auto px-6 py-6 pb-40"
@@ -88,6 +135,11 @@ export function ConversationTranscript({
                       : "bg-primary text-primary-foreground",
                   )}
                 >
+                  {isAssistant && message.agentName ? (
+                    <p className="text-muted-foreground mb-1 text-xs font-semibold">
+                      {message.agentName}
+                    </p>
+                  ) : null}
                   {message.subject ? (
                     <p className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
                       {message.subject}

@@ -1,7 +1,7 @@
 "use client";
 
 import type { GenericId as Id } from "convex/values";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@portal/convexspec";
 import { useMutation } from "convex/react";
 import { Loader2, SendHorizontal } from "lucide-react";
@@ -31,9 +31,15 @@ export function ConversationComposer({
   const recordMessage = useMutation(
     api.plugins.support.mutations.recordMessage,
   );
+  const setAgentPresence = useMutation(
+    api.plugins.support.mutations.setAgentPresence,
+  );
   const [isSending, setIsSending] = useState(false);
   const [hasContent, setHasContent] = useState(false);
   const [draftText, setDraftText] = useState("");
+  const typingTimeoutRef = useRef<number | null>(null);
+  const lastPresenceStatusRef = useRef<"typing" | "idle">("idle");
+  const lastPresenceUpdateRef = useRef(0);
 
   const contactId =
     contact?._id ?? (conversation.contactId as Id<"contacts"> | undefined);
@@ -43,10 +49,48 @@ export function ConversationComposer({
   const channelLabel =
     conversation.origin === "email" ? "Email reply" : "Chat reply";
 
+  const updatePresence = useCallback(
+    (status: "typing" | "idle", force = false) => {
+      const now = Date.now();
+      if (
+        !force &&
+        lastPresenceStatusRef.current === status &&
+        now - lastPresenceUpdateRef.current < 1500
+      ) {
+        return;
+      }
+
+      lastPresenceStatusRef.current = status;
+      lastPresenceUpdateRef.current = now;
+      void setAgentPresence({
+        organizationId,
+        sessionId,
+        status,
+      });
+    },
+    [organizationId, sessionId, setAgentPresence],
+  );
+
   const handleTextChange = (text: string) => {
     const trimmed = text.trim();
     setDraftText(trimmed);
     setHasContent(trimmed.length > 0);
+
+    if (trimmed.length > 0) {
+      updatePresence("typing");
+      if (typingTimeoutRef.current) {
+        window.clearTimeout(typingTimeoutRef.current);
+      }
+      typingTimeoutRef.current = window.setTimeout(() => {
+        updatePresence("idle", true);
+      }, 4000);
+    } else {
+      updatePresence("idle");
+      if (typingTimeoutRef.current) {
+        window.clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+    }
   };
 
   const handleSend = async () => {
@@ -84,10 +128,16 @@ export function ConversationComposer({
           conversation.origin === "email" ? "email_outbound" : "chat",
         htmlBody,
         textBody: plainText,
+        source: "admin",
       });
 
       setHasContent(false);
       setDraftText("");
+      updatePresence("idle", true);
+      if (typingTimeoutRef.current) {
+        window.clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
     } catch (error) {
       console.error("[support-composer] send message error", error);
       toast.error("Unable to send message. Please try again.");
@@ -95,6 +145,15 @@ export function ConversationComposer({
       setIsSending(false);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        window.clearTimeout(typingTimeoutRef.current);
+      }
+      updatePresence("idle", true);
+    };
+  }, [updatePresence]);
 
   return (
     <div className="space-y-2 p-2">

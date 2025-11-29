@@ -8036,6 +8036,18 @@ export type PublicApiType = {
     };
     support: {
       queries: {
+        getAgentPresence: FunctionReference<
+          "query",
+          "public",
+          { organizationId: Id<"organizations">; sessionId: string },
+          { agentName?: string; status: "typing" | "idle"; updatedAt: number }
+        >;
+        getConversationMode: FunctionReference<
+          "query",
+          "public",
+          { organizationId: Id<"organizations">; sessionId: string },
+          { mode: "agent" | "manual" }
+        >;
         getEmailSettings: FunctionReference<
           "query",
           "public",
@@ -8060,6 +8072,8 @@ export type PublicApiType = {
           "public",
           { limit?: number; organizationId: Id<"organizations"> },
           Array<{
+            assignedAgentId?: string;
+            assignedAgentName?: string;
             contactEmail?: string;
             contactId?: Id<"contacts">;
             contactName?: string;
@@ -8067,6 +8081,7 @@ export type PublicApiType = {
             lastAt: number;
             lastMessage: string;
             lastRole: "user" | "assistant";
+            mode?: "agent" | "manual";
             origin: "chat" | "email";
             sessionId: string;
             status?: "open" | "snoozed" | "closed";
@@ -8115,6 +8130,8 @@ export type PublicApiType = {
           { organizationId: Id<"organizations">; sessionId: string },
           Array<{
             _id: Id<"supportMessages">;
+            agentName?: string;
+            agentUserId?: string;
             contactEmail?: string;
             contactId?: Id<"contacts">;
             contactName?: string;
@@ -8153,8 +8170,29 @@ export type PublicApiType = {
             organizationId: Id<"organizations">;
             role: "user" | "assistant";
             sessionId: string;
+            source?: "agent" | "admin" | "system";
             subject?: string;
             textBody?: string;
+          },
+          any
+        >;
+        setAgentPresence: FunctionReference<
+          "mutation",
+          "public",
+          {
+            organizationId: Id<"organizations">;
+            sessionId: string;
+            status: "typing" | "idle";
+          },
+          any
+        >;
+        setConversationMode: FunctionReference<
+          "mutation",
+          "public",
+          {
+            mode: "agent" | "manual";
+            organizationId: Id<"organizations">;
+            sessionId: string;
           },
           any
         >;

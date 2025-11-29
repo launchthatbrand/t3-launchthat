@@ -26,6 +26,10 @@ interface ConversationsViewProps {
   tenantName?: string;
   initialSessionId?: string;
   basePath: string;
+  onConversationChange?: (
+    conversation?: ConversationSummary,
+    contact?: ContactDoc | null,
+  ) => void;
 }
 
 const isContactId = (value: unknown): value is Id<"contacts"> =>
@@ -36,6 +40,7 @@ export function ConversationsView({
   tenantName,
   initialSessionId,
   basePath,
+  onConversationChange,
 }: ConversationsViewProps) {
   const conversations = useSupportConversations(organizationId, 100);
   const { activeSessionId, handleSelectConversation } = useSupportSessionState(
@@ -74,6 +79,10 @@ export function ConversationsView({
       inspectorPanelRef.current?.expand();
     }
   }, [showInspector]);
+
+  useEffect(() => {
+    onConversationChange?.(selectedConversation, resolvedContact);
+  }, [onConversationChange, selectedConversation, resolvedContact]);
 
   const toggleInspector = () => {
     if (!showInspector) return;

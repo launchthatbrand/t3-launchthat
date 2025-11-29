@@ -20,6 +20,7 @@ type SupportMessage = {
   content: string;
   createdAt: number;
   messageType?: "chat" | "email_inbound" | "email_outbound";
+  agentName?: string;
 };
 
 const MOCK_MESSAGE_COUNT = 28;
@@ -36,6 +37,7 @@ const MOCK_MESSAGES: SupportMessage[] = Array.from(
         : `Assistant response ${index + 1}. Absolutely! Here's a detailed explanation so you have everything you need:\n\n1. Navigate to the enrollment section.\n2. Choose your preferred plan.\n3. Confirm details and submit.\n\nLet me know if you'd like screenshots or additional guidance.`,
       createdAt: Date.now() - (MOCK_MESSAGE_COUNT - index) * 60_000,
       messageType: "chat",
+      agentName: isUser ? undefined : "Support Agent",
     };
   },
 );
@@ -53,6 +55,7 @@ const fallbackConversation: ConversationSummary = {
   lastAt: Date.now(),
   firstAt: Date.now(),
   totalMessages: MOCK_MESSAGES.length,
+  mode: "agent",
 };
 
 const buildFallbackContact = (
@@ -72,6 +75,10 @@ interface TestViewProps {
   conversations: ConversationSummary[];
   activeSessionId?: string;
   onSelectSession?: (sessionId: string) => void;
+  onConversationChange?: (
+    conversation?: ConversationSummary,
+    contact?: ContactDoc | null,
+  ) => void;
 }
 
 export function TestView({
@@ -80,6 +87,7 @@ export function TestView({
   conversations,
   activeSessionId,
   onSelectSession,
+  onConversationChange,
 }: TestViewProps) {
   const selectedConversation = useMemo(() => {
     if (!conversations.length) {
@@ -133,6 +141,10 @@ export function TestView({
     listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [renderedMessages.length, conversationForComposer.sessionId]);
 
+  useEffect(() => {
+    onConversationChange?.(selectedConversation, contactDoc ?? null);
+  }, [onConversationChange, selectedConversation, contactDoc]);
+
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
       <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
@@ -164,6 +176,11 @@ export function TestView({
                         : "bg-card text-foreground",
                     )}
                   >
+                    {message.role === "assistant" && message.agentName ? (
+                      <p className="text-muted-foreground mb-1 text-xs font-semibold">
+                        {message.agentName}
+                      </p>
+                    ) : null}
                     {message.content}
                   </div>
                 </div>

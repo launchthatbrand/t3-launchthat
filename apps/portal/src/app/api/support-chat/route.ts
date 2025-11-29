@@ -75,6 +75,20 @@ export async function POST(req: Request) {
       });
     }
 
+    const conversationMode = await convex.query(
+      api.plugins.support.queries.getConversationMode,
+      {
+        organizationId,
+        sessionId,
+      },
+    );
+
+    const isManualMode = conversationMode.mode === "manual";
+
+    if (isManualMode) {
+      return streamTextResponse("");
+    }
+
     const cannedResponse =
       latestUserMessage.length > 0
         ? await convex.query(api.plugins.support.queries.matchCannedResponse, {
@@ -97,6 +111,7 @@ export async function POST(req: Request) {
         contactId,
         contactEmail,
         contactName,
+        source: "agent",
       });
       return streamTextResponse(cannedResponse.content);
     }
@@ -158,6 +173,7 @@ export async function POST(req: Request) {
         contactId,
         contactEmail,
         contactName,
+        source: "agent",
       });
       return streamTextResponse(noKeyMessage);
     }
@@ -189,6 +205,7 @@ export async function POST(req: Request) {
           contactId,
           contactEmail,
           contactName,
+          source: "agent",
         });
       },
     });

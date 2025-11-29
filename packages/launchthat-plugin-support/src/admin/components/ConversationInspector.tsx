@@ -1,12 +1,8 @@
 "use client";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@acme/ui/accordion";
-import { Avatar, AvatarFallback } from "@acme/ui/avatar";
+import type { GenericId as Id } from "convex/values";
+import type { ComponentType } from "react";
+import { useCallback } from "react";
 import {
   BadgeCheck,
   Briefcase,
@@ -19,17 +15,22 @@ import {
   Phone,
   UserRound,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@acme/ui/accordion";
+import { Avatar, AvatarFallback } from "@acme/ui/avatar";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import type { ComponentType } from "react";
-import type { GenericId as Id } from "convex/values";
-import { SUPPORT_COPY } from "../constants/supportCopy";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { ScrollArea } from "@acme/ui/scroll-area";
 import { Separator } from "@acme/ui/separator";
 import { toast } from "@acme/ui/toast";
-import { useCallback } from "react";
+
+import { SUPPORT_COPY } from "../constants/supportCopy";
 
 export interface ConversationSummary {
   sessionId: string;
@@ -43,6 +44,9 @@ export interface ConversationSummary {
   contactEmail?: string;
   origin: "chat" | "email";
   status?: "open" | "snoozed" | "closed";
+  assignedAgentId?: string;
+  assignedAgentName?: string;
+  mode?: "agent" | "manual";
 }
 
 export interface ContactDoc {
@@ -116,7 +120,7 @@ export const ConversationInspector = ({
   }, [contactId, hasContactRecord]);
 
   return (
-    <div className="flex h-full flex-col border-l bg-background">
+    <div className="bg-background flex h-full flex-col border-l">
       <ScrollArea className="h-full">
         <div className="space-y-4 p-4">
           <Card>
@@ -126,7 +130,7 @@ export const ConversationInspector = ({
               </Avatar>
               <div className="flex flex-col gap-1">
                 <CardTitle className="text-lg">{contactName}</CardTitle>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
                   {company ? (
                     <span className="flex items-center gap-1">
                       <Briefcase className="h-3 w-3" />
@@ -167,7 +171,7 @@ export const ConversationInspector = ({
                 Conversation overview
               </AccordionTrigger>
               <AccordionContent>
-                <div className="space-y-3 px-4 pb-4 pt-1 text-sm">
+                <div className="space-y-3 px-4 pt-1 pb-4 text-sm">
                   <InfoRow
                     icon={Hash}
                     label="Session"
@@ -196,6 +200,14 @@ export const ConversationInspector = ({
                     label="Last activity"
                     value={formatDateTime(conversation?.lastAt)}
                   />
+                  <InfoRow
+                    icon={BadgeCheck}
+                    label="Assigned agent"
+                    value={
+                      conversation?.assignedAgentName ??
+                      SUPPORT_COPY.inspector.unassignedLabel
+                    }
+                  />
                   <div className="flex items-center gap-2 pt-1">
                     <Badge variant="secondary">
                       {conversation?.lastRole === "assistant"
@@ -215,7 +227,7 @@ export const ConversationInspector = ({
                 Quick actions
               </AccordionTrigger>
               <AccordionContent>
-                <div className="flex flex-wrap gap-2 px-4 pb-4 pt-1">
+                <div className="flex flex-wrap gap-2 px-4 pt-1 pb-4">
                   <Button
                     size="sm"
                     variant="outline"
@@ -255,9 +267,9 @@ export const ConversationInspector = ({
                 Conversation details
               </AccordionTrigger>
               <AccordionContent>
-                <div className="space-y-3 px-4 pb-4 pt-1 text-xs text-muted-foreground">
+                <div className="text-muted-foreground space-y-3 px-4 pt-1 pb-4 text-xs">
                   <div>
-                    <p className="font-medium text-foreground">Participants</p>
+                    <p className="text-foreground font-medium">Participants</p>
                     <p>
                       Assistant,{" "}
                       {contactName === "Unknown visitor"
@@ -267,7 +279,7 @@ export const ConversationInspector = ({
                   </div>
                   <Separator />
                   <div>
-                    <p className="font-medium text-foreground">Tags</p>
+                    <p className="text-foreground font-medium">Tags</p>
                     <p>
                       {contact?.tags && contact.tags.length > 0
                         ? contact.tags.join(", ")
@@ -276,7 +288,7 @@ export const ConversationInspector = ({
                   </div>
                   <Separator />
                   <div>
-                    <p className="font-medium text-foreground">Notes</p>
+                    <p className="text-foreground font-medium">Notes</p>
                     <p>No notes recorded yet.</p>
                   </div>
                 </div>
@@ -297,9 +309,9 @@ interface InfoRowProps {
 
 const InfoRow = ({ icon: Icon, label, value }: InfoRowProps) => (
   <div className="flex items-center gap-3 text-sm">
-    <Icon className="h-4 w-4 text-muted-foreground" />
+    <Icon className="text-muted-foreground h-4 w-4" />
     <div className="flex flex-col">
-      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+      <span className="text-muted-foreground text-[11px] tracking-wide uppercase">
         {label}
       </span>
       <span className="text-foreground">{value}</span>

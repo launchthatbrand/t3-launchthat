@@ -1,5 +1,7 @@
 import type { GenericId as Id } from "convex/values";
 import * as React from "react";
+import { api } from "@portal/convexspec";
+import { useMutation } from "convex/react";
 import {
   BadgeCheck,
   Briefcase,
@@ -210,6 +212,9 @@ export interface ConversationSummary {
   contactEmail?: string;
   origin: "chat" | "email";
   status?: "open" | "snoozed" | "closed";
+  assignedAgentId?: string;
+  assignedAgentName?: string;
+  mode?: "agent" | "manual";
 }
 
 export interface ContactDoc {
@@ -232,6 +237,7 @@ export interface ConversationSidebarProps {
   fallbackName?: string;
   fallbackEmail?: string;
   organizationName?: string;
+  organizationId?: Id<"organizations">;
 }
 
 export function ConversationSidebar({
@@ -240,8 +246,12 @@ export function ConversationSidebar({
   fallbackName,
   fallbackEmail,
   organizationName,
+  organizationId,
   ...props
 }: React.ComponentProps<typeof Sidebar> & ConversationSidebarProps) {
+  const setConversationMode = useMutation(
+    api.plugins.support.mutations.setConversationMode,
+  );
   const contactName = contact?.fullName ?? fallbackName ?? "Unknown visitor";
   const contactEmail = contact?.email ?? fallbackEmail;
   const company = contact?.company;
@@ -267,6 +277,34 @@ export function ConversationSidebar({
     const targetUrl = `/admin/contacts?contactId=${contactId}`;
     window.open(targetUrl, "_blank", "noopener,noreferrer");
   }, [contactId, hasContactRecord]);
+  const currentMode = conversation?.mode ?? "agent";
+  const isAgentMode = currentMode === "agent";
+  const assignedAgentName =
+    conversation?.assignedAgentName ??
+    (conversation?.assignedAgentId ? "Agent" : undefined);
+
+  const handleToggleMode = React.useCallback(async () => {
+    if (!conversation || !organizationId) {
+      toast.info("Select a conversation to change agent mode.");
+      return;
+    }
+    try {
+      await setConversationMode({
+        organizationId,
+        sessionId: conversation.sessionId,
+        mode: isAgentMode ? "manual" : "agent",
+      });
+      toast.success(
+        isAgentMode
+          ? "Switched to manual mode. The assistant will stop replying."
+          : "Agent mode enabled. The assistant can reply again.",
+      );
+    } catch (error) {
+      console.error("[conversation-sidebar] toggle mode", error);
+      toast.error("Unable to update agent mode. Please try again.");
+    }
+  }, [conversation, isAgentMode, organizationId, setConversationMode]);
+
   return (
     <Sidebar {...props}>
       <SidebarContent className="space-y-4 p-4">
@@ -390,35 +428,66 @@ export function ConversationSidebar({
           <AccordionItem value="actions" className="rounded-lg border">
             <AccordionTrigger className="px-4">Quick actions</AccordionTrigger>
             <AccordionContent>
-              <div className="flex flex-wrap gap-2 px-4 pt-1 pb-4">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1"
-                  onClick={handleEmailContact}
-                  disabled={!hasEmail}
-                  title={
-                    hasEmail ? undefined : "No email available for this contact"
-                  }
-                >
-                  <Mail className="h-3.5 w-3.5" />
-                  Email contact
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1"
-                  onClick={handleViewContact}
-                  disabled={!hasContactRecord}
-                  title={
-                    hasContactRecord
-                      ? undefined
-                      : "Contact profile not available in this workspace"
-                  }
-                >
-                  <UserRound className="h-3.5 w-3.5" />
-                  View contact
-                </Button>
+              <div className="space-y-3 px-4 pt-1 pb-4">
+                <div className="rounded-lg border px-3 py-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold">
+                        {isAgentMode ? "Agent mode" : "Manual mode"}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {isAgentMode
+                          ? "Assistant replies are enabled."
+                          : "Assistant replies are paused for this chat."}
+                      </span>
+                      {assignedAgentName ? (
+                        <span className="text-muted-foreground text-[11px]">
+                          Assigned to {assignedAgentName}
+                        </span>
+                      ) : null}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void handleToggleMode()}
+                      disabled={!conversation || !organizationId}
+                    >
+                      {isAgentMode ? "Pause agent" : "Enable agent"}
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                    onClick={handleEmailContact}
+                    disabled={!hasEmail}
+                    title={
+                      hasEmail
+                        ? undefined
+                        : "No email available for this contact"
+                    }
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    Email contact
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                    onClick={handleViewContact}
+                    disabled={!hasContactRecord}
+                    title={
+                      hasContactRecord
+                        ? undefined
+                        : "Contact profile not available in this workspace"
+                    }
+                  >
+                    <UserRound className="h-3.5 w-3.5" />
+                    View contact
+                  </Button>
+                </div>
               </div>
             </AccordionContent>
           </AccordionItem>

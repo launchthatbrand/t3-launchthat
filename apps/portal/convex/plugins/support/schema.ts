@@ -29,6 +29,11 @@ const supportMessagesTable = defineTable({
   contactId: v.optional(v.id("contacts")),
   contactEmail: v.optional(v.string()),
   contactName: v.optional(v.string()),
+  agentUserId: v.optional(v.string()),
+  agentName: v.optional(v.string()),
+  source: v.optional(
+    v.union(v.literal("agent"), v.literal("admin"), v.literal("system")),
+  ),
   messageType: v.optional(
     v.union(
       v.literal("chat"),
@@ -53,12 +58,15 @@ const supportConversationsTable = defineTable({
   status: v.optional(
     v.union(v.literal("open"), v.literal("snoozed"), v.literal("closed")),
   ),
+  mode: v.optional(v.union(v.literal("agent"), v.literal("manual"))),
   subject: v.optional(v.string()),
   emailThreadId: v.optional(v.string()),
   inboundAlias: v.optional(v.string()),
   contactId: v.optional(v.id("contacts")),
   contactName: v.optional(v.string()),
   contactEmail: v.optional(v.string()),
+  assignedAgentId: v.optional(v.string()),
+  assignedAgentName: v.optional(v.string()),
   lastMessageSnippet: v.optional(v.string()),
   lastMessageAuthor: v.optional(
     v.union(v.literal("user"), v.literal("assistant")),
@@ -101,9 +109,19 @@ const supportEmailSettingsTable = defineTable({
   .index("by_organization", ["organizationId"])
   .index("by_alias_local_part", ["defaultAliasLocalPart"]);
 
+const supportAgentPresenceTable = defineTable({
+  organizationId: v.id("organizations"),
+  sessionId: v.string(),
+  agentUserId: v.string(),
+  agentName: v.string(),
+  status: v.union(v.literal("typing"), v.literal("idle")),
+  updatedAt: v.number(),
+}).index("by_org_session", ["organizationId", "sessionId"]);
+
 export const supportSchema = {
   supportKnowledge: supportKnowledgeTable,
   supportMessages: supportMessagesTable,
   supportConversations: supportConversationsTable,
   supportEmailSettings: supportEmailSettingsTable,
+  supportAgentPresence: supportAgentPresenceTable,
 };

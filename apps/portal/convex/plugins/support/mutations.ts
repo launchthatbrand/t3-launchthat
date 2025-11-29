@@ -80,6 +80,9 @@ async function touchConversation(
     contactEmail?: string;
     role: "user" | "assistant";
     snippet: string;
+    agentUserId?: string;
+    agentName?: string;
+    mode?: "agent" | "manual";
   },
   timestamp: number,
 ): Promise<ConversationDoc> {
@@ -101,6 +104,15 @@ async function touchConversation(
       lastMessageAuthor: args.role,
       lastMessageAt: timestamp,
       totalMessages: existing.totalMessages + 1,
+      assignedAgentId:
+        args.role === "assistant" && args.agentUserId
+          ? args.agentUserId
+          : (existing.assignedAgentId ?? undefined),
+      assignedAgentName:
+        args.role === "assistant" && args.agentName
+          ? args.agentName
+          : (existing.assignedAgentName ?? undefined),
+      mode: args.mode ?? existing.mode ?? "agent",
       updatedAt: timestamp,
     });
     const updated = await ctx.db.get(existing._id);
@@ -113,6 +125,7 @@ async function touchConversation(
     sessionId: args.sessionId,
     origin: "chat",
     status: "open",
+    mode: args.mode ?? "agent",
     subject: undefined,
     emailThreadId: undefined,
     inboundAlias: undefined,
@@ -121,6 +134,10 @@ async function touchConversation(
     contactEmail: args.contactEmail ?? undefined,
     lastMessageSnippet: args.snippet,
     lastMessageAuthor: args.role,
+    assignedAgentId:
+      args.role === "assistant" ? (args.agentUserId ?? undefined) : undefined,
+    assignedAgentName:
+      args.role === "assistant" ? (args.agentName ?? undefined) : undefined,
     firstMessageAt: now,
     lastMessageAt: now,
     totalMessages: 1,
@@ -150,6 +167,46 @@ const createDnsRecords = (domain: string): DnsRecord[] => {
   ];
 };
 
+async function upsertAgentPresenceRecord(
+  ctx: MutationCtx,
+  args: {
+    organizationId: Id<"organizations">;
+    sessionId: string;
+    agentUserId: string;
+    agentName: string;
+    status: "typing" | "idle";
+    updatedAt: number;
+  },
+) {
+  const existing = await ctx.db
+    .query("supportAgentPresence")
+    .withIndex("by_org_session", (q) =>
+      q
+        .eq("organizationId", args.organizationId)
+        .eq("sessionId", args.sessionId),
+    )
+    .unique();
+
+  if (existing) {
+    await ctx.db.patch(existing._id, {
+      agentUserId: args.agentUserId,
+      agentName: args.agentName,
+      status: args.status,
+      updatedAt: args.updatedAt,
+    });
+    return;
+  }
+
+  await ctx.db.insert("supportAgentPresence", {
+    organizationId: args.organizationId,
+    sessionId: args.sessionId,
+    agentUserId: args.agentUserId,
+    agentName: args.agentName,
+    status: args.status,
+    updatedAt: args.updatedAt,
+  });
+}
+
 export const recordMessageHelper = async (
   ctx: MutationCtx,
   args: {
@@ -164,6 +221,7 @@ export const recordMessageHelper = async (
     subject?: string;
     htmlBody?: string;
     textBody?: string;
+    source?: "agent" | "admin" | "system";
   },
 ) => {
   const lastMessage = await ctx.db
@@ -184,9 +242,25 @@ export const recordMessageHelper = async (
     return lastMessage._id;
   }
 
+  let agentUserId: string | undefined;
+  let agentName: string | undefined;
+  if (args.role === "assistant") {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity) {
+      agentUserId =
+        identity.subject ??
+        identity.tokenIdentifier ??
+        identity.email ??
+        undefined;
+      agentName = identity.name ?? identity.email ?? undefined;
+    }
+  }
+
   const createdAt = Date.now();
   const insertedId = await ctx.db.insert("supportMessages", {
     ...args,
+    agentUserId,
+    agentName,
     messageType: args.messageType ?? "chat",
     createdAt,
   });
@@ -200,9 +274,29 @@ export const recordMessageHelper = async (
       contactEmail: args.contactEmail ?? undefined,
       role: args.role,
       snippet: args.content.slice(0, 240),
+      mode:
+        args.source === "admin"
+          ? "manual"
+          : args.source === "agent"
+            ? "agent"
+            : undefined,
+      agentUserId,
+      agentName,
     },
     createdAt,
   );
+
+  if (agentUserId && agentName) {
+    await upsertAgentPresenceRecord(ctx, {
+      organizationId: args.organizationId,
+      sessionId: args.sessionId,
+      agentUserId,
+      agentName: agentName ?? "Support agent",
+      status: "idle",
+      updatedAt: createdAt,
+    });
+  }
+
   return insertedId;
 };
 
@@ -225,9 +319,75 @@ export const recordMessage = mutation({
     subject: v.optional(v.string()),
     htmlBody: v.optional(v.string()),
     textBody: v.optional(v.string()),
+    source: v.optional(
+      v.union(v.literal("agent"), v.literal("admin"), v.literal("system")),
+    ),
   },
   handler: async (ctx, args) => {
     return recordMessageHelper(ctx, args);
+  },
+});
+
+export const setAgentPresence = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    sessionId: v.string(),
+    status: v.union(v.literal("typing"), v.literal("idle")),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Authentication required");
+    }
+
+    const agentUserId =
+      identity.subject ?? identity.tokenIdentifier ?? identity.email;
+    if (!agentUserId) {
+      throw new Error("Unable to determine agent identity");
+    }
+
+    const agentName = identity.name ?? identity.email ?? "Support agent";
+    const updatedAt = Date.now();
+
+    await upsertAgentPresenceRecord(ctx, {
+      organizationId: args.organizationId,
+      sessionId: args.sessionId,
+      agentUserId,
+      agentName,
+      status: args.status,
+      updatedAt,
+    });
+
+    return { agentUserId, agentName, status: args.status, updatedAt };
+  },
+});
+
+export const setConversationMode = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    sessionId: v.string(),
+    mode: v.union(v.literal("agent"), v.literal("manual")),
+  },
+  handler: async (ctx, args) => {
+    const conversation = await ctx.db
+      .query("supportConversations")
+      .withIndex("by_org_session", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("sessionId", args.sessionId),
+      )
+      .unique();
+
+    if (!conversation) {
+      throw new Error("Conversation not found");
+    }
+
+    await ctx.db.patch(conversation._id, {
+      mode: args.mode,
+      updatedAt: Date.now(),
+    });
+
+    return { mode: args.mode };
   },
 });
 

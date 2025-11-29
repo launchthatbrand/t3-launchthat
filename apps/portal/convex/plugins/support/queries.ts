@@ -350,6 +350,8 @@ export const listMessages = query({
       contactId: v.optional(v.id("contacts")),
       contactEmail: v.optional(v.string()),
       contactName: v.optional(v.string()),
+      agentUserId: v.optional(v.string()),
+      agentName: v.optional(v.string()),
       messageType: v.optional(
         v.union(
           v.literal("chat"),
@@ -382,6 +384,8 @@ export const listMessages = query({
         contactId: entry.contactId,
         contactEmail: entry.contactEmail ?? undefined,
         contactName: entry.contactName ?? undefined,
+        agentUserId: entry.agentUserId ?? undefined,
+        agentName: entry.agentName ?? undefined,
         messageType: entry.messageType ?? undefined,
         subject: entry.subject ?? undefined,
         htmlBody: entry.htmlBody ?? undefined,
@@ -411,6 +415,9 @@ export const listConversations = query({
       status: v.optional(
         v.union(v.literal("open"), v.literal("snoozed"), v.literal("closed")),
       ),
+      mode: v.optional(v.union(v.literal("agent"), v.literal("manual"))),
+      assignedAgentId: v.optional(v.string()),
+      assignedAgentName: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -436,6 +443,9 @@ export const listConversations = query({
         contactEmail: conversation.contactEmail ?? undefined,
         origin: conversation.origin,
         status: conversation.status ?? "open",
+        mode: conversation.mode ?? "agent",
+        assignedAgentId: conversation.assignedAgentId ?? undefined,
+        assignedAgentName: conversation.assignedAgentName ?? undefined,
       }));
     }
 
@@ -459,6 +469,9 @@ export const listConversations = query({
         contactId?: Id<"contacts">;
         contactName?: string;
         contactEmail?: string;
+        assignedAgentId?: string;
+        assignedAgentName?: string;
+        mode?: "agent" | "manual";
       }
     >();
 
@@ -484,6 +497,9 @@ export const listConversations = query({
         contactId: row.contactId ?? undefined,
         contactName: row.contactName ?? undefined,
         contactEmail: row.contactEmail ?? undefined,
+        assignedAgentId: row.agentUserId ?? undefined,
+        assignedAgentName: row.agentName ?? undefined,
+        mode: "agent",
       });
     }
 
@@ -494,7 +510,68 @@ export const listConversations = query({
         ...conversation,
         origin: "chat" as const,
         status: "open" as const,
+        mode: conversation.mode ?? "agent",
       }));
+  },
+});
+
+export const getConversationMode = query({
+  args: {
+    organizationId: v.id("organizations"),
+    sessionId: v.string(),
+  },
+  returns: v.object({
+    mode: v.union(v.literal("agent"), v.literal("manual")),
+  }),
+  handler: async (ctx, args) => {
+    const conversation = await ctx.db
+      .query("supportConversations")
+      .withIndex("by_org_session", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("sessionId", args.sessionId),
+      )
+      .unique();
+
+    if (!conversation) {
+      return { mode: "agent" as const };
+    }
+
+    return { mode: conversation.mode ?? "agent" };
+  },
+});
+
+export const getAgentPresence = query({
+  args: {
+    organizationId: v.id("organizations"),
+    sessionId: v.string(),
+  },
+  returns: v.object({
+    agentName: v.optional(v.string()),
+    status: v.union(v.literal("typing"), v.literal("idle")),
+    updatedAt: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const presence = await ctx.db
+      .query("supportAgentPresence")
+      .withIndex("by_org_session", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("sessionId", args.sessionId),
+      )
+      .unique();
+
+    if (!presence) {
+      return { status: "idle" as const, updatedAt: Date.now() };
+    }
+
+    const isStale = Date.now() - presence.updatedAt > 15_000;
+
+    return {
+      agentName: presence.agentName ?? undefined,
+      status: isStale ? ("idle" as const) : presence.status,
+      updatedAt: presence.updatedAt,
+    };
   },
 });
 

@@ -12,6 +12,10 @@ import {
 } from "@acme/ui/sidebar";
 import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
+import type {
+  ContactDoc,
+  ConversationSummary,
+} from "./components/ConversationInspector";
 import { ConversationSidebar } from "./components/ConversationSidebar";
 import { useSupportConversations } from "./hooks/useSupportConversations";
 import { ConversationsView } from "./views/ConversationView";
@@ -51,6 +55,18 @@ export function SupportSystem({
   const [testSessionId, setTestSessionId] = useState<string | undefined>(
     initialSessionId,
   );
+  const [sidebarConversation, setSidebarConversation] = useState<
+    ConversationSummary | undefined
+  >(undefined);
+  const [sidebarContact, setSidebarContact] = useState<ContactDoc | null>(null);
+
+  const handleConversationChange = useCallback(
+    (conversation?: ConversationSummary, contact?: ContactDoc | null) => {
+      setSidebarConversation(conversation);
+      setSidebarContact(contact ?? null);
+    },
+    [],
+  );
 
   const updateTestSessionId = useCallback(
     (next?: string) => {
@@ -76,6 +92,13 @@ export function SupportSystem({
     }
   }, [routeKey, conversations, testSessionId, updateTestSessionId]);
 
+  useEffect(() => {
+    if (routeKey !== "conversations" && routeKey !== "test") {
+      setSidebarConversation(undefined);
+      setSidebarContact(null);
+    }
+  }, [routeKey]);
+
   const content = useMemo(() => {
     switch (routeKey) {
       case "responses":
@@ -87,6 +110,7 @@ export function SupportSystem({
             tenantName={tenantName}
             conversations={conversations}
             activeSessionId={testSessionId}
+            onConversationChange={handleConversationChange}
           />
         );
       case "settings":
@@ -98,6 +122,7 @@ export function SupportSystem({
             tenantName={tenantName}
             conversations={conversations}
             activeSessionId={testSessionId}
+            onConversationChange={handleConversationChange}
           />
         );
       default:
@@ -109,12 +134,12 @@ export function SupportSystem({
         );
     }
   }, [
-    organizationId,
     routeKey,
+    organizationId,
     tenantName,
-    initialSessionId,
     conversations,
     testSessionId,
+    handleConversationChange,
   ]);
   return (
     <SidebarProvider className="SIDEBAR_PROVIDER relative max-h-[calc(100vh-56px)] min-h-0 flex-1 overflow-hidden bg-red-500">
@@ -161,8 +186,17 @@ export function SupportSystem({
         <ConversationSidebar
           side="right"
           className="absolute"
-          conversation={undefined}
-          contact={null}
+          conversation={sidebarConversation}
+          contact={sidebarContact}
+          fallbackName={
+            sidebarConversation?.contactName ??
+            (sidebarConversation
+              ? `Session ${sidebarConversation.sessionId.slice(-6)}`
+              : undefined)
+          }
+          fallbackEmail={sidebarConversation?.contactEmail}
+          organizationName={tenantName}
+          organizationId={organizationId}
         />
       )}
     </SidebarProvider>
