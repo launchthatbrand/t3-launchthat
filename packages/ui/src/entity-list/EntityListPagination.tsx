@@ -103,7 +103,7 @@ export function EntityListPagination({
           </div>
         )}
 
-        <div className="text-sm text-muted-foreground">
+        <div className="text-muted-foreground text-sm">
           Page {pageIndex + 1} of {Math.max(1, pageCount)}
         </div>
       </div>
@@ -138,7 +138,7 @@ export function EntityListPagination({
           ) : (
             <Button
               key={`page-${page}`}
-              variant={page === pageIndex ? "primary" : "outline"}
+              variant={page === pageIndex ? "default" : "outline"}
               size="icon"
               className="h-8 w-8"
               onClick={() => onPageChange(page as number)}

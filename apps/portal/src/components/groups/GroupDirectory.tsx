@@ -17,9 +17,9 @@ import type {
   EntityAction,
   FilterConfig,
   FilterValue,
-} from "~/components/shared/EntityList/types";
-import { DetachableFilters } from "~/components/shared/EntityList/DetachableFilters";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+} from "@acme/ui/entity-list/types";
+import { DetachableFilters } from "@acme/ui/entity-list/DetachableFilters";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { api } from "../../../convex/_generated/api";
 
 // Interface for a group from the API

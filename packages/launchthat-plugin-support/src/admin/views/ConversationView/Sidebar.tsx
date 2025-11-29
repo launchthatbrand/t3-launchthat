@@ -1,5 +1,8 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import { MessageSquare } from "lucide-react";
+
 import {
   Sidebar,
   SidebarContent,
@@ -9,10 +12,8 @@ import {
   SidebarInput,
 } from "@acme/ui/sidebar";
 import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
-import { useMemo, useState } from "react";
 
 import type { ConversationSummary } from "../../components/ConversationInspector";
-import { MessageSquare } from "lucide-react";
 import { SUPPORT_COPY } from "../../constants/supportCopy";
 
 type SidebarFilter = "mine" | "unassigned" | "all";
@@ -42,7 +43,7 @@ export function ConversationSidebar({
   }, [conversations, filter]);
 
   return (
-    <Sidebar collapsible="none" className="hidden w-[350px] border-r md:flex">
+    <Sidebar collapsible="none" className="hidden border-r md:flex">
       <Tabs
         value={filter}
         onValueChange={(value) => setFilter(value as SidebarFilter)}
@@ -50,7 +51,7 @@ export function ConversationSidebar({
         <SidebarHeader className="flex h-32 flex-col justify-between gap-1 border-b p-0">
           <div className="flex flex-col gap-1 p-4">
             <div className="flex w-full flex-col justify-between gap-3">
-              <div className="text-base font-medium text-foreground">
+              <div className="text-foreground text-base font-medium">
                 Conversations
               </div>
               {/* <Label className="flex items-center gap-2 text-sm">
@@ -73,9 +74,9 @@ export function ConversationSidebar({
           </TabsList>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarGroup className="max-h-[calc(100vh-340px)] overflow-y-scroll px-0">
-            <SidebarGroupContent className="overflow-y-scroll">
-              {filteredConversations.length > 0 ? (
+          <SidebarGroup>
+            <SidebarGroupContent className="flex max-h-[90vh] flex-1 flex-col overflow-y-scroll">
+              {filteredConversations?.length > 0 ? (
                 filteredConversations.map((conversation) => {
                   const isActive =
                     activeSessionId === conversation.sessionId ||
@@ -87,7 +88,7 @@ export function ConversationSidebar({
                       key={conversation.sessionId}
                       type="button"
                       onClick={() => onSelect(conversation.sessionId)}
-                      className={`flex w-full flex-col gap-1 border-b p-4 text-left text-sm last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                      className={`hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex w-full flex-col gap-1 border-b p-4 text-left text-sm last:border-b-0 ${
                         isActive ? "bg-sidebar-accent/60" : ""
                       }`}
                     >
@@ -98,19 +99,19 @@ export function ConversationSidebar({
                               `Session ${conversation.sessionId.slice(-6)}`}
                           </span>
                           {conversation.contactEmail && (
-                            <span className="text-[11px] text-muted-foreground">
+                            <span className="text-muted-foreground text-[11px]">
                               {conversation.contactEmail}
                             </span>
                           )}
                         </div>
-                        <span className="ml-auto text-xs text-muted-foreground">
+                        <span className="text-muted-foreground ml-auto text-xs">
                           {new Date(conversation.lastAt).toLocaleDateString()}
                         </span>
                       </div>
-                      <p className="line-clamp-2 text-xs text-muted-foreground">
+                      <p className="text-muted-foreground line-clamp-2 text-xs">
                         {conversation.lastMessage}
                       </p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="text-muted-foreground flex items-center gap-2 text-xs">
                         <MessageSquare className="h-3.5 w-3.5" />
                         {conversation.totalMessages} messages ·{" "}
                         {conversation.lastRole === "user"
@@ -121,7 +122,7 @@ export function ConversationSidebar({
                   );
                 })
               ) : (
-                <div className="p-6 text-sm text-muted-foreground">
+                <div className="text-muted-foreground p-6 text-sm">
                   {SUPPORT_COPY.sidebar.emptyState}
                 </div>
               )}

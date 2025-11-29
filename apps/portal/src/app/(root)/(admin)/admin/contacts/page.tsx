@@ -36,11 +36,11 @@ import type {
   ColumnDefinition,
   EntityAction,
   FilterConfig,
-} from "~/components/shared/EntityList/types";
+} from "@acme/ui/entity-list/types";
 import { CustomerTypeFilter } from "~/app/(root)/(frontend)/contacts/_components/CustomerTypeFilter";
 import { ImportExportButtons } from "~/app/(root)/(frontend)/contacts/_components/ImportExportButtons";
 import { TagFilter } from "~/app/(root)/(frontend)/contacts/_components/TagFilter";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 
 interface Contact {
   _id: Id<"contacts">;

@@ -35,12 +35,12 @@ import {
 } from "@acme/ui/card";
 import { Separator } from "@acme/ui/separator";
 
-import type { EntityAction } from "~/components/shared/EntityList/types";
+import type { EntityAction } from "@acme/ui/entity-list/types";
 import type {
   PluginDefinition,
   PluginPostTypeConfig,
 } from "~/lib/plugins/types";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { useTenant } from "~/context/TenantContext";
 import { pluginDefinitions } from "~/lib/plugins/definitions";
 import {

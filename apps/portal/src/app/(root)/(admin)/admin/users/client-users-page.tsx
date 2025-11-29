@@ -18,9 +18,9 @@ import { CopyText } from "@acme/ui/copy-text";
 import type {
   EntityAction,
   FilterConfig,
-} from "~/components/shared/EntityList/types";
+} from "@acme/ui/entity-list/types";
 import { UserForm } from "~/components/admin/UserForm";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 
 interface User {
   _id: Id<"users">;

@@ -27,7 +27,7 @@ export function EntityListHeader({
         {description && <p className="text-muted-foreground">{description}</p>}
       </div>
 
-      <div className="flex flex-col space-y-3 sm:flex-row sm:space-x-3 sm:space-y-0 md:items-center">
+      <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 md:items-center">
         {enableSearch && (
           <Search
             value={searchTerm}
@@ -42,7 +42,7 @@ export function EntityListHeader({
           <div className="flex rounded-md border">
             {viewModes.includes("list") && (
               <Button
-                variant={viewMode === "list" ? "primary" : "ghost"}
+                variant={viewMode === "list" ? "default" : "ghost"}
                 size="sm"
                 className="rounded-none rounded-l-md"
                 onClick={() => onViewModeChange("list")}
@@ -53,7 +53,7 @@ export function EntityListHeader({
             )}
             {viewModes.includes("grid") && (
               <Button
-                variant={viewMode === "grid" ? "primary" : "ghost"}
+                variant={viewMode === "grid" ? "default" : "ghost"}
                 size="sm"
                 className="rounded-none rounded-r-md"
                 onClick={() => onViewModeChange("grid")}

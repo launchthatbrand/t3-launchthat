@@ -29,11 +29,11 @@ import {
   TableRow,
 } from "@acme/ui/table";
 
-import type { EntityListViewProps } from "./types";
-import { EmptyState } from "../../EmptyState";
+import type { ColumnDefinition, EntityListViewProps } from "./types";
+import { EmptyState } from "./EmptyState";
 import { GridView } from "./GridView";
 
-export function EntityListView<T extends object>({
+export function EntityListView<T extends Record<string, unknown>>({
   data,
   columns,
   viewMode,
@@ -58,7 +58,28 @@ export function EntityListView<T extends object>({
 
   // Use ColumnDef directly and add actions column if needed
   const tableColumns: ColumnDef<T>[] = React.useMemo(() => {
-    const cols: ColumnDef<T>[] = [...columns];
+    const cols: ColumnDef<T>[] = columns.map((column) => {
+      const baseColumn: ColumnDef<T> = {
+        id: column.id,
+        header: () => column.header,
+        enableSorting: column.sortable ?? false,
+        cell: column.cell
+          ? ({ row }) => column.cell?.(row.original)
+          : column.accessorKey
+            ? ({ row }) =>
+                String(row.original[column.accessorKey as keyof T] ?? "")
+            : undefined,
+      };
+
+      if (column.accessorKey) {
+        return {
+          ...baseColumn,
+          accessorKey: column.accessorKey as string,
+        };
+      }
+
+      return baseColumn;
+    });
 
     // Add actions column if entityActions exist
     if (entityActions && entityActions.length > 0) {
@@ -74,7 +95,11 @@ export function EntityListView<T extends object>({
                 key={index}
                 onClick={() => action.onClick(row.original)}
                 className="rounded p-1 hover:bg-gray-100"
-                title={action.label}
+                title={
+                  typeof action.label === "function"
+                    ? action.label(row.original)
+                    : action.label
+                }
               >
                 {action.icon}
               </button>
@@ -170,7 +195,7 @@ export function EntityListView<T extends object>({
       <div className="py-4">
         {emptyState ?? (
           <EmptyState
-            icon={<Loader2 className="h-10 w-10 text-muted-foreground" />}
+            icon={<Loader2 className="text-muted-foreground h-10 w-10" />}
             title="No items found"
             description="Try adjusting your search or filters."
           />
@@ -252,14 +277,14 @@ export function EntityListView<T extends object>({
   );
 }
 
-export const EntityListFooter = <T extends object>({
+export const EntityListFooter = <T extends Record<string, unknown>>({
   table,
 }: {
   table: TanstackTable<T>;
 }) => {
   return (
     <div className="flex items-center justify-end space-x-2 py-4">
-      <div className="flex-1 text-sm text-muted-foreground">
+      <div className="text-muted-foreground flex-1 text-sm">
         {table.getFilteredSelectedRowModel().rows.length} of{" "}
         {table.getFilteredRowModel().rows.length} row(s) selected.
       </div>

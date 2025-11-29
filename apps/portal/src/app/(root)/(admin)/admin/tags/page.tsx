@@ -14,7 +14,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import type { ColumnDef } from "@tanstack/react-table";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { Plus } from "lucide-react";
 import { toast } from "@acme/ui/toast";
 import { useMarketingTags } from "~/hooks/useMarketingTags";

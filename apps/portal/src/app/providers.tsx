@@ -63,9 +63,9 @@ export function Providers({ children, tenant }: ProvidersProps) {
                     tenantName={effectiveTenant.name}
                   />
                 )}
-                {/* <div className="absolute right-4 bottom-4">
+                <div className="absolute right-4 bottom-4">
                   <ThemeToggle />
-                </div> */}
+                </div>
                 <Toaster />
               </ThemeProvider>
             </TenantProvider>

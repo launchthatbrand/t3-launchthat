@@ -48,7 +48,7 @@ import { Button } from "@acme/ui/button";
 import { CSS } from "@dnd-kit/utilities";
 import { ColumnDef } from "@tanstack/react-table";
 import type { DragEndEvent } from "@dnd-kit/core";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import Link from "next/link";

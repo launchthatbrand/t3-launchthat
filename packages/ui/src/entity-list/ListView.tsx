@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import type { EntityAction, SortConfig } from "./types";
+
+import { Button } from "@acme/ui/button";
 import {
   Table,
   TableBody,
@@ -11,16 +13,14 @@ import {
   TableRow,
 } from "@acme/ui/table";
 
-import { Button } from "@acme/ui/button";
-import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo } from "react";
+import type { ColumnDefinition, EntityAction, SortConfig } from "./types";
 
-export interface ListViewProps<T extends object> {
+export interface ListViewProps<T extends Record<string, unknown>> {
   /** Data to display in the table */
   data: T[];
 
   /** Column definitions */
-  columns: ColumnDef<T>[];
+  columns: ColumnDefinition<T>[];
 
   /** Optional handler for row clicks */
   onRowClick?: (item: T) => void;
@@ -52,7 +52,7 @@ export interface ListViewProps<T extends object> {
  *
  * @template T - The type of data items being displayed (must be an object)
  */
-export function ListView<T extends object>({
+export function ListView<T extends Record<string, unknown>>({
   data,
   columns,
   onRowClick,
@@ -70,10 +70,14 @@ export function ListView<T extends object>({
 
     return [...data].sort((a, b) => {
       const column = columns.find((col) => col.id === sortConfig.id);
-      if (!column?.accessorKey) return 0;
+      if (!column || !column.sortable || !column.accessorKey) {
+        return 0;
+      }
 
-      const aValue = a[column.accessorKey];
-      const bValue = b[column.accessorKey];
+      const accessorKey = column.accessorKey as keyof T;
+
+      const aValue = a[accessorKey];
+      const bValue = b[accessorKey];
 
       if (aValue === bValue) return 0;
 
@@ -108,7 +112,7 @@ export function ListView<T extends object>({
     if (!onSortChange) return;
 
     const column = columns.find((col) => col.id === columnId);
-    if (!column?.sortable) return;
+    if (!column || !column.sortable) return;
 
     let direction: "asc" | "desc" = "asc";
 
@@ -180,7 +184,7 @@ export function ListView<T extends object>({
             sortedData.map((row, index) => (
               <TableRow
                 key={index}
-                className={onRowClick ? "cursor-pointer hover:bg-muted" : ""}
+                className={onRowClick ? "hover:bg-muted cursor-pointer" : ""}
                 onClick={() => onRowClick?.(row)}
               >
                 {selectable && (
@@ -203,7 +207,7 @@ export function ListView<T extends object>({
                     {column.cell
                       ? column.cell(row)
                       : column.accessorKey
-                        ? String(row[column.accessorKey] ?? "")
+                        ? String(row[column.accessorKey as keyof T] ?? "")
                         : ""}
                   </TableCell>
                 ))}
@@ -216,12 +220,16 @@ export function ListView<T extends object>({
                           typeof action.isDisabled === "function"
                             ? action.isDisabled(row)
                             : action.isDisabled;
+                        const resolvedVariant =
+                          action.variant === "primary"
+                            ? "default"
+                            : (action.variant ?? "outline");
 
                         return (
                           <Button
                             key={action.id}
                             size="sm"
-                            variant={action.variant ?? "outline"}
+                            variant={resolvedVariant}
                             onClick={(e) => {
                               e.stopPropagation();
                               action.onClick(row);

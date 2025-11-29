@@ -42,7 +42,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import type { ColumnDef } from "@tanstack/react-table";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import Link from "next/link";

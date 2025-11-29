@@ -60,10 +60,10 @@ export function DashboardView({
   ).length;
 
   return (
-    <div className="space-y-8 p-6">
+    <div className="space-y-8 overflow-y-auto p-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold">Support dashboard</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Monitor how the assistant is performing and jump into key workflows.
         </p>
       </div>
@@ -74,19 +74,19 @@ export function DashboardView({
             title="Canned responses"
             value={totalResponses}
             description="Pre-programmed answers ready to serve instantly."
-            icon={<NotebookPen className="h-5 w-5 text-primary" />}
+            icon={<NotebookPen className="text-primary h-5 w-5" />}
           />
           <StatCard
             title="Active conversations"
             value={activeConversations}
             description="Unique sessions currently tracked for this tenant."
-            icon={<MessageSquareText className="h-5 w-5 text-primary" />}
+            icon={<MessageSquareText className="text-primary h-5 w-5" />}
           />
           <StatCard
             title="Waiting on reply"
             value={openConversations}
             description="Last message from the visitor."
-            icon={<Activity className="h-5 w-5 text-primary" />}
+            icon={<Activity className="text-primary h-5 w-5" />}
           />
         </div>
       </section>
@@ -140,11 +140,11 @@ export function DashboardView({
                     <p className="font-medium">
                       Session {conversation.sessionId.slice(-6)}
                     </p>
-                    <p className="line-clamp-2 text-muted-foreground">
+                    <p className="text-muted-foreground line-clamp-2">
                       {conversation.lastMessage}
                     </p>
                   </div>
-                  <div className="text-right text-xs text-muted-foreground">
+                  <div className="text-muted-foreground text-right text-xs">
                     <p>{new Date(conversation.lastAt).toLocaleDateString()}</p>
                     <p>
                       {conversation.totalMessages} message
@@ -154,7 +154,7 @@ export function DashboardView({
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 {SUPPORT_COPY.sidebar.emptyState}
               </p>
             )}
@@ -189,7 +189,7 @@ function StatCard({
       </CardHeader>
       <CardContent>
         <div className="text-3xl font-bold">{value}</div>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p className="text-muted-foreground text-xs">{description}</p>
       </CardContent>
     </Card>
   );
@@ -207,13 +207,13 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className="flex items-center justify-between rounded-md border px-4 py-3 transition hover:bg-muted"
+      className="hover:bg-muted flex items-center justify-between rounded-md border px-4 py-3 transition"
     >
       <div>
         <p className="font-medium">{label}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p className="text-muted-foreground text-xs">{description}</p>
       </div>
-      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+      <ArrowRight className="text-muted-foreground h-4 w-4" />
     </Link>
   );
 }

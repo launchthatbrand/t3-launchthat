@@ -26,10 +26,10 @@ import type { LessonFormValues } from "~/app/(root)/(admin)/admin/lessons/_compo
 import type {
   ColumnDefinition,
   EntityListItem,
-} from "~/components/shared/EntityList/types";
+} from "@acme/ui/entity-list/types";
 import LessonForm from "~/app/(root)/(admin)/admin/lessons/_components/LessonForm";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
-import { EntityListView } from "~/components/shared/EntityList/EntityListView";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import { EntityListView } from "@acme/ui/entity-list/EntityListView";
 import LessonSidebar from "./_components/LessonSidebar";
 
 type Topic = Doc<"topics">;

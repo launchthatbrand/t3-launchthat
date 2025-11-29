@@ -23,8 +23,8 @@ import { toast } from "@acme/ui/toast";
 import type {
   EntityAction,
   FilterConfig,
-} from "~/components/shared/EntityList/types";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+} from "@acme/ui/entity-list/types";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 
 // Order type for EntityList
 type OrderData = Doc<"orders"> & {

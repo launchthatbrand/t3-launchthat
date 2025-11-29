@@ -4,16 +4,10 @@ import type { GenericId as Id } from "convex/values";
 import { useState, useTransition } from "react";
 import { api } from "@portal/convexspec";
 import { useMutation, useQuery } from "convex/react";
+import { CalendarClock, CircleDot } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@acme/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@acme/ui/dialog";
+import { ColumnDefinition, EntityList } from "@acme/ui/entity-list";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import {
@@ -48,7 +43,7 @@ interface FormState {
   tags: string;
 }
 
-interface KnowledgeEntry {
+interface KnowledgeEntry extends Record<string, unknown> {
   _id: Id<"supportKnowledge">;
   title: string;
   slug?: string | null;
@@ -175,97 +170,110 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
     });
   };
 
-  return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+  const columns: ColumnDefinition<KnowledgeEntry>[] = [
+    {
+      id: "title",
+      accessorKey: "title",
+      header: "Response",
+      sortable: true,
+      cell: (entry) => (
         <div>
-          <h1 className="text-2xl font-semibold">Canned responses</h1>
-          <p className="text-sm text-muted-foreground">
-            Define trigger phrases and the exact response that should be sent
-            before contacting the LLM.
-          </p>
+          <p className="font-medium">{entry.title}</p>
+          <p className="text-muted-foreground text-xs">{entry.slug ?? "—"}</p>
         </div>
-        <Button onClick={openForCreate}>Add response</Button>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {entries.length > 0 ? (
-          entries.map((entry) => (
-            <Card key={entry._id} className="flex flex-col justify-between">
-              <CardHeader>
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <CardTitle className="text-base">{entry.title}</CardTitle>
-                    <p className="text-xs text-muted-foreground">
-                      {entry.slug ?? "—"}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={entry.isActive === false ? "secondary" : "default"}
-                  >
-                    {entry.isActive === false ? "Inactive" : "Active"}
-                  </Badge>
-                </div>
-                <CardDescription className="line-clamp-3">
-                  {entry.content}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                {entry.matchPhrases?.length ? (
-                  <p>
-                    <span className="font-medium text-foreground">
-                      Triggers:
-                    </span>{" "}
-                    {entry.matchPhrases.join(", ")}
-                  </p>
-                ) : (
-                  <p>No trigger phrases defined.</p>
-                )}
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <Badge variant="outline">
-                    Mode: {entry.matchMode ?? "contains"}
-                  </Badge>
-                  <Badge variant="outline">
-                    Priority: {entry.priority ?? 0}
-                  </Badge>
-                </div>
-                {entry.tags && entry.tags.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    {entry.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : null}
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openForEdit(entry)}
-                    disabled={isPending}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => handleDelete(entry._id)}
-                    disabled={isPending}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+      ),
+    },
+    {
+      id: "triggers",
+      header: "Triggers",
+      cell: (entry) =>
+        entry.matchPhrases?.length ? (
+          <div className="text-sm">{entry.matchPhrases.join(", ")}</div>
         ) : (
-          <Card className="p-6 text-center text-sm text-muted-foreground">
+          <span className="text-muted-foreground text-sm">None</span>
+        ),
+    },
+    {
+      id: "matchMode",
+      accessorKey: "matchMode",
+      header: "Mode",
+      cell: (entry) => (
+        <Badge variant="outline" className="flex items-center gap-1">
+          <CircleDot className="h-3 w-3" />
+          {entry.matchMode ?? "contains"}
+        </Badge>
+      ),
+    },
+    {
+      id: "priority",
+      accessorKey: "priority",
+      header: "Priority",
+      cell: (entry) => (
+        <Badge variant="outline">
+          {typeof entry.priority === "number" ? entry.priority : 0}
+        </Badge>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (entry) => (
+        <Badge variant={entry.isActive === false ? "secondary" : "default"}>
+          {entry.isActive === false ? "Inactive" : "Active"}
+        </Badge>
+      ),
+    },
+    {
+      id: "updatedAt",
+      header: "Last updated",
+      cell: (entry) =>
+        entry.updatedAt ? (
+          <div className="text-muted-foreground flex items-center gap-1 text-sm">
+            <CalendarClock className="h-3.5 w-3.5" />
+            {new Date(entry.updatedAt).toLocaleDateString()}
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-sm">—</span>
+        ),
+    },
+  ];
+
+  const entityActions = [
+    {
+      id: "edit",
+      label: "Edit",
+      onClick: (entry: KnowledgeEntry) => openForEdit(entry),
+    },
+    {
+      id: "delete",
+      label: "Delete",
+      variant: "destructive" as const,
+      onClick: (entry: KnowledgeEntry) => handleDelete(entry._id),
+    },
+  ];
+
+  return (
+    <div className="h-full min-h-screen flex-1 space-y-6 overflow-y-auto p-6">
+      <EntityList<KnowledgeEntry>
+        data={entries}
+        columns={columns}
+        entityActions={entityActions}
+        enableSearch
+        title="Canned responses"
+        description="Define trigger phrases and the exact response that should be sent before contacting the LLM."
+        actions={
+          <Button onClick={openForCreate} disabled={isPending}>
+            Add response
+          </Button>
+        }
+        emptyState={
+          <div className="text-muted-foreground rounded-md border p-6 text-center text-sm">
             No canned responses yet. Use “Add response” to create your first
             canned reply.
-          </Card>
-        )}
-      </div>
+          </div>
+        }
+        onRowClick={(entry) => openForEdit(entry)}
+      />
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl">
@@ -332,7 +340,7 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
                 rows={3}
                 placeholder="Refund policy, return window…"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Separate phrases with commas or new lines.
               </p>
             </div>
@@ -372,7 +380,7 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
             <div className="flex items-center justify-between rounded-md border p-3">
               <div className="space-y-1">
                 <p className="text-sm font-medium">Active response</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Disabled responses will be skipped during matching.
                 </p>
               </div>

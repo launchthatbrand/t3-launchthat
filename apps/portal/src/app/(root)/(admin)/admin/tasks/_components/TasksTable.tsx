@@ -34,7 +34,7 @@ import {
 } from "@acme/ui/table";
 
 import { useReorderTasks } from "../_api/tasks";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 
 // Drag handle for the first column
 function DragHandle() {

@@ -16,7 +16,7 @@ import {
   FrontendSinglePostMain,
   FrontendSinglePostSidebar,
 } from "~/components/frontend/FrontendSinglePostLayout";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { useTenant } from "~/context/TenantContext";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 

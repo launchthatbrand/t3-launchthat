@@ -7,7 +7,7 @@ import { Button } from "@acme/ui/button";
 import { FeedFilters } from "~/components/social/FeedFilters";
 import { FeedStream } from "~/components/social";
 import type { FeedType } from "~/components/social";
-import type { FilterValue } from "~/components/shared/EntityList/types";
+import type { FilterValue } from "@acme/ui/entity-list/types";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 import Link from "next/link";
 import { Plus } from "lucide-react";

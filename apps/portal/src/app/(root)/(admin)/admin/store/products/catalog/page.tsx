@@ -12,13 +12,13 @@ import type {
   ColumnDefinition,
   EntityAction,
   FilterConfig,
-} from "~/components/shared/EntityList/types";
+} from "@acme/ui/entity-list/types";
 import { Pencil, PlusCircle } from "lucide-react";
 import React, { useState } from "react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";

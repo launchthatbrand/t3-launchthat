@@ -384,7 +384,7 @@ function ChatSurface({
   return (
     <>
       {isOpen && (
-        <div className="border-border/60 bg-card fixed right-4 bottom-24 z-50 w-full max-w-sm rounded-2xl border shadow-2xl">
+        <div className="border-border/60 bg-card fixed right-4 bottom-20 z-50 w-full max-w-sm rounded-2xl border shadow-2xl">
           <div className="border-border/60 flex items-center justify-between border-b px-4 py-3">
             <div>
               <p className="text-sm font-semibold">

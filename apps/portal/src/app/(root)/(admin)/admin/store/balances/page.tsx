@@ -33,9 +33,9 @@ import {
 import type {
   EntityAction,
   FilterConfig,
-} from "~/components/shared/EntityList/types";
+} from "@acme/ui/entity-list/types";
 import { PaymentMethodForm } from "~/components/admin/PaymentMethodForm";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 
 // Real types from Convex API
 type StoreBalance = Doc<"storeBalances">;

@@ -15,7 +15,9 @@
     "./toast": "./src/toast.tsx",
     "./hooks/*": "./src/hooks/*.tsx",
     "./general/*": "./src/general/*.tsx",
-    "./general": "./src/general/index.ts"
+    "./general": "./src/general/index.ts",
+    "./entity-list": "./src/entity-list/index.ts",
+    "./entity-list/*": "./src/entity-list/*"
   },
   "license": "MIT",
   "scripts": {

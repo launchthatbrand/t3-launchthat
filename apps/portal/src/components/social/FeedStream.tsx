@@ -14,8 +14,8 @@ import type {
   ColumnDefinition,
   EntityAction,
   FilterConfig,
-} from "~/components/shared/EntityList/types";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+} from "@acme/ui/entity-list/types";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { api } from "../../../convex/_generated/api";
 import { EmptyFeedState } from "./EmptyFeedState";
 import { FeedItem } from "./FeedItem";

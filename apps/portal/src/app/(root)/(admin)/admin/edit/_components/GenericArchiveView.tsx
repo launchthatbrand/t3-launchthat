@@ -1,13 +1,14 @@
 "use client";
 
 import type { Doc } from "@/convex/_generated/dataModel";
-import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 import Link from "next/link";
 import { useGetAllPosts } from "@/lib/blog";
 import { formatDistanceToNow } from "date-fns";
 import { Eye, Info, Plus, Sparkles } from "lucide-react";
 
+import type { ColumnDefinition } from "@acme/ui/entity-list";
+import type { EntityAction } from "@acme/ui/entity-list/types";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import {
@@ -17,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import { EntityList } from "@acme/ui/entity-list";
 import {
   Select,
   SelectContent,
@@ -27,7 +29,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 import type { PermalinkSettings } from "./permalink";
-import type { EntityAction } from "~/components/shared/EntityList/types";
 import {
   AdminLayout,
   AdminLayoutContent,
@@ -35,7 +36,6 @@ import {
   AdminLayoutMain,
   AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import { buildPermalink } from "./permalink";
 import { PlaceholderState } from "./PlaceholderState";
@@ -43,7 +43,7 @@ import { PlaceholderState } from "./PlaceholderState";
 type PostDoc = Doc<"posts">;
 type PostTypeDoc = Doc<"postTypes">;
 
-interface ArchiveDisplayRow {
+interface ArchiveDisplayRow extends Record<string, unknown> {
   id: string;
   title: string;
   statusLabel: string;
@@ -139,13 +139,14 @@ export function GenericArchiveView({
       };
     });
   }, [rows, permalinkSettings, postType]);
-  const columns = useMemo<ColumnDef<ArchiveDisplayRow>[]>(
+  const columns = useMemo<ColumnDefinition<ArchiveDisplayRow>[]>(
     () => [
       {
+        id: "title",
         accessorKey: "title",
         header: "Title",
-        cell: ({ row }) => {
-          const item = row.original;
+        sortable: true,
+        cell: (item) => {
           if (item.permalink) {
             return (
               <Link
@@ -160,24 +161,26 @@ export function GenericArchiveView({
         },
       },
       {
+        id: "statusLabel",
         accessorKey: "statusLabel",
         header: "Status",
-        cell: ({ row }) => (
-          <Badge variant={row.original.statusVariant}>
-            {row.original.statusLabel}
-          </Badge>
+        cell: (item) => (
+          <Badge variant={item.statusVariant}>{item.statusLabel}</Badge>
         ),
       },
       {
+        id: "owner",
         accessorKey: "owner",
         header: "Owner",
+        sortable: true,
       },
       {
         id: "updatedAt",
         header: "Updated",
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">
-            {formatDistanceToNow(row.original.updatedAt, { addSuffix: true })}
+        sortable: true,
+        cell: (item) => (
+          <span className="text-muted-foreground text-sm">
+            {formatDistanceToNow(item.updatedAt, { addSuffix: true })}
           </span>
         ),
       },
@@ -256,7 +259,7 @@ export function GenericArchiveView({
                       defaultViewMode="list"
                       enableSearch
                       emptyState={
-                        <div className="py-8 text-center text-muted-foreground">
+                        <div className="text-muted-foreground py-8 text-center">
                           No entries yet. Click “Add New” to get started.
                         </div>
                       }
@@ -277,7 +280,7 @@ export function GenericArchiveView({
         <AdminLayoutSidebar className="border-l p-4">
           <Card>
             <CardHeader className="flex flex-row items-center gap-3">
-              <Info className="h-5 w-5 text-muted-foreground" />
+              <Info className="text-muted-foreground h-5 w-5" />
               <div>
                 <CardTitle className="text-base">Need custom fields?</CardTitle>
                 <CardDescription>
@@ -291,7 +294,7 @@ export function GenericArchiveView({
                   <Sparkles className="mr-2 h-4 w-4" /> Configure Post Types
                 </Link>
               </Button>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 This scaffold reuses the same Shadcn table primitives as the LMS
                 Courses view so every post type feels consistent.
               </p>

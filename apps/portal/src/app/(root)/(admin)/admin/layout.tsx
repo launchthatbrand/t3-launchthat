@@ -1,11 +1,11 @@
 import React, { Suspense } from "react";
 
-import { Providers } from "~/app/providers";
+import Providers from "./providers";
 
 function layout({ children }: { children: React.ReactNode }) {
   return (
     <Suspense fallback={<div className="p-4">Loading…</div>}>
-      {children}
+      <Providers>{children}</Providers>
     </Suspense>
   );
 }

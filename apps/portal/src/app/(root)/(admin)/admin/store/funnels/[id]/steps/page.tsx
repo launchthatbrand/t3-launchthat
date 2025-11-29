@@ -20,7 +20,7 @@ import {
   DialogTrigger,
 } from "@acme/ui/dialog";
 
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { FunnelFlowEditor } from "./_components/FunnelFlowEditor";
 import { FunnelStepForm } from "./_components/FunnelStepForm";
 

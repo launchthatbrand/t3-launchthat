@@ -33,7 +33,7 @@ import {
   AdminLayoutMain,
   AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 
 type PostTypeDoc = Doc<"postTypes">;
 type MediaItemDoc = Doc<"mediaItems"> & { url?: string | null };

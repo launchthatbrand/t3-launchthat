@@ -33,8 +33,8 @@ import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
 
-import type { EntityAction } from "~/components/shared/EntityList/types";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import type { EntityAction } from "@acme/ui/entity-list/types";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 
 // Define the data structure for roles
 type RoleData = Doc<"roles"> & {

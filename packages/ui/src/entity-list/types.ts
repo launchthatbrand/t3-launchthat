@@ -1,5 +1,5 @@
-import { ColumnDef } from "@tanstack/react-table";
 import { ReactNode } from "react";
+import { ColumnDef } from "@tanstack/react-table";
 
 /**
  * Possible view modes for the EntityList
@@ -12,21 +12,15 @@ export type ViewMode = "list" | "grid";
  * Configuration for a column in the EntityList
  * @template T - The type of data being displayed
  */
-export interface ColumnDefinition<T> {
-  /** Unique identifier for the column */
+export interface ColumnDefinition<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> {
   id: string;
-
-  /** Header text to display for the column */
-  header: string;
-
-  /** Key in T to access the data for this column (optional if using cell renderer) */
+  header: ReactNode;
   accessorKey?: keyof T;
-
-  /** Custom cell renderer function (optional) */
   cell?: (item: T) => ReactNode;
-
-  /** Whether this column can be sorted */
   sortable?: boolean;
+  description?: string;
 }
 
 /**
@@ -109,7 +103,7 @@ export interface PaginationConfig {
  * Props for the EntityList component
  * @template T - The type of data being displayed (must be an object)
  */
-export interface EntityListProps<T extends object> {
+export interface EntityListProps<T extends Record<string, unknown>> {
   /** Number of columns at different breakpoints */
   gridColumns?: {
     sm?: number; // Small screens (default: 1)
@@ -127,7 +121,7 @@ export interface EntityListProps<T extends object> {
   enableFooter?: boolean;
 
   /** Column configurations */
-  columns: ColumnDef<T>[];
+  columns: ColumnDefinition<T>[];
 
   /** Filter configurations (optional) */
   filters?: FilterConfig<T>[];
@@ -283,7 +277,7 @@ export interface EntityListFiltersProps<T> {
  * Props for the EntityListView component
  * @template T - The type of data being displayed
  */
-export interface EntityListViewProps<T extends object> {
+export interface EntityListViewProps<T extends Record<string, unknown>> {
   /** Number of columns at different breakpoints */
   gridColumns?: {
     sm?: number; // Small screens (default: 1)
@@ -296,7 +290,7 @@ export interface EntityListViewProps<T extends object> {
   data: T[];
 
   /** Column configurations */
-  columns: ColumnDef<T>[];
+  columns: ColumnDefinition<T>[];
 
   /** Current view mode */
   viewMode: ViewMode;

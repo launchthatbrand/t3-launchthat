@@ -11,7 +11,7 @@ import {
 import type {
   EntityAction,
   FilterConfig,
-} from "~/components/shared/EntityList/types";
+} from "@acme/ui/entity-list/types";
 import React, { useState } from "react";
 
 import { Badge } from "@acme/ui/badge";
@@ -19,7 +19,7 @@ import { Button } from "@acme/ui/button";
 import { ChargebackForm } from "~/components/admin/ChargebackForm";
 import { ColumnDef } from "@tanstack/react-table";
 import { Doc } from "@convex-config/_generated/dataModel";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import Link from "next/link";
 import { api } from "@convex-config/_generated/api";
 import { format } from "date-fns";

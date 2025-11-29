@@ -1,7 +1,15 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+import { ColumnDef } from "@tanstack/react-table";
+import { clsx } from "clsx";
+import { AlertCircle } from "lucide-react";
+
 import { Alert, AlertDescription, AlertTitle } from "@acme/ui/alert";
+import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+
 import type {
+  ColumnDefinition,
   EntityAction,
   EntityListProps,
   FilterConfig,
@@ -10,16 +18,10 @@ import type {
   TabHookResult,
   ViewMode,
 } from "./types";
-import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
-import { useEffect, useMemo, useState } from "react";
-
-import { AlertCircle } from "lucide-react";
-import { ColumnDef } from "@tanstack/react-table";
 import { EntityListFilters } from "./EntityListFilters";
 import { EntityListHeader } from "./EntityListHeader";
 import { EntityListPagination } from "./EntityListPagination";
 import { EntityListView } from "./EntityListView";
-import { clsx } from "clsx";
 
 /**
  * EntityList is a universal component for displaying collections of data
@@ -27,7 +29,7 @@ import { clsx } from "clsx";
  *
  * @template T - The type of data items being displayed (must be an object)
  */
-export function EntityList<T extends object>({
+export function EntityList<T extends Record<string, unknown>>({
   gridColumns,
   data,
   columns,
@@ -331,20 +333,10 @@ export function EntityList<T extends object>({
       {headerSection}
       {filterUI}
       {mainContent}
-      {!customRender && pagination && (
-        <EntityListPagination {...pagination} />
-      )}
+      {!customRender && pagination && <EntityListPagination {...pagination} />}
     </div>
   );
 }
 
 // Re-export types for ease of use
-export type {
-  ColumnDef,
-  EntityAction,
-  EntityListProps,
-  FilterConfig,
-  FilterValue,
-  SortConfig,
-  ViewMode,
-};
+export type { ColumnDef };

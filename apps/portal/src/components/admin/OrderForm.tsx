@@ -32,8 +32,8 @@ import { Separator } from "@acme/ui/separator";
 import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
 
-import type { EntityAction } from "~/components/shared/EntityList/types";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import type { EntityAction } from "@acme/ui/entity-list/types";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { AddProductDialog } from "./AddProductDialog";
 import { AddShippingDialog } from "./AddShippingDialog";
 import { CalendarEventLink } from "./CalendarEventLink";

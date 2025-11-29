@@ -29,7 +29,7 @@ import { useCreateMenu, useMenus, useUpdateMenu } from "./_api/menus";
 import { Button } from "@acme/ui/button";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { Doc } from "@/convex/_generated/dataModel";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import Link from "next/link";

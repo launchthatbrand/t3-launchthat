@@ -17,11 +17,11 @@ import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import {
   ColumnDefinition,
   ViewMode,
-} from "~/components/shared/EntityList/types";
+} from "@acme/ui/entity-list/types";
 import { useCourseAccordionStore } from "~/store/courseAccordionStore";
 
 export default function CourseLandingPage() {

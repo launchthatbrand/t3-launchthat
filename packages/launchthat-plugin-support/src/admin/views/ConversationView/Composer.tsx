@@ -1,18 +1,19 @@
 "use client";
 
+import type { GenericId as Id } from "convex/values";
+import { useState } from "react";
+import { api } from "@portal/convexspec";
+import { useMutation } from "convex/react";
+import { Loader2, SendHorizontal } from "lucide-react";
+
+import { Editor } from "@acme/ui-lexical/components/editor-x/editor";
+import { Button } from "@acme/ui/button";
+import { toast } from "@acme/ui/toast";
+
 import type {
   ContactDoc,
   ConversationSummary,
 } from "../../components/ConversationInspector";
-import { Loader2, SendHorizontal } from "lucide-react";
-
-import { Button } from "@acme/ui/button";
-import { Editor } from "@acme/ui-lexical/components/editor-x/editor";
-import type { GenericId as Id } from "convex/values";
-import { api } from "@portal/convexspec";
-import { toast } from "@acme/ui/toast";
-import { useMutation } from "convex/react";
-import { useState } from "react";
 
 interface ConversationComposerProps {
   organizationId: Id<"organizations">;
@@ -96,19 +97,11 @@ export function ConversationComposer({
   };
 
   return (
-    <div className="space-y-2 p-4">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>
-          {channelLabel}
-          {contactEmail ? ` • ${contactEmail}` : ""}
-        </span>
-        <span>Enter to send, Shift + Enter for newline</span>
-      </div>
-
-      <div className="rounded-xl border bg-card shadow-sm">
+    <div className="space-y-2 p-2">
+      <div className="bg-card rounded-xl border shadow-sm">
         <Editor onTextContentChange={handleTextChange} />
         <div className="flex items-center justify-between border-t px-3 py-2">
-          <div className="text-xs text-muted-foreground">
+          <div className="text-muted-foreground text-xs">
             {conversation.origin === "email"
               ? "Responses will be emailed to the contact."
               : "Responses will appear in the chat widget."}

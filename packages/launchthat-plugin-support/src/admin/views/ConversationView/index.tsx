@@ -1,24 +1,25 @@
 "use client";
 
+import type { GenericId as Id } from "convex/values";
+import type { ImperativePanelHandle } from "react-resizable-panels";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronsLeft, ChevronsRight } from "lucide-react";
+
+import { ResizablePanel, ResizablePanelGroup } from "@acme/ui/resizable";
+
 import type {
   ContactDoc,
   ConversationSummary,
 } from "../../components/ConversationInspector";
-import { ResizablePanel, ResizablePanelGroup } from "@acme/ui/resizable";
-import { useEffect, useMemo, useRef, useState } from "react";
-
 import { ConversationHeader } from "../../components/ConversationHeader";
 import { ConversationInspector } from "../../components/ConversationInspector";
-import { ConversationSidebar } from "./Sidebar";
-import { ConversationTranscript } from "./Transcript";
-import { CustomerDashboard } from "../CustomerDashboard";
-import type { GenericId as Id } from "convex/values";
-import type { ImperativePanelHandle } from "react-resizable-panels";
 import { SUPPORT_COPY } from "../../constants/supportCopy";
 import { useSupportContact } from "../../hooks/useSupportContact";
 import { useSupportConversations } from "../../hooks/useSupportConversations";
 import { useSupportSessionState } from "../../hooks/useSupportSessionState";
+import { CustomerDashboard } from "../CustomerDashboard";
+import { ConversationSidebar } from "./Sidebar";
+import { ConversationTranscript } from "./Transcript";
 
 interface ConversationsViewProps {
   organizationId: Id<"organizations">;
@@ -86,13 +87,13 @@ export function ConversationsView({
   };
 
   return (
-    <div className="flex h-full">
+    <div className="bg-card flex h-full min-h-0">
       <ConversationSidebar
         conversations={conversations}
         activeSessionId={activeSessionId}
         onSelect={handleSelectConversation}
       />
-      <div className="flex h-full w-full flex-col">
+      <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
         <ConversationHeader
           contact={resolvedContact}
           conversation={selectedConversation}
@@ -102,11 +103,15 @@ export function ConversationsView({
         />
         <ResizablePanelGroup
           direction="horizontal"
-          className="w-full flex-1 md:min-w-[450px]"
+          className="flex h-full min-h-0 w-full flex-1 overflow-hidden md:min-w-[450px]"
         >
-          <ResizablePanel defaultSize={showInspector ? 70 : 100} minSize={40}>
+          <ResizablePanel
+            defaultSize={showInspector ? 70 : 100}
+            minSize={40}
+            className="flex h-full min-h-0 overflow-hidden"
+          >
             {activeTab === "messages" ? (
-              <div className="flex h-full">
+              <div className="flex h-full min-h-0 w-full overflow-hidden">
                 {selectedConversation ? (
                   <ConversationTranscript
                     organizationId={organizationId}
@@ -115,7 +120,7 @@ export function ConversationsView({
                     contact={resolvedContact}
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  <div className="text-muted-foreground flex h-full w-full flex-1 items-center justify-center text-sm">
                     {SUPPORT_COPY.transcript.selectPrompt}
                   </div>
                 )}
@@ -130,11 +135,11 @@ export function ConversationsView({
           </ResizablePanel>
           {showInspector ? (
             <>
-              <div className="relative flex items-center">
+              <div className="relative flex h-full items-center">
                 <button
                   type="button"
                   onClick={toggleInspector}
-                  className="absolute -left-8 top-10 z-10 flex h-8 w-8 items-center justify-center rounded-md border bg-background text-muted-foreground shadow-sm transition hover:text-foreground"
+                  className="bg-background text-muted-foreground hover:text-foreground absolute top-10 -left-8 z-10 flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition"
                   aria-label={
                     isInspectorCollapsed
                       ? "Expand inspector"
@@ -156,6 +161,7 @@ export function ConversationsView({
                 collapsible
                 onCollapse={() => setIsInspectorCollapsed(true)}
                 onExpand={() => setIsInspectorCollapsed(false)}
+                className="min-h-0 overflow-auto"
               >
                 <ConversationInspector
                   conversation={selectedConversation}

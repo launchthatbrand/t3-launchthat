@@ -16,14 +16,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import type {
   EntityAction,
   FilterConfig,
-} from "~/components/shared/EntityList/types";
+} from "@acme/ui/entity-list/types";
 import React, { useState } from "react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { CopyText } from "@acme/ui/copy-text";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import type { PDFColumn } from "@acme/ui/pdf-export";
 import { format } from "date-fns";
 import { toast } from "@acme/ui/toast";

@@ -24,8 +24,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import type {
   EntityAction,
   FilterConfig,
-} from "~/components/shared/EntityList/types";
-import { EntityList } from "~/components/shared/EntityList/EntityList";
+} from "@acme/ui/entity-list/types";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 
 // Types for the transfer details page
 type Transfer = Doc<"transfers">;

@@ -3,15 +3,15 @@
 import { useState } from "react";
 import { Plus, X } from "lucide-react";
 
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
-} from "@acme/ui";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
+} from "@acme/ui/command";
 import { Input } from "@acme/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
 
@@ -99,7 +99,7 @@ export function DetachableFilters<T>({
           <Button
             variant="ghost"
             size="sm"
-            className="h-auto p-0 text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground h-auto p-0"
             onClick={() => handleRemoveFilter(filterId)}
           >
             <X className="h-3 w-3" />
@@ -238,16 +238,14 @@ export function DetachableFilters<T>({
                         // For text filters, set an empty string as initial value
                         if (filter.type === "text") {
                           handleFilterValueChange(filter.id, "");
-                        } else if (
-                          filter.type === "select" &&
-                          filter.options &&
-                          filter.options.length > 0
-                        ) {
-                          // For select filters, set the first option as initial value
-                          handleFilterValueChange(
-                            filter.id,
-                            filter.options[0].value,
-                          );
+                        } else if (filter.type === "select") {
+                          const firstOption = filter.options?.[0];
+                          if (firstOption) {
+                            handleFilterValueChange(
+                              filter.id,
+                              firstOption.value,
+                            );
+                          }
                         }
                       }}
                     >

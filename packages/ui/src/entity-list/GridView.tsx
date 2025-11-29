@@ -1,23 +1,17 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
-import {
-  cloneElement,
-  isValidElement,
-  useMemo,
-  type MouseEvent,
-  type ReactElement,
-} from "react";
+import type { MouseEvent, ReactElement } from "react";
+import { cloneElement, isValidElement, useMemo } from "react";
 
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@acme/ui/card";
 import { Checkbox } from "@acme/ui/checkbox";
 
-import type { EntityAction } from "./types";
+import type { ColumnDefinition, EntityAction } from "./types";
 
-export interface GridViewProps<T extends object> {
+export interface GridViewProps<T extends Record<string, unknown>> {
   data: T[];
-  columns: ColumnDef<T>[];
+  columns: ColumnDefinition<T>[];
   onCardClick?: (item: T) => void;
   entityActions?: EntityAction<T>[];
   gridColumns?: { sm?: number; md?: number; lg?: number; xl?: number };
@@ -28,25 +22,18 @@ export interface GridViewProps<T extends object> {
   cardRenderer?: (item: T) => React.ReactNode;
 }
 
-function renderCellValue<T extends object>(column: ColumnDef<T>, item: T) {
+function renderCellValue<T extends Record<string, unknown>>(
+  column: ColumnDefinition<T>,
+  item: T,
+) {
   if (column.cell) {
-    const ctx: any = {
-      row: { original: item },
-      getValue: () => {
-        const key = (column as { accessorKey?: string }).accessorKey;
-        return key ? (item as Record<string, unknown>)[key] : undefined;
-      },
-      column: { columnDef: column },
-    };
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any
-    return (column.cell as any)(ctx);
+    return column.cell(item);
   }
-  const key = (column as { accessorKey?: string }).accessorKey;
-  // eslint-disable-next-line @typescript-eslint/no-base-to-string
-  return key ? String((item as Record<string, unknown>)[key] ?? "") : "";
+  const key = column.accessorKey;
+  return key ? String(item[key] ?? "") : "";
 }
 
-export function GridView<T extends object>({
+export function GridView<T extends Record<string, unknown>>({
   data,
   columns,
   onCardClick,
@@ -79,7 +66,7 @@ export function GridView<T extends object>({
 
   if (data.length === 0) {
     return (
-      <div className="py-8 text-center text-muted-foreground">
+      <div className="text-muted-foreground py-8 text-center">
         No items found
       </div>
     );
@@ -136,7 +123,7 @@ export function GridView<T extends object>({
             onClick={() => onCardClick && onCardClick(item)}
           >
             {selectable && (
-              <div className="absolute right-2 top-2 z-10">
+              <div className="absolute top-2 right-2 z-10">
                 <Checkbox
                   checked={selectedIds.includes(String(item[idField]))}
                   onCheckedChange={() => handleSelectCard(item)}
@@ -157,7 +144,7 @@ export function GridView<T extends object>({
             <CardContent className="space-y-2 pb-4">
               {columns.slice(1).map((column) => (
                 <div key={column.id as string}>
-                  <div className="text-sm font-medium text-muted-foreground">
+                  <div className="text-muted-foreground text-sm font-medium">
                     {typeof column.header === "string"
                       ? column.header
                       : String(
@@ -178,12 +165,16 @@ export function GridView<T extends object>({
                     typeof action.isDisabled === "function"
                       ? action.isDisabled(item)
                       : action.isDisabled;
+                  const resolvedVariant =
+                    action.variant === "primary"
+                      ? "default"
+                      : (action.variant ?? "outline");
 
                   return (
                     <Button
                       key={action.id}
                       size="sm"
-                      variant={action.variant ?? "outline"}
+                      variant={resolvedVariant}
                       onClick={(e) => {
                         e.stopPropagation();
                         action.onClick(item);
