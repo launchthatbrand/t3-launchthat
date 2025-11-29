@@ -36,6 +36,7 @@ import {
 import { toast } from "@acme/ui/toast";
 
 import { SUPPORT_COPY } from "../constants/supportCopy";
+import { AgentModeToggle } from "./AgentModeToggle";
 import {
   ContactInfoRow,
   formatDateTime,
@@ -150,6 +151,12 @@ export function ConversationRightSidebar({
   return (
     <Sidebar {...props}>
       <SidebarContent className="space-y-4 p-4">
+        <AgentModeToggle
+          isAgentMode={isAgentMode}
+          assignedAgentName={assignedAgentName}
+          disabled={!conversation || !organizationId}
+          onToggle={() => void handleToggleMode()}
+        />
         {/* <SidebarGroup>
           <SidebarGroupLabel>Table of Contents</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -279,33 +286,6 @@ export function ConversationRightSidebar({
             <AccordionTrigger className="px-4">Quick actions</AccordionTrigger>
             <AccordionContent>
               <div className="space-y-3 px-4 pt-1 pb-4">
-                <div className="rounded-lg border px-3 py-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-semibold">
-                        {isAgentMode ? "Agent mode" : "Manual mode"}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {isAgentMode
-                          ? "Assistant replies are enabled."
-                          : "Assistant replies are paused for this chat."}
-                      </span>
-                      {assignedAgentName ? (
-                        <span className="text-muted-foreground text-[11px]">
-                          Assigned to {assignedAgentName}
-                        </span>
-                      ) : null}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void handleToggleMode()}
-                      disabled={!conversation || !organizationId}
-                    >
-                      {isAgentMode ? "Pause agent" : "Enable agent"}
-                    </Button>
-                  </div>
-                </div>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     size="sm"
