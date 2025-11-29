@@ -12,9 +12,9 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { Calendar, RadioGroup, RadioGroupItem } from "@acme/ui";
 import { Alert, AlertDescription, AlertTitle } from "@acme/ui/alert";
 import { Button } from "@acme/ui/button";
+import { Calendar } from "@acme/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +34,7 @@ import {
 } from "@acme/ui/form";
 import { Input } from "@acme/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@acme/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -405,7 +406,7 @@ export function EditEventDialog({
                           disabled={form.watch("allDay")}
                         />
                       </FormControl>
-                      <Clock className="ml-2 h-4 w-4 text-muted-foreground" />
+                      <Clock className="text-muted-foreground ml-2 h-4 w-4" />
                     </div>
                     <FormMessage />
                   </FormItem>
@@ -460,7 +461,7 @@ export function EditEventDialog({
                           disabled={form.watch("allDay")}
                         />
                       </FormControl>
-                      <Clock className="ml-2 h-4 w-4 text-muted-foreground" />
+                      <Clock className="text-muted-foreground ml-2 h-4 w-4" />
                     </div>
                     <FormMessage />
                   </FormItem>
@@ -490,7 +491,7 @@ export function EditEventDialog({
                       </SelectContent>
                     </Select>
                   ) : (
-                    <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                    <div className="text-muted-foreground rounded-md border border-dashed p-3 text-sm">
                       No calendars available. Please create a calendar first.
                     </div>
                   )}
@@ -591,7 +592,7 @@ export function EditEventDialog({
                           defaultValue={field.value ? "series" : "single"}
                           className="flex flex-col space-y-1"
                         >
-                          <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormItem className="flex items-center space-y-0 space-x-3">
                             <FormControl>
                               <RadioGroupItem value="single" />
                             </FormControl>
@@ -599,7 +600,7 @@ export function EditEventDialog({
                               This occurrence only
                             </FormLabel>
                           </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormItem className="flex items-center space-y-0 space-x-3">
                             <FormControl>
                               <RadioGroupItem value="series" />
                             </FormControl>

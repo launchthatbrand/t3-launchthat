@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { MultiSelect } from "@acme/ui/components/multi-select";
+import { MultiSelect } from "@acme/ui/multi-select";
 
 function page() {
   return (

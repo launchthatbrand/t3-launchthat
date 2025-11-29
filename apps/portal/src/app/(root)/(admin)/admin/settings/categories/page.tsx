@@ -2,7 +2,6 @@
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import React, { useState } from "react";
-import { EntityList } from "@/components/shared/EntityList/EntityList";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
@@ -10,6 +9,7 @@ import { toast } from "sonner";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@acme/ui/dialog";
+import { EntityList } from "@acme/ui/entity-list";
 import { Input } from "@acme/ui/input";
 import { Textarea } from "@acme/ui/textarea";
 
@@ -145,7 +145,9 @@ const CategoriesPage = () => {
       accessorKey: "postTypes",
       cell: (item: Doc<"categories">) => (
         <div className="flex flex-wrap gap-1">
-          {item.postTypes?.map((type) => <Badge key={type}>{type}</Badge>)}
+          {item.postTypes?.map((type) => (
+            <Badge key={type}>{type}</Badge>
+          ))}
         </div>
       ),
     },
@@ -222,7 +224,7 @@ const CategoriesPage = () => {
                 ))}
               </div>
             </div>
-            {error && <div className="text-sm text-destructive">{error}</div>}
+            {error && <div className="text-destructive text-sm">{error}</div>}
             <div className="flex justify-end gap-2">
               <Button
                 type="button"

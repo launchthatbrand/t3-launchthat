@@ -28,7 +28,7 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@acme/ui";
+} from "@acme/ui/sheet";
 
 import type { RouterKind } from "./types";
 import { FunnelCheckoutForm } from "../../(root)/(admin)/admin/store/funnels/[id]/steps/_components/FunnelCheckoutForm";
@@ -113,7 +113,7 @@ export default function ReactFlowPage() {
         const idx = prev.nodes.findIndex((n) => n.id === routerId);
         if (idx < 0) return prev;
         const routerNode = prev.nodes[idx];
-        if (!routerNode || !routerNode.router) return prev;
+        if (!routerNode?.router) return prev;
         const routes = routerNode.router.routes.map((r) =>
           r.id === routeId ? { ...r, percentage } : r,
         );
@@ -276,7 +276,7 @@ export default function ReactFlowPage() {
             } as Node);
             const srcForCreate =
               route.nodes.length > 0
-                ? route.nodes[route.nodes.length - 1].id
+                ? (route.nodes[route.nodes.length - 1]?.id ?? cfg.id)
                 : cfg.id;
             newEdges.push({
               id: `e${srcForCreate}-${createRouteId}`,

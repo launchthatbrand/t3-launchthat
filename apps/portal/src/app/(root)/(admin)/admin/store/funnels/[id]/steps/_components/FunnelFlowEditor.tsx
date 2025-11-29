@@ -2,34 +2,35 @@
 
 import "@xyflow/react/dist/style.css";
 
+import type { Id } from "@/convex/_generated/dataModel";
+import type { Edge, Node, NodeTypes } from "@xyflow/react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useConvexMutation, useConvexQuery } from "@/hooks/convex";
+import { api } from "@convex-config/_generated/api";
 import {
+  addEdge,
   Background,
   BackgroundVariant,
   Controls,
   MiniMap,
   Position,
   ReactFlow,
-  addEdge,
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import type { Edge, Node, NodeTypes } from "@xyflow/react";
+import dagre from "dagre";
+
+import { Button } from "@acme/ui/button";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@acme/ui";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useConvexMutation, useConvexQuery } from "@/hooks/convex";
+} from "@acme/ui/sheet";
 
-import { Button } from "@acme/ui/button";
 import { FunnelCheckoutForm } from "./FunnelCheckoutForm";
 import { FunnelNode } from "./FunnelNode";
-import type { Id } from "@/convex/_generated/dataModel";
-import { api } from "@convex-config/_generated/api";
-import dagre from "dagre";
 
 const NODE_W = 360;
 const NODE_H = 120;
@@ -58,12 +59,12 @@ function layoutTB(nodes: Node[], edges: Edge[]) {
   return { nodes: layoutedNodes, edges };
 }
 
-type StepInitial = {
+interface StepInitial {
   label?: string;
   position?: number;
   slug?: string;
   config?: Record<string, unknown>;
-};
+}
 
 type StepType = "landing" | "funnelCheckout" | "upsell" | "order_confirmation";
 

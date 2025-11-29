@@ -12,7 +12,6 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { SupportChatWidget } from "launchthat-plugin-support";
 import { useLocalStorage } from "usehooks-ts";
 
-import { SidebarProvider } from "@acme/ui/sidebar";
 import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
 import { Toaster } from "@acme/ui/toast";
 

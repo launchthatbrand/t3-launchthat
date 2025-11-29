@@ -1,12 +1,12 @@
 "use client";
 
+import type { LucideIcon } from "lucide-react";
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import * as LucideIcons from "lucide-react";
 
-import Link from "next/link";
-import { LucideIcon } from "lucide-react";
 import { cn } from "@acme/ui";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
 
 interface NavItem {
   title: string;
@@ -43,7 +43,7 @@ export function AdminNav({ items }: AdminNavProps) {
   };
 
   return (
-    <nav className="h-full border-r bg-background">
+    <nav className="bg-background h-full border-r">
       <div className="flex h-14 items-center border-b px-4">
         <Link
           href="/admin/dashboard"
@@ -100,7 +100,7 @@ export function AdminNav({ items }: AdminNavProps) {
 
               {/* Render child items if menu is open */}
               {item.children && isOpen && (
-                <div className="ml-4 mt-1 flex flex-col gap-1 border-l pl-2">
+                <div className="mt-1 ml-4 flex flex-col gap-1 border-l pl-2">
                   {item.children.map((child) => {
                     const isChildActive =
                       pathname === child.href ||

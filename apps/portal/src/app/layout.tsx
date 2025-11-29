@@ -9,8 +9,6 @@ import { SupportChatWidget } from "launchthat-plugin-support";
 import { cn } from "@acme/ui";
 import StandardLayout from "@acme/ui/layout/StandardLayout";
 
-import { AppSidebar } from "~/components/app-sidebar";
-import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar";
 import { Providers } from "./providers";
 
 // const fontSans = Geist({
