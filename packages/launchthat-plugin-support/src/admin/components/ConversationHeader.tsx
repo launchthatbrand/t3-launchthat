@@ -1,15 +1,17 @@
 "use client";
 
-import { Avatar, AvatarFallback } from "@acme/ui/avatar";
-import { BadgeCheck, Bell, Loader, Share2, UserRound } from "lucide-react";
-import type { ContactDoc, ConversationSummary } from "./ConversationInspector";
-import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import type { ComponentType } from "react";
 import { useCallback, useState } from "react";
+import { BadgeCheck, Bell, Loader, Share2, UserRound } from "lucide-react";
 
+import { Avatar, AvatarFallback } from "@acme/ui/avatar";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import type { ComponentType } from "react";
+import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { toast } from "@acme/ui/toast";
+
+import type { ContactDoc, ConversationSummary } from "./ConversationInspector";
+import { getInitials } from "./shared/contactUtils";
 
 type TabKey = "messages" | "dashboard";
 
@@ -20,16 +22,6 @@ interface ConversationHeaderProps {
   activeTab: TabKey;
   onTabChange: (tab: TabKey) => void;
 }
-
-const initialsFrom = (input?: string) => {
-  if (!input) return "??";
-  return input
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase())
-    .slice(0, 2)
-    .join("");
-};
 
 const StatusPill = ({
   icon: Icon,
@@ -104,18 +96,18 @@ export const ConversationHeader = ({
   }, [name]);
 
   return (
-    <div className="flex h-32 flex-col justify-between border-b bg-background px-6 py-4 pb-0">
+    <div className="bg-background flex h-32 flex-col justify-between border-b px-6 py-4 pb-0">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Avatar className="h-14 w-14">
-            <AvatarFallback>{initialsFrom(name)}</AvatarFallback>
+            <AvatarFallback>{getInitials(name)}</AvatarFallback>
           </Avatar>
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-semibold">{name}</h2>
               <Badge variant="outline">{company}</Badge>
             </div>
-            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+            <div className="text-muted-foreground flex flex-wrap gap-3 text-sm">
               <span>{email}</span>
               {contact?.phone ? (
                 <>

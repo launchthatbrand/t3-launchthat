@@ -1,7 +1,6 @@
 "use client";
 
 import type { GenericId as Id } from "convex/values";
-import type { ComponentType } from "react";
 import { useCallback } from "react";
 import {
   BadgeCheck,
@@ -31,6 +30,11 @@ import { Separator } from "@acme/ui/separator";
 import { toast } from "@acme/ui/toast";
 
 import { SUPPORT_COPY } from "../constants/supportCopy";
+import {
+  ContactInfoRow,
+  formatDateTime,
+  getInitials,
+} from "./shared/contactUtils";
 
 export interface ConversationSummary {
   sessionId: string;
@@ -70,21 +74,6 @@ export interface ConversationInspectorProps {
   fallbackEmail?: string;
   organizationName?: string;
 }
-
-const formatDateTime = (value?: number) => {
-  if (!value) return "—";
-  return new Date(value).toLocaleString();
-};
-
-const initialsFrom = (input?: string) => {
-  if (!input) return "??";
-  return input
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase())
-    .slice(0, 2)
-    .join("");
-};
 
 export const ConversationInspector = ({
   conversation,
@@ -126,7 +115,7 @@ export const ConversationInspector = ({
           <Card>
             <CardHeader className="flex flex-row items-center gap-4 space-y-0">
               <Avatar className="h-12 w-12">
-                <AvatarFallback>{initialsFrom(contactName)}</AvatarFallback>
+                <AvatarFallback>{getInitials(contactName)}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col gap-1">
                 <CardTitle className="text-lg">{contactName}</CardTitle>
@@ -147,13 +136,17 @@ export const ConversationInspector = ({
               </div>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <InfoRow icon={Mail} label="Email" value={contactEmail ?? "—"} />
-              <InfoRow
+              <ContactInfoRow
+                icon={Mail}
+                label="Email"
+                value={contactEmail ?? "—"}
+              />
+              <ContactInfoRow
                 icon={Phone}
                 label="Phone"
                 value={contact?.phone ?? "—"}
               />
-              <InfoRow
+              <ContactInfoRow
                 icon={MapPin}
                 label="Location"
                 value={
@@ -172,7 +165,7 @@ export const ConversationInspector = ({
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-3 px-4 pt-1 pb-4 text-sm">
-                  <InfoRow
+                  <ContactInfoRow
                     icon={Hash}
                     label="Session"
                     value={
@@ -181,7 +174,7 @@ export const ConversationInspector = ({
                         : SUPPORT_COPY.inspector.sessionPlaceholder
                     }
                   />
-                  <InfoRow
+                  <ContactInfoRow
                     icon={MessageSquare}
                     label="Messages"
                     value={
@@ -190,17 +183,17 @@ export const ConversationInspector = ({
                         : "—"
                     }
                   />
-                  <InfoRow
+                  <ContactInfoRow
                     icon={CalendarClock}
                     label="Started"
                     value={formatDateTime(conversation?.firstAt)}
                   />
-                  <InfoRow
+                  <ContactInfoRow
                     icon={Clock}
                     label="Last activity"
                     value={formatDateTime(conversation?.lastAt)}
                   />
-                  <InfoRow
+                  <ContactInfoRow
                     icon={BadgeCheck}
                     label="Assigned agent"
                     value={
@@ -300,21 +293,3 @@ export const ConversationInspector = ({
     </div>
   );
 };
-
-interface InfoRowProps {
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-}
-
-const InfoRow = ({ icon: Icon, label, value }: InfoRowProps) => (
-  <div className="flex items-center gap-3 text-sm">
-    <Icon className="text-muted-foreground h-4 w-4" />
-    <div className="flex flex-col">
-      <span className="text-muted-foreground text-[11px] tracking-wide uppercase">
-        {label}
-      </span>
-      <span className="text-foreground">{value}</span>
-    </div>
-  </div>
-);

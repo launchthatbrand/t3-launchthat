@@ -13,8 +13,8 @@ import {
 } from "@acme/ui/sidebar";
 import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
-import type { ConversationSummary } from "../../components/ConversationInspector";
-import { SUPPORT_COPY } from "../../constants/supportCopy";
+import type { ConversationSummary } from "../components/ConversationInspector";
+import { SUPPORT_COPY } from "../constants/supportCopy";
 
 type SidebarFilter = "mine" | "unassigned" | "all";
 
@@ -24,7 +24,7 @@ interface ConversationSidebarProps {
   onSelect: (sessionId: string) => void;
 }
 
-export function ConversationSidebar({
+export function ConversationLeftSidebar({
   conversations,
   activeSessionId,
   onSelect,

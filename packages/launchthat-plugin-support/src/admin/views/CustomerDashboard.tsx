@@ -14,11 +14,7 @@ import type {
   ContactDoc,
   ConversationSummary,
 } from "../components/ConversationInspector";
-
-const formatDateTime = (value?: number) => {
-  if (!value) return "—";
-  return new Date(value).toLocaleString();
-};
+import { formatDateTime } from "../components/shared/contactUtils";
 
 export function CustomerDashboard({
   contact,
@@ -52,7 +48,7 @@ export function CustomerDashboard({
             value={contact?.company ?? tenantName ?? "Unknown"}
           />
           <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            <p className="text-muted-foreground text-xs tracking-wide uppercase">
               Tags
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -82,9 +78,9 @@ export function CustomerDashboard({
             value={`${totalMessages} message${totalMessages === 1 ? "" : "s"}`}
           />
           <Separator />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             Conversation status:{" "}
-            <span className="font-medium text-foreground">
+            <span className="text-foreground font-medium">
               {conversation?.lastRole === "user"
                 ? "Waiting on team"
                 : "Assistant responded"}
@@ -99,9 +95,6 @@ export function CustomerDashboard({
 const DetailRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex items-center justify-between gap-4 text-sm">
     <span className="text-muted-foreground">{label}</span>
-    <span className="text-right font-medium text-foreground">{value}</span>
+    <span className="text-foreground text-right font-medium">{value}</span>
   </div>
 );
-
-
-

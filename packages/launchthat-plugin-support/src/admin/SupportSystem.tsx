@@ -16,14 +16,13 @@ import type {
   ContactDoc,
   ConversationSummary,
 } from "./components/ConversationInspector";
-import { ConversationSidebar } from "./components/ConversationSidebar";
+import { ConversationLeftSidebar } from "./components/ConversationLeftSidebar";
+import { ConversationRightSidebar } from "./components/ConversationRightSidebar";
 import { useSupportConversations } from "./hooks/useSupportConversations";
-import { ConversationsView } from "./views/ConversationView";
-import { ConversationSidebar as ConversationRightSidebar } from "./views/ConversationView/Sidebar";
+import { TestView } from "./views/ConversationsView";
 import { DashboardView } from "./views/DashboardView";
 import { ResponsesView } from "./views/ResponsesView";
 import { SettingsView } from "./views/SettingsView";
-import { TestView } from "./views/TestView";
 
 export interface SupportSystemProps {
   organizationId: Id<"organizations">;
@@ -144,7 +143,7 @@ export function SupportSystem({
   return (
     <SidebarProvider className="SIDEBAR_PROVIDER relative max-h-[calc(100vh-56px)] min-h-0 flex-1 overflow-hidden bg-red-500">
       {routeKey === "conversations" && (
-        <ConversationRightSidebar
+        <ConversationLeftSidebar
           conversations={conversations}
           activeSessionId={testSessionId}
           onSelect={updateTestSessionId}
@@ -183,7 +182,7 @@ export function SupportSystem({
         {content}
       </SidebarInset>
       {routeKey === "conversations" && (
-        <ConversationSidebar
+        <ConversationRightSidebar
           side="right"
           className="absolute"
           conversation={sidebarConversation}

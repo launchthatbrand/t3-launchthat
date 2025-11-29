@@ -10,10 +10,7 @@ import { Editor } from "@acme/ui-lexical/components/editor-x/editor";
 import { Button } from "@acme/ui/button";
 import { toast } from "@acme/ui/toast";
 
-import type {
-  ContactDoc,
-  ConversationSummary,
-} from "../../components/ConversationInspector";
+import type { ContactDoc, ConversationSummary } from "./ConversationInspector";
 
 interface ConversationComposerProps {
   organizationId: Id<"organizations">;

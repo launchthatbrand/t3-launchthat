@@ -11,8 +11,8 @@ import type {
   ContactDoc,
   ConversationSummary,
 } from "../components/ConversationInspector";
+import { ConversationComposer } from "../components/Composer";
 import { useSupportContact } from "../hooks/useSupportContact";
-import { ConversationComposer } from "./ConversationView/Composer";
 
 type SupportMessage = {
   _id: string;
@@ -22,52 +22,6 @@ type SupportMessage = {
   messageType?: "chat" | "email_inbound" | "email_outbound";
   agentName?: string;
 };
-
-const MOCK_MESSAGE_COUNT = 28;
-
-const MOCK_MESSAGES: SupportMessage[] = Array.from(
-  { length: MOCK_MESSAGE_COUNT },
-  (_, index) => {
-    const isUser = index % 2 === 0;
-    return {
-      _id: `mock-${index}`,
-      role: isUser ? "user" : "assistant",
-      content: isUser
-        ? `User message ${index + 1}. I have a question about enrollment timelines and billing cycles. Could you clarify the steps again?`
-        : `Assistant response ${index + 1}. Absolutely! Here's a detailed explanation so you have everything you need:\n\n1. Navigate to the enrollment section.\n2. Choose your preferred plan.\n3. Confirm details and submit.\n\nLet me know if you'd like screenshots or additional guidance.`,
-      createdAt: Date.now() - (MOCK_MESSAGE_COUNT - index) * 60_000,
-      messageType: "chat",
-      agentName: isUser ? undefined : "Support Agent",
-    };
-  },
-);
-
-const fallbackConversation: ConversationSummary = {
-  sessionId: "test-session",
-  contactId: "test-contact-id",
-  contactName: "Test Contact",
-  contactEmail: "test@example.com",
-  lastMessage:
-    MOCK_MESSAGES[MOCK_MESSAGES.length - 1]?.content ??
-    "Thanks for the clarification!",
-  origin: "chat",
-  lastRole: "assistant",
-  lastAt: Date.now(),
-  firstAt: Date.now(),
-  totalMessages: MOCK_MESSAGES.length,
-  mode: "agent",
-};
-
-const buildFallbackContact = (
-  organizationId: Id<"organizations">,
-): ContactDoc => ({
-  _id: "test-contact-id" as Id<"contacts">,
-  organizationId,
-  fullName: "Test Contact",
-  email: "test@example.com",
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
-});
 
 interface TestViewProps {
   organizationId: Id<"organizations">;
@@ -103,43 +57,52 @@ export function TestView({
     return conversations[0];
   }, [conversations, activeSessionId]);
 
-  const conversationForComposer = selectedConversation ?? fallbackConversation;
-
   const contactDoc = useSupportContact(
     selectedConversation?.contactId
       ? (selectedConversation.contactId as Id<"contacts">)
       : undefined,
   );
 
-  const contactForComposer: ContactDoc =
+  const contactForComposer: ContactDoc | null =
     contactDoc ??
     (selectedConversation
       ? {
           _id: (selectedConversation.contactId ??
-            "test-contact-id") as Id<"contacts">,
+            "placeholder-contact") as Id<"contacts">,
           organizationId,
           fullName: selectedConversation.contactName ?? "Unknown visitor",
           email: selectedConversation.contactEmail ?? undefined,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         }
-      : buildFallbackContact(organizationId));
+      : null);
+
+  const selectedSessionId = selectedConversation?.sessionId ?? null;
 
   const messages =
-    (useQuery(api.plugins.support.queries.listMessages, {
-      organizationId,
-      sessionId: conversationForComposer.sessionId,
-    }) as SupportMessage[] | undefined) ?? [];
+    (useQuery(
+      api.plugins.support.queries.listMessages,
+      selectedSessionId
+        ? {
+            organizationId,
+            sessionId: selectedSessionId,
+          }
+        : "skip",
+    ) as SupportMessage[] | undefined) ?? [];
 
-  const renderedMessages =
-    selectedConversation && conversations.length > 0 ? messages : MOCK_MESSAGES;
+  const hasRenderableConversation =
+    Boolean(selectedConversation) && conversations.length > 0;
+
+  const renderedMessages: SupportMessage[] = hasRenderableConversation
+    ? messages
+    : [];
 
   const listRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!listRef.current) return;
     listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [renderedMessages.length, conversationForComposer.sessionId]);
+  }, [renderedMessages.length, selectedSessionId]);
 
   useEffect(() => {
     onConversationChange?.(selectedConversation, contactDoc ?? null);
@@ -193,8 +156,8 @@ export function TestView({
           {selectedConversation ? (
             <ConversationComposer
               organizationId={organizationId}
-              sessionId={conversationForComposer.sessionId}
-              conversation={conversationForComposer}
+              sessionId={selectedConversation.sessionId}
+              conversation={selectedConversation}
               contact={contactForComposer}
             />
           ) : (

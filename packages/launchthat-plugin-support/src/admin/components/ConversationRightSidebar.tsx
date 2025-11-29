@@ -31,174 +31,16 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarRail,
 } from "@acme/ui/sidebar";
 import { toast } from "@acme/ui/toast";
 
 import { SUPPORT_COPY } from "../constants/supportCopy";
-
-const formatDateTime = (value?: number) => {
-  if (!value) return "—";
-  return new Date(value).toLocaleString();
-};
-
-const initialsFrom = (input?: string) => {
-  if (!input) return "??";
-  return input
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase())
-    .slice(0, 2)
-    .join("");
-};
-
-// This is sample data.
-const data = {
-  navMain: [
-    {
-      title: "Getting Started",
-      url: "#",
-      items: [
-        {
-          title: "Installation",
-          url: "#",
-        },
-        {
-          title: "Project Structure",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Building Your Application",
-      url: "#",
-      items: [
-        {
-          title: "Routing",
-          url: "#",
-        },
-        {
-          title: "Data Fetching",
-          url: "#",
-          isActive: true,
-        },
-        {
-          title: "Rendering",
-          url: "#",
-        },
-        {
-          title: "Caching",
-          url: "#",
-        },
-        {
-          title: "Styling",
-          url: "#",
-        },
-        {
-          title: "Optimizing",
-          url: "#",
-        },
-        {
-          title: "Configuring",
-          url: "#",
-        },
-        {
-          title: "Testing",
-          url: "#",
-        },
-        {
-          title: "Authentication",
-          url: "#",
-        },
-        {
-          title: "Deploying",
-          url: "#",
-        },
-        {
-          title: "Upgrading",
-          url: "#",
-        },
-        {
-          title: "Examples",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "API Reference",
-      url: "#",
-      items: [
-        {
-          title: "Components",
-          url: "#",
-        },
-        {
-          title: "File Conventions",
-          url: "#",
-        },
-        {
-          title: "Functions",
-          url: "#",
-        },
-        {
-          title: "next.config.js Options",
-          url: "#",
-        },
-        {
-          title: "CLI",
-          url: "#",
-        },
-        {
-          title: "Edge Runtime",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Architecture",
-      url: "#",
-      items: [
-        {
-          title: "Accessibility",
-          url: "#",
-        },
-        {
-          title: "Fast Refresh",
-          url: "#",
-        },
-        {
-          title: "Next.js Compiler",
-          url: "#",
-        },
-        {
-          title: "Supported Browsers",
-          url: "#",
-        },
-        {
-          title: "Turbopack",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Community",
-      url: "#",
-      items: [
-        {
-          title: "Contribution Guide",
-          url: "#",
-        },
-      ],
-    },
-  ],
-};
+import {
+  ContactInfoRow,
+  formatDateTime,
+  getInitials,
+} from "./shared/contactUtils";
 
 export interface ConversationSummary {
   sessionId: string;
@@ -240,7 +82,7 @@ export interface ConversationSidebarProps {
   organizationId?: Id<"organizations">;
 }
 
-export function ConversationSidebar({
+export function ConversationRightSidebar({
   conversation,
   contact,
   fallbackName,
@@ -341,7 +183,7 @@ export function ConversationSidebar({
         <Card>
           <CardHeader className="flex flex-row items-center gap-4 space-y-0">
             <Avatar className="h-12 w-12">
-              <AvatarFallback>{initialsFrom(contactName)}</AvatarFallback>
+              <AvatarFallback>{getInitials(contactName)}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col gap-1">
               <CardTitle className="text-lg">{contactName}</CardTitle>
@@ -362,9 +204,17 @@ export function ConversationSidebar({
             </div>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <InfoRow icon={Mail} label="Email" value={contactEmail ?? "—"} />
-            <InfoRow icon={Phone} label="Phone" value={contact?.phone ?? "—"} />
-            <InfoRow
+            <ContactInfoRow
+              icon={Mail}
+              label="Email"
+              value={contactEmail ?? "—"}
+            />
+            <ContactInfoRow
+              icon={Phone}
+              label="Phone"
+              value={contact?.phone ?? "—"}
+            />
+            <ContactInfoRow
               icon={MapPin}
               label="Location"
               value={
@@ -383,7 +233,7 @@ export function ConversationSidebar({
             </AccordionTrigger>
             <AccordionContent>
               <div className="space-y-3 px-4 pt-1 pb-4 text-sm">
-                <InfoRow
+                <ContactInfoRow
                   icon={Hash}
                   label="Session"
                   value={
@@ -392,7 +242,7 @@ export function ConversationSidebar({
                       : SUPPORT_COPY.inspector.sessionPlaceholder
                   }
                 />
-                <InfoRow
+                <ContactInfoRow
                   icon={MessageSquare}
                   label="Messages"
                   value={
@@ -401,12 +251,12 @@ export function ConversationSidebar({
                       : "—"
                   }
                 />
-                <InfoRow
+                <ContactInfoRow
                   icon={CalendarClock}
                   label="Started"
                   value={formatDateTime(conversation?.firstAt)}
                 />
-                <InfoRow
+                <ContactInfoRow
                   icon={Clock}
                   label="Last activity"
                   value={formatDateTime(conversation?.lastAt)}
@@ -536,15 +386,3 @@ interface InfoRowProps {
   label: string;
   value: string;
 }
-
-const InfoRow = ({ icon: Icon, label, value }: InfoRowProps) => (
-  <div className="flex items-center gap-3 text-sm">
-    <Icon className="text-muted-foreground h-4 w-4" />
-    <div className="flex flex-col">
-      <span className="text-muted-foreground text-[11px] tracking-wide uppercase">
-        {label}
-      </span>
-      <span className="text-foreground">{value}</span>
-    </div>
-  </div>
-);

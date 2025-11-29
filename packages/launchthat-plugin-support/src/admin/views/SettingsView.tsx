@@ -23,37 +23,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
 
-import { supportChatSettingsOptionKey } from "../../settings";
+import type { SupportChatSettings } from "../../settings";
+import {
+  defaultSupportChatSettings,
+  supportChatSettingsOptionKey,
+} from "../../settings";
 
-interface SupportSettingsState {
-  requireContact: boolean;
-  fields: {
-    fullName: boolean;
-    email: boolean;
-    phone: boolean;
-    company: boolean;
-  };
-  introHeadline: string;
-  welcomeMessage: string;
-  privacyMessage: string;
-}
-
-const baseSupportSettings: SupportSettingsState = {
-  requireContact: true,
-  fields: {
-    fullName: true,
-    email: true,
-    phone: false,
-    company: false,
-  },
-  introHeadline: "Before we get started",
-  welcomeMessage:
-    "Tell us a bit more about yourself so we can personalize your experience.",
-  privacyMessage:
-    "We’ll use this information to reply to your questions and keep you updated.",
-};
-
-const fieldLabels: Record<keyof SupportSettingsState["fields"], string> = {
+const fieldLabels: Record<keyof SupportChatSettings["fields"], string> = {
   fullName: "Full name",
   email: "Email",
   phone: "Phone",
@@ -61,12 +37,12 @@ const fieldLabels: Record<keyof SupportSettingsState["fields"], string> = {
 };
 
 const mergeSupportSettings = (
-  patch?: Partial<SupportSettingsState>,
-): SupportSettingsState => ({
-  ...baseSupportSettings,
+  patch?: Partial<SupportChatSettings>,
+): SupportChatSettings => ({
+  ...defaultSupportChatSettings,
   ...patch,
   fields: {
-    ...baseSupportSettings.fields,
+    ...defaultSupportChatSettings.fields,
     ...(patch?.fields ?? {}),
   },
 });
@@ -92,7 +68,7 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
   const beginDomainVerification = useMutation(
     api.plugins.support.mutations.beginDomainVerification,
   );
-  const [formState, setFormState] = useState<SupportSettingsState>(
+  const [formState, setFormState] = useState<SupportChatSettings>(
     mergeSupportSettings(),
   );
   const [isSaving, setIsSaving] = useState(false);
@@ -104,10 +80,10 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
   const [isDomainMutationPending, setIsDomainMutationPending] = useState(false);
   const [isTestingInbound, setIsTestingInbound] = useState(false);
 
-  const typedMetaValue: Partial<SupportSettingsState> | undefined =
+  const typedMetaValue: Partial<SupportChatSettings> | undefined =
     optionQueryResult && typeof optionQueryResult === "object"
       ? (optionQueryResult.metaValue as
-          | Partial<SupportSettingsState>
+          | Partial<SupportChatSettings>
           | undefined)
       : undefined;
 
@@ -126,7 +102,7 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
     return toggles.filter(Boolean).length;
   }, [formState.fields]);
 
-  const handleToggleField = (field: keyof SupportSettingsState["fields"]) => {
+  const handleToggleField = (field: keyof SupportChatSettings["fields"]) => {
     setFormState((prev) => ({
       ...prev,
       fields: {
@@ -279,7 +255,7 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
     <div className="space-y-6 p-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold">Support settings</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Control how the floating assistant behaves and which contact details
           are captured.
         </p>
@@ -324,9 +300,9 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
                 <p className="text-sm font-medium">Fields to collect</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {(
-                    Object.keys(
-                      formState.fields,
-                    ) as (keyof SupportSettingsState["fields"])[]
+                    Object.keys(formState.fields) as Array<
+                      keyof SupportChatSettings["fields"]
+                    >
                   ).map((fieldKey) => (
                     <label
                       key={fieldKey}
@@ -341,7 +317,7 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
                   ))}
                 </div>
                 {activeFieldCount === 0 && (
-                  <p className="text-xs text-destructive">
+                  <p className="text-destructive text-xs">
                     Enable at least one field so you can capture contact info.
                   </p>
                 )}
@@ -435,7 +411,7 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
                   }
                   rows={3}
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Displayed below the form to explain how visitor details are
                   used.
                 </p>
@@ -500,12 +476,12 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
                     <span className="sr-only">Copy alias</span>
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Share this address or set up a forwarder to capture messages
                   without connecting a custom domain.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
                 <span>Deliverability status:</span>
                 <Badge variant="outline">{verificationStatus}</Badge>
                 {emailSettings?.isCustomDomainConnected && (
@@ -576,7 +552,7 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
                         key={`${record.type}-${record.host}`}
                         className="space-y-1 rounded-md border border-dashed p-3"
                       >
-                        <div className="flex flex-wrap items-center gap-2 text-xs uppercase text-muted-foreground">
+                        <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs uppercase">
                           <span>{record.type}</span>
                           <span>record</span>
                         </div>
@@ -611,13 +587,13 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
                       </div>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     Add these records to your DNS provider, then return to this
                     page to confirm once propagation finishes.
                   </p>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   DNS records will appear here once you connect a domain.
                 </p>
               )}

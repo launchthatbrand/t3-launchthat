@@ -14,20 +14,17 @@ import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 
 import type { SupportChatSettings } from "../settings";
-import { defaultSupportChatSettings } from "../settings";
+import type { ChatHistoryMessage } from "./hooks/useSupportChatHistory";
+import type { StoredSupportContact } from "./supportChat/utils";
+import { useSupportChatHistory } from "./hooks/useSupportChatHistory";
+import { useSupportChatSession } from "./hooks/useSupportChatSession";
+import { useSupportChatSettings } from "./hooks/useSupportChatSettings";
+import { useSupportContactStorage } from "./hooks/useSupportContactStorage";
 
 export interface SupportChatWidgetProps {
   organizationId?: string | null;
   tenantName?: string;
   apiPath?: string;
-}
-
-interface StoredMessage {
-  _id: string;
-  role: "user" | "assistant";
-  content: string;
-  createdAt: number;
-  agentName?: string;
 }
 
 type LiveMessage = {
@@ -38,11 +35,7 @@ type LiveMessage = {
   agentName?: string;
 };
 
-interface StoredContact {
-  contactId: string;
-  fullName?: string;
-  email?: string;
-}
+type StoredContact = StoredSupportContact;
 
 interface ContactFormState {
   fullName: string;
@@ -57,13 +50,6 @@ const defaultContactForm: ContactFormState = {
   phone: "",
   company: "",
 };
-
-function generateSessionId(organizationId: string) {
-  if (typeof crypto?.randomUUID === "function") {
-    return `support-${organizationId}-${crypto.randomUUID()}`;
-  }
-  return `support-${organizationId}-${Date.now()}`;
-}
 
 export function SupportChatWidget({
   organizationId,
@@ -89,163 +75,22 @@ interface SupportChatWidgetInnerProps {
   apiPath: string;
 }
 
-function readStoredContact(key: string): StoredContact | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as StoredContact) : null;
-  } catch {
-    return null;
-  }
-}
-
 function SupportChatWidgetInner({
   organizationId,
   tenantName,
   apiPath,
 }: SupportChatWidgetInnerProps) {
-  const sessionStorageKey = useMemo(
-    () => `support-session-${organizationId}`,
-    [organizationId],
-  );
-  const contactStorageKey = useMemo(
-    () => `support-contact-${organizationId}`,
-    [organizationId],
-  );
-
-  const [sessionId, setSessionId] = useState<string>(() => {
-    if (typeof window === "undefined") {
-      return generateSessionId(organizationId);
-    }
-    const stored = window.localStorage.getItem(sessionStorageKey);
-    if (stored) {
-      return stored;
-    }
-    const fresh = generateSessionId(organizationId);
-    window.localStorage.setItem(sessionStorageKey, fresh);
-    return fresh;
-  });
-  const [initialMessages, setInitialMessages] = useState<
-    Array<{ id: string; role: "user" | "assistant"; content: string }>
-  >([]);
-  const [isBootstrapped, setIsBootstrapped] = useState(false);
-  const [settings, setSettings] = useState<SupportChatSettings>(
-    defaultSupportChatSettings,
-  );
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const [contact, setContact] = useState<StoredContact | null>(() =>
-    readStoredContact(contactStorageKey),
+  const { sessionId } = useSupportChatSession(organizationId);
+  const { contact, saveContact } = useSupportContactStorage(organizationId);
+  const { settings, isLoading: settingsLoading } =
+    useSupportChatSettings(organizationId);
+  const { initialMessages, isBootstrapped } = useSupportChatHistory(
+    apiPath,
+    organizationId,
+    sessionId,
   );
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const stored = window.localStorage.getItem(sessionStorageKey);
-    if (stored) {
-      setSessionId(stored);
-    } else {
-      const fresh = generateSessionId(organizationId);
-      window.localStorage.setItem(sessionStorageKey, fresh);
-      setSessionId(fresh);
-    }
-  }, [organizationId, sessionStorageKey]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const stored = readStoredContact(contactStorageKey);
-    if (stored) {
-      setContact(stored);
-    }
-  }, [contactStorageKey]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadHistory() {
-      setIsBootstrapped(false);
-      try {
-        const url = new URL(apiPath, window.location.origin);
-        url.searchParams.set("organizationId", organizationId);
-        url.searchParams.set("sessionId", sessionId);
-        const response = await fetch(url.toString(), { method: "GET" });
-        if (!response.ok) {
-          throw new Error("Failed to load chat history");
-        }
-        const data: { messages: StoredMessage[] } = await response.json();
-        if (!cancelled) {
-          const normalized =
-            data.messages?.map((message) => ({
-              id: message._id,
-              role: message.role,
-              content: message.content,
-            })) ?? [];
-          setInitialMessages(normalized);
-        }
-      } catch (error) {
-        console.error("[support-chat] failed to load history", error);
-        if (!cancelled) {
-          setInitialMessages([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsBootstrapped(true);
-        }
-      }
-    }
-    if (sessionId) {
-      void loadHistory();
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [apiPath, organizationId, sessionId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadSettings() {
-      try {
-        const response = await fetch(
-          `/api/support-chat/settings?organizationId=${organizationId}`,
-        );
-        if (!response.ok) {
-          throw new Error("Failed to load support settings");
-        }
-        const data = await response.json();
-        if (!cancelled) {
-          setSettings({
-            ...defaultSupportChatSettings,
-            ...(data.settings ?? {}),
-          });
-        }
-      } catch (error) {
-        console.error("[support-chat] settings error", error);
-        if (!cancelled) {
-          setSettings(defaultSupportChatSettings);
-        }
-      } finally {
-        if (!cancelled) {
-          setSettingsLoaded(true);
-        }
-      }
-    }
-    void loadSettings();
-    return () => {
-      cancelled = true;
-    };
-  }, [organizationId]);
-
-  const handleContactSaved = (next: StoredContact) => {
-    setContact(next);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(contactStorageKey, JSON.stringify(next));
-    }
-  };
-
-  if (!isBootstrapped || !settingsLoaded) {
+  if (!isBootstrapped || settingsLoading) {
     return (
       <button
         type="button"
@@ -268,7 +113,7 @@ function SupportChatWidgetInner({
       initialMessages={initialMessages}
       settings={settings}
       contact={contact}
-      onContactSaved={handleContactSaved}
+      onContactSaved={saveContact}
     />
   );
 }
@@ -278,11 +123,7 @@ interface ChatSurfaceProps {
   sessionId: string;
   tenantName: string;
   apiPath: string;
-  initialMessages: Array<{
-    id: string;
-    role: "user" | "assistant";
-    content: string;
-  }>;
+  initialMessages: ChatHistoryMessage[];
   settings: SupportChatSettings;
   contact: StoredContact | null;
   onContactSaved: (contact: StoredContact) => void;
