@@ -13,6 +13,7 @@ import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 
+import type { EntityAction } from "@acme/ui/entity-list/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,16 +34,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { Separator } from "@acme/ui/separator";
 
-import type { EntityAction } from "@acme/ui/entity-list/types";
 import type {
   PluginDefinition,
   PluginPostTypeConfig,
 } from "~/lib/plugins/types";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { useTenant } from "~/context/TenantContext";
 import { pluginDefinitions } from "~/lib/plugins/definitions";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import {
   useCreatePostType,
   useDisablePostTypeAccess,
@@ -99,12 +100,13 @@ export default function PluginsPage() {
   );
   const tenant = useTenant();
   const tenantId = tenant?._id;
+  const organizationId = getTenantOrganizationId(tenant);
 
   const plugins = useMemo<PluginDefinition[]>(() => pluginDefinitions, []);
 
   const pluginOptions = useQuery(
     api.core.options.getByType,
-    tenantId ? { orgId: tenantId, type: "site" } : "skip",
+    organizationId ? { orgId: organizationId, type: "site" } : "skip",
   );
 
   const pluginOptionMap = useMemo(() => {
@@ -286,7 +288,7 @@ export default function PluginsPage() {
         cell: ({ row }) => (
           <div className="flex flex-col">
             <span className="font-medium">{row.original.name}</span>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-muted-foreground text-sm">
               {row.original.description}
             </span>
           </div>
@@ -306,11 +308,11 @@ export default function PluginsPage() {
         header: "Missing Post Types",
         cell: ({ row }) =>
           row.original.missingSlugs.length ? (
-            <span className="text-sm text-muted-foreground">
+            <span className="text-muted-foreground text-sm">
               {row.original.missingSlugs.join(", ")}
             </span>
           ) : (
-            <span className="text-sm text-muted-foreground">None</span>
+            <span className="text-muted-foreground text-sm">None</span>
           ),
       },
     ],
@@ -373,12 +375,12 @@ export default function PluginsPage() {
               <CardDescription>{plugin.description}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 {plugin.longDescription}
               </p>
               <div>
                 <p className="text-sm font-medium">Feature Highlights</p>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                <ul className="text-muted-foreground mt-2 list-disc space-y-1 pl-5 text-sm">
                   {plugin.features.map((feature) => (
                     <li key={feature}>{feature}</li>
                   ))}
@@ -399,7 +401,7 @@ export default function PluginsPage() {
                       >
                         <div>
                           <p className="font-medium">{type.name}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-muted-foreground text-xs">
                             Slug: {type.slug}
                           </p>
                         </div>
@@ -454,7 +456,7 @@ export default function PluginsPage() {
                   >
                     {isPending ? "Provisioning…" : "Enable Plugin"}
                   </Button>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     {plugin.missingSlugs.length
                       ? `Needs ${plugin.missingSlugs.length} post type(s)`
                       : "Ready to enable"}
@@ -465,7 +467,7 @@ export default function PluginsPage() {
           </Card>
         )}
         emptyState={
-          <div className="rounded-md border p-6 text-center text-muted-foreground">
+          <div className="text-muted-foreground rounded-md border p-6 text-center">
             No plugins found.
           </div>
         }

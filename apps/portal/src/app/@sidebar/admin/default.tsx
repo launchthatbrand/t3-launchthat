@@ -21,6 +21,7 @@ import { useTaxonomies } from "~/app/(root)/(admin)/admin/settings/taxonomies/_a
 import { AdminTeamSwitcher } from "~/components/admin/AdminTeamSwitcher";
 import { useTenant } from "~/context/TenantContext";
 import { pluginDefinitions } from "~/lib/plugins/definitions";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { navItems } from "../_components/nav-items";
 
 type PostTypeDoc = Doc<"postTypes">;
@@ -84,11 +85,12 @@ const BUILTIN_TAXONOMIES: TaxonomyNavDefinition[] = [
 export default function DefaultSidebar() {
   const tenant = useTenant();
   const tenantId = tenant?._id;
+  const organizationId = getTenantOrganizationId(tenant);
   const postTypesQuery = usePostTypes(true);
   const taxonomiesQuery = useTaxonomies();
   const pluginOptions = useQuery(
     api.core.options.getByType,
-    tenantId ? { orgId: tenantId, type: "site" } : "skip",
+    organizationId ? { orgId: organizationId, type: "site" } : "skip",
   );
   const contentTypes = useMemo<PostTypeDoc[]>(() => {
     if (!Array.isArray(postTypesQuery.data)) {

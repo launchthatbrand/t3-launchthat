@@ -5,6 +5,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { SupportSystem } from "launchthat-plugin-support";
 
 import { useTenant } from "~/context/TenantContext";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 
 interface SupportSystemClientProps {
   params: { segments?: string[] };
@@ -16,11 +17,13 @@ export function SupportSystemClient({
   searchParams,
 }: SupportSystemClientProps) {
   const tenant = useTenant();
-  const organizationId = tenant?._id as Id<"organizations"> | undefined;
+  const organizationId = getTenantOrganizationId(tenant) as
+    | Id<"organizations">
+    | undefined;
 
   if (!organizationId) {
     return (
-      <div className="flex h-[60vh] items-center justify-center text-sm text-muted-foreground">
+      <div className="text-muted-foreground flex h-[60vh] items-center justify-center text-sm">
         Select an organization to view support data.
       </div>
     );

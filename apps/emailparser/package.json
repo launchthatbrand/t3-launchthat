@@ -33,7 +33,7 @@
     "react": "catalog:react19",
     "react-dom": "catalog:react19",
     "superjson": "2.2.3",
-    "uuid": "10.0.0",
+    "uuid": "catalog:",
     "zod": "catalog:",
     "zustand": "^5.0.3"
   },

@@ -24,11 +24,14 @@
     "@react-pdf/renderer": "^4.3.0",
     "@t3-oss/env-nextjs": "^0.13.8",
     "@tanstack/react-query": "catalog:",
+    "@tanstack/react-table": "catalog:",
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
     "@trpc/tanstack-react-query": "catalog:",
     "@vercel/microfrontends": "^1.2.4",
     "@vercel/toolbar": "^0.1.41",
+    "better-auth": "catalog:",
+    "clsx": "^2.1.1",
     "convex": "^1.23.0",
     "geist": "^1.5.1",
     "lucide-react": "^0.555.0",
@@ -37,6 +40,7 @@
     "react-dom": "catalog:react19",
     "sonner": "^2.0.7",
     "superjson": "2.2.3",
+    "uuid": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
