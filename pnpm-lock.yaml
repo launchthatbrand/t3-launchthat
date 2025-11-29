@@ -1228,6 +1228,9 @@ importers:
       superjson:
         specifier: 2.2.3
         version: 2.2.3
+      tw-animate-css:
+        specifier: ^1.4.0
+        version: 1.4.0
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
@@ -2491,9 +2494,15 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: ^1.2.8
         version: 1.2.8(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@tanstack/react-table':
+        specifier: 'catalog:'
+        version: 8.21.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
       cmdk:
         specifier: ^1.1.1
         version: 1.1.1(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
