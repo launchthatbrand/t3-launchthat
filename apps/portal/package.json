@@ -90,6 +90,7 @@
     "@xyflow/react": "^12.8.2",
     "ai": "^3.4.33",
     "authorizenet": "^1.0.9",
+    "better-auth": "catalog:",
     "canvas": "^2.11.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
