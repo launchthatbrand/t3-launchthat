@@ -418,6 +418,7 @@ export const listConversations = query({
       mode: v.optional(v.union(v.literal("agent"), v.literal("manual"))),
       assignedAgentId: v.optional(v.string()),
       assignedAgentName: v.optional(v.string()),
+      agentThreadId: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -446,6 +447,7 @@ export const listConversations = query({
         mode: conversation.mode ?? "agent",
         assignedAgentId: conversation.assignedAgentId ?? undefined,
         assignedAgentName: conversation.assignedAgentName ?? undefined,
+        agentThreadId: conversation.agentThreadId ?? undefined,
       }));
     }
 
@@ -472,6 +474,7 @@ export const listConversations = query({
         assignedAgentId?: string;
         assignedAgentName?: string;
         mode?: "agent" | "manual";
+        agentThreadId?: string;
       }
     >();
 
@@ -500,6 +503,7 @@ export const listConversations = query({
         assignedAgentId: row.agentUserId ?? undefined,
         assignedAgentName: row.agentName ?? undefined,
         mode: "agent",
+        agentThreadId: undefined,
       });
     }
 
@@ -511,6 +515,7 @@ export const listConversations = query({
         origin: "chat" as const,
         status: "open" as const,
         mode: conversation.mode ?? "agent",
+        agentThreadId: conversation.agentThreadId ?? undefined,
       }));
   },
 });
@@ -571,6 +576,35 @@ export const getAgentPresence = query({
       agentName: presence.agentName ?? undefined,
       status: isStale ? ("idle" as const) : presence.status,
       updatedAt: presence.updatedAt,
+    };
+  },
+});
+
+export const getConversationMetadata = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const conversation = await ctx.db
+      .query("supportConversations")
+      .withIndex("by_org_session", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("sessionId", args.sessionId),
+      )
+      .unique();
+
+    if (!conversation) {
+      return null;
+    }
+
+    return {
+      agentThreadId: conversation.agentThreadId ?? null,
+      contactId: conversation.contactId ?? null,
+      contactEmail: conversation.contactEmail ?? null,
+      contactName: conversation.contactName ?? null,
+      mode: conversation.mode ?? "agent",
     };
   },
 });

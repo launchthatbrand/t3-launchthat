@@ -29,6 +29,11 @@ export interface SupportSystemProps {
   tenantName?: string;
   params?: { segments?: string[] };
   searchParams?: Record<string, string | string[] | undefined>;
+  currentAgent?: {
+    id: string;
+    name?: string;
+    imageUrl?: string;
+  };
 }
 
 const NAV_LINKS = [
@@ -43,6 +48,7 @@ export function SupportSystem({
   tenantName,
   params,
   searchParams,
+  currentAgent,
 }: SupportSystemProps) {
   const segments = params?.segments ?? [];
   const routeKey = segments[0] ?? "";
@@ -196,6 +202,7 @@ export function SupportSystem({
           fallbackEmail={sidebarConversation?.contactEmail}
           organizationName={tenantName}
           organizationId={organizationId}
+          currentAgent={currentAgent}
         />
       )}
     </SidebarProvider>

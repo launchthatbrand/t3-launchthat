@@ -2,24 +2,14 @@ import type { Id } from "@/convex/_generated/dataModel";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { api } from "@/convex/_generated/api";
-import { createOpenAI } from "@ai-sdk/openai";
-import { formatStreamPart, streamText } from "ai";
 import { z } from "zod";
 
-import { env } from "~/env";
 import { getConvex } from "~/lib/convex";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/await-thenable */
-
-const openai = createOpenAI({
-  apiKey: env.OPENAI_API_KEY,
-});
-
-const hasOpenAIApiKey = Boolean(env.OPENAI_API_KEY?.trim());
 
 const messageSchema = z.object({
   id: z.string().optional(),
@@ -116,101 +106,19 @@ export async function POST(req: Request) {
       return streamTextResponse(cannedResponse.content);
     }
 
-    console.log("[support-chat] querying knowledge + history", {
-      organizationId,
-      sessionId,
-      query: latestUserMessage,
-    });
-
-    const [knowledge, existingMessages] = await Promise.all([
-      convex.query(api.plugins.support.queries.listKnowledge, {
-        organizationId,
-        query: latestUserMessage,
-        limit: 5,
-      }),
-      convex.query(api.plugins.support.queries.listMessages, {
+    const agentResult = await convex.action(
+      api.plugins.support.agent.generateAgentReply,
+      {
         organizationId,
         sessionId,
-      }),
-    ]);
-
-    const knowledgeContext =
-      knowledge.length > 0
-        ? knowledge
-            .map(
-              (entry: (typeof knowledge)[number], index: number) =>
-                `Source ${index + 1}: ${entry.title}\n${entry.content}`,
-            )
-            .join("\n\n")
-        : "No curated knowledge entries were found for this question.";
-
-    const historyMessages = existingMessages.map(
-      (message: (typeof existingMessages)[number]) => ({
-        role: message.role,
-        content: message.content,
-      }),
-    );
-
-    const clientMessages = parsed.messages
-      .filter(
-        (message: SupportMessage) =>
-          message.role === "assistant" || message.role === "user",
-      )
-      .map((message: SupportMessage) => ({
-        role: message.role === "assistant" ? "assistant" : "user",
-        content: message.content,
-      }));
-
-    if (!hasOpenAIApiKey) {
-      const noKeyMessage =
-        "Support assistant is not fully configured yet (missing API key).";
-      console.warn("[support-chat] missing OPENAI_API_KEY");
-      await convex.mutation(api.plugins.support.mutations.recordMessage, {
-        organizationId,
-        sessionId,
-        role: "assistant",
-        content: noKeyMessage,
+        prompt: latestUserMessage,
         contactId,
         contactEmail,
         contactName,
-        source: "agent",
-      });
-      return streamTextResponse(noKeyMessage);
-    }
-
-    console.log("[support-chat] streaming LLM response", {
-      organizationId,
-      sessionId,
-      knowledgeEntries: knowledge.length,
-      historyMessages: existingMessages.length,
-    });
-
-    const result = await streamText({
-      model: openai("gpt-4o-mini"),
-      system: [
-        "You are a helpful support chatbot for the current organization.",
-        "Always prefer the provided knowledge sources when answering questions.",
-        "If the answer is unclear, ask a clarifying question or direct the user to contact support.",
-        "Knowledge base:\n",
-        knowledgeContext,
-      ].join("\n"),
-      messages: [...historyMessages, ...clientMessages],
-      onFinish: async ({ text }) => {
-        if (!text) return;
-        await convex.mutation(api.plugins.support.mutations.recordMessage, {
-          organizationId,
-          sessionId,
-          role: "assistant",
-          content: text,
-          contactId,
-          contactEmail,
-          contactName,
-          source: "agent",
-        });
       },
-    });
+    );
 
-    return result.toAIStreamResponse();
+    return streamTextResponse(agentResult?.text ?? "");
   } catch (error) {
     console.error("[support-chat] error", error);
     return NextResponse.json(
@@ -255,25 +163,7 @@ export async function GET(req: NextRequest) {
 }
 
 function streamTextResponse(content: string) {
-  const encoder = new TextEncoder();
-  const textPart = formatStreamPart("text", content);
-  const finishPart = formatStreamPart("finish_message", {
-    finishReason: "stop",
-    usage: {
-      promptTokens: 0,
-      completionTokens: content.length,
-    },
-  });
-
-  const stream = new ReadableStream({
-    start(controller) {
-      controller.enqueue(encoder.encode(textPart));
-      controller.enqueue(encoder.encode(finishPart));
-      controller.close();
-    },
-  });
-
-  return new Response(stream, {
+  return new Response(content, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
     },

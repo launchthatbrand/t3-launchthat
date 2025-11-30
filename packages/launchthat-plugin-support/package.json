@@ -26,6 +26,7 @@
     "@acme/ui": "workspace:*",
     "@acme/ui-lexical": "workspace:*",
     "@ai-sdk/react": "^0.0.56",
+    "@convex-dev/presence": "^0.3.0",
     "convex": "^1.23.0",
     "launchthat-plugin-core": "workspace:*",
     "lucide-react": "^0.555.0",

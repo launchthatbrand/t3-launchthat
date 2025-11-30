@@ -1,25 +1,27 @@
 "use client";
 
 import type { GenericId as Id } from "convex/values";
-import type { FormEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
+import usePresence from "@convex-dev/presence/react";
 import { api } from "@portal/convexspec";
 import { useMutation, useQuery } from "convex/react";
-import { Loader2, MessageCircle, Send, X } from "lucide-react";
+import { Loader2, MessageCircle } from "lucide-react";
 
 import { cn } from "@acme/ui";
-import { Button } from "@acme/ui/button";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
 
 import type { SupportChatSettings } from "../settings";
 import type { ChatHistoryMessage } from "./hooks/useSupportChatHistory";
+import type { ChatWidgetTab, HelpdeskArticle } from "./supportChat/types";
 import type { StoredSupportContact } from "./supportChat/utils";
 import { useSupportChatHistory } from "./hooks/useSupportChatHistory";
 import { useSupportChatSession } from "./hooks/useSupportChatSession";
 import { useSupportChatSettings } from "./hooks/useSupportChatSettings";
 import { useSupportContactStorage } from "./hooks/useSupportContactStorage";
+import { ChatWidgetContent } from "./supportChat/ChatWidgetContent";
+import { ChatWidgetFooter } from "./supportChat/ChatWidgetFooter";
+import { ChatWidgetHeader } from "./supportChat/ChatWidgetHeader";
 
 export interface SupportChatWidgetProps {
   organizationId?: string | null;
@@ -50,6 +52,35 @@ const defaultContactForm: ContactFormState = {
   phone: "",
   company: "",
 };
+
+type PresenceEntry =
+  NonNullable<ReturnType<typeof usePresence>> extends Array<infer Entry>
+    ? Entry
+    : never;
+
+const mockHelpdeskArticles: HelpdeskArticle[] = [
+  {
+    id: "article-1",
+    title: "How do I reset my course progress?",
+    summary:
+      "Learn the steps required to clear progress and restart a learning path without losing certificates.",
+    updatedAt: "2 days ago",
+  },
+  {
+    id: "article-2",
+    title: "Where can I download invoices?",
+    summary:
+      "Navigate to Account → Billing → Invoices to export PDF receipts for every subscription cycle.",
+    updatedAt: "5 days ago",
+  },
+  {
+    id: "article-3",
+    title: "Troubleshooting login issues",
+    summary:
+      "A quick checklist for resolving common SSO, password reset, and MFA problems for workspace members.",
+    updatedAt: "1 week ago",
+  },
+];
 
 export function SupportChatWidget({
   organizationId,
@@ -155,6 +186,8 @@ function ChatSurface({
   const [contactError, setContactError] = useState<string | null>(null);
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
   const messageListRef = useRef<HTMLDivElement | null>(null);
+  const [activeTab, setActiveTab] = useState<ChatWidgetTab>("conversations");
+  const [presenceState, setPresenceState] = useState<PresenceEntry[]>([]);
 
   const shouldCollectContact = settings.requireContact && !contact;
 
@@ -280,7 +313,11 @@ function ChatSurface({
   );
 
   const resolvedAgentName =
-    agentPresence?.agentName ?? lastAssistantAgentName ?? "Support agent";
+    agentPresence?.agentName ??
+    presenceState.find((entry) => entry.online && entry.data?.role === "agent")
+      ?.data?.name ??
+    lastAssistantAgentName ??
+    "Support agent";
 
   const agentIsTyping = agentPresence?.status === "typing";
 
@@ -295,6 +332,34 @@ function ChatSurface({
   );
 
   const isManualMode = conversationMode?.mode === "manual";
+
+  const presenceRoomId =
+    organizationId && sessionId
+      ? `support:${organizationId}:${sessionId}`
+      : null;
+
+  const visitorPresenceMetadata = useMemo(
+    () => ({
+      role: "visitor" as const,
+      name: contact?.fullName ?? undefined,
+      email: contact?.email ?? undefined,
+    }),
+    [contact?.email, contact?.fullName],
+  );
+
+  const handlePresenceChange = useCallback((state: PresenceEntry[]) => {
+    setPresenceState((previous) =>
+      presenceArraysEqual(previous, state) ? previous : state,
+    );
+  }, []);
+
+  const onlineAgentCount = useMemo(
+    () =>
+      presenceState.filter(
+        (entry) => entry.online && entry.data?.role === "agent",
+      ).length,
+    [presenceState],
+  );
 
   const recordMessage = useMutation(
     api.plugins.support.mutations.recordMessage,
@@ -464,218 +529,68 @@ function ChatSurface({
     }
   };
 
+  const handleTabChange = (tab: ChatWidgetTab) => {
+    setActiveTab(tab);
+  };
+
+  const handleComposerInputChange = (
+    event: ChangeEvent<HTMLTextAreaElement>,
+  ) => {
+    handleInputChange(event);
+  };
+
   return (
     <>
+      {isOpen && presenceRoomId && (
+        <ConversationPresenceBridge
+          roomId={presenceRoomId}
+          userId={`visitor:${sessionId}`}
+          metadata={visitorPresenceMetadata}
+          onChange={handlePresenceChange}
+        />
+      )}
       {isOpen && (
         <div className="border-border/60 bg-card fixed right-4 bottom-20 z-50 w-full max-w-sm rounded-2xl border shadow-2xl">
-          <div className="border-border/60 flex items-center justify-between border-b px-4 py-3">
-            <div>
-              <p className="text-sm font-semibold">
-                {shouldCollectContact ? settings.introHeadline : "Ask Support"}
-              </p>
-              <p className="text-muted-foreground text-xs">
-                {shouldCollectContact
-                  ? settings.welcomeMessage
-                  : `Connected with ${resolvedAgentName}`}
-              </p>
-              {!shouldCollectContact ? (
-                <p className="text-muted-foreground/80 text-[11px]">
-                  Answers tailored for {tenantName}
-                </p>
-              ) : null}
-            </div>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => setIsOpen(false)}
-              aria-label="Close support chat"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {shouldCollectContact ? (
-            <form
-              className="flex h-80 flex-col gap-3 overflow-y-auto px-4 py-4"
-              onSubmit={submitContact}
-            >
-              {settings.fields.fullName && (
-                <div className="space-y-1 text-sm">
-                  <Label htmlFor="support-fullName">Full name</Label>
-                  <Input
-                    id="support-fullName"
-                    value={contactForm.fullName}
-                    onChange={(event) =>
-                      handleContactFieldChange("fullName", event.target.value)
-                    }
-                    placeholder="Jane Customer"
-                    required
-                  />
-                </div>
-              )}
-              {settings.fields.email && (
-                <div className="space-y-1 text-sm">
-                  <Label htmlFor="support-email">Email</Label>
-                  <Input
-                    id="support-email"
-                    type="email"
-                    value={contactForm.email}
-                    onChange={(event) =>
-                      handleContactFieldChange("email", event.target.value)
-                    }
-                    placeholder="jane@example.com"
-                    required
-                  />
-                </div>
-              )}
-              {settings.fields.phone && (
-                <div className="space-y-1 text-sm">
-                  <Label htmlFor="support-phone">Phone</Label>
-                  <Input
-                    id="support-phone"
-                    value={contactForm.phone}
-                    onChange={(event) =>
-                      handleContactFieldChange("phone", event.target.value)
-                    }
-                    placeholder="+1 (555) 123-4567"
-                  />
-                </div>
-              )}
-              {settings.fields.company && (
-                <div className="space-y-1 text-sm">
-                  <Label htmlFor="support-company">Company</Label>
-                  <Input
-                    id="support-company"
-                    value={contactForm.company}
-                    onChange={(event) =>
-                      handleContactFieldChange("company", event.target.value)
-                    }
-                    placeholder="Acme Co."
-                  />
-                </div>
-              )}
-
-              {contactError && (
-                <p className="text-destructive text-xs">{contactError}</p>
-              )}
-              <p className="text-muted-foreground text-[11px]">
-                {settings.privacyMessage}
-              </p>
-              <div className="flex justify-end">
-                <Button type="submit" disabled={isSubmittingContact}>
-                  {isSubmittingContact ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving…
-                    </>
-                  ) : (
-                    "Start chatting"
-                  )}
-                </Button>
-              </div>
-            </form>
-          ) : (
-            <>
-              <div
-                className="flex h-80 flex-col gap-4 overflow-y-auto px-4 py-4"
-                ref={messageListRef}
-              >
-                {displayedMessages.length === 0 && (
-                  <div className="bg-muted/40 text-muted-foreground rounded-lg p-3 text-xs">
-                    Ask anything about {tenantName}—policies, orders, or your
-                    course content. This assistant combines curated FAQs with
-                    product details specific to your account.
-                  </div>
-                )}
-
-                {displayedMessages.map((message) => {
-                  const assistantName = message.id
-                    ? agentMetadataByMessageId.get(message.id)
-                    : undefined;
-                  return (
-                    <div
-                      key={message.id}
-                      className={cn(
-                        "flex",
-                        message.role === "user"
-                          ? "justify-end"
-                          : "justify-start",
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
-                          message.role === "user"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-foreground",
-                        )}
-                      >
-                        {message.role === "assistant" && assistantName ? (
-                          <p className="text-muted-foreground mb-1 text-[11px] font-semibold">
-                            {assistantName}
-                          </p>
-                        ) : null}
-                        {message.content}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {assistantIsResponding && (
-                  <div className="text-muted-foreground flex items-center gap-2 text-xs">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Thinking...
-                  </div>
-                )}
-
-                {error && (
-                  <div className="bg-destructive/10 text-destructive rounded-lg p-2 text-xs">
-                    Something went wrong.{" "}
-                    <button
-                      type="button"
-                      onClick={() => reload()}
-                      className="underline"
-                    >
-                      Try again
-                    </button>
-                  </div>
-                )}
-
-                {!shouldCollectContact && agentIsTyping && (
-                  <div className="text-muted-foreground flex items-center gap-2 text-xs">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    {resolvedAgentName} is typing…
-                  </div>
-                )}
-              </div>
-
-              <form
-                onSubmit={handleChatSubmit}
-                className="border-border/60 border-t p-3"
-              >
-                <div className="flex items-center gap-2">
-                  <textarea
-                    value={input}
-                    onChange={handleInputChange}
-                    placeholder="Ask a question..."
-                    className="border-border/60 bg-background focus:border-primary min-h-[40px] flex-1 resize-none rounded-xl border px-3 py-2 text-sm focus:outline-none"
-                    rows={1}
-                    disabled={composerDisabled}
-                  />
-                  <Button type="submit" size="icon" disabled={isSubmitDisabled}>
-                    {showSubmitSpinner ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                <p className="text-muted-foreground mt-2 text-center text-[10px]">
-                  Responses may reference your courses, lessons, and FAQs.
-                </p>
-              </form>
-            </>
-          )}
+          <ChatWidgetHeader
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            onClose={() => setIsOpen(false)}
+            shouldCollectContact={shouldCollectContact}
+            settings={settings}
+            resolvedAgentName={resolvedAgentName}
+            tenantName={tenantName}
+            onlineAgentCount={onlineAgentCount}
+          />
+          <ChatWidgetContent
+            activeTab={activeTab}
+            settings={settings}
+            shouldCollectContact={shouldCollectContact}
+            contactForm={contactForm}
+            contactError={contactError}
+            isSubmittingContact={isSubmittingContact}
+            onContactFieldChange={handleContactFieldChange}
+            onSubmitContact={submitContact}
+            messageListRef={messageListRef}
+            displayedMessages={displayedMessages as ChatHistoryMessage[]}
+            agentMetadataByMessageId={agentMetadataByMessageId}
+            assistantIsResponding={assistantIsResponding}
+            error={error}
+            reload={reload}
+            agentIsTyping={agentIsTyping && activeTab === "conversations"}
+            resolvedAgentName={resolvedAgentName}
+            tenantName={tenantName}
+            helpdeskArticles={mockHelpdeskArticles}
+          />
+          <ChatWidgetFooter
+            activeTab={activeTab}
+            shouldCollectContact={shouldCollectContact}
+            composerDisabled={composerDisabled}
+            input={input}
+            onInputChange={handleComposerInputChange}
+            onSubmit={handleChatSubmit}
+            isSubmitDisabled={isSubmitDisabled}
+            showSubmitSpinner={showSubmitSpinner}
+          />
         </div>
       )}
 
@@ -692,3 +607,63 @@ function ChatSurface({
     </>
   );
 }
+
+interface PresenceBridgeProps {
+  roomId: string;
+  userId: string;
+  metadata?: Record<string, unknown>;
+  onChange: (state: PresenceEntry[]) => void;
+}
+
+const ConversationPresenceBridge = ({
+  roomId,
+  userId,
+  metadata,
+  onChange,
+}: PresenceBridgeProps) => {
+  const presenceState = usePresence(api.presence, roomId, userId, 15000) ?? [];
+  const updateMetadata = useMutation(api.presence.updateRoomUser);
+
+  useEffect(() => {
+    onChange(presenceState);
+  }, [onChange, presenceState]);
+
+  useEffect(() => {
+    if (!metadata) {
+      return;
+    }
+    void updateMetadata({ roomId, userId, data: metadata }).catch(() => {
+      // Metadata is optional for presence display; ignore failures.
+    });
+  }, [metadata, roomId, updateMetadata, userId]);
+
+  return null;
+};
+
+const presenceArraysEqual = (
+  previous: PresenceEntry[],
+  next: PresenceEntry[],
+) => {
+  if (previous.length !== next.length) {
+    return false;
+  }
+  for (let index = 0; index < previous.length; index++) {
+    const prev = previous[index];
+    const curr = next[index];
+    if (!prev || !curr) {
+      return false;
+    }
+    const prevMetadata =
+      typeof prev.data === "object" && prev.data ? prev.data : {};
+    const currMetadata =
+      typeof curr.data === "object" && curr.data ? curr.data : {};
+    if (
+      prev.userId !== curr.userId ||
+      prev.online !== curr.online ||
+      JSON.stringify(prevMetadata) !== JSON.stringify(currMetadata)
+    ) {
+      return false;
+    }
+  }
+  return true;
+};

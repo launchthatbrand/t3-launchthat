@@ -398,6 +398,35 @@ export const recordMessageInternal = internalMutation({
   },
 });
 
+export const setConversationAgentThread = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    sessionId: v.string(),
+    agentThreadId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const conversation = await ctx.db
+      .query("supportConversations")
+      .withIndex("by_org_session", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("sessionId", args.sessionId),
+      )
+      .unique();
+
+    if (!conversation) {
+      return null;
+    }
+
+    await ctx.db.patch(conversation._id, {
+      agentThreadId: args.agentThreadId,
+      updatedAt: Date.now(),
+    });
+
+    return { agentThreadId: args.agentThreadId };
+  },
+});
+
 export const upsertKnowledgeEntry = mutation({
   args: {
     organizationId: v.id("organizations"),

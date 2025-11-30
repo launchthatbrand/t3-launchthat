@@ -67,6 +67,7 @@ const supportConversationsTable = defineTable({
   contactEmail: v.optional(v.string()),
   assignedAgentId: v.optional(v.string()),
   assignedAgentName: v.optional(v.string()),
+  agentThreadId: v.optional(v.string()),
   lastMessageSnippet: v.optional(v.string()),
   lastMessageAuthor: v.optional(
     v.union(v.literal("user"), v.literal("assistant")),

@@ -8072,6 +8072,7 @@ export type PublicApiType = {
           "public",
           { limit?: number; organizationId: Id<"organizations"> },
           Array<{
+            agentThreadId?: string;
             assignedAgentId?: string;
             assignedAgentName?: string;
             contactEmail?: string;
@@ -8240,6 +8241,21 @@ export type PublicApiType = {
           any
         >;
       };
+      agent: {
+        generateAgentReply: FunctionReference<
+          "action",
+          "public",
+          {
+            contactEmail?: string;
+            contactId?: Id<"contacts">;
+            contactName?: string;
+            organizationId: Id<"organizations">;
+            prompt: string;
+            sessionId: string;
+          },
+          { text: string }
+        >;
+      };
     };
   };
   puckEditor: {
@@ -8270,6 +8286,32 @@ export type PublicApiType = {
         any
       >;
     };
+  };
+  presence: {
+    heartbeat: FunctionReference<
+      "mutation",
+      "public",
+      { interval: number; roomId: string; sessionId: string; userId: string },
+      any
+    >;
+    list: FunctionReference<
+      "query",
+      "public",
+      { limit?: number; roomToken: string },
+      any
+    >;
+    disconnect: FunctionReference<
+      "mutation",
+      "public",
+      { sessionToken: string },
+      any
+    >;
+    updateRoomUser: FunctionReference<
+      "mutation",
+      "public",
+      { data?: any; roomId: string; userId: string },
+      any
+    >;
   };
 };
 export type InternalApiType = {};

@@ -1,9 +1,12 @@
+import type { FunctionReference } from "convex/server";
 import type { GenericId as Id } from "convex/values";
 import * as React from "react";
+import usePresence from "@convex-dev/presence/react";
 import { api } from "@portal/convexspec";
 import { useMutation } from "convex/react";
 import {
   BadgeCheck,
+  Bot,
   Briefcase,
   CalendarClock,
   Clock,
@@ -24,7 +27,13 @@ import {
 import { Avatar, AvatarFallback } from "@acme/ui/avatar";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@acme/ui/card";
 import { Separator } from "@acme/ui/separator";
 import {
   Sidebar,
@@ -58,6 +67,7 @@ export interface ConversationSummary {
   assignedAgentId?: string;
   assignedAgentName?: string;
   mode?: "agent" | "manual";
+  agentThreadId?: string;
 }
 
 export interface ContactDoc {
@@ -81,7 +91,36 @@ export interface ConversationSidebarProps {
   fallbackEmail?: string;
   organizationName?: string;
   organizationId?: Id<"organizations">;
+  currentAgent?: {
+    id: string;
+    name?: string;
+    imageUrl?: string;
+  };
 }
+
+type PresenceMetadata = {
+  role?: "agent" | "visitor";
+  name?: string;
+  imageUrl?: string;
+};
+
+type PresenceApi = Parameters<typeof usePresence>[0] & {
+  updateRoomUser: FunctionReference<
+    "mutation",
+    "public",
+    {
+      roomId: string;
+      userId: string;
+      data?: Record<string, unknown>;
+    },
+    null
+  >;
+};
+
+type PresenceEntry =
+  NonNullable<ReturnType<typeof usePresence>> extends Array<infer Entry>
+    ? Entry
+    : never;
 
 export function ConversationRightSidebar({
   conversation,
@@ -90,6 +129,7 @@ export function ConversationRightSidebar({
   fallbackEmail,
   organizationName,
   organizationId,
+  currentAgent,
   ...props
 }: React.ComponentProps<typeof Sidebar> & ConversationSidebarProps) {
   const setConversationMode = useMutation(
@@ -125,6 +165,10 @@ export function ConversationRightSidebar({
   const assignedAgentName =
     conversation?.assignedAgentName ??
     (conversation?.assignedAgentId ? "Agent" : undefined);
+  const presenceRoomId =
+    organizationId && conversation
+      ? `support:${organizationId}:${conversation.sessionId}`
+      : null;
 
   const handleToggleMode = React.useCallback(async () => {
     if (!conversation || !organizationId) {
@@ -157,6 +201,12 @@ export function ConversationRightSidebar({
           disabled={!conversation || !organizationId}
           onToggle={() => void handleToggleMode()}
         />
+        {presenceRoomId && currentAgent ? (
+          <ConversationPresenceCard
+            roomId={presenceRoomId}
+            currentAgent={currentAgent}
+          />
+        ) : null}
         {/* <SidebarGroup>
           <SidebarGroupLabel>Table of Contents</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -247,6 +297,14 @@ export function ConversationRightSidebar({
                     conversation
                       ? conversation.sessionId.slice(-12)
                       : SUPPORT_COPY.inspector.sessionPlaceholder
+                  }
+                />
+                <ContactInfoRow
+                  icon={Bot}
+                  label="Agent thread"
+                  value={
+                    conversation?.agentThreadId ??
+                    "Not created yet (agent has not replied)"
                   }
                 />
                 <ContactInfoRow
@@ -360,6 +418,99 @@ export function ConversationRightSidebar({
     </Sidebar>
   );
 }
+
+interface PresenceCardProps {
+  roomId: string;
+  currentAgent: NonNullable<ConversationSidebarProps["currentAgent"]>;
+}
+
+const ConversationPresenceCard = ({
+  roomId,
+  currentAgent,
+}: PresenceCardProps) => {
+  const updatePresenceMetadata = useMutation(api.presence.updateRoomUser);
+  const presenceState =
+    usePresence(api.presence, roomId, currentAgent.id, 15000) ?? [];
+
+  React.useEffect(() => {
+    if (!currentAgent.name && !currentAgent.imageUrl) {
+      return;
+    }
+
+    void updatePresenceMetadata({
+      roomId,
+      userId: currentAgent.id,
+      data: {
+        role: "agent",
+        name: currentAgent.name,
+        imageUrl: currentAgent.imageUrl,
+      },
+    }).catch(() => {
+      // Presence metadata is optional; ignore failures so the heartbeat keeps working.
+    });
+  }, [
+    currentAgent.id,
+    currentAgent.imageUrl,
+    currentAgent.name,
+    roomId,
+    updatePresenceMetadata,
+  ]);
+
+  const onlineAgents = presenceState.filter(
+    (agent: PresenceEntry) =>
+      agent.online && getPresenceMetadata(agent).role !== "visitor",
+  );
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Active agents</CardTitle>
+        <CardDescription>
+          {onlineAgents.length > 0
+            ? `${onlineAgents.length} online`
+            : "No teammates viewing this chat"}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {onlineAgents.length > 0 ? (
+          <ul className="space-y-2">
+            {onlineAgents.map((agent: PresenceEntry) => {
+              const isSelf = agent.userId === currentAgent.id;
+              const metadata = getPresenceMetadata(agent);
+              const label = isSelf
+                ? "You"
+                : (metadata.name ??
+                  agent.name ??
+                  `Agent ${agent.userId.slice(-4)}`);
+              return (
+                <li
+                  key={agent.userId}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <span className="font-medium">{label}</span>
+                  <Badge variant="outline" className="text-xs">
+                    Online
+                  </Badge>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            Invite another teammate to keep an eye on this conversation.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+const getPresenceMetadata = (entry: PresenceEntry): PresenceMetadata => {
+  if (entry.data && typeof entry.data === "object") {
+    return entry.data as PresenceMetadata;
+  }
+  return {};
+};
 
 interface InfoRowProps {
   icon: React.ComponentType<{ className?: string }>;

@@ -4,6 +4,7 @@ import type { GenericId as Id } from "convex/values";
 import { useCallback } from "react";
 import {
   BadgeCheck,
+  Bot,
   Briefcase,
   CalendarClock,
   Clock,
@@ -51,6 +52,7 @@ export interface ConversationSummary {
   assignedAgentId?: string;
   assignedAgentName?: string;
   mode?: "agent" | "manual";
+  agentThreadId?: string;
 }
 
 export interface ContactDoc {
@@ -172,6 +174,14 @@ export const ConversationInspector = ({
                       conversation
                         ? conversation.sessionId.slice(-12)
                         : SUPPORT_COPY.inspector.sessionPlaceholder
+                    }
+                  />
+                  <ContactInfoRow
+                    icon={Bot}
+                    label="Agent thread"
+                    value={
+                      conversation?.agentThreadId ??
+                      "Not created yet (agent has not replied)"
                     }
                   />
                   <ContactInfoRow

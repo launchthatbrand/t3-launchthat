@@ -2,6 +2,7 @@
 "use client";
 
 import type { Id } from "@/convex/_generated/dataModel";
+import { useUser } from "@clerk/nextjs";
 import { SupportSystem } from "launchthat-plugin-support";
 
 import { useTenant } from "~/context/TenantContext";
@@ -16,6 +17,7 @@ export function SupportSystemClient({
   params,
   searchParams,
 }: SupportSystemClientProps) {
+  const { user } = useUser();
   const tenant = useTenant();
   const organizationId = getTenantOrganizationId(tenant) as
     | Id<"organizations">
@@ -35,6 +37,18 @@ export function SupportSystemClient({
       tenantName={tenant?.name ?? "Organization"}
       params={params}
       searchParams={searchParams}
+      currentAgent={
+        user
+          ? {
+              id: user.id,
+              name:
+                user.fullName ??
+                user.primaryEmailAddress?.emailAddress ??
+                "Support agent",
+              imageUrl: user.imageUrl ?? undefined,
+            }
+          : undefined
+      }
     />
   );
 }
