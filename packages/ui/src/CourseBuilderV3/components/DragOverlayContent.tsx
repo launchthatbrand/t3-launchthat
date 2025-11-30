@@ -2,81 +2,94 @@
 import type { Active } from "@dnd-kit/core";
 import React from "react";
 
+import { DragOverlayPreview } from "@acme/dnd";
 import { cn } from "@acme/ui";
 
 import type { Lesson, Quiz } from "../store/useCourseBuilderStore";
 import type { LessonItem, QuizItem, TopicItem } from "../types/content";
 
+type OverlaySourceItem = { id: string; title?: string; type?: string };
+
 interface DragOverlayContentProps {
   activeItem: Active | null;
-  // Replace lessons/finalQuizzes with mainContentItems
-  // lessons: Lesson[];
-  // finalQuizzes: Quiz[];
-  mainContentItems: (Lesson | Quiz)[]; // Unified array for structured items
+  mainContentItems: (Lesson | Quiz)[];
   availableLessons: LessonItem[];
   availableTopics: TopicItem[];
   availableQuizzes: QuizItem[];
 }
 
+const baseClass =
+  "rounded border bg-card px-3 py-2 text-sm shadow-lg cursor-grabbing";
+const quizBaseClass =
+  "rounded border bg-card px-2 py-1 text-xs shadow-lg cursor-grabbing";
+
+const typeAccentClasses: Record<string, string> = {
+  lesson: "border-blue-500",
+  topic: "border-green-500",
+  quiz: "border-yellow-500",
+};
+
 const DragOverlayContent: React.FC<DragOverlayContentProps> = ({
   activeItem,
-  // Destructure mainContentItems
   mainContentItems,
   availableLessons,
   availableTopics,
   availableQuizzes,
 }) => {
-  if (!activeItem) return null;
+  const resolveItem = React.useCallback(
+    (active: Active) => {
+      const activeId = String(active.id);
+      const activeType = active.data.current?.type as string | undefined;
 
-  const activeId = activeItem.id;
-  const activeType = activeItem.data.current?.type as string | undefined;
+      const source =
+        (mainContentItems.find((item) => item.id === activeId) as
+          | OverlaySourceItem
+          | undefined) ??
+        (availableLessons.find((item) => item.id === activeId) as
+          | OverlaySourceItem
+          | undefined) ??
+        (availableTopics.find((item) => item.id === activeId) as
+          | OverlaySourceItem
+          | undefined) ??
+        (availableQuizzes.find((item) => item.id === activeId) as
+          | OverlaySourceItem
+          | undefined);
 
-  // Use const for itemData
-  const itemData: { id: string; title: string; type?: string } | undefined = // Add optional type
-    mainContentItems.find((item) => item.id === activeId) ??
-    availableLessons.find((item) => item.id === activeId) ??
-    availableTopics.find((item) => item.id === activeId) ?? // Topics might be dragged from sidebar
-    availableQuizzes.find((item) => item.id === activeId);
+      if (!source) {
+        return null;
+      }
 
-  let className =
-    "rounded border bg-card p-2 text-sm shadow-lg cursor-grabbing"; // Base style
-  let specificTypeClass = "";
+      const displayType = source.type ?? activeType;
+      const label = source.title ?? "Untitled item";
 
-  // Determine styling based on the found item's type or the active drag type
-  const displayType = itemData?.type ?? activeType;
+      return {
+        id: source.id,
+        label,
+        type: displayType,
+      };
+    },
+    [availableLessons, availableQuizzes, availableTopics, mainContentItems],
+  );
 
-  switch (displayType) {
-    case "lesson":
-      specificTypeClass = "border-blue-500";
-      break;
-    case "topic":
-      specificTypeClass = "border-green-500";
-      break;
-    case "quiz":
-      specificTypeClass = "border-yellow-500 text-xs";
-      className =
-        "rounded border bg-card p-1 text-xs shadow-lg cursor-grabbing"; // Smaller for quiz
-      break;
-    default:
-      // Render unknown type if itemData exists but has no type (shouldn't happen with current types)
-      // or if activeType was unknown and itemData wasn't found.
-      return (
-        <div
-          className={cn(
-            className,
-            "bg-destructive text-destructive-foreground",
-          )}
-        >
-          {itemData ? itemData.title : "Unknown Item"}
-        </div>
-      );
-  }
+  const fallback = activeItem ? (
+    <div className="bg-destructive text-destructive-foreground rounded border px-3 py-2 text-sm shadow-lg">
+      Unknown item
+    </div>
+  ) : null;
 
-  if (!itemData) return null; // Item not found in any list
-
-  // Render the item representation
   return (
-    <div className={cn(className, specificTypeClass)}>{itemData.title}</div>
+    <DragOverlayPreview
+      active={activeItem}
+      resolveItem={resolveItem}
+      fallback={fallback}
+      renderItem={(item) => {
+        const displayType = item.type ?? "lesson";
+        const accentClass = typeAccentClasses[displayType] ?? "";
+        const sizeClass = displayType === "quiz" ? quizBaseClass : baseClass;
+
+        return <div className={cn(sizeClass, accentClass)}>{item.label}</div>;
+      }}
+    />
   );
 };
 

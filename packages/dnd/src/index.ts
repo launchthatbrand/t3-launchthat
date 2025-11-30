@@ -14,3 +14,12 @@ export type { SortableItemProps } from "./components/SortableItem";
 
 export { SortableList } from "./components/SortableList";
 export type { SortableListProps } from "./components/SortableList";
+
+export { DragOverlayPreview } from "./components/DragOverlayPreview";
+export type {
+  DragOverlayPreviewProps,
+  DragOverlayItem,
+} from "./components/DragOverlayPreview";
+
+export { NestedSortableList } from "./components/NestedSortableList";
+export type { NestedSortableListProps } from "./components/NestedSortableList";
