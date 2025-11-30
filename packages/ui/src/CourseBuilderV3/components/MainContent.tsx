@@ -5,6 +5,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 
+import { Dropzone } from "@acme/dnd";
 import {
   Accordion,
   AccordionContent,
@@ -13,7 +14,6 @@ import {
 } from "@acme/ui/accordion";
 
 import type { Lesson, Quiz } from "../store/useCourseBuilderStore";
-import Dropzone from "./Dropzone";
 import SortableLessonItem from "./SortableLessonItem";
 import SortableQuizItem from "./SortableQuizItem";
 
@@ -37,7 +37,7 @@ const MainContent: React.FC<MainContentProps> = ({
   onRemoveFinalQuiz,
 }) => {
   return (
-    <div className="flex-grow space-y-4 overflow-y-auto p-6">
+    <div className="grow space-y-4 overflow-y-auto p-6">
       <Dropzone
         id="main-content-dropzone"
         kind="main-content-root"
@@ -46,7 +46,7 @@ const MainContent: React.FC<MainContentProps> = ({
         enabledText="Drop Lessons or Quizzes here"
       >
         {mainContentItems.length === 0 && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-muted-foreground text-xs">
             No content added yet.
           </span>
         )}
@@ -93,11 +93,11 @@ const MainContent: React.FC<MainContentProps> = ({
       {/* Debug Accordion */}
       <Accordion type="single" collapsible className="w-full pt-4">
         <AccordionItem value="debug-json">
-          <AccordionTrigger className="text-sm font-medium text-muted-foreground hover:no-underline">
+          <AccordionTrigger className="text-muted-foreground text-sm font-medium hover:no-underline">
             Debug: Course Structure State
           </AccordionTrigger>
           <AccordionContent>
-            <pre className="mt-1 overflow-x-auto rounded bg-muted/50 p-4 text-xs">
+            <pre className="bg-muted/50 mt-1 overflow-x-auto rounded p-4 text-xs">
               {JSON.stringify({ mainContentItems }, null, 2)}
             </pre>
           </AccordionContent>

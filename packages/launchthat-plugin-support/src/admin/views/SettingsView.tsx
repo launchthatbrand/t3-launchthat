@@ -4,7 +4,7 @@ import type { GenericId as Id } from "convex/values";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@portal/convexspec";
 import { useMutation, useQuery } from "convex/react";
-import { Copy, Loader2 } from "lucide-react";
+import { Copy, Loader2, PencilLine, Plus, Trash2 } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
@@ -18,6 +18,13 @@ import {
 import { Checkbox } from "@acme/ui/checkbox";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@acme/ui/select";
 import { Switch } from "@acme/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { Textarea } from "@acme/ui/textarea";
@@ -35,6 +42,40 @@ const fieldLabels: Record<keyof SupportChatSettings["fields"], string> = {
   phone: "Phone",
   company: "Company",
 };
+
+type RagField = "title" | "excerpt" | "content";
+
+const ragFieldLabels: Record<RagField, string> = {
+  title: "Title",
+  excerpt: "Excerpt",
+  content: "Content / body",
+};
+
+const defaultRagFieldState: Record<RagField, boolean> = {
+  title: true,
+  excerpt: false,
+  content: true,
+};
+
+interface RagSourceFormState {
+  sourceId?: string;
+  postTypeSlug?: string;
+  fields: Record<RagField, boolean>;
+  includeTags: boolean;
+  metaFieldKeys: string[];
+  additionalMetaKeys: string;
+  displayName: string;
+  isEnabled: boolean;
+}
+
+const createDefaultRagFormState = (): RagSourceFormState => ({
+  fields: { ...defaultRagFieldState },
+  includeTags: false,
+  metaFieldKeys: [],
+  additionalMetaKeys: "",
+  displayName: "",
+  isEnabled: true,
+});
 
 const mergeSupportSettings = (
   patch?: Partial<SupportChatSettings>,
@@ -72,13 +113,40 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
     mergeSupportSettings(),
   );
   const [isSaving, setIsSaving] = useState(false);
-  const [tabValue, setTabValue] = useState<"general" | "copy" | "email">(
-    "general",
-  );
+  const [tabValue, setTabValue] = useState<
+    "general" | "copy" | "email" | "knowledge"
+  >("general");
   const [domainInput, setDomainInput] = useState("");
   const [isEmailTogglePending, setIsEmailTogglePending] = useState(false);
   const [isDomainMutationPending, setIsDomainMutationPending] = useState(false);
   const [isTestingInbound, setIsTestingInbound] = useState(false);
+  const ragSources = useQuery(api.plugins.support.queries.listRagSources, {
+    organizationId,
+  });
+  const postTypes = useQuery(api.core.postTypes.queries.list, {
+    includeBuiltIn: true,
+    organizationId,
+  });
+  const saveRagSource = useMutation(
+    api.plugins.support.mutations.saveRagSourceConfig,
+  );
+  const deleteRagSource = useMutation(
+    api.plugins.support.mutations.deleteRagSourceConfig,
+  );
+  const [knowledgeForm, setKnowledgeForm] = useState<RagSourceFormState>(
+    createDefaultRagFormState(),
+  );
+  const activePostTypeSlug = knowledgeForm.postTypeSlug;
+  const postTypeFields = useQuery(
+    api.core.postTypes.queries.fieldsBySlug,
+    activePostTypeSlug
+      ? {
+          slug: activePostTypeSlug,
+          organizationId,
+        }
+      : "skip",
+  );
+  const [isSavingSource, setIsSavingSource] = useState(false);
 
   const typedMetaValue: Partial<SupportChatSettings> | undefined =
     optionQueryResult && typeof optionQueryResult === "object"
@@ -112,6 +180,180 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
     }));
   };
 
+  const knowledgeSourcesLoading =
+    ragSources === undefined ||
+    postTypes === undefined ||
+    (activePostTypeSlug ? postTypeFields === undefined : false);
+  const knowledgeSources = ragSources ?? [];
+  const postTypeOptions = postTypes ?? [];
+  const postTypeFieldOptions = postTypeFields ?? [];
+
+  const postTypeLabelMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const type of postTypeOptions) {
+      map.set(type.slug, type.name ?? type.slug);
+    }
+    return map;
+  }, [postTypeOptions]);
+
+  const metaFieldOptions = useMemo(() => {
+    return postTypeFieldOptions
+      .filter((field) => !field.isSystem)
+      .map((field) => ({
+        key: field.key,
+        label: field.name ?? field.key,
+      }));
+  }, [postTypeFieldOptions]);
+
+  const handleResetKnowledgeForm = () => {
+    setKnowledgeForm(createDefaultRagFormState());
+  };
+
+  const handleSelectKnowledgeSource = (
+    source: (typeof knowledgeSources)[number],
+  ) => {
+    setKnowledgeForm({
+      sourceId: source._id as string,
+      postTypeSlug: source.postTypeSlug,
+      fields: {
+        title: source.fields.includes("title"),
+        excerpt: source.fields.includes("excerpt"),
+        content: source.fields.includes("content"),
+      },
+      includeTags: source.includeTags,
+      metaFieldKeys: source.metaFieldKeys ?? [],
+      additionalMetaKeys: "",
+      displayName: source.displayName ?? "",
+      isEnabled: source.isEnabled,
+    });
+  };
+
+  const handleToggleRagField = (field: RagField) => {
+    setKnowledgeForm((previous) => ({
+      ...previous,
+      fields: {
+        ...previous.fields,
+        [field]: !previous.fields[field],
+      },
+    }));
+  };
+
+  const handleToggleMetaField = (key: string) => {
+    setKnowledgeForm((previous) => {
+      const exists = previous.metaFieldKeys.includes(key);
+      return {
+        ...previous,
+        metaFieldKeys: exists
+          ? previous.metaFieldKeys.filter((current) => current !== key)
+          : [...previous.metaFieldKeys, key],
+      };
+    });
+  };
+
+  const handleSaveKnowledgeSource = async () => {
+    if (!knowledgeForm.postTypeSlug) {
+      toast.error("Select a post type to index.");
+      return;
+    }
+
+    const selectedFields = (
+      Object.keys(knowledgeForm.fields) as RagField[]
+    ).filter((key) => knowledgeForm.fields[key]);
+
+    if (selectedFields.length === 0) {
+      toast.error("Enable at least one content field.");
+      return;
+    }
+
+    setIsSavingSource(true);
+    try {
+      const manualMetaFields = knowledgeForm.additionalMetaKeys
+        .split(",")
+        .map((key) => key.trim())
+        .filter(Boolean);
+      const metaFields = [...knowledgeForm.metaFieldKeys, ...manualMetaFields];
+
+      await saveRagSource({
+        organizationId,
+        sourceId: knowledgeForm.sourceId as Id<"supportRagSources"> | undefined,
+        postTypeSlug: knowledgeForm.postTypeSlug,
+        fields: selectedFields,
+        includeTags: knowledgeForm.includeTags,
+        metaFieldKeys: metaFields,
+        displayName: knowledgeForm.displayName.trim() || undefined,
+        isEnabled: knowledgeForm.isEnabled,
+      });
+
+      toast.success(
+        "Knowledge source saved. Content from this post type will be indexed going forward.",
+      );
+
+      if (!knowledgeForm.sourceId) {
+        handleResetKnowledgeForm();
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to save knowledge source.",
+      );
+    } finally {
+      setIsSavingSource(false);
+    }
+  };
+
+  const handleToggleKnowledgeSource = async (
+    source: (typeof knowledgeSources)[number],
+    nextValue: boolean,
+  ) => {
+    try {
+      await saveRagSource({
+        organizationId,
+        sourceId: source._id as Id<"supportRagSources">,
+        postTypeSlug: source.postTypeSlug,
+        fields: source.fields as RagField[],
+        includeTags: source.includeTags,
+        metaFieldKeys: source.metaFieldKeys ?? [],
+        displayName: source.displayName ?? undefined,
+        isEnabled: nextValue,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to update knowledge source.",
+      );
+    }
+  };
+
+  const handleDeleteKnowledgeSource = async (sourceId: string) => {
+    const confirmed = window.confirm(
+      "Remove this indexing configuration? This will stop indexing for the selected post type.",
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteRagSource({
+        organizationId,
+        sourceId: sourceId as Id<"supportRagSources">,
+      });
+      if (knowledgeForm.sourceId === sourceId) {
+        handleResetKnowledgeForm();
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to delete knowledge configuration.",
+      );
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -134,6 +376,7 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
     { label: "General", value: "general" },
     { label: "Form copy", value: "copy" },
     { label: "Email intake", value: "email" },
+    { label: "Knowledge sources", value: "knowledge" },
   ];
 
   const allowEmailIntake = emailSettings?.allowEmailIntake ?? false;
@@ -252,7 +495,7 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 overflow-scroll p-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold">Support settings</h1>
         <p className="text-muted-foreground text-sm">
@@ -263,7 +506,12 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
       <Tabs
         value={tabValue}
         onValueChange={(value) => {
-          if (value === "general" || value === "copy" || value === "email") {
+          if (
+            value === "general" ||
+            value === "copy" ||
+            value === "email" ||
+            value === "knowledge"
+          ) {
             setTabValue(value);
           }
         }}
@@ -596,6 +844,301 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
                 <p className="text-muted-foreground text-sm">
                   DNS records will appear here once you connect a domain.
                 </p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="knowledge" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Knowledge sources</CardTitle>
+              <CardDescription>
+                Control which post types should be indexed for RAG so the agent
+                can answer questions about your lessons, articles, or docs.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {knowledgeSourcesLoading ? (
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading post types…
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium">Indexed sources</p>
+                        <p className="text-muted-foreground text-xs">
+                          Enable the post types that should feed helpdesk
+                          answers.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleResetKnowledgeForm}
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        New configuration
+                      </Button>
+                    </div>
+                    {knowledgeSources.length ? (
+                      <div className="space-y-3">
+                        {knowledgeSources.map((source) => (
+                          <div
+                            key={source._id as string}
+                            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
+                          >
+                            <div className="space-y-1">
+                              <p className="font-medium">
+                                {postTypeLabelMap.get(source.postTypeSlug) ??
+                                  source.postTypeSlug}
+                              </p>
+                              <p className="text-muted-foreground text-xs">
+                                Fields: {source.fields.join(", ")}
+                                {source.includeTags ? ", tags" : ""}
+                                {source.metaFieldKeys?.length
+                                  ? `, meta: ${source.metaFieldKeys.join(", ")}`
+                                  : ""}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={source.isEnabled}
+                                onCheckedChange={(checked) =>
+                                  handleToggleKnowledgeSource(
+                                    source,
+                                    Boolean(checked),
+                                  )
+                                }
+                              />
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                onClick={() =>
+                                  handleSelectKnowledgeSource(source)
+                                }
+                              >
+                                <PencilLine className="h-4 w-4" />
+                                <span className="sr-only">Edit source</span>
+                              </Button>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                onClick={() =>
+                                  handleDeleteKnowledgeSource(
+                                    source._id as string,
+                                  )
+                                }
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Remove source</span>
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">
+                        No post types are being indexed yet. Add a configuration
+                        below to start training the agent with your own content.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-4 border-t pt-4">
+                    <div>
+                      <p className="text-sm font-medium">Editor</p>
+                      <p className="text-muted-foreground text-xs">
+                        Pick a post type, choose the content fields to include,
+                        and optionally add tags or meta fields for richer
+                        context.
+                      </p>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="rag-post-type">Post type</Label>
+                        <Select
+                          value={knowledgeForm.postTypeSlug ?? ""}
+                          onValueChange={(value) =>
+                            setKnowledgeForm((prev) => ({
+                              ...prev,
+                              postTypeSlug: value,
+                            }))
+                          }
+                        >
+                          <SelectTrigger id="rag-post-type">
+                            <SelectValue placeholder="Select a post type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {postTypeOptions.length === 0 ? (
+                              <SelectItem value="" disabled>
+                                No post types available
+                              </SelectItem>
+                            ) : (
+                              postTypeOptions.map((type) => (
+                                <SelectItem
+                                  key={type._id as string}
+                                  value={type.slug}
+                                >
+                                  {type.name ?? type.slug}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="rag-display-name">Display name</Label>
+                        <Input
+                          id="rag-display-name"
+                          placeholder="Internal label"
+                          value={knowledgeForm.displayName}
+                          onChange={(event) =>
+                            setKnowledgeForm((prev) => ({
+                              ...prev,
+                              displayName: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={knowledgeForm.isEnabled}
+                        onCheckedChange={(checked) =>
+                          setKnowledgeForm((prev) => ({
+                            ...prev,
+                            isEnabled: Boolean(checked),
+                          }))
+                        }
+                      />
+                      <span className="text-sm">Enable indexing</span>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Content fields</Label>
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        {(Object.keys(ragFieldLabels) as RagField[]).map(
+                          (field) => (
+                            <label
+                              key={field}
+                              className="flex items-center gap-2 rounded-md border p-2 text-sm"
+                            >
+                              <Checkbox
+                                checked={knowledgeForm.fields[field]}
+                                onCheckedChange={() =>
+                                  handleToggleRagField(field)
+                                }
+                              />
+                              {ragFieldLabels[field]}
+                            </label>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={knowledgeForm.includeTags}
+                        onCheckedChange={(checked) =>
+                          setKnowledgeForm((prev) => ({
+                            ...prev,
+                            includeTags: Boolean(checked),
+                          }))
+                        }
+                      />
+                      Include post tags in the search prompt
+                    </label>
+                    <div className="space-y-2">
+                      <Label>Custom fields to include</Label>
+                      {knowledgeForm.postTypeSlug ? (
+                        metaFieldOptions.length ? (
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {metaFieldOptions.map((field) => (
+                              <label
+                                key={field.key}
+                                className="flex items-center gap-2 rounded-md border p-2 text-sm"
+                              >
+                                <Checkbox
+                                  checked={knowledgeForm.metaFieldKeys.includes(
+                                    field.key,
+                                  )}
+                                  onCheckedChange={() =>
+                                    handleToggleMetaField(field.key)
+                                  }
+                                />
+                                {field.label}
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground text-sm">
+                            This post type does not have custom fields yet.
+                          </p>
+                        )
+                      ) : (
+                        <p className="text-muted-foreground text-sm">
+                          Select a post type to load its custom fields.
+                        </p>
+                      )}
+                      <div className="space-y-2">
+                        <Label htmlFor="rag-meta-fields-manual">
+                          Additional meta keys (comma separated)
+                        </Label>
+                        <Input
+                          id="rag-meta-fields-manual"
+                          placeholder="e.g. topic, difficulty"
+                          value={knowledgeForm.additionalMetaKeys}
+                          onChange={(event) =>
+                            setKnowledgeForm((prev) => ({
+                              ...prev,
+                              additionalMetaKeys: event.target.value,
+                            }))
+                          }
+                        />
+                        <p className="text-muted-foreground text-xs">
+                          Optional. Provide extra meta keys to include
+                          structured data when no custom field exists.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        onClick={handleSaveKnowledgeSource}
+                        disabled={
+                          isSavingSource ||
+                          !knowledgeForm.postTypeSlug ||
+                          postTypeOptions.length === 0
+                        }
+                      >
+                        {isSavingSource ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving…
+                          </>
+                        ) : knowledgeForm.sourceId ? (
+                          "Save changes"
+                        ) : (
+                          "Add source"
+                        )}
+                      </Button>
+                      {knowledgeForm.sourceId && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleResetKnowledgeForm}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

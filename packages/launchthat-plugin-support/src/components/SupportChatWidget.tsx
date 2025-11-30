@@ -15,6 +15,7 @@ import type { SupportChatSettings } from "../settings";
 import type { ChatHistoryMessage } from "./hooks/useSupportChatHistory";
 import type { ChatWidgetTab, HelpdeskArticle } from "./supportChat/types";
 import type { StoredSupportContact } from "./supportChat/utils";
+import { useHelpdeskArticles } from "./hooks/useHelpdeskArticles";
 import { useSupportChatHistory } from "./hooks/useSupportChatHistory";
 import { useSupportChatSession } from "./hooks/useSupportChatSession";
 import { useSupportChatSettings } from "./hooks/useSupportChatSettings";
@@ -58,30 +59,6 @@ type PresenceEntry =
     ? Entry
     : never;
 
-const mockHelpdeskArticles: HelpdeskArticle[] = [
-  {
-    id: "article-1",
-    title: "How do I reset my course progress?",
-    summary:
-      "Learn the steps required to clear progress and restart a learning path without losing certificates.",
-    updatedAt: "2 days ago",
-  },
-  {
-    id: "article-2",
-    title: "Where can I download invoices?",
-    summary:
-      "Navigate to Account → Billing → Invoices to export PDF receipts for every subscription cycle.",
-    updatedAt: "5 days ago",
-  },
-  {
-    id: "article-3",
-    title: "Troubleshooting login issues",
-    summary:
-      "A quick checklist for resolving common SSO, password reset, and MFA problems for workspace members.",
-    updatedAt: "1 week ago",
-  },
-];
-
 export function SupportChatWidget({
   organizationId,
   tenantName = "your organization",
@@ -115,6 +92,10 @@ function SupportChatWidgetInner({
   const { contact, saveContact } = useSupportContactStorage(organizationId);
   const { settings, isLoading: settingsLoading } =
     useSupportChatSettings(organizationId);
+  const { articles: helpdeskArticles } = useHelpdeskArticles(
+    apiPath,
+    organizationId,
+  );
   const { initialMessages, isBootstrapped } = useSupportChatHistory(
     apiPath,
     organizationId,
@@ -145,6 +126,7 @@ function SupportChatWidgetInner({
       settings={settings}
       contact={contact}
       onContactSaved={saveContact}
+      helpdeskArticles={helpdeskArticles}
     />
   );
 }
@@ -158,6 +140,7 @@ interface ChatSurfaceProps {
   settings: SupportChatSettings;
   contact: StoredContact | null;
   onContactSaved: (contact: StoredContact) => void;
+  helpdeskArticles: HelpdeskArticle[];
 }
 
 function ChatSurface({
@@ -169,6 +152,7 @@ function ChatSurface({
   settings,
   contact,
   onContactSaved,
+  helpdeskArticles,
 }: ChatSurfaceProps) {
   const openStorageKey = useMemo(
     () => `support-chat-open-${organizationId}`,
@@ -579,7 +563,7 @@ function ChatSurface({
             agentIsTyping={agentIsTyping && activeTab === "conversations"}
             resolvedAgentName={resolvedAgentName}
             tenantName={tenantName}
-            helpdeskArticles={mockHelpdeskArticles}
+            helpdeskArticles={helpdeskArticles}
           />
           <ChatWidgetFooter
             activeTab={activeTab}

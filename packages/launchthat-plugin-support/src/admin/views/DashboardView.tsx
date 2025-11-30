@@ -115,6 +115,11 @@ export function DashboardView({
               description="Inspect transcripts, escalate, or follow up."
             />
             <QuickLink
+              href="/admin/support/articles"
+              label="Helpdesk articles"
+              description="Manage long-form answers for the widget."
+            />
+            <QuickLink
               href="/admin/support/settings"
               label="Support settings"
               description="Configure the floating assistant experience."

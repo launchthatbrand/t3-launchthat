@@ -1,5 +1,6 @@
 "use client";
 
+import type { Resolver } from "react-hook-form";
 import { useId, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
@@ -52,6 +53,12 @@ const filterFormSchema = z.object({
   operation: z.string().min(1, { message: "Operation is required" }),
   value: z.any(),
 });
+const legacyFilterFormSchema = filterFormSchema as unknown as Parameters<
+  typeof zodResolver
+>[0];
+const legacyResolver = zodResolver(
+  legacyFilterFormSchema,
+) as unknown as Resolver<FilterFormValues>;
 
 /**
  * Type for filter form values
@@ -99,7 +106,7 @@ export function FilterPopover({
 
   // Create form
   const form = useForm<FilterFormValues>({
-    resolver: zodResolver(filterFormSchema),
+    resolver: legacyResolver,
     defaultValues: {
       fieldId: "",
       operation: "",

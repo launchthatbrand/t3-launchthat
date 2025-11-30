@@ -1,21 +1,22 @@
-import {
-  TEMPLATE_META_KEYS,
-  TEMPLATE_POST_TYPE_SLUG,
-  buildTemplatePageIdentifier,
-  requiresTargetPostType,
-  templateCategoryValidator
-} from "./templates";
-
-import type { Id } from "../../_generated/dataModel";
-import type { MutationCtx } from "../../_generated/server";
-import type {TemplateCategory} from "./templates";
-import { mutation } from "../../_generated/server";
 /**
  * Posts Mutations
  *
  * This module provides mutation endpoints for posts.
  */
 import { v } from "convex/values";
+
+import type { Id } from "../../_generated/dataModel";
+import type { MutationCtx } from "../../_generated/server";
+import type { TemplateCategory } from "./templates";
+import { internal } from "../../_generated/api";
+import { mutation } from "../../_generated/server";
+import {
+  buildTemplatePageIdentifier,
+  requiresTargetPostType,
+  TEMPLATE_META_KEYS,
+  TEMPLATE_POST_TYPE_SLUG,
+  templateCategoryValidator,
+} from "./templates";
 
 const metaValueValidator = v.union(
   v.string(),
@@ -116,6 +117,10 @@ export const createPost = mutation({
       await upsertPostMeta(ctx, postId, args.meta);
     }
 
+    await ctx.runMutation(internal.plugins.support.rag.ingestPostIfConfigured, {
+      postId,
+    });
+
     return postId;
   },
 });
@@ -127,9 +132,7 @@ export const createTemplate = mutation({
     targetPostType: v.optional(v.string()),
     loopContext: v.optional(v.string()),
     organizationId: v.optional(v.id("organizations")),
-    status: v.optional(
-      v.union(v.literal("draft"), v.literal("published")),
-    ),
+    status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
   },
   handler: async (ctx, args) => {
     if (
@@ -220,7 +223,7 @@ export const updatePost = mutation({
       const normalizedSlug =
         sanitizedUpdate.length > 0
           ? sanitizedUpdate
-          : post.slug ?? `post-${Date.now()}`;
+          : (post.slug ?? `post-${Date.now()}`);
       if (normalizedSlug !== post.slug) {
         updates.slug = await ensureUniqueSlug(
           ctx,
@@ -240,6 +243,10 @@ export const updatePost = mutation({
       await upsertPostMeta(ctx, id, meta);
     }
 
+    await ctx.runMutation(internal.plugins.support.rag.ingestPostIfConfigured, {
+      postId: id,
+    });
+
     return id;
   },
 });
@@ -255,6 +262,13 @@ export const deletePost = mutation({
     const post = await ctx.db.get(args.id);
     if (!post) {
       throw new Error(`Post with ID ${args.id} not found`);
+    }
+
+    if (post.organizationId) {
+      await ctx.runMutation(internal.plugins.support.rag.removePostEntry, {
+        organizationId: post.organizationId as Id<"organizations">,
+        postId: args.id,
+      });
     }
 
     await ctx.db.delete(args.id);
@@ -285,6 +299,20 @@ export const updatePostStatus = mutation({
       updatedAt: Date.now(),
     });
 
+    if (post.organizationId) {
+      if (args.status === "published") {
+        await ctx.runMutation(
+          internal.plugins.support.rag.ingestPostIfConfigured,
+          { postId: args.id },
+        );
+      } else {
+        await ctx.runMutation(internal.plugins.support.rag.removePostEntry, {
+          organizationId: post.organizationId as Id<"organizations">,
+          postId: args.id,
+        });
+      }
+    }
+
     return args.id;
   },
 });
@@ -311,6 +339,22 @@ export const bulkUpdatePostStatus = mutation({
           status: args.status,
           updatedAt: Date.now(),
         });
+        if (post.organizationId) {
+          if (args.status === "published") {
+            await ctx.runMutation(
+              internal.plugins.support.rag.ingestPostIfConfigured,
+              { postId: id },
+            );
+          } else {
+            await ctx.runMutation(
+              internal.plugins.support.rag.removePostEntry,
+              {
+                organizationId: post.organizationId as Id<"organizations">,
+                postId: id,
+              },
+            );
+          }
+        }
         results.push(id);
       }
     }

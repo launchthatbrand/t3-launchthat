@@ -18,10 +18,40 @@ export const supportPlugin: PluginDefinition = {
   features: [
     "Floating chat widget",
     "Org-scoped knowledge base",
+    "Helpdesk article editor",
     "Conversation history in Convex",
     "Plugin-managed enable/disable lifecycle",
   ],
-  postTypes: [],
+  postTypes: [
+    {
+      name: "Helpdesk Articles",
+      slug: "helpdeskarticles",
+      description:
+        "Long-form answers and docs that can power the support widget.",
+      isPublic: false,
+      includeTimestamps: true,
+      enableApi: true,
+      supports: {
+        title: true,
+        editor: true,
+        excerpt: true,
+        featuredImage: true,
+        customFields: true,
+        postMeta: true,
+        taxonomy: true,
+      },
+      rewrite: {
+        hasArchive: false,
+        singleSlug: "helpdesk-article",
+        withFront: true,
+        feeds: false,
+        pages: true,
+      },
+      adminMenu: {
+        enabled: false,
+      },
+    },
+  ],
   activation: {
     optionKey: "plugin_support_enabled",
     optionType: "site",

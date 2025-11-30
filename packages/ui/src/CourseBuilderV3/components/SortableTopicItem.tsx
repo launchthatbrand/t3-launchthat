@@ -8,6 +8,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Eye, GripVertical, Pencil, Trash2 } from "lucide-react";
 
+import { Dropzone } from "@acme/dnd";
 import {
   AccordionContent,
   AccordionItem,
@@ -17,7 +18,6 @@ import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 
 import type { Topic } from "../store/useCourseBuilderStore";
-import Dropzone from "./Dropzone";
 import SortableQuizItem from "./SortableQuizItem";
 
 // Import Accordion components
@@ -89,14 +89,14 @@ const SortableTopicItem: React.FC<SortableTopicItemProps> = ({
       {/* Wrap content in AccordionItem */}
       <AccordionItem
         value={topic.id} // Use topic ID for the accordion item value
-        className="rounded border border-accent/20 bg-accent/5 shadow-sm"
+        className="border-accent/20 bg-accent/5 rounded border shadow-sm"
       >
         {/* Trigger contains handle and title */}
         <div className="flex items-center">
           {/* Drag Handle */}
           <div
             {...listeners} // Apply listeners only to the handle
-            className="flex cursor-grab touch-none items-center border-r border-r-accent/20 p-2 text-muted-foreground hover:bg-accent/10 hover:text-accent-foreground"
+            className="border-r-accent/20 text-muted-foreground hover:bg-accent/10 hover:text-accent-foreground flex cursor-grab touch-none items-center border-r p-2"
             aria-label="Drag to reorder topic"
           >
             <GripVertical className="h-4 w-4" />
@@ -110,12 +110,10 @@ const SortableTopicItem: React.FC<SortableTopicItemProps> = ({
             <Badge variant="secondary" className="ml-2 whitespace-nowrap">
               Topic
             </Badge>
-            <span className="flex-grow text-accent-foreground">
-              {topic.title}
-            </span>
+            <span className="text-accent-foreground grow">{topic.title}</span>
             {/* Optional: Show quiz count? */}
             {topic.quizzes.length > 0 && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-muted-foreground text-xs">
                 ({topic.quizzes.length}{" "}
                 {topic.quizzes.length === 1 ? "quiz" : "quizzes"})
               </span>
@@ -161,10 +159,10 @@ const SortableTopicItem: React.FC<SortableTopicItemProps> = ({
         </div>
 
         {/* Content contains nested quizzes and dropzone */}
-        <AccordionContent className="border-t px-4 pb-4 pt-2">
+        <AccordionContent className="border-t px-4 pt-2 pb-4">
           {/* Sortable Quizzes within Topic */}
           {topic.quizzes.length > 0 && (
-            <div className="mt-2 border-t border-dashed border-accent/30 pt-2">
+            <div className="border-accent/30 mt-2 border-t border-dashed pt-2">
               <SortableContext
                 items={quizIds}
                 strategy={verticalListSortingStrategy}

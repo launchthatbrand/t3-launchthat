@@ -5,4 +5,5 @@ export interface HelpdeskArticle {
   title: string;
   summary: string;
   updatedAt: string;
+  slug?: string;
 }

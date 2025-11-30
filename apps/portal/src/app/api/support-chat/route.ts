@@ -132,17 +132,54 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const organizationIdParam = searchParams.get("organizationId");
-    const sessionId = searchParams.get("sessionId");
+    const view = searchParams.get("view") ?? "history";
 
-    if (!organizationIdParam || !sessionId) {
+    if (!organizationIdParam) {
       return NextResponse.json(
-        { error: "organizationId and sessionId are required" },
+        { error: "organizationId is required" },
         { status: 400 },
       );
     }
 
     const organizationId = organizationIdParam as Id<"organizations">;
     const convex = getConvex();
+
+    if (view === "helpdesk") {
+      const limitParam = searchParams.get("limit");
+      const limit =
+        limitParam && !Number.isNaN(Number(limitParam))
+          ? Math.max(1, Math.min(25, Number(limitParam)))
+          : 6;
+
+      const articles = await convex.query(api.core.posts.queries.getAllPosts, {
+        organizationId,
+        filters: {
+          postTypeSlug: "helpdeskarticles",
+          status: "published",
+          limit,
+        },
+      });
+
+      const normalized = articles.map((article) => ({
+        id: article._id,
+        title: article.title ?? "Untitled article",
+        summary: buildSummary(article.excerpt ?? "", article.content ?? ""),
+        updatedAt: formatRelativeTime(
+          article.updatedAt ?? article._creationTime,
+        ),
+        slug: article.slug ?? undefined,
+      }));
+
+      return NextResponse.json({ articles: normalized });
+    }
+
+    const sessionId = searchParams.get("sessionId");
+    if (!sessionId) {
+      return NextResponse.json(
+        { error: "sessionId is required for history view" },
+        { status: 400 },
+      );
+    }
 
     const messages = await convex.query(
       api.plugins.support.queries.listMessages,
@@ -168,4 +205,35 @@ function streamTextResponse(content: string) {
       "Content-Type": "text/plain; charset=utf-8",
     },
   });
+}
+
+function buildSummary(excerpt: string, content: string) {
+  const candidate = excerpt.trim().length > 0 ? excerpt : stripMarkup(content);
+  if (!candidate) {
+    return "Open this article to read the full answer.";
+  }
+  return candidate.length > 180 ? `${candidate.slice(0, 177)}…` : candidate;
+}
+
+function stripMarkup(value: string) {
+  return value
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function formatRelativeTime(timestamp?: number | null) {
+  if (!timestamp) {
+    return "just now";
+  }
+  const deltaMs = Date.now() - timestamp;
+  if (deltaMs < 60_000) return "just now";
+  if (deltaMs < 3_600_000) {
+    return `${Math.round(deltaMs / 60_000)}m ago`;
+  }
+  if (deltaMs < 86_400_000) {
+    return `${Math.round(deltaMs / 3_600_000)}h ago`;
+  }
+  const days = Math.round(deltaMs / 86_400_000);
+  return `${days}d ago`;
 }

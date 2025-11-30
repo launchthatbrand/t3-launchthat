@@ -19,6 +19,7 @@ import type {
 import { ConversationLeftSidebar } from "./components/ConversationLeftSidebar";
 import { ConversationRightSidebar } from "./components/ConversationRightSidebar";
 import { useSupportConversations } from "./hooks/useSupportConversations";
+import { ArticlesView } from "./views/ArticlesView";
 import { TestView } from "./views/ConversationsView";
 import { DashboardView } from "./views/DashboardView";
 import { ResponsesView } from "./views/ResponsesView";
@@ -39,6 +40,7 @@ export interface SupportSystemProps {
 const NAV_LINKS = [
   { label: "Dashboard", slug: "" },
   { label: "Responses", slug: "responses" },
+  { label: "Articles", slug: "articles" },
   { label: "Conversations", slug: "conversations" },
   { label: "Settings", slug: "settings" },
 ];
@@ -120,6 +122,8 @@ export function SupportSystem({
         );
       case "settings":
         return <SettingsView organizationId={organizationId} />;
+      case "articles":
+        return <ArticlesView organizationId={organizationId} />;
       case "test":
         return (
           <TestView

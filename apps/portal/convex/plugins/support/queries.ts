@@ -661,3 +661,52 @@ export const getEmailSettings = query({
     };
   },
 });
+
+const ragFieldValidator = v.array(
+  v.union(v.literal("title"), v.literal("excerpt"), v.literal("content")),
+);
+
+export const listRagSources = query({
+  args: {
+    organizationId: v.id("organizations"),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("supportRagSources"),
+      postTypeSlug: v.string(),
+      sourceType: v.string(),
+      fields: ragFieldValidator,
+      includeTags: v.boolean(),
+      metaFieldKeys: v.optional(v.array(v.string())),
+      displayName: v.optional(v.string()),
+      isEnabled: v.boolean(),
+      lastIndexedAt: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const rawSources = await ctx.db
+      .query("supportRagSources")
+      .withIndex("by_org_type", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("sourceType", "postType"),
+      )
+      .collect();
+
+    return rawSources.map((source) => ({
+      _id: source._id,
+      postTypeSlug: source.postTypeSlug,
+      sourceType: source.sourceType,
+      fields: source.fields,
+      includeTags: source.includeTags,
+      metaFieldKeys: source.metaFieldKeys ?? undefined,
+      displayName: source.displayName ?? undefined,
+      isEnabled: source.isEnabled,
+      lastIndexedAt: source.lastIndexedAt ?? undefined,
+      createdAt: source.createdAt,
+      updatedAt: source.updatedAt,
+    }));
+  },
+});

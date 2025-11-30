@@ -116,14 +116,36 @@ export const generateAgentReply = action({
       return { text: "" };
     }
 
-    const [threadId, knowledgeEntries] = await Promise.all([
-      ensureAgentThreadId(ctx, args),
-      ctx.runQuery(api.plugins.support.queries.listKnowledge, {
-        organizationId: args.organizationId,
-        query: trimmedPrompt,
-        limit: 5,
-      }),
-    ]);
+    const threadId = await ensureAgentThreadId(ctx, args);
+
+    let knowledgeEntries: Array<{
+      title: string;
+      content: string;
+    }> = [];
+
+    try {
+      knowledgeEntries = await ctx.runAction(
+        internal.plugins.support.rag.searchKnowledge,
+        {
+          organizationId: args.organizationId,
+          query: trimmedPrompt,
+          limit: 5,
+        },
+      );
+    } catch (searchError) {
+      console.error("[support-agent] rag search failed", searchError);
+    }
+
+    if (knowledgeEntries.length === 0) {
+      knowledgeEntries = await ctx.runQuery(
+        api.plugins.support.queries.listKnowledge,
+        {
+          organizationId: args.organizationId,
+          query: trimmedPrompt,
+          limit: 5,
+        },
+      );
+    }
 
     const knowledgeContext = buildKnowledgeContext(
       knowledgeEntries.map((entry) => ({

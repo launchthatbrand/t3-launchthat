@@ -6,13 +6,14 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 
-import type { Id } from "../lib/convexId";
-import { SortableItem } from "./SortableItem";
+import { SortableItem } from "@acme/dnd";
 
-interface DraggedItemData<T> {
+import type { Id } from "../lib/convexId";
+
+type DraggedItemData<T> = Record<string, unknown> & {
   type: string;
   item: T;
-}
+};
 
 interface NestedSortableListProps<T extends { _id: Id<"posts"> }> {
   title: string;
@@ -40,7 +41,7 @@ export const NestedSortableList = <T extends { _id: Id<"posts"> }>({
   const dropzoneId = `lesson-${lessonId}-${dropzoneType}`;
   const dropzone = (
     <DropzoneComponent id={dropzoneId} lessonId={lessonId}>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         {items.length === 0
           ? emptyMessage
           : "Drop and release here to attach new items"}

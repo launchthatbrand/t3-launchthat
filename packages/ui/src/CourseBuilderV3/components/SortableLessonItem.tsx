@@ -8,6 +8,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Eye, GripVertical, Pencil, Trash2 } from "lucide-react";
 
+import { Dropzone } from "@acme/dnd";
 import {
   AccordionContent,
   AccordionItem,
@@ -27,7 +28,6 @@ import {
 } from "@acme/ui/drawer";
 
 import type { Lesson } from "../store/useCourseBuilderStore";
-import Dropzone from "./Dropzone";
 import SortableQuizItem from "./SortableQuizItem";
 import SortableTopicItem from "./SortableTopicItem";
 
@@ -92,12 +92,12 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
       )}
       <AccordionItem
         value={lesson.id}
-        className="rounded border bg-background shadow-sm"
+        className="bg-background rounded border shadow-sm"
       >
         <div className="flex items-center pr-2">
           <div
             {...listeners}
-            className="cursor-grab touch-none p-2 text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground cursor-grab touch-none p-2"
             aria-label="Drag to reorder lesson"
           >
             <GripVertical className="h-5 w-5" />
@@ -149,13 +149,13 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
             )}
           </div>
         </div>
-        <AccordionContent className="border-t px-4 pb-4 pt-2">
+        <AccordionContent className="border-t px-4 pt-2 pb-4">
           {/* Single Sortable Context for Topics and Quizzes */}
           <SortableContext
             items={contentItemIds}
             strategy={verticalListSortingStrategy}
           >
-            <div className="ml-4 mt-2 space-y-1">
+            <div className="mt-2 ml-4 space-y-1">
               {lesson.contentItems.map((item) => {
                 if (item.type === "topic") {
                   return (

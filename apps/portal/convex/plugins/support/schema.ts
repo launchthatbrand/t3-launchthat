@@ -110,6 +110,28 @@ const supportEmailSettingsTable = defineTable({
   .index("by_organization", ["organizationId"])
   .index("by_alias_local_part", ["defaultAliasLocalPart"]);
 
+const ragFieldSelection = v.union(
+  v.literal("title"),
+  v.literal("excerpt"),
+  v.literal("content"),
+);
+
+const supportRagSourcesTable = defineTable({
+  organizationId: v.id("organizations"),
+  sourceType: v.literal("postType"),
+  postTypeSlug: v.string(),
+  fields: v.array(ragFieldSelection),
+  includeTags: v.boolean(),
+  metaFieldKeys: v.optional(v.array(v.string())),
+  displayName: v.optional(v.string()),
+  isEnabled: v.boolean(),
+  lastIndexedAt: v.optional(v.number()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_org_type", ["organizationId", "sourceType"])
+  .index("by_org_postType", ["organizationId", "postTypeSlug"]);
+
 const supportAgentPresenceTable = defineTable({
   organizationId: v.id("organizations"),
   sessionId: v.string(),
@@ -125,4 +147,5 @@ export const supportSchema = {
   supportConversations: supportConversationsTable,
   supportEmailSettings: supportEmailSettingsTable,
   supportAgentPresence: supportAgentPresenceTable,
+  supportRagSources: supportRagSourcesTable,
 };

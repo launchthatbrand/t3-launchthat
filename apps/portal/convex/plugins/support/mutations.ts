@@ -3,11 +3,16 @@ import { v } from "convex/values";
 
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
+import { internal } from "../../_generated/api";
 import { internalMutation, mutation } from "../../_generated/server";
 import { generateDefaultAliasParts } from "./queries";
 
 const matchModeValidator = v.optional(
   v.union(v.literal("contains"), v.literal("exact"), v.literal("regex")),
+);
+
+const ragFieldSelection = v.array(
+  v.union(v.literal("title"), v.literal("excerpt"), v.literal("content")),
 );
 
 type ConversationDoc = Doc<"supportConversations">;
@@ -450,28 +455,48 @@ export const upsertKnowledgeEntry = mutation({
         throw new Error("Entry not found for this organization");
       }
 
+      const slug =
+        args.slug ??
+        existing.slug ??
+        args.title.toLowerCase().replace(/\s+/g, "-");
+      const entryType = args.type ?? existing.type ?? "canned";
+
       await ctx.db.patch(args.entryId, {
         title: args.title,
-        slug: args.slug ?? args.title.toLowerCase().replace(/\s+/g, "-"),
+        slug,
         content: args.content,
         tags: args.tags ?? undefined,
-        type: args.type ?? existing.type ?? "canned",
+        type: entryType,
         matchMode: args.matchMode ?? existing.matchMode ?? "contains",
         matchPhrases: args.matchPhrases ?? existing.matchPhrases ?? [],
         priority: args.priority ?? existing.priority ?? 0,
         isActive: args.isActive ?? true,
         updatedAt: now,
       });
+
+      await ctx.runMutation(internal.plugins.support.rag.indexKnowledgeEntry, {
+        organizationId: args.organizationId,
+        entryId: args.entryId,
+        title: args.title,
+        content: args.content,
+        slug,
+        tags: args.tags ?? undefined,
+        source: entryType,
+      });
+
       return args.entryId;
     }
 
-    return await ctx.db.insert("supportKnowledge", {
+    const slug = args.slug ?? args.title.toLowerCase().replace(/\s+/g, "-");
+    const entryType = args.type ?? "canned";
+
+    const newEntryId = await ctx.db.insert("supportKnowledge", {
       organizationId: args.organizationId,
       title: args.title,
-      slug: args.slug ?? args.title.toLowerCase().replace(/\s+/g, "-"),
+      slug,
       content: args.content,
       tags: args.tags ?? undefined,
-      type: args.type ?? "canned",
+      type: entryType,
       matchMode: args.matchMode ?? "contains",
       matchPhrases: args.matchPhrases ?? [],
       priority: args.priority ?? 0,
@@ -479,6 +504,18 @@ export const upsertKnowledgeEntry = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    await ctx.runMutation(internal.plugins.support.rag.indexKnowledgeEntry, {
+      organizationId: args.organizationId,
+      entryId: newEntryId,
+      title: args.title,
+      content: args.content,
+      slug,
+      tags: args.tags ?? undefined,
+      source: entryType,
+    });
+
+    return newEntryId;
   },
 });
 
@@ -493,7 +530,105 @@ export const deleteKnowledgeEntry = mutation({
       throw new Error("Entry not found");
     }
     await ctx.db.delete(args.entryId);
+
+    await ctx.runMutation(internal.plugins.support.rag.removeKnowledgeEntry, {
+      organizationId: args.organizationId,
+      entryId: args.entryId,
+    });
+
     return args.entryId;
+  },
+});
+
+export const saveRagSourceConfig = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    sourceId: v.optional(v.id("supportRagSources")),
+    postTypeSlug: v.string(),
+    fields: ragFieldSelection,
+    includeTags: v.optional(v.boolean()),
+    metaFieldKeys: v.optional(v.array(v.string())),
+    displayName: v.optional(v.string()),
+    isEnabled: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const normalizedSlug = args.postTypeSlug.trim().toLowerCase();
+    if (!normalizedSlug) {
+      throw new Error("Post type slug is required");
+    }
+
+    const fields = args.fields.length > 0 ? args.fields : ["title", "content"];
+    const includeTags = args.includeTags ?? false;
+    const metaFieldKeys =
+      args.metaFieldKeys
+        ?.map((key) => key.trim())
+        .filter((key) => key.length > 0) ?? [];
+    const now = Date.now();
+
+    const existing = await ctx.db
+      .query("supportRagSources")
+      .withIndex("by_org_postType", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("postTypeSlug", normalizedSlug),
+      )
+      .unique();
+
+    if (existing && args.sourceId && existing._id !== args.sourceId) {
+      throw new Error(
+        "Another indexing configuration already exists for this post type",
+      );
+    }
+
+    const targetId = args.sourceId ?? existing?._id;
+
+    if (targetId) {
+      const current = await ctx.db.get(targetId);
+      if (!current || current.organizationId !== args.organizationId) {
+        throw new Error("Configuration not found for this organization");
+      }
+      await ctx.db.patch(targetId, {
+        postTypeSlug: normalizedSlug,
+        fields,
+        includeTags,
+        metaFieldKeys,
+        displayName: args.displayName?.trim() || undefined,
+        isEnabled: args.isEnabled ?? current.isEnabled,
+        updatedAt: now,
+      });
+      return { ragSourceId: targetId };
+    }
+
+    const insertedId = await ctx.db.insert("supportRagSources", {
+      organizationId: args.organizationId,
+      sourceType: "postType" as const,
+      postTypeSlug: normalizedSlug,
+      fields,
+      includeTags,
+      metaFieldKeys,
+      displayName: args.displayName?.trim() || undefined,
+      isEnabled: args.isEnabled ?? true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { ragSourceId: insertedId };
+  },
+});
+
+export const deleteRagSourceConfig = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    sourceId: v.id("supportRagSources"),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.sourceId);
+    if (!existing || existing.organizationId !== args.organizationId) {
+      return null;
+    }
+
+    await ctx.db.delete(args.sourceId);
+    return null;
   },
 });
 

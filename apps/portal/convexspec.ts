@@ -8145,6 +8145,24 @@ export type PublicApiType = {
             textBody?: string;
           }>
         >;
+        listRagSources: FunctionReference<
+          "query",
+          "public",
+          { organizationId: Id<"organizations"> },
+          Array<{
+            _id: Id<"supportRagSources">;
+            createdAt: number;
+            displayName?: string;
+            fields: Array<"title" | "excerpt" | "content">;
+            includeTags: boolean;
+            isEnabled: boolean;
+            lastIndexedAt?: number;
+            metaFieldKeys?: Array<string>;
+            postTypeSlug: string;
+            sourceType: string;
+            updatedAt: number;
+          }>
+        >;
         matchCannedResponse: FunctionReference<
           "query",
           "public",
@@ -8224,6 +8242,30 @@ export type PublicApiType = {
           },
           any
         >;
+        saveRagSourceConfig: FunctionReference<
+          "mutation",
+          "public",
+          {
+            displayName?: string;
+            fields: Array<"title" | "excerpt" | "content">;
+            includeTags?: boolean;
+            isEnabled?: boolean;
+            metaFieldKeys?: Array<string>;
+            organizationId: Id<"organizations">;
+            postTypeSlug: string;
+            sourceId?: Id<"supportRagSources">;
+          },
+          any
+        >;
+        deleteRagSourceConfig: FunctionReference<
+          "mutation",
+          "public",
+          {
+            organizationId: Id<"organizations">;
+            sourceId: Id<"supportRagSources">;
+          },
+          any
+        >;
         saveEmailSettings: FunctionReference<
           "mutation",
           "public",
@@ -8254,6 +8296,23 @@ export type PublicApiType = {
             sessionId: string;
           },
           { text: string }
+        >;
+      };
+      rag: {
+        searchKnowledge: FunctionReference<
+          "action",
+          "public",
+          {
+            limit?: number;
+            organizationId: Id<"organizations">;
+            query: string;
+          },
+          Array<{
+            content: string;
+            slug?: string;
+            source?: string;
+            title: string;
+          }>
         >;
       };
     };

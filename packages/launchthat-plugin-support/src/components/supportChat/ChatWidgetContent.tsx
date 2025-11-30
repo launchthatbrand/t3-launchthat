@@ -64,18 +64,38 @@ export const ChatWidgetContent = ({
   if (activeTab === "helpdesk") {
     return (
       <div className="flex h-80 flex-col gap-3 overflow-y-auto px-4 py-4">
-        {helpdeskArticles.map((article) => (
-          <div
-            key={article.id}
-            className="bg-muted/40 rounded-lg border p-3 text-sm"
-          >
-            <p className="font-semibold">{article.title}</p>
-            <p className="text-muted-foreground text-xs">{article.summary}</p>
-            <p className="text-muted-foreground mt-2 text-[11px]">
-              Updated {article.updatedAt}
-            </p>
-          </div>
-        ))}
+        {helpdeskArticles.map((article) => {
+          const articleUrl = article.slug
+            ? `/helpdesk/${article.slug}`
+            : undefined;
+          return (
+            <button
+              key={article.id}
+              type="button"
+              className="bg-muted/40 hover:border-primary/60 hover:bg-muted/70 focus-visible:ring-primary/70 rounded-lg border p-3 text-left text-sm transition focus-visible:ring-2 focus-visible:outline-none"
+              onClick={() => {
+                if (articleUrl) {
+                  window.open(articleUrl, "_blank", "noopener,noreferrer");
+                }
+              }}
+              disabled={!articleUrl}
+              aria-label={
+                articleUrl ? `Open article ${article.title}` : undefined
+              }
+            >
+              <p className="font-semibold">{article.title}</p>
+              <p className="text-muted-foreground text-xs">{article.summary}</p>
+              <p className="text-muted-foreground mt-2 text-[11px]">
+                Updated {article.updatedAt}
+              </p>
+              {!articleUrl ? (
+                <span className="text-muted-foreground mt-2 block text-[11px]">
+                  Draft article—no public link yet.
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
         {helpdeskArticles.length === 0 ? (
           <div className="text-muted-foreground text-center text-sm">
             No helpdesk articles available.
