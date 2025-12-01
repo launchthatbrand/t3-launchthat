@@ -18,6 +18,7 @@ export { PostCard } from "./PostCard";
 export type { PostCardProps } from "./PostCard";
 export { PostCardSkeleton } from "./PostCardSkeleton";
 export { PostCreator } from "./PostCreator";
+export { SocialHubDashboard } from "./SocialHubDashboard";
 export { ReportDialog } from "./ReportDialog";
 export type { ReportDialogProps } from "./ReportDialog";
 export { ShareDialog } from "./ShareDialog";

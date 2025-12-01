@@ -12,6 +12,7 @@ import {
   useCreatePost,
   useUpdatePost,
 } from "@/lib/blog";
+import { PortalSocialFeedProvider } from "@/src/providers/SocialFeedProvider";
 import { useQuery } from "convex/react";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -175,7 +176,9 @@ export function AdminSinglePostView({
   const pluginTabs = pluginSingleView?.config.tabs ?? [];
   const defaultTab =
     pluginSingleView?.config.defaultTab ?? pluginTabs[0]?.slug ?? "edit";
-  const queriedTab = (searchParams.get("tab") ?? defaultTab).toLowerCase();
+  const tabParam =
+    searchParams.get("tab") ?? searchParams.get("page") ?? undefined;
+  const queriedTab = (tabParam ?? defaultTab).toLowerCase();
   const normalizedTab = pluginTabs.some((tab) => tab.slug === queriedTab)
     ? queriedTab
     : defaultTab;
@@ -422,7 +425,7 @@ export function AdminSinglePostView({
                   handleCustomFieldChange(field.key, checked)
                 }
               />
-              <span className="text-sm text-muted-foreground">
+              <span className="text-muted-foreground text-sm">
                 {value === true ? "Enabled" : "Disabled"}
               </span>
             </div>
@@ -558,8 +561,10 @@ export function AdminSinglePostView({
       const params = new URLSearchParams(searchParams.toString());
       if (value === defaultTab) {
         params.delete("tab");
+        params.delete("page");
       } else {
         params.set("tab", value);
+        params.delete("page");
       }
       router.replace(`/admin/edit?${params.toString()}`, { scroll: false });
     },
@@ -609,7 +614,7 @@ export function AdminSinglePostView({
 
   if (!isNewRecord && post === undefined) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center text-muted-foreground">
+      <div className="text-muted-foreground flex min-h-[60vh] items-center justify-center">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading entry…
       </div>
     );
@@ -621,7 +626,7 @@ export function AdminSinglePostView({
         <AdminLayoutMain>
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="mb-4 text-muted-foreground">
+              <p className="text-muted-foreground mb-4">
                 The requested entry was not found or no longer exists.
               </p>
               <Button variant="outline" onClick={onBack}>
@@ -761,7 +766,7 @@ export function AdminSinglePostView({
 
   const renderDefaultContent = () => (
     <div className="space-y-6">
-      {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+      {saveError && <p className="text-destructive text-sm">{saveError}</p>}
       <Card className="relative">
         <CardHeader>
           <CardTitle>General</CardTitle>
@@ -818,10 +823,10 @@ export function AdminSinglePostView({
                   }}
                 />
               ) : (
-                <div className="flex items-center justify-between gap-3 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
+                <div className="border-input bg-muted/40 flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
                   {slugPreviewUrl ? (
                     <a
-                      className="min-w-0 flex-1 truncate font-medium text-primary hover:underline"
+                      className="text-primary min-w-0 flex-1 truncate font-medium hover:underline"
                       href={slugPreviewUrl}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -846,17 +851,17 @@ export function AdminSinglePostView({
                   ) : null}
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Must be unique; determines the public URL.
               </p>
             </div>
           )}
-          <div className="absolute right-6 top-0 space-y-2">
+          <div className="absolute top-0 right-6 space-y-2">
             {/* <Label htmlFor="post-status">Status</Label> */}
             <div className="flex items-center justify-between gap-3 rounded-md border p-3">
               <div>
                 <p className="text-sm font-medium">Published</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Toggle visibility for this entry.
                 </p>
               </div>
@@ -896,7 +901,7 @@ export function AdminSinglePostView({
             <CardTitle>Custom Fields</CardTitle>
             <CardDescription>Loading field definitions…</CardDescription>
           </CardHeader>
-          <CardContent className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CardContent className="text-muted-foreground flex items-center gap-2 text-sm">
             <Loader2 className="h-4 w-4 animate-spin" />
             Fetching the latest custom fields for this post type.
           </CardContent>
@@ -917,12 +922,12 @@ export function AdminSinglePostView({
                     {field.name}
                     {field.required ? " *" : ""}
                   </Label>
-                  <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                  <span className="text-muted-foreground text-xs tracking-wide uppercase">
                     {field.type}
                   </span>
                 </div>
                 {field.description ? (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">
                     {field.description}
                   </p>
                 ) : null}
@@ -932,11 +937,11 @@ export function AdminSinglePostView({
             <div className="space-y-2 rounded-md border p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Label htmlFor="custom-field-puck-data">Puck Data (JSON)</Label>
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                <span className="text-muted-foreground text-xs tracking-wide uppercase">
                   system
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Read-only representation of the stored Puck layout. Updates are
                 managed automatically when using the Puck editor.
               </p>
@@ -957,7 +962,7 @@ export function AdminSinglePostView({
       ) : (
         <Card>
           <CardHeader className="flex flex-row items-center gap-3">
-            <Sparkles className="h-5 w-5 text-muted-foreground" />
+            <Sparkles className="text-muted-foreground h-5 w-5" />
             <div>
               <CardTitle className="text-base">Need custom fields?</CardTitle>
               <CardDescription>
@@ -975,7 +980,7 @@ export function AdminSinglePostView({
                 Configure Fields
               </Link>
             </Button>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Custom fields mirror WordPress&apos; post_meta table so plugins
               can rely on a familiar contract.
             </p>
@@ -1033,11 +1038,11 @@ export function AdminSinglePostView({
             )}
           </Button>
           {!supportsPostsTable ? (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Saving is not available for this post type.
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Saved content is available across all tabs.
             </p>
           )}
@@ -1050,19 +1055,19 @@ export function AdminSinglePostView({
             High-level attributes for this entry.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm text-muted-foreground">
+        <CardContent className="text-muted-foreground space-y-3 text-sm">
           <div>
-            <p className="font-medium text-foreground">Post Type</p>
+            <p className="text-foreground font-medium">Post Type</p>
             <p>{headerLabel}</p>
           </div>
           {!isNewRecord && post ? (
             <>
               <div>
-                <p className="font-medium text-foreground">Status</p>
+                <p className="text-foreground font-medium">Status</p>
                 <p className="capitalize">{post.status ?? "draft"}</p>
               </div>
               <div>
-                <p className="font-medium text-foreground">Updated</p>
+                <p className="text-foreground font-medium">Updated</p>
                 <p>
                   {post.updatedAt
                     ? formatDistanceToNow(post.updatedAt, { addSuffix: true })
@@ -1077,6 +1082,13 @@ export function AdminSinglePostView({
       </Card>
     </div>
   );
+
+  const wrapWithSocialProvider = (node: JSX.Element) =>
+    pluginSingleView?.pluginId === "socialfeed" ? (
+      <PortalSocialFeedProvider>{node}</PortalSocialFeedProvider>
+    ) : (
+      node
+    );
 
   if (pluginSingleView && pluginTabs.length > 0) {
     const activeTabDefinition =
@@ -1095,7 +1107,7 @@ export function AdminSinglePostView({
       onClick: () => handleTabChange(tab.slug),
     }));
 
-    return (
+    return wrapWithSocialProvider(
       <AdminLayout
         title={`Edit ${headerLabel}`}
         description={postType?.description ?? "Manage this post entry."}
@@ -1121,11 +1133,11 @@ export function AdminSinglePostView({
             </AdminLayoutSidebar>
           )}
         </AdminLayoutContent>
-      </AdminLayout>
+      </AdminLayout>,
     );
   }
 
-  return (
+  return wrapWithSocialProvider(
     <AdminLayout
       title={`Edit ${headerLabel}`}
       description={postType?.description ?? "Manage this post entry."}
@@ -1140,6 +1152,6 @@ export function AdminSinglePostView({
           {defaultSidebar}
         </AdminLayoutSidebar>
       </AdminLayoutContent>
-    </AdminLayout>
+    </AdminLayout>,
   );
 }

@@ -85,6 +85,7 @@ export interface GenericArchiveViewProps {
   permalinkSettings: PermalinkSettings;
   onPostTypeChange: (slug: string) => void;
   onCreate: () => void;
+  renderLayout?: boolean;
 }
 
 export function GenericArchiveView({
@@ -95,6 +96,7 @@ export function GenericArchiveView({
   permalinkSettings,
   onPostTypeChange,
   onCreate,
+  renderLayout = true,
 }: GenericArchiveViewProps) {
   const label = postType?.name ?? slug.replace(/-/g, " ");
   const description =
@@ -205,6 +207,75 @@ export function GenericArchiveView({
     [],
   );
 
+  const mainContent = (
+    <div className="container space-y-6 py-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <Select value={slug} onValueChange={onPostTypeChange}>
+          <SelectTrigger className="w-[240px]">
+            <SelectValue placeholder="Select post type" />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((option: PostTypeDoc) => (
+              <SelectItem key={option._id} value={option.slug}>
+                {option.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button className="gap-2" type="button" onClick={onCreate}>
+          <Plus className="h-4 w-4" /> Add New {label}
+        </Button>
+      </div>
+
+      <Tabs defaultValue="list">
+        <TabsList>
+          <TabsTrigger value="list">List</TabsTrigger>
+          <TabsTrigger value="drafts">Drafts</TabsTrigger>
+          <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
+        </TabsList>
+        <TabsContent value="list">
+          <Card>
+            <CardHeader>
+              <CardTitle>{label} overview</CardTitle>
+              <CardDescription>
+                WordPress-style management powered by reusable post type
+                scaffolding.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <EntityList
+                data={displayRows}
+                columns={columns}
+                entityActions={entityActions}
+                isLoading={tableLoading}
+                enableFooter={false}
+                viewModes={["list"]}
+                defaultViewMode="list"
+                enableSearch
+                emptyState={
+                  <div className="text-muted-foreground py-8 text-center">
+                    No entries yet. Click “Add New” to get started.
+                  </div>
+                }
+                className="p-4"
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="drafts">
+          <PlaceholderState label="Drafts" />
+        </TabsContent>
+        <TabsContent value="scheduled">
+          <PlaceholderState label="Scheduled" />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+
+  if (!renderLayout) {
+    return mainContent;
+  }
+
   return (
     <AdminLayout
       title={`${label} Archive`}
@@ -214,68 +285,7 @@ export function GenericArchiveView({
       <AdminLayoutContent withSidebar>
         <AdminLayoutMain>
           <AdminLayoutHeader />
-          <div className="container space-y-6 py-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <Select value={slug} onValueChange={onPostTypeChange}>
-                <SelectTrigger className="w-[240px]">
-                  <SelectValue placeholder="Select post type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {options.map((option: PostTypeDoc) => (
-                    <SelectItem key={option._id} value={option.slug}>
-                      {option.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button className="gap-2" type="button" onClick={onCreate}>
-                <Plus className="h-4 w-4" /> Add New {label}
-              </Button>
-            </div>
-
-            <Tabs defaultValue="list">
-              <TabsList>
-                <TabsTrigger value="list">List</TabsTrigger>
-                <TabsTrigger value="drafts">Drafts</TabsTrigger>
-                <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
-              </TabsList>
-              <TabsContent value="list">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{label} overview</CardTitle>
-                    <CardDescription>
-                      WordPress-style management powered by reusable post type
-                      scaffolding.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <EntityList
-                      data={displayRows}
-                      columns={columns}
-                      entityActions={entityActions}
-                      isLoading={tableLoading}
-                      enableFooter={false}
-                      viewModes={["list"]}
-                      defaultViewMode="list"
-                      enableSearch
-                      emptyState={
-                        <div className="text-muted-foreground py-8 text-center">
-                          No entries yet. Click “Add New” to get started.
-                        </div>
-                      }
-                      className="p-4"
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              <TabsContent value="drafts">
-                <PlaceholderState label="Drafts" />
-              </TabsContent>
-              <TabsContent value="scheduled">
-                <PlaceholderState label="Scheduled" />
-              </TabsContent>
-            </Tabs>
-          </div>
+          {mainContent}
         </AdminLayoutMain>
         <AdminLayoutSidebar className="border-l p-4">
           <Card>

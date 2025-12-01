@@ -1,5 +1,7 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
 
+import { SocialHubDashboard } from "./components/SocialHubDashboard";
+
 export const socialFeedPlugin: PluginDefinition = {
   id: "socialfeed",
   name: "Social Feed",
@@ -32,10 +34,58 @@ export const socialFeedPlugin: PluginDefinition = {
       adminMenu: {
         enabled: true,
         label: "Feed",
-        slug: "social/feed",
+        slug: "social-feed-item",
         icon: "Newspaper",
         position: 35,
         parent: "social",
+      },
+      singleView: {
+        defaultTab: "edit",
+        tabs: [
+          {
+            id: "dashboard",
+            slug: "dashboard",
+            label: "Dashboard",
+            description:
+              "Monitor feed performance, publish announcements, and view recent engagement.",
+            render: () => <SocialHubDashboard />,
+          },
+          {
+            id: "edit",
+            slug: "edit",
+            label: "Edit",
+            description: "Update feed content and metadata.",
+            usesDefaultEditor: true,
+          },
+        ],
+      },
+      adminArchiveView: {
+        defaultTab: "list",
+        tabs: [
+          {
+            id: "dashboard",
+            slug: "dashboard",
+            label: "Dashboard",
+            description:
+              "Monitor feed performance, publish announcements, and view recent engagement.",
+            render: () => <SocialHubDashboard />,
+          },
+          {
+            id: "list",
+            slug: "list",
+            label: "Feed Items",
+            description: "Classic WordPress-style archive management.",
+            usesDefaultArchive: true,
+          },
+          {
+            id: "groups",
+            slug: "groups",
+            label: "Groups",
+            description: "Manage social groups and their members.",
+            usesDefaultArchive: true,
+            postTypeSlug: "social-feed-group",
+          },
+        ],
       },
     },
     {
@@ -57,7 +107,7 @@ export const socialFeedPlugin: PluginDefinition = {
       adminMenu: {
         enabled: true,
         label: "Groups",
-        slug: "social/groups",
+        slug: "social-feed-group",
         icon: "Users",
         position: 36,
         parent: "social",
@@ -67,21 +117,21 @@ export const socialFeedPlugin: PluginDefinition = {
   adminMenus: [
     {
       label: "Social Hub",
-      slug: "social",
+      slug: "edit?post_type=social-feed-item&tab=dashboard",
       icon: "MessageCircle",
       position: 34,
       group: "social",
     },
     {
       label: "Social Feed Items",
-      slug: "social/feed",
+      slug: "edit?post_type=social-feed-item",
       icon: "Newspaper",
       position: 35,
       group: "social",
     },
     {
       label: "Social Groups",
-      slug: "social/groups",
+      slug: "edit?post_type=social-feed-item&tab=groups",
       icon: "Users",
       position: 36,
       group: "social",

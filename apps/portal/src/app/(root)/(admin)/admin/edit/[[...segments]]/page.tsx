@@ -3,10 +3,11 @@
 "use client";
 
 import type { Doc } from "@/convex/_generated/dataModel";
-import { Suspense, useMemo } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
+import { PortalSocialFeedProvider } from "@/src/providers/SocialFeedProvider";
 import { useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
@@ -20,8 +21,11 @@ import {
 
 import type { PluginSingleViewInstance } from "../_components/AdminSinglePostView";
 import type { PermalinkSettings } from "../_components/permalink";
+import type { PluginPostArchiveViewConfig } from "~/lib/plugins/types";
 import {
+  AdminLayout,
   AdminLayoutContent,
+  AdminLayoutHeader,
   AdminLayoutMain,
 } from "~/components/admin/AdminLayout";
 import { useTenant } from "~/context/TenantContext";
@@ -34,6 +38,7 @@ import {
   defaultPermalinkSettings,
   isPermalinkSettingsValue,
 } from "../_components/permalink";
+import { PlaceholderState } from "../_components/PlaceholderState";
 import { TaxonomyTermsView } from "../_components/TaxonomyTermsView";
 import { useAdminPostContext } from "../../_providers/AdminPostProvider";
 import { usePostTypes } from "../../settings/post-types/_api/postTypes";
@@ -116,17 +121,114 @@ function AdminEditPageBody() {
     );
   }, [postType, postTypes, resolvedSlug]);
 
-  const handlePostTypeChange = (value: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("post_type", value);
-    params.delete("post_id");
-    router.replace(`/admin/edit?${params.toString()}`);
-  };
+  const handlePostTypeChange = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("post_type", value);
+      params.delete("post_id");
+      router.replace(`/admin/edit?${params.toString()}`);
+    },
+    [router, searchParams],
+  );
 
   const pluginSingleView = useMemo(() => {
     if (!hydratedPostType) return null;
     return getPluginSingleViewForSlug(hydratedPostType.slug);
   }, [hydratedPostType]);
+
+  const pluginArchiveView = useMemo(() => {
+    if (!hydratedPostType) return null;
+    return getPluginArchiveViewForSlug(hydratedPostType.slug);
+  }, [hydratedPostType]);
+
+  const archiveTabs = pluginArchiveView?.config.tabs ?? [];
+  const archiveDefaultTab = useMemo(() => {
+    if (!pluginArchiveView) {
+      return "list";
+    }
+    return (
+      pluginArchiveView.config.defaultTab ??
+      pluginArchiveView.config.tabs[0]?.slug ??
+      "list"
+    );
+  }, [pluginArchiveView]);
+  const archiveTabParam =
+    searchParams.get("tab")?.toLowerCase().trim() ??
+    searchParams.get("page")?.toLowerCase().trim() ??
+    archiveDefaultTab;
+  const normalizedArchiveTab = useMemo(() => {
+    if (!pluginArchiveView) {
+      return archiveDefaultTab;
+    }
+    return archiveTabs.some((tab) => tab.slug === archiveTabParam)
+      ? archiveTabParam
+      : archiveDefaultTab;
+  }, [archiveDefaultTab, archiveTabParam, archiveTabs, pluginArchiveView]);
+  const [activeArchiveTab, setActiveArchiveTab] =
+    useState(normalizedArchiveTab);
+  useEffect(() => {
+    setActiveArchiveTab(normalizedArchiveTab);
+  }, [normalizedArchiveTab]);
+  const handleArchiveTabChange = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value === archiveDefaultTab) {
+        params.delete("tab");
+        params.delete("page");
+      } else {
+        params.set("tab", value);
+        params.delete("page");
+      }
+      router.replace(`/admin/edit?${params.toString()}`);
+    },
+    [archiveDefaultTab, router, searchParams],
+  );
+
+  const handleCreate = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("post_type", resolvedSlug);
+    params.set("post_id", "new");
+    router.replace(`/admin/edit?${params.toString()}`);
+  }, [resolvedSlug, router, searchParams]);
+
+  const renderGenericArchive = useCallback(
+    (renderLayout: boolean, targetSlug?: string) => {
+      const slugToUse = targetSlug ?? resolvedSlug;
+      const targetPostType =
+        postTypes.find((type) => type.slug === slugToUse) ?? hydratedPostType;
+      return (
+        <GenericArchiveView
+          slug={slugToUse}
+          postType={targetPostType}
+          options={postTypes}
+          isLoading={isLoading}
+          permalinkSettings={permalinkSettings}
+          onPostTypeChange={handlePostTypeChange}
+          onCreate={handleCreate}
+          renderLayout={renderLayout}
+        />
+      );
+    },
+    [
+      handleCreate,
+      handlePostTypeChange,
+      hydratedPostType,
+      isLoading,
+      permalinkSettings,
+      postTypes,
+      resolvedSlug,
+    ],
+  );
+
+  const wrapWithPluginProviders = useCallback(
+    (node: JSX.Element, pluginId?: string | null) =>
+      pluginId === "socialfeed" ? (
+        <PortalSocialFeedProvider>{node}</PortalSocialFeedProvider>
+      ) : (
+        node
+      ),
+    [],
+  );
 
   if (pluginParam && !pluginDefinition) {
     return (
@@ -157,7 +259,7 @@ function AdminEditPageBody() {
           <div className="flex flex-col gap-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   Admin / Integrations / {pluginDefinition.name}
                 </p>
                 <h1 className="text-3xl font-bold">
@@ -182,7 +284,7 @@ function AdminEditPageBody() {
               </CardHeader>
               <CardContent>
                 {pluginSettingContent ?? (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">
                     This plugin does not expose configurable settings yet.
                   </p>
                 )}
@@ -234,22 +336,55 @@ function AdminEditPageBody() {
     );
   }
 
-  return (
-    <GenericArchiveView
-      slug={resolvedSlug}
-      postType={hydratedPostType}
-      options={postTypes}
-      isLoading={isLoading}
-      permalinkSettings={permalinkSettings}
-      onPostTypeChange={handlePostTypeChange}
-      onCreate={() => {
-        const params = new URLSearchParams(searchParams.toString());
-        params.set("post_type", resolvedSlug);
-        params.set("post_id", "new");
-        router.replace(`/admin/edit?${params.toString()}`);
-      }}
-    />
-  );
+  if (pluginArchiveView && archiveTabs.length > 0) {
+    const activeArchiveDefinition =
+      archiveTabs.find((tab) => tab.slug === activeArchiveTab) ??
+      archiveTabs[0];
+    const showDefaultArchive =
+      activeArchiveDefinition?.usesDefaultArchive ?? false;
+    const archiveSlug = activeArchiveDefinition?.postTypeSlug ?? resolvedSlug;
+    const archivePostType =
+      postTypes.find((type) => type.slug === archiveSlug) ?? hydratedPostType;
+    const pluginTabProps = {
+      pluginId: pluginArchiveView.pluginId,
+      pluginName: pluginArchiveView.pluginName,
+      postTypeSlug: archiveSlug,
+      organizationId,
+    };
+    const archiveContent = showDefaultArchive ? (
+      renderGenericArchive(false, archiveSlug)
+    ) : activeArchiveDefinition?.render ? (
+      activeArchiveDefinition.render(pluginTabProps)
+    ) : (
+      <PlaceholderState label={activeArchiveDefinition?.label ?? ""} />
+    );
+    const layoutTabs = archiveTabs.map((tab) => ({
+      value: tab.slug,
+      label: tab.label,
+      onClick: () => handleArchiveTabChange(tab.slug),
+    }));
+    const archiveLayout = (
+      <AdminLayout
+        title={`${archivePostType?.name ?? archiveSlug} Archive`}
+        description={
+          archivePostType?.description ??
+          "Manage structured entries for this post type."
+        }
+        activeTab={activeArchiveTab}
+        pathname={`/admin/edit?post_type=${archiveSlug}`}
+      >
+        <AdminLayoutContent withSidebar={false}>
+          <AdminLayoutMain>
+            <AdminLayoutHeader customTabs={layoutTabs} />
+            <div className="container py-6">{archiveContent}</div>
+          </AdminLayoutMain>
+        </AdminLayoutContent>
+      </AdminLayout>
+    );
+    return wrapWithPluginProviders(archiveLayout, pluginArchiveView.pluginId);
+  }
+
+  return renderGenericArchive(true);
 }
 
 export default function AdminEditPage() {
@@ -270,6 +405,28 @@ function getPluginSingleViewForSlug(
         pluginId: plugin.id,
         pluginName: plugin.name,
         config: postType.singleView,
+      };
+    }
+  }
+  return null;
+}
+
+interface PluginArchiveViewInstance {
+  pluginId: string;
+  pluginName: string;
+  config: PluginPostArchiveViewConfig;
+}
+
+function getPluginArchiveViewForSlug(
+  slug: string,
+): PluginArchiveViewInstance | null {
+  for (const plugin of pluginDefinitions) {
+    const postType = plugin.postTypes.find((type) => type.slug === slug);
+    if (postType?.adminArchiveView) {
+      return {
+        pluginId: plugin.id,
+        pluginName: plugin.name,
+        config: postType.adminArchiveView,
       };
     }
   }

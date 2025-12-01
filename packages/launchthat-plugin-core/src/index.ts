@@ -73,6 +73,7 @@ export interface PluginPostTypeConfig {
   rewrite?: PluginPostTypeRewrite;
   adminMenu: PluginPostTypeAdminMenu;
   singleView?: PluginPostSingleViewConfig;
+  adminArchiveView?: PluginPostArchiveViewConfig;
   frontend?: PluginPostTypeFrontendConfig;
 }
 
@@ -126,6 +127,21 @@ export interface PluginPostSingleViewConfig {
   basePath?: string;
   defaultTab: string;
   tabs: PluginSingleViewTabDefinition[];
+}
+
+export interface PluginArchiveViewTabDefinition {
+  id: string;
+  slug: string;
+  label: string;
+  description?: string;
+  usesDefaultArchive?: boolean;
+  postTypeSlug?: string;
+  render?: (props: PluginSingleViewComponentProps) => ReactNode;
+}
+
+export interface PluginPostArchiveViewConfig {
+  defaultTab: string;
+  tabs: PluginArchiveViewTabDefinition[];
 }
 
 export interface PluginDefinition {
