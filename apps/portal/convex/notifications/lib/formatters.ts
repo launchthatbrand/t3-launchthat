@@ -12,7 +12,7 @@ export async function generateNotificationContent(
     userId: Id<"users">;
     sourceUserId?: Id<"users">;
     sourceGroupId?: Id<"groups">;
-    sourceEventId?: Id<"events">;
+    sourceEventId?: Id<"posts">;
     sourceDownloadId?: Id<"downloads">;
     title?: string;
     message?: string;

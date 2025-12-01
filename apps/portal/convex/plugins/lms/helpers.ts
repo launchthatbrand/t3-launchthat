@@ -1,6 +1,6 @@
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
-import type { MetaValue } from "../../../src/plugins/lms/types";
+import type { MetaValue } from "../../../../../packages/launchthat-plugin-lms/src/types";
 
 type Ctx = QueryCtx | MutationCtx;
 

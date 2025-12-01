@@ -32,7 +32,7 @@ const resultShape = v.object({
   source: v.optional(v.string()),
 });
 
-type KnowledgeDoc = Doc<"supportKnowledge">;
+type CannedResponseDoc = Doc<"supportCannedResponses">;
 
 const sanitizeOrganizationId = (organizationId: Id<"organizations">) => {
   return organizationId
@@ -98,7 +98,7 @@ export const getEmailSettingsByAlias = internalQuery({
 //   },
 // });
 
-export const listKnowledge = query({
+export const listHelpdeskArticles = query({
   args: {
     organizationId: v.id("organizations"),
     query: v.optional(v.string()),
@@ -112,17 +112,29 @@ export const listKnowledge = query({
       ? normalizedQuery.split(/\s+/).filter(Boolean)
       : [];
 
-    const knowledgeEntries = (await ctx.db
-      .query("supportKnowledge")
-      .withIndex("by_organization", (q) =>
-        q.eq("organizationId", args.organizationId),
+    const helpdeskPosts = await ctx.db
+      .query("posts")
+      .withIndex("by_organization_postTypeSlug", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("postTypeSlug", "helpdeskarticles"),
       )
-      .collect()) as KnowledgeDoc[];
+      .take(200);
 
-    const scoredEntries = knowledgeEntries
+    const publishedPosts = helpdeskPosts.filter(
+      (post) => post.status === "published",
+    );
+
+    const scoredEntries = publishedPosts
       .map((entry) => {
-        const haystack =
-          `${entry.title} ${entry.content} ${(entry.tags ?? []).join(" ")}`.toLowerCase();
+        const haystack = [
+          entry.title,
+          entry.excerpt ?? "",
+          entry.content ?? "",
+          (entry.tags ?? []).join(" "),
+        ]
+          .join(" ")
+          .toLowerCase();
         const score =
           terms.length === 0
             ? 1
@@ -134,29 +146,27 @@ export const listKnowledge = query({
       })
       .filter(({ score }) => score > 0)
       .sort(
-        (a, b) => b.score - a.score || b.entry.updatedAt - a.entry.updatedAt,
+        (a, b) =>
+          b.score - a.score ||
+          (b.entry.updatedAt ?? 0) - (a.entry.updatedAt ?? 0),
       )
       .slice(0, limit)
       .map(({ entry }) => ({
         title: entry.title,
-        content: entry.content,
-        slug: entry.slug,
+        content: entry.content ?? entry.excerpt ?? "",
+        slug: entry.slug ?? undefined,
         tags: entry.tags ?? undefined,
-        type: entry.type ?? undefined,
-        source: "knowledge",
+        type: entry.postTypeSlug ?? undefined,
+        source: "helpdesk",
       }));
 
     if (scoredEntries.length > 0) {
       return scoredEntries;
     }
 
-    const fallbackPosts = await ctx.db
-      .query("posts")
-      .withIndex("by_organization", (q) =>
-        q.eq("organizationId", args.organizationId),
-      )
-      .order("desc")
-      .take(limit);
+    const fallbackPosts = publishedPosts
+      .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+      .slice(0, limit);
 
     return fallbackPosts.map((post) => ({
       title: post.title,
@@ -164,14 +174,14 @@ export const listKnowledge = query({
       slug: post.slug ?? undefined,
       tags: post.tags ?? undefined,
       type: post.postTypeSlug ?? undefined,
-      source: "post",
+      source: "helpdesk",
     }));
   },
 });
 
 const cannedMatchResult = v.union(
   v.object({
-    entryId: v.id("supportKnowledge"),
+    entryId: v.id("supportCannedResponses"),
     title: v.string(),
     content: v.string(),
     slug: v.optional(v.string()),
@@ -193,14 +203,14 @@ export const matchCannedResponse = query({
 
     const lowerQuestion = normalizedQuestion.toLowerCase();
     const entries = (await ctx.db
-      .query("supportKnowledge")
+      .query("supportCannedResponses")
       .withIndex("by_organization", (q) =>
         q.eq("organizationId", args.organizationId),
       )
-      .collect()) as KnowledgeDoc[];
+      .collect()) as CannedResponseDoc[];
 
     let bestMatch: {
-      entryId: Id<"supportKnowledge">;
+      entryId: Id<"supportCannedResponses">;
       title: string;
       content: string;
       slug?: string;
@@ -286,18 +296,17 @@ export const matchCannedResponse = query({
   },
 });
 
-export const listKnowledgeEntries = query({
+export const listCannedResponses = query({
   args: {
     organizationId: v.id("organizations"),
   },
   returns: v.array(
     v.object({
-      _id: v.id("supportKnowledge"),
+      _id: v.id("supportCannedResponses"),
       title: v.string(),
-      slug: v.string(),
+      slug: v.optional(v.string()),
       content: v.string(),
       tags: v.optional(v.array(v.string())),
-      type: v.optional(v.string()),
       matchMode: v.optional(
         v.union(v.literal("contains"), v.literal("exact"), v.literal("regex")),
       ),
@@ -310,26 +319,25 @@ export const listKnowledgeEntries = query({
   ),
   handler: async (ctx, args) => {
     const entries = (await ctx.db
-      .query("supportKnowledge")
+      .query("supportCannedResponses")
       .withIndex("by_organization", (q) =>
         q.eq("organizationId", args.organizationId),
       )
       .order("desc")
-      .collect()) as KnowledgeDoc[];
+      .collect()) as CannedResponseDoc[];
 
     return entries.map((entry) => ({
       _id: entry._id,
       title: entry.title,
-      slug: entry.slug ?? "",
+      slug: entry.slug ?? undefined,
       content: entry.content,
       tags: entry.tags ?? undefined,
-      type: entry.type ?? undefined,
-      matchMode: entry.matchMode,
-      matchPhrases: entry.matchPhrases,
+      matchMode: entry.matchMode ?? "contains",
+      matchPhrases: entry.matchPhrases ?? [],
       priority: entry.priority,
       isActive: entry.isActive,
-      updatedAt: entry.updatedAt,
-      createdAt: entry.createdAt,
+      updatedAt: entry.updatedAt ?? Date.now(),
+      createdAt: entry.createdAt ?? Date.now(),
     }));
   },
 });

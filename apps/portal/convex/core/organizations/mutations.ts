@@ -411,9 +411,7 @@ export const grantCustomerAccessMutation = mutation({
       v.literal("course_enrollment"),
       v.literal("manual_grant"),
     ),
-    sourceId: v.optional(
-      v.union(v.id("products"), v.id("courses"), v.string()),
-    ),
+    sourceId: v.optional(v.union(v.id("products"), v.string())),
     expiresAt: v.optional(v.number()),
   },
   returns: v.id("userOrganizations"),

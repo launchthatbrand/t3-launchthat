@@ -3,7 +3,7 @@ import "~/app/globals.css";
 import type { Metadata, Viewport } from "next";
 // import Link from "next/link";
 // // Import the CartDropdown component
-// import { CartDropdown } from "@/components/cart";
+// import { CartDropdown } from "launchthat-plugin-commerce/components";
 // import { NotificationIcon } from "@/components/notifications/NotificationIcon";
 // Import Clerk components
 // import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
@@ -13,7 +13,7 @@ import { GeistSans } from "geist/font/sans";
 // Import the Providers component
 // import { Providers } from "~/app/providers";
 // import { InvitationBadge } from "~/components/groups/InvitationBadge";
-import type { NavItem} from "@acme/ui";
+import type { NavItem } from "@acme/ui";
 import { Button, cn, SidebarInset, SiteHeader } from "@acme/ui";
 import StandardLayout from "@acme/ui/layout/StandardLayout";
 import { AppSidebar } from "@acme/ui/sidebar-layout/app-sidebar";
@@ -74,7 +74,7 @@ export default function RootLayout(props: {
     <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
-          "min-h-screen bg-background font-sans text-foreground antialiased",
+          "bg-background text-foreground min-h-screen font-sans antialiased",
           GeistSans.variable,
           GeistMono.variable,
         )}

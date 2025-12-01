@@ -2,8 +2,7 @@ import "@testing-library/jest-dom";
 
 import React from "react";
 import { act, render, screen, waitFor } from "@testing-library/react";
-
-import PaymentForm from "./PaymentForm";
+import { PaymentForm } from "launchthat-plugin-commerce/components";
 
 // Define more specific types for mocks
 interface MockClientResponse {

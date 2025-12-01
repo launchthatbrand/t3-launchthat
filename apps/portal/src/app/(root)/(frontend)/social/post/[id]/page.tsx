@@ -1,7 +1,14 @@
 "use client";
 
+import type { Id } from "@convex-config/_generated/dataModel";
 import { useParams, useRouter } from "next/navigation";
+import { api } from "@portal/convexspec";
 import { useQuery } from "convex/react";
+import {
+  CommentThread,
+  CommentThreadSkeleton,
+  PostCard,
+} from "launchthat-plugin-socialfeed/components";
 import { ChevronLeft } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
@@ -9,19 +16,13 @@ import { Card, CardContent } from "@acme/ui/card";
 import { Separator } from "@acme/ui/separator";
 import { Skeleton } from "@acme/ui/skeleton";
 
-import type { Id } from "../../../../../../../convex/_generated/dataModel";
-import { CommentThread } from "~/components/social/CommentThread";
-import { CommentThreadSkeleton } from "~/components/social/CommentThreadSkeleton";
-import { PostCard } from "~/components/social/PostCard";
-import { api } from "../../../../../../../convex/_generated/api";
-
 export default function PostDetailPage() {
   const router = useRouter();
   const params = useParams();
   const postId = params.id as string;
 
   // Fetch the post details
-  const post = useQuery(api.socialfeed.queries.getFeedItem, {
+  const post = useQuery(api.plugins.socialfeed.queries.getFeedItem, {
     feedItemId: postId as unknown as Id<"feedItems">,
   });
 

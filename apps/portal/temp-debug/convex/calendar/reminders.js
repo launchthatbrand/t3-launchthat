@@ -38,7 +38,7 @@ export const setEventReminders = mutation({
             const now = Date.now();
             // Only schedule if reminder time is in the future
             if (reminderTime > now) {
-                await ctx.scheduler.runAt(new Date(reminderTime), internal.calendar.reminders.sendEventReminder, {
+                await ctx.scheduler.runAt(new Date(reminderTime), internal.plugins.calendar.reminders.sendEventReminder, {
                     eventId: args.eventId,
                     userId: args.userId,
                     reminderType: reminder.type,
@@ -76,7 +76,7 @@ export const sendEventReminder = internalAction({
     },
     handler: async (ctx, args) => {
         // Get the event details
-        const event = await ctx.runQuery(internal.calendar.queries.getEventById, {
+        const event = await ctx.runQuery(internal.plugins.calendar.queries.getEventById, {
             eventId: args.eventId,
         });
         if (!event) {
@@ -131,7 +131,7 @@ export const processEventReminders = internalAction({
         const now = Date.now();
         const lookaheadWindow = now + 24 * 60 * 60 * 1000; // 24 hours in ms
         // Get all events in the lookahead window that have reminders
-        const events = await ctx.runQuery(internal.calendar.queries.getUpcomingEventsWithReminders, {
+        const events = await ctx.runQuery(internal.plugins.calendar.queries.getUpcomingEventsWithReminders, {
             startDate: now,
             endDate: lookaheadWindow,
         });
@@ -141,7 +141,7 @@ export const processEventReminders = internalAction({
             if (!event.reminders || event.reminders.length === 0)
                 continue;
             // Get all attendees who have accepted the event
-            const attendees = await ctx.runQuery(internal.calendar.invitations.getEventAttendees, {
+            const attendees = await ctx.runQuery(internal.plugins.calendar.invitations.getEventAttendees, {
                 eventId: event._id,
             });
             const acceptedAttendees = attendees.filter((attendee) => attendee.status === "accepted" || attendee.status === "tentative");
@@ -151,7 +151,7 @@ export const processEventReminders = internalAction({
                     const reminderTime = event.startTime - reminder.minutesBefore * 60 * 1000;
                     // If reminder time is between now and the lookahead window, schedule it
                     if (reminderTime > now && reminderTime < lookaheadWindow) {
-                        await ctx.scheduler.runAt(new Date(reminderTime), internal.calendar.reminders.sendEventReminder, {
+                        await ctx.scheduler.runAt(new Date(reminderTime), internal.plugins.calendar.reminders.sendEventReminder, {
                             eventId: event._id,
                             userId: attendee.userId,
                             reminderType: reminder.type,
@@ -173,5 +173,5 @@ export const processEventReminders = internalAction({
 // Define a cron job to process reminders daily
 const crons = cronJobs();
 // Run reminder processing every 12 hours
-crons.interval("process-event-reminders", { hours: 12 }, internal.calendar.reminders.processEventReminders, {});
+crons.interval("process-event-reminders", { hours: 12 }, internal.plugins.calendar.reminders.processEventReminders, {});
 export default crons;

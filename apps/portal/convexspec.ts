@@ -5,951 +5,6 @@ export const api: PublicApiType = anyApi as unknown as PublicApiType;
 export const internal: InternalApiType = anyApi as unknown as InternalApiType;
 
 export type PublicApiType = {
-  lms: {
-    courses: {
-      queries: {
-        getCourseById: FunctionReference<
-          "query",
-          "public",
-          { id: Id<"courses"> },
-          null | {
-            _creationTime: number;
-            _id: Id<"courses">;
-            courseStructure?: Array<{ lessonId: Id<"lessons"> }>;
-            description?: string;
-            finalQuizId?: Id<"quizzes">;
-            isPublished?: boolean;
-            menuOrder?: number;
-            organizationId?: Id<"organizations">;
-            productId?: Id<"products">;
-            tagIds?: Array<Id<"tags">>;
-            title: string;
-          }
-        >;
-        getCourseMetadata: FunctionReference<
-          "query",
-          "public",
-          { id: Id<"courses"> },
-          null | {
-            _creationTime: number;
-            _id: Id<"courses">;
-            description?: string;
-            isPublished?: boolean;
-            menuOrder?: number;
-            organizationId?: Id<"organizations">;
-            productId?: Id<"products">;
-            title: string;
-          }
-        >;
-        getAvailableQuizzes: FunctionReference<
-          "query",
-          "public",
-          Record<string, never>,
-          Array<{
-            _creationTime: number;
-            _id: Id<"quizzes">;
-            courseId?: Id<"courses">;
-            description?: string;
-            isPublished?: boolean;
-            lessonId?: Id<"lessons">;
-            order?: number;
-            questions?: Array<{
-              correctAnswer: string | Array<string> | boolean;
-              explanation?: string;
-              options?: Array<string>;
-              questionText: string;
-              type: "single-choice" | "multiple-choice" | "boolean";
-            }>;
-            title: string;
-            topicId?: Id<"topics">;
-          }>
-        >;
-        listCourses: FunctionReference<
-          "query",
-          "public",
-          {
-            isPublished?: boolean;
-            organizationId?: Id<"organizations">;
-            paginationOpts: {
-              cursor: string | null;
-              endCursor?: string | null;
-              id?: number;
-              maximumBytesRead?: number;
-              maximumRowsRead?: number;
-              numItems: number;
-            };
-            productId?: Id<"products">;
-          },
-          any
-        >;
-        getCourseStructureWithItems: FunctionReference<
-          "query",
-          "public",
-          { courseId: Id<"courses"> },
-          any
-        >;
-        getAvailableLessons: FunctionReference<
-          "query",
-          "public",
-          Record<string, never>,
-          Array<{
-            _creationTime: number;
-            _id: Id<"lessons">;
-            categories?: Array<string>;
-            content?: string;
-            courseId?: Id<"courses">;
-            description?: string;
-            excerpt?: string;
-            featuredImage?: string;
-            featuredMedia?:
-              | { mediaItemId: Id<"mediaItems">; type: "convex" }
-              | { type: "vimeo"; vimeoId: string; vimeoUrl: string }
-              | string;
-            isPublished?: boolean;
-            menuOrder?: number;
-            tagIds?: Array<Id<"tags">>;
-            title: string;
-          }>
-        >;
-        getAvailableTopics: FunctionReference<
-          "query",
-          "public",
-          Record<string, never>,
-          Array<{
-            _creationTime: number;
-            _id: Id<"topics">;
-            categories?: Array<string>;
-            content?: string;
-            contentType?: "text" | "video" | "quiz";
-            description?: string;
-            excerpt?: string;
-            featuredImage?: string;
-            featuredMedia?:
-              | { mediaItemId: Id<"mediaItems">; type: "convex" }
-              | { type: "vimeo"; vimeoId: string; vimeoUrl: string }
-              | string;
-            isPublished?: boolean;
-            lessonId?: Id<"lessons">;
-            menuOrder?: number;
-            order?: number;
-            tagIds?: Array<Id<"tags">>;
-            title: string;
-            wp_id?: number;
-          }>
-        >;
-        listCourseMembers: FunctionReference<
-          "query",
-          "public",
-          { courseId: Id<"courses"> },
-          Array<{
-            _id: Id<"users">;
-            email: string;
-            enrolledAt?: number;
-            image?: string;
-            name?: string;
-            status?: "active" | "completed" | "suspended" | "cancelled";
-          }>
-        >;
-      };
-      mutations: {
-        ensureCourseForPost: FunctionReference<
-          "mutation",
-          "public",
-          { postId: Id<"posts"> },
-          { courseId: Id<"courses">; created: boolean }
-        >;
-      };
-    };
-    contentAccess: {
-      queries: {
-        getContentAccessRules: FunctionReference<
-          "query",
-          "public",
-          { contentId: string; contentType: string },
-          any
-        >;
-        checkContentAccess: FunctionReference<
-          "query",
-          "public",
-          {
-            contentId: string;
-            contentType: string;
-            parentContentId?: string;
-            parentContentType?: string;
-            userId: Id<"users">;
-          },
-          any
-        >;
-      };
-      mutations: {
-        saveContentAccessRules: FunctionReference<
-          "mutation",
-          "public",
-          {
-            contentId: string;
-            contentType:
-              | "course"
-              | "lesson"
-              | "topic"
-              | "download"
-              | "product"
-              | "quiz";
-            excludedTags?: {
-              mode: "all" | "some";
-              tagIds: Array<Id<"marketingTags">>;
-            };
-            isActive?: boolean;
-            isPublic?: boolean;
-            priority?: number;
-            requiredTags?: {
-              mode: "all" | "some";
-              tagIds: Array<Id<"marketingTags">>;
-            };
-          },
-          string
-        >;
-        clearContentAccessRules: FunctionReference<
-          "mutation",
-          "public",
-          {
-            contentId: string;
-            contentType:
-              | "course"
-              | "lesson"
-              | "topic"
-              | "download"
-              | "product"
-              | "quiz";
-          },
-          boolean
-        >;
-        logContentAccess: FunctionReference<
-          "mutation",
-          "public",
-          {
-            accessGranted: boolean;
-            contentId: string;
-            contentType:
-              | "course"
-              | "lesson"
-              | "topic"
-              | "download"
-              | "product"
-              | "quiz";
-            reason?: string;
-            userId: Id<"users">;
-          },
-          any
-        >;
-        deleteContentAccessRules: FunctionReference<
-          "mutation",
-          "public",
-          {
-            contentId: string;
-            contentType:
-              | "course"
-              | "lesson"
-              | "topic"
-              | "download"
-              | "product"
-              | "quiz";
-          },
-          boolean
-        >;
-      };
-    };
-    lessons: {
-      mutations: {
-        create: FunctionReference<
-          "mutation",
-          "public",
-          {
-            categories?: Array<string>;
-            content?: string;
-            excerpt?: string;
-            featuredMedia?: string;
-            isPublished?: boolean;
-            title: string;
-          },
-          Id<"lessons">
-        >;
-        createViaWebhook: FunctionReference<
-          "mutation",
-          "public",
-          {
-            content?: string;
-            excerpt?: string;
-            featuredMedia?: string;
-            isPublished?: boolean;
-            title: string;
-          },
-          Id<"lessons">
-        >;
-        updateTitle: FunctionReference<
-          "mutation",
-          "public",
-          { lessonId: Id<"lessons">; title: string },
-          null
-        >;
-        update: FunctionReference<
-          "mutation",
-          "public",
-          {
-            categories?: Array<string>;
-            content?: string;
-            excerpt?: string;
-            featuredMedia?: string;
-            isPublished?: boolean;
-            lessonId: Id<"lessons">;
-            title?: string;
-          },
-          null
-        >;
-        remove: FunctionReference<
-          "mutation",
-          "public",
-          { lessonId: Id<"lessons"> },
-          null
-        >;
-        attachToCourse: FunctionReference<
-          "mutation",
-          "public",
-          { courseId: Id<"courses">; lessonId: Id<"lessons">; order: number },
-          null
-        >;
-      };
-      queries: {
-        getAvailable: FunctionReference<
-          "query",
-          "public",
-          { courseId: Id<"courses"> },
-          any
-        >;
-        listLessons: FunctionReference<
-          "query",
-          "public",
-          { searchTitle?: string },
-          any
-        >;
-        getLesson: FunctionReference<
-          "query",
-          "public",
-          { lessonId: Id<"lessons"> },
-          any
-        >;
-      };
-    };
-    topics: {
-      mutations: {
-        create: FunctionReference<
-          "mutation",
-          "public",
-          {
-            content?: string;
-            contentType: "text" | "video" | "quiz";
-            isPublished?: boolean;
-            title: string;
-          },
-          Id<"topics">
-        >;
-        createTopic: FunctionReference<
-          "mutation",
-          "public",
-          {
-            categories?: Array<string>;
-            content?: string;
-            contentType?: "text" | "video" | "quiz";
-            description?: string;
-            excerpt?: string;
-            featuredImage?: string;
-            featuredMedia?:
-              | { mediaItemId: Id<"mediaItems">; type: "convex" }
-              | { type: "vimeo"; vimeoId: string; vimeoUrl: string }
-              | string;
-            isPublished?: boolean;
-            lessonId?: Id<"lessons">;
-            menuOrder?: number;
-            order?: number;
-            tagIds?: Array<Id<"tags">>;
-            title: string;
-            wp_id?: number;
-          },
-          Id<"topics">
-        >;
-        update: FunctionReference<
-          "mutation",
-          "public",
-          {
-            categories?: Array<string>;
-            content?: string;
-            contentType?: "text" | "video" | "quiz";
-            description?: string;
-            excerpt?: string;
-            featuredImage?: string;
-            isPublished?: boolean;
-            title?: string;
-            topicId: Id<"topics">;
-          },
-          null
-        >;
-        updateTopic: FunctionReference<
-          "mutation",
-          "public",
-          {
-            categories?: Array<string>;
-            content?: string;
-            contentType?: "text" | "video" | "quiz";
-            description?: string;
-            excerpt?: string;
-            featuredImage?: string;
-            featuredMedia?:
-              | { mediaItemId: Id<"mediaItems">; type: "convex" }
-              | { type: "vimeo"; vimeoId: string; vimeoUrl: string }
-              | string;
-            id: Id<"topics">;
-            isPublished?: boolean;
-            lessonId?: Id<"lessons">;
-            menuOrder?: number;
-            order?: number;
-            tagIds?: Array<Id<"tags">>;
-            title?: string;
-            wp_id?: number;
-          },
-          null
-        >;
-        remove: FunctionReference<
-          "mutation",
-          "public",
-          { topicId: Id<"topics"> },
-          null
-        >;
-        attachToLesson: FunctionReference<
-          "mutation",
-          "public",
-          { lessonId: Id<"lessons">; order: number; topicId: Id<"topics"> },
-          null
-        >;
-        reorderTopicsInLesson: FunctionReference<
-          "mutation",
-          "public",
-          { lessonId: Id<"lessons">; orderedTopicIds: Array<Id<"topics">> },
-          null
-        >;
-        removeTopicFromLesson: FunctionReference<
-          "mutation",
-          "public",
-          { topicId: Id<"topics"> },
-          null
-        >;
-      };
-      queries: {
-        getAvailable: FunctionReference<
-          "query",
-          "public",
-          { lessonId: Id<"lessons"> },
-          Array<{
-            _creationTime: number;
-            _id: Id<"topics">;
-            categories?: Array<string>;
-            content?: string;
-            contentType?: "text" | "video" | "quiz";
-            description?: string;
-            excerpt?: string;
-            featuredImage?: string;
-            featuredMedia?:
-              | { mediaItemId: Id<"mediaItems">; type: "convex" }
-              | { type: "vimeo"; vimeoId: string; vimeoUrl: string }
-              | string;
-            isPublished?: boolean;
-            lessonId?: Id<"lessons">;
-            menuOrder?: number;
-            order?: number;
-            tagIds?: Array<Id<"tags">>;
-            title: string;
-            wp_id?: number;
-          }>
-        >;
-        listTopics: FunctionReference<
-          "query",
-          "public",
-          {
-            isPublished?: boolean;
-            lessonId?: Id<"lessons">;
-            searchTitle?: string;
-          },
-          Array<{
-            _creationTime: number;
-            _id: Id<"topics">;
-            categories?: Array<string>;
-            content?: string;
-            contentType?: "text" | "video" | "quiz";
-            description?: string;
-            excerpt?: string;
-            featuredImage?: string;
-            featuredMedia?:
-              | { mediaItemId: Id<"mediaItems">; type: "convex" }
-              | { type: "vimeo"; vimeoId: string; vimeoUrl: string }
-              | string;
-            isPublished?: boolean;
-            lessonId?: Id<"lessons">;
-            menuOrder?: number;
-            order?: number;
-            tagIds?: Array<Id<"tags">>;
-            title: string;
-            wp_id?: number;
-          }>
-        >;
-        getTopic: FunctionReference<
-          "query",
-          "public",
-          { id: Id<"topics"> },
-          {
-            _creationTime: number;
-            _id: Id<"topics">;
-            categories?: Array<string>;
-            content?: string;
-            contentType?: "text" | "video" | "quiz";
-            description?: string;
-            excerpt?: string;
-            featuredImage?: string;
-            featuredMedia?:
-              | { mediaItemId: Id<"mediaItems">; type: "convex" }
-              | { type: "vimeo"; vimeoId: string; vimeoUrl: string }
-              | string;
-            isPublished?: boolean;
-            lessonId?: Id<"lessons">;
-            menuOrder?: number;
-            order?: number;
-            tagIds?: Array<Id<"tags">>;
-            title: string;
-            wp_id?: number;
-          }
-        >;
-        paginateTopicsByLessonId: FunctionReference<
-          "query",
-          "public",
-          {
-            lessonId: Id<"lessons">;
-            paginationOpts: {
-              cursor: string | null;
-              endCursor?: string | null;
-              id?: number;
-              maximumBytesRead?: number;
-              maximumRowsRead?: number;
-              numItems: number;
-            };
-          },
-          {
-            continueCursor: string;
-            isDone: boolean;
-            page: Array<{
-              _creationTime: number;
-              _id: Id<"topics">;
-              categories?: Array<string>;
-              content?: string;
-              contentType?: "text" | "video" | "quiz";
-              description?: string;
-              excerpt?: string;
-              featuredImage?: string;
-              featuredMedia?:
-                | { mediaItemId: Id<"mediaItems">; type: "convex" }
-                | { type: "vimeo"; vimeoId: string; vimeoUrl: string }
-                | string;
-              isPublished?: boolean;
-              lessonId?: Id<"lessons">;
-              menuOrder?: number;
-              order?: number;
-              tagIds?: Array<Id<"tags">>;
-              title: string;
-              wp_id?: number;
-            }>;
-          }
-        >;
-      };
-    };
-    quizzes: {
-      mutations: {
-        create: FunctionReference<
-          "mutation",
-          "public",
-          {
-            isPublished?: boolean;
-            questions?: Array<{
-              correctAnswer: string | Array<string> | boolean;
-              explanation?: string;
-              options?: Array<string>;
-              questionText: string;
-              type: "single-choice" | "multiple-choice" | "boolean";
-            }>;
-            title: string;
-          },
-          Id<"quizzes">
-        >;
-        updateTitle: FunctionReference<
-          "mutation",
-          "public",
-          { quizId: Id<"quizzes">; title: string },
-          null
-        >;
-        updateQuestions: FunctionReference<
-          "mutation",
-          "public",
-          {
-            questions: Array<{
-              correctAnswer: string | Array<string> | boolean;
-              explanation?: string;
-              options?: Array<string>;
-              questionText: string;
-              type: "single-choice" | "multiple-choice" | "boolean";
-            }>;
-            quizId: Id<"quizzes">;
-          },
-          null
-        >;
-        update: FunctionReference<
-          "mutation",
-          "public",
-          {
-            description?: string;
-            isPublished?: boolean;
-            questions?: Array<{
-              correctAnswer: string | Array<string> | boolean;
-              explanation?: string;
-              options?: Array<string>;
-              questionText: string;
-              type: "single-choice" | "multiple-choice" | "boolean";
-            }>;
-            quizId: Id<"quizzes">;
-            title?: string;
-          },
-          null
-        >;
-        remove: FunctionReference<
-          "mutation",
-          "public",
-          { quizId: Id<"quizzes"> },
-          null
-        >;
-        attach: FunctionReference<
-          "mutation",
-          "public",
-          {
-            courseId?: Id<"courses">;
-            isFinal: boolean;
-            lessonId?: Id<"lessons">;
-            order: number;
-            quizId: Id<"quizzes">;
-            topicId?: Id<"topics">;
-          },
-          null
-        >;
-        removeQuizFromLesson: FunctionReference<
-          "mutation",
-          "public",
-          { quizId: Id<"quizzes"> },
-          null
-        >;
-      };
-      queries: {
-        getAvailable: FunctionReference<
-          "query",
-          "public",
-          { topicId: Id<"topics"> },
-          Array<{
-            _creationTime: number;
-            _id: Id<"quizzes">;
-            courseId?: Id<"courses">;
-            description?: string;
-            isPublished?: boolean;
-            lessonId?: Id<"lessons">;
-            order?: number;
-            questions?: Array<{
-              correctAnswer: string | Array<string> | boolean;
-              explanation?: string;
-              options?: Array<string>;
-              questionText: string;
-              type: "single-choice" | "multiple-choice" | "boolean";
-            }>;
-            title: string;
-            topicId?: Id<"topics">;
-          }>
-        >;
-        listQuizzes: FunctionReference<
-          "query",
-          "public",
-          { searchTitle?: string },
-          Array<{ _id: Id<"quizzes">; isPublished?: boolean; title: string }>
-        >;
-        getQuiz: FunctionReference<
-          "query",
-          "public",
-          { quizId: Id<"quizzes"> },
-          null | {
-            _creationTime: number;
-            _id: Id<"quizzes">;
-            description?: string;
-            isPublished?: boolean;
-            questions?: Array<{
-              correctAnswer: string | Array<string> | boolean;
-              explanation?: string;
-              options?: Array<string>;
-              questionText: string;
-              type: "single-choice" | "multiple-choice" | "boolean";
-            }>;
-            title: string;
-          }
-        >;
-        getQuizzesByLesson: FunctionReference<
-          "query",
-          "public",
-          { lessonId: Id<"lessons"> },
-          Array<{
-            _creationTime: number;
-            _id: Id<"quizzes">;
-            description?: string;
-            isPublished?: boolean;
-            lessonId?: Id<"lessons">;
-            order?: number;
-            title: string;
-            topicId?: Id<"topics">;
-          }>
-        >;
-      };
-    };
-    progress: {
-      mutations: {
-        markItemComplete: FunctionReference<
-          "mutation",
-          "public",
-          {
-            courseId: Id<"courses">;
-            itemId: Id<"lessons"> | Id<"topics"> | Id<"quizzes">;
-            itemType: "lesson" | "topic" | "quiz";
-            score?: number;
-            timeSpent?: number;
-            userId: Id<"users">;
-          },
-          null
-        >;
-        startItem: FunctionReference<
-          "mutation",
-          "public",
-          {
-            courseId: Id<"courses">;
-            itemId: Id<"lessons"> | Id<"topics"> | Id<"quizzes">;
-            itemType: "lesson" | "topic" | "quiz";
-            userId: Id<"users">;
-          },
-          null
-        >;
-        resetUserCourseProgress: FunctionReference<
-          "mutation",
-          "public",
-          { courseId: Id<"courses">; userId: Id<"users"> },
-          null
-        >;
-        startItemProgress: FunctionReference<
-          "mutation",
-          "public",
-          {
-            courseId: Id<"courses">;
-            itemId: Id<"lessons"> | Id<"topics"> | Id<"quizzes">;
-            itemType: "lesson" | "topic" | "quiz";
-            userId: Id<"users">;
-          },
-          any
-        >;
-        completeCourse: FunctionReference<
-          "mutation",
-          "public",
-          { courseId: Id<"courses">; userId: Id<"users"> },
-          null
-        >;
-        completeLesson: FunctionReference<
-          "mutation",
-          "public",
-          {
-            courseId: Id<"courses">;
-            lessonId: Id<"lessons">;
-            userId: Id<"users">;
-          },
-          null
-        >;
-        completeTopic: FunctionReference<
-          "mutation",
-          "public",
-          {
-            courseId: Id<"courses">;
-            timeSpent?: number;
-            topicId: Id<"topics">;
-            userId: Id<"users">;
-          },
-          null
-        >;
-        completeQuiz: FunctionReference<
-          "mutation",
-          "public",
-          {
-            courseId: Id<"courses">;
-            quizId: Id<"quizzes">;
-            score?: number;
-            timeSpent?: number;
-            userId: Id<"users">;
-          },
-          null
-        >;
-      };
-      queries: {
-        getCourseProgress: FunctionReference<
-          "query",
-          "public",
-          { courseId: Id<"courses">; userId: Id<"users"> },
-          null | {
-            completed: number;
-            completedAt?: number;
-            lastAccessedAt: number;
-            lastAccessedId?: Id<"lessons"> | Id<"topics"> | Id<"quizzes">;
-            lastAccessedType?: "lesson" | "topic" | "quiz";
-            lessons: { completed: Array<Id<"lessons">>; total: number };
-            percentComplete: number;
-            startedAt?: number;
-            status: "not_started" | "in_progress" | "completed";
-            topics: Record<Id<"lessons">, Array<Id<"topics">>>;
-            total: number;
-          }
-        >;
-        isItemCompleted: FunctionReference<
-          "query",
-          "public",
-          {
-            courseId?: Id<"courses">;
-            itemId: Id<"lessons"> | Id<"topics"> | Id<"quizzes">;
-            userId: Id<"users">;
-          },
-          boolean
-        >;
-        isLessonCompleted: FunctionReference<
-          "query",
-          "public",
-          { lessonId: Id<"lessons">; userId: Id<"users"> },
-          boolean
-        >;
-        getDetailedCourseProgress: FunctionReference<
-          "query",
-          "public",
-          { courseId: Id<"courses">; userId: Id<"users"> },
-          {
-            courseProgress: null | {
-              completed: number;
-              completedAt?: number;
-              lastAccessedAt: number;
-              lastAccessedId?: Id<"lessons"> | Id<"topics"> | Id<"quizzes">;
-              lastAccessedType?: "lesson" | "topic" | "quiz";
-              lessons: { completed: Array<Id<"lessons">>; total: number };
-              percentComplete: number;
-              startedAt?: number;
-              status: "not_started" | "in_progress" | "completed";
-              topics: Record<Id<"lessons">, Array<Id<"topics">>>;
-              total: number;
-            };
-            itemProgress: Array<{
-              _id: Id<"progress">;
-              attempts?: number;
-              completed: boolean;
-              completedAt?: number;
-              itemId: Id<"lessons"> | Id<"topics"> | Id<"quizzes">;
-              itemType: "lesson" | "topic" | "quiz";
-              score?: number;
-              startedAt?: number;
-              timeSpent?: number;
-            }>;
-          }
-        >;
-        getCourseProgressSummary: FunctionReference<
-          "query",
-          "public",
-          { courseId: Id<"courses"> },
-          Array<{
-            completedAt?: number;
-            lastAccessedAt?: number;
-            percentComplete: number;
-            status: "not_started" | "in_progress" | "completed";
-            userEmail?: string;
-            userId: Id<"users">;
-            userName?: string;
-          }>
-        >;
-        getCourseProgressMeta: FunctionReference<
-          "query",
-          "public",
-          { courseId: Id<"courses">; userId: Id<"users"> },
-          any
-        >;
-        getCompletedItems: FunctionReference<
-          "query",
-          "public",
-          { courseId: Id<"courses">; userId: Id<"users"> },
-          any
-        >;
-        getLessonProgress: FunctionReference<
-          "query",
-          "public",
-          {
-            courseId: Id<"courses">;
-            lessonId: Id<"lessons">;
-            userId: Id<"users">;
-          },
-          {
-            lessonCompleted: boolean;
-            lessonCompletedAt?: number;
-            lessonId: Id<"lessons">;
-            percentComplete: number;
-            topics: Array<{
-              completed: boolean;
-              completedAt?: number;
-              title: string;
-              topicId: Id<"topics">;
-            }>;
-            topicsCompleted: number;
-            totalTopics: number;
-          }
-        >;
-        getCourseProgressByLessons: FunctionReference<
-          "query",
-          "public",
-          { courseId: Id<"courses">; userId: Id<"users"> },
-          {
-            courseId: Id<"courses">;
-            lessons: Array<{
-              completedTopics: Array<Id<"topics">>;
-              isLinear?: boolean;
-              lessonId: Id<"lessons">;
-              order: number;
-              progress: {
-                lessonsCompleted: boolean;
-                percentage: number;
-                status: "not_started" | "in_progress" | "completed" | "locked";
-                topicsCompleted: number;
-                totalTopics: number;
-              };
-              title: string;
-              totalTopics: Array<Id<"topics">>;
-            }>;
-            overallStats: {
-              completedLessons: number;
-              completedQuizzes: number;
-              completedTopics: number;
-              totalLessons: number;
-              totalQuizzes: number;
-              totalTopics: number;
-            };
-            status: "not_started" | "in_progress" | "completed";
-            totalProgress: number;
-          }
-        >;
-      };
-    };
-  };
   ecommerce: {
     orders: {
       mockData: {
@@ -2419,18 +1474,10 @@ export type PublicApiType = {
         {
           actionData?: Record<string, string>;
           actionUrl?: string;
-          commentId?: Id<"groupComments">;
           content?: string;
           expiresAt?: number;
-          groupId?: Id<"groups">;
-          invitationId?: Id<"groupInvitations">;
-          joinRequestId?: Id<"groupJoinRequests">;
           message?: string;
-          postId?: Id<"groupPosts">;
           relatedId?: Id<"groupInvitations">;
-          sourceDownloadId?: Id<"downloads">;
-          sourceEventId?: Id<"events">;
-          sourceGroupId?: Id<"groups">;
           sourceOrderId?: Id<"transactions">;
           sourceUserId?: Id<"users">;
           title: string;
@@ -2485,18 +1532,10 @@ export type PublicApiType = {
         {
           actionData?: Record<string, string>;
           actionUrl?: string;
-          commentId?: Id<"groupComments">;
           content?: string;
           expiresAt?: number;
-          groupId?: Id<"groups">;
-          invitationId?: Id<"groupInvitations">;
-          joinRequestId?: Id<"groupJoinRequests">;
           message?: string;
-          postId?: Id<"groupPosts">;
           relatedId?: Id<"groupInvitations">;
-          sourceDownloadId?: Id<"downloads">;
-          sourceEventId?: Id<"events">;
-          sourceGroupId?: Id<"groups">;
           sourceOrderId?: Id<"transactions">;
           sourceUserId?: Id<"users">;
           title: string;
@@ -2623,638 +1662,6 @@ export type PublicApiType = {
         "public",
         { clerkId: string },
         any
-      >;
-    };
-  };
-  socialfeed: {
-    mutations: {
-      createPost: FunctionReference<
-        "mutation",
-        "public",
-        {
-          content: string;
-          creatorId: Id<"users">;
-          mediaUrls?: Array<string>;
-          moduleId?: string;
-          moduleType?: "blog" | "course" | "group" | "event";
-          visibility: "public" | "private" | "group";
-        },
-        Id<"feedItems">
-      >;
-      updatePost: FunctionReference<
-        "mutation",
-        "public",
-        {
-          content?: string;
-          mediaUrls?: Array<string>;
-          postId: Id<"feedItems">;
-          userId: Id<"users">;
-          visibility?: "public" | "private" | "group";
-        },
-        boolean
-      >;
-      deletePost: FunctionReference<
-        "mutation",
-        "public",
-        { postId: Id<"feedItems">; userId: Id<"users"> },
-        boolean
-      >;
-      shareContent: FunctionReference<
-        "mutation",
-        "public",
-        {
-          content?: string;
-          creatorId: Id<"users">;
-          moduleId?: string;
-          moduleType?: "blog" | "course" | "group" | "event";
-          originalContentId: Id<"feedItems">;
-          visibility: "public" | "private" | "group";
-        },
-        Id<"feedItems">
-      >;
-      addReaction: FunctionReference<
-        "mutation",
-        "public",
-        {
-          feedItemId: Id<"feedItems">;
-          reactionType:
-            | "like"
-            | "love"
-            | "celebrate"
-            | "support"
-            | "insightful"
-            | "curious";
-          userId: Id<"users">;
-        },
-        Id<"reactions">
-      >;
-      addComment: FunctionReference<
-        "mutation",
-        "public",
-        {
-          content: string;
-          feedItemId: Id<"feedItems">;
-          mediaUrls?: Array<string>;
-          parentCommentId?: Id<"comments">;
-          userId: Id<"users">;
-        },
-        Id<"comments">
-      >;
-      followTopic: FunctionReference<
-        "mutation",
-        "public",
-        { topicId: Id<"hashtags">; userId: Id<"users"> },
-        boolean
-      >;
-      unfollowTopic: FunctionReference<
-        "mutation",
-        "public",
-        { topicId: Id<"hashtags">; userId: Id<"users"> },
-        boolean
-      >;
-      createOrUpdateTopic: FunctionReference<
-        "mutation",
-        "public",
-        {
-          category?: string;
-          coverImage?: string;
-          description?: string;
-          tag: string;
-        },
-        Id<"hashtags">
-      >;
-      markRecommendationAsSeen: FunctionReference<
-        "mutation",
-        "public",
-        { contentId: Id<"feedItems">; userId: Id<"users"> },
-        boolean
-      >;
-      markRecommendationAsInteracted: FunctionReference<
-        "mutation",
-        "public",
-        {
-          contentId: Id<"feedItems">;
-          reaction?: "like" | "dislike" | "neutral";
-          userId: Id<"users">;
-        },
-        boolean
-      >;
-      generateUserRecommendations: FunctionReference<
-        "mutation",
-        "public",
-        { limit?: number; userId: Id<"users"> },
-        boolean
-      >;
-      updatePostTrendingMetrics: FunctionReference<
-        "mutation",
-        "public",
-        { contentId: Id<"feedItems"> },
-        boolean
-      >;
-    };
-    queries: {
-      getUniversalFeed: FunctionReference<
-        "query",
-        "public",
-        {
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-        },
-        {
-          continueCursor: string | null;
-          isDone: boolean;
-          page: Array<{
-            _creationTime: number;
-            _id: Id<"feedItems">;
-            commentsCount: number;
-            content: string;
-            contentType: "post" | "share" | "comment";
-            creator: { _id: Id<"users">; image?: string; name: string };
-            creatorId: Id<"users">;
-            hashtags?: Array<string>;
-            mediaUrls?: Array<string>;
-            mentionedUserIds?: Array<Id<"users">>;
-            mentions?: Array<string>;
-            moduleId?: string;
-            moduleType?: "blog" | "course" | "group" | "event";
-            originalContentId?: Id<"feedItems">;
-            reactionsCount: number;
-            visibility: "public" | "private" | "group";
-          }>;
-        }
-      >;
-      getPersonalizedFeed: FunctionReference<
-        "query",
-        "public",
-        {
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-          userId: Id<"users">;
-        },
-        {
-          continueCursor: string | null;
-          isDone: boolean;
-          page: Array<{
-            _creationTime: number;
-            _id: Id<"feedItems">;
-            commentsCount: number;
-            content: string;
-            contentType: "post" | "share" | "comment";
-            creator: { _id: Id<"users">; image?: string; name: string };
-            creatorId: Id<"users">;
-            hashtags?: Array<string>;
-            mediaUrls?: Array<string>;
-            mentionedUserIds?: Array<Id<"users">>;
-            mentions?: Array<string>;
-            moduleId?: string;
-            moduleType?: "blog" | "course" | "group" | "event";
-            originalContentId?: Id<"feedItems">;
-            reactionsCount: number;
-            visibility: "public" | "private" | "group";
-          }>;
-        }
-      >;
-      getGroupFeed: FunctionReference<
-        "query",
-        "public",
-        {
-          groupId: Id<"groups">;
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-        },
-        {
-          continueCursor: string | null;
-          isDone: boolean;
-          page: Array<{
-            _creationTime: number;
-            _id: Id<"feedItems">;
-            commentsCount: number;
-            content: string;
-            contentType: "post" | "share" | "comment";
-            creator: { _id: Id<"users">; image?: string; name: string };
-            creatorId: Id<"users">;
-            hashtags?: Array<string>;
-            mediaUrls?: Array<string>;
-            mentionedUserIds?: Array<Id<"users">>;
-            mentions?: Array<string>;
-            moduleId?: string;
-            moduleType?: "blog" | "course" | "group" | "event";
-            originalContentId?: Id<"feedItems">;
-            reactionsCount: number;
-            visibility: "public" | "private" | "group";
-          }>;
-        }
-      >;
-      getUserProfileFeed: FunctionReference<
-        "query",
-        "public",
-        {
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-          profileId: Id<"users">;
-          viewerId?: Id<"users">;
-        },
-        {
-          continueCursor: string | null;
-          isDone: boolean;
-          page: Array<{
-            _creationTime: number;
-            _id: Id<"feedItems">;
-            commentsCount: number;
-            content: string;
-            contentType: "post" | "share" | "comment";
-            creator: { _id: Id<"users">; image?: string; name: string };
-            creatorId: Id<"users">;
-            hashtags?: Array<string>;
-            mediaUrls?: Array<string>;
-            mentionedUserIds?: Array<Id<"users">>;
-            mentions?: Array<string>;
-            moduleId?: string;
-            moduleType?: "blog" | "course" | "group" | "event";
-            originalContentId?: Id<"feedItems">;
-            reactionsCount: number;
-            visibility: "public" | "private" | "group";
-          }>;
-        }
-      >;
-      getFeedItem: FunctionReference<
-        "query",
-        "public",
-        { feedItemId: Id<"feedItems"> },
-        null | {
-          _creationTime: number;
-          _id: Id<"feedItems">;
-          commentsCount: number;
-          content: string;
-          contentType: "post" | "share" | "comment";
-          creator: { _id: Id<"users">; image?: string; name: string };
-          creatorId: Id<"users">;
-          hashtags?: Array<string>;
-          mediaUrls?: Array<string>;
-          mentionedUserIds?: Array<Id<"users">>;
-          mentions?: Array<string>;
-          moduleId?: string;
-          moduleType?: "blog" | "course" | "group" | "event";
-          originalContentId?: Id<"feedItems">;
-          reactionsCount: number;
-          visibility: "public" | "private" | "group";
-        }
-      >;
-      getHashtagFeed: FunctionReference<
-        "query",
-        "public",
-        {
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-          tag: string;
-        },
-        {
-          feedItems: {
-            continueCursor: string | null;
-            isDone: boolean;
-            page: Array<{
-              _creationTime: number;
-              _id: Id<"feedItems">;
-              commentsCount: number;
-              content: string;
-              contentType: "post" | "share" | "comment";
-              creator: { _id: Id<"users">; image?: string; name: string };
-              creatorId: Id<"users">;
-              hashtags?: Array<string>;
-              mediaUrls?: Array<string>;
-              mentionedUserIds?: Array<Id<"users">>;
-              mentions?: Array<string>;
-              moduleId?: string;
-              moduleType?: "blog" | "course" | "group" | "event";
-              originalContentId?: Id<"feedItems">;
-              reactionsCount: number;
-              visibility: "public" | "private" | "group";
-            }>;
-          };
-          hashtag: null | {
-            _creationTime: number;
-            _id: Id<"hashtags">;
-            category?: string;
-            coverImage?: string;
-            description?: string;
-            followerCount?: number;
-            isBlocked?: boolean;
-            isTopic?: boolean;
-            lastUsed: number;
-            relatedTags?: Array<string>;
-            tag: string;
-            usageCount: number;
-          };
-        }
-      >;
-      getComments: FunctionReference<
-        "query",
-        "public",
-        {
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-          parentId:
-            | Id<"feedItems">
-            | Id<"courses">
-            | Id<"lessons">
-            | Id<"topics">
-            | Id<"quizzes">
-            | Id<"posts">
-            | Id<"downloads">
-            | Id<"helpdeskArticles">;
-          parentType:
-            | "feedItem"
-            | "course"
-            | "lesson"
-            | "topic"
-            | "quiz"
-            | "post"
-            | "download"
-            | "helpdeskArticle";
-          sortOrder?: "newest" | "oldest";
-        },
-        {
-          continueCursor: string | null;
-          isDone: boolean;
-          page: Array<{
-            _creationTime: number;
-            _id: Id<"comments">;
-            content: string;
-            mediaUrls?: Array<string>;
-            parentCommentId?: Id<"comments">;
-            parentId:
-              | Id<"feedItems">
-              | Id<"courses">
-              | Id<"lessons">
-              | Id<"topics">
-              | Id<"quizzes">
-              | Id<"posts">
-              | Id<"downloads">
-              | Id<"helpdeskArticles">;
-            parentType:
-              | "feedItem"
-              | "course"
-              | "lesson"
-              | "topic"
-              | "quiz"
-              | "post"
-              | "download"
-              | "helpdeskArticle";
-            repliesCount: number;
-            updatedAt?: number;
-            user: { _id: Id<"users">; image?: string; name: string };
-            userId: Id<"users">;
-          }>;
-        }
-      >;
-      getReplies: FunctionReference<
-        "query",
-        "public",
-        {
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-          parentCommentId: Id<"comments">;
-        },
-        {
-          continueCursor: string | null;
-          isDone: boolean;
-          page: Array<{
-            _creationTime: number;
-            _id: Id<"comments">;
-            content: string;
-            mediaUrls?: Array<string>;
-            parentCommentId?: Id<"comments">;
-            parentId:
-              | Id<"feedItems">
-              | Id<"courses">
-              | Id<"lessons">
-              | Id<"topics">
-              | Id<"quizzes">
-              | Id<"posts">
-              | Id<"downloads">
-              | Id<"helpdeskArticles">;
-            parentType:
-              | "feedItem"
-              | "course"
-              | "lesson"
-              | "topic"
-              | "quiz"
-              | "post"
-              | "download"
-              | "helpdeskArticle";
-            repliesCount: number;
-            updatedAt?: number;
-            user: { _id: Id<"users">; image?: string; name: string };
-            userId: Id<"users">;
-          }>;
-        }
-      >;
-      searchUsersForMentions: FunctionReference<
-        "query",
-        "public",
-        { limit?: number; query: string },
-        Array<{ _id: Id<"users">; image?: string; name: string }>
-      >;
-      getRecommendedContent: FunctionReference<
-        "query",
-        "public",
-        {
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-          userId: Id<"users">;
-        },
-        {
-          continueCursor: string | null;
-          isDone: boolean;
-          page: Array<{
-            _creationTime: number;
-            _id: Id<"feedItems">;
-            commentsCount: number;
-            content: string;
-            contentType: "post" | "share" | "comment";
-            creator: { _id: Id<"users">; image?: string; name: string };
-            creatorId: Id<"users">;
-            hashtags?: Array<string>;
-            mediaUrls?: Array<string>;
-            mentionedUserIds?: Array<Id<"users">>;
-            mentions?: Array<string>;
-            moduleId?: string;
-            moduleType?: "blog" | "course" | "group" | "event";
-            originalContentId?: Id<"feedItems">;
-            reactionsCount: number;
-            visibility: "public" | "private" | "group";
-          }>;
-        }
-      >;
-      getTopics: FunctionReference<
-        "query",
-        "public",
-        {
-          category?: string;
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-          query?: string;
-        },
-        Array<{
-          _creationTime: number;
-          _id: Id<"hashtags">;
-          category?: string;
-          coverImage?: string;
-          description?: string;
-          followerCount?: number;
-          isBlocked?: boolean;
-          isTopic?: boolean;
-          lastUsed: number;
-          relatedTags?: Array<string>;
-          tag: string;
-          usageCount: number;
-        }>
-      >;
-      getUserFollowedTopics: FunctionReference<
-        "query",
-        "public",
-        {
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-          userId: Id<"users">;
-        },
-        Array<{
-          _creationTime: number;
-          _id: Id<"hashtags">;
-          category?: string;
-          coverImage?: string;
-          description?: string;
-          followerCount?: number;
-          isBlocked?: boolean;
-          isTopic?: boolean;
-          lastUsed: number;
-          relatedTags?: Array<string>;
-          tag: string;
-          usageCount: number;
-        }>
-      >;
-      getTopicSuggestions: FunctionReference<
-        "query",
-        "public",
-        { limit?: number; userId: Id<"users"> },
-        Array<{
-          _creationTime: number;
-          _id: Id<"hashtags">;
-          category?: string;
-          coverImage?: string;
-          description?: string;
-          followerCount?: number;
-          isBlocked?: boolean;
-          isTopic?: boolean;
-          lastUsed: number;
-          relatedTags?: Array<string>;
-          tag: string;
-          usageCount: number;
-        }>
-      >;
-      getTopic: FunctionReference<
-        "query",
-        "public",
-        { topicId: Id<"hashtags"> },
-        {
-          _creationTime: number;
-          _id: Id<"hashtags">;
-          category?: string;
-          coverImage?: string;
-          description?: string;
-          followerCount?: number;
-          isBlocked?: boolean;
-          isTopic?: boolean;
-          lastUsed: number;
-          relatedTags?: Array<string>;
-          tag: string;
-          usageCount: number;
-        } | null
-      >;
-      checkTopicFollow: FunctionReference<
-        "query",
-        "public",
-        { topicId: Id<"hashtags">; userId: Id<"users"> },
-        boolean
-      >;
-      getRecommendedHashtags: FunctionReference<
-        "query",
-        "public",
-        { limit: number; userId: Id<"users"> },
-        Array<{
-          _creationTime: number;
-          _id: Id<"hashtags">;
-          category?: string;
-          coverImage?: string;
-          description?: string;
-          followerCount?: number;
-          isBlocked?: boolean;
-          isTopic?: boolean;
-          lastUsed: number;
-          relatedTags?: Array<string>;
-          tag: string;
-          usageCount: number;
-        }>
       >;
     };
   };
@@ -3478,405 +1885,6 @@ export type PublicApiType = {
           title: string;
           videoId: string;
         }
-      >;
-    };
-  };
-  calendar: {
-    attendance: {
-      mutations: {
-        updateAttendanceStatus: FunctionReference<
-          "mutation",
-          "public",
-          {
-            comment?: string;
-            eventId: Id<"events">;
-            status:
-              | "invited"
-              | "accepted"
-              | "declined"
-              | "tentative"
-              | "waitlisted";
-          },
-          any
-        >;
-        addAttendee: FunctionReference<
-          "mutation",
-          "public",
-          {
-            attendeeId: Id<"users">;
-            eventId: Id<"events">;
-            status?:
-              | "invited"
-              | "accepted"
-              | "declined"
-              | "tentative"
-              | "waitlisted";
-          },
-          any
-        >;
-      };
-      queries: {
-        getEventAttendance: FunctionReference<
-          "query",
-          "public",
-          { eventId: Id<"events"> },
-          any
-        >;
-        getAttendanceStats: FunctionReference<
-          "query",
-          "public",
-          { eventIds: Array<Id<"events">> },
-          any
-        >;
-      };
-    };
-    events: {
-      crud: {
-        createEvent: FunctionReference<
-          "mutation",
-          "public",
-          {
-            allDay?: boolean;
-            calendarId?: Id<"calendars">;
-            color?: string;
-            courseId?: Id<"courses">;
-            customSlug?: string;
-            description?: string;
-            endTime: number;
-            groupId?: Id<"groups">;
-            location?: {
-              address?: string;
-              meetingId?: string;
-              passcode?: string;
-              type: "virtual" | "physical" | "hybrid";
-              url?: string;
-            };
-            recurrence?: {
-              byDay?: Array<"MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU">;
-              byMonth?: Array<number>;
-              byMonthDay?: Array<number>;
-              count?: number;
-              excludeDates?: Array<number>;
-              frequency: "daily" | "weekly" | "monthly" | "yearly";
-              interval?: number;
-              until?: number;
-            };
-            startTime: number;
-            timezone?: string;
-            title: string;
-            type:
-              | "meeting"
-              | "webinar"
-              | "workshop"
-              | "class"
-              | "conference"
-              | "social"
-              | "deadline"
-              | "reminder"
-              | "other";
-            visibility: "public" | "private" | "restricted";
-          },
-          any
-        >;
-        updateEvent: FunctionReference<
-          "mutation",
-          "public",
-          {
-            allDay?: boolean;
-            color?: string;
-            courseId?: Id<"courses">;
-            customSlug?: string;
-            description?: string;
-            endTime?: number;
-            eventId: Id<"events">;
-            groupId?: Id<"groups">;
-            location?: {
-              address?: string;
-              meetingId?: string;
-              passcode?: string;
-              type: "virtual" | "physical" | "hybrid";
-              url?: string;
-            };
-            recurrence?: {
-              byDay?: Array<"MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU">;
-              byMonth?: Array<number>;
-              byMonthDay?: Array<number>;
-              count?: number;
-              excludeDates?: Array<number>;
-              frequency: "daily" | "weekly" | "monthly" | "yearly";
-              interval?: number;
-              until?: number;
-            };
-            startTime?: number;
-            timezone?: string;
-            title?: string;
-            type?:
-              | "meeting"
-              | "webinar"
-              | "workshop"
-              | "class"
-              | "conference"
-              | "social"
-              | "deadline"
-              | "reminder"
-              | "other";
-            visibility?: "public" | "private" | "restricted";
-          },
-          any
-        >;
-        deleteEvent: FunctionReference<
-          "mutation",
-          "public",
-          { eventId: Id<"events"> },
-          any
-        >;
-      };
-      queries: {
-        getEvent: FunctionReference<
-          "query",
-          "public",
-          { eventId: Id<"events"> },
-          any
-        >;
-        getCalendarEvents: FunctionReference<
-          "query",
-          "public",
-          {
-            calendarId: Id<"calendars">;
-            endDate: number;
-            includeRecurrences?: boolean;
-            startDate: number;
-          },
-          any
-        >;
-        getEventsInDateRange: FunctionReference<
-          "query",
-          "public",
-          {
-            calendarIds?: Array<Id<"calendars">>;
-            endDate: number;
-            includeRecurrences?: boolean;
-            paginationOpts?: {
-              cursor: string | null;
-              endCursor?: string | null;
-              id?: number;
-              maximumBytesRead?: number;
-              maximumRowsRead?: number;
-              numItems: number;
-            };
-            startDate: number;
-          },
-          any
-        >;
-        getCalendarViewEvents: FunctionReference<
-          "query",
-          "public",
-          {
-            calendarIds?: Array<Id<"calendars">>;
-            includeRecurrences?: boolean;
-            viewDate: number;
-            viewType: "day" | "week" | "month" | "year";
-          },
-          Array<{
-            _creationTime: number;
-            _id: Id<"events">;
-            allDay?: boolean;
-            color?: string;
-            courseId?: Id<"courses">;
-            createdAt: number;
-            description?: string;
-            endTime: number;
-            groupId?: Id<"groups">;
-            isRecurringInstance?: boolean;
-            location?: any;
-            originalEventId?: Id<"events">;
-            recurrence?: any;
-            startTime: number;
-            timezone?: string;
-            title: string;
-            type: string;
-            updatedAt?: number;
-            visibility: string;
-          }>
-        >;
-        getEventCount: FunctionReference<
-          "query",
-          "public",
-          {
-            courseId?: Id<"courses">;
-            endDate?: number;
-            groupId?: Id<"groups">;
-            startDate?: number;
-            userId?: Id<"users">;
-          },
-          number
-        >;
-        searchEvents: FunctionReference<
-          "query",
-          "public",
-          { limit?: number; searchTerm: string },
-          any
-        >;
-      };
-      orders: {
-        linkCalendarEvent: FunctionReference<
-          "mutation",
-          "public",
-          { eventId: Id<"events">; orderId: Id<"orders"> },
-          any
-        >;
-        unlinkCalendarEvent: FunctionReference<
-          "mutation",
-          "public",
-          { orderId: Id<"orders"> },
-          any
-        >;
-        getOrdersByCalendarEvent: FunctionReference<
-          "mutation",
-          "public",
-          { eventId: Id<"events"> },
-          any
-        >;
-      };
-    };
-    permissions: {
-      mutations: {
-        shareCalendar: FunctionReference<
-          "mutation",
-          "public",
-          {
-            calendarId: Id<"calendars">;
-            grantedBy: Id<"users">;
-            permissionType: "read" | "write" | "admin";
-            userId: Id<"users">;
-          },
-          any
-        >;
-        removeCalendarPermission: FunctionReference<
-          "mutation",
-          "public",
-          { permissionId: Id<"calendarPermissions"> },
-          any
-        >;
-      };
-      queries: {
-        listCalendarPermissions: FunctionReference<
-          "query",
-          "public",
-          { calendarId: Id<"calendars"> },
-          any
-        >;
-      };
-    };
-    attendees: {
-      mutations: {
-        addEventAttendee: FunctionReference<
-          "mutation",
-          "public",
-          {
-            eventId: Id<"events">;
-            externalEmail?: string;
-            externalName?: string;
-            invitedBy: Id<"users">;
-            role: "organizer" | "host" | "attendee" | "moderator";
-            status:
-              | "invited"
-              | "accepted"
-              | "declined"
-              | "tentative"
-              | "waitlisted";
-            userId: Id<"users">;
-          },
-          any
-        >;
-        updateAttendeeStatus: FunctionReference<
-          "mutation",
-          "public",
-          {
-            attendeeId: Id<"eventAttendees">;
-            responseComment?: string;
-            status:
-              | "invited"
-              | "accepted"
-              | "declined"
-              | "tentative"
-              | "waitlisted";
-          },
-          any
-        >;
-      };
-    };
-    invitations: {
-      mutations: {
-        inviteToEvent: FunctionReference<
-          "mutation",
-          "public",
-          {
-            eventId: Id<"events">;
-            invitedBy: Id<"users">;
-            message?: string;
-            role?: "organizer" | "host" | "attendee" | "moderator";
-            userIds: Array<Id<"users">>;
-          },
-          any
-        >;
-        respondToEventInvitation: FunctionReference<
-          "mutation",
-          "public",
-          {
-            eventId: Id<"events">;
-            responseComment?: string;
-            status: "accepted" | "declined" | "tentative";
-            userId: Id<"users">;
-          },
-          any
-        >;
-      };
-      queries: {
-        getEventAttendees: FunctionReference<
-          "query",
-          "public",
-          { eventId: Id<"events">; includeDetails?: boolean },
-          any
-        >;
-        getUserEvents: FunctionReference<
-          "query",
-          "public",
-          {
-            status?:
-              | "invited"
-              | "accepted"
-              | "declined"
-              | "tentative"
-              | "waitlisted";
-            timeframe?: { endDate: number; startDate: number };
-            userId: Id<"users">;
-          },
-          any
-        >;
-      };
-    };
-    queries: {
-      getUserCalendars: FunctionReference<
-        "query",
-        "public",
-        Record<string, never>,
-        Array<{
-          _creationTime: number;
-          _id: Id<"calendars">;
-          color?: string;
-          courseId?: Id<"courses">;
-          createdAt: number;
-          description?: string;
-          groupId?: Id<"groups">;
-          isDefault?: boolean;
-          isPublic?: boolean;
-          name: string;
-          organizationId?: Id<"organizations">;
-          ownerId: Id<"users">;
-          ownerType: "user" | "group" | "course" | "organization";
-          updatedAt?: number;
-        }>
       >;
     };
   };
@@ -4471,18 +2479,6 @@ export type PublicApiType = {
           { roleToAssign: string; userIdToAssign: Id<"users"> },
           boolean
         >;
-        grantDownloadAccess: FunctionReference<
-          "mutation",
-          "public",
-          { downloadId: Id<"downloads">; userId: Id<"users"> },
-          boolean
-        >;
-        revokeDownloadAccess: FunctionReference<
-          "mutation",
-          "public",
-          { downloadId: Id<"downloads">; userId: Id<"users"> },
-          boolean
-        >;
       };
       queries: {
         checkIsAdmin: FunctionReference<
@@ -4898,7 +2894,7 @@ export type PublicApiType = {
             customerUserId: Id<"users">;
             expiresAt?: number;
             organizationId: Id<"organizations">;
-            sourceId?: Id<"products"> | Id<"courses"> | string;
+            sourceId?: Id<"products"> | string;
           },
           Id<"userOrganizations">
         >;
@@ -6088,1336 +4084,6 @@ export type PublicApiType = {
     };
   };
   integrations: {
-    scenarios: {
-      mutations: {
-        create: FunctionReference<
-          "mutation",
-          "public",
-          {
-            description: string;
-            name: string;
-            ownerId: Id<"users">;
-            scenarioType?: "general" | "checkout";
-            schedule?: string;
-            slug?: string;
-            status?: string;
-          },
-          Id<"scenarios">
-        >;
-        update: FunctionReference<
-          "mutation",
-          "public",
-          {
-            description?: string;
-            id: Id<"scenarios">;
-            name?: string;
-            schedule?: string;
-            status?: string;
-          },
-          Id<"scenarios">
-        >;
-        remove: FunctionReference<
-          "mutation",
-          "public",
-          { id: Id<"scenarios"> },
-          boolean
-        >;
-        execute: FunctionReference<
-          "mutation",
-          "public",
-          { id: Id<"scenarios"> },
-          { message: string; success: boolean }
-        >;
-        updateStatus: FunctionReference<
-          "mutation",
-          "public",
-          { id: Id<"scenarios">; status: string },
-          { message: string; success: boolean }
-        >;
-        publishScenario: FunctionReference<
-          "mutation",
-          "public",
-          { id: Id<"scenarios">; publishedBy?: Id<"users"> },
-          { message: string; success: boolean; version: number }
-        >;
-        createDraftFromPublished: FunctionReference<
-          "mutation",
-          "public",
-          { copyFromPublished?: boolean; id: Id<"scenarios"> },
-          { message: string; success: boolean }
-        >;
-        updateDraftConfig: FunctionReference<
-          "mutation",
-          "public",
-          {
-            draftConfig: {
-              enabled?: boolean;
-              metadata?: any;
-              schedule?: string;
-              triggerConfig: any;
-              triggerKey: string;
-            };
-            id: Id<"scenarios">;
-          },
-          { message: string; success: boolean }
-        >;
-        discardDraft: FunctionReference<
-          "mutation",
-          "public",
-          { id: Id<"scenarios"> },
-          { message: string; success: boolean }
-        >;
-        getDraftDiff: FunctionReference<
-          "mutation",
-          "public",
-          { id: Id<"scenarios"> },
-          {
-            draftConfig: any;
-            hasDiff: boolean;
-            publishedConfig: any;
-            version: number;
-          }
-        >;
-        cloneScenario: FunctionReference<
-          "mutation",
-          "public",
-          {
-            description?: string;
-            name: string;
-            ownerId?: Id<"users">;
-            sourceId: Id<"scenarios">;
-          },
-          { message: string; scenarioId: Id<"scenarios">; success: boolean }
-        >;
-      };
-      queries: {
-        list: FunctionReference<
-          "query",
-          "public",
-          {
-            ownerId?: Id<"users">;
-            scenarioType?: "general" | "checkout";
-            status?: string;
-          },
-          Array<{
-            _creationTime: number;
-            _id: Id<"scenarios">;
-            createdAt: number;
-            description: string;
-            draftConfig?: {
-              enabled?: boolean;
-              metadata?: any;
-              schedule?: string;
-              triggerConfig: any;
-              triggerKey: string;
-            };
-            enabled?: boolean;
-            lastExecutedAt?: number;
-            lastExecutionError?: string;
-            lastExecutionResult?: string;
-            name: string;
-            ownerId: Id<"users">;
-            publishedConfig?: {
-              enabled?: boolean;
-              metadata?: any;
-              schedule?: string;
-              triggerConfig: any;
-              triggerKey: string;
-            };
-            scenarioType?: "general" | "checkout";
-            schedule?: string;
-            slug?: string;
-            status: string;
-            uiState?: {
-              selectedNodeIds?: Array<Id<"nodes">>;
-              viewport: { x: number; y: number; zoom: number };
-            };
-            updatedAt: number;
-            version?: number;
-          }>
-        >;
-        getById: FunctionReference<
-          "query",
-          "public",
-          { id: Id<"scenarios"> },
-          {
-            _creationTime: number;
-            _id: Id<"scenarios">;
-            createdAt: number;
-            description: string;
-            draftConfig: {
-              enabled?: boolean;
-              metadata?: any;
-              schedule?: string;
-              triggerConfig: any;
-              triggerKey: string;
-            };
-            enabled: boolean;
-            lastExecutedAt?: number;
-            lastExecutionError?: string;
-            lastExecutionResult?: string;
-            name: string;
-            ownerId: Id<"users">;
-            publishedConfig?: {
-              enabled?: boolean;
-              metadata?: any;
-              schedule?: string;
-              triggerConfig: any;
-              triggerKey: string;
-            };
-            scenarioType?: "general" | "checkout";
-            schedule?: string;
-            slug?: string;
-            status: string;
-            uiState?: {
-              selectedNodeIds?: Array<Id<"nodes">>;
-              viewport: { x: number; y: number; zoom: number };
-            };
-            updatedAt: number;
-            version: number;
-          } | null
-        >;
-        get: FunctionReference<
-          "query",
-          "public",
-          { id: Id<"scenarios"> },
-          {
-            _creationTime: number;
-            _id: Id<"scenarios">;
-            connections: Array<{
-              _creationTime: number;
-              _id: Id<"nodeConnections">;
-              createdAt: number;
-              mapping?: string;
-              scenarioId: Id<"scenarios">;
-              sourceNodeId: Id<"nodes">;
-              targetNodeId: Id<"nodes">;
-              updatedAt: number;
-            }>;
-            createdAt: number;
-            description: string;
-            draftConfig: {
-              enabled?: boolean;
-              metadata?: any;
-              schedule?: string;
-              triggerConfig: any;
-              triggerKey: string;
-            };
-            enabled: boolean;
-            lastExecutedAt?: number;
-            lastExecutionError?: string;
-            lastExecutionResult?: string;
-            name: string;
-            nodes: Array<{
-              _creationTime: number;
-              _id: Id<"nodes">;
-              config: string;
-              createdAt: number;
-              label: string;
-              order?: number;
-              position: string;
-              scenarioId: Id<"scenarios">;
-              type: string;
-              updatedAt: number;
-            }>;
-            ownerId: Id<"users">;
-            publishedConfig?: {
-              enabled?: boolean;
-              metadata?: any;
-              schedule?: string;
-              triggerConfig: any;
-              triggerKey: string;
-            };
-            scenarioType?: "general" | "checkout";
-            schedule?: string;
-            slug?: string;
-            status: string;
-            uiState?: {
-              selectedNodeIds?: Array<Id<"nodes">>;
-              viewport: { x: number; y: number; zoom: number };
-            };
-            updatedAt: number;
-            version: number;
-          } | null
-        >;
-        getAllScenarios: FunctionReference<
-          "query",
-          "public",
-          Record<string, never>,
-          Array<{
-            _creationTime: number;
-            _id: Id<"scenarios">;
-            createdAt: number;
-            description: string;
-            draftConfig?: {
-              enabled?: boolean;
-              metadata?: any;
-              schedule?: string;
-              triggerConfig: any;
-              triggerKey: string;
-            };
-            enabled?: boolean;
-            lastExecutedAt?: number;
-            lastExecutionError?: string;
-            lastExecutionResult?: string;
-            name: string;
-            ownerId: Id<"users">;
-            publishedConfig?: {
-              enabled?: boolean;
-              metadata?: any;
-              schedule?: string;
-              triggerConfig: any;
-              triggerKey: string;
-            };
-            scenarioType?: "general" | "checkout";
-            schedule?: string;
-            slug?: string;
-            status: string;
-            uiState?: {
-              selectedNodeIds?: Array<Id<"nodes">>;
-              viewport: { x: number; y: number; zoom: number };
-            };
-            updatedAt: number;
-            version?: number;
-          }>
-        >;
-        getBySlug: FunctionReference<
-          "query",
-          "public",
-          { slug: string },
-          {
-            _creationTime: number;
-            _id: Id<"scenarios">;
-            createdAt: number;
-            description: string;
-            draftConfig?: {
-              enabled?: boolean;
-              metadata?: any;
-              schedule?: string;
-              triggerConfig: any;
-              triggerKey: string;
-            };
-            enabled?: boolean;
-            lastExecutedAt?: number;
-            lastExecutionError?: string;
-            lastExecutionResult?: string;
-            name: string;
-            ownerId: Id<"users">;
-            publishedConfig?: {
-              enabled?: boolean;
-              metadata?: any;
-              schedule?: string;
-              triggerConfig: any;
-              triggerKey: string;
-            };
-            scenarioType?: "general" | "checkout";
-            schedule?: string;
-            slug?: string;
-            status: string;
-            uiState?: {
-              selectedNodeIds?: Array<Id<"nodes">>;
-              viewport: { x: number; y: number; zoom: number };
-            };
-            updatedAt: number;
-            version?: number;
-          } | null
-        >;
-        getVersionInfo: FunctionReference<
-          "query",
-          "public",
-          { id: Id<"scenarios"> },
-          {
-            _id: Id<"scenarios">;
-            draftConfig: {
-              enabled?: boolean;
-              metadata?: any;
-              schedule?: string;
-              triggerConfig: any;
-              triggerKey: string;
-            };
-            enabled: boolean;
-            hasDraftChanges: boolean;
-            name: string;
-            publishedConfig?: {
-              enabled?: boolean;
-              metadata?: any;
-              schedule?: string;
-              triggerConfig: any;
-              triggerKey: string;
-            };
-            status: string;
-            updatedAt: number;
-            version: number;
-          } | null
-        >;
-        listPublished: FunctionReference<
-          "query",
-          "public",
-          { enabled?: boolean; triggerKey?: string },
-          Array<{
-            _id: Id<"scenarios">;
-            enabled: boolean;
-            name: string;
-            publishedConfig: {
-              enabled?: boolean;
-              metadata?: any;
-              schedule?: string;
-              triggerConfig: any;
-              triggerKey: string;
-            };
-            version: number;
-          }>
-        >;
-        getRunsByVersion: FunctionReference<
-          "query",
-          "public",
-          { scenarioId: Id<"scenarios">; version?: number },
-          Array<{
-            _id: Id<"scenarioRuns">;
-            correlationId: string;
-            finishedAt?: number;
-            scenarioVersion: number;
-            startedAt: number;
-            status:
-              | "pending"
-              | "running"
-              | "succeeded"
-              | "failed"
-              | "cancelled";
-          }>
-        >;
-        findByTriggerKey: FunctionReference<
-          "query",
-          "public",
-          { triggerKey: string },
-          Array<{
-            _id: Id<"scenarios">;
-            enabled: boolean;
-            name: string;
-            publishedConfig?: {
-              enabled?: boolean;
-              metadata?: any;
-              schedule?: string;
-              triggerConfig: any;
-              triggerKey: string;
-            };
-            version: number;
-          }>
-        >;
-      };
-      reactFlowMutations: {
-        validateScenarioGraphQuery: FunctionReference<
-          "query",
-          "public",
-          {
-            edges: Array<{
-              _id: Id<"scenarioEdges"> | string;
-              sourceNodeId: Id<"nodes"> | string;
-              targetNodeId: Id<"nodes"> | string;
-            }>;
-            nodes: Array<{
-              _id: Id<"nodes"> | string;
-              label: string;
-              type: string;
-            }>;
-          },
-          { error?: string; valid: boolean }
-        >;
-        upsertScenarioGraph: FunctionReference<
-          "mutation",
-          "public",
-          {
-            edges: Array<{
-              _id?: Id<"scenarioEdges">;
-              animated?: boolean;
-              label?: string;
-              order?: number;
-              sourceHandle?: string;
-              sourceNodeId: Id<"nodes">;
-              style?: string;
-              targetHandle?: string;
-              targetNodeId: Id<"nodes">;
-            }>;
-            nodes: Array<{
-              _id?: Id<"nodes">;
-              config: any;
-              label: string;
-              rfHeight?: number;
-              rfLabel?: string;
-              rfPosition: { x: number; y: number };
-              rfType: string;
-              rfWidth?: number;
-              type: string;
-            }>;
-            scenarioId: Id<"scenarios">;
-            uiState?: {
-              selectedNodeIds?: Array<Id<"nodes">>;
-              viewport: { x: number; y: number; zoom: number };
-            };
-          },
-          { edgeIdMap?: any; nodeIdMap?: any; success: boolean }
-        >;
-        updateScenarioUIState: FunctionReference<
-          "mutation",
-          "public",
-          {
-            scenarioId: Id<"scenarios">;
-            uiState: {
-              selectedNodeIds?: Array<Id<"nodes">>;
-              viewport: { x: number; y: number; zoom: number };
-            };
-          },
-          { success: boolean }
-        >;
-        createScenarioEdge: FunctionReference<
-          "mutation",
-          "public",
-          {
-            animated?: boolean;
-            label?: string;
-            scenarioId: Id<"scenarios">;
-            sourceHandle?: string;
-            sourceNodeId: Id<"nodes">;
-            style?: string;
-            targetHandle?: string;
-            targetNodeId: Id<"nodes">;
-          },
-          Id<"scenarioEdges">
-        >;
-        deleteScenarioEdge: FunctionReference<
-          "mutation",
-          "public",
-          { edgeId: Id<"scenarioEdges"> },
-          { success: boolean }
-        >;
-      };
-      reactFlowQueries: {
-        getScenarioGraph: FunctionReference<
-          "query",
-          "public",
-          { scenarioId: Id<"scenarios"> },
-          {
-            edges: Array<any>;
-            nodes: Array<any>;
-            uiState: {
-              selectedNodeIds?: Array<Id<"nodes">>;
-              viewport: { x: number; y: number; zoom: number };
-            };
-          }
-        >;
-        getScenarioGraphForValidation: FunctionReference<
-          "query",
-          "public",
-          { scenarioId: Id<"scenarios"> },
-          {
-            edges: Array<{
-              _id: Id<"scenarioEdges">;
-              sourceNodeId: Id<"nodes">;
-              targetNodeId: Id<"nodes">;
-            }>;
-            nodes: Array<{ _id: Id<"nodes">; label: string; type: string }>;
-          }
-        >;
-        getScenarioNodeTypes: FunctionReference<
-          "query",
-          "public",
-          { scenarioId: Id<"scenarios"> },
-          Array<{ count: number; rfType?: string; type: string }>
-        >;
-      };
-      scenarioLogs: {
-        mutations: {
-          createScenarioLogEntry: FunctionReference<
-            "mutation",
-            "public",
-            {
-              action: string;
-              duration?: number;
-              endTime?: number;
-              errorMessage?: string;
-              inputData?: string;
-              metadata?: string;
-              nodeId?: Id<"nodes">;
-              outputData?: string;
-              requestInfo?: { endpoint: string; headers?: any; method: string };
-              responseInfo?: {
-                headers?: any;
-                statusCode: number;
-                statusText: string;
-              };
-              runId: Id<"scenarioRuns">;
-              scenarioId: Id<"scenarios">;
-              startTime: number;
-              status: "running" | "success" | "error" | "skipped" | "cancelled";
-              userId?: Id<"users">;
-            },
-            Id<"scenarioLogs">
-          >;
-          updateScenarioLogEntry: FunctionReference<
-            "mutation",
-            "public",
-            {
-              duration?: number;
-              endTime?: number;
-              errorMessage?: string;
-              id: Id<"scenarioLogs">;
-              metadata?: string;
-              outputData?: string;
-              responseInfo?: {
-                headers?: any;
-                statusCode: number;
-                statusText: string;
-              };
-              status?:
-                | "running"
-                | "success"
-                | "error"
-                | "skipped"
-                | "cancelled";
-            },
-            null
-          >;
-          logScenarioStart: FunctionReference<
-            "mutation",
-            "public",
-            {
-              metadata?: string;
-              runId: Id<"scenarioRuns">;
-              scenarioId: Id<"scenarios">;
-              userId?: Id<"users">;
-            },
-            Id<"scenarioLogs">
-          >;
-          logScenarioComplete: FunctionReference<
-            "mutation",
-            "public",
-            {
-              errorMessage?: string;
-              metadata?: string;
-              runId: Id<"scenarioRuns">;
-              scenarioId: Id<"scenarios">;
-              startTime: number;
-              status: "success" | "error";
-            },
-            Id<"scenarioLogs">
-          >;
-          logNodeExecution: FunctionReference<
-            "mutation",
-            "public",
-            {
-              action: string;
-              endTime?: number;
-              errorMessage?: string;
-              inputData?: string;
-              metadata?: string;
-              nodeId: Id<"nodes">;
-              outputData?: string;
-              requestInfo?: { endpoint: string; headers?: any; method: string };
-              responseInfo?: {
-                headers?: any;
-                statusCode: number;
-                statusText: string;
-              };
-              runId: Id<"scenarioRuns">;
-              scenarioId: Id<"scenarios">;
-              startTime: number;
-              status: "running" | "success" | "error" | "skipped";
-            },
-            Id<"scenarioLogs">
-          >;
-        };
-        queries: {
-          getScenarioLogsByScenario: FunctionReference<
-            "query",
-            "public",
-            {
-              paginationOpts: {
-                cursor: string | null;
-                endCursor?: string | null;
-                id?: number;
-                maximumBytesRead?: number;
-                maximumRowsRead?: number;
-                numItems: number;
-              };
-              scenarioId: Id<"scenarios">;
-            },
-            {
-              continueCursor: string | null;
-              isDone: boolean;
-              page: Array<{
-                _creationTime: number;
-                _id: Id<"scenarioLogs">;
-                action: string;
-                duration?: number;
-                endTime?: number;
-                errorMessage?: string;
-                inputData?: string;
-                metadata?: string;
-                nodeId?: Id<"nodes">;
-                outputData?: string;
-                requestInfo?: {
-                  endpoint: string;
-                  headers?: any;
-                  method: string;
-                };
-                responseInfo?: {
-                  headers?: any;
-                  statusCode: number;
-                  statusText: string;
-                };
-                runId: Id<"scenarioRuns">;
-                scenarioId: Id<"scenarios">;
-                startTime: number;
-                status:
-                  | "running"
-                  | "success"
-                  | "error"
-                  | "skipped"
-                  | "cancelled";
-                timestamp: number;
-                userId?: Id<"users">;
-              }>;
-              pageStatus?: any;
-              splitCursor?: any;
-            }
-          >;
-          getScenarioLogsByRun: FunctionReference<
-            "query",
-            "public",
-            { runId: Id<"scenarioRuns"> },
-            Array<{
-              _creationTime: number;
-              _id: Id<"scenarioLogs">;
-              action: string;
-              duration?: number;
-              endTime?: number;
-              errorMessage?: string;
-              inputData?: string;
-              nodeId?: Id<"nodes">;
-              outputData?: string;
-              requestInfo?: { endpoint: string; headers?: any; method: string };
-              responseInfo?: {
-                headers?: any;
-                statusCode: number;
-                statusText: string;
-              };
-              runId: Id<"scenarioRuns">;
-              scenarioId: Id<"scenarios">;
-              startTime: number;
-              status: "running" | "success" | "error" | "skipped" | "cancelled";
-              timestamp: number;
-              userId?: Id<"users">;
-            }>
-          >;
-          getAllScenarioLogs: FunctionReference<
-            "query",
-            "public",
-            {
-              paginationOpts: {
-                cursor: string | null;
-                endCursor?: string | null;
-                id?: number;
-                maximumBytesRead?: number;
-                maximumRowsRead?: number;
-                numItems: number;
-              };
-            },
-            {
-              continueCursor: string | null;
-              isDone: boolean;
-              page: Array<{
-                _creationTime: number;
-                _id: Id<"scenarioLogs">;
-                action: string;
-                duration?: number;
-                endTime?: number;
-                errorMessage?: string;
-                inputData?: string;
-                metadata?: string;
-                nodeId?: Id<"nodes">;
-                outputData?: string;
-                requestInfo?: {
-                  endpoint: string;
-                  headers?: any;
-                  method: string;
-                };
-                responseInfo?: {
-                  headers?: any;
-                  statusCode: number;
-                  statusText: string;
-                };
-                runId: Id<"scenarioRuns">;
-                scenarioId: Id<"scenarios">;
-                startTime: number;
-                status:
-                  | "running"
-                  | "success"
-                  | "error"
-                  | "skipped"
-                  | "cancelled";
-                timestamp: number;
-                userId?: Id<"users">;
-              }>;
-              pageStatus?: any;
-              splitCursor?: any;
-            }
-          >;
-          getScenarioLogStats: FunctionReference<
-            "query",
-            "public",
-            { scenarioId?: Id<"scenarios"> },
-            {
-              averageDuration?: number;
-              failedExecutions: number;
-              failedRuns: number;
-              lastRunTime?: number;
-              successfulExecutions: number;
-              successfulRuns: number;
-              totalExecutions: number;
-              totalRuns: number;
-            }
-          >;
-          getScenarioLogById: FunctionReference<
-            "query",
-            "public",
-            { logId: Id<"scenarioLogs"> },
-            {
-              _creationTime: number;
-              _id: Id<"scenarioLogs">;
-              action: string;
-              duration?: number;
-              endTime?: number;
-              errorMessage?: string;
-              inputData?: string;
-              nodeId?: Id<"nodes">;
-              outputData?: string;
-              requestInfo?: { endpoint: string; headers?: any; method: string };
-              responseInfo?: {
-                headers?: any;
-                statusCode: number;
-                statusText: string;
-              };
-              runId: Id<"scenarioRuns">;
-              scenarioId: Id<"scenarios">;
-              startTime: number;
-              status: "running" | "success" | "error" | "skipped" | "cancelled";
-              timestamp: number;
-              userId?: Id<"users">;
-            } | null
-          >;
-        };
-      };
-      scenarioRuns: {
-        mutations: {
-          createScenarioRun: FunctionReference<
-            "mutation",
-            "public",
-            {
-              connectionId?: Id<"connections">;
-              correlationId: string;
-              scenarioId: Id<"scenarios">;
-              triggerKey: string;
-            },
-            Id<"scenarioRuns">
-          >;
-          completeScenarioRun: FunctionReference<
-            "mutation",
-            "public",
-            {
-              runId: Id<"scenarioRuns">;
-              status: "succeeded" | "failed" | "cancelled";
-            },
-            null
-          >;
-        };
-        queries: {
-          getScenarioRunsByScenario: FunctionReference<
-            "query",
-            "public",
-            {
-              paginationOpts: {
-                cursor: string | null;
-                endCursor?: string | null;
-                id?: number;
-                maximumBytesRead?: number;
-                maximumRowsRead?: number;
-                numItems: number;
-              };
-              scenarioId: Id<"scenarios">;
-            },
-            {
-              continueCursor: string | null;
-              isDone: boolean;
-              page: Array<{
-                _creationTime: number;
-                _id: Id<"scenarioRuns">;
-                connectionId?: Id<"connections">;
-                correlationId: string;
-                finishedAt?: number;
-                scenarioId: Id<"scenarios">;
-                scenarioVersion: number;
-                startedAt: number;
-                status:
-                  | "pending"
-                  | "running"
-                  | "succeeded"
-                  | "failed"
-                  | "cancelled";
-                triggerKey: string;
-              }>;
-              pageStatus?: any;
-              splitCursor?: any;
-            }
-          >;
-          getScenarioRunByCorrelation: FunctionReference<
-            "query",
-            "public",
-            { correlationId: string },
-            {
-              _creationTime: number;
-              _id: Id<"scenarioRuns">;
-              connectionId?: Id<"connections">;
-              correlationId: string;
-              finishedAt?: number;
-              scenarioId: Id<"scenarios">;
-              scenarioVersion: number;
-              startedAt: number;
-              status:
-                | "pending"
-                | "running"
-                | "succeeded"
-                | "failed"
-                | "cancelled";
-              triggerKey: string;
-            } | null
-          >;
-          getScenarioRunsByStatus: FunctionReference<
-            "query",
-            "public",
-            {
-              paginationOpts: {
-                cursor: string | null;
-                endCursor?: string | null;
-                id?: number;
-                maximumBytesRead?: number;
-                maximumRowsRead?: number;
-                numItems: number;
-              };
-              status:
-                | "pending"
-                | "running"
-                | "succeeded"
-                | "failed"
-                | "cancelled";
-            },
-            {
-              continueCursor: string | null;
-              isDone: boolean;
-              page: Array<{
-                _creationTime: number;
-                _id: Id<"scenarioRuns">;
-                connectionId?: Id<"connections">;
-                correlationId: string;
-                finishedAt?: number;
-                scenarioId: Id<"scenarios">;
-                scenarioVersion: number;
-                startedAt: number;
-                status:
-                  | "pending"
-                  | "running"
-                  | "succeeded"
-                  | "failed"
-                  | "cancelled";
-                triggerKey: string;
-              }>;
-              pageStatus?: any;
-              splitCursor?: any;
-            }
-          >;
-          getScenarioRunsByScenarioAndVersion: FunctionReference<
-            "query",
-            "public",
-            {
-              paginationOpts: {
-                cursor: string | null;
-                endCursor?: string | null;
-                id?: number;
-                maximumBytesRead?: number;
-                maximumRowsRead?: number;
-                numItems: number;
-              };
-              scenarioId: Id<"scenarios">;
-              scenarioVersion: number;
-            },
-            {
-              continueCursor: string | null;
-              isDone: boolean;
-              page: Array<{
-                _creationTime: number;
-                _id: Id<"scenarioRuns">;
-                connectionId?: Id<"connections">;
-                correlationId: string;
-                finishedAt?: number;
-                scenarioId: Id<"scenarios">;
-                scenarioVersion: number;
-                startedAt: number;
-                status:
-                  | "pending"
-                  | "running"
-                  | "succeeded"
-                  | "failed"
-                  | "cancelled";
-                triggerKey: string;
-              }>;
-              pageStatus?: any;
-              splitCursor?: any;
-            }
-          >;
-        };
-      };
-      scenarioNodes: {
-        mutations: {
-          create: FunctionReference<
-            "mutation",
-            "public",
-            {
-              config: any;
-              connectionId?: Id<"connections">;
-              label: string;
-              nodeId: string;
-              order?: number;
-              position: string;
-              sampleData?: string;
-              scenarioId: Id<"scenarios">;
-              schema?: string;
-              type: string;
-            },
-            Id<"nodes">
-          >;
-          update: FunctionReference<
-            "mutation",
-            "public",
-            {
-              config?: any;
-              connectionId?: Id<"connections">;
-              id: Id<"nodes">;
-              label?: string;
-              order?: number;
-              position?: string;
-            },
-            Id<"nodes">
-          >;
-          remove: FunctionReference<
-            "mutation",
-            "public",
-            { id: Id<"nodes"> },
-            boolean
-          >;
-          createConnection: FunctionReference<
-            "mutation",
-            "public",
-            {
-              branch?: string;
-              label?: string;
-              mapping?: string;
-              order?: number;
-              scenarioId: Id<"scenarios">;
-              sourceNodeId: Id<"nodes">;
-              targetNodeId: Id<"nodes">;
-            },
-            Id<"nodeConnections">
-          >;
-          updateConnection: FunctionReference<
-            "mutation",
-            "public",
-            {
-              branch?: string;
-              id: Id<"nodeConnections">;
-              label?: string;
-              mapping?: string;
-              order?: number;
-            },
-            Id<"nodeConnections">
-          >;
-          removeConnection: FunctionReference<
-            "mutation",
-            "public",
-            { id: Id<"nodeConnections"> },
-            boolean
-          >;
-          updateSchema: FunctionReference<
-            "mutation",
-            "public",
-            { id: string; inputMapping?: string; outputSchema?: string },
-            string
-          >;
-        };
-        queries: {
-          list: FunctionReference<
-            "query",
-            "public",
-            { scenarioId: Id<"scenarios"> },
-            Array<{
-              _creationTime: number;
-              _id: Id<"nodes">;
-              config: string;
-              createdAt: number;
-              inputMapping?: string;
-              label: string;
-              order?: number;
-              outputSchema?: string;
-              position: string;
-              sampleData?: string;
-              scenarioId: Id<"scenarios">;
-              type: string;
-              updatedAt: number;
-            }>
-          >;
-          getByScenarioId: FunctionReference<
-            "query",
-            "public",
-            { scenarioId: Id<"scenarios"> },
-            Array<{
-              _creationTime: number;
-              _id: Id<"nodes">;
-              config: string;
-              createdAt: number;
-              inputMapping?: string;
-              label: string;
-              order?: number;
-              outputSchema?: string;
-              position: string;
-              sampleData?: string;
-              scenarioId: Id<"scenarios">;
-              type: string;
-              updatedAt: number;
-            }>
-          >;
-          listByScenario: FunctionReference<
-            "query",
-            "public",
-            { scenarioId: Id<"scenarios"> },
-            Array<{
-              _creationTime: number;
-              _id: Id<"nodes">;
-              config: string;
-              createdAt: number;
-              inputMapping?: string;
-              label: string;
-              order?: number;
-              outputSchema?: string;
-              position: string;
-              sampleData?: string;
-              scenarioId: Id<"scenarios">;
-              type: string;
-              updatedAt: number;
-            }>
-          >;
-          get: FunctionReference<
-            "query",
-            "public",
-            { id: Id<"nodes"> },
-            {
-              _creationTime: number;
-              _id: Id<"nodes">;
-              config: string;
-              createdAt: number;
-              inputMapping?: string;
-              label: string;
-              order?: number;
-              outputSchema?: string;
-              position: string;
-              sampleData?: string;
-              scenarioId: Id<"scenarios">;
-              type: string;
-              updatedAt: number;
-            } | null
-          >;
-          getConnections: FunctionReference<
-            "query",
-            "public",
-            { nodeId: Id<"nodes"> },
-            {
-              incoming: Array<{
-                _creationTime: number;
-                _id: Id<"nodeConnections">;
-                createdAt: number;
-                mapping?: string;
-                scenarioId: Id<"scenarios">;
-                sourceNode: { _id: Id<"nodes">; label: string; type: string };
-                sourceNodeId: Id<"nodes">;
-                targetNodeId: Id<"nodes">;
-                updatedAt: number;
-              }>;
-              outgoing: Array<{
-                _creationTime: number;
-                _id: Id<"nodeConnections">;
-                createdAt: number;
-                mapping?: string;
-                scenarioId: Id<"scenarios">;
-                sourceNodeId: Id<"nodes">;
-                targetNode: { _id: Id<"nodes">; label: string; type: string };
-                targetNodeId: Id<"nodes">;
-                updatedAt: number;
-              }>;
-            }
-          >;
-          getAllNodes: FunctionReference<
-            "query",
-            "public",
-            Record<string, never>,
-            Array<{
-              _creationTime: number;
-              _id: Id<"nodes">;
-              config: string;
-              createdAt: number;
-              inputMapping?: string;
-              label: string;
-              order?: number;
-              outputSchema?: string;
-              position: string;
-              sampleData?: string;
-              scenarioId: Id<"scenarios">;
-              type: string;
-              updatedAt: number;
-            }>
-          >;
-          getConnectionsByScenario: FunctionReference<
-            "query",
-            "public",
-            { scenarioId: Id<"scenarios"> },
-            Array<{
-              _creationTime: number;
-              _id: Id<"nodeConnections">;
-              branch?: string;
-              createdAt: number;
-              label?: string;
-              mapping?: string;
-              order?: number;
-              scenarioId: Id<"scenarios">;
-              sourceNodeId: Id<"nodes">;
-              targetNodeId: Id<"nodes">;
-              updatedAt: number;
-            }>
-          >;
-          getScenarioEdgesByScenario: FunctionReference<
-            "query",
-            "public",
-            { scenarioId: Id<"scenarios"> },
-            Array<{
-              _creationTime: number;
-              _id: Id<"scenarioEdges">;
-              animated?: boolean;
-              createdAt: number;
-              label?: string;
-              order?: number;
-              scenarioId: Id<"scenarios">;
-              sourceHandle?: string;
-              sourceNodeId: Id<"nodes">;
-              style?: string;
-              targetHandle?: string;
-              targetNodeId: Id<"nodes">;
-              updatedAt: number;
-            }>
-          >;
-          listIntegrationNodes: FunctionReference<
-            "query",
-            "public",
-            {
-              category?: string;
-              deprecated?: boolean;
-              integrationType?: string;
-            },
-            Array<{
-              _creationTime: number;
-              _id: Id<"integrationNodes">;
-              category: string;
-              createdAt: number;
-              deprecated?: boolean;
-              description: string;
-              identifier: string;
-              integrationType: string;
-              name: string;
-              tags?: Array<string>;
-              updatedAt: number;
-              version: string;
-            }>
-          >;
-          getIntegrationNode: FunctionReference<
-            "query",
-            "public",
-            { id: Id<"integrationNodes"> },
-            {
-              _creationTime: number;
-              _id: Id<"integrationNodes">;
-              category: string;
-              configSchema: string;
-              createdAt: number;
-              deprecated?: boolean;
-              description: string;
-              identifier: string;
-              inputSchema: string;
-              integrationType: string;
-              name: string;
-              outputSchema: string;
-              tags?: Array<string>;
-              uiConfig?: string;
-              updatedAt: number;
-              version: string;
-            } | null
-          >;
-          getIntegrationNodeByIdentifier: FunctionReference<
-            "query",
-            "public",
-            { identifier: string },
-            {
-              _creationTime: number;
-              _id: Id<"integrationNodes">;
-              category: string;
-              configSchema: string;
-              createdAt: number;
-              deprecated?: boolean;
-              description: string;
-              identifier: string;
-              inputSchema: string;
-              integrationType: string;
-              name: string;
-              outputSchema: string;
-              tags?: Array<string>;
-              uiConfig?: string;
-              updatedAt: number;
-              version: string;
-            } | null
-          >;
-          listScenarioNodes: FunctionReference<
-            "query",
-            "public",
-            { scenarioId: Id<"scenarios"> },
-            Array<{
-              _creationTime: number;
-              _id: Id<"scenarioNodes">;
-              config: any;
-              connectionId?: Id<"connections">;
-              createdAt: number;
-              integrationNode: {
-                category: string;
-                description: string;
-                identifier: string;
-                integrationType: string;
-                name: string;
-              };
-              integrationNodeId: Id<"integrationNodes">;
-              isSystem?: boolean;
-              label: string;
-              order?: number;
-              position: string;
-              scenarioId: Id<"scenarios">;
-              updatedAt: number;
-            }>
-          >;
-        };
-      };
-    };
     connections: {
       internalConnections: {
         testCreateInternalConnections: FunctionReference<
@@ -8067,6 +4733,24 @@ export type PublicApiType = {
               | "failed";
           }
         >;
+        listCannedResponses: FunctionReference<
+          "query",
+          "public",
+          { organizationId: Id<"organizations"> },
+          Array<{
+            _id: Id<"supportCannedResponses">;
+            content: string;
+            createdAt: number;
+            isActive?: boolean;
+            matchMode?: "contains" | "exact" | "regex";
+            matchPhrases?: Array<string>;
+            priority?: number;
+            slug?: string;
+            tags?: Array<string>;
+            title: string;
+            updatedAt: number;
+          }>
+        >;
         listConversations: FunctionReference<
           "query",
           "public",
@@ -8089,7 +4773,7 @@ export type PublicApiType = {
             totalMessages: number;
           }>
         >;
-        listKnowledge: FunctionReference<
+        listHelpdeskArticles: FunctionReference<
           "query",
           "public",
           {
@@ -8104,25 +4788,6 @@ export type PublicApiType = {
             tags?: Array<string>;
             title: string;
             type?: string;
-          }>
-        >;
-        listKnowledgeEntries: FunctionReference<
-          "query",
-          "public",
-          { organizationId: Id<"organizations"> },
-          Array<{
-            _id: Id<"supportKnowledge">;
-            content: string;
-            createdAt: number;
-            isActive?: boolean;
-            matchMode?: "contains" | "exact" | "regex";
-            matchPhrases?: Array<string>;
-            priority?: number;
-            slug: string;
-            tags?: Array<string>;
-            title: string;
-            type?: string;
-            updatedAt: number;
           }>
         >;
         listMessages: FunctionReference<
@@ -8169,7 +4834,7 @@ export type PublicApiType = {
           { organizationId: Id<"organizations">; question: string },
           {
             content: string;
-            entryId: Id<"supportKnowledge">;
+            entryId: Id<"supportCannedResponses">;
             slug?: string;
             title: string;
           } | null
@@ -8215,12 +4880,12 @@ export type PublicApiType = {
           },
           any
         >;
-        upsertKnowledgeEntry: FunctionReference<
+        upsertCannedResponse: FunctionReference<
           "mutation",
           "public",
           {
             content: string;
-            entryId?: Id<"supportKnowledge">;
+            entryId?: Id<"supportCannedResponses">;
             isActive?: boolean;
             matchMode?: "contains" | "exact" | "regex";
             matchPhrases?: Array<string>;
@@ -8229,15 +4894,14 @@ export type PublicApiType = {
             slug?: string;
             tags?: Array<string>;
             title: string;
-            type?: string;
           },
           any
         >;
-        deleteKnowledgeEntry: FunctionReference<
+        deleteCannedResponse: FunctionReference<
           "mutation",
           "public",
           {
-            entryId: Id<"supportKnowledge">;
+            entryId: Id<"supportCannedResponses">;
             organizationId: Id<"organizations">;
           },
           any
@@ -8312,6 +4976,839 @@ export type PublicApiType = {
             slug?: string;
             source?: string;
             title: string;
+          }>
+        >;
+      };
+    };
+    calendar: {
+      events: {
+        queries: {
+          getEvent: FunctionReference<
+            "query",
+            "public",
+            { eventId: Id<"posts"> },
+            any
+          >;
+          searchEvents: FunctionReference<
+            "query",
+            "public",
+            { limit?: number; searchTerm: string },
+            any
+          >;
+          getCalendarEvents: FunctionReference<
+            "query",
+            "public",
+            { calendarId: Id<"posts">; endDate: number; startDate: number },
+            any
+          >;
+          getEventsInDateRange: FunctionReference<
+            "query",
+            "public",
+            {
+              calendarIds?: Array<Id<"posts">>;
+              endDate: number;
+              includeRecurrences?: boolean;
+              paginationOpts?: {
+                cursor: string | null;
+                endCursor?: string | null;
+                id?: number;
+                maximumBytesRead?: number;
+                maximumRowsRead?: number;
+                numItems: number;
+              };
+              startDate: number;
+            },
+            any
+          >;
+          getCalendarViewEvents: FunctionReference<
+            "query",
+            "public",
+            {
+              calendarIds?: Array<Id<"posts">>;
+              includeRecurrences?: boolean;
+              viewDate: number;
+              viewType: "day" | "week" | "month" | "year";
+            },
+            any
+          >;
+        };
+        crud: {
+          createEvent: FunctionReference<
+            "mutation",
+            "public",
+            {
+              allDay?: boolean;
+              calendarId: Id<"posts">;
+              color?: string;
+              description?: string;
+              endTime: number;
+              location?: {
+                address?: string;
+                type: "virtual" | "physical" | "hybrid";
+                url?: string;
+              };
+              recurrence?: {
+                byDay?: Array<"MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU">;
+                count?: number;
+                frequency: "daily" | "weekly" | "monthly" | "yearly";
+                interval?: number;
+                until?: number;
+              };
+              slug?: string;
+              startTime: number;
+              timezone?: string;
+              title: string;
+              type:
+                | "meeting"
+                | "webinar"
+                | "workshop"
+                | "class"
+                | "conference"
+                | "social"
+                | "deadline"
+                | "reminder"
+                | "other";
+              visibility: "public" | "private" | "restricted";
+            },
+            any
+          >;
+          updateEvent: FunctionReference<
+            "mutation",
+            "public",
+            {
+              allDay?: boolean;
+              calendarId?: Id<"posts">;
+              color?: string | null;
+              description?: string | null;
+              endTime?: number;
+              eventId: Id<"posts">;
+              location?: {
+                address?: string;
+                type: "virtual" | "physical" | "hybrid";
+                url?: string;
+              } | null;
+              recurrence?: {
+                byDay?: Array<"MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU">;
+                count?: number;
+                frequency: "daily" | "weekly" | "monthly" | "yearly";
+                interval?: number;
+                until?: number;
+              } | null;
+              slug?: string;
+              startTime?: number;
+              timezone?: string | null;
+              title?: string;
+              type?:
+                | "meeting"
+                | "webinar"
+                | "workshop"
+                | "class"
+                | "conference"
+                | "social"
+                | "deadline"
+                | "reminder"
+                | "other";
+              visibility?: "public" | "private" | "restricted";
+            },
+            any
+          >;
+          deleteEvent: FunctionReference<
+            "mutation",
+            "public",
+            { eventId: Id<"posts"> },
+            any
+          >;
+        };
+        orders: {
+          linkCalendarEvent: FunctionReference<
+            "mutation",
+            "public",
+            { eventId: Id<"posts">; orderId: Id<"orders"> },
+            any
+          >;
+          unlinkCalendarEvent: FunctionReference<
+            "mutation",
+            "public",
+            { orderId: Id<"orders"> },
+            any
+          >;
+          getOrdersByCalendarEvent: FunctionReference<
+            "mutation",
+            "public",
+            { eventId: Id<"posts"> },
+            any
+          >;
+        };
+      };
+      crud: {
+        createCalendar: FunctionReference<
+          "mutation",
+          "public",
+          {
+            color?: string;
+            description?: string;
+            isDefault?: boolean;
+            isPublic?: boolean;
+            name: string;
+            organizationId?: Id<"organizations">;
+            ownerId?: string;
+            ownerType?: "user" | "group" | "course" | "organization";
+            slug?: string;
+          },
+          any
+        >;
+        updateCalendar: FunctionReference<
+          "mutation",
+          "public",
+          {
+            calendarId: Id<"posts">;
+            color?: string | null;
+            description?: string | null;
+            isDefault?: boolean;
+            isPublic?: boolean;
+            name?: string;
+            ownerId?: string;
+            ownerType?: "user" | "group" | "course" | "organization";
+            slug?: string;
+          },
+          any
+        >;
+        deleteCalendar: FunctionReference<
+          "mutation",
+          "public",
+          { calendarId: Id<"posts"> },
+          any
+        >;
+      };
+      queries: {
+        getCalendars: FunctionReference<
+          "query",
+          "public",
+          { organizationId?: Id<"organizations"> },
+          any
+        >;
+        getCalendarById: FunctionReference<
+          "query",
+          "public",
+          { calendarId: Id<"posts"> },
+          any
+        >;
+        getCalendarForEvent: FunctionReference<
+          "query",
+          "public",
+          { eventId: Id<"posts"> },
+          any
+        >;
+        getEventById: FunctionReference<
+          "query",
+          "public",
+          { eventId: Id<"posts"> },
+          any
+        >;
+        getUserCalendars: FunctionReference<
+          "query",
+          "public",
+          Record<string, never>,
+          any
+        >;
+      };
+    };
+    socialfeed: {
+      mutations: {
+        createPost: FunctionReference<
+          "mutation",
+          "public",
+          {
+            content: string;
+            creatorId: Id<"users">;
+            mediaUrls?: Array<string>;
+            moduleId?: string;
+            moduleType?: "blog" | "course" | "group" | "event";
+            visibility: "public" | "private" | "group";
+          },
+          Id<"feedItems">
+        >;
+        updatePost: FunctionReference<
+          "mutation",
+          "public",
+          {
+            content?: string;
+            mediaUrls?: Array<string>;
+            postId: Id<"feedItems">;
+            userId: Id<"users">;
+            visibility?: "public" | "private" | "group";
+          },
+          boolean
+        >;
+        deletePost: FunctionReference<
+          "mutation",
+          "public",
+          { postId: Id<"feedItems">; userId: Id<"users"> },
+          boolean
+        >;
+        shareContent: FunctionReference<
+          "mutation",
+          "public",
+          {
+            content?: string;
+            creatorId: Id<"users">;
+            moduleId?: string;
+            moduleType?: "blog" | "course" | "group" | "event";
+            originalContentId: Id<"feedItems">;
+            visibility: "public" | "private" | "group";
+          },
+          Id<"feedItems">
+        >;
+        addReaction: FunctionReference<
+          "mutation",
+          "public",
+          {
+            feedItemId: Id<"feedItems">;
+            reactionType:
+              | "like"
+              | "love"
+              | "celebrate"
+              | "support"
+              | "insightful"
+              | "curious";
+            userId: Id<"users">;
+          },
+          Id<"reactions">
+        >;
+        addComment: FunctionReference<
+          "mutation",
+          "public",
+          {
+            content: string;
+            feedItemId: Id<"feedItems">;
+            mediaUrls?: Array<string>;
+            parentCommentId?: Id<"comments">;
+            userId: Id<"users">;
+          },
+          Id<"comments">
+        >;
+        followTopic: FunctionReference<
+          "mutation",
+          "public",
+          { topicId: Id<"hashtags">; userId: Id<"users"> },
+          boolean
+        >;
+        unfollowTopic: FunctionReference<
+          "mutation",
+          "public",
+          { topicId: Id<"hashtags">; userId: Id<"users"> },
+          boolean
+        >;
+        createOrUpdateTopic: FunctionReference<
+          "mutation",
+          "public",
+          {
+            category?: string;
+            coverImage?: string;
+            description?: string;
+            tag: string;
+          },
+          Id<"hashtags">
+        >;
+        markRecommendationAsSeen: FunctionReference<
+          "mutation",
+          "public",
+          { contentId: Id<"feedItems">; userId: Id<"users"> },
+          boolean
+        >;
+        markRecommendationAsInteracted: FunctionReference<
+          "mutation",
+          "public",
+          {
+            contentId: Id<"feedItems">;
+            reaction?: "like" | "dislike" | "neutral";
+            userId: Id<"users">;
+          },
+          boolean
+        >;
+        generateUserRecommendations: FunctionReference<
+          "mutation",
+          "public",
+          { limit?: number; userId: Id<"users"> },
+          boolean
+        >;
+        updatePostTrendingMetrics: FunctionReference<
+          "mutation",
+          "public",
+          { contentId: Id<"feedItems"> },
+          boolean
+        >;
+      };
+      queries: {
+        getUniversalFeed: FunctionReference<
+          "query",
+          "public",
+          {
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+          },
+          {
+            continueCursor: string | null;
+            isDone: boolean;
+            page: Array<{
+              _creationTime: number;
+              _id: Id<"feedItems">;
+              commentsCount: number;
+              content: string;
+              contentType: "post" | "share" | "comment";
+              creator: { _id: Id<"users">; image?: string; name: string };
+              creatorId: Id<"users">;
+              hashtags?: Array<string>;
+              mediaUrls?: Array<string>;
+              mentionedUserIds?: Array<Id<"users">>;
+              mentions?: Array<string>;
+              moduleId?: string;
+              moduleType?: "blog" | "course" | "group" | "event";
+              originalContentId?: Id<"feedItems">;
+              reactionsCount: number;
+              visibility: "public" | "private" | "group";
+            }>;
+          }
+        >;
+        getPersonalizedFeed: FunctionReference<
+          "query",
+          "public",
+          {
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+            userId: Id<"users">;
+          },
+          {
+            continueCursor: string | null;
+            isDone: boolean;
+            page: Array<{
+              _creationTime: number;
+              _id: Id<"feedItems">;
+              commentsCount: number;
+              content: string;
+              contentType: "post" | "share" | "comment";
+              creator: { _id: Id<"users">; image?: string; name: string };
+              creatorId: Id<"users">;
+              hashtags?: Array<string>;
+              mediaUrls?: Array<string>;
+              mentionedUserIds?: Array<Id<"users">>;
+              mentions?: Array<string>;
+              moduleId?: string;
+              moduleType?: "blog" | "course" | "group" | "event";
+              originalContentId?: Id<"feedItems">;
+              reactionsCount: number;
+              visibility: "public" | "private" | "group";
+            }>;
+          }
+        >;
+        getGroupFeed: FunctionReference<
+          "query",
+          "public",
+          {
+            groupId: Id<"posts">;
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+          },
+          {
+            continueCursor: string | null;
+            isDone: boolean;
+            page: Array<{
+              _creationTime: number;
+              _id: Id<"feedItems">;
+              commentsCount: number;
+              content: string;
+              contentType: "post" | "share" | "comment";
+              creator: { _id: Id<"users">; image?: string; name: string };
+              creatorId: Id<"users">;
+              hashtags?: Array<string>;
+              mediaUrls?: Array<string>;
+              mentionedUserIds?: Array<Id<"users">>;
+              mentions?: Array<string>;
+              moduleId?: string;
+              moduleType?: "blog" | "course" | "group" | "event";
+              originalContentId?: Id<"feedItems">;
+              reactionsCount: number;
+              visibility: "public" | "private" | "group";
+            }>;
+          }
+        >;
+        getUserProfileFeed: FunctionReference<
+          "query",
+          "public",
+          {
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+            profileId: Id<"users">;
+            viewerId?: Id<"users">;
+          },
+          {
+            continueCursor: string | null;
+            isDone: boolean;
+            page: Array<{
+              _creationTime: number;
+              _id: Id<"feedItems">;
+              commentsCount: number;
+              content: string;
+              contentType: "post" | "share" | "comment";
+              creator: { _id: Id<"users">; image?: string; name: string };
+              creatorId: Id<"users">;
+              hashtags?: Array<string>;
+              mediaUrls?: Array<string>;
+              mentionedUserIds?: Array<Id<"users">>;
+              mentions?: Array<string>;
+              moduleId?: string;
+              moduleType?: "blog" | "course" | "group" | "event";
+              originalContentId?: Id<"feedItems">;
+              reactionsCount: number;
+              visibility: "public" | "private" | "group";
+            }>;
+          }
+        >;
+        getFeedItem: FunctionReference<
+          "query",
+          "public",
+          { feedItemId: Id<"feedItems"> },
+          null | {
+            _creationTime: number;
+            _id: Id<"feedItems">;
+            commentsCount: number;
+            content: string;
+            contentType: "post" | "share" | "comment";
+            creator: { _id: Id<"users">; image?: string; name: string };
+            creatorId: Id<"users">;
+            hashtags?: Array<string>;
+            mediaUrls?: Array<string>;
+            mentionedUserIds?: Array<Id<"users">>;
+            mentions?: Array<string>;
+            moduleId?: string;
+            moduleType?: "blog" | "course" | "group" | "event";
+            originalContentId?: Id<"feedItems">;
+            reactionsCount: number;
+            visibility: "public" | "private" | "group";
+          }
+        >;
+        getHashtagFeed: FunctionReference<
+          "query",
+          "public",
+          {
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+            tag: string;
+          },
+          {
+            feedItems: {
+              continueCursor: string | null;
+              isDone: boolean;
+              page: Array<{
+                _creationTime: number;
+                _id: Id<"feedItems">;
+                commentsCount: number;
+                content: string;
+                contentType: "post" | "share" | "comment";
+                creator: { _id: Id<"users">; image?: string; name: string };
+                creatorId: Id<"users">;
+                hashtags?: Array<string>;
+                mediaUrls?: Array<string>;
+                mentionedUserIds?: Array<Id<"users">>;
+                mentions?: Array<string>;
+                moduleId?: string;
+                moduleType?: "blog" | "course" | "group" | "event";
+                originalContentId?: Id<"feedItems">;
+                reactionsCount: number;
+                visibility: "public" | "private" | "group";
+              }>;
+            };
+            hashtag: null | {
+              _creationTime: number;
+              _id: Id<"hashtags">;
+              category?: string;
+              coverImage?: string;
+              description?: string;
+              followerCount?: number;
+              isBlocked?: boolean;
+              isTopic?: boolean;
+              lastUsed: number;
+              relatedTags?: Array<string>;
+              tag: string;
+              usageCount: number;
+            };
+          }
+        >;
+        getComments: FunctionReference<
+          "query",
+          "public",
+          {
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+            parentId: Id<"feedItems"> | Id<"posts">;
+            parentType: "feedItem" | "post" | "download" | "helpdeskArticle";
+            sortOrder?: "newest" | "oldest";
+          },
+          {
+            continueCursor: string | null;
+            isDone: boolean;
+            page: Array<{
+              _creationTime: number;
+              _id: Id<"comments">;
+              content: string;
+              mediaUrls?: Array<string>;
+              parentCommentId?: Id<"comments">;
+              parentId: Id<"feedItems"> | Id<"posts">;
+              parentType:
+                | "feedItem"
+                | "course"
+                | "lesson"
+                | "topic"
+                | "quiz"
+                | "post"
+                | "download"
+                | "helpdeskArticle";
+              repliesCount: number;
+              updatedAt?: number;
+              user: { _id: Id<"users">; image?: string; name: string };
+              userId: Id<"users">;
+            }>;
+          }
+        >;
+        getReplies: FunctionReference<
+          "query",
+          "public",
+          {
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+            parentCommentId: Id<"comments">;
+          },
+          {
+            continueCursor: string | null;
+            isDone: boolean;
+            page: Array<{
+              _creationTime: number;
+              _id: Id<"comments">;
+              content: string;
+              mediaUrls?: Array<string>;
+              parentCommentId?: Id<"comments">;
+              parentId: Id<"feedItems"> | Id<"posts">;
+              parentType:
+                | "feedItem"
+                | "course"
+                | "lesson"
+                | "topic"
+                | "quiz"
+                | "post"
+                | "download"
+                | "helpdeskArticle";
+              repliesCount: number;
+              updatedAt?: number;
+              user: { _id: Id<"users">; image?: string; name: string };
+              userId: Id<"users">;
+            }>;
+          }
+        >;
+        searchUsersForMentions: FunctionReference<
+          "query",
+          "public",
+          { limit?: number; query: string },
+          Array<{ _id: Id<"users">; image?: string; name: string }>
+        >;
+        getRecommendedContent: FunctionReference<
+          "query",
+          "public",
+          {
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+            userId: Id<"users">;
+          },
+          {
+            continueCursor: string | null;
+            isDone: boolean;
+            page: Array<{
+              _creationTime: number;
+              _id: Id<"feedItems">;
+              commentsCount: number;
+              content: string;
+              contentType: "post" | "share" | "comment";
+              creator: { _id: Id<"users">; image?: string; name: string };
+              creatorId: Id<"users">;
+              hashtags?: Array<string>;
+              mediaUrls?: Array<string>;
+              mentionedUserIds?: Array<Id<"users">>;
+              mentions?: Array<string>;
+              moduleId?: string;
+              moduleType?: "blog" | "course" | "group" | "event";
+              originalContentId?: Id<"feedItems">;
+              reactionsCount: number;
+              visibility: "public" | "private" | "group";
+            }>;
+          }
+        >;
+        getTopics: FunctionReference<
+          "query",
+          "public",
+          {
+            category?: string;
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+            query?: string;
+          },
+          Array<{
+            _creationTime: number;
+            _id: Id<"hashtags">;
+            category?: string;
+            coverImage?: string;
+            description?: string;
+            followerCount?: number;
+            isBlocked?: boolean;
+            isTopic?: boolean;
+            lastUsed: number;
+            relatedTags?: Array<string>;
+            tag: string;
+            usageCount: number;
+          }>
+        >;
+        getUserFollowedTopics: FunctionReference<
+          "query",
+          "public",
+          {
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+            userId: Id<"users">;
+          },
+          Array<{
+            _creationTime: number;
+            _id: Id<"hashtags">;
+            category?: string;
+            coverImage?: string;
+            description?: string;
+            followerCount?: number;
+            isBlocked?: boolean;
+            isTopic?: boolean;
+            lastUsed: number;
+            relatedTags?: Array<string>;
+            tag: string;
+            usageCount: number;
+          }>
+        >;
+        getTopicSuggestions: FunctionReference<
+          "query",
+          "public",
+          { limit?: number; userId: Id<"users"> },
+          Array<{
+            _creationTime: number;
+            _id: Id<"hashtags">;
+            category?: string;
+            coverImage?: string;
+            description?: string;
+            followerCount?: number;
+            isBlocked?: boolean;
+            isTopic?: boolean;
+            lastUsed: number;
+            relatedTags?: Array<string>;
+            tag: string;
+            usageCount: number;
+          }>
+        >;
+        getTopic: FunctionReference<
+          "query",
+          "public",
+          { topicId: Id<"hashtags"> },
+          {
+            _creationTime: number;
+            _id: Id<"hashtags">;
+            category?: string;
+            coverImage?: string;
+            description?: string;
+            followerCount?: number;
+            isBlocked?: boolean;
+            isTopic?: boolean;
+            lastUsed: number;
+            relatedTags?: Array<string>;
+            tag: string;
+            usageCount: number;
+          } | null
+        >;
+        checkTopicFollow: FunctionReference<
+          "query",
+          "public",
+          { topicId: Id<"hashtags">; userId: Id<"users"> },
+          boolean
+        >;
+        getRecommendedHashtags: FunctionReference<
+          "query",
+          "public",
+          { limit: number; userId: Id<"users"> },
+          Array<{
+            _creationTime: number;
+            _id: Id<"hashtags">;
+            category?: string;
+            coverImage?: string;
+            description?: string;
+            followerCount?: number;
+            isBlocked?: boolean;
+            isTopic?: boolean;
+            lastUsed: number;
+            relatedTags?: Array<string>;
+            tag: string;
+            usageCount: number;
           }>
         >;
       };

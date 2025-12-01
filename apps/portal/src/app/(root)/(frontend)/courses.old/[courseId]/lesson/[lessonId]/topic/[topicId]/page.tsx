@@ -4,9 +4,11 @@ import React from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { EditItemDialog } from "@/components/EditItemDialog";
+import { PortalSocialFeedProvider } from "@/src/providers/SocialFeedProvider";
 import { api } from "@convex-config/_generated/api";
 import { Doc, Id } from "@convex-config/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
+import { CommentThread } from "launchthat-plugin-socialfeed/components";
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 
 import {
@@ -29,7 +31,6 @@ import { Skeleton } from "@acme/ui/skeleton";
 import { toast } from "@acme/ui/toast";
 
 import { ProtectedContent } from "~/components/access/ProtectedContent";
-import { CommentThread } from "~/components/social/CommentThread";
 import { useConvexUser } from "~/hooks/useConvexUser";
 import { cn } from "~/lib/utils";
 import { CompleteContentButton } from "../../../../_components/CompleteContentButton";
@@ -153,12 +154,12 @@ export default function TopicPage() {
                   src={getVimeoEmbedUrl(topic.content) ?? undefined}
                   allow="autoplay; fullscreen; picture-in-picture"
                   allowFullScreen
-                  className="absolute left-0 top-0 h-full w-full border-0"
+                  className="absolute top-0 left-0 h-full w-full border-0"
                 ></iframe>
               </div>
             )
           ) : (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               No content available.
             </p>
           )}
@@ -201,10 +202,10 @@ export default function TopicPage() {
               </CarouselItem>
             )}
           </CarouselContent>
-          <CarouselPrevious className="absolute -left-0 top-1/2 -translate-y-1/2 transform">
+          <CarouselPrevious className="absolute top-1/2 -left-0 -translate-y-1/2 transform">
             <ChevronLeft className="h-4 w-4" />
           </CarouselPrevious>
-          <CarouselNext className="absolute -right-0 top-1/2 -translate-y-1/2 transform">
+          <CarouselNext className="absolute top-1/2 -right-0 -translate-y-1/2 transform">
             <ChevronRight className="h-4 w-4" />
           </CarouselNext>
         </Carousel>
@@ -213,7 +214,9 @@ export default function TopicPage() {
 
         {/* Social Feed Comments */}
         <h3 className="mb-4 text-xl font-bold">Comments</h3>
-        <CommentThread postId={topic._id} postType="topic" />
+        <PortalSocialFeedProvider>
+          <CommentThread postId={topic._id} postType="topic" />
+        </PortalSocialFeedProvider>
       </CardContent>
     </Card>
   );
@@ -252,7 +255,7 @@ export const OverlayCard = ({
           className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
       )}
-      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-50 p-5 text-center text-white transition-opacity duration-300 group-hover:opacity-0">
+      <div className="bg-opacity-50 absolute inset-0 flex flex-col items-center justify-center bg-black p-5 text-center text-white transition-opacity duration-300 group-hover:opacity-0">
         {badgeText && (
           <Badge
             variant="outline"

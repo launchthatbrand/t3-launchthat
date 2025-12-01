@@ -39,7 +39,7 @@ export default function EventCreatePage() {
       <div className="container p-8">
         <div className="flex h-96 items-center justify-center">
           <div className="text-center">
-            <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+            <div className="border-primary mb-4 h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"></div>
             <p className="text-muted-foreground">Authenticating...</p>
           </div>
         </div>
@@ -52,7 +52,7 @@ export default function EventCreatePage() {
     // but it's a safeguard.
     return (
       <div className="container p-8">
-        <p className="text-center text-muted-foreground">
+        <p className="text-muted-foreground text-center">
           Redirecting to login...
         </p>
       </div>
@@ -85,7 +85,7 @@ function AuthenticatedCreatePage({
 
   // Get all user calendars
   const calendars = useQuery(
-    api.calendar.queries.getCalendars,
+    api.plugins.calendar.queries.getCalendars,
     userId ? { userId } : "skip",
   );
 
@@ -119,7 +119,7 @@ function AuthenticatedCreatePage({
   if (isAdminResult === false) {
     return (
       <div className="container p-8">
-        <p className="text-center text-muted-foreground">Redirecting...</p>
+        <p className="text-muted-foreground text-center">Redirecting...</p>
       </div>
     );
   }
@@ -133,7 +133,7 @@ function AuthenticatedCreatePage({
       <div className="flex h-[70vh] items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold">Sign in to create event</h2>
-          <p className="mt-2 text-muted-foreground">
+          <p className="text-muted-foreground mt-2">
             You need to be signed in to create calendar events
           </p>
         </div>

@@ -1,24 +1,25 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
-const supportKnowledgeTable = defineTable({
+const supportCannedResponsesTable = defineTable({
   organizationId: v.id("organizations"),
   title: v.string(),
-  slug: v.string(),
+  slug: v.optional(v.string()),
   content: v.string(),
   tags: v.optional(v.array(v.string())),
-  type: v.optional(v.string()),
-  matchMode: v.optional(
-    v.union(v.literal("contains"), v.literal("exact"), v.literal("regex")),
+  matchMode: v.union(
+    v.literal("contains"),
+    v.literal("exact"),
+    v.literal("regex"),
   ),
-  matchPhrases: v.optional(v.array(v.string())),
+  matchPhrases: v.array(v.string()),
   priority: v.optional(v.number()),
   isActive: v.optional(v.boolean()),
   createdAt: v.number(),
   updatedAt: v.number(),
 })
   .index("by_organization", ["organizationId"])
-  .index("by_organization_slug", ["organizationId", "slug"]);
+  .index("by_org_slug", ["organizationId", "slug"]);
 
 const supportMessagesTable = defineTable({
   organizationId: v.id("organizations"),
@@ -142,7 +143,7 @@ const supportAgentPresenceTable = defineTable({
 }).index("by_org_session", ["organizationId", "sessionId"]);
 
 export const supportSchema = {
-  supportKnowledge: supportKnowledgeTable,
+  supportCannedResponses: supportCannedResponsesTable,
   supportMessages: supportMessagesTable,
   supportConversations: supportConversationsTable,
   supportEmailSettings: supportEmailSettingsTable,

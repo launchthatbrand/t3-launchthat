@@ -3,7 +3,6 @@ import { v } from "convex/values";
 
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
-import { internal } from "../../_generated/api";
 import { internalMutation, mutation } from "../../_generated/server";
 import { generateDefaultAliasParts } from "./queries";
 
@@ -432,15 +431,14 @@ export const setConversationAgentThread = internalMutation({
   },
 });
 
-export const upsertKnowledgeEntry = mutation({
+export const upsertCannedResponse = mutation({
   args: {
     organizationId: v.id("organizations"),
-    entryId: v.optional(v.id("supportKnowledge")),
+    entryId: v.optional(v.id("supportCannedResponses")),
     title: v.string(),
     slug: v.optional(v.string()),
     content: v.string(),
     tags: v.optional(v.array(v.string())),
-    type: v.optional(v.string()),
     matchMode: matchModeValidator,
     matchPhrases: v.optional(v.array(v.string())),
     priority: v.optional(v.number()),
@@ -459,14 +457,12 @@ export const upsertKnowledgeEntry = mutation({
         args.slug ??
         existing.slug ??
         args.title.toLowerCase().replace(/\s+/g, "-");
-      const entryType = args.type ?? existing.type ?? "canned";
 
       await ctx.db.patch(args.entryId, {
         title: args.title,
         slug,
         content: args.content,
         tags: args.tags ?? undefined,
-        type: entryType,
         matchMode: args.matchMode ?? existing.matchMode ?? "contains",
         matchPhrases: args.matchPhrases ?? existing.matchPhrases ?? [],
         priority: args.priority ?? existing.priority ?? 0,
@@ -474,29 +470,17 @@ export const upsertKnowledgeEntry = mutation({
         updatedAt: now,
       });
 
-      await ctx.runMutation(internal.plugins.support.rag.indexKnowledgeEntry, {
-        organizationId: args.organizationId,
-        entryId: args.entryId,
-        title: args.title,
-        content: args.content,
-        slug,
-        tags: args.tags ?? undefined,
-        source: entryType,
-      });
-
       return args.entryId;
     }
 
     const slug = args.slug ?? args.title.toLowerCase().replace(/\s+/g, "-");
-    const entryType = args.type ?? "canned";
 
-    const newEntryId = await ctx.db.insert("supportKnowledge", {
+    const newEntryId = await ctx.db.insert("supportCannedResponses", {
       organizationId: args.organizationId,
       title: args.title,
       slug,
       content: args.content,
       tags: args.tags ?? undefined,
-      type: entryType,
       matchMode: args.matchMode ?? "contains",
       matchPhrases: args.matchPhrases ?? [],
       priority: args.priority ?? 0,
@@ -505,24 +489,14 @@ export const upsertKnowledgeEntry = mutation({
       updatedAt: now,
     });
 
-    await ctx.runMutation(internal.plugins.support.rag.indexKnowledgeEntry, {
-      organizationId: args.organizationId,
-      entryId: newEntryId,
-      title: args.title,
-      content: args.content,
-      slug,
-      tags: args.tags ?? undefined,
-      source: entryType,
-    });
-
     return newEntryId;
   },
 });
 
-export const deleteKnowledgeEntry = mutation({
+export const deleteCannedResponse = mutation({
   args: {
     organizationId: v.id("organizations"),
-    entryId: v.id("supportKnowledge"),
+    entryId: v.id("supportCannedResponses"),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db.get(args.entryId);
@@ -530,11 +504,6 @@ export const deleteKnowledgeEntry = mutation({
       throw new Error("Entry not found");
     }
     await ctx.db.delete(args.entryId);
-
-    await ctx.runMutation(internal.plugins.support.rag.removeKnowledgeEntry, {
-      organizationId: args.organizationId,
-      entryId: args.entryId,
-    });
 
     return args.entryId;
   },

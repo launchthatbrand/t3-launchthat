@@ -1,5 +1,15 @@
 "use client";
 
+import React, { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { api } from "@/convex/_generated/api";
+import { Doc, Id } from "@/convex/_generated/dataModel";
+import { useUser } from "@clerk/nextjs";
+import { useMutation, useQuery } from "convex/react";
+import { format } from "date-fns";
+import { Calendar, Globe, MapPin, Tag, Users } from "lucide-react";
+import { toast } from "sonner";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,7 +20,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@acme/ui/alert-dialog";
-import { Calendar, Globe, MapPin, Tag, Users } from "lucide-react";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -19,20 +30,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Doc, Id } from "@/convex/_generated/dataModel";
-import React, { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { useParams, useRouter } from "next/navigation";
+import { Separator } from "@acme/ui/separator";
 
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 // Import local loading spinner component
 import { LoadingSpinner } from "../../_components/LoadingSpinner";
-import { Separator } from "@acme/ui/separator";
-import { api } from "@/convex/_generated/api";
-import { format } from "date-fns";
-import { toast } from "sonner";
-import { useUser } from "@clerk/nextjs";
 
 export default function EventDetailsPage() {
   const router = useRouter();
@@ -45,29 +46,29 @@ export default function EventDetailsPage() {
   const eventId = params.id as string as Id<"events">;
 
   // Get event details
-  const event = useQuery(api.calendar.queries.getEventById, {
+  const event = useQuery(api.plugins.calendar.queries.getEventById, {
     eventId,
   });
 
   // Get event attendees
-  const attendees = useQuery(api.calendar.queries.getEventAttendees, {
+  const attendees = useQuery(api.plugins.calendar.queries.getEventAttendees, {
     eventId,
   });
 
   // Get calendar details
   const calendarEvents = useQuery(
-    api.calendar.queries.getCalendarForEvent,
+    api.plugins.calendar.queries.getCalendarForEvent,
     event ? { eventId: event._id } : "skip",
   );
 
   const calendarId = calendarEvents?.[0]?.calendarId;
   const calendar = useQuery(
-    api.calendar.queries.getCalendarById,
+    api.plugins.calendar.queries.getCalendarById,
     calendarId ? { calendarId } : "skip",
   );
 
   // Delete event mutation
-  const deleteEvent = useMutation(api.calendar.events.crud.deleteEvent);
+  const deleteEvent = useMutation(api.plugins.calendar.events.crud.deleteEvent);
 
   const handleDeleteEvent = async () => {
     if (!event) return;
@@ -92,7 +93,7 @@ export default function EventDetailsPage() {
       <div className="flex h-[70vh] items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold">Sign in to view event details</h2>
-          <p className="mt-2 text-muted-foreground">
+          <p className="text-muted-foreground mt-2">
             You need to be signed in to view and manage events
           </p>
         </div>
@@ -170,7 +171,7 @@ export default function EventDetailsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-start gap-3">
-                <Calendar className="mt-0.5 h-5 w-5 text-muted-foreground" />
+                <Calendar className="text-muted-foreground mt-0.5 h-5 w-5" />
                 <div>
                   <p className="font-medium">Date and Time</p>
                   <p className="text-muted-foreground">
@@ -185,7 +186,7 @@ export default function EventDetailsPage() {
 
               {event.location && (
                 <div className="flex items-start gap-3">
-                  <MapPin className="mt-0.5 h-5 w-5 text-muted-foreground" />
+                  <MapPin className="text-muted-foreground mt-0.5 h-5 w-5" />
                   <div>
                     <p className="font-medium">Location</p>
                     <p className="text-muted-foreground">
@@ -207,7 +208,7 @@ export default function EventDetailsPage() {
               )}
 
               <div className="flex items-start gap-3">
-                <Globe className="mt-0.5 h-5 w-5 text-muted-foreground" />
+                <Globe className="text-muted-foreground mt-0.5 h-5 w-5" />
                 <div>
                   <p className="font-medium">Visibility</p>
                   <p className="text-muted-foreground">
@@ -218,7 +219,7 @@ export default function EventDetailsPage() {
               </div>
 
               <div className="flex items-start gap-3">
-                <Tag className="mt-0.5 h-5 w-5 text-muted-foreground" />
+                <Tag className="text-muted-foreground mt-0.5 h-5 w-5" />
                 <div>
                   <p className="font-medium">Event Type</p>
                   <p className="text-muted-foreground">
@@ -232,7 +233,7 @@ export default function EventDetailsPage() {
               {event.description && (
                 <div className="space-y-2">
                   <h3 className="font-medium">Description</h3>
-                  <p className="whitespace-pre-wrap text-muted-foreground">
+                  <p className="text-muted-foreground whitespace-pre-wrap">
                     {event.description}
                   </p>
                 </div>
@@ -271,7 +272,7 @@ export default function EventDetailsPage() {
                       className="flex items-center justify-between"
                     >
                       <div className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                        <div className="bg-muted flex h-8 w-8 items-center justify-center rounded-full">
                           {attendee.externalName
                             ? attendee.externalName.charAt(0)
                             : "U"}
@@ -280,13 +281,13 @@ export default function EventDetailsPage() {
                           <p className="font-medium">
                             {attendee.externalName ?? "User"}
                             {attendee.userId === event.createdBy && (
-                              <span className="ml-1 text-xs text-muted-foreground">
+                              <span className="text-muted-foreground ml-1 text-xs">
                                 (Organizer)
                               </span>
                             )}
                           </p>
                           {attendee.externalEmail && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-muted-foreground text-xs">
                               {attendee.externalEmail}
                             </p>
                           )}
@@ -308,7 +309,8 @@ export default function EventDetailsPage() {
                   ))}
                 </div>
               )}
-            </CardContent><div></div>
+            </CardContent>
+            <div></div>
             <CardFooter>
               <Button className="w-full" variant="outline">
                 Invite More People

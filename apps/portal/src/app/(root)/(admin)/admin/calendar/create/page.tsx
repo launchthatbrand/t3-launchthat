@@ -50,7 +50,7 @@ export default function NewCalendarPage() {
   const { user } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const createCalendar = useMutation(api.calendar.crud.createCalendar);
+  const createCalendar = useMutation(api.plugins.calendar.crud.createCalendar);
 
   const form = useForm<CalendarFormValues>({
     resolver: zodResolver(calendarSchema),
@@ -97,7 +97,7 @@ export default function NewCalendarPage() {
       <div className="flex h-[70vh] items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold">Sign in to create a calendar</h2>
-          <p className="mt-2 text-muted-foreground">
+          <p className="text-muted-foreground mt-2">
             You need to be signed in to create and manage calendars
           </p>
         </div>

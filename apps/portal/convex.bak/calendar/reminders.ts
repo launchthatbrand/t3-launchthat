@@ -55,7 +55,7 @@ export const setEventReminders = mutation({
       if (reminderTime > now) {
         await ctx.scheduler.runAt(
           new Date(reminderTime),
-          internal.calendar.reminders.sendEventReminder,
+          internal.plugins.calendar.reminders.sendEventReminder,
           {
             eventId: args.eventId,
             userId: args.userId,
@@ -103,7 +103,7 @@ export const sendEventReminder = internalAction({
   },
   handler: async (ctx, args) => {
     // Get the event details
-    const event = await ctx.runQuery(internal.calendar.queries.getEventById, {
+    const event = await ctx.runQuery(internal.plugins.calendar.queries.getEventById, {
       eventId: args.eventId,
     });
 
@@ -166,7 +166,7 @@ export const processEventReminders = internalAction({
 
     // Get all events in the lookahead window that have reminders
     const events = await ctx.runQuery(
-      internal.calendar.queries.getUpcomingEventsWithReminders,
+      internal.plugins.calendar.queries.getUpcomingEventsWithReminders,
       {
         startDate: now,
         endDate: lookaheadWindow,
@@ -181,7 +181,7 @@ export const processEventReminders = internalAction({
 
       // Get all attendees who have accepted the event
       const attendees = await ctx.runQuery(
-        internal.calendar.invitations.getEventAttendees,
+        internal.plugins.calendar.invitations.getEventAttendees,
         {
           eventId: event._id,
         },
@@ -202,7 +202,7 @@ export const processEventReminders = internalAction({
           if (reminderTime > now && reminderTime < lookaheadWindow) {
             await ctx.scheduler.runAt(
               new Date(reminderTime),
-              internal.calendar.reminders.sendEventReminder,
+              internal.plugins.calendar.reminders.sendEventReminder,
               {
                 eventId: event._id,
                 userId: attendee.userId,
@@ -233,7 +233,7 @@ const crons = cronJobs();
 crons.interval(
   "process-event-reminders",
   { hours: 12 },
-  internal.calendar.reminders.processEventReminders,
+  internal.plugins.calendar.reminders.processEventReminders,
   {},
 );
 

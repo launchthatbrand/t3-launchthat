@@ -48,7 +48,7 @@ export default function CalendarPage() {
 
   // Get user calendars
   const calendars = useQuery(
-    api.calendar.queries.getCalendars,
+    api.plugins.calendar.queries.getCalendars,
     user?.id
       ? {
           userId: user.id,
@@ -57,11 +57,14 @@ export default function CalendarPage() {
   );
 
   // Get public calendars
-  const publicCalendars = useQuery(api.calendar.queries.getPublicCalendars, {});
+  const publicCalendars = useQuery(
+    api.plugins.calendar.queries.getPublicCalendars,
+    {},
+  );
 
   // Get events for the selected calendars
   const events = useQuery(
-    api.calendar.queries.getAllEvents,
+    api.plugins.calendar.queries.getAllEvents,
     user?.id && calendars && calendars.length > 0
       ? {
           userId: user.id,
@@ -174,7 +177,7 @@ export default function CalendarPage() {
   if (authLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <div className="border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" />
       </div>
     );
   }

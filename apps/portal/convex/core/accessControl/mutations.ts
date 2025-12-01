@@ -48,119 +48,119 @@ export const assignDownloadRole = mutation({
 /**
  * Grant specific access to a download for a user
  */
-export const grantDownloadAccess = mutation({
-  args: {
-    downloadId: v.id("downloads"),
-    userId: v.id("users"),
-  },
-  returns: v.boolean(),
-  handler: async (ctx, args) => {
-    // Check permissions of the current user
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError("Unauthorized");
-    }
+// export const grantDownloadAccess = mutation({
+//   args: {
+//     downloadId: v.id("downloads"),
+//     userId: v.id("users"),
+//   },
+//   returns: v.boolean(),
+//   handler: async (ctx, args) => {
+//     // Check permissions of the current user
+//     const identity = await ctx.auth.getUserIdentity();
+//     if (!identity) {
+//       throw new ConvexError("Unauthorized");
+//     }
 
-    // Get current user from database
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .first();
+//     // Get current user from database
+//     const currentUser = await ctx.db
+//       .query("users")
+//       .withIndex("by_token", (q) =>
+//         q.eq("tokenIdentifier", identity.tokenIdentifier),
+//       )
+//       .first();
 
-    if (!currentUser) {
-      throw new ConvexError("User not found");
-    }
+//     if (!currentUser) {
+//       throw new ConvexError("User not found");
+//     }
 
-    // Get the download
-    const download = await ctx.db.get(args.downloadId);
-    if (!download) {
-      throw new ConvexError("Download not found");
-    }
+//     // Get the download
+//     const download = await ctx.db.get(args.downloadId);
+//     if (!download) {
+//       throw new ConvexError("Download not found");
+//     }
 
-    // Check if current user has permission to edit this download
-    const isOwner = download.uploadedBy === currentUser._id;
-    const hasEditPermission = await hasDownloadPermission(
-      ctx,
-      DownloadPermissions.EDIT_ANY,
-    );
+//     // Check if current user has permission to edit this download
+//     const isOwner = download.uploadedBy === currentUser._id;
+//     const hasEditPermission = await hasDownloadPermission(
+//       ctx,
+//       DownloadPermissions.EDIT_ANY,
+//     );
 
-    if (!isOwner && !hasEditPermission) {
-      throw new ConvexError("Permission denied");
-    }
+//     if (!isOwner && !hasEditPermission) {
+//       throw new ConvexError("Permission denied");
+//     }
 
-    // Get the target user
-    const targetUser = await ctx.db.get(args.userId);
-    if (!targetUser) {
-      throw new ConvexError("Target user not found");
-    }
+//     // Get the target user
+//     const targetUser = await ctx.db.get(args.userId);
+//     if (!targetUser) {
+//       throw new ConvexError("Target user not found");
+//     }
 
-    // Add user to accessibleUserIds if not already present
-    const accessibleUserIds = download.accessibleUserIds || [];
-    if (!accessibleUserIds.includes(args.userId)) {
-      await ctx.db.patch(args.downloadId, {
-        accessibleUserIds: [...accessibleUserIds, args.userId],
-      });
-    }
+//     // Add user to accessibleUserIds if not already present
+//     const accessibleUserIds = download.accessibleUserIds || [];
+//     if (!accessibleUserIds.includes(args.userId)) {
+//       await ctx.db.patch(args.downloadId, {
+//         accessibleUserIds: [...accessibleUserIds, args.userId],
+//       });
+//     }
 
-    return true;
-  },
-});
+//     return true;
+//   },
+// });
 
 /**
  * Revoke specific access to a download for a user
  */
-export const revokeDownloadAccess = mutation({
-  args: {
-    downloadId: v.id("downloads"),
-    userId: v.id("users"),
-  },
-  returns: v.boolean(),
-  handler: async (ctx, args) => {
-    // Check permissions of the current user
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError("Unauthorized");
-    }
+// export const revokeDownloadAccess = mutation({
+//   args: {
+//     downloadId: v.id("downloads"),
+//     userId: v.id("users"),
+//   },
+//   returns: v.boolean(),
+//   handler: async (ctx, args) => {
+//     // Check permissions of the current user
+//     const identity = await ctx.auth.getUserIdentity();
+//     if (!identity) {
+//       throw new ConvexError("Unauthorized");
+//     }
 
-    // Get current user from database
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .first();
+//     // Get current user from database
+//     const currentUser = await ctx.db
+//       .query("users")
+//       .withIndex("by_token", (q) =>
+//         q.eq("tokenIdentifier", identity.tokenIdentifier),
+//       )
+//       .first();
 
-    if (!currentUser) {
-      throw new ConvexError("User not found");
-    }
+//     if (!currentUser) {
+//       throw new ConvexError("User not found");
+//     }
 
-    // Get the download
-    const download = await ctx.db.get(args.downloadId);
-    if (!download) {
-      throw new ConvexError("Download not found");
-    }
+//     // Get the download
+//     const download = await ctx.db.get(args.downloadId);
+//     if (!download) {
+//       throw new ConvexError("Download not found");
+//     }
 
-    // Check if current user has permission to edit this download
-    const isOwner = download.uploadedBy === currentUser._id;
-    const hasEditPermission = await hasDownloadPermission(
-      ctx,
-      DownloadPermissions.EDIT_ANY,
-    );
+//     // Check if current user has permission to edit this download
+//     const isOwner = download.uploadedBy === currentUser._id;
+//     const hasEditPermission = await hasDownloadPermission(
+//       ctx,
+//       DownloadPermissions.EDIT_ANY,
+//     );
 
-    if (!isOwner && !hasEditPermission) {
-      throw new ConvexError("Permission denied");
-    }
+//     if (!isOwner && !hasEditPermission) {
+//       throw new ConvexError("Permission denied");
+//     }
 
-    // Remove user from accessibleUserIds if present
-    const accessibleUserIds = download.accessibleUserIds || [];
-    if (accessibleUserIds.includes(args.userId)) {
-      await ctx.db.patch(args.downloadId, {
-        accessibleUserIds: accessibleUserIds.filter((id) => id !== args.userId),
-      });
-    }
+//     // Remove user from accessibleUserIds if present
+//     const accessibleUserIds = download.accessibleUserIds || [];
+//     if (accessibleUserIds.includes(args.userId)) {
+//       await ctx.db.patch(args.downloadId, {
+//         accessibleUserIds: accessibleUserIds.filter((id) => id !== args.userId),
+//       });
+//     }
 
-    return true;
-  },
-});
+//     return true;
+//   },
+// });

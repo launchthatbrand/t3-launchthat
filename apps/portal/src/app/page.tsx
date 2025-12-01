@@ -1,6 +1,5 @@
 import { Suspense } from "react";
-
-import { PostCardSkeleton } from "~/components/social";
+import { PostCardSkeleton } from "launchthat-plugin-socialfeed/components";
 
 // Remove tRPC imports
 // import { HydrateClient, prefetch, trpc } from "~/trpc/server";

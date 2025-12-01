@@ -110,6 +110,7 @@
     "launchthat-plugin-core": "workspace:*",
     "launchthat-plugin-helpdesk": "workspace:*",
     "launchthat-plugin-lms": "workspace:*",
+    "launchthat-plugin-socialfeed": "workspace:*",
     "launchthat-plugin-support": "workspace:*",
     "lexical": "^0.31.2",
     "lodash-es": "^4.17.21",

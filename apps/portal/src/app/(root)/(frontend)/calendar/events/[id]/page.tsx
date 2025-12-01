@@ -64,34 +64,37 @@ export default function EventDetailsPage({
 
   // Unwrap params using React.use()
   const unwrappedParams = React.use(params);
-  const eventId = unwrappedParams.id as Id<"events">;
+  const eventId = unwrappedParams.id as Id<"posts">;
   const userId = user?.id;
 
   // Get event details
-  const event = useQuery(api.calendar.queries.getEventById, {
+  const event = useQuery(api.plugins.calendar.queries.getEventById, {
     eventId,
   });
 
   // Get calendar for this event
-  const calendarEntries = useQuery(api.calendar.queries.getCalendarForEvent, {
-    eventId,
-  });
+  const calendarEntries = useQuery(
+    api.plugins.calendar.queries.getCalendarForEvent,
+    {
+      eventId,
+    },
+  );
 
   // Get all calendars for editing
   const calendars = useQuery(
-    api.calendar.queries.getCalendars,
+    api.plugins.calendar.queries.getCalendars,
     userId ? { userId } : "skip",
   );
 
   // Get the calendar details
   const calendarId = calendarEntries?.[0]?.calendarId;
   const calendar = useQuery(
-    api.calendar.queries.getCalendarById,
+    api.plugins.calendar.queries.getCalendarById,
     calendarId ? { calendarId } : "skip",
   );
 
   // Delete mutation
-  const deleteEvent = useMutation(api.calendar.events.crud.deleteEvent);
+  const deleteEvent = useMutation(api.plugins.calendar.events.crud.deleteEvent);
 
   // Handle event deletion
   const handleDelete = async () => {
@@ -199,12 +202,12 @@ export default function EventDetailsPage({
             <div>
               <CardTitle className="text-2xl">{event.title}</CardTitle>
               <CardDescription className="mt-2 flex items-center">
-                <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                <CalendarIcon className="text-muted-foreground mr-2 h-4 w-4" />
                 {formattedStartDate}
                 {isMultiDay && ` - ${formattedEndDate}`}
               </CardDescription>
               <CardDescription className="mt-1 flex items-center">
-                <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                <Clock className="text-muted-foreground mr-2 h-4 w-4" />
                 {timeDisplay}
               </CardDescription>
             </div>
@@ -232,7 +235,7 @@ export default function EventDetailsPage({
           {event.description && (
             <div className="mt-4">
               <h3 className="text-sm font-medium">Description</h3>
-              <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
+              <p className="text-muted-foreground mt-1 text-sm whitespace-pre-line">
                 {event.description}
               </p>
             </div>
@@ -240,13 +243,13 @@ export default function EventDetailsPage({
 
           <div className="space-y-2">
             <div className="flex items-center">
-              <div className="mr-2 h-3 w-3 rounded-full bg-primary" />
+              <div className="bg-primary mr-2 h-3 w-3 rounded-full" />
               <span className="text-sm font-medium">{calendar.name}</span>
             </div>
 
             {event.location && (
               <div className="flex items-center text-sm">
-                <LocationIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                <LocationIcon className="text-muted-foreground mr-2 h-4 w-4" />
                 <span>
                   {event.location.address ??
                     event.location.url ??
@@ -257,7 +260,7 @@ export default function EventDetailsPage({
 
             {event.recurrence && (
               <div className="flex items-center text-sm">
-                <Repeat className="mr-2 h-4 w-4 text-muted-foreground" />
+                <Repeat className="text-muted-foreground mr-2 h-4 w-4" />
                 <span>{recurrenceDisplay}</span>
               </div>
             )}
@@ -265,17 +268,17 @@ export default function EventDetailsPage({
             <div className="flex items-center text-sm">
               {event.visibility === "private" ? (
                 <>
-                  <Lock className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <Lock className="text-muted-foreground mr-2 h-4 w-4" />
                   <span>Private</span>
                 </>
               ) : event.visibility === "public" ? (
                 <>
-                  <Globe className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <Globe className="text-muted-foreground mr-2 h-4 w-4" />
                   <span>Public</span>
                 </>
               ) : (
                 <>
-                  <Users className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <Users className="text-muted-foreground mr-2 h-4 w-4" />
                   <span>Restricted</span>
                 </>
               )}
@@ -283,7 +286,7 @@ export default function EventDetailsPage({
           </div>
         </CardContent>
         <CardFooter className="border-t pt-4">
-          <div className="text-xs text-muted-foreground">
+          <div className="text-muted-foreground text-xs">
             Event type:{" "}
             {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
           </div>
@@ -328,7 +331,7 @@ export default function EventDetailsPage({
           onOpenChange={setIsEditDialogOpen}
           eventId={eventId}
           calendars={calendars.filter(
-            (cal): cal is Doc<"calendars"> => cal !== null,
+            (cal): cal is Doc<"posts"> => cal !== null,
           )}
           userId={userId ?? ""}
         />
@@ -373,7 +376,7 @@ export default function EventDetailsPage({
                     value="this"
                     checked={deleteOption === "this"}
                     onChange={() => setDeleteOption("this")}
-                    className="h-4 w-4 rounded-full border-gray-300 text-primary focus:ring-primary"
+                    className="text-primary focus:ring-primary h-4 w-4 rounded-full border-gray-300"
                   />
                   <span>Delete only this occurrence</span>
                 </label>
@@ -384,7 +387,7 @@ export default function EventDetailsPage({
                     value="future"
                     checked={deleteOption === "future"}
                     onChange={() => setDeleteOption("future")}
-                    className="h-4 w-4 rounded-full border-gray-300 text-primary focus:ring-primary"
+                    className="text-primary focus:ring-primary h-4 w-4 rounded-full border-gray-300"
                   />
                   <span>Delete this and all future occurrences</span>
                 </label>
@@ -395,7 +398,7 @@ export default function EventDetailsPage({
                     value="all"
                     checked={deleteOption === "all"}
                     onChange={() => setDeleteOption("all")}
-                    className="h-4 w-4 rounded-full border-gray-300 text-primary focus:ring-primary"
+                    className="text-primary focus:ring-primary h-4 w-4 rounded-full border-gray-300"
                   />
                   <span>Delete all occurrences</span>
                 </label>

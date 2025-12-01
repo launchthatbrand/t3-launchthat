@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./src/index.ts"
+    },
+    "./components": {
+      "types": "./dist/components/index.d.ts",
+      "default": "./src/components/index.ts"
     }
   },
   "license": "MIT",
@@ -33,4 +37,3 @@
   },
   "prettier": "@acme/prettier-config"
 }
-

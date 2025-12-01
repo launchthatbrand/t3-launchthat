@@ -24,7 +24,7 @@ import {
 } from "@acme/ui/select";
 
 interface ReminderSettingsProps {
-  eventId: Id<"events">;
+  eventId: Id<"posts">;
   userId: Id<"users">;
   className?: string;
 }
@@ -55,7 +55,7 @@ export function ReminderSettings({
 
   // Get existing reminder settings
   const reminderSettings = useQuery(
-    api.calendar.reminders.getEventReminderSettings,
+    api.plugins.calendar.reminders.getEventReminderSettings,
     {
       eventId,
     },
@@ -63,7 +63,7 @@ export function ReminderSettings({
 
   // Set reminder mutation
   const setEventReminders = useMutation(
-    api.calendar.reminders.setEventReminders,
+    api.plugins.calendar.reminders.setEventReminders,
   );
 
   // Update local state when we get settings from the server

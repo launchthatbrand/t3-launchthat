@@ -32,7 +32,7 @@ import { toast } from "@acme/ui/toast";
 type MatchMode = "contains" | "exact" | "regex";
 
 interface FormState {
-  entryId?: Id<"supportKnowledge">;
+  entryId?: Id<"supportCannedResponses">;
   title: string;
   slug: string;
   content: string;
@@ -43,8 +43,8 @@ interface FormState {
   tags: string;
 }
 
-interface KnowledgeEntry extends Record<string, unknown> {
-  _id: Id<"supportKnowledge">;
+interface CannedResponse extends Record<string, unknown> {
+  _id: Id<"supportCannedResponses">;
   title: string;
   slug?: string | null;
   content: string;
@@ -76,14 +76,14 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const entries = (useQuery(api.plugins.support.queries.listKnowledgeEntries, {
+  const entries = (useQuery(api.plugins.support.queries.listCannedResponses, {
     organizationId,
-  }) ?? []) as KnowledgeEntry[];
-  const upsertKnowledge = useMutation(
-    api.plugins.support.mutations.upsertKnowledgeEntry,
+  }) ?? []) as CannedResponse[];
+  const upsertCannedResponse = useMutation(
+    api.plugins.support.mutations.upsertCannedResponse,
   );
-  const deleteKnowledge = useMutation(
-    api.plugins.support.mutations.deleteKnowledgeEntry,
+  const deleteCannedResponse = useMutation(
+    api.plugins.support.mutations.deleteCannedResponse,
   );
 
   const openForCreate = () => {
@@ -91,7 +91,7 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
     setIsDialogOpen(true);
   };
 
-  const openForEdit = (entry: KnowledgeEntry) => {
+  const openForEdit = (entry: CannedResponse) => {
     setFormState({
       entryId: entry._id,
       title: entry.title,
@@ -127,7 +127,7 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
       .filter(Boolean);
 
     startTransition(() => {
-      void upsertKnowledge({
+      void upsertCannedResponse({
         organizationId,
         entryId: formState.entryId,
         title: formState.title.trim(),
@@ -137,7 +137,6 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
           .split(",")
           .map((tag) => tag.trim())
           .filter(Boolean),
-        type: "canned",
         matchMode: formState.matchMode,
         matchPhrases,
         priority: formState.priority,
@@ -157,9 +156,9 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
     });
   };
 
-  const handleDelete = (entryId: Id<"supportKnowledge">) => {
+  const handleDelete = (entryId: Id<"supportCannedResponses">) => {
     startTransition(() => {
-      void deleteKnowledge({ organizationId, entryId })
+      void deleteCannedResponse({ organizationId, entryId })
         .then(() => {
           toast.success("Response deleted.");
         })
@@ -170,13 +169,13 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
     });
   };
 
-  const columns: ColumnDefinition<KnowledgeEntry>[] = [
+  const columns: ColumnDefinition<CannedResponse>[] = [
     {
       id: "title",
       accessorKey: "title",
       header: "Response",
       sortable: true,
-      cell: (entry: KnowledgeEntry) => (
+      cell: (entry: CannedResponse) => (
         <div>
           <p className="font-medium">{entry.title}</p>
           <p className="text-muted-foreground text-xs">{entry.slug ?? "—"}</p>
@@ -186,7 +185,7 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
     {
       id: "triggers",
       header: "Triggers",
-      cell: (entry: KnowledgeEntry) =>
+      cell: (entry: CannedResponse) =>
         entry.matchPhrases?.length ? (
           <div className="text-sm">{entry.matchPhrases.join(", ")}</div>
         ) : (
@@ -197,7 +196,7 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
       id: "matchMode",
       accessorKey: "matchMode",
       header: "Mode",
-      cell: (entry: KnowledgeEntry) => (
+      cell: (entry: CannedResponse) => (
         <Badge variant="outline" className="flex items-center gap-1">
           <CircleDot className="h-3 w-3" />
           {entry.matchMode ?? "contains"}
@@ -208,7 +207,7 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
       id: "priority",
       accessorKey: "priority",
       header: "Priority",
-      cell: (entry: KnowledgeEntry) => (
+      cell: (entry: CannedResponse) => (
         <Badge variant="outline">
           {typeof entry.priority === "number" ? entry.priority : 0}
         </Badge>
@@ -217,7 +216,7 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
     {
       id: "status",
       header: "Status",
-      cell: (entry: KnowledgeEntry) => (
+      cell: (entry: CannedResponse) => (
         <Badge variant={entry.isActive === false ? "secondary" : "default"}>
           {entry.isActive === false ? "Inactive" : "Active"}
         </Badge>
@@ -226,7 +225,7 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
     {
       id: "updatedAt",
       header: "Last updated",
-      cell: (entry: KnowledgeEntry) =>
+      cell: (entry: CannedResponse) =>
         entry.updatedAt ? (
           <div className="text-muted-foreground flex items-center gap-1 text-sm">
             <CalendarClock className="h-3.5 w-3.5" />
@@ -242,19 +241,19 @@ export function ResponsesView({ organizationId }: ResponsesViewProps) {
     {
       id: "edit",
       label: "Edit",
-      onClick: (entry: KnowledgeEntry) => openForEdit(entry),
+      onClick: (entry: CannedResponse) => openForEdit(entry),
     },
     {
       id: "delete",
       label: "Delete",
       variant: "destructive" as const,
-      onClick: (entry: KnowledgeEntry) => handleDelete(entry._id),
+      onClick: (entry: CannedResponse) => handleDelete(entry._id),
     },
   ];
 
   return (
     <div className="h-full min-h-screen flex-1 space-y-6 overflow-y-auto p-6">
-      <EntityList<KnowledgeEntry>
+      <EntityList<CannedResponse>
         data={entries}
         columns={columns}
         entityActions={entityActions}

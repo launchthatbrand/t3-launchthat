@@ -2,6 +2,7 @@ import { calendarPlugin } from "launchthat-plugin-calendar";
 import { createCommercePluginDefinition } from "launchthat-plugin-commerce";
 import { helpdeskPlugin } from "launchthat-plugin-helpdesk";
 import { lmsPlugin } from "launchthat-plugin-lms";
+import { socialFeedPlugin } from "launchthat-plugin-socialfeed";
 import { supportPlugin } from "launchthat-plugin-support";
 
 import type { PluginDefinition } from "./types";
@@ -16,5 +17,6 @@ export const pluginDefinitions: PluginDefinition[] = [
   calendarPlugin,
   commercePlugin,
   helpdeskPlugin,
+  socialFeedPlugin,
   supportPlugin,
 ];

@@ -569,7 +569,7 @@ export function getNodeMockData(
       } else if (appType === "monday") {
         endpoint = "https://api.monday.com/v2";
       } else if (appType === "calendar") {
-        endpoint = "https://api.calendar.example/v1/events";
+        endpoint = "https://api.plugins.calendar.example/v1/events";
       } else if (appType === "webhook") {
         endpoint = "https://api.webhook.example/receive";
       }

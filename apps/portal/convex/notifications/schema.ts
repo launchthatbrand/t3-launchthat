@@ -13,15 +13,8 @@ export const notificationsTable = defineTable({
   createdAt: v.number(),
   // Sources/relations (optional)
   sourceUserId: v.optional(v.id("users")),
-  sourceGroupId: v.optional(v.id("groups")),
-  sourceEventId: v.optional(v.id("events")),
-  sourceDownloadId: v.optional(v.id("downloads")),
+  // sourceDownloadId: v.optional(v.id("downloads")),
   sourceOrderId: v.optional(v.id("transactions")),
-  postId: v.optional(v.id("groupPosts")),
-  commentId: v.optional(v.id("groupComments")),
-  groupId: v.optional(v.id("groups")),
-  invitationId: v.optional(v.id("groupInvitations")),
-  joinRequestId: v.optional(v.id("groupJoinRequests")),
   expiresAt: v.optional(v.number()),
   relatedId: v.optional(v.id("groupInvitations")),
 })

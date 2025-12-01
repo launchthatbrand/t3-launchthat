@@ -105,8 +105,8 @@ export default function EventForm({
   eventId,
 }: EventFormProps) {
   const router = useRouter();
-  const createEvent = useMutation(api.calendar.crud.createEvent);
-  const updateEvent = useMutation(api.calendar.crud.updateEvent);
+  const createEvent = useMutation(api.plugins.calendar.crud.createEvent);
+  const updateEvent = useMutation(api.plugins.calendar.crud.updateEvent);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const initialCalendarId =
@@ -326,7 +326,7 @@ export default function EventForm({
                       disabled={form.watch("allDay")}
                     />
                   </FormControl>
-                  <Clock className="ml-2 h-4 w-4 text-muted-foreground" />
+                  <Clock className="text-muted-foreground ml-2 h-4 w-4" />
                 </div>
                 <FormMessage />
               </FormItem>
@@ -383,7 +383,7 @@ export default function EventForm({
                       disabled={form.watch("allDay")}
                     />
                   </FormControl>
-                  <Clock className="ml-2 h-4 w-4 text-muted-foreground" />
+                  <Clock className="text-muted-foreground ml-2 h-4 w-4" />
                 </div>
                 <FormMessage />
               </FormItem>
@@ -395,7 +395,7 @@ export default function EventForm({
           control={form.control}
           name="allDay"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+            <FormItem className="flex flex-row items-start space-y-0 space-x-3 rounded-md border p-4">
               <FormControl>
                 <Switch
                   checked={field.value}

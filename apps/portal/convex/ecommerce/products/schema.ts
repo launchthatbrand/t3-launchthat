@@ -13,7 +13,6 @@ export const productsTable = defineTable({
   isPublished: v.optional(v.boolean()), // Maintained for backward compatibility
 
   // Course integration (from ecommerceSchema)
-  courseIds: v.optional(v.array(v.id("courses"))),
 
   // Enhanced product info (from ecommerceCategoriesSchema)
   slug: v.string(),
@@ -57,7 +56,7 @@ export const productsTable = defineTable({
   ),
 
   // Digital product
-  downloadFileId: v.optional(v.id("downloads")), // If this is a digital product
+  // downloadFileId: v.optional(v.id("downloads")), // If this is a digital product
 
   // Media
   images: v.array(
@@ -116,7 +115,6 @@ export const productsTable = defineTable({
   .index("by_updated", ["updatedAt"])
   .index("by_digital", ["isDigital"])
   // Add back original indexes if they are not covered by the new ones
-  .index("by_courseIds", ["courseIds"])
   .index("by_isPublished", ["isPublished"]) // This might be covered by by_status or by_visible
   .searchIndex("search_products_name", {
     searchField: "name",

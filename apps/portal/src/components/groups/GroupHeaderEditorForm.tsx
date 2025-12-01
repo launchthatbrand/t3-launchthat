@@ -68,7 +68,7 @@ export function GroupHeaderEditorForm({
   const [isLoading, setIsLoading] = useState(false);
 
   // Fetch feed posts for selection using an existing query with pagination
-  const feedItemsResult = useQuery(api.socialfeed.queries.getUniversalFeed, {
+  const feedItemsResult = useQuery(api.plugins.socialfeed.queries.getUniversalFeed, {
     paginationOpts: { numItems: 50, cursor: null },
   });
 

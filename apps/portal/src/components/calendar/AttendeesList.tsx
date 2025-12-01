@@ -33,7 +33,7 @@ import {
 } from "@acme/ui/dropdown-menu";
 
 interface AttendeesListProps {
-  eventId: Id<"events">;
+  eventId: Id<"posts">;
   isOrganizer?: boolean;
   className?: string;
 }
@@ -47,7 +47,7 @@ export function AttendeesList({
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
 
   // Get event details and attendees
-  const attendees = useQuery(api.calendar.invitations.getEventAttendees, {
+  const attendees = useQuery(api.plugins.calendar.invitations.getEventAttendees, {
     eventId,
     includeDetails: true,
   });
@@ -140,7 +140,7 @@ interface AttendeeSectionProps {
   attendees: any[];
   icon: React.ReactNode;
   isOrganizer: boolean;
-  eventId: Id<"events">;
+  eventId: Id<"posts">;
   collapsed?: boolean;
 }
 
@@ -219,7 +219,7 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
 interface AttendeeRowProps {
   attendee: any;
   isOrganizer: boolean;
-  eventId: Id<"events">;
+  eventId: Id<"posts">;
 }
 
 function AttendeeRow({ attendee, isOrganizer, eventId }: AttendeeRowProps) {
@@ -284,7 +284,7 @@ function AttendeeRow({ attendee, isOrganizer, eventId }: AttendeeRowProps) {
 }
 
 interface InviteAttendeesDialogProps {
-  eventId: Id<"events">;
+  eventId: Id<"posts">;
   onClose: () => void;
   currentAttendees: any[];
 }

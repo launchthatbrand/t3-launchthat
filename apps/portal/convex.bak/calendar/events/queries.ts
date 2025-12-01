@@ -381,7 +381,7 @@ export const getCalendarViewEvents = query({
 
     // Get events for the date range using the API reference
     const result: EventsInDateRangeResponse = await ctx.runQuery(
-      api.calendar.events.queries.getEventsInDateRange,
+      api.plugins.calendar.events.queries.getEventsInDateRange,
       {
         startDate: dateRange.start,
         endDate: dateRange.end,

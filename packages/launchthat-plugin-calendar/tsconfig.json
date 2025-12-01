@@ -1,6 +1,12 @@
 {
   "extends": "@acme/tsconfig/compiled-package.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@portal/*": ["../../apps/portal/*"]
+    }
+  },
   "include": ["src"],
   "exclude": ["node_modules"]
 }
-

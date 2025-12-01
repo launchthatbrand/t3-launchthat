@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { PostCreator } from "~/components/social/PostCreator";
-import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { useConvexAuth } from "convex/react";
-import { useRouter } from "next/navigation";
+import { PostCreator } from "launchthat-plugin-socialfeed/components";
+import { toast } from "sonner";
 
 export default function CreatePostPage() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export default function CreatePostPage() {
         <div className="mx-auto max-w-3xl">
           <h1 className="mb-6 text-3xl font-bold">Create Post</h1>
           <div className="rounded-lg border p-8 text-center">
-            <p className="mb-4 text-muted-foreground">
+            <p className="text-muted-foreground mb-4">
               You need to be signed in to create a post.
             </p>
             <Link

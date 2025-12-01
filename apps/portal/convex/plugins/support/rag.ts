@@ -148,79 +148,6 @@ const buildPostText = async (
   return text;
 };
 
-export const indexKnowledgeEntry = internalMutation({
-  args: {
-    organizationId: v.id("organizations"),
-    entryId: v.id("supportKnowledge"),
-    title: v.string(),
-    content: v.string(),
-    slug: v.optional(v.string()),
-    tags: v.optional(v.array(v.string())),
-    source: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    if (!ensureApiKey()) {
-      return null;
-    }
-
-    const namespace = namespaceForOrganization(args.organizationId);
-    await supportRag.getOrCreateNamespace(ctx, { namespace });
-
-    const text =
-      [args.title, args.content].filter(Boolean).join("\n\n") || args.title;
-
-    const metadata: SupportRagMetadata = {
-      entryId: args.entryId,
-      source: args.source ?? "knowledge",
-    };
-
-    if (args.slug) {
-      metadata.slug = args.slug;
-    }
-
-    await supportRag.add(ctx, {
-      namespace,
-      key: args.entryId,
-      text,
-      title: args.title,
-      filterValues: normalizeFilters({
-        organizationId: args.organizationId,
-        source: args.source ?? "knowledge",
-        tags: args.tags ?? undefined,
-      }),
-      metadata,
-      importance: 0.8,
-    });
-
-    return null;
-  },
-});
-
-export const removeKnowledgeEntry = internalMutation({
-  args: {
-    organizationId: v.id("organizations"),
-    entryId: v.id("supportKnowledge"),
-  },
-  handler: async (ctx, args) => {
-    if (!ensureApiKey()) {
-      return null;
-    }
-
-    const namespace = namespaceForOrganization(args.organizationId);
-    const namespaceRecord = await supportRag.getNamespace(ctx, { namespace });
-    if (!namespaceRecord) {
-      return null;
-    }
-
-    await supportRag.deleteByKeyAsync(ctx, {
-      namespaceId: namespaceRecord.namespaceId,
-      key: args.entryId,
-    });
-
-    return null;
-  },
-});
-
 export const searchKnowledge = action({
   args: {
     organizationId: v.id("organizations"),
@@ -258,7 +185,7 @@ export const searchKnowledge = action({
 
     return entries.map((entry) => {
       const metadata = extractMetadata(entry.metadata);
-      const resolvedSource = metadata.source ?? "knowledge";
+      const resolvedSource = metadata.source ?? "helpdesk";
       const resolvedTitle =
         typeof entry.title === "string" ? entry.title : resolvedSource;
       return {

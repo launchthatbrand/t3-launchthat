@@ -39,7 +39,7 @@ export interface SupportSystemProps {
 
 const NAV_LINKS = [
   { label: "Dashboard", slug: "" },
-  { label: "Responses", slug: "responses" },
+  { label: "Canned responses", slug: "responses" },
   { label: "Articles", slug: "articles" },
   { label: "Conversations", slug: "conversations" },
   { label: "Settings", slug: "settings" },

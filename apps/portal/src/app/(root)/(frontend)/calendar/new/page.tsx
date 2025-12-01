@@ -47,7 +47,7 @@ type FormValues = z.infer<typeof formSchema>;
 export default function NewCalendarPage() {
   const router = useRouter();
   const { user } = useUser();
-  const createCalendar = useMutation(api.calendar.crud.createCalendar);
+  const createCalendar = useMutation(api.plugins.calendar.crud.createCalendar);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Set up form with default values

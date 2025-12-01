@@ -55,11 +55,11 @@ import { api } from "../convex/_generated/api";
 import { formatDateRange } from "../convex/calendar/lib/dateUtils";
 
 // Main calendar operations
-const calendars = await convex.query(api.calendar.queries.getCalendars);
+const calendars = await convex.query(api.plugins.calendar.queries.getCalendars);
 
 // Event operations
 const events = await convex.query(
-  api.calendar.events.queries.getCalendarEvents,
+  api.plugins.calendar.events.queries.getCalendarEvents,
   {
     calendarId: "cal123",
     startDate: startOfMonth,
@@ -69,7 +69,7 @@ const events = await convex.query(
 
 // Attendance tracking
 const attendees = await convex.query(
-  api.calendar.attendance.queries.getEventAttendance,
+  api.plugins.calendar.attendance.queries.getEventAttendance,
   {
     eventId: "evt123",
   },

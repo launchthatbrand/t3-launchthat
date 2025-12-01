@@ -20,7 +20,7 @@ export function FeedItemPreview({
   const [truncatedContent, setTruncatedContent] = useState<string>("");
 
   // Fetch the feed item
-  const feedItem = useQuery(api.socialfeed.queries.getFeedItem, {
+  const feedItem = useQuery(api.plugins.socialfeed.queries.getFeedItem, {
     feedItemId: feedItemId as Id<"feedItems">,
   });
 

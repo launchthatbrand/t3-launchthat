@@ -18,7 +18,7 @@ import {
 import { Textarea } from "@acme/ui/textarea";
 
 interface RSVPButtonsProps {
-  eventId: Id<"events">;
+  eventId: Id<"posts">;
   userId: Id<"users">;
   currentStatus?: string;
   showLabels?: boolean;
@@ -43,7 +43,7 @@ export function RSVPButtons({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const respondToInvitation = useMutation(
-    api.calendar.invitations.respondToEventInvitation,
+    api.plugins.calendar.invitations.respondToEventInvitation,
   );
 
   const handleStatusClick = (

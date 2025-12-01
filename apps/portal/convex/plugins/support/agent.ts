@@ -138,7 +138,7 @@ export const generateAgentReply = action({
 
     if (knowledgeEntries.length === 0) {
       knowledgeEntries = await ctx.runQuery(
-        api.plugins.support.queries.listKnowledge,
+        api.plugins.support.queries.listHelpdeskArticles,
         {
           organizationId: args.organizationId,
           query: trimmedPrompt,

@@ -20,7 +20,7 @@ export function useContentSharing({
   const [isSharing, setIsSharing] = useState(false);
 
   // Mutations
-  const shareContent = useMutation(api.socialfeed.mutations.shareContent);
+  const shareContent = useMutation(api.plugins.socialfeed.mutations.shareContent);
 
   /**
    * Share content to the user's feed

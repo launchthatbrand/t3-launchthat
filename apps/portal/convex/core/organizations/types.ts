@@ -92,7 +92,7 @@ export const userOrganizationValidator = v.object({
         v.literal("course_enrollment"),
         v.literal("manual_grant"),
       ),
-      accessSourceId: v.optional(v.union(v.id("products"), v.id("courses"))),
+      accessSourceId: v.optional(v.union(v.id("products"))),
       expiresAt: v.optional(v.number()),
       purchaseDate: v.optional(v.number()),
       metadata: v.optional(v.any()), // Keep as any for flexible metadata

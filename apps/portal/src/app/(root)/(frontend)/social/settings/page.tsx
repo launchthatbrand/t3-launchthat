@@ -1,12 +1,13 @@
 "use client";
 
+import {
+  BlockedUsersList,
+  ContentFilterSettings,
+} from "launchthat-plugin-socialfeed/components";
 import { ChevronLeft } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-
-import { BlockedUsersList } from "~/components/social/BlockedUsersList";
-import { ContentFilterSettings } from "~/components/social/ContentFilterSettings";
 
 export default function SocialSettingsPage() {
   return (
@@ -41,7 +42,7 @@ export default function SocialSettingsPage() {
 
         <TabsContent value="blocked">
           {/* This component will be implemented separately */}
-          <p className="mb-6 text-muted-foreground">
+          <p className="text-muted-foreground mb-6">
             Manage users you&apos;ve blocked from interacting with your content
             or profile.
           </p>

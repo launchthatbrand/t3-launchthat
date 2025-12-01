@@ -1,0 +1,17 @@
+{
+  "extends": "@acme/tsconfig/compiled-package.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "moduleResolution": "bundler",
+    "paths": {
+      "launchthat-plugin-core": ["../launchthat-plugin-core/src/index"],
+      "@portal/convexspec": ["../../apps/portal/convexspec.ts"],
+      "@acme/ui": ["../ui/src/index"],
+      "@acme/ui/*": ["../ui/src/*"],
+      "@/*": ["../ui/src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["dist", "node_modules"]
+}

@@ -6,10 +6,14 @@ import { api } from "@/convex/_generated/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "convex/react";
 import { format } from "date-fns";
+import {
+  eventFormSchema,
+  EventFormValues,
+  RecurrenceSelector,
+} from "launchthat-plugin-calendar";
 import { CalendarIcon, Clock } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { z } from "zod";
 
 import { Calendar } from "@acme/ui";
 import { Button } from "@acme/ui/button";
@@ -40,63 +44,17 @@ import {
   SelectValue,
 } from "@acme/ui/select";
 import { Textarea } from "@acme/ui/textarea";
-import { TimestampType, UserIdType } from "@acme/validators";
 
 import { Doc, Id } from "../../../convex/_generated/dataModel";
-import { RecurrenceSelector } from "./RecurrenceSelector";
 
-const formSchema = z.object({
-  title: z.string().min(1, { message: "Title is required" }),
-  description: z.string().optional(),
-  startDate: z.date(),
-  endDate: z.date(),
-  startTime: z.string(),
-  endTime: z.string(),
-  allDay: z.boolean().default(false),
-  type: z.enum([
-    "meeting",
-    "webinar",
-    "workshop",
-    "class",
-    "conference",
-    "social",
-    "deadline",
-    "reminder",
-    "other",
-  ]),
-  calendarId: z.string().min(1, { message: "Calendar is required" }),
-  visibility: z.enum(["public", "private", "restricted"]).default("private"),
-  location: z
-    .object({
-      type: z.enum(["virtual", "physical", "hybrid"]),
-      address: z.string().optional(),
-      url: z.string().optional(),
-    })
-    .optional(),
-  recurrence: z
-    .object({
-      enabled: z.boolean().default(false),
-      frequency: z
-        .enum(["daily", "weekly", "monthly", "yearly"])
-        .default("weekly"),
-      interval: z.number().min(1).default(1),
-      endType: z.enum(["never", "after", "on"]).default("never"),
-      count: z.number().min(1).default(10),
-      until: z.date().optional(),
-      byDay: z
-        .array(z.enum(["MO", "TU", "WE", "TH", "FR", "SA", "SU"]))
-        .optional(),
-    })
-    .optional(),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+const formSchema = eventFormSchema;
+type FormValues = EventFormValues;
 
 interface CreateEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultDate: Date;
-  calendars: Doc<"calendars">[];
+  calendars: Doc<"posts">[];
   userId: string;
 }
 
@@ -108,7 +66,7 @@ export function CreateEventDialog({
   userId,
 }: CreateEventDialogProps) {
   const router = useRouter();
-  const createEvent = useMutation(api.calendar.events.crud.createEvent);
+  const createEvent = useMutation(api.plugins.calendar.events.crud.createEvent);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const initialCalendarId =
@@ -221,7 +179,7 @@ export function CreateEventDialog({
         allDay: values.allDay,
         type: values.type,
         visibility: values.visibility,
-        calendarId: values.calendarId as Id<"calendars">,
+        calendarId: values.calendarId as Id<"posts">,
         location: values.location,
         createdBy: userId,
         recurrence,
@@ -329,7 +287,7 @@ export function CreateEventDialog({
                           disabled={form.watch("allDay")}
                         />
                       </FormControl>
-                      <Clock className="ml-2 h-4 w-4 text-muted-foreground" />
+                      <Clock className="text-muted-foreground ml-2 h-4 w-4" />
                     </div>
                     <FormMessage />
                   </FormItem>
@@ -384,7 +342,7 @@ export function CreateEventDialog({
                           disabled={form.watch("allDay")}
                         />
                       </FormControl>
-                      <Clock className="ml-2 h-4 w-4 text-muted-foreground" />
+                      <Clock className="text-muted-foreground ml-2 h-4 w-4" />
                     </div>
                     <FormMessage />
                   </FormItem>
@@ -414,7 +372,7 @@ export function CreateEventDialog({
                       </SelectContent>
                     </Select>
                   ) : (
-                    <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                    <div className="text-muted-foreground rounded-md border border-dashed p-3 text-sm">
                       No calendars available. Please create a calendar first.
                     </div>
                   )}

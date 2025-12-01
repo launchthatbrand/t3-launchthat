@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { PortalSocialFeedProvider } from "@/src/providers/SocialFeedProvider";
 import { BookMarked, Home, Plus, Search, User } from "lucide-react";
 
 interface SocialNavItem {
@@ -52,46 +53,46 @@ export default function SocialLayout({
   ];
 
   return (
-    <div className="min-h-screen">
-      <div className="pb-16 md:pb-0 md:pl-16">{children}</div>
+    <PortalSocialFeedProvider>
+      <div className="min-h-screen">
+        <div className="pb-16 md:pb-0 md:pl-16">{children}</div>
 
-      {/* Mobile bottom navigation */}
-      <nav className="fixed bottom-0 left-0 z-10 flex w-full justify-around border-t bg-background p-2 md:hidden">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={
-              item.active
-                ? "flex flex-col items-center justify-center rounded-md p-2 text-xs text-primary"
-                : "flex flex-col items-center justify-center rounded-md p-2 text-xs text-muted-foreground hover:text-foreground"
-            }
-          >
-            {item.icon}
-            <span className="mt-1">{item.label}</span>
-          </Link>
-        ))}
-      </nav>
-
-      {/* Desktop side navigation */}
-      <nav className="absolute left-0 top-0 z-10 hidden h-full w-16 flex-col border-r bg-background md:flex">
-        <div className="flex flex-1 flex-col items-center justify-start gap-4 pt-4">
+        <nav className="bg-background fixed bottom-0 left-0 z-10 flex w-full justify-around border-t p-2 md:hidden">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={
                 item.active
-                  ? "flex w-full flex-col items-center justify-center p-3 text-xs text-primary"
-                  : "flex w-full flex-col items-center justify-center p-3 text-xs text-muted-foreground hover:text-foreground"
+                  ? "text-primary flex flex-col items-center justify-center rounded-md p-2 text-xs"
+                  : "text-muted-foreground hover:text-foreground flex flex-col items-center justify-center rounded-md p-2 text-xs"
               }
             >
               {item.icon}
               <span className="mt-1">{item.label}</span>
             </Link>
           ))}
-        </div>
-      </nav>
-    </div>
+        </nav>
+
+        <nav className="bg-background absolute top-0 left-0 z-10 hidden h-full w-16 flex-col border-r md:flex">
+          <div className="flex flex-1 flex-col items-center justify-start gap-4 pt-4">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={
+                  item.active
+                    ? "text-primary flex w-full flex-col items-center justify-center p-3 text-xs"
+                    : "text-muted-foreground hover:text-foreground flex w-full flex-col items-center justify-center p-3 text-xs"
+                }
+              >
+                {item.icon}
+                <span className="mt-1">{item.label}</span>
+              </Link>
+            ))}
+          </div>
+        </nav>
+      </div>
+    </PortalSocialFeedProvider>
   );
 }

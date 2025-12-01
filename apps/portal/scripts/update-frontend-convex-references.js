@@ -29,15 +29,15 @@ const functionMappings = {
     "api.notifications.resetNotificationPreferences",
 
   // Calendar module
-  "api.calendar.getEvents": "api.calendar.queries.getCalendarEvents",
-  "api.calendar.getEvent": "api.calendar.queries.getEventById",
-  "api.calendar.getCalendars": "api.calendar.queries.listCalendars",
-  "api.calendar.getPublicCalendars": "api.calendar.queries.getPublicCalendars",
-  "api.calendar.getCalendarForEvent":
-    "api.calendar.queries.getCalendarForEvent",
-  "api.calendar.getEventById": "api.calendar.queries.getEventById",
-  "api.calendar.getEventAttendees":
-    "api.calendar.invitations.getEventAttendees",
+  "api.plugins.calendar.getEvents": "api.plugins.calendar.queries.getCalendarEvents",
+  "api.plugins.calendar.getEvent": "api.plugins.calendar.queries.getEventById",
+  "api.plugins.calendar.getCalendars": "api.plugins.calendar.queries.listCalendars",
+  "api.plugins.calendar.getPublicCalendars": "api.plugins.calendar.queries.getPublicCalendars",
+  "api.plugins.calendar.getCalendarForEvent":
+    "api.plugins.calendar.queries.getCalendarForEvent",
+  "api.plugins.calendar.getEventById": "api.plugins.calendar.queries.getEventById",
+  "api.plugins.calendar.getEventAttendees":
+    "api.plugins.calendar.invitations.getEventAttendees",
 
   // Contacts module
   "api.contacts.getContact": "api.contacts.queries.getContact",

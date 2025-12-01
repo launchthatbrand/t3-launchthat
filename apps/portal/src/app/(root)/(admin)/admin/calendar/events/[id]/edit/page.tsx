@@ -1,5 +1,15 @@
 "use client";
 
+import React from "react";
+import { useParams, useRouter } from "next/navigation";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { useUser } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+import { format } from "date-fns";
+import { ArrowLeft } from "lucide-react";
+
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -7,18 +17,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import EventForm, { EventFormValues } from "../../../_components/EventForm";
-import { useParams, useRouter } from "next/navigation";
 
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@acme/ui/button";
-import { Id } from "@/convex/_generated/dataModel";
+import EventForm, { EventFormValues } from "../../../_components/EventForm";
 import { LoadingSpinner } from "../../../_components/LoadingSpinner";
-import React from "react";
-import { api } from "@/convex/_generated/api";
-import { format } from "date-fns";
-import { useQuery } from "convex/react";
-import { useUser } from "@clerk/nextjs";
 
 // Define valid day types
 type DayOfWeek = "MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU";
@@ -35,19 +36,19 @@ export default function EditEventPage() {
   const userId = user?.id;
 
   // Get event details
-  const event = useQuery(api.calendar.queries.getEventById, {
+  const event = useQuery(api.plugins.calendar.queries.getEventById, {
     eventId,
   });
 
   // Get all user calendars
   const calendars = useQuery(
-    api.calendar.queries.getCalendars,
+    api.plugins.calendar.queries.getCalendars,
     userId ? { userId } : "skip",
   );
 
   // Get the calendar this event belongs to
   const calendarEvents = useQuery(
-    api.calendar.queries.getCalendarForEvent,
+    api.plugins.calendar.queries.getCalendarForEvent,
     event ? { eventId: event._id } : "skip",
   );
 
@@ -60,7 +61,7 @@ export default function EditEventPage() {
       <div className="flex h-[70vh] items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold">Sign in to edit event</h2>
-          <p className="mt-2 text-muted-foreground">
+          <p className="text-muted-foreground mt-2">
             You need to be signed in to edit calendar events
           </p>
         </div>

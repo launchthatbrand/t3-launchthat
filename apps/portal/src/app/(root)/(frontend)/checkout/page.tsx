@@ -1,11 +1,12 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import Link from "next/link";
+import { CheckoutFlow } from "launchthat-plugin-commerce/components";
+import { ShoppingCart } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
-import { CheckoutFlow } from "@/components/checkout/CheckoutFlow";
-import Link from "next/link";
-import { ShoppingCart } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+
 import { useCart } from "~/hooks/useCart";
 
 export default function CheckoutPage() {

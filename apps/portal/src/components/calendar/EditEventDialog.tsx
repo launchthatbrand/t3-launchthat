@@ -7,6 +7,10 @@ import { api } from "@/convex/_generated/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "convex/react";
 import { format } from "date-fns";
+import {
+  eventFormSchema,
+  RecurrenceSelector,
+} from "launchthat-plugin-calendar";
 import { AlertTriangle, CalendarIcon, Clock } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -44,51 +48,7 @@ import {
 } from "@acme/ui/select";
 import { Textarea } from "@acme/ui/textarea";
 
-import { RecurrenceSelector } from "./RecurrenceSelector";
-
-const formSchema = z.object({
-  title: z.string().min(1, { message: "Title is required" }),
-  description: z.string().optional(),
-  startDate: z.date(),
-  endDate: z.date(),
-  startTime: z.string(),
-  endTime: z.string(),
-  allDay: z.boolean().default(false),
-  type: z.enum([
-    "meeting",
-    "webinar",
-    "workshop",
-    "class",
-    "conference",
-    "social",
-    "deadline",
-    "reminder",
-    "other",
-  ]),
-  calendarId: z.string().min(1, { message: "Calendar is required" }),
-  visibility: z.enum(["public", "private", "restricted"]).default("private"),
-  location: z
-    .object({
-      type: z.enum(["virtual", "physical", "hybrid"]),
-      address: z.string().optional(),
-      url: z.string().optional(),
-    })
-    .optional(),
-  recurrence: z
-    .object({
-      enabled: z.boolean().default(false),
-      frequency: z
-        .enum(["daily", "weekly", "monthly", "yearly"])
-        .default("weekly"),
-      interval: z.number().min(1).default(1),
-      endType: z.enum(["never", "after", "on"]).default("never"),
-      count: z.number().min(1).default(10),
-      until: z.date().optional(),
-      byDay: z
-        .array(z.enum(["MO", "TU", "WE", "TH", "FR", "SA", "SU"]))
-        .optional(),
-    })
-    .optional(),
+const formSchema = eventFormSchema.extend({
   applyToSeries: z.boolean().default(true),
 });
 
@@ -97,8 +57,8 @@ type FormValues = z.infer<typeof formSchema>;
 interface EditEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  eventId: Id<"events">;
-  calendars: Doc<"calendars">[];
+  eventId: Id<"posts">;
+  calendars: Doc<"posts">[];
   userId: string;
 }
 
@@ -110,20 +70,23 @@ export function EditEventDialog({
   userId,
 }: EditEventDialogProps) {
   const router = useRouter();
-  const updateEvent = useMutation(api.calendar.events.crud.updateEvent);
-  const deleteEvent = useMutation(api.calendar.events.crud.deleteEvent);
+  const updateEvent = useMutation(api.plugins.calendar.events.crud.updateEvent);
+  const deleteEvent = useMutation(api.plugins.calendar.events.crud.deleteEvent);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch the event details
-  const event = useQuery(api.calendar.queries.getEventById, {
+  const event = useQuery(api.plugins.calendar.queries.getEventById, {
     eventId,
   });
 
   // Fetch the calendar for this event
-  const eventCalendars = useQuery(api.calendar.queries.getCalendarForEvent, {
-    eventId,
-  });
+  const eventCalendars = useQuery(
+    api.plugins.calendar.queries.getCalendarForEvent,
+    {
+      eventId,
+    },
+  );
 
   const calendarId = eventCalendars?.[0]?.calendarId;
 

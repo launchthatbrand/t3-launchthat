@@ -40,7 +40,14 @@ interface NavItem {
 }
 
 type GroupedNavItem = NavItem & {
-  group?: "lms" | "postTypes" | "shop" | "helpdesk" | "calendar" | "support";
+  group?:
+    | "lms"
+    | "postTypes"
+    | "shop"
+    | "helpdesk"
+    | "calendar"
+    | "support"
+    | "social";
   position?: number;
 };
 
@@ -278,6 +285,8 @@ export default function DefaultSidebar() {
         slugLower === "calendar"
       ) {
         group = "calendar";
+      } else if (parentGroup === "social" || slugLower?.startsWith("social")) {
+        group = "social";
       }
 
       return {
@@ -389,12 +398,17 @@ export default function DefaultSidebar() {
     ...dynamicItems.filter((item) => item.group === "calendar"),
     ...pluginNavItems.filter((item) => item.group === "calendar"),
   ];
+  const socialItems = [
+    ...dynamicItems.filter((item) => item.group === "social"),
+    ...pluginNavItems.filter((item) => item.group === "social"),
+  ];
   const postTypeItems = dynamicItems.filter(
     (item) =>
       item.group !== "lms" &&
       item.group !== "shop" &&
       item.group !== "helpdesk" &&
-      item.group !== "calendar",
+      item.group !== "calendar" &&
+      item.group !== "social",
   );
   const supportItems = pluginNavItems.filter(
     (item) => item.group === "support",
@@ -461,6 +475,13 @@ export default function DefaultSidebar() {
     sections.push({
       label: "Helpdesk",
       items: [...helpdeskItems, ...helpdeskSettingsItems],
+    });
+  }
+
+  if (socialItems.length > 0) {
+    sections.push({
+      label: "Social Hub",
+      items: socialItems,
     });
   }
 

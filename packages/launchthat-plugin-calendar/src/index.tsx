@@ -1,5 +1,14 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
 
+import { CalendarMonthViewTab } from "./tabs/CalendarMonthViewTab";
+
+export { CalendarSidebar } from "./components/CalendarSidebar";
+export type { CalendarSidebarCalendar } from "./components/CalendarSidebar";
+
+export { LoadingSpinner } from "./components/LoadingSpinner";
+export { ColorPicker } from "./components/ColorPicker";
+export { CalendarMonthViewTab } from "./tabs/CalendarMonthViewTab";
+
 export const calendarPlugin: PluginDefinition = {
   id: "calendar",
   name: "Campaign Calendar",
@@ -37,6 +46,25 @@ export const calendarPlugin: PluginDefinition = {
         position: 20,
         parent: "calendar",
       },
+      singleView: {
+        basePath: "/admin/calendar/calendars",
+        defaultTab: "edit",
+        tabs: [
+          {
+            id: "edit",
+            slug: "edit",
+            label: "Edit",
+            usesDefaultEditor: true,
+          },
+          {
+            id: "month-view",
+            slug: "month-view",
+            label: "Month View",
+            description: "Browse this calendar using a drag-and-drop grid.",
+            render: (props) => <CalendarMonthViewTab {...props} />,
+          },
+        ],
+      },
     },
     {
       name: "Events",
@@ -70,4 +98,3 @@ export const calendarPlugin: PluginDefinition = {
 };
 
 export default calendarPlugin;
-

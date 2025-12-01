@@ -31,7 +31,7 @@ interface ConversationSummary {
   totalMessages: number;
 }
 
-interface KnowledgeEntrySummary {
+interface CannedResponseSummary {
   _id: string;
 }
 
@@ -44,16 +44,16 @@ export function DashboardView({
   organizationId,
   tenantName,
 }: DashboardViewProps) {
-  const knowledgeEntries = (useQuery(
-    api.plugins.support.queries.listKnowledgeEntries,
+  const cannedResponses = (useQuery(
+    api.plugins.support.queries.listCannedResponses,
     { organizationId },
-  ) ?? []) as KnowledgeEntrySummary[];
+  ) ?? []) as CannedResponseSummary[];
   const conversations = (useQuery(
     api.plugins.support.queries.listConversations,
     { organizationId, limit: 50 },
   ) ?? []) as ConversationSummary[];
 
-  const totalResponses = knowledgeEntries.length;
+  const totalResponses = cannedResponses.length;
   const activeConversations = conversations.length;
   const openConversations = conversations.filter(
     (conversation) => conversation.lastRole === "user",

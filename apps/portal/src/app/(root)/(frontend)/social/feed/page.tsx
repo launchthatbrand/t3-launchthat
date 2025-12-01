@@ -1,18 +1,20 @@
 "use client";
 
+import type { Id } from "@portal/convex/_generated/dataModel";
+import type { FeedType } from "launchthat-plugin-socialfeed/components";
 import { Suspense, useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-
-import { Button } from "@acme/ui/button";
-import { FeedFilters } from "~/components/social/FeedFilters";
-import { FeedStream } from "~/components/social";
-import type { FeedType } from "~/components/social";
-import type { FilterValue } from "@acme/ui/entity-list/types";
-import type { Id } from "../../../../../../convex/_generated/dataModel";
 import Link from "next/link";
-import { Plus } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { useConvexAuth } from "convex/react";
+import {
+  FeedFilters,
+  FeedStream,
+} from "launchthat-plugin-socialfeed/components";
+import { Plus } from "lucide-react";
+
+import type { FilterValue } from "@acme/ui/entity-list/types";
+import { Button } from "@acme/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 // Wrapper component for FeedFilters to handle Suspense
 function FeedFiltersWrapper({
@@ -23,7 +25,7 @@ function FeedFiltersWrapper({
   return (
     <Suspense
       fallback={
-        <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
+        <div className="bg-muted h-10 w-full animate-pulse rounded-md" />
       }
     >
       <FeedFilters onFiltersChange={onFiltersChange} />

@@ -96,7 +96,6 @@ export const userOrganizationsTable = defineTable({
       accessSourceId: v.optional(
         v.union(
           v.id("products"),
-          v.id("courses"),
           v.string(), // For manual grants, could be a reason
         ),
       ),

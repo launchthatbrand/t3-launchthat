@@ -178,7 +178,7 @@ export const ordersTable = defineTable({
   ),
 
   // Calendar integration
-  calendarEventId: v.optional(v.id("events")), // Linked calendar event
+  calendarEventId: v.optional(v.id("posts")),
 
   // Coupons and discounts
   couponCode: v.optional(v.string()),

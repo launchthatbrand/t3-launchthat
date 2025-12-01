@@ -33,8 +33,8 @@ import { cn } from "~/lib/utils";
 
 interface CalendarEventLinkProps {
   orderId: Id<"orders">;
-  currentEventId?: Id<"events">;
-  onEventLinked: (eventId: Id<"events">) => void;
+  currentEventId?: Id<"posts">;
+  onEventLinked: (eventId: Id<"posts">) => void;
   onEventUnlinked: () => void;
 }
 
@@ -51,13 +51,13 @@ export function CalendarEventLink({
 
   // Get current linked event details
   const currentEvent = useQuery(
-    api.calendar.events.queries.getEvent,
+    api.plugins.calendar.events.queries.getEvent,
     currentEventId ? { eventId: currentEventId } : "skip",
   );
 
   // Search for existing events
   const searchResults = useQuery(
-    api.calendar.events.queries.searchEvents,
+    api.plugins.calendar.events.queries.searchEvents,
     searchTerm.length > 2
       ? {
           searchTerm,
@@ -67,18 +67,21 @@ export function CalendarEventLink({
   );
 
   // Get user's calendars for creating new events
-  const userCalendars = useQuery(api.calendar.queries.getUserCalendars, {});
+  const userCalendars = useQuery(
+    api.plugins.calendar.queries.getUserCalendars,
+    {},
+  );
 
   // Mutations
   const linkOrderToEvent = useMutation(
-    api.calendar.events.orders.linkCalendarEvent,
+    api.plugins.calendar.events.orders.linkCalendarEvent,
   );
   const unlinkOrderFromEvent = useMutation(
-    api.calendar.events.orders.unlinkCalendarEvent,
+    api.plugins.calendar.events.orders.unlinkCalendarEvent,
   );
-  const createEvent = useMutation(api.calendar.events.crud.createEvent);
+  const createEvent = useMutation(api.plugins.calendar.events.crud.createEvent);
 
-  const handleLinkEvent = async (eventId: Id<"events">) => {
+  const handleLinkEvent = async (eventId: Id<"posts">) => {
     try {
       await linkOrderToEvent({ orderId, eventId });
       onEventLinked(eventId);
@@ -103,7 +106,7 @@ export function CalendarEventLink({
   const handleCreateAndLinkEvent = async (eventData: {
     title: string;
     description?: string;
-    calendarId: Id<"calendars">;
+    calendarId: Id<"posts">;
     startTime: number;
     endTime: number;
     allDay?: boolean;
@@ -147,7 +150,7 @@ export function CalendarEventLink({
                   <div className="text-sm font-medium">
                     {currentEvent.title}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-muted-foreground text-xs">
                     {format(new Date(currentEvent.startTime), "MMM dd, yyyy")}
                     {currentEvent.startTime !== currentEvent.endTime && (
                       <>
@@ -158,7 +161,7 @@ export function CalendarEventLink({
                     )}
                   </div>
                   {currentEvent.description && (
-                    <div className="mt-1 text-xs text-muted-foreground">
+                    <div className="text-muted-foreground mt-1 text-xs">
                       {currentEvent.description}
                     </div>
                   )}
@@ -185,7 +188,7 @@ export function CalendarEventLink({
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="text-sm text-muted-foreground">
+            <div className="text-muted-foreground text-sm">
               No calendar event linked
             </div>
             <div className="flex gap-2">
@@ -237,7 +240,7 @@ export function CalendarEventLink({
                     >
                       <div className="flex-1">
                         <div className="text-sm font-medium">{event.title}</div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-muted-foreground text-xs">
                           {format(new Date(event.startTime), "MMM dd, yyyy")}
                           {event.startTime !== event.endTime && (
                             <>
@@ -248,7 +251,7 @@ export function CalendarEventLink({
                           )}
                         </div>
                         {event.description && (
-                          <div className="mt-1 text-xs text-muted-foreground">
+                          <div className="text-muted-foreground mt-1 text-xs">
                             {event.description}
                           </div>
                         )}
@@ -266,7 +269,7 @@ export function CalendarEventLink({
 
               {searchTerm.length > 2 &&
                 (!searchResults || searchResults.length === 0) && (
-                  <div className="py-8 text-center text-muted-foreground">
+                  <div className="text-muted-foreground py-8 text-center">
                     No events found matching "{searchTerm}"
                   </div>
                 )}
@@ -294,11 +297,11 @@ export function CalendarEventLink({
 
 // Create Event Form Component
 interface CreateEventFormProps {
-  calendars: Doc<"calendars">[];
+  calendars: Doc<"posts">[];
   onSubmit: (eventData: {
     title: string;
     description?: string;
-    calendarId: Id<"calendars">;
+    calendarId: Id<"posts">;
     startTime: number;
     endTime: number;
     allDay?: boolean;
@@ -314,7 +317,7 @@ function CreateEventForm({
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    calendarId: "" as Id<"calendars">,
+    calendarId: "" as Id<"posts">,
     startDate: "",
     startTime: "",
     endDate: "",
@@ -385,7 +388,7 @@ function CreateEventForm({
           onValueChange={(value) =>
             setFormData((prev) => ({
               ...prev,
-              calendarId: value as Id<"calendars">,
+              calendarId: value as Id<"posts">,
             }))
           }
           required

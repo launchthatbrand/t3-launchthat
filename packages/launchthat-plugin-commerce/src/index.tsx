@@ -2,7 +2,6 @@ import type {
   PluginDefinition,
   PluginSettingComponentProps,
 } from "launchthat-plugin-core";
-
 import type { ComponentType } from "react";
 
 export interface CommercePluginComponents {
@@ -97,3 +96,11 @@ export const createCommercePluginDefinition = ({
 
 export default createCommercePluginDefinition;
 
+export {
+  CommerceProvider,
+  useCommerceApi,
+  useCommerceAuth,
+  useCommerceClient,
+  useCommerceMutation,
+  useCommerceQuery,
+} from "./context/CommerceClientProvider";

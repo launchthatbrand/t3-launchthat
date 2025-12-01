@@ -5,19 +5,9 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-// Import the AddToCartButton component
-import { AddToCartButton } from "@/components/cart";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
-
-import { Badge } from "@acme/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@acme/ui/card";
+import { AddToCartButton } from "launchthat-plugin-commerce/components";
 
 // Import EntityList components
 import type {
@@ -26,6 +16,14 @@ import type {
   FilterConfig,
   FilterValue,
 } from "@acme/ui/entity-list/types";
+import { Badge } from "@acme/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@acme/ui/card";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
 
 // Define type for enhanced product
@@ -228,7 +226,7 @@ export default function StoreFrontPage() {
         <CardTitle className="line-clamp-1">{_product.name}</CardTitle>
       </CardHeader>
       <CardContent className="flex-grow">
-        <p className="line-clamp-2 text-sm text-muted-foreground">
+        <p className="text-muted-foreground line-clamp-2 text-sm">
           {_product.shortDescription ??
             _product.description ??
             "No description available"}
@@ -238,7 +236,7 @@ export default function StoreFrontPage() {
         <div className="text-lg font-semibold">
           {_product.salePrice ? (
             <div>
-              <span className="text-sm text-muted-foreground line-through">
+              <span className="text-muted-foreground text-sm line-through">
                 {formatPrice(_product.price)}
               </span>{" "}
               <span className="text-primary">
