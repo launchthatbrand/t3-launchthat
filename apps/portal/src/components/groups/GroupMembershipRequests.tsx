@@ -2,7 +2,6 @@
 
 import type { Id } from "@/convex/_generated/dataModel";
 import { useState } from "react";
-import { EmptyState } from "@/components/EmptyState";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { CheckCircle, UserPlus, Users, XCircle } from "lucide-react";
@@ -17,6 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import { EmptyState } from "@acme/ui/entity-list/EmptyState";
 import { Skeleton } from "@acme/ui/skeleton";
 
 import { useGroupNotifications } from "./utils/notificationHelpers";
@@ -142,7 +142,7 @@ export function GroupMembershipRequests({
   if (requests.length === 0 && showEmpty) {
     return (
       <EmptyState
-        icon={<Users className="h-10 w-10 text-muted-foreground" />}
+        icon={<Users className="text-muted-foreground h-10 w-10" />}
         title="No requests"
         description={
           status === "pending"
@@ -165,7 +165,7 @@ export function GroupMembershipRequests({
               <CardTitle className="text-lg">
                 {request.user?.name ?? "Unknown User"}
               </CardTitle>
-              <div className="flex items-center text-sm text-muted-foreground">
+              <div className="text-muted-foreground flex items-center text-sm">
                 <UserPlus className="mr-1 h-3 w-3" />
                 {new Date(request.createdAt).toLocaleDateString()}
               </div>
@@ -187,7 +187,7 @@ export function GroupMembershipRequests({
                   requested to join this group
                 </p>
                 {request.message && (
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="text-muted-foreground mt-1 text-sm">
                     "{request.message}"
                   </p>
                 )}
@@ -227,7 +227,7 @@ export function GroupMembershipRequests({
           )}
           {status !== "pending" && (
             <CardFooter className="pt-2">
-              <div className="text-sm text-muted-foreground">
+              <div className="text-muted-foreground text-sm">
                 {status === "approved" && "You approved this request"}
                 {status === "rejected" && "You rejected this request"}
                 {request.respondedAt && (

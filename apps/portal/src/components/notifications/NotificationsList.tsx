@@ -2,13 +2,20 @@
 
 import type { Id } from "@/convex/_generated/dataModel";
 import { useState } from "react";
-import { EmptyState } from "@/components/EmptyState";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { Check, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@acme/ui/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyMedia,
+  EmptyTitle,
+} from "@acme/ui/empty";
+import { EmptyState } from "@acme/ui/entity-list/EmptyState";
 import {
   Select,
   SelectContent,
@@ -86,11 +93,17 @@ export function NotificationsList({ userId }: NotificationsListProps) {
 
   if (!userId) {
     return (
-      <EmptyState
-        icon={<Clock className="h-12 w-12 text-muted-foreground" />}
-        title="Sign in to view notifications"
-        description="You need to be signed in to view your notifications."
-      />
+      <Empty>
+        <EmptyMedia variant="icon">
+          <Clock className="text-muted-foreground h-12 w-12" />
+        </EmptyMedia>
+        <EmptyContent>
+          <EmptyTitle>Sign in to view notifications</EmptyTitle>
+          <EmptyDescription>
+            You need to be signed in to view your notifications.
+          </EmptyDescription>
+        </EmptyContent>
+      </Empty>
     );
   }
 
@@ -120,7 +133,7 @@ export function NotificationsList({ userId }: NotificationsListProps) {
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
-              className="h-20 animate-pulse rounded-lg bg-muted"
+              className="bg-muted h-20 animate-pulse rounded-lg"
             ></div>
           ))}
         </div>
@@ -164,7 +177,7 @@ export function NotificationsList({ userId }: NotificationsListProps) {
 
       {notifications.length === 0 ? (
         <EmptyState
-          icon={<Clock className="h-12 w-12 text-muted-foreground" />}
+          icon={<Clock className="text-muted-foreground h-12 w-12" />}
           title="No notifications"
           description={
             activeFilter === "all"

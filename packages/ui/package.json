@@ -17,7 +17,9 @@
     "./general/*": "./src/general/*.tsx",
     "./general": "./src/general/index.ts",
     "./entity-list": "./src/entity-list/index.ts",
-    "./entity-list/*": "./src/entity-list/*"
+    "./entity-list/*": "./src/entity-list/*",
+    "./tasks-sidebar": "./src/tasks-sidebar.tsx",
+    "./tasks-sidebar/*": "./src/tasks-sidebar/*.tsx"
   },
   "license": "MIT",
   "scripts": {

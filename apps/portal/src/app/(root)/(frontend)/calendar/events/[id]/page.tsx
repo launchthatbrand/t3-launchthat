@@ -2,16 +2,17 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AttendeesList } from "@/components/calendar/AttendeesList";
-import { EditEventDialog } from "@/components/calendar/EditEventDialog";
-import { ReminderSettings } from "@/components/calendar/ReminderSettings";
-// Import the new components
-import { RSVPButtons } from "@/components/calendar/RSVPButtons";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { format } from "date-fns";
+import {
+  AttendeesList,
+  EditEventDialog,
+  ReminderSettings,
+  RSVPButtons,
+} from "launchthat-plugin-calendar";
 import {
   ArrowLeft,
   Calendar as CalendarIcon,

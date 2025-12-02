@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { EmptyState } from "@/components/EmptyState";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { Check, Clock, MoreHorizontal } from "lucide-react";
@@ -15,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@acme/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
+import { EmptyState } from "@acme/ui/entity-list/EmptyState";
 import { ScrollArea } from "@acme/ui/scroll-area";
 import { Skeleton } from "@acme/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
@@ -128,7 +127,7 @@ export function NotificationDropdown({
     if (error) {
       return (
         <EmptyState
-          icon={<Clock className="h-10 w-10 text-destructive" />}
+          icon={<Clock className="text-destructive h-10 w-10" />}
           title="Error loading notifications"
           description={error || "Something went wrong. Please try again later."}
         />
@@ -138,7 +137,7 @@ export function NotificationDropdown({
     if (!clerkId) {
       return (
         <EmptyState
-          icon={<Clock className="h-10 w-10 text-muted-foreground" />}
+          icon={<Clock className="text-muted-foreground h-10 w-10" />}
           title="Sign in to view notifications"
           description="You need to be signed in to view your notifications."
         />
@@ -152,7 +151,7 @@ export function NotificationDropdown({
     if (!notificationsResult || notificationsResult.length === 0) {
       return (
         <EmptyState
-          icon={<Clock className="h-10 w-10 text-muted-foreground" />}
+          icon={<Clock className="text-muted-foreground h-10 w-10" />}
           title="No notifications"
           description={
             activeTab === "all"
@@ -213,7 +212,7 @@ export function NotificationDropdown({
   };
 
   return (
-    <div className="absolute right-0 top-full z-50 mt-1 w-[380px] rounded-md border bg-background shadow-md sm:w-[440px]">
+    <div className="bg-background absolute top-full right-0 z-50 mt-1 w-[380px] rounded-md border shadow-md sm:w-[440px]">
       <div className="flex items-center justify-between border-b px-4 py-2">
         <h2 className="text-sm font-semibold">Notifications</h2>
         <div className="flex items-center gap-2">

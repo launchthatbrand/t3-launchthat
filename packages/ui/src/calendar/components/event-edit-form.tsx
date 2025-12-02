@@ -33,27 +33,14 @@ import { DateTimePicker } from "./date-picker";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Textarea } from "./ui/textarea";
-import { ToastAction } from "./ui/toast";
 
 const eventEditFormSchema = z.object({
   id: z.string(),
-  title: z
-    .string({ required_error: "Please enter a title." })
-    .min(1, { message: "Must provide a title for this event." }),
-  description: z
-    .string({ required_error: "Please enter a description." })
-    .min(1, { message: "Must provide a description for this event." }),
-  start: z.date({
-    required_error: "Please select a start time",
-    invalid_type_error: "That's not a date!",
-  }),
-  end: z.date({
-    required_error: "Please select an end time",
-    invalid_type_error: "That's not a date!",
-  }),
-  color: z
-    .string({ required_error: "Please select an event color." })
-    .min(1, { message: "Must provide a title for this event." }),
+  title: z.string().min(1, { message: "Please enter a title." }),
+  description: z.string().min(1, { message: "Please enter a description." }),
+  start: z.date(),
+  end: z.date(),
+  color: z.string().min(1, { message: "Please select an event color." }),
 });
 
 type EventEditFormValues = z.infer<typeof eventEditFormSchema>;
@@ -119,14 +106,7 @@ export function EventEditForm({
     addEvent(newEvent);
     setEventEditOpen(false);
 
-    toast({
-      title: "Event edited!",
-      action: (
-        <ToastAction altText={"Click here to dismiss notification"}>
-          Dismiss
-        </ToastAction>
-      ),
-    });
+    toast.success("Event edited!");
   }
 
   return (

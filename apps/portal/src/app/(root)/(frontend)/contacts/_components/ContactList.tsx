@@ -15,9 +15,9 @@ import {
   PaginationPrevious,
   Skeleton,
 } from "@acme/ui";
+import { EmptyState } from "@acme/ui/entity-list/EmptyState";
 
 import { ContactCard } from "./ContactCard";
-import { EmptyState } from "./EmptyState";
 
 interface ContactListProps {
   userId: string | undefined;

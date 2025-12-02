@@ -4,6 +4,7 @@ import { helpdeskPlugin } from "launchthat-plugin-helpdesk";
 import { lmsPlugin } from "launchthat-plugin-lms";
 import { socialFeedPlugin } from "launchthat-plugin-socialfeed";
 import { supportPlugin } from "launchthat-plugin-support";
+import { tasksPlugin } from "launchthat-plugin-tasks";
 
 import type { PluginDefinition } from "./types";
 import { CommerceStorefrontSettings } from "~/plugins/settings/commerce-storefront-settings";
@@ -18,5 +19,6 @@ export const pluginDefinitions: PluginDefinition[] = [
   commercePlugin,
   helpdeskPlugin,
   socialFeedPlugin,
+  tasksPlugin,
   supportPlugin,
 ];

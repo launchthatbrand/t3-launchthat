@@ -1,7 +1,1 @@
-import React from "react";
-
-function BoardsPage() {
-  return <div>BoardsPage</div>;
-}
-
-export default BoardsPage;
+export { BoardsPage as default } from "launchthat-plugin-tasks/screens";

@@ -1,6 +1,12 @@
 "use client";
 
+import { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { Check, Clock, X } from "lucide-react";
+import { toast } from "sonner";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@acme/ui/avatar";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -8,16 +14,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Check, Clock, X } from "lucide-react";
-import { useMutation, useQuery } from "convex/react";
-
-import { Button } from "@acme/ui/button";
-import { EmptyState } from "@/components/EmptyState";
-import type { Id } from "../../../convex/_generated/dataModel";
+import { EmptyState } from "@acme/ui/entity-list/EmptyState";
 import { Skeleton } from "@acme/ui/skeleton";
+
+import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
-import { toast } from "sonner";
-import { useState } from "react";
 
 // Type definitions for invitations - only for reference, not used in the component
 
@@ -102,7 +103,7 @@ export function GroupInvitations({
   if (invitations.length === 0 && showEmpty) {
     return (
       <EmptyState
-        icon={<Clock className="h-10 w-10 text-muted-foreground" />}
+        icon={<Clock className="text-muted-foreground h-10 w-10" />}
         title="No invitations"
         description={
           status === "pending"
@@ -125,7 +126,7 @@ export function GroupInvitations({
               <CardTitle className="text-lg">
                 {invitation.group?.name ?? "Unknown Group"}
               </CardTitle>
-              <div className="flex items-center text-sm text-muted-foreground">
+              <div className="text-muted-foreground flex items-center text-sm">
                 <Clock className="mr-1 h-3 w-3" />
                 {new Date(
                   invitation._creationTime ?? Date.now(),
@@ -149,7 +150,7 @@ export function GroupInvitations({
                   invited you to join this group
                 </p>
                 {invitation.message && (
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="text-muted-foreground mt-1 text-sm">
                     "{invitation.message}"
                   </p>
                 )}
@@ -174,7 +175,7 @@ export function GroupInvitations({
           )}
           {status !== "pending" && (
             <CardFooter className="pt-2">
-              <div className="text-sm text-muted-foreground">
+              <div className="text-muted-foreground text-sm">
                 {status === "accepted" && "You accepted this invitation"}
                 {status === "declined" && "You declined this invitation"}
                 {status === "expired" && "This invitation has expired"}

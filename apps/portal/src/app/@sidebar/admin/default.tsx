@@ -47,7 +47,8 @@ type GroupedNavItem = NavItem & {
     | "helpdesk"
     | "calendar"
     | "support"
-    | "social";
+    | "social"
+    | "tasks";
   position?: number;
 };
 
@@ -287,6 +288,8 @@ export default function DefaultSidebar() {
         group = "calendar";
       } else if (parentGroup === "social" || slugLower?.startsWith("social")) {
         group = "social";
+      } else if (parentGroup === "tasks" || slugLower?.startsWith("tasks")) {
+        group = "tasks";
       }
 
       return {
@@ -402,13 +405,18 @@ export default function DefaultSidebar() {
     ...dynamicItems.filter((item) => item.group === "social"),
     ...pluginNavItems.filter((item) => item.group === "social"),
   ];
+  const tasksItems = [
+    ...dynamicItems.filter((item) => item.group === "tasks"),
+    ...pluginNavItems.filter((item) => item.group === "tasks"),
+  ];
   const postTypeItems = dynamicItems.filter(
     (item) =>
       item.group !== "lms" &&
       item.group !== "shop" &&
       item.group !== "helpdesk" &&
       item.group !== "calendar" &&
-      item.group !== "social",
+      item.group !== "social" &&
+      item.group !== "tasks",
   );
   const supportItems = pluginNavItems.filter(
     (item) => item.group === "support",
@@ -468,6 +476,13 @@ export default function DefaultSidebar() {
     sections.push({
       label: "Campaign Calendar",
       items: [...calendarItems, ...calendarSettingsItems],
+    });
+  }
+
+  if (tasksItems.length > 0) {
+    sections.push({
+      label: "Tasks",
+      items: tasksItems,
     });
   }
 

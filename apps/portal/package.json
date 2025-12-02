@@ -112,6 +112,7 @@
     "launchthat-plugin-lms": "workspace:*",
     "launchthat-plugin-socialfeed": "workspace:*",
     "launchthat-plugin-support": "workspace:*",
+    "launchthat-plugin-tasks": "workspace:*",
     "lexical": "^0.31.2",
     "lodash-es": "^4.17.21",
     "lucide-react": "^0.555.0",

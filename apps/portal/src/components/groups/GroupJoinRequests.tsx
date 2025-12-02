@@ -1,6 +1,11 @@
 "use client";
 
+import { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { Check, Clock, X } from "lucide-react";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@acme/ui/avatar";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -8,15 +13,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Check, Clock, X } from "lucide-react";
-import { useMutation, useQuery } from "convex/react";
-
-import { Button } from "@acme/ui/button";
-import { EmptyState } from "@/components/EmptyState";
-import { Id } from "../../../convex/_generated/dataModel";
+import { EmptyState } from "@acme/ui/entity-list/EmptyState";
 import { Skeleton } from "@acme/ui/skeleton";
+
 import { api } from "../../../convex/_generated/api";
-import { useState } from "react";
+import { Id } from "../../../convex/_generated/dataModel";
 
 // Type definitions for join requests
 interface JoinRequest {
@@ -124,7 +125,7 @@ export function GroupJoinRequests({
   if (requests.length === 0 && showEmpty) {
     return (
       <EmptyState
-        icon={<Clock className="h-10 w-10 text-muted-foreground" />}
+        icon={<Clock className="text-muted-foreground h-10 w-10" />}
         title="No join requests"
         description={
           status === "pending"
@@ -153,7 +154,7 @@ export function GroupJoinRequests({
                 </Avatar>
                 {request.user?.name || "Unknown User"}
               </CardTitle>
-              <div className="flex items-center text-sm text-muted-foreground">
+              <div className="text-muted-foreground flex items-center text-sm">
                 <Clock className="mr-1 h-3 w-3" />
                 {new Date(request.createdAt).toLocaleDateString()}
               </div>
@@ -163,7 +164,7 @@ export function GroupJoinRequests({
             {request.message ? (
               <p className="text-sm italic">"{request.message}"</p>
             ) : (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 This user didn't provide a message with their request.
               </p>
             )}
@@ -193,7 +194,7 @@ export function GroupJoinRequests({
           )}
           {status !== "pending" && (
             <CardFooter className="pt-2">
-              <div className="text-sm text-muted-foreground">
+              <div className="text-muted-foreground text-sm">
                 {status === "approved" && "Request was approved"}
                 {status === "rejected" && "Request was rejected"}
                 {request.respondedAt && (
