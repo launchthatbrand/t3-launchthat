@@ -16,7 +16,7 @@ import React, { useCallback, useRef, useState } from "react";
 
 import { Badge } from "./badge";
 import { Button } from "./button";
-import { cn } from ".";
+import { cn } from "./lib/utils";
 
 // Register fonts for PDF
 Font.register({

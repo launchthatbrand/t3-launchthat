@@ -22,6 +22,9 @@ export { SocialHubDashboard } from "./SocialHubDashboard";
 export { ReportDialog } from "./ReportDialog";
 export type { ReportDialogProps } from "./ReportDialog";
 export { ShareDialog } from "./ShareDialog";
+export { RecommendedContentSection } from "./RecommendedContentSection";
+export { TopicsBrowser } from "./TopicsBrowser";
+export { TrendingContentSection } from "./TrendingContentSection";
 
 export type { Visibility, ModuleType } from "./PostCreator/VisibilitySelector";
 export type { MediaItem } from "./PostCreator/MediaUpload";

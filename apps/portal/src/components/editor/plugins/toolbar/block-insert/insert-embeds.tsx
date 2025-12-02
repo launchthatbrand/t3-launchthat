@@ -3,7 +3,7 @@
 import { INSERT_EMBED_COMMAND } from '@lexical/react/LexicalAutoEmbedPlugin'
 
 import { useToolbarContext } from '~/components/editor/context/toolbar-context'
-import { SelectItem } from '~/components/ui/select'
+import { SelectItem } from '@acme/ui/select'
 
 import { EmbedConfigs } from '~/components/editor/plugins/embeds/auto-embed-plugin'
 

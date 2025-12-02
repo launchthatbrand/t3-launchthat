@@ -106,9 +106,9 @@
 .prose .oembed-container iframe,
 .prose .oembed-container video,
 .prose .oembed-container .player {
-  width: 100% !important;
-  max-width: 100% !important;
-  height: auto !important;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
   border-radius: 0.5rem;
   display: block;
 }

@@ -19,8 +19,8 @@ import { AlignLeftIcon } from 'lucide-react'
 import { AlignJustifyIcon } from 'lucide-react'
 import { AlignCenterIcon, AlignRightIcon } from 'lucide-react'
 
-import { Separator } from '~/components/ui/separator'
-import { ToggleGroup, ToggleGroupItem } from '~/components/ui/toggle-group'
+import { Separator } from '@acme/ui/separator'
+import { ToggleGroup, ToggleGroupItem } from '@acme/ui/toggle-group'
 
 import { useToolbarContext } from '~/components/editor/context/toolbar-context'
 import { useUpdateToolbarHandler } from '~/components/editor/editor-hooks/use-update-toolbar'

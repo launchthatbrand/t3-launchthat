@@ -2,12 +2,12 @@
 
 import React from "react";
 import Link from "next/link";
+import { LoadingSpinner } from "launchthat-plugin-calendar";
 import { AlertCircle, Lock, ShoppingCart, Tag, User } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
-import { LoadingSpinner } from "~/components/ui/loading-spinner";
 import { useContentProtection } from "./ContentProtectionProvider";
 
 interface ProtectedContentProps {
@@ -76,7 +76,7 @@ export const ProtectedContent: React.FC<ProtectedContentProps> = ({
       loadingComponent ?? (
         <div className="flex items-center justify-center p-8">
           <LoadingSpinner className="mr-2 h-6 w-6" />
-          <span className="text-sm text-muted-foreground">
+          <span className="text-muted-foreground text-sm">
             Verifying access...
           </span>
         </div>
@@ -233,11 +233,11 @@ export const ProtectedPage: React.FC<ProtectedPageProps> = ({
           <div className="flex min-h-[60vh] items-center justify-center">
             <Card className="w-full max-w-md">
               <CardContent className="p-6 text-center">
-                <User className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                <User className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
                 <h2 className="mb-2 text-lg font-semibold">
                   Authentication Required
                 </h2>
-                <p className="mb-4 text-sm text-muted-foreground">
+                <p className="text-muted-foreground mb-4 text-sm">
                   Please log in to access this page
                 </p>
                 <Button asChild>
@@ -261,7 +261,7 @@ export const ProtectedPage: React.FC<ProtectedPageProps> = ({
                 <h2 className="mb-2 text-lg font-semibold">
                   Access Restricted
                 </h2>
-                <p className="mb-4 text-sm text-muted-foreground">
+                <p className="text-muted-foreground mb-4 text-sm">
                   {currentPageAccess.reason}
                 </p>
                 <div className="flex justify-center gap-2">
@@ -303,11 +303,11 @@ export const ProtectedPage: React.FC<ProtectedPageProps> = ({
         <div className="flex min-h-[60vh] items-center justify-center">
           <Card className="w-full max-w-md">
             <CardContent className="p-6 text-center">
-              <User className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+              <User className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
               <h2 className="mb-2 text-lg font-semibold">
                 Authentication Required
               </h2>
-              <p className="mb-4 text-sm text-muted-foreground">
+              <p className="text-muted-foreground mb-4 text-sm">
                 Please log in to access this page
               </p>
               <Button asChild>
@@ -329,7 +329,7 @@ export const ProtectedPage: React.FC<ProtectedPageProps> = ({
             <CardContent className="p-6 text-center">
               <Lock className="mx-auto mb-4 h-12 w-12 text-orange-500" />
               <h2 className="mb-2 text-lg font-semibold">Access Restricted</h2>
-              <p className="mb-4 text-sm text-muted-foreground">
+              <p className="text-muted-foreground mb-4 text-sm">
                 {currentPageAccess.reason ??
                   "You don't have permission to view this page"}
               </p>

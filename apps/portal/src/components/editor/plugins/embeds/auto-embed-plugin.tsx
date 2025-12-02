@@ -26,20 +26,20 @@ import { INSERT_OEMBED_COMMAND } from "~/components/editor/plugins/embeds/oembed
 import { INSERT_TWEET_COMMAND } from "~/components/editor/plugins/embeds/twitter-plugin";
 import { INSERT_YOUTUBE_COMMAND } from "~/components/editor/plugins/embeds/youtube-plugin";
 import { fetchOEmbedPayload } from "~/components/editor/utils/oembed";
-import { Button } from "~/components/ui/button";
+import { Button } from "@acme/ui/button";
 import {
   Command,
   CommandGroup,
   CommandItem,
   CommandList,
-} from "~/components/ui/command";
-import { DialogFooter } from "~/components/ui/dialog";
-import { Input } from "~/components/ui/input";
+} from "@acme/ui/command";
+import { DialogFooter } from "@acme/ui/dialog";
+import { Input } from "@acme/ui/input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "~/components/ui/popover";
+} from "@acme/ui/popover";
 
 export interface CustomEmbedConfig<TData = unknown> extends EmbedConfig<TData> {
   // Human readable name of the embeded content e.g. Tweet or Google Map.

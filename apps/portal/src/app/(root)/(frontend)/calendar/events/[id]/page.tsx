@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
@@ -10,6 +9,7 @@ import { format } from "date-fns";
 import {
   AttendeesList,
   EditEventDialog,
+  LoadingSpinner,
   ReminderSettings,
   RSVPButtons,
 } from "launchthat-plugin-calendar";

@@ -11,7 +11,7 @@ import {
   WrappedGroupOverview,
   WrappedText,
   WrappedUpcomingEventsMembers,
-} from "@/components/ui/group-dashboard/puck-wrappers";
+} from "@acme/ui/group-dashboard/puck-wrappers";
 import { api } from "@convex-config/_generated/api";
 import { useMutation } from "convex/react";
 

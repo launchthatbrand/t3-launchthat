@@ -24,7 +24,7 @@ import {
 
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { cn } from "@acme/ui";
+import { cn } from "../lib/utils";
 
 interface NavUserProps {
   user?: {

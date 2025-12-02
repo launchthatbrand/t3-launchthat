@@ -16,7 +16,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "../collapsible";
-import { cn } from "../index";
+import { cn } from "../lib/utils";
 import {
   SidebarGroup,
   SidebarGroupContent,

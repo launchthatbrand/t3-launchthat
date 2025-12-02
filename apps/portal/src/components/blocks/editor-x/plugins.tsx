@@ -127,7 +127,7 @@ import { HR } from "~/components/editor/transformers/markdown-hr-transformer";
 import { IMAGE } from "~/components/editor/transformers/markdown-image-transformer";
 import { TABLE } from "~/components/editor/transformers/markdown-table-transformer";
 import { TWEET } from "~/components/editor/transformers/markdown-tweet-transformer";
-import { Separator } from "~/components/ui/separator";
+import { Separator } from "@acme/ui/separator";
 
 const SpeechToTextPlugin = dynamic(
   () =>

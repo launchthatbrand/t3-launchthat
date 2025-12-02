@@ -3,7 +3,7 @@
 import { SquareSplitVerticalIcon } from 'lucide-react'
 
 import { useToolbarContext } from '~/components/editor/context/toolbar-context'
-import { SelectItem } from '~/components/ui/select'
+import { SelectItem } from '@acme/ui/select'
 
 import { INSERT_PAGE_BREAK } from '~/components/editor/plugins/page-break-plugin'
 

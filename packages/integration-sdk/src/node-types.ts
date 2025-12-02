@@ -431,7 +431,10 @@ export function createAction<
     outputSchema: config.outputSchema,
     settingsSchema: config.settingsSchema,
     execute: config.execute,
-    validate: config.validate,
+    validate: config.validate
+      ? async (settings: unknown) =>
+          config.validate!(settings as z.infer<Settings>)
+      : undefined,
     ui: config.ui,
   };
 }
@@ -463,7 +466,10 @@ export function createTrigger<
     pollInterval: config.pollInterval,
     setup: config.setup,
     teardown: config.teardown,
-    validate: config.validate,
+    validate: config.validate
+      ? async (settings: unknown) =>
+          config.validate!(settings as z.infer<Settings>)
+      : undefined,
     ui: config.ui,
   };
 }

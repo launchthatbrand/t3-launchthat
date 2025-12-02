@@ -22,7 +22,7 @@ import {
 import { TextNode } from 'lexical'
 import { CircleUserRoundIcon } from 'lucide-react'
 
-import { Command, CommandList, CommandGroup, CommandItem } from "~/components/ui/command"
+import { Command, CommandList, CommandGroup, CommandItem } from "@acme/ui/command"
 
 import { $createMentionNode } from '~/components/editor/nodes/mention-node'
 

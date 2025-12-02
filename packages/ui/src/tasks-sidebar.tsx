@@ -6,7 +6,7 @@ import { ViewVerticalIcon } from "@radix-ui/react-icons";
 import { Slot } from "@radix-ui/react-slot";
 import { cva } from "class-variance-authority";
 
-import { cn } from "@acme/ui";
+import { cn } from "./lib/utils";
 
 import { Button } from "./button";
 import { useIsMobile } from "./hooks/use-mobile";

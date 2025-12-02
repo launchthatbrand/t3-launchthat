@@ -5,7 +5,7 @@
 //   EntityAction,
 //   FilterConfig,
 //   HeaderAction,
-// } from "@/components/ui/EntityList";
+// } from "@acme/ui/EntityList";
 import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";

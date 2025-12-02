@@ -1,7 +1,7 @@
 import type { ComponentPropsWithoutRef } from "react";
 import { Loader2Icon } from "lucide-react";
 
-import { cn } from "@acme/ui";
+import { cn } from "./lib/utils";
 
 type SpinnerProps = ComponentPropsWithoutRef<typeof Loader2Icon>;
 

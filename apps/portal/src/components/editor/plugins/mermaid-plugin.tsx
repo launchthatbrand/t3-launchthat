@@ -25,7 +25,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "~/components/ui/dialog";
+} from "@acme/ui/dialog";
 
 export const INSERT_MERMAID_COMMAND: LexicalCommand<void> = createCommand(
   "INSERT_MERMAID_COMMAND",

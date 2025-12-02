@@ -23,7 +23,7 @@ import { Skeleton } from "./skeleton";
 import { Slot } from "@radix-ui/react-slot";
 import type { VariantProps } from "class-variance-authority";
 import { ViewVerticalIcon } from "@radix-ui/react-icons";
-import { cn } from "@acme/ui";
+import { cn } from "./lib/utils";
 import { cva } from "class-variance-authority";
 import { useIsMobile } from "../hooks/use-mobile";
 

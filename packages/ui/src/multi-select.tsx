@@ -23,7 +23,7 @@ import { Button } from "@acme/ui/button";
 import { Separator } from "@acme/ui/separator";
 // src/components/multi-select.tsx
 import type { VariantProps } from "class-variance-authority";
-import { cn } from "@acme/ui";
+import { cn } from "./lib/utils";
 import { cva } from "class-variance-authority";
 
 /**

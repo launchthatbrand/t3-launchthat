@@ -1,7 +1,4 @@
-import { cx } from "class-variance-authority";
-import { twMerge } from "tailwind-merge";
-
-export const cn = (...inputs: Parameters<typeof cx>) => twMerge(cx(inputs));
+export { cn } from "./lib/utils";
 
 // Components
 export * from "./accordion";
@@ -44,3 +41,4 @@ export * from "./separator";
 export * from "./theme";
 export * from "./toast";
 export * from "./entity-list";
+export * from "./json-view";

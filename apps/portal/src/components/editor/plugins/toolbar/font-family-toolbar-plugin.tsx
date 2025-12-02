@@ -14,7 +14,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-} from '~/components/ui/select'
+} from '@acme/ui/select'
 
 import { useToolbarContext } from '~/components/editor/context/toolbar-context'
 import { useUpdateToolbarHandler } from '~/components/editor/editor-hooks/use-update-toolbar'

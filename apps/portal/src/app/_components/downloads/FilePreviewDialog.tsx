@@ -1,5 +1,8 @@
 "use client";
 
+import { useQuery } from "convex/react";
+
+import { Button } from "@acme/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -7,12 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@acme/ui/dialog";
+import { Spinner } from "@acme/ui/spinner";
 
-import { Button } from "@acme/ui/button";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Spinner } from "~/components/ui";
 import { api } from "../../../../convex/_generated/api";
-import { useQuery } from "convex/react";
 
 interface FilePreviewDialogProps {
   open: boolean;
@@ -97,7 +98,7 @@ export function FilePreviewDialog({
         );
       case "content_preview":
         return (
-          <div className="max-h-[70vh] overflow-auto rounded bg-muted p-4">
+          <div className="bg-muted max-h-[70vh] overflow-auto rounded p-4">
             <pre className="text-sm">{previewInfo.content}</pre>
           </div>
         );

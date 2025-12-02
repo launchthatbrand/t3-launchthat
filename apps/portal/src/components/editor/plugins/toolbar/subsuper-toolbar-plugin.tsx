@@ -6,7 +6,7 @@ import { $isTableSelection } from '@lexical/table'
 import { $isRangeSelection, BaseSelection, FORMAT_TEXT_COMMAND } from 'lexical'
 import { SubscriptIcon, SuperscriptIcon } from 'lucide-react'
 
-import { ToggleGroup, ToggleGroupItem } from '~/components/ui/toggle-group'
+import { ToggleGroup, ToggleGroupItem } from '@acme/ui/toggle-group'
 
 import { useToolbarContext } from '~/components/editor/context/toolbar-context'
 import { useUpdateToolbarHandler } from '~/components/editor/editor-hooks/use-update-toolbar'

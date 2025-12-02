@@ -1,5 +1,5 @@
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@acme/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 import { Calendar } from "@acme/ui/calendar";
 import AvailabilityChecker from "@acme/ui/calendar/components/availability-checker";

@@ -12,7 +12,7 @@ import {
 
 import { Command as CommandPrimitive } from "cmdk"
 import { SearchIcon } from "lucide-react"
-import { cn } from "./index"
+import { cn } from "./lib/utils"
 
 function Command({
   className,

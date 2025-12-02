@@ -25,18 +25,18 @@ import {
   SELECTION_CHANGE_COMMAND,
 } from 'lexical'
 
-import { Button } from '~/components/ui/button'
-import { Checkbox } from '~/components/ui/checkbox'
-import { DialogFooter } from '~/components/ui/dialog'
-import { Input } from '~/components/ui/input'
-import { Label } from '~/components/ui/label'
+import { Button } from '@acme/ui/button'
+import { Checkbox } from '@acme/ui/checkbox'
+import { DialogFooter } from '@acme/ui/dialog'
+import { Input } from '@acme/ui/input'
+import { Label } from '@acme/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '~/components/ui/select'
+} from '@acme/ui/select'
 
 import { useEditorModal } from '~/components/editor/editor-hooks/use-modal'
 import type { Position } from '~/components/editor/nodes/inline-image-node'

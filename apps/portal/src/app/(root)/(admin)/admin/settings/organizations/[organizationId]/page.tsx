@@ -1,16 +1,13 @@
 "use client";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@acme/ui/alert-dialog";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { OrganizationMember } from "@/convex/core/organizations/types";
+import type { ColumnDef } from "@tanstack/react-table";
+import React from "react";
+import { useParams, useRouter } from "next/navigation";
+import { api } from "@/convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
+import { LoadingSpinner } from "launchthat-plugin-calendar";
 import {
   ArrowLeft,
   Building2,
@@ -23,6 +20,22 @@ import {
   Trash2,
   UserPlus,
 } from "lucide-react";
+import { toast } from "sonner";
+
+import type { EntityAction } from "@acme/ui/entity-list/types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@acme/ui/alert-dialog";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -30,7 +43,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import { Input } from "@acme/ui/input";
 import {
   Select,
   SelectContent,
@@ -38,22 +52,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { useMutation, useQuery } from "convex/react";
-import { useParams, useRouter } from "next/navigation";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import type { ColumnDef } from "@tanstack/react-table";
-import type { EntityAction } from "@acme/ui/entity-list/types";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import { Input } from "@acme/ui/input";
-import { LoadingSpinner } from "~/components/ui/loading-spinner";
-import { OrganizationForm } from "../_components/OrganizationForm";
-import type { OrganizationMember } from "@/convex/core/organizations/types";
-import React from "react";
 import { Separator } from "@acme/ui/separator";
-import { api } from "@/convex/_generated/api";
-import { toast } from "sonner";
+
+import { OrganizationForm } from "../_components/OrganizationForm";
 
 type OrganizationMeta = Doc<"organizations"> & {
   memberCount?: number;
@@ -251,9 +252,7 @@ export default function OrganizationDetailPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {isOwner ? (
-                  <SelectItem value="owner">Owner</SelectItem>
-                ) : null}
+                {isOwner ? <SelectItem value="owner">Owner</SelectItem> : null}
                 {MEMBER_ROLE_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
@@ -292,9 +291,9 @@ export default function OrganizationDetailPage() {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
         <div className="text-center">
-          <Building2 className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+          <Building2 className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
           <h3 className="text-lg font-medium">Organization not found</h3>
-          <p className="mb-4 text-muted-foreground">
+          <p className="text-muted-foreground mb-4">
             The requested organization could not be found.
           </p>
           <Button onClick={() => router.push("/admin/settings/organizations")}>
@@ -382,11 +381,11 @@ export default function OrganizationDetailPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Organization</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <Building2 className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{organization.name}</div>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-xs">
               {organization.slug}
             </p>
           </CardContent>
@@ -396,13 +395,13 @@ export default function OrganizationDetailPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Current Plan</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            <CreditCard className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {currentPlan?.displayName ?? "No Plan"}
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-xs">
               {currentPlan
                 ? `$${(currentPlan.priceMonthly / 100).toFixed(2)}/mo`
                 : "Not assigned"}
@@ -414,13 +413,13 @@ export default function OrganizationDetailPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Status</CardTitle>
-            <Settings className="h-4 w-4 text-muted-foreground" />
+            <Settings className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold capitalize">
               {organization.subscriptionStatus}
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-xs">
               Subscription status
             </p>
           </CardContent>
@@ -430,13 +429,13 @@ export default function OrganizationDetailPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Owner</CardTitle>
-            <Crown className="h-4 w-4 text-muted-foreground" />
+            <Crown className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {organization.ownerId ? "Assigned" : "No Owner"}
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-xs">
               Organization owner
             </p>
           </CardContent>
@@ -458,7 +457,7 @@ export default function OrganizationDetailPage() {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Visibility</span>
               <div className="flex items-center gap-2">
-                <Globe className="h-4 w-4 text-muted-foreground" />
+                <Globe className="text-muted-foreground h-4 w-4" />
                 <Badge
                   variant={organization.isPublic ? "default" : "secondary"}
                 >
@@ -470,7 +469,7 @@ export default function OrganizationDetailPage() {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Self Registration</span>
               <div className="flex items-center gap-2">
-                <UserPlus className="h-4 w-4 text-muted-foreground" />
+                <UserPlus className="text-muted-foreground h-4 w-4" />
                 <Badge
                   variant={
                     organization.allowSelfRegistration ? "default" : "secondary"
@@ -483,7 +482,7 @@ export default function OrganizationDetailPage() {
             <Separator />
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Description</span>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-muted-foreground text-sm">
                 {organization.description ?? "No description"}
               </span>
             </div>
@@ -516,7 +515,7 @@ export default function OrganizationDetailPage() {
             <Separator />
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Organization ID</span>
-              <span className="rounded bg-muted px-2 py-1 font-mono text-xs">
+              <span className="bg-muted rounded px-2 py-1 font-mono text-xs">
                 {organization._id}
               </span>
             </div>
@@ -585,7 +584,7 @@ export default function OrganizationDetailPage() {
               <LoadingSpinner />
             </div>
           ) : memberList.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               No members yet. Add someone using their email address.
             </p>
           ) : (
@@ -610,7 +609,7 @@ export default function OrganizationDetailPage() {
             <CardTitle>Description</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               {organization.description}
             </p>
           </CardContent>

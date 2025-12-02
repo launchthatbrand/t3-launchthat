@@ -26,12 +26,12 @@ import {
   PASTE_COMMAND,
 } from 'lexical'
 
-import { Command, CommandItem, CommandList } from '~/components/ui/command'
+import { Command, CommandItem, CommandList } from '@acme/ui/command'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '~/components/ui/popover'
+} from '@acme/ui/popover'
 
 const LexicalContextMenuPlugin = dynamic(
   () => import('./default/lexical-context-menu-plugin'),

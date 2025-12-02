@@ -2,13 +2,13 @@ import * as React from 'react'
 
 import { HexColorPicker } from 'react-colorful'
 
-import { Button } from '~/components/ui/button'
-import { Input } from '~/components/ui/input'
+import { Button } from '@acme/ui/button'
+import { Input } from '@acme/ui/input'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '~/components/ui/popover'
+} from '@acme/ui/popover'
 
 type Props = {
   disabled?: boolean

@@ -47,7 +47,7 @@
   "scripts": {
     "build": "pnpm build:types && pnpm build:swc",
     "build:swc": "swc ./src -d ./dist --config-file .swcrc --strip-leading-paths",
-    "build:types": "tsc --emitDeclarationOnly --outDir dist",
+    "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist",
     "clean": "rimraf -g {dist,*.tsbuildinfo}",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

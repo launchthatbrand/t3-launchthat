@@ -67,18 +67,18 @@ export const commonValidationSchemas = {
     settings: z.object({
       url: z.string().url("Must be a valid URL"),
       method: z.enum(["GET", "POST", "PUT", "DELETE", "PATCH"]),
-      headers: z.record(z.string()).optional(),
+      headers: z.record(z.string(), z.string()).optional(),
       timeout: z.number().min(1000).max(30000).optional(),
       retries: z.number().min(0).max(5).optional(),
     }),
     input: z.object({
       payload: z.unknown().optional(),
-      headers: z.record(z.string()).optional(),
+      headers: z.record(z.string(), z.string()).optional(),
     }),
     output: z.object({
       statusCode: z.number(),
       body: z.unknown(),
-      headers: z.record(z.string()),
+      headers: z.record(z.string(), z.string()),
     }),
   },
 
@@ -90,7 +90,7 @@ export const commonValidationSchemas = {
       attachments: z.array(z.string()).optional(),
     }),
     input: z.object({
-      variables: z.record(z.unknown()).optional(),
+      variables: z.record(z.string(), z.unknown()).optional(),
       attachments: z
         .array(
           z.object({
@@ -113,11 +113,11 @@ export const commonValidationSchemas = {
       operation: z.enum(["create", "read", "update", "delete"]),
       table: z.string().min(1, "Table name is required"),
       fields: z.array(z.string()).optional(),
-      conditions: z.record(z.unknown()).optional(),
+      conditions: z.record(z.string(), z.unknown()).optional(),
     }),
     input: z.object({
-      data: z.record(z.unknown()).optional(),
-      filters: z.record(z.unknown()).optional(),
+      data: z.record(z.string(), z.unknown()).optional(),
+      filters: z.record(z.string(), z.unknown()).optional(),
     }),
     output: z.object({
       success: z.boolean(),
@@ -160,8 +160,8 @@ export function validateNodeConfig(
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        errors: error.errors.map(
-          (err) => `${err.path.join(".")}: ${err.message}`,
+        errors: error.issues.map(
+          (issue) => `${issue.path.join(".")}: ${issue.message}`,
         ),
       };
     }
@@ -183,8 +183,8 @@ export function validateInput(
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        errors: error.errors.map(
-          (err) => `${err.path.join(".")}: ${err.message}`,
+        errors: error.issues.map(
+          (issue) => `${issue.path.join(".")}: ${issue.message}`,
         ),
       };
     }

@@ -17,7 +17,7 @@ import {
   UnderlineIcon,
 } from 'lucide-react'
 
-import { Toggle } from '~/components/ui/toggle'
+import { Toggle } from '@acme/ui/toggle'
 
 import { useToolbarContext } from '~/components/editor/context/toolbar-context'
 import { useUpdateToolbarHandler } from '~/components/editor/editor-hooks/use-update-toolbar'

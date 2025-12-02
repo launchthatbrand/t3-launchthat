@@ -17,7 +17,7 @@ import { Button } from "../button";
 import { Card } from "../card";
 import { Input } from "../input";
 import { ScrollArea } from "../scroll-area";
-import { cn } from "@acme/ui";
+import { cn } from "../lib/utils";
 
 // Types
 export type ViewMode = "list" | "grid";

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import { Id } from "@convex-config/_generated/dataModel";
 import {

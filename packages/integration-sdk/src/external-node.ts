@@ -605,7 +605,7 @@ export class JWTAuthMethod implements CustomAuthMethod {
     expiresIn: z.number().default(3600), // 1 hour
     issuer: z.string().optional(),
     audience: z.string().optional(),
-    payload: z.record(z.unknown()).optional(),
+    payload: z.record(z.string(), z.unknown()).optional(),
   });
 
   async authenticate(

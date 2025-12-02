@@ -1,6 +1,6 @@
 import { Slot as SlotPrimitive } from "radix-ui";
 import type { VariantProps } from "class-variance-authority";
-import { cn } from "./index";
+import { cn } from "./lib/utils";
 import { cva } from "class-variance-authority";
 
 export const buttonVariants = cva(

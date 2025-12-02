@@ -32,14 +32,14 @@ import {
   createCommand,
 } from 'lexical'
 
-import { Button } from '~/components/ui/button'
+import { Button } from '@acme/ui/button'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '~/components/ui/select'
+} from '@acme/ui/select'
 
 import {
   $createLayoutContainerNode,

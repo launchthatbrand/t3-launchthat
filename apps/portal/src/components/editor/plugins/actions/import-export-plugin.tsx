@@ -13,12 +13,12 @@ import { $getRoot, $isElementNode } from "lexical";
 import { DownloadIcon, FileDown, FileText, UploadIcon } from "lucide-react";
 
 import { $createMermaidNode } from "~/components/editor/nodes/mermaid-node";
-import { Button } from "~/components/ui/button";
+import { Button } from "@acme/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "~/components/ui/tooltip";
+} from "@acme/ui/tooltip";
 
 function replaceMermaidCodeBlocks() {
   const root = $getRoot();

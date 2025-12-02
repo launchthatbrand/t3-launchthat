@@ -5,7 +5,7 @@ import * as React from "react"
 
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
 
-import { cn } from "./index"
+import { cn } from "./lib/utils"
 
 function Menubar({
   className,

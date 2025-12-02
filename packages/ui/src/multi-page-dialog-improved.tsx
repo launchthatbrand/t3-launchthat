@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 
-import { cn } from ".";
+import { cn } from "./lib/utils";
 import { Button } from "./button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog";
 import { Progress } from "./progress";

@@ -11,7 +11,7 @@ import {
 import { KEY_MODIFIER_COMMAND } from 'lexical'
 import { LinkIcon } from 'lucide-react'
 
-import { Toggle } from '~/components/ui/toggle'
+import { Toggle } from '@acme/ui/toggle'
 
 import { useFloatingLinkContext } from '~/components/editor/context/floating-link-context'
 import { useToolbarContext } from '~/components/editor/context/toolbar-context'

@@ -1,5 +1,5 @@
 // import { AppSidebar } from "./AppSidebar";
-import { cn } from "@acme/ui";
+import { cn } from "../lib/utils";
 
 import { SidebarInset, SidebarProvider } from "../sidebar";
 import { AppSidebar } from "./app-sidebar";

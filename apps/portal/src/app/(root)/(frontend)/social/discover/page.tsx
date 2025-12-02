@@ -1,13 +1,15 @@
 "use client";
 
+import {
+  RecommendedContentSection,
+  TopicsBrowser,
+  TrendingContentSection,
+} from "launchthat-plugin-socialfeed/components";
 import { Compass, Hash, Sparkles, TrendingUp } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 import { SearchBar } from "../../../../../components/shared/SearchBar";
-import { RecommendedContentSection } from "../../../../../components/social/RecommendedContentSection";
-import { TopicsBrowser } from "../../../../../components/social/TopicsBrowser";
-import { TrendingContentSection } from "../../../../../components/social/TrendingContentSection";
 
 export default function DiscoverPage() {
   return (

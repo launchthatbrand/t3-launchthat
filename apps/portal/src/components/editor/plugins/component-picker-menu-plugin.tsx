@@ -16,7 +16,7 @@ import { TextNode } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useBasicTypeaheadTriggerMatch } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 
-import { Command, CommandGroup, CommandItem, CommandList } from '~/components/ui/command'
+import { Command, CommandGroup, CommandItem, CommandList } from '@acme/ui/command'
 
 import { useEditorModal } from '~/components/editor/editor-hooks/use-modal'
 import { ComponentPickerOption } from '~/components/editor/plugins/picker/component-picker-option'

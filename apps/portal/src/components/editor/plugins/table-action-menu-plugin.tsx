@@ -52,12 +52,12 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from '~/components/ui/command'
+} from '@acme/ui/command'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '~/components/ui/popover'
+} from '@acme/ui/popover'
 
 import { useEditorModal } from '~/components/editor/editor-hooks/use-modal'
 import ColorPicker from '~/components/editor/editor-ui/colorpicker'

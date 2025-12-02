@@ -1,6 +1,5 @@
-import type { PayloadCollectionConfig, PayloadField } from "./types";
-
-// Use internal types for now
+type PayloadField = Record<string, any>;
+type PayloadCollectionConfig = Record<string, any>;
 
 // Helper function to safely stringify values for TS code
 // Handles strings, numbers, booleans, null, undefined, and basic objects/arrays

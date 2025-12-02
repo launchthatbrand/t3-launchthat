@@ -1,14 +1,16 @@
 "use client";
 
 import * as React from "react";
+
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import type { Period} from "./time-picker-utils";
+} from "@acme/ui/select";
+
+import type { Period } from "./time-picker-utils";
 import { display12HourValue, setDateByType } from "./time-picker-utils";
 
 export interface PeriodSelectorProps {
@@ -44,8 +46,8 @@ export const TimePeriodSelect = React.forwardRef<
           tempDate,
           hours.toString(),
           "12hours",
-          period === "AM" ? "PM" : "AM"
-        )
+          period === "AM" ? "PM" : "AM",
+        ),
       );
     }
   };
@@ -58,7 +60,7 @@ export const TimePeriodSelect = React.forwardRef<
       >
         <SelectTrigger
           ref={ref}
-          className="w-[65px] focus:bg-accent focus:text-accent-foreground"
+          className="focus:bg-accent focus:text-accent-foreground w-[65px]"
           onKeyDown={handleKeyDown}
         >
           <SelectValue />

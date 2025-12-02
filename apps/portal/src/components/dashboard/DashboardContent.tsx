@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 // Dynamically import the PuckRenderer to avoid server/client mismatch
 const PuckRenderer = dynamic(
   () =>
-    import("@/components/ui/group-dashboard/PuckRenderer").then(
+    import("@acme/ui/group-dashboard/PuckRenderer").then(
       (mod) => mod.PuckRenderer,
     ),
   { ssr: false },

@@ -1,5 +1,6 @@
-'use client'
+"use client";
 
+import type { LexicalCommand, LexicalEditor, RangeSelection } from "lexical";
 /**
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
@@ -7,33 +8,27 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { useEffect, useRef, useState } from 'react'
-
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import type { LexicalCommand, LexicalEditor, RangeSelection } from 'lexical'
+import { useEffect, useRef, useState } from "react";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
   $getSelection,
   $isRangeSelection,
   COMMAND_PRIORITY_EDITOR,
+  createCommand,
   REDO_COMMAND,
   UNDO_COMMAND,
-  createCommand,
-} from 'lexical'
-import { MicIcon } from 'lucide-react'
+} from "lexical";
+import { MicIcon } from "lucide-react";
 
-import { Button } from '~/components/ui/button'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '~/components/ui/tooltip'
+import { Button } from "@acme/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@acme/ui/tooltip";
 
-import { useReport } from '~/components/editor/editor-hooks/use-report'
-import { CAN_USE_DOM } from '~/components/editor/shared/can-use-dom'
+import { useReport } from "~/components/editor/editor-hooks/use-report";
+import { CAN_USE_DOM } from "~/components/editor/shared/can-use-dom";
 
 export const SPEECH_TO_TEXT_COMMAND: LexicalCommand<boolean> = createCommand(
-  'SPEECH_TO_TEXT_COMMAND'
-)
+  "SPEECH_TO_TEXT_COMMAND",
+);
 
 const VOICE_COMMANDS: Readonly<
   Record<
@@ -41,114 +36,114 @@ const VOICE_COMMANDS: Readonly<
     (arg0: { editor: LexicalEditor; selection: RangeSelection }) => void
   >
 > = {
-  '\n': ({ selection }) => {
-    selection.insertParagraph()
+  "\n": ({ selection }) => {
+    selection.insertParagraph();
   },
   redo: ({ editor }) => {
-    editor.dispatchCommand(REDO_COMMAND, undefined)
+    editor.dispatchCommand(REDO_COMMAND, undefined);
   },
   undo: ({ editor }) => {
-    editor.dispatchCommand(UNDO_COMMAND, undefined)
+    editor.dispatchCommand(UNDO_COMMAND, undefined);
   },
-}
+};
 
 export const SUPPORT_SPEECH_RECOGNITION: boolean =
   CAN_USE_DOM &&
-  ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+  ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
 
 function SpeechToTextPluginImpl() {
-  const [editor] = useLexicalComposerContext()
-  const [isEnabled, setIsEnabled] = useState<boolean>(false)
-  const [isSpeechToText, setIsSpeechToText] = useState<boolean>(false)
+  const [editor] = useLexicalComposerContext();
+  const [isEnabled, setIsEnabled] = useState<boolean>(false);
+  const [isSpeechToText, setIsSpeechToText] = useState<boolean>(false);
   const SpeechRecognition =
     // @ts-expect-error missing type
-    CAN_USE_DOM && (window.SpeechRecognition || window.webkitSpeechRecognition)
-  const recognition = useRef<typeof SpeechRecognition | null>(null)
-  const report = useReport()
+    CAN_USE_DOM && (window.SpeechRecognition || window.webkitSpeechRecognition);
+  const recognition = useRef<typeof SpeechRecognition | null>(null);
+  const report = useReport();
 
   useEffect(() => {
     if (isEnabled && recognition.current === null) {
-      recognition.current = new SpeechRecognition()
-      recognition.current.continuous = true
-      recognition.current.interimResults = true
+      recognition.current = new SpeechRecognition();
+      recognition.current.continuous = true;
+      recognition.current.interimResults = true;
       recognition.current.addEventListener(
-        'result',
+        "result",
         (event: typeof SpeechRecognition) => {
-          const resultItem = event.results.item(event.resultIndex)
-          const { transcript } = resultItem.item(0)
-          report(transcript)
+          const resultItem = event.results.item(event.resultIndex);
+          const { transcript } = resultItem.item(0);
+          report(transcript);
 
           if (!resultItem.isFinal) {
-            return
+            return;
           }
 
           editor.update(() => {
-            const selection = $getSelection()
+            const selection = $getSelection();
 
             if ($isRangeSelection(selection)) {
-              const command = VOICE_COMMANDS[transcript.toLowerCase().trim()]
+              const command = VOICE_COMMANDS[transcript.toLowerCase().trim()];
 
               if (command) {
                 command({
                   editor,
                   selection,
-                })
+                });
               } else if (transcript.match(/\s*\n\s*/)) {
-                selection.insertParagraph()
+                selection.insertParagraph();
               } else {
-                selection.insertText(transcript)
+                selection.insertText(transcript);
               }
             }
-          })
-        }
-      )
+          });
+        },
+      );
     }
 
     if (recognition.current) {
       if (isEnabled) {
-        recognition.current.start()
+        recognition.current.start();
       } else {
-        recognition.current.stop()
+        recognition.current.stop();
       }
     }
 
     return () => {
       if (recognition.current !== null) {
-        recognition.current.stop()
+        recognition.current.stop();
       }
-    }
-  }, [SpeechRecognition, editor, isEnabled, report])
+    };
+  }, [SpeechRecognition, editor, isEnabled, report]);
   useEffect(() => {
     return editor.registerCommand(
       SPEECH_TO_TEXT_COMMAND,
       (_isEnabled: boolean) => {
-        setIsEnabled(_isEnabled)
-        return true
+        setIsEnabled(_isEnabled);
+        return true;
       },
-      COMMAND_PRIORITY_EDITOR
-    )
-  }, [editor])
+      COMMAND_PRIORITY_EDITOR,
+    );
+  }, [editor]);
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
           onClick={() => {
-            editor.dispatchCommand(SPEECH_TO_TEXT_COMMAND, !isSpeechToText)
-            setIsSpeechToText(!isSpeechToText)
+            editor.dispatchCommand(SPEECH_TO_TEXT_COMMAND, !isSpeechToText);
+            setIsSpeechToText(!isSpeechToText);
           }}
-          variant={isSpeechToText ? 'secondary' : 'ghost'}
+          variant={isSpeechToText ? "secondary" : "ghost"}
           title="Speech To Text"
-          aria-label={`${isSpeechToText ? 'Enable' : 'Disable'} speech to text`}
+          aria-label={`${isSpeechToText ? "Enable" : "Disable"} speech to text`}
           className="p-2"
-          size={'sm'}
+          size={"sm"}
         >
           <MicIcon className="size-4" />
         </Button>
       </TooltipTrigger>
       <TooltipContent>Speech To Text</TooltipContent>
     </Tooltip>
-  )
+  );
 }
 
 export const SpeechToTextPlugin = SUPPORT_SPEECH_RECOGNITION

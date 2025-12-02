@@ -14,7 +14,7 @@ import { $createTextNode } from 'lexical'
 import { $getRoot } from 'lexical'
 import { FileTextIcon } from 'lucide-react'
 
-import { Button } from '~/components/ui/button'
+import { Button } from '@acme/ui/button'
 
 export function MarkdownTogglePlugin({
   shouldPreserveNewLinesInMarkdown,

@@ -17,8 +17,8 @@ import {
   NodeKey,
 } from 'lexical'
 
-import { Button } from '~/components/ui/button'
-import { Input } from '~/components/ui/input'
+import { Button } from '@acme/ui/button'
+import { Input } from '@acme/ui/input'
 
 import type { Option, Options, PollNode } from '~/components/editor/nodes/poll-node'
 import { $isPollNode, createPollOption } from '~/components/editor/nodes/poll-node'

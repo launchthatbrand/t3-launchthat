@@ -93,11 +93,13 @@ const mapValidatorToPayloadField = (
           value: opt.value,
         }));
         // Set default value if the first option is not null/undefined?
+        const firstOption = parsedValidator.options[0];
         if (
-          parsedValidator.options[0].value !== null &&
-          parsedValidator.options[0].value !== undefined
+          firstOption &&
+          firstOption.value !== null &&
+          firstOption.value !== undefined
         ) {
-          fieldDefinition.defaultValue = parsedValidator.options[0].value;
+          fieldDefinition.defaultValue = firstOption.value;
         }
       } else {
         // Complex unions are hard to map directly. Maybe use Blocks or JSON?

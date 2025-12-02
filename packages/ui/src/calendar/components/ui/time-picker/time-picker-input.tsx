@@ -10,7 +10,7 @@ import {
 
 import { Input } from "@acme/ui/input";
 import React from "react";
-import { cn } from "@acme/ui";
+import { cn } from "../../../../lib/utils";
 
 export interface TimePickerInputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {

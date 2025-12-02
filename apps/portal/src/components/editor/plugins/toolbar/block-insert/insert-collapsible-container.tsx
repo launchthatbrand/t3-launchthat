@@ -3,7 +3,7 @@
 import { ChevronRightIcon } from 'lucide-react'
 
 import { useToolbarContext } from '~/components/editor/context/toolbar-context'
-import { SelectItem } from '~/components/ui/select'
+import { SelectItem } from '@acme/ui/select'
 
 import { INSERT_COLLAPSIBLE_COMMAND } from '~/components/editor/plugins/collapsible-plugin'
 

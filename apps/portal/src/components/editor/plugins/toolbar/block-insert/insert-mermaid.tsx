@@ -4,7 +4,7 @@ import { WorkflowIcon as FlowIcon } from "lucide-react";
 
 import { useToolbarContext } from "~/components/editor/context/toolbar-context";
 import { INSERT_MERMAID_COMMAND } from "~/components/editor/plugins/mermaid-plugin";
-import { SelectItem } from "~/components/ui/select";
+import { SelectItem } from "@acme/ui/select";
 
 export function InsertMermaid() {
   const { activeEditor } = useToolbarContext();

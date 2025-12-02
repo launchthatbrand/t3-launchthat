@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 
-import { cn } from "@acme/ui";
+import { cn } from "../lib/utils";
 
 interface LogoProps {
   className?: string;

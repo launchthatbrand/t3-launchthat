@@ -31,11 +31,11 @@ import {
   createCommand,
 } from 'lexical'
 
-import { Button } from '~/components/ui/button'
-import { DialogFooter } from '~/components/ui/dialog'
-import { Input } from '~/components/ui/input'
-import { Label } from '~/components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
+import { Button } from '@acme/ui/button'
+import { DialogFooter } from '@acme/ui/dialog'
+import { Input } from '@acme/ui/input'
+import { Label } from '@acme/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@acme/ui/tabs'
 
 import {
   $createImageNode,

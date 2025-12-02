@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 
-import { Button, buttonVariants } from "@/components/ui/button";
-import type { CalendarProps } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
+import { Button, buttonVariants } from "@acme/ui/button";
+import type { CalendarProps } from "@acme/ui/calendar";
+import { Input } from "@acme/ui/input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@acme/ui/popover";
 import { cn } from "@/lib/utils";
 import { add, format } from "date-fns";
 import {  enUS } from "date-fns/locale";
@@ -28,7 +28,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@acme/ui/select";
 import { DayPicker } from "react-day-picker";
 
 // ---------- utils start ----------

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState } from "react";
 import { Id } from "@convex-config/_generated/dataModel";
 import { Bell, Plus, Trash2 } from "lucide-react";

@@ -25,7 +25,7 @@ import {
   TextNode,
 } from 'lexical'
 
-import { Command, CommandList, CommandGroup, CommandItem } from "~/components/ui/command"
+import { Command, CommandList, CommandGroup, CommandItem } from "@acme/ui/command"
 
 const LexicalTypeaheadMenuPlugin = dynamic(
   () => import('./default/lexical-typeahead-menu-plugin'),

@@ -3,7 +3,7 @@ import type { Active } from "@dnd-kit/core";
 import React from "react";
 
 import { DragOverlayPreview } from "@acme/dnd";
-import { cn } from "@acme/ui";
+import { cn } from "../../lib/utils";
 
 import type { Lesson, Quiz } from "../store/useCourseBuilderStore";
 import type { LessonItem, QuizItem, TopicItem } from "../types/content";

@@ -9,8 +9,8 @@ import {
 import { $getSelection, $isRangeSelection, BaseSelection } from 'lexical'
 import { Minus, Plus } from 'lucide-react'
 
-import { Button } from '~/components/ui/button'
-import { Input } from '~/components/ui/input'
+import { Button } from '@acme/ui/button'
+import { Input } from '@acme/ui/input'
 
 import { useToolbarContext } from '~/components/editor/context/toolbar-context'
 import { useUpdateToolbarHandler } from '~/components/editor/editor-hooks/use-update-toolbar'

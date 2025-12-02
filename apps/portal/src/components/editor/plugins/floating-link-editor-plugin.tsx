@@ -34,8 +34,8 @@ import {
 import { Check, Pencil, Trash, X } from 'lucide-react'
 import { createPortal } from 'react-dom'
 
-import { Button } from '~/components/ui/button'
-import { Input } from '~/components/ui/input'
+import { Button } from '@acme/ui/button'
+import { Input } from '@acme/ui/input'
 
 import { useFloatingLinkContext } from '~/components/editor/context/floating-link-context'
 import { getSelectedNode } from '~/components/editor/utils/get-selected-node'

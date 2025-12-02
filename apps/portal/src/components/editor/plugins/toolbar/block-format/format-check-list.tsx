@@ -3,7 +3,7 @@ import { $setBlocksType } from '@lexical/selection'
 import { $createParagraphNode, $getSelection, $isRangeSelection } from 'lexical'
 
 import { useToolbarContext } from '~/components/editor/context/toolbar-context'
-import { SelectItem } from '~/components/ui/select'
+import { SelectItem } from '@acme/ui/select'
 
 import { blockTypeToBlockName } from '~/components/editor/plugins/toolbar/block-format/block-format-data'
 

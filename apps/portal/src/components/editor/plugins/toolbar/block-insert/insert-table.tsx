@@ -3,7 +3,7 @@
 import { TableIcon } from 'lucide-react'
 
 import { useToolbarContext } from '~/components/editor/context/toolbar-context'
-import { SelectItem } from '~/components/ui/select'
+import { SelectItem } from '@acme/ui/select'
 
 import { InsertTableDialog } from '~/components/editor/plugins/table-plugin'
 

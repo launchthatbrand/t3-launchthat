@@ -27,10 +27,10 @@ import {
   createCommand,
 } from 'lexical'
 
-import { Button } from '~/components/ui/button'
-import { DialogFooter } from '~/components/ui/dialog'
-import { Input } from '~/components/ui/input'
-import { Label } from '~/components/ui/label'
+import { Button } from '@acme/ui/button'
+import { DialogFooter } from '@acme/ui/dialog'
+import { Input } from '@acme/ui/input'
+import { Label } from '@acme/ui/label'
 
 import { invariant } from '~/components/editor/shared/invariant'
 

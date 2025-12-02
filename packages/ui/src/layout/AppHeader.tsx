@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Logo } from "../general/Logo";
 import { Separator } from "../separator";
 import { SidebarTrigger } from "@acme/ui/sidebar";
-import { cn } from "@acme/ui";
+import { cn } from "../lib/utils";
 
 const SidebarTriggerWrapper = ({ className }: { className?: string }) => {
   // const { isInMonday } = useMondayContext();

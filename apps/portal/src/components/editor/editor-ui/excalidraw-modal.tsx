@@ -16,13 +16,13 @@ import {
 } from "@excalidraw/excalidraw/types";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 
-import { Button } from "~/components/ui/button";
+import { Button } from "@acme/ui/button";
 import {
   Dialog,
   DialogClose,
   DialogContent,
   DialogFooter,
-} from "~/components/ui/dialog";
+} from "@acme/ui/dialog";
 
 const Excalidraw = dynamic(() => import("./excalidraw"), { ssr: false });
 

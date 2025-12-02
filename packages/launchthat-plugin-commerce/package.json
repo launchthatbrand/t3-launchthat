@@ -23,6 +23,7 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
+    "@acme/ui": "workspace:*",
     "@hookform/resolvers": "catalog:",
     "launchthat-plugin-core": "workspace:*",
     "react-hook-form": "catalog:",

@@ -1,4 +1,4 @@
-import type { CallExpression} from "ts-morph";
+import type { CallExpression } from "ts-morph";
 import { Node, SyntaxKind } from "ts-morph";
 
 import type { ParsedValidatorResult } from "./types";
@@ -32,7 +32,11 @@ export const parseValidatorNode = (
       isOptional = true;
       const args = currentNode.getArguments();
       if (args.length === 1) {
-        currentNode = args[0]; // Unwrap to the inner validator
+        const innerNode = args[0];
+        if (!innerNode) {
+          return { type: "unknown", isOptional: true };
+        }
+        currentNode = innerNode; // Unwrap to the inner validator
         console.log(
           `    - Unwrapped optional, parsing inner: ${currentNode.getText().substring(0, 50)}`,
         );
@@ -72,8 +76,13 @@ export const parseValidatorNode = (
           // Handle v.id("tableName")
           case "id": {
             const args = callExpr.getArguments();
-            if (args.length === 1 && Node.isStringLiteral(args[0])) {
-              const tableName = args[0].getLiteralText();
+            const identifier = args[0];
+            if (
+              args.length === 1 &&
+              identifier &&
+              Node.isStringLiteral(identifier)
+            ) {
+              const tableName = identifier.getLiteralText();
               return { type: "id", isOptional, tableName };
             } else {
               console.warn(
@@ -88,6 +97,12 @@ export const parseValidatorNode = (
             const args = callExpr.getArguments();
             if (args.length === 1) {
               const arg = args[0];
+              if (!arg) {
+                console.warn(
+                  "    - v.literal() called without a single argument.",
+                );
+                return { type: "literal", isOptional };
+              }
               let literalValue: ParsedValidatorResult["value"] = undefined;
               if (Node.isStringLiteral(arg))
                 literalValue = arg.getLiteralText();
@@ -127,8 +142,15 @@ export const parseValidatorNode = (
           case "array": {
             const args = callExpr.getArguments();
             if (args.length === 1) {
+              const elementArg = args[0];
+              if (!elementArg) {
+                console.warn(
+                  "    - v.array() called without exactly one argument.",
+                );
+                return { type: "array", isOptional };
+              }
               const elementValidator = parseValidatorNode(
-                args[0],
+                elementArg,
                 reusedValidators,
                 visitedIdentifiers,
               );
@@ -148,8 +170,13 @@ export const parseValidatorNode = (
           // Handle v.object({ field: validator, ... })
           case "object": {
             const args = callExpr.getArguments();
-            if (args.length === 1 && Node.isObjectLiteralExpression(args[0])) {
-              const objectLiteral = args[0];
+            const firstArg = args[0];
+            if (
+              args.length === 1 &&
+              firstArg &&
+              Node.isObjectLiteralExpression(firstArg)
+            ) {
+              const objectLiteral = firstArg;
               const fieldsMap = new Map<string, ParsedValidatorResult>();
 
               objectLiteral.getProperties().forEach((prop) => {

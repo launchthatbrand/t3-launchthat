@@ -12,7 +12,7 @@ import {
   SelectContent,
   SelectGroup,
   SelectTrigger,
-} from '~/components/ui/select'
+} from '@acme/ui/select'
 
 import { blockTypeToBlockName } from '~/components/editor/plugins/toolbar/block-format/block-format-data'
 

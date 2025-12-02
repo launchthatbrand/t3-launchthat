@@ -4,7 +4,7 @@ import { useRef, JSX } from 'react'
 import { calculateZoomLevel } from '@lexical/utils'
 import type { LexicalEditor } from 'lexical'
 
-import { Button } from '~/components/ui/button'
+import { Button } from '@acme/ui/button'
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)

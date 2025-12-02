@@ -7,7 +7,7 @@ import {
   SelectContent,
   SelectGroup,
   SelectTrigger,
-} from '~/components/ui/select'
+} from '@acme/ui/select'
 
 import { useEditorModal } from '~/components/editor/editor-hooks/use-modal'
 

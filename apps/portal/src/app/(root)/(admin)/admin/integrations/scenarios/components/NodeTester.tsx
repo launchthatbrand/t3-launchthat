@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 "use client";
 
+import { useState } from "react";
+import { api } from "@convex-config/_generated/api";
+import { useAction, useMutation, useQuery } from "convex/react";
 import {
   BrainCircuit,
   Code,
@@ -9,6 +12,7 @@ import {
   Play,
   Webhook,
 } from "lucide-react";
+
 import {
   Button,
   Card,
@@ -22,13 +26,10 @@ import {
   TabsList,
   TabsTrigger,
 } from "@acme/ui";
-import { NodeTestResult, SupportedApp, appActions } from "../types";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { JSONView } from "@acme/ui/json-view";
 
-import { JSONView } from "~/components/ui/JSONView";
-import { api } from "@convex-config/_generated/api";
+import { appActions, NodeTestResult, SupportedApp } from "../types";
 import { getNodeMockData } from "../utils";
-import { useState } from "react";
 
 interface NodeTesterProps {
   nodeId: string;
@@ -585,7 +586,7 @@ export function NodeTester({
                   </div>
                 </div>
               ) : (
-                <div className="py-4 text-center text-muted-foreground">
+                <div className="text-muted-foreground py-4 text-center">
                   No data available
                 </div>
               )}
@@ -616,7 +617,7 @@ export function NodeTester({
                   </div>
                 </div>
               ) : (
-                <div className="py-4 text-center text-muted-foreground">
+                <div className="text-muted-foreground py-4 text-center">
                   No schema available
                 </div>
               )}
@@ -635,8 +636,8 @@ export function NodeTester({
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center rounded bg-muted p-2 text-sm">
-                        <span className="mr-2 rounded bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
+                      <div className="bg-muted flex items-center rounded p-2 text-sm">
+                        <span className="bg-primary text-primary-foreground mr-2 rounded px-2 py-1 text-xs font-bold">
                           {testResult.requestInfo.method}
                         </span>
                         <code>{testResult.requestInfo.endpoint}</code>
@@ -654,7 +655,7 @@ export function NodeTester({
                   </div>
                 </div>
               ) : (
-                <div className="py-4 text-center text-muted-foreground">
+                <div className="text-muted-foreground py-4 text-center">
                   No request information available
                 </div>
               )}
@@ -686,7 +687,7 @@ export function NodeTester({
                           )}
                         </span>
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-muted-foreground text-sm">
                         <span className="font-medium">Time:</span>{" "}
                         {formatTiming(testResult.responseInfo.timing)}
                       </div>
@@ -701,7 +702,7 @@ export function NodeTester({
                   </div>
                 </div>
               ) : (
-                <div className="py-4 text-center text-muted-foreground">
+                <div className="text-muted-foreground py-4 text-center">
                   No response information available
                 </div>
               )}
@@ -710,7 +711,7 @@ export function NodeTester({
             <TabsContent value="error" className="py-2">
               {testResult.error ? (
                 <div className="space-y-4">
-                  <div className="rounded border border-destructive bg-destructive/10 p-4 text-destructive">
+                  <div className="border-destructive bg-destructive/10 text-destructive rounded border p-4">
                     {testResult.error}
                   </div>
 
@@ -731,7 +732,7 @@ export function NodeTester({
                   )}
                 </div>
               ) : (
-                <div className="py-4 text-center text-muted-foreground">
+                <div className="text-muted-foreground py-4 text-center">
                   No errors
                 </div>
               )}
@@ -740,7 +741,7 @@ export function NodeTester({
         </CardContent>
       ) : (
         <CardContent>
-          <div className="py-8 text-center text-muted-foreground">
+          <div className="text-muted-foreground py-8 text-center">
             {canTest
               ? "Click the Run Test button to see sample data from this node"
               : "Configure this node before testing"}
@@ -748,7 +749,7 @@ export function NodeTester({
         </CardContent>
       )}
 
-      <CardFooter className="text-xs text-muted-foreground">
+      <CardFooter className="text-muted-foreground text-xs">
         {testResult?.data ? (
           <p>This data can be referenced in downstream nodes</p>
         ) : (

@@ -1,7 +1,7 @@
 import AvailabilityChecker from "@/components/availability-checker";
 import Calendar from "@/components/calendar";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@acme/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { EventsProvider } from "@/context/events-context";
 
 export default function Home() {

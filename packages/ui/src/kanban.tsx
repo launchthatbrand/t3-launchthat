@@ -20,7 +20,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
-import { cn } from "@acme/ui";
+import { cn } from "./lib/utils";
 
 import { Button, buttonVariants } from "./button";
 import { Skeleton } from "./skeleton";

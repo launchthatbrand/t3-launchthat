@@ -12,7 +12,7 @@ import {
   Tally3,
 } from "lucide-react";
 
-import { cn } from "@acme/ui";
+import { cn } from "../../lib/utils";
 import { Button } from "@acme/ui/button";
 import {
   Command,

@@ -14,7 +14,7 @@ import {
 } from 'lexical'
 import { RedoIcon, UndoIcon } from 'lucide-react'
 
-import { Button } from '~/components/ui/button'
+import { Button } from '@acme/ui/button'
 
 import { useToolbarContext } from '~/components/editor/context/toolbar-context'
 
