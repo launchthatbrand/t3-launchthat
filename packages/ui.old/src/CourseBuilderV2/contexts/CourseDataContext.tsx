@@ -1,3 +1,5 @@
+"use client";
+
 import React, { createContext, useContext } from "react";
 
 import type { Id } from "../../../../../apps/wsa/convex/_generated/dataModel";

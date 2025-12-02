@@ -1,3 +1,5 @@
+"use client";
+
 import type { CollectionSlug, Data, ListQuery } from "@convexcms/core";
 import { createContext, use } from "react";
 

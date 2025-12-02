@@ -1,3 +1,5 @@
+"use client";
+
 import type { DragEndEvent } from "@dnd-kit/core";
 import type { ColumnDef, Row, SortingState } from "@tanstack/react-table";
 import * as React from "react";

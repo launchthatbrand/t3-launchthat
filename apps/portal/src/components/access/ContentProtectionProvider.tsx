@@ -1,6 +1,6 @@
-// Create a new content protection provider
 "use client";
 
+// Create a new content protection provider
 import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import React, {
   createContext,

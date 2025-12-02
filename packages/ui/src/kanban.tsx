@@ -1,5 +1,6 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+"use client";
 
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable react-compiler/react-compiler */
 import type {
   ChangeEvent,
@@ -20,9 +21,8 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
-import { cn } from "./lib/utils";
-
 import { Button, buttonVariants } from "./button";
+import { cn } from "./lib/utils";
 import { Skeleton } from "./skeleton";
 import { Textarea } from "./textarea";
 import {
@@ -191,7 +191,7 @@ export function KanbanBoardLiveRegion({
       aria-live={ariaLiveType}
       aria-atomic
       className={cn(
-        "clip-[rect(0_0_0_0)] clip-path-[inset(100%)] fixed left-0 top-0 -m-px h-px w-px overflow-hidden whitespace-nowrap border-0 p-0",
+        "clip-[rect(0_0_0_0)] clip-path-[inset(100%)] fixed top-0 left-0 -m-px h-px w-px overflow-hidden border-0 p-0 whitespace-nowrap",
         className,
       )}
       id={id}
@@ -541,7 +541,7 @@ export function KanbanBoardColumnTitle({
   return (
     <h2
       className={cn(
-        "inline-flex items-center text-sm font-medium text-muted-foreground",
+        "text-muted-foreground inline-flex items-center text-sm font-medium",
         className,
       )}
       ref={ref}
@@ -558,7 +558,7 @@ export function KanbanBoardColumnIconButton({
 }: ComponentProps<typeof Button>) {
   return (
     <Button
-      className={cn("size-6 text-muted-foreground", className)}
+      className={cn("text-muted-foreground size-6", className)}
       variant="ghost"
       size="icon"
       ref={ref}
@@ -685,7 +685,7 @@ export function KanbanBoardColumnButton({
   return (
     <Button
       className={cn(
-        "w-full justify-start bg-sidebar text-primary hover:text-primary/80",
+        "bg-sidebar text-primary hover:text-primary/80 w-full justify-start",
         className,
       )}
       variant="outline"
@@ -733,7 +733,7 @@ export function KanbanBoardCard({
       aria-roledescription="draggable"
       className={cn(
         kanbanBoardCardClassNames,
-        "inline-flex w-full cursor-grab touch-manipulation flex-col gap-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        "focus-visible:ring-ring inline-flex w-full cursor-grab touch-manipulation flex-col gap-1 focus-visible:ring-1 focus-visible:outline-none",
         isDragging
           ? "cursor-grabbing active:cursor-grabbing"
           : "group relative",
@@ -780,7 +780,7 @@ export function KanbanBoardCardDescription({
   return (
     <p
       className={cn(
-        "whitespace-pre-wrap text-xs leading-5 text-card-foreground",
+        "text-card-foreground text-xs leading-5 whitespace-pre-wrap",
         className,
       )}
       ref={ref}
@@ -863,7 +863,7 @@ export function KanbanBoardCardButtonGroup({
     <div
       ref={ref}
       className={cn(
-        "absolute right-2.5 top-2.5 z-40 hidden items-center bg-background",
+        "bg-background absolute top-2.5 right-2.5 z-40 hidden items-center",
         !disabled && "group-focus-within:flex group-hover:flex",
         className,
       )}
@@ -909,7 +909,7 @@ export function KanbanBoardCardButton({
     <div
       className={cn(
         buttonVariants({ size: "icon", variant: "ghost" }),
-        "size-5 border border-border hover:cursor-default [&_svg]:size-3.5",
+        "border-border size-5 border hover:cursor-default [&_svg]:size-3.5",
         className,
       )}
       onKeyDown={handleKeyDown}
