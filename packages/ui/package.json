@@ -81,6 +81,7 @@
     "tailwind-merge": "^3.3.1",
     "uuid": "catalog:",
     "vaul": "^1.1.2",
+    "zod": "catalog:",
     "zustand": "catalog:"
   },
   "devDependencies": {
@@ -92,8 +93,7 @@
     "eslint": "catalog:",
     "prettier": "catalog:",
     "react": "catalog:react19",
-    "typescript": "catalog:",
-    "zod": "catalog:"
+    "typescript": "catalog:"
   },
   "peerDependencies": {
     "react": "catalog:react19",
