@@ -32,7 +32,10 @@
   },
   "dependencies": {
     "@acme/ui": "workspace:*",
-    "launchthat-plugin-core": "workspace:*"
+    "@hookform/resolvers": "catalog:",
+    "launchthat-plugin-core": "workspace:*",
+    "react-hook-form": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@acme/eslint-config": "workspace:*",
