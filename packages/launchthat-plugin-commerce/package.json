@@ -23,8 +23,8 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "launchthat-plugin-core": "workspace:*",
     "@hookform/resolvers": "catalog:",
+    "launchthat-plugin-core": "workspace:*",
     "react-hook-form": "catalog:",
     "zod": "catalog:"
   },
