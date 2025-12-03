@@ -9,7 +9,7 @@
       "@portal/convexspec": ["../../apps/portal/convexspec.ts"],
       "@acme/ui": ["../ui/src/index"],
       "@acme/ui/*": ["../ui/src/*"],
-      "@/*": ["../ui/src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src"],

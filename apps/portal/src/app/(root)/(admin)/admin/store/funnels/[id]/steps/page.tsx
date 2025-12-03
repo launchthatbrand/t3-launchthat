@@ -19,12 +19,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-
 import { EntityList } from "@acme/ui/entity-list/EntityList";
+
 import { FunnelFlowEditor } from "./_components/FunnelFlowEditor";
 import { FunnelStepForm } from "./_components/FunnelStepForm";
 
-interface StepRow {
+interface StepRow extends Record<string, unknown> {
   _id: Id<"funnelSteps">;
   type: "landing" | "funnelCheckout" | "upsell" | "order_confirmation";
   position: number;

@@ -1,7 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -59,6 +59,9 @@ interface NavMainProps {
 export function NavMain({ items, sections }: NavMainProps) {
   const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement>(null);
+  const [focusedSectionLabel, setFocusedSectionLabel] = useState<string | null>(
+    null,
+  );
 
   // Check if a given path is active
   const isActive = (url: string) => {
@@ -89,6 +92,13 @@ export function NavMain({ items, sections }: NavMainProps) {
       : items && items.length > 0
         ? [{ items }]
         : [];
+
+  const visibleSections =
+    focusedSectionLabel != null
+      ? normalizedSections.filter(
+          (section) => section.label === focusedSectionLabel,
+        )
+      : normalizedSections;
 
   if (normalizedSections.length === 0) {
     return null;
@@ -239,7 +249,18 @@ export function NavMain({ items, sections }: NavMainProps) {
         ref={containerRef}
         className="flex flex-col gap-4 overflow-y-auto"
       >
-        {normalizedSections.map((section, index) => {
+        {focusedSectionLabel && (
+          <button
+            type="button"
+            onClick={() => setFocusedSectionLabel(null)}
+            className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex items-center gap-2 rounded-md px-2 py-1 text-sm transition-colors"
+          >
+            <MoveLeftIcon className="h-4 w-4" />
+            Go Back
+          </button>
+        )}
+
+        {visibleSections.map((section, index) => {
           if (!section.label) {
             return (
               <div key={`section-${index}`} className="flex flex-col gap-2">
@@ -250,20 +271,43 @@ export function NavMain({ items, sections }: NavMainProps) {
 
           const isSectionActive = sectionIsActive(section);
 
+          const handleFocusSection = () => {
+            if (focusedSectionLabel === section.label) {
+              setFocusedSectionLabel(null);
+              return;
+            }
+            setFocusedSectionLabel(section.label);
+          };
+
           return (
             <Collapsible
               key={section.label}
               defaultOpen={true}
               className="group/collapsible flex flex-col gap-2"
             >
-              <SidebarGroupLabel
-                asChild
-                className="group/label text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-sm"
-              >
-                <CollapsibleTrigger className="flex items-center px-2 py-1">
-                  {section.label}
-                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                </CollapsibleTrigger>
+              <SidebarGroupLabel className="group/label text-sidebar-foreground text-sm">
+                <div className="flex items-center gap-2 px-2 py-1">
+                  <button
+                    type="button"
+                    onClick={handleFocusSection}
+                    className={cn(
+                      "flex-1 text-left transition-colors",
+                      focusedSectionLabel === section.label
+                        ? "text-sidebar-accent-foreground font-semibold"
+                        : "hover:text-sidebar-accent-foreground",
+                    )}
+                  >
+                    {section.label}
+                  </button>
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      className="hover:text-sidebar-accent-foreground text-sidebar-foreground transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </CollapsibleTrigger>
+                </div>
               </SidebarGroupLabel>
               <CollapsibleContent>
                 {renderMenuItems(section.items)}

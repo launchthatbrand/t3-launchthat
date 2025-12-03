@@ -16,6 +16,7 @@ import {
   getCanonicalPostSegments,
 } from "~/lib/postTypes/routing";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
 import { PuckContentRenderer } from "../../../../components/puckeditor/PuckContentRenderer";
 
 type PluginMatch = ReturnType<typeof findPostTypeBySlug>;
@@ -43,7 +44,7 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     );
     if (archiveTemplateData) {
       return (
-        <main className="min-h-screen bg-background">
+        <main className="bg-background min-h-screen">
           <PuckContentRenderer data={archiveTemplateData} />
         </main>
       );
@@ -169,10 +170,14 @@ export default async function FrontendCatchAllPage(props: PageProps) {
   }
   const pluginSingle = pluginMatch?.postType.frontend?.single;
   if (pluginMatch && pluginSingle?.render) {
-    return pluginSingle.render({
+    const rendered = pluginSingle.render({
       post,
       postType: pluginMatch.postType,
     });
+    if (pluginMatch.plugin?.id === "socialfeed") {
+      return <PortalSocialFeedProvider>{rendered}</PortalSocialFeedProvider>;
+    }
+    return rendered;
   }
 
   return (
@@ -316,7 +321,7 @@ function PostDetail({
 
   if (hasPuckContent && puckData) {
     return (
-      <main className="min-h-screen bg-background">
+      <main className="bg-background min-h-screen">
         <PuckContentRenderer data={puckData} />
       </main>
     );
@@ -326,12 +331,12 @@ function PostDetail({
     <main className="container mx-auto max-w-4xl space-y-6 py-10">
       <article className="space-y-6">
         <header className="space-y-2">
-          <p className="text-sm uppercase tracking-wide text-muted-foreground">
+          <p className="text-muted-foreground text-sm tracking-wide uppercase">
             {contextLabel}
           </p>
           <h1 className="text-4xl font-bold">{post.title}</h1>
           {post.excerpt && (
-            <p className="text-lg text-muted-foreground">{post.excerpt}</p>
+            <p className="text-muted-foreground text-lg">{post.excerpt}</p>
           )}
           <PostMetaSummary post={post} postType={postType} />
         </header>
@@ -346,22 +351,22 @@ function PostDetail({
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
         ) : (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             This {contextLabel.toLowerCase()} does not have any content yet.
           </p>
         )}
         {customFieldEntries.length > 0 ? (
-          <section className="rounded-lg border bg-card p-6">
-            <h2 className="text-xl font-semibold text-foreground">
+          <section className="bg-card rounded-lg border p-6">
+            <h2 className="text-foreground text-xl font-semibold">
               Custom Fields
             </h2>
             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
               {customFieldEntries?.map((entry) => (
                 <div key={entry.key} className="space-y-1">
-                  <dt className="text-sm font-medium text-muted-foreground">
+                  <dt className="text-muted-foreground text-sm font-medium">
                     {entry.label}
                   </dt>
-                  <dd className="text-base text-foreground">{entry.value}</dd>
+                  <dd className="text-foreground text-base">{entry.value}</dd>
                 </div>
               ))}
             </dl>
@@ -423,12 +428,12 @@ function PostMetaSummary({
   }
 
   return (
-    <dl className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+    <dl className="text-muted-foreground flex flex-wrap gap-4 text-sm">
       {details?.map((item) => (
         <div key={item.label}>
           <dt className="sr-only">{item.label}</dt>
           <dd>
-            <span className="font-medium text-foreground">{item.label}:</span>{" "}
+            <span className="text-foreground font-medium">{item.label}:</span>{" "}
             {item.value}
           </dd>
         </div>
@@ -641,7 +646,7 @@ function PostArchive({
   return (
     <main className="container mx-auto max-w-5xl space-y-6 py-10">
       <header className="space-y-2 text-center">
-        <p className="text-sm uppercase tracking-wide text-muted-foreground">
+        <p className="text-muted-foreground text-sm tracking-wide uppercase">
           {postType.name}
         </p>
         <h1 className="text-4xl font-bold">{postType.name} Archive</h1>
@@ -649,7 +654,7 @@ function PostArchive({
       </header>
 
       {posts.length === 0 ? (
-        <div className="rounded-lg border p-10 text-center text-muted-foreground">
+        <div className="text-muted-foreground rounded-lg border p-10 text-center">
           No {postType.name.toLowerCase()} have been published yet.
         </div>
       ) : (
@@ -659,19 +664,19 @@ function PostArchive({
             return (
               <article
                 key={post._id}
-                className="rounded-lg border bg-card p-6 shadow-sm transition hover:shadow-md"
+                className="bg-card rounded-lg border p-6 shadow-sm transition hover:shadow-md"
               >
                 <Link href={url} className="space-y-3">
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">
+                    <p className="text-muted-foreground text-sm font-medium">
                       {postType.name}
                     </p>
-                    <h2 className="text-2xl font-semibold text-foreground">
+                    <h2 className="text-foreground text-2xl font-semibold">
                       {post.title || "Untitled"}
                     </h2>
                   </div>
                   {post.excerpt ? (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-muted-foreground text-sm">
                       {post.excerpt}
                     </p>
                   ) : null}

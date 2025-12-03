@@ -1,6 +1,10 @@
-import type { PluginDefinition } from "launchthat-plugin-core";
+import type {
+  PluginDefinition,
+  PluginFrontendSingleRendererProps,
+} from "launchthat-plugin-core";
 
 import { SocialHubDashboard } from "./components/SocialHubDashboard";
+import { SocialFeedGroupSingle } from "./frontend/SocialFeedGroupSingle";
 
 export const socialFeedPlugin: PluginDefinition = {
   id: "socialfeed",
@@ -111,6 +115,25 @@ export const socialFeedPlugin: PluginDefinition = {
         icon: "Users",
         position: 36,
         parent: "social",
+      },
+      frontend: {
+        single: {
+          render: ({ post }: PluginFrontendSingleRendererProps) => {
+            const typedPost = post as any;
+            return (
+              <SocialFeedGroupSingle
+                post={{
+                  _id: typedPost._id,
+                  title: typedPost.title,
+                  excerpt: typedPost.excerpt,
+                  content: typedPost.content,
+                  slug: typedPost.slug,
+                  organizationId: typedPost.organizationId,
+                }}
+              />
+            );
+          },
+        },
       },
     },
   ],
