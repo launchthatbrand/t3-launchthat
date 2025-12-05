@@ -2,7 +2,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { api } from "@/convex/_generated/api";
-import { formatStreamPart } from "@ai-sdk/ui-utils";
+import { formatDataStreamPart } from "@ai-sdk/ui-utils";
 import { getConvex } from "~/lib/convex";
 import { resolveSupportOrganizationId } from "~/lib/support/resolveOrganizationId";
 import { z } from "zod";
@@ -10,7 +10,17 @@ import { z } from "zod";
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/await-thenable */
+
+interface HelpdeskArticleSummary {
+  entryId: Id<"posts">;
+  title?: string | null;
+  content?: string | null;
+  excerpt?: string | null;
+  slug?: string | null;
+  updatedAt?: number | null;
+}
 
 const messageSchema = z.object({
   id: z.string().optional(),
@@ -182,13 +192,13 @@ export async function GET(req: NextRequest) {
           ? Math.max(1, Math.min(25, Number(limitParam)))
           : 6;
 
-      const articles = await convex.query(
+      const articles = (await convex.query(
         api.plugins.support.queries.listHelpdeskArticles,
         {
           organizationId,
           limit,
         },
-      );
+      )) as HelpdeskArticleSummary[];
 
       const normalized = articles.map((article) => ({
         id: article.entryId,
@@ -228,24 +238,11 @@ export async function GET(req: NextRequest) {
 }
 
 function streamTextResponse(content = "") {
-  const messageId = `assistant-${Date.now().toString(36)}`;
   const normalized = content;
 
   const payload =
-    formatStreamPart("assistant_message", {
-      id: messageId,
-      role: "assistant",
-      content: [
-        {
-          type: "text",
-          text: {
-            value: "",
-          },
-        },
-      ],
-    }) +
-    formatStreamPart("text", normalized) +
-    formatStreamPart("finish_message", {
+    formatDataStreamPart("text", normalized) +
+    formatDataStreamPart("finish_message", {
       finishReason: "stop",
       usage: {
         promptTokens: 0,
