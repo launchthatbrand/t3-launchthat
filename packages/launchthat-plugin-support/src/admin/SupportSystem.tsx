@@ -1,29 +1,27 @@
 "use client";
 
-import type { GenericId as Id } from "convex/values";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-
-import { Button } from "@acme/ui/button";
+import type {
+  ContactDoc,
+  ConversationSummary,
+} from "./components/ConversationInspector";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@acme/ui/sidebar";
 import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type {
-  ContactDoc,
-  ConversationSummary,
-} from "./components/ConversationInspector";
+import { ArticlesView } from "./views/ArticlesView";
+import { Button } from "@acme/ui/button";
 import { ConversationLeftSidebar } from "./components/ConversationLeftSidebar";
 import { ConversationRightSidebar } from "./components/ConversationRightSidebar";
-import { useSupportConversations } from "./hooks/useSupportConversations";
-import { ArticlesView } from "./views/ArticlesView";
-import { TestView } from "./views/ConversationsView";
 import { DashboardView } from "./views/DashboardView";
-import { ResponsesView } from "./views/ResponsesView";
+import type { GenericId as Id } from "convex/values";
+import Link from "next/link";
 import { SettingsView } from "./views/SettingsView";
+import { TestView } from "./views/ConversationsView";
+import { useSupportConversations } from "./hooks/useSupportConversations";
 
 export interface SupportSystemProps {
   organizationId: Id<"organizations">;
@@ -39,7 +37,6 @@ export interface SupportSystemProps {
 
 const NAV_LINKS = [
   { label: "Dashboard", slug: "" },
-  { label: "Canned responses", slug: "responses" },
   { label: "Articles", slug: "articles" },
   { label: "Conversations", slug: "conversations" },
   { label: "Settings", slug: "settings" },
@@ -108,8 +105,6 @@ export function SupportSystem({
 
   const content = useMemo(() => {
     switch (routeKey) {
-      case "responses":
-        return <ResponsesView organizationId={organizationId} />;
       case "conversations":
         return (
           <TestView

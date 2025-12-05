@@ -1,17 +1,16 @@
 "use client";
 
+import type { ChatWidgetTab, HelpdeskArticle } from "./types";
 import type { FormEvent, MutableRefObject } from "react";
-import { Loader2 } from "lucide-react";
 
-import { cn } from "@acme/ui";
 import { Button } from "@acme/ui/button";
+import type { ChatHistoryMessage } from "../hooks/useSupportChatHistory";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
-import { Textarea } from "@acme/ui/textarea";
-
+import { Loader2 } from "lucide-react";
 import type { SupportChatSettings } from "../../settings";
-import type { ChatHistoryMessage } from "../hooks/useSupportChatHistory";
-import type { ChatWidgetTab, HelpdeskArticle } from "./types";
+import { Textarea } from "@acme/ui/textarea";
+import { cn } from "@acme/ui";
 
 interface ContactFormState {
   fullName: string;

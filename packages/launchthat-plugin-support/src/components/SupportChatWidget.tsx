@@ -1,28 +1,44 @@
 "use client";
 
-import type { GenericId as Id } from "convex/values";
 import type { ChangeEvent, FormEvent } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useChat } from "@ai-sdk/react";
-import usePresence from "@convex-dev/presence/react";
-import { api } from "@portal/convexspec";
-import { useMutation, useQuery } from "convex/react";
-import { Loader2, MessageCircle } from "lucide-react";
-
-import { cn } from "@acme/ui";
-
-import type { SupportChatSettings } from "../settings";
-import type { ChatHistoryMessage } from "./hooks/useSupportChatHistory";
 import type { ChatWidgetTab, HelpdeskArticle } from "./supportChat/types";
+import { Loader2, MessageCircle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+
+import type { ChatHistoryMessage } from "./hooks/useSupportChatHistory";
+import { ChatWidgetContent } from "./supportChat/ChatWidgetContent";
+import { ChatWidgetFooter } from "./supportChat/ChatWidgetFooter";
+import { ChatWidgetHeader } from "./supportChat/ChatWidgetHeader";
+import type { GenericId as Id } from "convex/values";
 import type { StoredSupportContact } from "./supportChat/utils";
+import type { SupportChatSettings } from "../settings";
+import { api } from "@portal/convexspec";
+import { cn } from "@acme/ui";
+import { parseLexicalRichText } from "./supportChat/utils";
+import { useChat } from "@ai-sdk/react";
 import { useHelpdeskArticles } from "./hooks/useHelpdeskArticles";
+import usePresence from "@convex-dev/presence/react";
 import { useSupportChatHistory } from "./hooks/useSupportChatHistory";
 import { useSupportChatSession } from "./hooks/useSupportChatSession";
 import { useSupportChatSettings } from "./hooks/useSupportChatSettings";
 import { useSupportContactStorage } from "./hooks/useSupportContactStorage";
-import { ChatWidgetContent } from "./supportChat/ChatWidgetContent";
-import { ChatWidgetFooter } from "./supportChat/ChatWidgetFooter";
-import { ChatWidgetHeader } from "./supportChat/ChatWidgetHeader";
+
+const stripFormattedPayload = (rawContent: string) => {
+  if (!rawContent) {
+    return rawContent;
+  }
+  const trimmed = rawContent.trim();
+  if (!trimmed.startsWith("{")) {
+    return rawContent;
+  }
+  try {
+    return parseLexicalRichText(trimmed);
+  } catch (error) {
+    console.warn("[support-chat] failed to parse rich text content", error);
+    return rawContent;
+  }
+};
 
 export interface SupportChatWidgetProps {
   organizationId?: string | null;
@@ -194,10 +210,22 @@ function ChatSurface({
       sessionId,
       contactId: contact?.contactId,
     },
+    onError: (err) => {
+      console.error("[support-chat] streaming error", err);
+    },
   });
 
   const displayedMessages = useMemo(
-    () => messages.filter((message) => message.role !== "system"),
+    () =>
+      messages
+        .filter((message) => message.role !== "system")
+        .map((message) => ({
+          ...message,
+          content:
+            typeof message.content === "string"
+              ? stripFormattedPayload(message.content)
+              : message.content,
+        })),
     [messages],
   );
   const previousMessageCountRef = useRef(displayedMessages.length);

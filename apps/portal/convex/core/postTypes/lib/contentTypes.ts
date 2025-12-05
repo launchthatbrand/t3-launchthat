@@ -6,8 +6,8 @@
 import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "@convex-config/_generated/server";
 
-import { PORTAL_TENANT_ID } from "../../../constants";
 import { FIELD_TYPES } from "../schema";
+import { PORTAL_TENANT_ID } from "../../../constants";
 
 /**
  * Field definition interface
@@ -282,8 +282,9 @@ export async function updateEntryCount(ctx: MutationCtx, postTypeSlug: string) {
         entryCount = entries.length;
         break;
       }
-      case "events": {
-        entries = await ctx.db.query("events").collect();
+      case "contact":
+      case "contacts": {
+        entries = await ctx.db.query("contacts").collect();
         entryCount = entries.length;
         break;
       }
@@ -293,21 +294,6 @@ export async function updateEntryCount(ctx: MutationCtx, postTypeSlug: string) {
       }
       case "products": {
         entries = await ctx.db.query("products").collect();
-        entryCount = entries.length;
-        break;
-      }
-      case "courses": {
-        entries = await ctx.db.query("courses").collect();
-        entryCount = entries.length;
-        break;
-      }
-      case "lessons": {
-        entries = await ctx.db.query("lessons").collect();
-        entryCount = entries.length;
-        break;
-      }
-      case "topics": {
-        entries = await ctx.db.query("topics").collect();
         entryCount = entries.length;
         break;
       }

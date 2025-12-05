@@ -1,11 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
 import { Download, Upload } from "lucide-react";
 
 import { Button } from "@acme/ui";
+import { api } from "@/convex/_generated/api";
+import { useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
 
 // Define the Contact type based on the schema
 interface Contact {
@@ -48,9 +48,12 @@ export const ImportExportButtons = ({
   isAdmin = false,
 }: ImportExportButtonsProps) => {
   const router = useRouter();
-  const exportContacts = useQuery(api.contacts.queries.exportContacts, {
-    userId,
-  });
+  const exportContacts = useQuery(
+    api.core.crm.contacts.queries.exportContacts,
+    {
+      userId,
+    },
+  );
 
   const handleImport = () => {
     const importPath = isAdmin ? "/admin/contacts/import" : "/contacts/import";

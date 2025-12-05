@@ -3,10 +3,10 @@ import type { Active } from "@dnd-kit/core";
 import React from "react";
 
 import { DragOverlayPreview } from "@acme/dnd";
-import { cn } from "../../lib/utils";
 
 import type { Lesson, Quiz } from "../store/useCourseBuilderStore";
 import type { LessonItem, QuizItem, TopicItem } from "../types/content";
+import { cn } from "../../lib/cn";
 
 type OverlaySourceItem = { id: string; title?: string; type?: string };
 

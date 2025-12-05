@@ -2,11 +2,22 @@ import type {
   PluginDefinition,
   PluginFrontendSingleRendererProps,
 } from "launchthat-plugin-core";
+import type { ComponentType, ReactNode } from "react";
 
 import { SocialHubDashboard } from "./components/SocialHubDashboard";
 import { SocialFeedGroupSingle } from "./frontend/SocialFeedGroupSingle";
 
-export const socialFeedPlugin: PluginDefinition = {
+export const SOCIAL_FEED_FRONTEND_PROVIDER_ID = "socialfeed-client";
+
+interface SocialFeedPluginOverrides {
+  providers?: Record<string, ComponentType<{ children: ReactNode }>>;
+}
+
+const defaultOverrides: SocialFeedPluginOverrides = {};
+
+const createSocialFeedPluginDefinition = (
+  overrides: SocialFeedPluginOverrides = defaultOverrides,
+): PluginDefinition => ({
   id: "socialfeed",
   name: "Social Feed",
   description: "Activity feeds, reactions, and group conversations.",
@@ -117,6 +128,7 @@ export const socialFeedPlugin: PluginDefinition = {
         parent: "social",
       },
       frontend: {
+        providers: [SOCIAL_FEED_FRONTEND_PROVIDER_ID],
         single: {
           render: ({ post }: PluginFrontendSingleRendererProps) => {
             const typedPost = post as any;
@@ -137,6 +149,7 @@ export const socialFeedPlugin: PluginDefinition = {
       },
     },
   ],
+  providers: overrides.providers,
   adminMenus: [
     {
       label: "Social Hub",
@@ -160,6 +173,14 @@ export const socialFeedPlugin: PluginDefinition = {
       group: "social",
     },
   ],
+});
+
+export let socialFeedPlugin = createSocialFeedPluginDefinition();
+
+export const configureSocialFeedPlugin = (
+  overrides: SocialFeedPluginOverrides,
+) => {
+  socialFeedPlugin = createSocialFeedPluginDefinition(overrides);
 };
 
 export default socialFeedPlugin;

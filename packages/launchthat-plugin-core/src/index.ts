@@ -53,12 +53,74 @@ export interface PluginPostTypeFrontendConfig {
   single?: {
     render: (props: PluginFrontendSingleRendererProps) => ReactNode;
   };
+  providers?: string[];
 }
 
 export interface PluginPermalinkConfig {
   canonical?: string;
   aliases?: string[];
 }
+
+export interface PluginPostTypeMetaBox {
+  id: string;
+  title: string;
+  description?: string;
+  location?: "main" | "sidebar";
+  priority?: number;
+  fieldKeys: string[];
+  rendererKey?: string;
+}
+
+export type PluginMetaBoxFieldValue = string | number | boolean | null;
+
+export interface PluginMetaBoxRendererField {
+  key: string;
+  name: string;
+  description?: string | null;
+  type: string;
+  required?: boolean;
+  options?: unknown;
+}
+
+export interface PluginMetaBoxRendererContext {
+  pluginId: string;
+  pluginName: string;
+  postTypeSlug: string;
+  organizationId?: string;
+  postId?: string;
+  isNewRecord: boolean;
+  post?: unknown;
+  postType?: unknown;
+}
+
+export interface PluginMetaBoxRendererProps {
+  context: PluginMetaBoxRendererContext;
+  metaBox: {
+    id: string;
+    title: string;
+    description?: string | null;
+    location: "main" | "sidebar";
+  };
+  fields: PluginMetaBoxRendererField[];
+  getValue: (fieldKey: string) => PluginMetaBoxFieldValue | undefined;
+  setValue: (fieldKey: string, value: PluginMetaBoxFieldValue) => void;
+  renderField: (
+    fieldKey: string,
+    options?: {
+      idSuffix?: string;
+    },
+  ) => ReactNode;
+  renderFieldControl: (
+    fieldKey: string,
+    options?: {
+      idSuffix?: string;
+    },
+  ) => ReactNode;
+}
+
+export type PluginMetaBoxRenderer = (
+  props: PluginMetaBoxRendererProps,
+) => ReactNode;
 
 export interface PluginPostTypeConfig {
   name: string;
@@ -72,9 +134,13 @@ export interface PluginPostTypeConfig {
   supports?: PluginPostTypeSupports;
   rewrite?: PluginPostTypeRewrite;
   adminMenu: PluginPostTypeAdminMenu;
+  storageKind?: "posts" | "custom";
+  storageTables?: string[];
   singleView?: PluginPostSingleViewConfig;
   adminArchiveView?: PluginPostArchiveViewConfig;
   frontend?: PluginPostTypeFrontendConfig;
+  metaBoxes?: PluginPostTypeMetaBox[];
+  metaBoxRenderers?: Record<string, PluginMetaBoxRenderer>;
 }
 
 export interface PluginSettingComponentProps {
@@ -121,6 +187,13 @@ export interface PluginSingleViewTabDefinition {
   description?: string;
   usesDefaultEditor?: boolean;
   render?: (props: PluginSingleViewComponentProps) => ReactNode;
+  metaBoxIds?: string[];
+  showGeneralPanel?: boolean;
+  showCustomFieldsPanel?: boolean;
+  mainMetaBoxIds?: string[];
+  sidebarMetaBoxIds?: string[];
+  useDefaultMainMetaBoxes?: boolean;
+  useDefaultSidebarMetaBoxes?: boolean;
 }
 
 export interface PluginPostSingleViewConfig {
@@ -154,6 +227,7 @@ export interface PluginDefinition {
   settingsPages?: PluginSettingDefinition[];
   activation?: PluginActivationConfig;
   adminMenus?: PluginAdminMenuEntry[];
+  providers?: Record<string, ComponentType<{ children: ReactNode }>>;
 }
 
 export interface PluginContext {

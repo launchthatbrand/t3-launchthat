@@ -1,18 +1,11 @@
 "use client";
 
-import type { GenericId as Id } from "convex/values";
-import Link from "next/link";
-import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
 import {
   Activity,
   ArrowRight,
   MessageSquareText,
   NotebookPen,
 } from "lucide-react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -21,7 +14,13 @@ import {
   CardTitle,
 } from "@acme/ui/card";
 
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import type { GenericId as Id } from "convex/values";
+import Link from "next/link";
 import { SUPPORT_COPY } from "../constants/supportCopy";
+import { api } from "@portal/convexspec";
+import { useQuery } from "convex/react";
 
 interface ConversationSummary {
   sessionId: string;
@@ -31,7 +30,7 @@ interface ConversationSummary {
   totalMessages: number;
 }
 
-interface CannedResponseSummary {
+interface ArticleSummary {
   _id: string;
 }
 
@@ -44,16 +43,20 @@ export function DashboardView({
   organizationId,
   tenantName,
 }: DashboardViewProps) {
-  const cannedResponses = (useQuery(
-    api.plugins.support.queries.listCannedResponses,
-    { organizationId },
-  ) ?? []) as CannedResponseSummary[];
+  const helpdeskArticles = (useQuery(api.core.posts.queries.getAllPosts, {
+    organizationId,
+    filters: {
+      postTypeSlug: "helpdeskarticles",
+      status: "published",
+      limit: 200,
+    },
+  }) ?? []) as ArticleSummary[];
   const conversations = (useQuery(
     api.plugins.support.queries.listConversations,
     { organizationId, limit: 50 },
   ) ?? []) as ConversationSummary[];
 
-  const totalResponses = cannedResponses.length;
+  const totalArticles = helpdeskArticles.length;
   const activeConversations = conversations.length;
   const openConversations = conversations.filter(
     (conversation) => conversation.lastRole === "user",
@@ -71,9 +74,9 @@ export function DashboardView({
       <section>
         <div className="grid gap-4 md:grid-cols-3">
           <StatCard
-            title="Canned responses"
-            value={totalResponses}
-            description="Pre-programmed answers ready to serve instantly."
+            title="Helpdesk articles"
+            value={totalArticles}
+            description="Published long-form answers powering the widget."
             icon={<NotebookPen className="text-primary h-5 w-5" />}
           />
           <StatCard
@@ -104,11 +107,6 @@ export function DashboardView({
             <Badge variant="outline">{tenantName ?? "Org"}</Badge>
           </CardHeader>
           <CardContent className="space-y-3">
-            <QuickLink
-              href="/admin/support/responses"
-              label="Manage canned responses"
-              description="Add triggers, edit copy, and control priority."
-            />
             <QuickLink
               href="/admin/support/conversations"
               label="Review live conversations"

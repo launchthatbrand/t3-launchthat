@@ -1,5 +1,6 @@
 "use server";
 
+import type { Id } from "@/convex/_generated/dataModel";
 import { NextResponse } from "next/server";
 import { api } from "@/convex/_generated/api";
 import { z } from "zod";
@@ -21,11 +22,10 @@ export async function POST(request: Request) {
   try {
     const payload = contactSchema.parse(await request.json());
     const convex = getConvex();
-    const contactsApi = api as any;
     const contactId = await convex.mutation(
-      contactsApi.core.contacts.mutations.upsert,
+      api.core.crm.contacts.mutations.upsert,
       {
-        organizationId: payload.organizationId as never,
+        organizationId: payload.organizationId as Id<"organizations">,
         email: payload.email,
         phone: payload.phone,
         firstName: payload.firstName,

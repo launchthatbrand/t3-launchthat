@@ -1,15 +1,5 @@
 "use client";
 
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import type { ColumnDef } from "@tanstack/react-table";
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Edit, Loader2, Plus, Trash } from "lucide-react";
-import { toast } from "sonner";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -17,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import { ChevronLeft, Edit, Loader2, Plus, Trash } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,9 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
   Select,
   SelectContent,
@@ -36,10 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { Switch } from "@acme/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-import { Textarea } from "@acme/ui/textarea";
-
 import {
   useAddPostTypeField,
   useCreatePostType,
@@ -50,6 +36,19 @@ import {
   useRemovePostTypeField,
   useUpdatePostTypeEntryCounts,
 } from "./_api/postTypes";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import type { ColumnDef } from "@tanstack/react-table";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import Link from "next/link";
+import { Switch } from "@acme/ui/switch";
+import { Textarea } from "@acme/ui/textarea";
+import { toast } from "sonner";
 
 type FieldType =
   | "text"
@@ -678,6 +677,20 @@ export default function PostTypesSettingsPage() {
     </div>
   );
 
+  const resolveStorageTables = (postType: PostType) => {
+    if (postType.storageTables && postType.storageTables.length > 0) {
+      return postType.storageTables;
+    }
+    if (
+      !postType.storageKind ||
+      postType.storageKind === "posts" ||
+      postType.storageKind === null
+    ) {
+      return ["posts", "postsMeta"];
+    }
+    return [];
+  };
+
   const postTypeColumns: ColumnDefinition<PostType>[] = [
     {
       accessorKey: "name",
@@ -723,6 +736,31 @@ export default function PostTypesSettingsPage() {
           )}
         </div>
       ),
+    },
+    {
+      id: "storage",
+      header: <div className="text-center">DB</div>,
+      cell: (postType) => {
+        const tables = resolveStorageTables(postType);
+        if (!tables.length) {
+          return (
+            <div className="text-muted-foreground text-center text-sm">—</div>
+          );
+        }
+        return (
+          <div className="flex flex-col flex-wrap items-center justify-center gap-1">
+            {tables.map((table) => (
+              <Badge
+                key={`${postType._id}_${table}`}
+                variant="outline"
+                className="text-xs font-medium"
+              >
+                {table}
+              </Badge>
+            ))}
+          </div>
+        );
+      },
     },
     {
       id: "actions",

@@ -1,8 +1,9 @@
+import type { Id } from "@/convex/_generated/dataModel";
+
 import type {
   CarouselItemTemplate,
   TextAlignmentOption,
-} from "@/components/groups/GroupHeaderCarousel";
-import type { Id } from "@/convex/_generated/dataModel";
+} from "~/components/groups.old/GroupHeaderCarousel";
 
 export interface GroupWithDetails {
   _id: Id<"groups">;

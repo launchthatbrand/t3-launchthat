@@ -17,11 +17,149 @@ import {
 } from "./lib/contentTypes";
 import {
   postTypeAdminMenuValidator,
+  postTypeMetaBoxValidator,
   postTypeRewriteValidator,
+  postTypeStorageKindValidator,
+  postTypeStorageTablesValidator,
   postTypeSupportsValidator,
 } from "./schema";
 
-const DEFAULT_POST_TYPES = [
+const DEFAULT_POST_STORAGE_TABLES = ["posts", "postsMeta"] as const;
+
+const normalizeStorageTables = (tables: readonly string[]) =>
+  [...tables].sort();
+
+const storageTablesEqual = (
+  a: readonly string[] | undefined,
+  b: readonly string[],
+) => {
+  const sortedA = normalizeStorageTables(a ?? []);
+  const sortedB = normalizeStorageTables(b);
+  if (sortedA.length !== sortedB.length) {
+    return false;
+  }
+  return sortedA.every((value, index) => value === sortedB[index]);
+};
+
+const normalizeMetaBoxes = (boxes?: Doc<"postTypes">["metaBoxes"]) =>
+  (boxes ?? [])
+    .map((box) => ({
+      id: box.id,
+      title: box.title,
+      description: box.description ?? null,
+      location: box.location ?? "main",
+      priority: box.priority ?? null,
+      fieldKeys: [...box.fieldKeys],
+      rendererKey: box.rendererKey ?? null,
+    }))
+    .sort((a, b) => {
+      const priorityDelta = (a.priority ?? 0) - (b.priority ?? 0);
+      if (priorityDelta !== 0) {
+        return priorityDelta;
+      }
+      return a.id.localeCompare(b.id);
+    });
+
+const metaBoxesEqual = (
+  a?: Doc<"postTypes">["metaBoxes"],
+  b?: Doc<"postTypes">["metaBoxes"],
+) => {
+  const normalizedA = normalizeMetaBoxes(a);
+  const normalizedB = normalizeMetaBoxes(b);
+
+  if (normalizedA.length !== normalizedB.length) {
+    return false;
+  }
+
+  return normalizedA.every((box, index) => {
+    const other = normalizedB[index];
+    if (!other) return false;
+
+    if (
+      box.id !== other.id ||
+      box.title !== other.title ||
+      box.description !== other.description ||
+      box.location !== other.location ||
+      box.priority !== other.priority ||
+      box.rendererKey !== other.rendererKey
+    ) {
+      return false;
+    }
+
+    if (box.fieldKeys.length !== other.fieldKeys.length) {
+      return false;
+    }
+
+    return box.fieldKeys.every(
+      (fieldKey, fieldIndex) => fieldKey === other.fieldKeys[fieldIndex],
+    );
+  });
+};
+
+interface DefaultPostTypeConfig {
+  name: string;
+  slug: string;
+  description?: string;
+  isPublic: boolean;
+  supports?: Doc<"postTypes">["supports"];
+  rewrite?: Doc<"postTypes">["rewrite"];
+  adminMenu: Doc<"postTypes">["adminMenu"];
+  storageKind?: "posts" | "custom";
+  storageTables?: string[];
+  metaBoxes?: Doc<"postTypes">["metaBoxes"];
+}
+
+type DefaultFieldSeed = PostTypeField & {
+  isBuiltIn?: boolean;
+  isSystem?: boolean;
+};
+
+const DEFAULT_POST_TYPE_FIELDS: Record<string, DefaultFieldSeed[]> = {
+  helpdeskarticles: [
+    {
+      name: "Trigger phrases",
+      key: "trigger_phrases",
+      type: "textarea",
+      description:
+        "Comma or newline-separated keywords that should route visitors to this article.",
+      required: false,
+      searchable: false,
+      filterable: false,
+      order: 10,
+    },
+    {
+      name: "Trigger match mode",
+      key: "trigger_match_mode",
+      type: "select",
+      description: "Controls how visitor messages are matched against phrases.",
+      defaultValue: "contains",
+      options: [
+        { label: "Contains", value: "contains" },
+        { label: "Exact", value: "exact" },
+        { label: "Regex", value: "regex" },
+      ],
+      order: 11,
+    },
+    {
+      name: "Trigger priority",
+      key: "trigger_priority",
+      type: "number",
+      description: "Higher priorities win when multiple articles match.",
+      defaultValue: 0,
+      order: 12,
+    },
+    {
+      name: "Trigger active",
+      key: "trigger_is_active",
+      type: "boolean",
+      description: "Disable to skip this article when auto-responding.",
+      defaultValue: true,
+      order: 13,
+    },
+  ],
+};
+
+const DEFAULT_POST_TYPES: DefaultPostTypeConfig[] = [
   {
     name: "Posts",
     slug: "posts",
@@ -51,6 +189,8 @@ const DEFAULT_POST_TYPES = [
       icon: "FileText",
       position: 20,
     },
+    storageKind: "posts",
+    storageTables: [...DEFAULT_POST_STORAGE_TABLES],
   },
   {
     name: "Pages",
@@ -77,6 +217,8 @@ const DEFAULT_POST_TYPES = [
       icon: "File",
       position: 21,
     },
+    storageKind: "posts",
+    storageTables: [...DEFAULT_POST_STORAGE_TABLES],
   },
   {
     name: "Attachments",
@@ -104,6 +246,8 @@ const DEFAULT_POST_TYPES = [
       icon: "Image",
       position: 30,
     },
+    storageKind: "posts",
+    storageTables: [...DEFAULT_POST_STORAGE_TABLES],
   },
   {
     name: "Revisions",
@@ -124,6 +268,8 @@ const DEFAULT_POST_TYPES = [
     adminMenu: {
       enabled: false,
     },
+    storageKind: "posts",
+    storageTables: [...DEFAULT_POST_STORAGE_TABLES],
   },
   {
     name: "Nav Menu Item",
@@ -145,6 +291,8 @@ const DEFAULT_POST_TYPES = [
     adminMenu: {
       enabled: false,
     },
+    storageKind: "posts",
+    storageTables: [...DEFAULT_POST_STORAGE_TABLES],
   },
   {
     name: "Templates",
@@ -171,6 +319,131 @@ const DEFAULT_POST_TYPES = [
       icon: "LayoutTemplate",
       position: 25,
     },
+    storageKind: "posts",
+    storageTables: [...DEFAULT_POST_STORAGE_TABLES],
+  },
+  {
+    name: "Contacts",
+    slug: "contact",
+    description: "CRM contacts managed by the built-in CRM plugin.",
+    isPublic: false,
+    supports: {
+      title: true,
+      customFields: true,
+    },
+    rewrite: {
+      hasArchive: false,
+      singleSlug: "contact",
+    },
+    adminMenu: {
+      enabled: true,
+      label: "Contacts",
+      slug: "contacts",
+      icon: "Users",
+      position: 15,
+    },
+    storageKind: "custom",
+    storageTables: ["contacts", "contact_meta"],
+  },
+  {
+    name: "Helpdesk Articles",
+    slug: "helpdeskarticles",
+    description: "Knowledge-base articles served to the support chat widget.",
+    isPublic: false,
+    supports: {
+      title: true,
+      editor: true,
+      excerpt: true,
+      featuredImage: true,
+      customFields: true,
+      postMeta: true,
+      taxonomy: true,
+    },
+    rewrite: {
+      hasArchive: false,
+      singleSlug: "helpdesk-article",
+      withFront: true,
+      feeds: false,
+      pages: true,
+    },
+    adminMenu: {
+      enabled: false,
+    },
+    storageKind: "posts",
+    storageTables: [...DEFAULT_POST_STORAGE_TABLES],
+    metaBoxes: [
+      {
+        id: "helpdesk-trigger-meta",
+        title: "Trigger Rules",
+        description:
+          "Control how this article is matched to visitor questions and whether it should respond automatically.",
+        location: "sidebar",
+        priority: 10,
+        fieldKeys: [
+          "trigger_is_active",
+          "trigger_match_mode",
+          "trigger_priority",
+          "trigger_phrases",
+        ],
+        rendererKey: "support.helpdesk.triggerRules",
+      },
+    ],
+  },
+  {
+    name: "Support Conversations",
+    slug: "supportconversations",
+    description: "Conversation threads captured from the support widget.",
+    isPublic: false,
+    supports: {
+      title: true,
+      customFields: true,
+    },
+    rewrite: {
+      hasArchive: false,
+      withFront: false,
+    },
+    adminMenu: {
+      enabled: false,
+    },
+    storageKind: "custom",
+    storageTables: ["supportConversations"],
+  },
+  {
+    name: "Support Threads",
+    slug: "supportthreads",
+    description: "Individual messages within a support conversation.",
+    isPublic: false,
+    supports: {
+      editor: true,
+      customFields: true,
+    },
+    rewrite: {
+      hasArchive: false,
+      withFront: false,
+    },
+    adminMenu: {
+      enabled: false,
+    },
+    storageKind: "custom",
+    storageTables: ["supportMessages"],
+  },
+  {
+    name: "Support RAG Sources",
+    slug: "supportragsources",
+    description: "Knowledge source registry for AI-powered answers.",
+    isPublic: false,
+    supports: {
+      customFields: true,
+    },
+    rewrite: {
+      hasArchive: false,
+      withFront: false,
+    },
+    adminMenu: {
+      enabled: false,
+    },
+    storageKind: "custom",
+    storageTables: ["supportRagSources"],
   },
 ];
 
@@ -183,6 +456,19 @@ async function seedDefaultPostTypes(ctx: MutationCtx) {
       .query("postTypes")
       .withIndex("by_slug", (q) => q.eq("slug", type.slug))
       .unique();
+    const desiredStorageKind = type.storageKind ?? "posts";
+    const desiredStorageTables =
+      type.storageTables ??
+      (desiredStorageKind === "posts" ? [...DEFAULT_POST_STORAGE_TABLES] : []);
+    const adminMenu = type.adminMenu ?? {
+      enabled: false,
+      label: type.name,
+      slug: type.slug,
+    };
+
+    let postTypeDoc = existing ?? null;
+
+    const desiredMetaBoxes = type.metaBoxes;
 
     if (!existing) {
       const id = await ctx.db.insert("postTypes", {
@@ -197,20 +483,127 @@ async function seedDefaultPostTypes(ctx: MutationCtx) {
         supports: type.supports,
         rewrite: type.rewrite,
         adminMenu: {
-          ...type.adminMenu,
-          enabled: type.adminMenu.enabled,
+          ...adminMenu,
+          enabled: adminMenu.enabled,
         },
+        storageKind: desiredStorageKind,
+        storageTables: desiredStorageTables,
+        metaBoxes: desiredMetaBoxes,
         fieldCount: 0,
         entryCount: 0,
         createdAt: now,
         updatedAt: now,
       });
       await createSystemFields(ctx, id);
+      postTypeDoc = await ctx.db.get(id);
       created.push(type.slug);
+    } else {
+      const storageKindNeedsUpdate =
+        (existing.storageKind ?? "posts") !== desiredStorageKind;
+      const storageTablesNeedsUpdate = !storageTablesEqual(
+        existing.storageTables,
+        desiredStorageTables,
+      );
+      const metaBoxesNeedUpdate =
+        desiredMetaBoxes !== undefined &&
+        !metaBoxesEqual(existing.metaBoxes, desiredMetaBoxes);
+
+      if (
+        storageKindNeedsUpdate ||
+        storageTablesNeedsUpdate ||
+        metaBoxesNeedUpdate
+      ) {
+        await ctx.db.patch(existing._id, {
+          ...(storageKindNeedsUpdate
+            ? {
+                storageKind: desiredStorageKind,
+                storageTables: desiredStorageTables,
+              }
+            : {}),
+          ...(storageTablesNeedsUpdate && !storageKindNeedsUpdate
+            ? { storageTables: desiredStorageTables }
+            : {}),
+          ...(metaBoxesNeedUpdate ? { metaBoxes: desiredMetaBoxes } : {}),
+          updatedAt: now,
+        });
+      }
+      postTypeDoc = existing;
+    }
+
+    if (postTypeDoc) {
+      await ensureDefaultFieldsForPostType(ctx, postTypeDoc);
     }
   }
 
   return created;
+}
+
+async function ensureDefaultFieldsForPostType(
+  ctx: MutationCtx,
+  postType: Doc<"postTypes">,
+) {
+  const defaults = DEFAULT_POST_TYPE_FIELDS[postType.slug];
+  if (!defaults || defaults.length === 0) {
+    return;
+  }
+
+  let inserted = false;
+
+  for (const field of defaults) {
+    const existingField = await getPostTypeFieldByKey(
+      ctx,
+      postType._id,
+      field.key,
+    );
+    if (existingField) continue;
+
+    const fieldInput: PostTypeField = {
+      name: field.name,
+      key: field.key,
+      type: field.type,
+      description: field.description,
+      required: field.required ?? false,
+      searchable: field.searchable ?? false,
+      filterable: field.filterable ?? false,
+      defaultValue: field.defaultValue,
+      validationRules: field.validationRules,
+      options: field.options,
+      isSystem: field.isSystem ?? false,
+      isBuiltIn: field.isBuiltIn ?? true,
+      uiConfig: field.uiConfig,
+      order: field.order,
+    };
+
+    validateField(fieldInput);
+    const now = Date.now();
+
+    await ctx.db.insert("postTypeFields", {
+      postTypeId: postType._id,
+      name: fieldInput.name,
+      key: fieldInput.key,
+      type: fieldInput.type,
+      description: fieldInput.description,
+      required: fieldInput.required ?? false,
+      searchable: fieldInput.searchable ?? false,
+      filterable: fieldInput.filterable ?? false,
+      defaultValue:
+        fieldInput.defaultValue as Doc<"postTypeFields">["defaultValue"],
+      validationRules:
+        fieldInput.validationRules as Doc<"postTypeFields">["validationRules"],
+      options: fieldInput.options as Doc<"postTypeFields">["options"],
+      isSystem: fieldInput.isSystem ?? false,
+      isBuiltIn: fieldInput.isBuiltIn ?? true,
+      uiConfig: (fieldInput.uiConfig ??
+        null) as Doc<"postTypeFields">["uiConfig"],
+      order: fieldInput.order ?? 0,
+      createdAt: now,
+    });
+    inserted = true;
+  }
+
+  if (inserted) {
+    await updateFieldCount(ctx, postType._id);
+  }
 }
 
 export const initSystem = mutation({
@@ -256,6 +649,9 @@ export const create = mutation({
     rewrite: v.optional(postTypeRewriteValidator),
     adminMenu: v.optional(postTypeAdminMenuValidator),
     organizationId: v.optional(v.id("organizations")),
+    storageKind: v.optional(postTypeStorageKindValidator),
+    storageTables: v.optional(postTypeStorageTablesValidator),
+    metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
   },
   handler: async (ctx, args) => {
     const resolvedOrgId = resolveScopedOrganizationId(args.organizationId);
@@ -280,6 +676,13 @@ export const create = mutation({
     }
 
     const timestamp = Date.now();
+    const storageKind = args.storageKind ?? "posts";
+    const storageTables =
+      args.storageTables ??
+      (storageKind === "posts" ? [...DEFAULT_POST_STORAGE_TABLES] : []);
+    if (storageKind === "custom" && storageTables.length === 0) {
+      throw new Error("Custom post types must specify storage tables");
+    }
     const id = await ctx.db.insert("postTypes", {
       organizationId: resolvedOrgId,
       enabledOrganizationIds: resolvedOrgId ? [resolvedOrgId] : undefined,
@@ -300,6 +703,9 @@ export const create = mutation({
           label: args.name,
           slug: args.slug,
         } satisfies Doc<"postTypes">["adminMenu"]),
+      storageKind,
+      storageTables,
+      metaBoxes: args.metaBoxes,
       fieldCount: 0,
       entryCount: 0,
       createdAt: timestamp,
@@ -402,6 +808,9 @@ export const enableForOrganization = mutation({
         supports: v.optional(postTypeSupportsValidator),
         rewrite: v.optional(postTypeRewriteValidator),
         adminMenu: v.optional(postTypeAdminMenuValidator),
+        storageKind: v.optional(postTypeStorageKindValidator),
+        storageTables: v.optional(postTypeStorageTablesValidator),
+        metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
       }),
     ),
   },
@@ -414,6 +823,13 @@ export const enableForOrganization = mutation({
     if (!postType) {
       if (args.definition) {
         const timestamp = Date.now();
+        const storageKind = args.definition.storageKind ?? "posts";
+        const storageTables =
+          args.definition.storageTables ??
+          (storageKind === "posts" ? [...DEFAULT_POST_STORAGE_TABLES] : []);
+        if (storageKind === "custom" && storageTables.length === 0) {
+          throw new Error("Custom post types must specify storage tables");
+        }
         const id = await ctx.db.insert("postTypes", {
           organizationId: resolvedOrgId ?? undefined,
           enabledOrganizationIds: resolvedOrgId ? [resolvedOrgId] : undefined,
@@ -434,6 +850,9 @@ export const enableForOrganization = mutation({
               label: args.definition.name,
               slug: args.slug,
             } satisfies Doc<"postTypes">["adminMenu"]),
+          storageKind,
+          storageTables,
+          metaBoxes: args.definition.metaBoxes,
           fieldCount: 0,
           entryCount: 0,
           createdAt: timestamp,
@@ -582,6 +1001,9 @@ export const update = mutation({
       supports: v.optional(postTypeSupportsValidator),
       rewrite: v.optional(postTypeRewriteValidator),
       adminMenu: v.optional(postTypeAdminMenuValidator),
+      storageKind: v.optional(postTypeStorageKindValidator),
+      storageTables: v.optional(postTypeStorageTablesValidator),
+      metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
     }),
   },
   handler: async (ctx, args) => {
@@ -619,10 +1041,34 @@ export const update = mutation({
       }
     }
 
-    await ctx.db.patch(args.id, {
+    const patchPayload: Partial<Doc<"postTypes">> = {
       ...args.data,
       updatedAt: Date.now(),
-    });
+    };
+
+    if (
+      args.data.storageKind !== undefined ||
+      args.data.storageTables !== undefined
+    ) {
+      const storageKind =
+        args.data.storageKind ?? postType.storageKind ?? "posts";
+      const storageTables =
+        args.data.storageTables ??
+        (storageKind === "posts"
+          ? [...DEFAULT_POST_STORAGE_TABLES]
+          : (postType.storageTables ?? []));
+      if (storageKind === "custom" && storageTables.length === 0) {
+        throw new Error("Custom post types must specify storage tables");
+      }
+      patchPayload.storageKind = storageKind;
+      patchPayload.storageTables = storageTables;
+    }
+
+    if (args.data.metaBoxes !== undefined) {
+      patchPayload.metaBoxes = args.data.metaBoxes;
+    }
+
+    await ctx.db.patch(args.id, patchPayload);
 
     return true;
   },

@@ -1,4 +1,5 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
+import { TriggerRulesMetaBox } from "./admin/metaBoxes/TriggerRulesMetaBox";
 
 export { SupportChatWidget } from "./components/SupportChatWidget";
 export type { SupportChatWidgetProps } from "./components/SupportChatWidget";
@@ -11,16 +12,17 @@ export {
 
 export const supportPlugin: PluginDefinition = {
   id: "support",
-  name: "AI Support Assistant",
-  description: "Org-scoped AI support chat bubble.",
+  name: "Support",
+  description: "Unified helpdesk with optional AI assistance.",
   longDescription:
-    "Adds an AI-powered support chat bubble that can reference your organization’s FAQs, posts, and curated snippets stored in global knowledge tables.",
+    "Adds the full support toolkit: knowledge articles, trigger phrases, the customer chat bubble, and the portal-side conversations dashboard. AI responses can be enabled on top of the manual workflow when desired.",
   features: [
-    "Floating chat widget",
-    "Org-scoped knowledge base",
-    "Helpdesk article editor",
-    "Conversation history in Convex",
-    "Plugin-managed enable/disable lifecycle",
+    "Floating chat widget with trigger-word routing",
+    "Org-scoped helpdesk article post type",
+    "Article-level trigger phrases with priority controls",
+    "Manual conversation dashboard for agents",
+    "Optional AI-generated replies that read your articles",
+    "Plugin-managed lifecycle & settings pages",
   ],
   postTypes: [
     {
@@ -50,6 +52,104 @@ export const supportPlugin: PluginDefinition = {
       adminMenu: {
         enabled: false,
       },
+      storageKind: "posts",
+      storageTables: ["posts", "postsMeta"],
+      metaBoxes: [
+        {
+          id: "helpdesk-trigger-meta",
+          title: "Trigger Rules",
+          description:
+            "Configure how this article should be suggested when visitors ask questions.",
+          location: "sidebar",
+          priority: 10,
+          fieldKeys: [
+            "trigger_is_active",
+            "trigger_match_mode",
+            "trigger_priority",
+            "trigger_phrases",
+          ],
+          rendererKey: "support.helpdesk.triggerRules",
+        },
+      ],
+      metaBoxRenderers: {
+        "support.helpdesk.triggerRules": TriggerRulesMetaBox,
+      },
+      singleView: {
+        basePath: "/admin/support/helpdesk-articles",
+        defaultTab: "edit",
+        tabs: [
+          {
+            id: "edit",
+            slug: "edit",
+            label: "Edit",
+            description: "Edit article content, slug, and SEO settings.",
+            usesDefaultEditor: true,
+            useDefaultMainMetaBoxes: false,
+            useDefaultSidebarMetaBoxes: false,
+          },
+          {
+            id: "trigger-rules",
+            slug: "trigger-rules",
+            label: "Trigger Rules",
+            description: "Tune the trigger phrases and match behavior.",
+            usesDefaultEditor: true,
+            showGeneralPanel: false,
+            showCustomFieldsPanel: false,
+            mainMetaBoxIds: ["helpdesk-trigger-meta"],
+            useDefaultSidebarMetaBoxes: false,
+          },
+        ],
+      },
+    },
+    {
+      name: "Support Conversations",
+      slug: "supportconversations",
+      description: "Conversation threads captured from the support widget.",
+      isPublic: false,
+      includeTimestamps: true,
+      enableApi: true,
+      supports: {
+        title: true,
+        customFields: true,
+      },
+      adminMenu: {
+        enabled: false,
+      },
+      storageKind: "custom",
+      storageTables: ["supportConversations"],
+    },
+    {
+      name: "Support Threads",
+      slug: "supportthreads",
+      description: "Individual messages inside a conversation thread.",
+      isPublic: false,
+      includeTimestamps: true,
+      enableApi: true,
+      supports: {
+        editor: true,
+        customFields: true,
+      },
+      adminMenu: {
+        enabled: false,
+      },
+      storageKind: "custom",
+      storageTables: ["supportMessages"],
+    },
+    {
+      name: "Support RAG Sources",
+      slug: "supportragsources",
+      description: "Knowledge source registry for AI answer generation.",
+      isPublic: false,
+      includeTimestamps: true,
+      enableApi: true,
+      supports: {
+        customFields: true,
+      },
+      adminMenu: {
+        enabled: false,
+      },
+      storageKind: "custom",
+      storageTables: ["supportRagSources"],
     },
   ],
   activation: {

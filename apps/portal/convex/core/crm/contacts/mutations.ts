@@ -1,7 +1,7 @@
-import { v } from "convex/values";
+import type { Doc, Id } from "../../../_generated/dataModel";
 
-import type { Doc, Id } from "../../_generated/dataModel";
-import { mutation } from "../../_generated/server";
+import { mutation } from "../../../_generated/server";
+import { v } from "convex/values";
 
 type ContactDoc = Doc<"contacts">;
 

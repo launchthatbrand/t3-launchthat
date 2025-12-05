@@ -4,25 +4,25 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 "use client";
 
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import type { LucideIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
 import * as LucideIcons from "lucide-react";
-import { BookOpen } from "lucide-react";
 
-import { NavMain } from "@acme/ui/general/nav-main";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { Sidebar, SidebarContent, SidebarHeader } from "@acme/ui/sidebar";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import type { PluginDefinition } from "~/lib/plugins/types";
-import { usePostTypes } from "~/app/(root)/(admin)/admin/settings/post-types/_api/postTypes";
-import { useTaxonomies } from "~/app/(root)/(admin)/admin/settings/taxonomies/_api/taxonomies";
 import { AdminTeamSwitcher } from "~/components/admin/AdminTeamSwitcher";
-import { useTenant } from "~/context/TenantContext";
-import { pluginDefinitions } from "~/lib/plugins/definitions";
+import { BookOpen } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { NavMain } from "@acme/ui/general/nav-main";
+import type { PluginDefinition } from "~/lib/plugins/types";
+import { api } from "@/convex/_generated/api";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { navItems } from "../_components/nav-items";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
+import { usePostTypes } from "~/app/(root)/(admin)/admin/settings/post-types/_api/postTypes";
+import { useQuery } from "convex/react";
+import { useTaxonomies } from "~/app/(root)/(admin)/admin/settings/taxonomies/_api/taxonomies";
+import { useTenant } from "~/context/TenantContext";
 
 type PostTypeDoc = Doc<"postTypes">;
 
@@ -44,11 +44,11 @@ type GroupedNavItem = NavItem & {
     | "lms"
     | "postTypes"
     | "shop"
-    | "helpdesk"
     | "calendar"
     | "support"
     | "social"
-    | "tasks";
+    | "tasks"
+    | "crm";
   position?: number;
 };
 
@@ -276,10 +276,13 @@ export default function DefaultSidebar() {
         group = "shop";
       } else if (
         parentGroup === "helpdesk" ||
+        parentGroup === "support" ||
         slugLower?.startsWith("helpdesk") ||
-        slugLower === "helpdesk"
+        slugLower?.startsWith("support") ||
+        slugLower === "helpdesk" ||
+        slugLower === "support"
       ) {
-        group = "helpdesk";
+        group = "support";
       } else if (
         parentGroup === "calendar" ||
         slugLower?.startsWith("calendar") ||
@@ -389,13 +392,13 @@ export default function DefaultSidebar() {
     ...dynamicItems.filter((item) => item.group === "lms"),
     ...pluginNavItems.filter((item) => item.group === "lms"),
   ];
+  const crmItems = [
+    ...dynamicItems.filter((item) => item.group === "crm"),
+    ...pluginNavItems.filter((item) => item.group === "crm"),
+  ];
   const shopItems = [
     ...dynamicItems.filter((item) => item.group === "shop"),
     ...pluginNavItems.filter((item) => item.group === "shop"),
-  ];
-  const helpdeskItems = [
-    ...dynamicItems.filter((item) => item.group === "helpdesk"),
-    ...pluginNavItems.filter((item) => item.group === "helpdesk"),
   ];
   const calendarItems = [
     ...dynamicItems.filter((item) => item.group === "calendar"),
@@ -412,44 +415,53 @@ export default function DefaultSidebar() {
   const postTypeItems = dynamicItems.filter(
     (item) =>
       item.group !== "lms" &&
+      item.group !== "crm" &&
       item.group !== "shop" &&
-      item.group !== "helpdesk" &&
+      item.group !== "support" &&
       item.group !== "calendar" &&
       item.group !== "social" &&
       item.group !== "tasks",
   );
-  const supportItems = pluginNavItems.filter(
-    (item) => item.group === "support",
-  );
-  const supportSectionItems =
-    supportItems.length > 0
-      ? [
-          ...supportItems,
-          {
-            title: "Canned Responses",
-            url: "/admin/support/responses",
-            icon: resolveIcon("NotebookPen"),
-          },
-          {
-            title: "Conversations",
-            url: "/admin/support/conversations",
-            icon: resolveIcon("MessageSquare"),
-          },
-          {
-            title: "Settings",
-            url: "/admin/support/settings",
-            icon: resolveIcon("Settings"),
-          },
-        ]
-      : [];
+  const supportSectionItems = useMemo(() => {
+    const supportPlugin = pluginDefinitions.find(
+      (plugin) => plugin.id === "support",
+    );
+    if (!supportPlugin || !isPluginEnabled(supportPlugin)) {
+      return [];
+    }
+    return [
+      {
+        title: "Dashboard",
+        url: "/admin/support",
+        icon: resolveIcon("LayoutDashboard"),
+      },
+      {
+        title: "Helpdesk Articles",
+        url: "/admin/edit?post_type=helpdeskarticles",
+        icon: resolveIcon("BookOpen"),
+      },
+      {
+        title: "Canned Responses",
+        url: "/admin/support/responses",
+        icon: resolveIcon("NotebookPen"),
+      },
+      {
+        title: "Conversations",
+        url: "/admin/support/conversations",
+        icon: resolveIcon("MessageSquare"),
+      },
+      {
+        title: "Settings",
+        url: "/admin/support/settings",
+        icon: resolveIcon("Settings"),
+      },
+    ];
+  }, [isPluginEnabled]);
   const lmsSettingsItems = pluginSettingsMenus
     .filter((entry) => entry.pluginId === "lms")
     .map((entry) => entry.item);
   const shopSettingsItems = pluginSettingsMenus
     .filter((entry) => entry.pluginId === "commerce")
-    .map((entry) => entry.item);
-  const helpdeskSettingsItems = pluginSettingsMenus
-    .filter((entry) => entry.pluginId === "helpdesk")
     .map((entry) => entry.item);
   const calendarSettingsItems = pluginSettingsMenus
     .filter((entry) => entry.pluginId === "calendar")
@@ -461,6 +473,12 @@ export default function DefaultSidebar() {
       sections.push({
         label: "LMS",
         items: [...lmsItems, ...lmsSettingsItems],
+      });
+    }
+    if (crmItems.length > 0) {
+      sections.push({
+        label: "CRM",
+        items: crmItems,
       });
     }
   }
@@ -483,13 +501,6 @@ export default function DefaultSidebar() {
     sections.push({
       label: "Tasks",
       items: tasksItems,
-    });
-  }
-
-  if (helpdeskItems.length > 0 || helpdeskSettingsItems.length > 0) {
-    sections.push({
-      label: "Helpdesk",
-      items: [...helpdeskItems, ...helpdeskSettingsItems],
     });
   }
 

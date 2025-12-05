@@ -1,5 +1,6 @@
 "use client";
 
+import type { SocialFeedHooks } from "launchthat-plugin-socialfeed/context/SocialFeedClientProvider";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { useAuth } from "@clerk/nextjs";
@@ -12,10 +13,10 @@ export function PortalSocialFeedProvider({
 }: {
   children: ReactNode;
 }) {
-  const hooks = useMemo(
+  const hooks = useMemo<SocialFeedHooks>(
     () => ({
-      useQuery,
-      useMutation,
+      useQuery: useQuery as SocialFeedHooks["useQuery"],
+      useMutation: useMutation as SocialFeedHooks["useMutation"],
       useAuth,
       useConvexAuth,
     }),

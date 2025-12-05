@@ -1,9 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition */
-import { v } from "convex/values";
-
 import type { Doc, Id } from "../../_generated/dataModel";
 import { internalQuery, query } from "../../_generated/server";
+
 import { getEmailSettingsByAliasHelper } from "./helpers";
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+import { v } from "convex/values";
 
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 
@@ -31,8 +31,6 @@ const resultShape = v.object({
   type: v.optional(v.string()),
   source: v.optional(v.string()),
 });
-
-type CannedResponseDoc = Doc<"supportCannedResponses">;
 
 const sanitizeOrganizationId = (organizationId: Id<"organizations">) => {
   return organizationId
@@ -179,9 +177,9 @@ export const listHelpdeskArticles = query({
   },
 });
 
-const cannedMatchResult = v.union(
+const helpdeskTriggerResult = v.union(
   v.object({
-    entryId: v.id("supportCannedResponses"),
+    entryId: v.id("posts"),
     title: v.string(),
     content: v.string(),
     slug: v.optional(v.string()),
@@ -189,12 +187,66 @@ const cannedMatchResult = v.union(
   v.null(),
 );
 
-export const matchCannedResponse = query({
+const TRIGGER_META_KEYS = {
+  phrases: "trigger_phrases",
+  mode: "trigger_match_mode",
+  priority: "trigger_priority",
+  active: "trigger_is_active",
+} as const;
+
+const MATCH_MODE_VALUES = ["contains", "exact", "regex"] as const;
+type TriggerMatchMode = (typeof MATCH_MODE_VALUES)[number];
+const MATCH_MODES = new Set<TriggerMatchMode>(MATCH_MODE_VALUES);
+
+const parseBooleanMeta = (value: Doc<"postsMeta">["value"]) => {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+  return undefined;
+};
+
+const parseNumberMeta = (value: Doc<"postsMeta">["value"]) => {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === "number" && !Number.isNaN(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return undefined;
+};
+
+const parseStringMeta = (value: Doc<"postsMeta">["value"]) => {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  if (typeof value === "number") {
+    return String(value);
+  }
+  return "";
+};
+
+async function getPostMetaMap(ctx: QueryCtx, postId: Id<"posts">) {
+  const entries = await ctx.db
+    .query("postsMeta")
+    .withIndex("by_post", (q) => q.eq("postId", postId))
+    .collect();
+  const map = new Map<string, Doc<"postsMeta">["value"]>();
+  for (const entry of entries) {
+    map.set(entry.key, entry.value ?? null);
+  }
+  return map;
+}
+
+export const matchHelpdeskArticle = query({
   args: {
     organizationId: v.id("organizations"),
     question: v.string(),
   },
-  returns: cannedMatchResult,
+  returns: helpdeskTriggerResult,
   handler: async (ctx, args) => {
     const normalizedQuestion = args.question.trim();
     if (!normalizedQuestion) {
@@ -202,15 +254,17 @@ export const matchCannedResponse = query({
     }
 
     const lowerQuestion = normalizedQuestion.toLowerCase();
-    const entries = (await ctx.db
-      .query("supportCannedResponses")
-      .withIndex("by_organization", (q) =>
-        q.eq("organizationId", args.organizationId),
+    const helpdeskPosts = await ctx.db
+      .query("posts")
+      .withIndex("by_organization_postTypeSlug", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("postTypeSlug", "helpdeskarticles"),
       )
-      .collect()) as CannedResponseDoc[];
+      .take(200);
 
     let bestMatch: {
-      entryId: Id<"supportCannedResponses">;
+      entryId: Id<"posts">;
       title: string;
       content: string;
       slug?: string;
@@ -219,16 +273,39 @@ export const matchCannedResponse = query({
       updatedAt: number;
     } | null = null;
 
-    for (const entry of entries) {
-      if (entry.type !== "canned") continue;
-      if (entry.isActive === false) continue;
-      const phrases = entry.matchPhrases ?? [];
+    for (const post of helpdeskPosts) {
+      if (post.status !== "published") continue;
+      const metaMap = await getPostMetaMap(ctx, post._id);
+      const rawPhrases = parseStringMeta(
+        metaMap.get(TRIGGER_META_KEYS.phrases),
+      );
+      if (!rawPhrases) continue;
+
+      const phrases = rawPhrases
+        .split(/[\n,]+/)
+        .map((phrase) => phrase.trim())
+        .filter(Boolean);
       if (phrases.length === 0) continue;
 
-      const mode = entry.matchMode ?? "contains";
+      const isActiveMeta = parseBooleanMeta(
+        metaMap.get(TRIGGER_META_KEYS.active),
+      );
+      if (isActiveMeta === false) continue;
+
+      const priority =
+        parseNumberMeta(metaMap.get(TRIGGER_META_KEYS.priority)) ?? 0;
+      const modeMeta = parseStringMeta(
+        metaMap.get(TRIGGER_META_KEYS.mode),
+      ).toLowerCase();
+      const mode: TriggerMatchMode = MATCH_MODES.has(
+        modeMeta as TriggerMatchMode,
+      )
+        ? (modeMeta as TriggerMatchMode)
+        : "contains";
+
       let matched = false;
       for (const phrase of phrases) {
-        if (!phrase.trim()) continue;
+        if (!phrase) continue;
         if (mode === "regex") {
           try {
             const regex = new RegExp(phrase, "i");
@@ -238,21 +315,19 @@ export const matchCannedResponse = query({
             }
           } catch (error) {
             console.warn(
-              "[support.matchCanned] invalid regex phrase",
+              "[support.matchHelpdeskArticle] invalid regex phrase",
               phrase,
               error,
             );
           }
         } else if (mode === "exact") {
-          if (normalizedQuestion.toLowerCase() === phrase.toLowerCase()) {
+          if (lowerQuestion === phrase.toLowerCase()) {
             matched = true;
             break;
           }
-        } else {
-          if (lowerQuestion.includes(phrase.toLowerCase())) {
-            matched = true;
-            break;
-          }
+        } else if (lowerQuestion.includes(phrase.toLowerCase())) {
+          matched = true;
+          break;
         }
       }
 
@@ -261,24 +336,22 @@ export const matchCannedResponse = query({
       const score =
         phrases.filter((phrase) => lowerQuestion.includes(phrase.toLowerCase()))
           .length || 1;
-      const priority = entry.priority ?? 0;
-
       if (
         !bestMatch ||
         priority > bestMatch.priority ||
         (priority === bestMatch.priority &&
           (score > bestMatch.score ||
             (score === bestMatch.score &&
-              entry.updatedAt > bestMatch.updatedAt)))
+              (post.updatedAt ?? 0) > bestMatch.updatedAt)))
       ) {
         bestMatch = {
-          entryId: entry._id,
-          title: entry.title,
-          content: entry.content,
-          slug: entry.slug ?? undefined,
+          entryId: post._id,
+          title: post.title ?? "Untitled article",
+          content: post.content ?? post.excerpt ?? "",
+          slug: post.slug ?? undefined,
           score,
           priority,
-          updatedAt: entry.updatedAt,
+          updatedAt: post.updatedAt ?? 0,
         };
       }
     }
@@ -293,52 +366,6 @@ export const matchCannedResponse = query({
       content: bestMatch.content,
       slug: bestMatch.slug,
     };
-  },
-});
-
-export const listCannedResponses = query({
-  args: {
-    organizationId: v.id("organizations"),
-  },
-  returns: v.array(
-    v.object({
-      _id: v.id("supportCannedResponses"),
-      title: v.string(),
-      slug: v.optional(v.string()),
-      content: v.string(),
-      tags: v.optional(v.array(v.string())),
-      matchMode: v.optional(
-        v.union(v.literal("contains"), v.literal("exact"), v.literal("regex")),
-      ),
-      matchPhrases: v.optional(v.array(v.string())),
-      priority: v.optional(v.number()),
-      isActive: v.optional(v.boolean()),
-      updatedAt: v.number(),
-      createdAt: v.number(),
-    }),
-  ),
-  handler: async (ctx, args) => {
-    const entries = (await ctx.db
-      .query("supportCannedResponses")
-      .withIndex("by_organization", (q) =>
-        q.eq("organizationId", args.organizationId),
-      )
-      .order("desc")
-      .collect()) as CannedResponseDoc[];
-
-    return entries.map((entry) => ({
-      _id: entry._id,
-      title: entry.title,
-      slug: entry.slug ?? undefined,
-      content: entry.content,
-      tags: entry.tags ?? undefined,
-      matchMode: entry.matchMode ?? "contains",
-      matchPhrases: entry.matchPhrases ?? [],
-      priority: entry.priority,
-      isActive: entry.isActive,
-      updatedAt: entry.updatedAt ?? Date.now(),
-      createdAt: entry.createdAt ?? Date.now(),
-    }));
   },
 });
 

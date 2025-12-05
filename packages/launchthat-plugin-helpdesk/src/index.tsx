@@ -1,70 +1,31 @@
+/**
+ * @deprecated The dedicated helpdesk plugin has been merged into the unified
+ * `launchthat-plugin-support` package. This file now re-exports that plugin so
+ * existing imports keep working while we complete the transition.
+ */
+import { createRequire } from "module";
 import type { PluginDefinition } from "launchthat-plugin-core";
 
-export const helpdeskPlugin: PluginDefinition = {
-  id: "helpdesk",
-  name: "Helpdesk",
-  description: "Tickets and threaded conversations.",
-  longDescription:
-    "Provide support for your customers. Adds ticket post types and sidebar entries.",
-  features: [
-    "Tickets + replies",
-    "Priority + status fields",
-    "Internal / external notes",
-    "Admin navigation items",
-  ],
-  postTypes: [
-    {
-      name: "Tickets",
-      slug: "tickets",
-      description: "Primary helpdesk ticket entity.",
-      isPublic: false,
-      includeTimestamps: true,
-      enableApi: true,
-      supports: {
-        title: true,
-        editor: true,
-        customFields: true,
-        postMeta: true,
-      },
-      rewrite: {
-        hasArchive: false,
-        singleSlug: "ticket",
-        withFront: true,
-        feeds: false,
-        pages: true,
-      },
-      adminMenu: {
-        enabled: true,
-        label: "Tickets",
-        slug: "helpdesk/tickets",
-        icon: "LifeBuoy",
-        position: 50,
-      },
-    },
-    {
-      name: "Ticket Replies",
-      slug: "ticket-replies",
-      description: "Threaded responses linked to a ticket.",
-      isPublic: false,
-      includeTimestamps: true,
-      enableApi: true,
-      supports: {
-        editor: true,
-        customFields: true,
-      },
-      rewrite: {
-        hasArchive: false,
-        singleSlug: "ticket-reply",
-        withFront: true,
-        feeds: false,
-        pages: true,
-      },
-      adminMenu: {
-        enabled: false,
-      },
-    },
-  ],
+type SupportModuleShape = {
+  supportPlugin?: PluginDefinition;
+  default?: PluginDefinition;
 };
 
-export default helpdeskPlugin;
+// Use a CommonJS-style require so we don't need to pull in the full TypeScript
+// surface area of the support plugin (which drags in React 19-only types).
+const require = createRequire(import.meta.url);
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+const supportModule = (require("launchthat-plugin-support") ??
+  {}) as SupportModuleShape;
 
+const resolvedPlugin = supportModule.supportPlugin ?? supportModule.default;
+
+if (!resolvedPlugin) {
+  throw new Error(
+    "launchthat-plugin-helpdesk could not load launchthat-plugin-support. Make sure it is installed in the workspace.",
+  );
+}
+
+export const helpdeskPlugin: PluginDefinition = resolvedPlugin;
+
+export default helpdeskPlugin;

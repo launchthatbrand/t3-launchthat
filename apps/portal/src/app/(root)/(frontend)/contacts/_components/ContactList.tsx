@@ -1,9 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
-
 import {
   Card,
   CardContent,
@@ -15,9 +11,12 @@ import {
   PaginationPrevious,
   Skeleton,
 } from "@acme/ui";
-import { EmptyState } from "@acme/ui/entity-list/EmptyState";
+import { useEffect, useState } from "react";
 
 import { ContactCard } from "./ContactCard";
+import { EmptyState } from "@acme/ui/entity-list/EmptyState";
+import { api } from "@/convex/_generated/api";
+import { useQuery } from "convex/react";
 
 interface ContactListProps {
   userId: string | undefined;
@@ -82,7 +81,7 @@ const ContactListContent = ({
   }
 
   // Fetch contacts with pagination
-  const queryResult = useQuery(api.contacts.queries.getContacts, {
+  const queryResult = useQuery(api.core.crm.contacts.queries.getContacts, {
     userId,
     filters: Object.keys(filters).length > 0 ? filters : undefined,
     paginationOpts: {

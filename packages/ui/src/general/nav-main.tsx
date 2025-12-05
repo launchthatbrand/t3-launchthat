@@ -271,12 +271,14 @@ export function NavMain({ items, sections }: NavMainProps) {
 
           const isSectionActive = sectionIsActive(section);
 
+          const label = section.label!; // safe because of the earlier guard
+
           const handleFocusSection = () => {
-            if (focusedSectionLabel === section.label) {
+            if (focusedSectionLabel === label) {
               setFocusedSectionLabel(null);
               return;
             }
-            setFocusedSectionLabel(section.label);
+            setFocusedSectionLabel(label);
           };
 
           return (

@@ -6,16 +6,16 @@
  * This module provides client functions to interact with the post types API.
  */
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import {
+  PORTAL_TENANT_ID,
+  getTenantOrganizationId,
+} from "~/lib/tenant-fetcher";
 import { useCallback, useEffect, useRef } from "react";
-import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 
 import type { PluginPostTypeConfig } from "~/lib/plugins/types";
+import { api } from "@/convex/_generated/api";
 import { useTenant } from "~/context/TenantContext";
-import {
-  getTenantOrganizationId,
-  PORTAL_TENANT_ID,
-} from "~/lib/tenant-fetcher";
 
 const resolvePortalAwareOrganizationId = (
   tenant: ReturnType<typeof useTenant>,
@@ -149,6 +149,9 @@ type PostTypeDefinitionPayload = Pick<
   | "supports"
   | "rewrite"
   | "adminMenu"
+  | "storageKind"
+  | "storageTables"
+  | "metaBoxes"
 >;
 
 const pickPostTypeDefinition = (
@@ -163,6 +166,9 @@ const pickPostTypeDefinition = (
   supports: definition.supports,
   rewrite: definition.rewrite,
   adminMenu: definition.adminMenu,
+  storageKind: definition.storageKind,
+  storageTables: definition.storageTables,
+  metaBoxes: definition.metaBoxes,
 });
 
 export function useEnsurePostTypeAccess() {

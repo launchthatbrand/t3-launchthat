@@ -2644,7 +2644,7 @@ export type PublicApiType = {
         >;
       };
       queries: {
-        getMediaById: FunctionReference<
+        getMediaItem: FunctionReference<
           "query",
           "public",
           { id: Id<"mediaItems"> },
@@ -2680,7 +2680,7 @@ export type PublicApiType = {
             url?: string;
           }
         >;
-        getMediaItem: FunctionReference<
+        getMediaById: FunctionReference<
           "query",
           "public",
           { id: Id<"mediaItems"> },
@@ -2696,68 +2696,6 @@ export type PublicApiType = {
             storageId?: Id<"_storage">;
             title?: string;
             url?: string;
-          }
-        >;
-        listImages: FunctionReference<
-          "query",
-          "public",
-          {
-            paginationOpts: {
-              cursor: string | null;
-              endCursor?: string | null;
-              id?: number;
-              maximumBytesRead?: number;
-              maximumRowsRead?: number;
-              numItems: number;
-            };
-          },
-          {
-            continueCursor: string | null;
-            isDone: boolean;
-            page: Array<{
-              _creationTime: number;
-              _id: Id<"mediaItems">;
-              alt?: string;
-              caption?: string;
-              categories?: Array<string>;
-              categoryIds?: Array<Id<"categories">>;
-              externalUrl?: string;
-              status?: "draft" | "published";
-              storageId?: Id<"_storage">;
-              title?: string;
-              url?: string;
-            }>;
-          }
-        >;
-        listMedia: FunctionReference<
-          "query",
-          "public",
-          {
-            paginationOpts: {
-              cursor: string | null;
-              endCursor?: string | null;
-              id?: number;
-              maximumBytesRead?: number;
-              maximumRowsRead?: number;
-              numItems: number;
-            };
-          },
-          {
-            continueCursor: string | null;
-            isDone: boolean;
-            page: Array<{
-              _creationTime: number;
-              _id: Id<"mediaItems">;
-              alt?: string;
-              caption?: string;
-              categories?: Array<string>;
-              categoryIds?: Array<Id<"categories">>;
-              externalUrl?: string;
-              status?: "draft" | "published";
-              storageId?: Id<"_storage">;
-              title?: string;
-              url?: string;
-            }>;
           }
         >;
         listMediaItemsWithUrl: FunctionReference<
@@ -2794,6 +2732,68 @@ export type PublicApiType = {
             }>;
             pageStatus?: string | null;
             splitCursor?: string | null;
+          }
+        >;
+        listMedia: FunctionReference<
+          "query",
+          "public",
+          {
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+          },
+          {
+            continueCursor: string | null;
+            isDone: boolean;
+            page: Array<{
+              _creationTime: number;
+              _id: Id<"mediaItems">;
+              alt?: string;
+              caption?: string;
+              categories?: Array<string>;
+              categoryIds?: Array<Id<"categories">>;
+              externalUrl?: string;
+              status?: "draft" | "published";
+              storageId?: Id<"_storage">;
+              title?: string;
+              url?: string;
+            }>;
+          }
+        >;
+        listImages: FunctionReference<
+          "query",
+          "public",
+          {
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+          },
+          {
+            continueCursor: string | null;
+            isDone: boolean;
+            page: Array<{
+              _creationTime: number;
+              _id: Id<"mediaItems">;
+              alt?: string;
+              caption?: string;
+              categories?: Array<string>;
+              categoryIds?: Array<Id<"categories">>;
+              externalUrl?: string;
+              status?: "draft" | "published";
+              storageId?: Id<"_storage">;
+              title?: string;
+              url?: string;
+            }>;
           }
         >;
         searchMedia: FunctionReference<
@@ -3255,6 +3255,15 @@ export type PublicApiType = {
             enableVersioning?: boolean;
             includeTimestamps?: boolean;
             isPublic: boolean;
+            metaBoxes?: Array<{
+              description?: string;
+              fieldKeys: Array<string>;
+              id: string;
+              location?: "main" | "sidebar";
+              priority?: number;
+              rendererKey?: string;
+              title: string;
+            }>;
             name: string;
             organizationId?: Id<"organizations">;
             rewrite?: {
@@ -3267,6 +3276,8 @@ export type PublicApiType = {
               withFront?: boolean;
             };
             slug: string;
+            storageKind?: "posts" | "custom";
+            storageTables?: Array<string>;
             supports?: {
               comments?: boolean;
               customFields?: boolean;
@@ -3300,6 +3311,15 @@ export type PublicApiType = {
               enableVersioning?: boolean;
               includeTimestamps?: boolean;
               isPublic: boolean;
+              metaBoxes?: Array<{
+                description?: string;
+                fieldKeys: Array<string>;
+                id: string;
+                location?: "main" | "sidebar";
+                priority?: number;
+                rendererKey?: string;
+                title: string;
+              }>;
               name: string;
               rewrite?: {
                 archiveSlug?: string;
@@ -3310,6 +3330,8 @@ export type PublicApiType = {
                 singleSlug?: string;
                 withFront?: boolean;
               };
+              storageKind?: "posts" | "custom";
+              storageTables?: Array<string>;
               supports?: {
                 comments?: boolean;
                 customFields?: boolean;
@@ -3352,6 +3374,15 @@ export type PublicApiType = {
               enableVersioning?: boolean;
               includeTimestamps?: boolean;
               isPublic?: boolean;
+              metaBoxes?: Array<{
+                description?: string;
+                fieldKeys: Array<string>;
+                id: string;
+                location?: "main" | "sidebar";
+                priority?: number;
+                rendererKey?: string;
+                title: string;
+              }>;
               name?: string;
               rewrite?: {
                 archiveSlug?: string;
@@ -3363,6 +3394,8 @@ export type PublicApiType = {
                 withFront?: boolean;
               };
               slug?: string;
+              storageKind?: "posts" | "custom";
+              storageTables?: Array<string>;
               supports?: {
                 comments?: boolean;
                 customFields?: boolean;
@@ -3472,6 +3505,15 @@ export type PublicApiType = {
             includeTimestamps?: boolean;
             isBuiltIn: boolean;
             isPublic: boolean;
+            metaBoxes?: Array<{
+              description?: string;
+              fieldKeys: Array<string>;
+              id: string;
+              location?: "main" | "sidebar";
+              priority?: number;
+              rendererKey?: string;
+              title: string;
+            }>;
             name: string;
             organizationId?: Id<"organizations">;
             rewrite?: {
@@ -3484,6 +3526,8 @@ export type PublicApiType = {
               withFront?: boolean;
             };
             slug: string;
+            storageKind?: "posts" | "custom";
+            storageTables?: Array<string>;
             supports?: {
               comments?: boolean;
               customFields?: boolean;
@@ -3525,6 +3569,15 @@ export type PublicApiType = {
             includeTimestamps?: boolean;
             isBuiltIn: boolean;
             isPublic: boolean;
+            metaBoxes?: Array<{
+              description?: string;
+              fieldKeys: Array<string>;
+              id: string;
+              location?: "main" | "sidebar";
+              priority?: number;
+              rendererKey?: string;
+              title: string;
+            }>;
             name: string;
             organizationId?: Id<"organizations">;
             rewrite?: {
@@ -3537,6 +3590,8 @@ export type PublicApiType = {
               withFront?: boolean;
             };
             slug: string;
+            storageKind?: "posts" | "custom";
+            storageTables?: Array<string>;
             supports?: {
               comments?: boolean;
               customFields?: boolean;
@@ -3578,6 +3633,15 @@ export type PublicApiType = {
             includeTimestamps?: boolean;
             isBuiltIn: boolean;
             isPublic: boolean;
+            metaBoxes?: Array<{
+              description?: string;
+              fieldKeys: Array<string>;
+              id: string;
+              location?: "main" | "sidebar";
+              priority?: number;
+              rendererKey?: string;
+              title: string;
+            }>;
             name: string;
             organizationId?: Id<"organizations">;
             rewrite?: {
@@ -3590,6 +3654,8 @@ export type PublicApiType = {
               withFront?: boolean;
             };
             slug: string;
+            storageKind?: "posts" | "custom";
+            storageTables?: Array<string>;
             supports?: {
               comments?: boolean;
               customFields?: boolean;
@@ -3977,109 +4043,155 @@ export type PublicApiType = {
         >;
       };
     };
-    contacts: {
+    crm: {
       queries: {
-        list: FunctionReference<
-          "query",
-          "public",
-          {
-            limit?: number;
-            organizationId: Id<"organizations">;
-            search?: string;
-          },
-          Array<{
-            _creationTime: number;
-            _id: Id<"contacts">;
-            company?: string;
-            createdAt: number;
-            email?: string;
-            firstName?: string;
-            fullName?: string;
-            lastName?: string;
-            organizationId: Id<"organizations">;
-            phone?: string;
-            tags?: Array<string>;
-            updatedAt: number;
-          }>
-        >;
-        get: FunctionReference<
-          "query",
-          "public",
-          { contactId: Id<"contacts"> },
-          {
-            _creationTime: number;
-            _id: Id<"contacts">;
-            company?: string;
-            createdAt: number;
-            email?: string;
-            firstName?: string;
-            fullName?: string;
-            lastName?: string;
-            organizationId: Id<"organizations">;
-            phone?: string;
-            tags?: Array<string>;
-            updatedAt: number;
-          } | null
-        >;
-        findByEmail: FunctionReference<
-          "query",
-          "public",
-          { email: string; organizationId: Id<"organizations"> },
-          {
-            _creationTime: number;
-            _id: Id<"contacts">;
-            company?: string;
-            createdAt: number;
-            email?: string;
-            firstName?: string;
-            fullName?: string;
-            lastName?: string;
-            organizationId: Id<"organizations">;
-            phone?: string;
-            tags?: Array<string>;
-            updatedAt: number;
-          } | null
-        >;
+        getTags: FunctionReference<"query", "public", { userId?: string }, any>;
       };
-      mutations: {
-        upsert: FunctionReference<
-          "mutation",
-          "public",
-          {
-            company?: string;
-            email?: string;
-            firstName?: string;
-            fullName?: string;
-            lastName?: string;
-            metadata?: any;
-            organizationId: Id<"organizations">;
-            phone?: string;
-            tags?: Array<string>;
-          },
-          any
-        >;
-        update: FunctionReference<
-          "mutation",
-          "public",
-          {
-            company?: string;
-            contactId: Id<"contacts">;
-            email?: string;
-            firstName?: string;
-            fullName?: string;
-            lastName?: string;
-            metadata?: any;
-            phone?: string;
-            tags?: Array<string>;
-          },
-          any
-        >;
-        remove: FunctionReference<
-          "mutation",
-          "public",
-          { contactId: Id<"contacts"> },
-          any
-        >;
+      contacts: {
+        mutations: {
+          upsert: FunctionReference<
+            "mutation",
+            "public",
+            {
+              company?: string;
+              email?: string;
+              firstName?: string;
+              fullName?: string;
+              lastName?: string;
+              metadata?: any;
+              organizationId: Id<"organizations">;
+              phone?: string;
+              tags?: Array<string>;
+            },
+            any
+          >;
+          update: FunctionReference<
+            "mutation",
+            "public",
+            {
+              company?: string;
+              contactId: Id<"contacts">;
+              email?: string;
+              firstName?: string;
+              fullName?: string;
+              lastName?: string;
+              metadata?: any;
+              phone?: string;
+              tags?: Array<string>;
+            },
+            any
+          >;
+          remove: FunctionReference<
+            "mutation",
+            "public",
+            { contactId: Id<"contacts"> },
+            any
+          >;
+        };
+        queries: {
+          list: FunctionReference<
+            "query",
+            "public",
+            {
+              limit?: number;
+              organizationId: Id<"organizations">;
+              search?: string;
+            },
+            Array<{
+              _creationTime: number;
+              _id: Id<"contacts">;
+              company?: string;
+              createdAt: number;
+              email?: string;
+              firstName?: string;
+              fullName?: string;
+              lastName?: string;
+              organizationId: Id<"organizations">;
+              phone?: string;
+              tags?: Array<string>;
+              updatedAt: number;
+            }>
+          >;
+          get: FunctionReference<
+            "query",
+            "public",
+            { contactId: Id<"contacts"> },
+            {
+              _creationTime: number;
+              _id: Id<"contacts">;
+              company?: string;
+              createdAt: number;
+              email?: string;
+              firstName?: string;
+              fullName?: string;
+              lastName?: string;
+              organizationId: Id<"organizations">;
+              phone?: string;
+              tags?: Array<string>;
+              updatedAt: number;
+            } | null
+          >;
+          findByEmail: FunctionReference<
+            "query",
+            "public",
+            { email: string; organizationId: Id<"organizations"> },
+            {
+              _creationTime: number;
+              _id: Id<"contacts">;
+              company?: string;
+              createdAt: number;
+              email?: string;
+              firstName?: string;
+              fullName?: string;
+              lastName?: string;
+              organizationId: Id<"organizations">;
+              phone?: string;
+              tags?: Array<string>;
+              updatedAt: number;
+            } | null
+          >;
+          getContacts: FunctionReference<
+            "query",
+            "public",
+            {
+              filters?: {
+                customerType?:
+                  | "lead"
+                  | "prospect"
+                  | "customer"
+                  | "former-customer"
+                  | "partner";
+                leadStatus?:
+                  | "new"
+                  | "contacted"
+                  | "qualified"
+                  | "proposal"
+                  | "negotiation"
+                  | "won"
+                  | "lost"
+                  | "dormant";
+                tags?: Array<string>;
+              };
+              paginationOpts: {
+                cursor: string | null;
+                endCursor?: string | null;
+                id?: number;
+                maximumBytesRead?: number;
+                maximumRowsRead?: number;
+                numItems: number;
+              };
+              search?: string;
+              userId: string;
+            },
+            any
+          >;
+          exportContacts: FunctionReference<
+            "query",
+            "public",
+            { userId?: string },
+            any
+          >;
+        };
       };
     };
   };
@@ -4370,185 +4482,6 @@ export type PublicApiType = {
       };
     };
   };
-  media: {
-    queries: {
-      getMediaById: FunctionReference<
-        "query",
-        "public",
-        { id: Id<"mediaItems"> },
-        null | {
-          _creationTime: number;
-          _id: Id<"mediaItems">;
-          alt?: string;
-          caption?: string;
-          categories?: Array<string>;
-          categoryIds?: Array<Id<"categories">>;
-          externalUrl?: string;
-          status?: "draft" | "published";
-          storageId?: Id<"_storage">;
-          title?: string;
-          url?: string;
-        }
-      >;
-      getMediaByStorageId: FunctionReference<
-        "query",
-        "public",
-        { storageId: Id<"_storage"> },
-        null | {
-          _creationTime: number;
-          _id: Id<"mediaItems">;
-          alt?: string;
-          caption?: string;
-          categories?: Array<string>;
-          categoryIds?: Array<Id<"categories">>;
-          externalUrl?: string;
-          status?: "draft" | "published";
-          storageId?: Id<"_storage">;
-          title?: string;
-          url?: string;
-        }
-      >;
-      getMediaItem: FunctionReference<
-        "query",
-        "public",
-        { id: Id<"mediaItems"> },
-        null | {
-          _creationTime: number;
-          _id: Id<"mediaItems">;
-          alt?: string;
-          caption?: string;
-          categories?: Array<string>;
-          categoryIds?: Array<Id<"categories">>;
-          externalUrl?: string;
-          status?: "draft" | "published";
-          storageId?: Id<"_storage">;
-          title?: string;
-          url?: string;
-        }
-      >;
-      listImages: FunctionReference<
-        "query",
-        "public",
-        {
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-        },
-        {
-          continueCursor: string | null;
-          isDone: boolean;
-          page: Array<{
-            _creationTime: number;
-            _id: Id<"mediaItems">;
-            alt?: string;
-            caption?: string;
-            categories?: Array<string>;
-            categoryIds?: Array<Id<"categories">>;
-            externalUrl?: string;
-            status?: "draft" | "published";
-            storageId?: Id<"_storage">;
-            title?: string;
-            url?: string;
-          }>;
-        }
-      >;
-      listMedia: FunctionReference<
-        "query",
-        "public",
-        {
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-        },
-        {
-          continueCursor: string | null;
-          isDone: boolean;
-          page: Array<{
-            _creationTime: number;
-            _id: Id<"mediaItems">;
-            alt?: string;
-            caption?: string;
-            categories?: Array<string>;
-            categoryIds?: Array<Id<"categories">>;
-            externalUrl?: string;
-            status?: "draft" | "published";
-            storageId?: Id<"_storage">;
-            title?: string;
-            url?: string;
-          }>;
-        }
-      >;
-      listMediaItemsWithUrl: FunctionReference<
-        "query",
-        "public",
-        {
-          categoryIds?: Array<Id<"categories">>;
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-          searchTerm?: string;
-          status?: "draft" | "published";
-        },
-        {
-          continueCursor: string | null;
-          isDone: boolean;
-          page: Array<{
-            _creationTime: number;
-            _id: Id<"mediaItems">;
-            alt?: string;
-            caption?: string;
-            categories?: Array<string>;
-            categoryIds?: Array<Id<"categories">>;
-            externalUrl?: string;
-            status?: "draft" | "published";
-            storageId?: Id<"_storage">;
-            title?: string;
-            url?: string;
-          }>;
-          pageStatus?: string | null;
-          splitCursor?: string | null;
-        }
-      >;
-      searchMedia: FunctionReference<
-        "query",
-        "public",
-        {
-          categoryIds?: Array<Id<"categories">>;
-          limit?: number;
-          searchTerm: string;
-          status?: "draft" | "published";
-        },
-        Array<{
-          _creationTime: number;
-          _id: Id<"mediaItems">;
-          alt?: string;
-          caption?: string;
-          categories?: Array<string>;
-          categoryIds?: Array<Id<"categories">>;
-          externalUrl?: string;
-          status?: "draft" | "published";
-          storageId?: Id<"_storage">;
-          title?: string;
-          url?: string;
-        }>
-      >;
-    };
-  };
   plugins: {
     lms: {
       queries: {
@@ -4733,24 +4666,6 @@ export type PublicApiType = {
               | "failed";
           }
         >;
-        listCannedResponses: FunctionReference<
-          "query",
-          "public",
-          { organizationId: Id<"organizations"> },
-          Array<{
-            _id: Id<"supportCannedResponses">;
-            content: string;
-            createdAt: number;
-            isActive?: boolean;
-            matchMode?: "contains" | "exact" | "regex";
-            matchPhrases?: Array<string>;
-            priority?: number;
-            slug?: string;
-            tags?: Array<string>;
-            title: string;
-            updatedAt: number;
-          }>
-        >;
         listConversations: FunctionReference<
           "query",
           "public",
@@ -4828,13 +4743,13 @@ export type PublicApiType = {
             updatedAt: number;
           }>
         >;
-        matchCannedResponse: FunctionReference<
+        matchHelpdeskArticle: FunctionReference<
           "query",
           "public",
           { organizationId: Id<"organizations">; question: string },
           {
             content: string;
-            entryId: Id<"supportCannedResponses">;
+            entryId: Id<"posts">;
             slug?: string;
             title: string;
           } | null
@@ -4877,32 +4792,6 @@ export type PublicApiType = {
             mode: "agent" | "manual";
             organizationId: Id<"organizations">;
             sessionId: string;
-          },
-          any
-        >;
-        upsertCannedResponse: FunctionReference<
-          "mutation",
-          "public",
-          {
-            content: string;
-            entryId?: Id<"supportCannedResponses">;
-            isActive?: boolean;
-            matchMode?: "contains" | "exact" | "regex";
-            matchPhrases?: Array<string>;
-            organizationId: Id<"organizations">;
-            priority?: number;
-            slug?: string;
-            tags?: Array<string>;
-            title: string;
-          },
-          any
-        >;
-        deleteCannedResponse: FunctionReference<
-          "mutation",
-          "public",
-          {
-            entryId: Id<"supportCannedResponses">;
-            organizationId: Id<"organizations">;
           },
           any
         >;

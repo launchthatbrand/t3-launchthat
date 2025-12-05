@@ -1,12 +1,6 @@
 "use client";
 
-import React from "react";
-import { useParams, useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Edit, Trash } from "lucide-react";
-
 import {
   Badge,
   Button,
@@ -17,6 +11,12 @@ import {
   CardTitle,
   Separator,
 } from "@acme/ui";
+import { useMutation, useQuery } from "convex/react";
+import { useParams, useRouter } from "next/navigation";
+
+import { Id } from "@/convex/_generated/dataModel";
+import React from "react";
+import { api } from "@/convex/_generated/api";
 
 // Define a placeholder for interactions/notes component
 const ContactInteractions = ({
@@ -52,7 +52,7 @@ export default function AdminViewContactPage() {
   const contactId = idParam as Id<"contacts">;
 
   // Always call hooks at the top level, regardless of conditions
-  const contact = useQuery(api.contacts.queries.getContact, {
+  const contact = useQuery(api.core.crm.contacts.queries.getContact, {
     contactId,
   });
   const deleteContact = useMutation(api.contacts.crud.deleteContact);
@@ -123,7 +123,7 @@ export default function AdminViewContactPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h3 className="text-sm font-medium text-muted-foreground">
+              <h3 className="text-muted-foreground text-sm font-medium">
                 Email
               </h3>
               <p>{contact.email}</p>
@@ -131,7 +131,7 @@ export default function AdminViewContactPage() {
 
             {contact.phone && (
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground">
+                <h3 className="text-muted-foreground text-sm font-medium">
                   Phone
                 </h3>
                 <p>{contact.phone}</p>
@@ -140,7 +140,7 @@ export default function AdminViewContactPage() {
 
             {contact.company && (
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground">
+                <h3 className="text-muted-foreground text-sm font-medium">
                   Company
                 </h3>
                 <p>{contact.company}</p>
@@ -149,7 +149,7 @@ export default function AdminViewContactPage() {
 
             {contact.jobTitle && (
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground">
+                <h3 className="text-muted-foreground text-sm font-medium">
                   Job Title
                 </h3>
                 <p>{contact.jobTitle}</p>
@@ -160,7 +160,7 @@ export default function AdminViewContactPage() {
 
             {contact.tags && contact.tags.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground">
+                <h3 className="text-muted-foreground text-sm font-medium">
                   Tags
                 </h3>
                 <div className="mt-1 flex flex-wrap gap-1">
@@ -175,7 +175,7 @@ export default function AdminViewContactPage() {
 
             {contact.leadStatus && (
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground">
+                <h3 className="text-muted-foreground text-sm font-medium">
                   Lead Status
                 </h3>
                 <Badge variant="outline">{contact.leadStatus}</Badge>

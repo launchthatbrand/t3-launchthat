@@ -2,9 +2,9 @@ import type { Id } from "@/convex/_generated/dataModel";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { api } from "@/convex/_generated/api";
-import { z } from "zod";
-
+import { formatStreamPart } from "@ai-sdk/ui-utils";
 import { getConvex } from "~/lib/convex";
+import { z } from "zod";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -76,34 +76,46 @@ export async function POST(req: Request) {
     const isManualMode = conversationMode.mode === "manual";
 
     if (isManualMode) {
-      return streamTextResponse("");
-    }
-
-    const cannedResponse =
-      latestUserMessage.length > 0
-        ? await convex.query(api.plugins.support.queries.matchCannedResponse, {
-            organizationId,
-            question: latestUserMessage,
-          })
-        : null;
-
-    if (cannedResponse) {
-      console.log("[support-chat] matched canned response", {
-        organizationId,
-        entryId: cannedResponse.entryId,
-        slug: cannedResponse.slug,
-      });
+      const fallbackMessage =
+        "Support assistant is not fully configured yet (missing API key).";
       await convex.mutation(api.plugins.support.mutations.recordMessage, {
         organizationId,
         sessionId,
         role: "assistant",
-        content: cannedResponse.content,
+        content: fallbackMessage,
         contactId,
         contactEmail,
         contactName,
         source: "agent",
       });
-      return streamTextResponse(cannedResponse.content);
+      return streamTextResponse(fallbackMessage);
+    }
+
+    const articleMatch =
+      latestUserMessage.length > 0
+        ? await convex.query(api.plugins.support.queries.matchHelpdeskArticle, {
+            organizationId,
+            question: latestUserMessage,
+          })
+        : null;
+
+    if (articleMatch) {
+      console.log("[support-chat] matched helpdesk article", {
+        organizationId,
+        entryId: articleMatch.entryId,
+        slug: articleMatch.slug,
+      });
+      await convex.mutation(api.plugins.support.mutations.recordMessage, {
+        organizationId,
+        sessionId,
+        role: "assistant",
+        content: articleMatch.content,
+        contactId,
+        contactEmail,
+        contactName,
+        source: "agent",
+      });
+      return streamTextResponse(articleMatch.content);
     }
 
     const agentResult = await convex.action(
@@ -200,7 +212,32 @@ export async function GET(req: NextRequest) {
 }
 
 function streamTextResponse(content: string) {
-  return new Response(content, {
+  const messageId = `assistant-${Date.now().toString(36)}`;
+  const normalized = content ?? "";
+
+  const payload =
+    formatStreamPart("assistant_message", {
+      id: messageId,
+      role: "assistant",
+      content: [
+        {
+          type: "text",
+          text: {
+            value: "",
+          },
+        },
+      ],
+    }) +
+    formatStreamPart("text", normalized) +
+    formatStreamPart("finish_message", {
+      finishReason: "stop",
+      usage: {
+        promptTokens: 0,
+        completionTokens: Math.max(1, Math.ceil(normalized.length / 4)),
+      },
+    });
+
+  return new Response(payload, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
     },

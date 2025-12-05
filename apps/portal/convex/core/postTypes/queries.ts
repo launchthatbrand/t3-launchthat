@@ -1,17 +1,20 @@
+import {
+  postTypeAdminMenuValidator,
+  postTypeMetaBoxValidator,
+  postTypeRewriteValidator,
+  postTypeStorageKindValidator,
+  postTypeStorageTablesValidator,
+  postTypeSupportsValidator,
+} from "./schema";
+
+import { getScopedPostTypeBySlug } from "./lib/contentTypes";
+import { query } from "../../_generated/server";
 /**
  * Content Types Queries
  *
  * This module provides query endpoints for content types.
  */
 import { v } from "convex/values";
-
-import { query } from "../../_generated/server";
-import { getScopedPostTypeBySlug } from "./lib/contentTypes";
-import {
-  postTypeAdminMenuValidator,
-  postTypeRewriteValidator,
-  postTypeSupportsValidator,
-} from "./schema";
 
 /**
  * List all content types
@@ -43,6 +46,9 @@ export const list = query({
       createdBy: v.optional(v.id("users")),
       organizationId: v.optional(v.id("organizations")),
       enabledOrganizationIds: v.optional(v.array(v.id("organizations"))),
+      storageKind: v.optional(postTypeStorageKindValidator),
+      storageTables: v.optional(postTypeStorageTablesValidator),
+      metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
     }),
   ),
   handler: async (ctx, args) => {
@@ -106,6 +112,9 @@ export const get = query({
       createdBy: v.optional(v.id("users")),
       organizationId: v.optional(v.id("organizations")),
       enabledOrganizationIds: v.optional(v.array(v.id("organizations"))),
+      storageKind: v.optional(postTypeStorageKindValidator),
+      storageTables: v.optional(postTypeStorageTablesValidator),
+      metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
     }),
     v.null(),
   ),
@@ -166,6 +175,9 @@ export const getBySlug = query({
       createdBy: v.optional(v.id("users")),
       organizationId: v.optional(v.id("organizations")),
       enabledOrganizationIds: v.optional(v.array(v.id("organizations"))),
+      storageKind: v.optional(postTypeStorageKindValidator),
+      storageTables: v.optional(postTypeStorageTablesValidator),
+      metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
     }),
     v.null(),
   ),

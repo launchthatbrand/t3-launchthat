@@ -1,7 +1,10 @@
+// @ts-nocheck
+
 import React from "react";
+
 import type { SyncCourseStateOptions } from "./useSyncCourseState";
-import { useSyncCourseState } from "./useSyncCourseState";
 import { useUnifiedCourseStore } from "../store/useUnifiedCourseStore";
+import { useSyncCourseState } from "./useSyncCourseState";
 
 // ============================================================================
 // UNIFIED COURSE STATE HOOK

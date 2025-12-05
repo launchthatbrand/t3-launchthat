@@ -1,24 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-import { useUser } from "@clerk/nextjs";
-import { formatPhoneNumber } from "@convex-config/shared";
-import { useQuery } from "convex/react";
-import {
-  Building,
-  Edit,
-  Mail,
-  Phone,
-  PlusCircle,
-  Tag,
-  Trash2,
-  UserCircle,
-} from "lucide-react";
-
 import {
   Badge,
   Button,
@@ -30,17 +11,35 @@ import {
   Input,
   Separator,
 } from "@acme/ui";
-
+import {
+  Building,
+  Edit,
+  Mail,
+  Phone,
+  PlusCircle,
+  Tag,
+  Trash2,
+  UserCircle,
+} from "lucide-react";
 // Import EntityList components
 import type {
   ColumnDefinition,
   EntityAction,
   FilterConfig,
 } from "@acme/ui/entity-list/types";
+
 import { CustomerTypeFilter } from "~/app/(root)/(frontend)/contacts/_components/CustomerTypeFilter";
-import { ImportExportButtons } from "~/app/(root)/(frontend)/contacts/_components/ImportExportButtons";
-import { TagFilter } from "~/app/(root)/(frontend)/contacts/_components/TagFilter";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
+import { Id } from "@/convex/_generated/dataModel";
+import { ImportExportButtons } from "~/app/(root)/(frontend)/contacts/_components/ImportExportButtons";
+import Link from "next/link";
+import { TagFilter } from "~/app/(root)/(frontend)/contacts/_components/TagFilter";
+import { api } from "@/convex/_generated/api";
+import { formatPhoneNumber } from "@convex-config/shared";
+import { useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useUser } from "@clerk/nextjs";
 
 interface Contact {
   _id: Id<"contacts">;
@@ -64,12 +63,12 @@ export default function AdminContactsPage() {
   >(null);
 
   // Get all available tags for the filter
-  const availableTags = useQuery(api.contacts.queries.getTags, {
+  const availableTags = useQuery(api.core.crm.queries.getTags, {
     userId: user?.id,
   });
 
   // Get contacts
-  const contactsResult = useQuery(api.contacts.queries.getContacts, {
+  const contactsResult = useQuery(api.core.crm.contacts.queries.getContacts, {
     userId: user?.id,
     filters: {
       ...(selectedTags.length > 0 ? { tags: selectedTags } : {}),
@@ -94,15 +93,15 @@ export default function AdminContactsPage() {
       sortable: true,
       cell: (contact) => (
         <div className="flex items-center">
-          <div className="mr-2 rounded-full bg-primary/10 p-2">
-            <UserCircle className="h-6 w-6 text-primary/80" />
+          <div className="bg-primary/10 mr-2 rounded-full p-2">
+            <UserCircle className="text-primary/80 h-6 w-6" />
           </div>
           <div>
             <div className="font-medium">
               {contact.firstName} {contact.lastName}
             </div>
             {(contact.jobTitle || contact.company) && (
-              <div className="text-xs text-muted-foreground">
+              <div className="text-muted-foreground text-xs">
                 {contact.jobTitle && contact.company
                   ? `${contact.jobTitle} at ${contact.company}`
                   : contact.jobTitle || contact.company}
@@ -120,12 +119,12 @@ export default function AdminContactsPage() {
       cell: (contact) => (
         <div className="space-y-1">
           <div className="flex items-center">
-            <Mail className="mr-1 h-3 w-3 text-muted-foreground" />
+            <Mail className="text-muted-foreground mr-1 h-3 w-3" />
             <span className="text-sm">{contact.email}</span>
           </div>
           {contact.phone && (
             <div className="flex items-center">
-              <Phone className="mr-1 h-3 w-3 text-muted-foreground" />
+              <Phone className="text-muted-foreground mr-1 h-3 w-3" />
               <span className="text-sm">
                 {formatPhoneNumber(contact.phone)}
               </span>
@@ -133,7 +132,7 @@ export default function AdminContactsPage() {
           )}
           {contact.company && (
             <div className="flex items-center">
-              <Building className="mr-1 h-3 w-3 text-muted-foreground" />
+              <Building className="text-muted-foreground mr-1 h-3 w-3" />
               <span className="text-sm">{contact.company}</span>
             </div>
           )}
@@ -313,7 +312,7 @@ export default function AdminContactsPage() {
                   onChange={setSelectedTags}
                 />
               ) : (
-                <div className="h-10 animate-pulse rounded bg-muted" />
+                <div className="bg-muted h-10 animate-pulse rounded" />
               )}
             </div>
 

@@ -1,6 +1,7 @@
-import type { CarouselItem } from "@/components/groups/GroupHeaderCarousel";
 import { create } from "zustand";
 import { shallow } from "zustand/shallow";
+
+import type { CarouselItem } from "~/components/groups.old/GroupHeaderCarousel";
 
 interface CarouselState {
   // State

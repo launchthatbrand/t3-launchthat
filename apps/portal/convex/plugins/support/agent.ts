@@ -108,6 +108,19 @@ export const generateAgentReply = action({
   handler: async (ctx, args) => {
     if (!OPENAI_API_KEY) {
       console.warn("[support-agent] missing OPENAI_API_KEY");
+      await ctx.runMutation(
+        internal.plugins.support.mutations.recordMessageInternal,
+        {
+          organizationId: args.organizationId,
+          sessionId: args.sessionId,
+          role: "assistant",
+          content: KNOWN_MISSING_KEY_MESSAGE,
+          contactId: args.contactId ?? undefined,
+          contactEmail: args.contactEmail ?? undefined,
+          contactName: args.contactName ?? undefined,
+          source: "agent",
+        },
+      );
       return { text: KNOWN_MISSING_KEY_MESSAGE };
     }
 

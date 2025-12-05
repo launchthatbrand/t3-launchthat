@@ -106,6 +106,7 @@
     "geist": "^1.5.1",
     "katex": "^0.16.22",
     "launchthat-plugin-calendar": "workspace:*",
+    "launchthat-plugin-cms": "workspace:*",
     "launchthat-plugin-commerce": "workspace:*",
     "launchthat-plugin-core": "workspace:*",
     "launchthat-plugin-helpdesk": "workspace:*",

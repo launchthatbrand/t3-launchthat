@@ -1,14 +1,10 @@
+import type { Doc, Id } from "../../_generated/dataModel";
+import { internalMutation, mutation } from "../../_generated/server";
+
+import type { MutationCtx } from "../../_generated/server";
+import { generateDefaultAliasParts } from "./queries";
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { v } from "convex/values";
-
-import type { Doc, Id } from "../../_generated/dataModel";
-import type { MutationCtx } from "../../_generated/server";
-import { internalMutation, mutation } from "../../_generated/server";
-import { generateDefaultAliasParts } from "./queries";
-
-const matchModeValidator = v.optional(
-  v.union(v.literal("contains"), v.literal("exact"), v.literal("regex")),
-);
 
 const ragFieldSelection = v.array(
   v.union(v.literal("title"), v.literal("excerpt"), v.literal("content")),
@@ -428,84 +424,6 @@ export const setConversationAgentThread = internalMutation({
     });
 
     return { agentThreadId: args.agentThreadId };
-  },
-});
-
-export const upsertCannedResponse = mutation({
-  args: {
-    organizationId: v.id("organizations"),
-    entryId: v.optional(v.id("supportCannedResponses")),
-    title: v.string(),
-    slug: v.optional(v.string()),
-    content: v.string(),
-    tags: v.optional(v.array(v.string())),
-    matchMode: matchModeValidator,
-    matchPhrases: v.optional(v.array(v.string())),
-    priority: v.optional(v.number()),
-    isActive: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    const now = Date.now();
-
-    if (args.entryId) {
-      const existing = await ctx.db.get(args.entryId);
-      if (!existing || existing.organizationId !== args.organizationId) {
-        throw new Error("Entry not found for this organization");
-      }
-
-      const slug =
-        args.slug ??
-        existing.slug ??
-        args.title.toLowerCase().replace(/\s+/g, "-");
-
-      await ctx.db.patch(args.entryId, {
-        title: args.title,
-        slug,
-        content: args.content,
-        tags: args.tags ?? undefined,
-        matchMode: args.matchMode ?? existing.matchMode ?? "contains",
-        matchPhrases: args.matchPhrases ?? existing.matchPhrases ?? [],
-        priority: args.priority ?? existing.priority ?? 0,
-        isActive: args.isActive ?? true,
-        updatedAt: now,
-      });
-
-      return args.entryId;
-    }
-
-    const slug = args.slug ?? args.title.toLowerCase().replace(/\s+/g, "-");
-
-    const newEntryId = await ctx.db.insert("supportCannedResponses", {
-      organizationId: args.organizationId,
-      title: args.title,
-      slug,
-      content: args.content,
-      tags: args.tags ?? undefined,
-      matchMode: args.matchMode ?? "contains",
-      matchPhrases: args.matchPhrases ?? [],
-      priority: args.priority ?? 0,
-      isActive: args.isActive ?? true,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return newEntryId;
-  },
-});
-
-export const deleteCannedResponse = mutation({
-  args: {
-    organizationId: v.id("organizations"),
-    entryId: v.id("supportCannedResponses"),
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db.get(args.entryId);
-    if (!existing || existing.organizationId !== args.organizationId) {
-      throw new Error("Entry not found");
-    }
-    await ctx.db.delete(args.entryId);
-
-    return args.entryId;
   },
 });
 

@@ -1,5 +1,12 @@
 "use client";
 
+import { useCallback, useMemo } from "react";
+import { api } from "@portal/convexspec";
+import { useMutation, useQuery } from "convex/react";
+
+import { toast } from "@acme/ui/toast";
+
+import type { Id } from "../lib/convexId";
 import type {
   LmsBuilderLesson,
   LmsBuilderQuiz,
@@ -7,13 +14,7 @@ import type {
   LmsCourseBuilderData,
   LmsCourseStructureItem,
 } from "../types";
-import { useCallback, useMemo } from "react";
-import { useMutation, useQuery } from "convex/react";
-
-import { CourseBuilder } from "@acme/ui/CourseBuilderV3";
-import type { Id } from "../lib/convexId";
-import { api } from "@portal/convexspec";
-import { toast } from "@acme/ui/toast";
+import { CourseBuilder } from "../CourseBuilderV3";
 
 interface CourseBuilderScreenProps {
   courseId?: Id<"posts">;
@@ -388,7 +389,7 @@ export const CourseBuilderScreen = ({
 
   if (!courseId) {
     return (
-      <div className="rounded-md border p-6 text-sm text-muted-foreground">
+      <div className="text-muted-foreground rounded-md border p-6 text-sm">
         Save your course first to access the builder.
       </div>
     );

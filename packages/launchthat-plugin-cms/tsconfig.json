@@ -1,0 +1,15 @@
+{
+  "extends": "@acme/tsconfig/compiled-package.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "dom", "dom.iterable"],
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "moduleResolution": "bundler",
+    "paths": {
+      "launchthat-plugin-core": ["../launchthat-plugin-core/src/index"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}
+

@@ -38,6 +38,13 @@ export const postTypeAdminMenuValidator = v.object({
   parent: v.optional(v.string()),
 });
 
+export const postTypeStorageKindValidator = v.union(
+  v.literal("posts"),
+  v.literal("custom"),
+);
+
+export const postTypeStorageTablesValidator = v.array(v.string());
+
 // Define reusable field value validators to match contentTypes.ts
 const fieldDefaultValue = v.optional(
   v.union(v.string(), v.number(), v.boolean(), v.null()),
@@ -122,6 +129,16 @@ const fieldUiConfig = v.optional(
   ),
 );
 
+export const postTypeMetaBoxValidator = v.object({
+  id: v.string(),
+  title: v.string(),
+  description: v.optional(v.string()),
+  location: v.optional(v.union(v.literal("main"), v.literal("sidebar"))),
+  priority: v.optional(v.number()),
+  fieldKeys: v.array(v.string()),
+  rendererKey: v.optional(v.string()),
+});
+
 /**
  * Content Types Table - Defines different content types in the system
  */
@@ -142,6 +159,9 @@ export const postTypesTable = defineTable({
   supports: v.optional(postTypeSupportsValidator), // Feature support options
   rewrite: v.optional(postTypeRewriteValidator), // Rewrite / slug configuration
   adminMenu: v.optional(postTypeAdminMenuValidator), // Admin menu configuration
+  storageKind: v.optional(postTypeStorageKindValidator),
+  storageTables: v.optional(postTypeStorageTablesValidator),
+  metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
 
   // Stats and Metadata
   fieldCount: v.optional(v.number()), // Number of fields (denormalized for performance)

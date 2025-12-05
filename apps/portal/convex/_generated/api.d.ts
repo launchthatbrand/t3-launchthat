@@ -15,8 +15,9 @@ import type * as core_accessControl_queries from "../core/accessControl/queries.
 import type * as core_accessControl_types from "../core/accessControl/types.js";
 import type * as core_categories_mutations from "../core/categories/mutations.js";
 import type * as core_categories_queries from "../core/categories/queries.js";
-import type * as core_contacts_mutations from "../core/contacts/mutations.js";
-import type * as core_contacts_queries from "../core/contacts/queries.js";
+import type * as core_crm_contacts_mutations from "../core/crm/contacts/mutations.js";
+import type * as core_crm_contacts_queries from "../core/crm/contacts/queries.js";
+import type * as core_crm_queries from "../core/crm/queries.js";
 import type * as core_lib_auth from "../core/lib/auth.js";
 import type * as core_lib_index from "../core/lib/index.js";
 import type * as core_lib_permissions from "../core/lib/permissions.js";
@@ -200,8 +201,9 @@ declare const fullApi: ApiFromModules<{
   "core/accessControl/types": typeof core_accessControl_types;
   "core/categories/mutations": typeof core_categories_mutations;
   "core/categories/queries": typeof core_categories_queries;
-  "core/contacts/mutations": typeof core_contacts_mutations;
-  "core/contacts/queries": typeof core_contacts_queries;
+  "core/crm/contacts/mutations": typeof core_crm_contacts_mutations;
+  "core/crm/contacts/queries": typeof core_crm_contacts_queries;
+  "core/crm/queries": typeof core_crm_queries;
   "core/lib/auth": typeof core_lib_auth;
   "core/lib/index": typeof core_lib_index;
   "core/lib/permissions": typeof core_lib_permissions;

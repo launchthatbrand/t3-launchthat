@@ -19,16 +19,17 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "launchthat-plugin-core": "workspace:*"
+    "launchthat-plugin-core": "workspace:*",
+    "launchthat-plugin-support": "workspace:*"
   },
   "devDependencies": {
     "@acme/eslint-config": "workspace:*",
     "@acme/prettier-config": "workspace:*",
     "@acme/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:"
   },
   "prettier": "@acme/prettier-config"
 }
-

@@ -10,7 +10,6 @@
     "node_modules",
     "src/**/*.test.*",
     "src/**/__tests__/**",
-    "src/entity-list/examples/**",
-    "src/CourseBuilderV3/**"
+    "src/entity-list/examples/**"
   ]
 }

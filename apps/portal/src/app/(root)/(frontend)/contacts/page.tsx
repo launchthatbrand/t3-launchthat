@@ -1,11 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { useUser } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
-
 import {
   Button,
   Card,
@@ -19,6 +13,11 @@ import {
 import { ContactList } from "./_components/ContactList";
 import { CustomerTypeFilter } from "./_components/CustomerTypeFilter";
 import { TagFilter } from "./_components/TagFilter";
+import { api } from "@/convex/_generated/api";
+import { useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useUser } from "@clerk/nextjs";
 
 export default function ContactsPage() {
   const { user, isLoaded } = useUser();
@@ -28,7 +27,7 @@ export default function ContactsPage() {
   const [customerType, setCustomerType] = useState<string | null>(null);
 
   // Get all available tags for filtering
-  const tags = useQuery(api.contacts.queries.getTags, {
+  const tags = useQuery(api.core.crm.contacts.queries.getTags, {
     userId: user?.id,
   });
 

@@ -17,7 +17,8 @@ const contactsTable = defineTable({
   updatedBy: v.optional(v.string()),
 })
   .index("by_organization", ["organizationId"])
-  .index("by_org_email", ["organizationId", "email"]);
+  .index("by_org_email", ["organizationId", "email"])
+  .index("by_createdBy", ["createdBy"]);
 
 export const contactsSchema = {
   contacts: contactsTable,

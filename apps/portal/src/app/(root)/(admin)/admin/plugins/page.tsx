@@ -1,19 +1,5 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import type { ColumnDef } from "@tanstack/react-table";
-import { useCallback, useMemo, useState, useTransition } from "react";
-import Link from "next/link";
-import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
-import { toast } from "sonner";
-
-import type { EntityAction } from "@acme/ui/entity-list/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,8 +10,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@acme/ui/alert-dialog";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -34,22 +18,36 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import { Separator } from "@acme/ui/separator";
-
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type {
   PluginDefinition,
   PluginPostTypeConfig,
 } from "~/lib/plugins/types";
-import { useTenant } from "~/context/TenantContext";
-import { pluginDefinitions } from "~/lib/plugins/definitions";
-import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import {
   useCreatePostType,
   useDisablePostTypeAccess,
   useEnsurePostTypeAccess,
   usePostTypes,
 } from "../settings/post-types/_api/postTypes";
+import { useMutation, useQuery } from "convex/react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import type { ColumnDef } from "@tanstack/react-table";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import Link from "next/link";
+import { Separator } from "@acme/ui/separator";
+import { api } from "@/convex/_generated/api";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
+import { toast } from "sonner";
+import { useTenant } from "~/context/TenantContext";
 
 const isPostTypeEnabledForTenant = (
   postType: Doc<"postTypes">,
@@ -315,30 +313,36 @@ export default function PluginsPage() {
             <span className="text-muted-foreground text-sm">None</span>
           ),
       },
+      {
+        id: "listActions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <div className="flex justify-end">
+            {row.original.isEnabled ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPluginToDisable(row.original)}
+                disabled={isPending || isLoading}
+              >
+                Deactivate
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => handleEnablePlugin(row.original)}
+                disabled={isPending || isLoading}
+              >
+                Activate
+              </Button>
+            )}
+          </div>
+        ),
+      },
     ],
-    [],
+    [handleEnablePlugin, isLoading, isPending],
   );
 
-  const pluginActions = useMemo<EntityAction<PluginRow>[]>(
-    () => [
-      {
-        id: "enable",
-        label: "Enable Plugin",
-        onClick: (plugin: PluginRow) => handleEnablePlugin(plugin),
-        isVisible: (plugin: PluginRow) => !plugin.isEnabled,
-        isDisabled: () => isPending || isLoading,
-      },
-      {
-        id: "disable",
-        label: "Disable Plugin",
-        variant: "destructive",
-        onClick: (plugin: PluginRow) => setPluginToDisable(plugin),
-        isVisible: (plugin: PluginRow) => plugin.isEnabled,
-        isDisabled: () => isPending || isLoading,
-      },
-    ],
-    [handleEnablePlugin, isPending, isLoading, setPluginToDisable],
-  );
   return (
     <div className="container space-y-6 py-4">
       <div>
@@ -358,7 +362,6 @@ export default function PluginsPage() {
         isLoading={isLoading}
         enableSearch
         enableFooter={false}
-        entityActions={pluginActions}
         viewModes={["grid", "list"]}
         defaultViewMode="grid"
         gridColumns={{ sm: 1, md: 2 }}

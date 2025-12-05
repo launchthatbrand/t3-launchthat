@@ -11,12 +11,12 @@ import { fetchQuery } from "convex/nextjs";
 import { EditorViewer } from "~/components/blocks/editor-x/viewer";
 import { parseLexicalSerializedState } from "~/lib/editor/lexical";
 import { findPostTypeBySlug } from "~/lib/plugins/frontend";
+import { wrapWithFrontendProviders } from "~/lib/plugins/frontendProviders";
 import {
   getCanonicalPostPath,
   getCanonicalPostSegments,
 } from "~/lib/postTypes/routing";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
-import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
 import { PuckContentRenderer } from "../../../../components/puckeditor/PuckContentRenderer";
 
 type PluginMatch = ReturnType<typeof findPostTypeBySlug>;
@@ -174,10 +174,10 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       post,
       postType: pluginMatch.postType,
     });
-    if (pluginMatch.plugin?.id === "socialfeed") {
-      return <PortalSocialFeedProvider>{rendered}</PortalSocialFeedProvider>;
-    }
-    return rendered;
+    return wrapWithFrontendProviders(
+      rendered,
+      pluginMatch.postType.frontend?.providers,
+    );
   }
 
   return (
