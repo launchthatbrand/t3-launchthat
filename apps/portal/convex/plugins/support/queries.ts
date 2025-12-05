@@ -1,7 +1,9 @@
 import type { Doc, Id } from "../../_generated/dataModel";
 import { internalQuery, query } from "../../_generated/server";
 
+import type { QueryCtx } from "../../_generated/server";
 import { getEmailSettingsByAliasHelper } from "./helpers";
+import { supportOrganizationIdValidator } from "./schema";
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { v } from "convex/values";
 
@@ -46,6 +48,10 @@ const randomSuffix = (length: number) => {
       .charAt(0),
   ).join("");
 };
+
+const normalizeOrganizationId = (
+  organizationId: Id<"organizations"> | string,
+): Id<"organizations"> => organizationId as Id<"organizations">;
 
 export const generateDefaultAliasParts = (
   organizationId: Id<"organizations">,
@@ -98,7 +104,7 @@ export const getEmailSettingsByAlias = internalQuery({
 
 export const listHelpdeskArticles = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
     query: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
@@ -109,12 +115,13 @@ export const listHelpdeskArticles = query({
     const terms = normalizedQuery
       ? normalizedQuery.split(/\s+/).filter(Boolean)
       : [];
+    const organizationId = normalizeOrganizationId(args.organizationId);
 
     const helpdeskPosts = await ctx.db
       .query("posts")
       .withIndex("by_organization_postTypeSlug", (q) =>
         q
-          .eq("organizationId", args.organizationId)
+          .eq("organizationId", organizationId)
           .eq("postTypeSlug", "helpdeskarticles"),
       )
       .take(200);
@@ -243,7 +250,7 @@ async function getPostMetaMap(ctx: QueryCtx, postId: Id<"posts">) {
 
 export const matchHelpdeskArticle = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
     question: v.string(),
   },
   returns: helpdeskTriggerResult,
@@ -253,12 +260,13 @@ export const matchHelpdeskArticle = query({
       return null;
     }
 
+    const organizationId = normalizeOrganizationId(args.organizationId);
     const lowerQuestion = normalizedQuestion.toLowerCase();
     const helpdeskPosts = await ctx.db
       .query("posts")
       .withIndex("by_organization_postTypeSlug", (q) =>
         q
-          .eq("organizationId", args.organizationId)
+          .eq("organizationId", organizationId)
           .eq("postTypeSlug", "helpdeskarticles"),
       )
       .take(200);
@@ -373,7 +381,7 @@ type MessageDoc = Doc<"supportMessages">;
 
 export const listMessages = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
     sessionId: v.string(),
   },
   returns: v.array(
@@ -400,12 +408,11 @@ export const listMessages = query({
     }),
   ),
   handler: async (ctx, args) => {
+    const organizationId = normalizeOrganizationId(args.organizationId);
     const entries = (await ctx.db
       .query("supportMessages")
       .withIndex("by_session", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("sessionId", args.sessionId),
+        q.eq("organizationId", organizationId).eq("sessionId", args.sessionId),
       )
       .order("desc")
       .take(50)) as MessageDoc[];
@@ -432,7 +439,7 @@ export const listMessages = query({
 
 export const listConversations = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
     limit: v.optional(v.number()),
   },
   returns: v.array(
@@ -458,10 +465,11 @@ export const listConversations = query({
   ),
   handler: async (ctx, args) => {
     const limit = Math.max(1, Math.min(args.limit ?? 50, 100));
+    const organizationId = normalizeOrganizationId(args.organizationId);
     const stored = await ctx.db
       .query("supportConversations")
       .withIndex("by_organization", (q) =>
-        q.eq("organizationId", args.organizationId),
+        q.eq("organizationId", organizationId),
       )
       .order("desc")
       .take(limit);
@@ -557,19 +565,18 @@ export const listConversations = query({
 
 export const getConversationMode = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
     sessionId: v.string(),
   },
   returns: v.object({
     mode: v.union(v.literal("agent"), v.literal("manual")),
   }),
   handler: async (ctx, args) => {
+    const organizationId = normalizeOrganizationId(args.organizationId);
     const conversation = await ctx.db
       .query("supportConversations")
       .withIndex("by_org_session", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("sessionId", args.sessionId),
+        q.eq("organizationId", organizationId).eq("sessionId", args.sessionId),
       )
       .unique();
 
@@ -583,7 +590,7 @@ export const getConversationMode = query({
 
 export const getAgentPresence = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
     sessionId: v.string(),
   },
   returns: v.object({
@@ -592,12 +599,11 @@ export const getAgentPresence = query({
     updatedAt: v.number(),
   }),
   handler: async (ctx, args) => {
+    const organizationId = normalizeOrganizationId(args.organizationId);
     const presence = await ctx.db
       .query("supportAgentPresence")
       .withIndex("by_org_session", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("sessionId", args.sessionId),
+        q.eq("organizationId", organizationId).eq("sessionId", args.sessionId),
       )
       .unique();
 
@@ -617,16 +623,15 @@ export const getAgentPresence = query({
 
 export const getConversationMetadata = internalQuery({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
     sessionId: v.string(),
   },
   handler: async (ctx, args) => {
+    const organizationId = normalizeOrganizationId(args.organizationId);
     const conversation = await ctx.db
       .query("supportConversations")
       .withIndex("by_org_session", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("sessionId", args.sessionId),
+        q.eq("organizationId", organizationId).eq("sessionId", args.sessionId),
       )
       .unique();
 
@@ -646,7 +651,7 @@ export const getConversationMetadata = internalQuery({
 
 export const getEmailSettings = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
   },
   returns: v.object({
     defaultAlias: v.string(),
@@ -659,15 +664,16 @@ export const getEmailSettings = query({
     isCustomDomainConnected: v.boolean(),
   }),
   handler: async (ctx, args) => {
+    const organizationId = normalizeOrganizationId(args.organizationId);
     const existing = await ctx.db
       .query("supportEmailSettings")
       .withIndex("by_organization", (q) =>
-        q.eq("organizationId", args.organizationId),
+        q.eq("organizationId", organizationId),
       )
       .unique();
 
     if (!existing) {
-      const aliasParts = generateDefaultAliasParts(args.organizationId);
+      const aliasParts = generateDefaultAliasParts(organizationId);
       return {
         defaultAlias: aliasParts.address,
         allowEmailIntake: false,
@@ -703,7 +709,7 @@ const ragFieldValidator = v.array(
 
 export const listRagSources = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
   },
   returns: v.array(
     v.object({
@@ -721,12 +727,11 @@ export const listRagSources = query({
     }),
   ),
   handler: async (ctx, args) => {
+    const organizationId = normalizeOrganizationId(args.organizationId);
     const rawSources = await ctx.db
       .query("supportRagSources")
       .withIndex("by_org_type", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("sourceType", "postType"),
+        q.eq("organizationId", organizationId).eq("sourceType", "postType"),
       )
       .collect();
 

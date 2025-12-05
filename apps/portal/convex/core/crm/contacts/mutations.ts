@@ -1,12 +1,13 @@
 import type { Doc, Id } from "../../../_generated/dataModel";
 
+import { crmOrganizationIdValidator } from "./schema";
 import { mutation } from "../../../_generated/server";
 import { v } from "convex/values";
 
 type ContactDoc = Doc<"contacts">;
 
 const upsertArgs = {
-  organizationId: v.id("organizations"),
+  organizationId: crmOrganizationIdValidator,
   email: v.optional(v.string()),
   phone: v.optional(v.string()),
   firstName: v.optional(v.string()),
@@ -17,7 +18,13 @@ const upsertArgs = {
   metadata: v.optional(v.any()),
 };
 
-const normalizeNames = (input: typeof upsertArgs) => {
+type NameInput = {
+  firstName?: string | null;
+  lastName?: string | null;
+  fullName?: string | null;
+};
+
+const normalizeNames = (input: NameInput) => {
   const firstName = input.firstName?.trim();
   const lastName = input.lastName?.trim();
   const fullName =

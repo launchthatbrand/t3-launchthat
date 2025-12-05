@@ -1,25 +1,24 @@
 /* eslint-disable react-compiler/react-compiler */
 "use client";
 
-import type { TenantSummary } from "@/lib/tenant-fetcher";
-// Import Clerk provider and hook
-import React from "react";
-import { usePathname } from "next/navigation";
-import { ClerkProvider, useAuth } from "@clerk/nextjs";
-import { SessionProvider } from "convex-helpers/react/sessions";
-import { ConvexReactClient } from "convex/react";
-import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { SupportChatWidget } from "launchthat-plugin-support";
-import { useLocalStorage } from "usehooks-ts";
-
+import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
+import { PORTAL_TENANT_ID, PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
 import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
-import { Toaster } from "@acme/ui/toast";
 
 import { ContentProtectionProvider } from "~/components/access/ContentProtectionProvider";
-import { TenantProvider } from "~/context/TenantContext";
-import { env } from "~/env";
-import { PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ConvexReactClient } from "convex/react";
 import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
+// Import Clerk provider and hook
+import React from "react";
+import { SessionProvider } from "convex-helpers/react/sessions";
+import { SupportChatWidget } from "launchthat-plugin-support";
+import { TenantProvider } from "~/context/TenantContext";
+import type { TenantSummary } from "@/lib/tenant-fetcher";
+import { Toaster } from "@acme/ui/toast";
+import { env } from "~/env";
+import { useLocalStorage } from "usehooks-ts";
+import { usePathname } from "next/navigation";
 
 // Import the correct Convex provider for Clerk integration
 
@@ -40,6 +39,12 @@ export function Providers({ children, tenant }: ProvidersProps) {
   const effectiveTenant = tenant ?? PORTAL_TENANT_SUMMARY;
   const pathname = usePathname();
   const isAdminRoute = pathname.startsWith("/admin");
+  const chatOrganizationId = isAdminRoute
+    ? PORTAL_TENANT_ID
+    : effectiveTenant._id;
+  const chatTenantName = isAdminRoute
+    ? PORTAL_TENANT_SUMMARY.name
+    : effectiveTenant.name;
 
   return (
     // Wrap everything with ClerkProvider - key is now guaranteed to be a string
@@ -50,18 +55,15 @@ export function Providers({ children, tenant }: ProvidersProps) {
             <TenantProvider value={effectiveTenant}>
               <ConvexUserEnsurer />
               {/* <GuestCartMerger /> */}
-              <ThemeProvider
-                attribute="class"
-                defaultTheme="system"
-                enableSystem
-              >
+              <ThemeProvider>
                 {children}
-                {!isAdminRoute && (
-                  <SupportChatWidget
-                    organizationId={effectiveTenant._id}
-                    tenantName={effectiveTenant.name}
+                {chatOrganizationId ? (
+                  <SupportChatWidgetBridge
+                    organizationId={chatOrganizationId}
+                    tenantName={chatTenantName}
+                    isAdminRoute={isAdminRoute}
                   />
-                )}
+                ) : null}
                 <div className="absolute right-4 bottom-4">
                   <ThemeToggle />
                 </div>
@@ -72,5 +74,40 @@ export function Providers({ children, tenant }: ProvidersProps) {
         </SessionProvider>
       </ConvexProviderWithClerk>
     </ClerkProvider>
+  );
+}
+
+interface SupportChatWidgetBridgeProps {
+  organizationId: string;
+  tenantName: string;
+  isAdminRoute: boolean;
+}
+
+function SupportChatWidgetBridge({
+  organizationId,
+  tenantName,
+  isAdminRoute,
+}: SupportChatWidgetBridgeProps) {
+  const { user } = useUser();
+
+  const defaultContact =
+    isAdminRoute && user
+      ? {
+          contactId: user.id,
+          fullName:
+            user.fullName ??
+            user.username ??
+            user.primaryEmailAddress?.emailAddress ??
+            undefined,
+          email: user.primaryEmailAddress?.emailAddress ?? undefined,
+        }
+      : null;
+
+  return (
+    <SupportChatWidget
+      organizationId={organizationId}
+      tenantName={tenantName}
+      defaultContact={defaultContact}
+    />
   );
 }

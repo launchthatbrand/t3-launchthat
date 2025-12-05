@@ -1,8 +1,14 @@
+import { PORTAL_TENANT_ID } from "../../constants";
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
+export const supportOrganizationIdValidator = v.union(
+  v.id("organizations"),
+  v.literal(PORTAL_TENANT_ID),
+);
+
 const supportMessagesTable = defineTable({
-  organizationId: v.id("organizations"),
+  organizationId: supportOrganizationIdValidator,
   sessionId: v.string(),
   role: v.union(v.literal("user"), v.literal("assistant")),
   content: v.string(),
@@ -33,7 +39,7 @@ const supportMessagesTable = defineTable({
   .index("by_organization", ["organizationId"]);
 
 const supportConversationsTable = defineTable({
-  organizationId: v.id("organizations"),
+  organizationId: supportOrganizationIdValidator,
   sessionId: v.string(),
   origin: v.union(v.literal("chat"), v.literal("email")),
   status: v.optional(
@@ -69,7 +75,7 @@ const dnsRecordValidator = v.object({
 });
 
 const supportEmailSettingsTable = defineTable({
-  organizationId: v.id("organizations"),
+  organizationId: supportOrganizationIdValidator,
   defaultAlias: v.string(),
   defaultAliasLocalPart: v.string(),
   allowEmailIntake: v.boolean(),
@@ -98,7 +104,7 @@ const ragFieldSelection = v.union(
 );
 
 const supportRagSourcesTable = defineTable({
-  organizationId: v.id("organizations"),
+  organizationId: supportOrganizationIdValidator,
   sourceType: v.literal("postType"),
   postTypeSlug: v.string(),
   fields: v.array(ragFieldSelection),
@@ -114,7 +120,7 @@ const supportRagSourcesTable = defineTable({
   .index("by_org_postType", ["organizationId", "postTypeSlug"]);
 
 const supportAgentPresenceTable = defineTable({
-  organizationId: v.id("organizations"),
+  organizationId: supportOrganizationIdValidator,
   sessionId: v.string(),
   agentUserId: v.string(),
   agentName: v.string(),

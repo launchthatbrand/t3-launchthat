@@ -1,11 +1,13 @@
 "use node";
 
-import type { Id } from "@convex-config/_generated/dataModel";
-import type { ActionCtx } from "@convex-config/_generated/server";
-import { createOpenAI } from "@ai-sdk/openai";
 import { api, components, internal } from "@convex-config/_generated/api";
-import { action } from "@convex-config/_generated/server";
+
+import type { ActionCtx } from "@convex-config/_generated/server";
 import { Agent } from "@convex-dev/agent";
+import type { Id } from "@convex-config/_generated/dataModel";
+import { action } from "@convex-config/_generated/server";
+import { createOpenAI } from "@ai-sdk/openai";
+import { supportOrganizationIdValidator } from "./schema";
 import { v } from "convex/values";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -29,6 +31,10 @@ const BASE_INSTRUCTIONS = [
 
 const KNOWN_MISSING_KEY_MESSAGE =
   "Support assistant is not fully configured yet (missing API key).";
+
+const normalizeOrganizationId = (
+  organizationId: Id<"organizations"> | string,
+): Id<"organizations"> => organizationId as Id<"organizations">;
 
 export const supportAgent = new Agent(components.agent, {
   name: "LaunchThat Support Assistant",
@@ -95,7 +101,7 @@ const buildKnowledgeContext = (
 
 export const generateAgentReply = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
     sessionId: v.string(),
     prompt: v.string(),
     contactId: v.optional(v.id("contacts")),
@@ -106,12 +112,14 @@ export const generateAgentReply = action({
     text: v.string(),
   }),
   handler: async (ctx, args) => {
+    const organizationId = normalizeOrganizationId(args.organizationId);
+
     if (!OPENAI_API_KEY) {
       console.warn("[support-agent] missing OPENAI_API_KEY");
       await ctx.runMutation(
         internal.plugins.support.mutations.recordMessageInternal,
         {
-          organizationId: args.organizationId,
+          organizationId,
           sessionId: args.sessionId,
           role: "assistant",
           content: KNOWN_MISSING_KEY_MESSAGE,
@@ -129,7 +137,10 @@ export const generateAgentReply = action({
       return { text: "" };
     }
 
-    const threadId = await ensureAgentThreadId(ctx, args);
+    const threadId = await ensureAgentThreadId(ctx, {
+      ...args,
+      organizationId,
+    });
 
     let knowledgeEntries: Array<{
       title: string;
@@ -140,7 +151,7 @@ export const generateAgentReply = action({
       knowledgeEntries = await ctx.runAction(
         internal.plugins.support.rag.searchKnowledge,
         {
-          organizationId: args.organizationId,
+          organizationId,
           query: trimmedPrompt,
           limit: 5,
         },
@@ -153,7 +164,7 @@ export const generateAgentReply = action({
       knowledgeEntries = await ctx.runQuery(
         api.plugins.support.queries.listHelpdeskArticles,
         {
-          organizationId: args.organizationId,
+          organizationId,
           query: trimmedPrompt,
           limit: 5,
         },
@@ -179,7 +190,7 @@ export const generateAgentReply = action({
       await ctx.runMutation(
         internal.plugins.support.mutations.recordMessageInternal,
         {
-          organizationId: args.organizationId,
+          organizationId,
           sessionId: args.sessionId,
           role: "assistant",
           content: text,

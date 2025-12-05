@@ -3,12 +3,17 @@ import { internalMutation, mutation } from "../../_generated/server";
 
 import type { MutationCtx } from "../../_generated/server";
 import { generateDefaultAliasParts } from "./queries";
+import { supportOrganizationIdValidator } from "./schema";
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { v } from "convex/values";
 
 const ragFieldSelection = v.array(
   v.union(v.literal("title"), v.literal("excerpt"), v.literal("content")),
 );
+
+const normalizeOrganizationId = (
+  organizationId: Id<"organizations"> | string,
+): Id<"organizations"> => organizationId as Id<"organizations">;
 
 type ConversationDoc = Doc<"supportConversations">;
 type EmailSettingsDoc = Doc<"supportEmailSettings">;
@@ -300,37 +305,42 @@ export const recordMessageHelper = async (
   return insertedId;
 };
 
+const recordMessageArgs = {
+  organizationId: supportOrganizationIdValidator,
+  sessionId: v.string(),
+  role: v.union(v.literal("user"), v.literal("assistant")),
+  content: v.string(),
+  contactId: v.optional(v.id("contacts")),
+  contactEmail: v.optional(v.string()),
+  contactName: v.optional(v.string()),
+  messageType: v.optional(
+    v.union(
+      v.literal("chat"),
+      v.literal("email_inbound"),
+      v.literal("email_outbound"),
+    ),
+  ),
+  subject: v.optional(v.string()),
+  htmlBody: v.optional(v.string()),
+  textBody: v.optional(v.string()),
+  source: v.optional(
+    v.union(v.literal("agent"), v.literal("admin"), v.literal("system")),
+  ),
+} as const;
+
 export const recordMessage = mutation({
-  args: {
-    organizationId: v.id("organizations"),
-    sessionId: v.string(),
-    role: v.union(v.literal("user"), v.literal("assistant")),
-    content: v.string(),
-    contactId: v.optional(v.id("contacts")),
-    contactEmail: v.optional(v.string()),
-    contactName: v.optional(v.string()),
-    messageType: v.optional(
-      v.union(
-        v.literal("chat"),
-        v.literal("email_inbound"),
-        v.literal("email_outbound"),
-      ),
-    ),
-    subject: v.optional(v.string()),
-    htmlBody: v.optional(v.string()),
-    textBody: v.optional(v.string()),
-    source: v.optional(
-      v.union(v.literal("agent"), v.literal("admin"), v.literal("system")),
-    ),
-  },
+  args: recordMessageArgs,
   handler: async (ctx, args) => {
-    return recordMessageHelper(ctx, args);
+    return recordMessageHelper(ctx, {
+      ...args,
+      organizationId: normalizeOrganizationId(args.organizationId),
+    });
   },
 });
 
 export const setAgentPresence = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
     sessionId: v.string(),
     status: v.union(v.literal("typing"), v.literal("idle")),
   },
@@ -349,8 +359,10 @@ export const setAgentPresence = mutation({
     const agentName = identity.name ?? identity.email ?? "Support agent";
     const updatedAt = Date.now();
 
+    const organizationId = normalizeOrganizationId(args.organizationId);
+
     await upsertAgentPresenceRecord(ctx, {
-      organizationId: args.organizationId,
+      organizationId,
       sessionId: args.sessionId,
       agentUserId,
       agentName,
@@ -364,17 +376,16 @@ export const setAgentPresence = mutation({
 
 export const setConversationMode = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
     sessionId: v.string(),
     mode: v.union(v.literal("agent"), v.literal("manual")),
   },
   handler: async (ctx, args) => {
+    const organizationId = normalizeOrganizationId(args.organizationId);
     const conversation = await ctx.db
       .query("supportConversations")
       .withIndex("by_org_session", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("sessionId", args.sessionId),
+        q.eq("organizationId", organizationId).eq("sessionId", args.sessionId),
       )
       .unique();
 
@@ -392,25 +403,27 @@ export const setConversationMode = mutation({
 });
 
 export const recordMessageInternal = internalMutation({
-  args: recordMessage.args,
+  args: recordMessageArgs,
   handler: async (ctx, args) => {
-    return recordMessageHelper(ctx, args);
+    return recordMessageHelper(ctx, {
+      ...args,
+      organizationId: normalizeOrganizationId(args.organizationId),
+    });
   },
 });
 
 export const setConversationAgentThread = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
     sessionId: v.string(),
     agentThreadId: v.string(),
   },
   handler: async (ctx, args) => {
+    const organizationId = normalizeOrganizationId(args.organizationId);
     const conversation = await ctx.db
       .query("supportConversations")
       .withIndex("by_org_session", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("sessionId", args.sessionId),
+        q.eq("organizationId", organizationId).eq("sessionId", args.sessionId),
       )
       .unique();
 
@@ -429,7 +442,7 @@ export const setConversationAgentThread = internalMutation({
 
 export const saveRagSourceConfig = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
     sourceId: v.optional(v.id("supportRagSources")),
     postTypeSlug: v.string(),
     fields: ragFieldSelection,
@@ -444,7 +457,9 @@ export const saveRagSourceConfig = mutation({
       throw new Error("Post type slug is required");
     }
 
-    const fields = args.fields.length > 0 ? args.fields : ["title", "content"];
+    const fields = (
+      args.fields.length > 0 ? args.fields : ["title", "content"]
+    ) as Array<"title" | "excerpt" | "content">;
     const includeTags = args.includeTags ?? false;
     const metaFieldKeys =
       args.metaFieldKeys
@@ -452,11 +467,12 @@ export const saveRagSourceConfig = mutation({
         .filter((key) => key.length > 0) ?? [];
     const now = Date.now();
 
+    const organizationId = normalizeOrganizationId(args.organizationId);
     const existing = await ctx.db
       .query("supportRagSources")
       .withIndex("by_org_postType", (q) =>
         q
-          .eq("organizationId", args.organizationId)
+          .eq("organizationId", organizationId)
           .eq("postTypeSlug", normalizedSlug),
       )
       .unique();
@@ -471,7 +487,7 @@ export const saveRagSourceConfig = mutation({
 
     if (targetId) {
       const current = await ctx.db.get(targetId);
-      if (!current || current.organizationId !== args.organizationId) {
+      if (!current || current.organizationId !== organizationId) {
         throw new Error("Configuration not found for this organization");
       }
       await ctx.db.patch(targetId, {
@@ -487,7 +503,7 @@ export const saveRagSourceConfig = mutation({
     }
 
     const insertedId = await ctx.db.insert("supportRagSources", {
-      organizationId: args.organizationId,
+      organizationId,
       sourceType: "postType" as const,
       postTypeSlug: normalizedSlug,
       fields,
@@ -505,12 +521,13 @@ export const saveRagSourceConfig = mutation({
 
 export const deleteRagSourceConfig = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
     sourceId: v.id("supportRagSources"),
   },
   handler: async (ctx, args) => {
+    const organizationId = normalizeOrganizationId(args.organizationId);
     const existing = await ctx.db.get(args.sourceId);
-    if (!existing || existing.organizationId !== args.organizationId) {
+    if (!existing || existing.organizationId !== organizationId) {
       return null;
     }
 
@@ -521,12 +538,13 @@ export const deleteRagSourceConfig = mutation({
 
 export const saveEmailSettings = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
     allowEmailIntake: v.optional(v.boolean()),
     customDomain: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
-    const settings = await ensureEmailSettings(ctx, args.organizationId);
+    const organizationId = normalizeOrganizationId(args.organizationId);
+    const settings = await ensureEmailSettings(ctx, organizationId);
     const now = Date.now();
     await ctx.db.patch(settings._id, {
       allowEmailIntake:
@@ -543,7 +561,7 @@ export const saveEmailSettings = mutation({
 
 export const beginDomainVerification = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: supportOrganizationIdValidator,
     domain: v.string(),
   },
   handler: async (ctx, args) => {
@@ -551,7 +569,8 @@ export const beginDomainVerification = mutation({
     if (!normalizedDomain) {
       throw new Error("Domain is required");
     }
-    const settings = await ensureEmailSettings(ctx, args.organizationId);
+    const organizationId = normalizeOrganizationId(args.organizationId);
+    const settings = await ensureEmailSettings(ctx, organizationId);
     const now = Date.now();
     const dnsRecords = createDnsRecords(normalizedDomain);
     await ctx.db.patch(settings._id, {

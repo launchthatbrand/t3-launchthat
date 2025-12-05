@@ -5,10 +5,10 @@ import {
   supportChatSettingsOptionKey,
 } from "launchthat-plugin-support/settings";
 
-import type { Id } from "@/convex/_generated/dataModel";
 import { NextResponse } from "next/server";
 import { api } from "@/convex/_generated/api";
 import { getConvex } from "~/lib/convex";
+import { resolveSupportOrganizationId } from "~/lib/support/resolveOrganizationId";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
   }
 
   const convex = getConvex();
-  const resolvedOrganizationId = await resolveOrganizationId(
+  const resolvedOrganizationId = await resolveSupportOrganizationId(
     convex,
     organizationId,
   );
@@ -44,24 +44,4 @@ export async function GET(request: Request) {
   };
 
   return NextResponse.json({ settings });
-}
-
-async function resolveOrganizationId(
-  convex: ReturnType<typeof getConvex>,
-  candidate: string,
-) {
-  if (!candidate) {
-    return null;
-  }
-  const looksLikeId = !candidate.includes(" ");
-  if (looksLikeId && candidate.length >= 24 && !candidate.includes("/")) {
-    return candidate as Id<"organizations">;
-  }
-  const organization = await convex.query(
-    api.core.organizations.queries.getBySlug,
-    {
-      slug: candidate,
-    },
-  );
-  return organization?._id ?? null;
 }

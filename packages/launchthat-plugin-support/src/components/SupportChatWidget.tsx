@@ -44,6 +44,7 @@ export interface SupportChatWidgetProps {
   organizationId?: string | null;
   tenantName?: string;
   apiPath?: string;
+  defaultContact?: StoredContact | null;
 }
 
 type LiveMessage = {
@@ -79,6 +80,7 @@ export function SupportChatWidget({
   organizationId,
   tenantName = "your organization",
   apiPath = "/api/support-chat",
+  defaultContact = null,
 }: SupportChatWidgetProps) {
   if (!organizationId) {
     return null;
@@ -89,6 +91,7 @@ export function SupportChatWidget({
       organizationId={organizationId}
       tenantName={tenantName}
       apiPath={apiPath}
+      defaultContact={defaultContact}
     />
   );
 }
@@ -97,12 +100,14 @@ interface SupportChatWidgetInnerProps {
   organizationId: string;
   tenantName: string;
   apiPath: string;
+  defaultContact: StoredContact | null;
 }
 
 function SupportChatWidgetInner({
   organizationId,
   tenantName,
   apiPath,
+  defaultContact,
 }: SupportChatWidgetInnerProps) {
   const { sessionId } = useSupportChatSession(organizationId);
   const { contact, saveContact } = useSupportContactStorage(organizationId);
@@ -143,6 +148,7 @@ function SupportChatWidgetInner({
       contact={contact}
       onContactSaved={saveContact}
       helpdeskArticles={helpdeskArticles}
+      defaultContact={defaultContact}
     />
   );
 }
@@ -157,6 +163,7 @@ interface ChatSurfaceProps {
   contact: StoredContact | null;
   onContactSaved: (contact: StoredContact) => void;
   helpdeskArticles: HelpdeskArticle[];
+  defaultContact: StoredContact | null;
 }
 
 function ChatSurface({
@@ -169,6 +176,7 @@ function ChatSurface({
   contact,
   onContactSaved,
   helpdeskArticles,
+  defaultContact,
 }: ChatSurfaceProps) {
   const supportsDirectConvex = useMemo(() => {
     if (!organizationId) return false;
@@ -193,6 +201,25 @@ function ChatSurface({
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const [activeTab, setActiveTab] = useState<ChatWidgetTab>("conversations");
   const [presenceState, setPresenceState] = useState<PresenceEntry[]>([]);
+
+  useEffect(() => {
+    if (!defaultContact) {
+      return;
+    }
+
+    if (
+      !contact ||
+      contact.email !== defaultContact.email ||
+      contact.fullName !== defaultContact.fullName ||
+      (!contact.contactId && defaultContact.contactId)
+    ) {
+      onContactSaved({
+        contactId: defaultContact.contactId ?? contact?.contactId,
+        fullName: defaultContact.fullName ?? contact?.fullName,
+        email: defaultContact.email ?? contact?.email,
+      });
+    }
+  }, [contact, defaultContact, onContactSaved]);
 
   const shouldCollectContact = settings.requireContact && !contact;
 
@@ -348,9 +375,8 @@ function ChatSurface({
       : "skip",
   );
 
-  const isManualMode = supportsDirectConvex
-    ? conversationMode?.mode === "manual"
-    : true;
+  const isManualMode =
+    supportsDirectConvex && conversationMode?.mode === "manual";
 
   const presenceRoomId =
     organizationId && sessionId

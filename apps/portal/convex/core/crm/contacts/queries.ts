@@ -1,5 +1,6 @@
 import type { Doc, Id } from "../../../_generated/dataModel";
 
+import { crmOrganizationIdValidator } from "./schema";
 import { paginationOptsValidator } from "convex/server";
 import { query } from "../../../_generated/server";
 import { v } from "convex/values";
@@ -9,7 +10,7 @@ type ContactDoc = Doc<"contacts">;
 const publicContactShape = v.object({
   _creationTime: v.number(),
   _id: v.id("contacts"),
-  organizationId: v.id("organizations"),
+  organizationId: crmOrganizationIdValidator,
   email: v.optional(v.string()),
   phone: v.optional(v.string()),
   firstName: v.optional(v.string()),
@@ -23,7 +24,7 @@ const publicContactShape = v.object({
 
 export const list = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: crmOrganizationIdValidator,
     search: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
@@ -72,7 +73,7 @@ export const get = query({
 
 export const findByEmail = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: crmOrganizationIdValidator,
     email: v.string(),
   },
   returns: v.union(publicContactShape, v.null()),
@@ -132,13 +133,13 @@ export const getContacts = query({
     if (filters) {
       if (filters.customerType) {
         query = query.filter((q) =>
-          q.eq(q.field("customerType"), filters.customerType),
+          q.eq(q.field("customerType" as any), filters.customerType),
         );
       }
 
       if (filters.leadStatus) {
         query = query.filter((q) =>
-          q.eq(q.field("leadStatus"), filters.leadStatus),
+          q.eq(q.field("leadStatus" as any), filters.leadStatus),
         );
       }
     }

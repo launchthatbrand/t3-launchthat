@@ -1,8 +1,14 @@
+import { PORTAL_TENANT_ID } from "../../../constants";
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
+export const crmOrganizationIdValidator = v.union(
+  v.id("organizations"),
+  v.literal(PORTAL_TENANT_ID),
+);
+
 const contactsTable = defineTable({
-  organizationId: v.id("organizations"),
+  organizationId: crmOrganizationIdValidator,
   email: v.optional(v.string()),
   phone: v.optional(v.string()),
   firstName: v.optional(v.string()),

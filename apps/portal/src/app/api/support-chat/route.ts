@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { api } from "@/convex/_generated/api";
 import { formatStreamPart } from "@ai-sdk/ui-utils";
 import { getConvex } from "~/lib/convex";
-import { PORTAL_TENANT_ID, PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
+import { resolveSupportOrganizationId } from "~/lib/support/resolveOrganizationId";
 import { z } from "zod";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -33,7 +33,17 @@ export async function POST(req: Request) {
   try {
     console.log("[support-chat] incoming request");
     const parsed = requestSchema.parse(await req.json());
-    const organizationId = parsed.organizationId as Id<"organizations">;
+    const convex = getConvex();
+    const organizationId = await resolveSupportOrganizationId(
+      convex,
+      parsed.organizationId,
+    );
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: "organization not found" },
+        { status: 404 },
+      );
+    }
     const sessionId =
       parsed.sessionId ??
       `support-${organizationId}-${crypto.randomUUID().slice(0, 8)}`;
@@ -43,7 +53,6 @@ export async function POST(req: Request) {
     const contactEmail = parsed.contactEmail;
     const contactName = parsed.contactName;
 
-    const convex = getConvex();
     const userMessages = parsed.messages.filter(
       (message: SupportMessage) => message.role === "user",
     );
@@ -155,7 +164,7 @@ export async function GET(req: NextRequest) {
     }
 
     const convex = getConvex();
-    const organizationId = await resolveOrganizationId(
+    const organizationId = await resolveSupportOrganizationId(
       convex,
       organizationIdParam,
     );
@@ -286,35 +295,4 @@ function formatRelativeTime(timestamp?: number | null) {
   }
   const days = Math.round(deltaMs / 86_400_000);
   return `${days}d ago`;
-}
-
-async function resolveOrganizationId(
-  convex: ReturnType<typeof getConvex>,
-  candidate: string,
-) {
-  if (!candidate) {
-    return null;
-  }
-  const looksLikeId = !candidate.includes(" ");
-  if (looksLikeId && candidate.length >= 24 && !candidate.includes("/")) {
-    return candidate as Id<"organizations">;
-  }
-
-  const slugCandidates = [
-    candidate,
-    candidate === PORTAL_TENANT_ID ? PORTAL_TENANT_SUMMARY.slug : null,
-  ].filter((slug): slug is string => !!slug);
-
-  for (const slug of slugCandidates) {
-    const organization = await convex.query(
-      api.core.organizations.queries.getBySlug,
-      {
-        slug,
-      },
-    );
-    if (organization?._id) {
-      return organization._id;
-    }
-  }
-  return null;
 }
