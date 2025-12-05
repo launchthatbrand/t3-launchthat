@@ -1,10 +1,13 @@
+import { PORTAL_TENANT_ID } from "../../constants";
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export const optionsTable = defineTable({
   metaKey: v.string(),
   metaValue: v.any(), // Can store strings, numbers, booleans, objects, arrays
-  orgId: v.optional(v.id("organizations")), // Optional organization ID
+  orgId: v.optional(
+    v.union(v.id("organizations"), v.literal(PORTAL_TENANT_ID)),
+  ), // Optional organization ID (includes portal tenant literal)
   type: v.optional(v.union(v.literal("store"), v.literal("site"))), // store | site | undefined
   createdAt: v.number(),
   updatedAt: v.number(),

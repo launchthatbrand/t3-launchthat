@@ -170,6 +170,11 @@ function ChatSurface({
   onContactSaved,
   helpdeskArticles,
 }: ChatSurfaceProps) {
+  const supportsDirectConvex = useMemo(() => {
+    if (!organizationId) return false;
+    return /^[a-z0-9]{24}$/i.test(organizationId);
+  }, [organizationId]);
+
   const openStorageKey = useMemo(
     () => `support-chat-open-${organizationId}`,
     [organizationId],
@@ -233,7 +238,7 @@ function ChatSurface({
   const liveMessages =
     (useQuery(
       api.plugins.support.queries.listMessages,
-      organizationId && sessionId
+      organizationId && sessionId && supportsDirectConvex
         ? {
             organizationId: organizationId as Id<"organizations">,
             sessionId,
@@ -316,7 +321,7 @@ function ChatSurface({
 
   const agentPresence = useQuery(
     api.plugins.support.queries.getAgentPresence,
-    organizationId && sessionId
+    organizationId && sessionId && supportsDirectConvex
       ? {
           organizationId: organizationId as Id<"organizations">,
           sessionId,
@@ -335,7 +340,7 @@ function ChatSurface({
 
   const conversationMode = useQuery(
     api.plugins.support.queries.getConversationMode,
-    organizationId && sessionId
+    organizationId && sessionId && supportsDirectConvex
       ? {
           organizationId: organizationId as Id<"organizations">,
           sessionId,
@@ -343,7 +348,9 @@ function ChatSurface({
       : "skip",
   );
 
-  const isManualMode = conversationMode?.mode === "manual";
+  const isManualMode = supportsDirectConvex
+    ? conversationMode?.mode === "manual"
+    : true;
 
   const presenceRoomId =
     organizationId && sessionId
@@ -425,24 +432,26 @@ function ChatSurface({
       setInput("");
       setIsManualSending(true);
       try {
-        const insertedId = await recordMessage({
-          organizationId: organizationId as Id<"organizations">,
-          sessionId,
-          role: "user",
-          content,
-          contactId: contact?.contactId
-            ? (contact.contactId as Id<"contacts">)
-            : undefined,
-          contactName: contact?.fullName,
-          contactEmail: contact?.email,
-        });
-        setMessages((prev) =>
-          prev.map((message) =>
-            message.id === optimisticId
-              ? { ...message, id: String(insertedId) }
-              : message,
-          ),
-        );
+        if (supportsDirectConvex) {
+          const insertedId = await recordMessage({
+            organizationId: organizationId as Id<"organizations">,
+            sessionId,
+            role: "user",
+            content,
+            contactId: contact?.contactId
+              ? (contact.contactId as Id<"contacts">)
+              : undefined,
+            contactName: contact?.fullName,
+            contactEmail: contact?.email,
+          });
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === optimisticId
+                ? { ...message, id: String(insertedId) }
+                : message,
+            ),
+          );
+        }
       } catch (manualError) {
         console.error("[support-chat] manual send failed", manualError);
       } finally {

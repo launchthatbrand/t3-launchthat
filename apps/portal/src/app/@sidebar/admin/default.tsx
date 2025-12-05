@@ -8,7 +8,7 @@ import * as LucideIcons from "lucide-react";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { Sidebar, SidebarContent, SidebarHeader } from "@acme/ui/sidebar";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 
 import { AdminTeamSwitcher } from "~/components/admin/AdminTeamSwitcher";
 import { BookOpen } from "lucide-react";
@@ -96,9 +96,10 @@ export default function DefaultSidebar() {
   const organizationId = getTenantOrganizationId(tenant);
   const postTypesQuery = usePostTypes(true);
   const taxonomiesQuery = useTaxonomies();
+  const scopedOptionsOrgId = organizationId ?? tenantId;
   const pluginOptions = useQuery(
     api.core.options.getByType,
-    organizationId ? { orgId: organizationId, type: "site" } : "skip",
+    scopedOptionsOrgId ? { orgId: scopedOptionsOrgId, type: "site" } : "skip",
   );
   const contentTypes = useMemo<PostTypeDoc[]>(() => {
     if (!Array.isArray(postTypesQuery.data)) {
@@ -157,7 +158,7 @@ export default function DefaultSidebar() {
     }
     return new Map(
       pluginOptions.map((option) => [
-        option.metaKey,
+        option.metaKey as string,
         Boolean(option.metaValue),
       ]),
     );

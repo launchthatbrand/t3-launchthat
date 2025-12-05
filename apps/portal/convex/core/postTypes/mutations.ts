@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import { v } from "convex/values";
 
@@ -23,6 +24,8 @@ import {
   postTypeStorageTablesValidator,
   postTypeSupportsValidator,
 } from "./schema";
+
+const PORTAL_ORGANIZATION_ID = PORTAL_TENANT_ID as Id<"organizations">;
 
 const DEFAULT_POST_STORAGE_TABLES = ["posts", "postsMeta"] as const;
 
@@ -894,14 +897,15 @@ export const enableForOrganization = mutation({
     }
 
     if (isPortal) {
-      if (postType.enabledOrganizationIds?.length === 0) {
-        await ctx.db.patch(postType._id, {
-          enabledOrganizationIds: undefined,
-          updatedAt: Date.now(),
-        });
-        return { updated: true };
+      const portalOrgId = PORTAL_ORGANIZATION_ID;
+      if (existing.includes(portalOrgId)) {
+        return { updated: false };
       }
-      return { updated: false };
+      await ctx.db.patch(postType._id, {
+        enabledOrganizationIds: [...existing, portalOrgId],
+        updatedAt: Date.now(),
+      });
+      return { updated: true };
     }
 
     if (existing.includes(args.organizationId as Id<"organizations">)) {
@@ -952,6 +956,19 @@ export const disableForOrganization = mutation({
         return { updated: false };
       }
       const next = existing.filter((id) => id !== resolvedOrgId);
+      await ctx.db.patch(postType._id, {
+        enabledOrganizationIds: next,
+        updatedAt: Date.now(),
+      });
+      return { updated: true };
+    }
+
+    if (isPortal) {
+      const portalOrgId = PORTAL_ORGANIZATION_ID;
+      if (!existing.includes(portalOrgId)) {
+        return { updated: false };
+      }
+      const next = existing.filter((id) => id !== portalOrgId);
       await ctx.db.patch(postType._id, {
         enabledOrganizationIds: next,
         updatedAt: Date.now(),

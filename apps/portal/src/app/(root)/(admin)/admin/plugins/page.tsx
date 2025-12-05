@@ -19,8 +19,6 @@ import {
   CardTitle,
 } from "@acme/ui/card";
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import type { Doc, Id } from "@/convex/_generated/dataModel";
@@ -28,7 +26,13 @@ import type {
   PluginDefinition,
   PluginPostTypeConfig,
 } from "~/lib/plugins/types";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import {
   useCreatePostType,
   useDisablePostTypeAccess,
@@ -39,7 +43,7 @@ import { useMutation, useQuery } from "convex/react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDefinition } from "@acme/ui/entity-list/types";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
 import Link from "next/link";
 import { Separator } from "@acme/ui/separator";
@@ -80,11 +84,12 @@ const normalizeError = (error: unknown): Error => {
   return new Error("Unknown error occurred");
 };
 
-type PluginRow = PluginDefinition & {
-  isEnabled: boolean;
-  missingSlugs: string[];
-  activationEnabled: boolean;
-};
+type PluginRow = PluginDefinition &
+  Record<string, unknown> & {
+    isEnabled: boolean;
+    missingSlugs: string[];
+    activationEnabled: boolean;
+  };
 
 export default function PluginsPage() {
   const { data: postTypes, isLoading } = usePostTypes(true);
@@ -102,9 +107,10 @@ export default function PluginsPage() {
 
   const plugins = useMemo<PluginDefinition[]>(() => pluginDefinitions, []);
 
+  const portalAwareOrgId = organizationId ?? tenantId;
   const pluginOptions = useQuery(
     api.core.options.getByType,
-    organizationId ? { orgId: organizationId, type: "site" } : "skip",
+    portalAwareOrgId ? { orgId: portalAwareOrgId, type: "site" } : "skip",
   );
 
   const pluginOptionMap = useMemo(() => {
@@ -118,6 +124,10 @@ export default function PluginsPage() {
       ]),
     );
   }, [pluginOptions]);
+
+  useEffect(() => {
+    console.log("[plugins] option payload", { pluginOptions, pluginOptionMap });
+  }, [pluginOptions, pluginOptionMap]);
 
   const isActivationEnabled = useCallback(
     (plugin: PluginDefinition) => {
@@ -179,14 +189,27 @@ export default function PluginsPage() {
 
       startTransition(async () => {
         try {
+          type CreatePostTypeArgs = Parameters<typeof createPostType>[0];
           for (const type of plugin.postTypes) {
             try {
-              await ensurePostTypeAccess(type);
+              const result = await ensurePostTypeAccess(type);
+              console.log("[plugins] ensured post type", {
+                tenantId,
+                pluginId: plugin.id,
+                slug: type.slug,
+                result,
+              });
             } catch (error: unknown) {
               const normalizedError = normalizeError(error);
               if (normalizedError.message.includes("not found")) {
-                await createPostType({
-                  ...type,
+                const created = await createPostType(
+                  type as CreatePostTypeArgs,
+                );
+                console.log("[plugins] created post type", {
+                  tenantId,
+                  pluginId: plugin.id,
+                  slug: type.slug,
+                  created,
                 });
               } else {
                 throw normalizedError;
@@ -194,11 +217,17 @@ export default function PluginsPage() {
             }
           }
           if (plugin.activation) {
-            await setOption({
+            const optionResult = await setOption({
               metaKey: plugin.activation.optionKey,
               metaValue: true,
               orgId: tenantId,
               type: plugin.activation.optionType ?? "site",
+            });
+            console.log("[plugins] set option", {
+              tenantId,
+              pluginId: plugin.id,
+              optionKey: plugin.activation.optionKey,
+              optionResult,
             });
           }
           toast.success(`${plugin.name} plugin enabled`);
@@ -278,16 +307,28 @@ export default function PluginsPage() {
     });
   }, [plugins, pluginStatus]);
 
-  const columns = useMemo<ColumnDef<PluginRow>[]>(
+  useEffect(() => {
+    console.log("[plugins] rows snapshot", {
+      rows: pluginRows.map((row) => ({
+        id: row.id,
+        isEnabled: row.isEnabled,
+        missingSlugs: row.missingSlugs,
+        activationEnabled: row.activationEnabled,
+      })),
+    });
+  }, [pluginRows]);
+
+  const columns = useMemo<ColumnDefinition<PluginRow>[]>(
     () => [
       {
+        id: "name",
         accessorKey: "name",
         header: "Plugin",
-        cell: ({ row }) => (
+        cell: (item: PluginRow) => (
           <div className="flex flex-col">
-            <span className="font-medium">{row.original.name}</span>
+            <span className="font-medium">{item.name}</span>
             <span className="text-muted-foreground text-sm">
-              {row.original.description}
+              {item.description}
             </span>
           </div>
         ),
@@ -295,19 +336,19 @@ export default function PluginsPage() {
       {
         id: "status",
         header: "Status",
-        cell: ({ row }) => (
-          <Badge variant={row.original.isEnabled ? "default" : "secondary"}>
-            {row.original.isEnabled ? "Enabled" : "Disabled"}
+        cell: (item: PluginRow) => (
+          <Badge variant={item.isEnabled ? "default" : "secondary"}>
+            {item.isEnabled ? "Enabled" : "Disabled"}
           </Badge>
         ),
       },
       {
         id: "missing",
         header: "Missing Post Types",
-        cell: ({ row }) =>
-          row.original.missingSlugs.length ? (
+        cell: (item: PluginRow) =>
+          item.missingSlugs.length ? (
             <span className="text-muted-foreground text-sm">
-              {row.original.missingSlugs.join(", ")}
+              {item.missingSlugs.join(", ")}
             </span>
           ) : (
             <span className="text-muted-foreground text-sm">None</span>
@@ -316,13 +357,13 @@ export default function PluginsPage() {
       {
         id: "listActions",
         header: "Actions",
-        cell: ({ row }) => (
+        cell: (item: PluginRow) => (
           <div className="flex justify-end">
-            {row.original.isEnabled ? (
+            {item.isEnabled ? (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setPluginToDisable(row.original)}
+                onClick={() => setPluginToDisable(item)}
                 disabled={isPending || isLoading}
               >
                 Deactivate
@@ -330,7 +371,7 @@ export default function PluginsPage() {
             ) : (
               <Button
                 size="sm"
-                onClick={() => handleEnablePlugin(row.original)}
+                onClick={() => handleEnablePlugin(item)}
                 disabled={isPending || isLoading}
               >
                 Activate
@@ -356,7 +397,7 @@ export default function PluginsPage() {
 
       <Separator />
 
-      <EntityList
+      <EntityList<PluginRow>
         data={pluginRows}
         columns={columns}
         isLoading={isLoading}

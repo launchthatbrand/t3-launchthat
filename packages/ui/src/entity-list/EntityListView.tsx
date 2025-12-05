@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+
 import type {
   ColumnDef,
   ColumnFiltersState,
@@ -7,20 +9,7 @@ import type {
   SortingState,
   VisibilityState,
 } from "@tanstack/react-table";
-import * as React from "react";
-import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  Table as TanstackTable,
-  useReactTable,
-} from "@tanstack/react-table";
-import { Loader2 } from "lucide-react";
-
-import { Button } from "@acme/ui/button";
-import { Skeleton } from "@acme/ui/skeleton";
+import type { ColumnDefinition, EntityListViewProps } from "./types";
 import {
   Table,
   TableBody,
@@ -29,10 +18,21 @@ import {
   TableHeader,
   TableRow,
 } from "@acme/ui/table";
+import {
+  Table as TanstackTable,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 
-import type { ColumnDefinition, EntityListViewProps } from "./types";
+import { Button } from "@acme/ui/button";
 import { EmptyState } from "./EmptyState";
 import { GridView } from "./GridView";
+import { Loader2 } from "lucide-react";
+import { Skeleton } from "@acme/ui/skeleton";
 
 type LegacyCellRenderer<T extends Record<string, unknown>> = (context: {
   row: Row<T>;
@@ -161,9 +161,8 @@ export function EntityListView<T extends Record<string, unknown>>({
       rowSelection,
     },
     initialState: {
-      //This line
       pagination: {
-        pageSize: 15,
+        pageSize: 20,
       },
     },
   });

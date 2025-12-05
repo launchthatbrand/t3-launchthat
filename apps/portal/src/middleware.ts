@@ -16,6 +16,7 @@ const shouldBypassMiddleware = (req: NextRequest) => {
 
   if (pathname.startsWith("/_microfrontends")) return true;
   if (pathname.startsWith("/puck")) return true;
+  if (pathname.startsWith("/api/support-chat")) return true;
 
   return false;
 };
@@ -53,7 +54,7 @@ function extractSubdomain(request: NextRequest): string | null {
     hostname.endsWith(`.${rootDomainFormatted}`);
 
   return isSubdomain
-    ? hostname.replace(`.${rootDomainFormatted}`, "") ?? null
+    ? (hostname.replace(`.${rootDomainFormatted}`, "") ?? null)
     : null;
 }
 
@@ -133,7 +134,7 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
       if (role !== "admin") {
         const dashboardUrl = new URL("/dashboard", req.url);
         console.log(
-          `Redirecting non-admin user ${authState.userId} from admin route ${req.url} to dashboard.`
+          `Redirecting non-admin user ${authState.userId} from admin route ${req.url} to dashboard.`,
         );
         return NextResponse.redirect(dashboardUrl);
       }

@@ -7,6 +7,7 @@ import {
   postTypeSupportsValidator,
 } from "./schema";
 
+import { PORTAL_TENANT_ID } from "../../constants";
 import { getScopedPostTypeBySlug } from "./lib/contentTypes";
 import { query } from "../../_generated/server";
 /**
@@ -15,6 +16,11 @@ import { query } from "../../_generated/server";
  * This module provides query endpoints for content types.
  */
 import { v } from "convex/values";
+
+const enabledOrgIdValidator = v.union(
+  v.id("organizations"),
+  v.literal(PORTAL_TENANT_ID),
+);
 
 /**
  * List all content types
@@ -45,7 +51,7 @@ export const list = query({
       updatedAt: v.optional(v.number()),
       createdBy: v.optional(v.id("users")),
       organizationId: v.optional(v.id("organizations")),
-      enabledOrganizationIds: v.optional(v.array(v.id("organizations"))),
+      enabledOrganizationIds: v.optional(v.array(enabledOrgIdValidator)),
       storageKind: v.optional(postTypeStorageKindValidator),
       storageTables: v.optional(postTypeStorageTablesValidator),
       metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
@@ -111,7 +117,7 @@ export const get = query({
       updatedAt: v.optional(v.number()),
       createdBy: v.optional(v.id("users")),
       organizationId: v.optional(v.id("organizations")),
-      enabledOrganizationIds: v.optional(v.array(v.id("organizations"))),
+      enabledOrganizationIds: v.optional(v.array(enabledOrgIdValidator)),
       storageKind: v.optional(postTypeStorageKindValidator),
       storageTables: v.optional(postTypeStorageTablesValidator),
       metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
@@ -174,7 +180,7 @@ export const getBySlug = query({
       updatedAt: v.optional(v.number()),
       createdBy: v.optional(v.id("users")),
       organizationId: v.optional(v.id("organizations")),
-      enabledOrganizationIds: v.optional(v.array(v.id("organizations"))),
+      enabledOrganizationIds: v.optional(v.array(enabledOrgIdValidator)),
       storageKind: v.optional(postTypeStorageKindValidator),
       storageTables: v.optional(postTypeStorageTablesValidator),
       metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),

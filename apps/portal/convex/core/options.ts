@@ -1,6 +1,11 @@
+import { mutation, query } from "../_generated/server";
+
+import { PORTAL_TENANT_ID } from "../constants";
 import { v } from "convex/values";
 
-import { mutation, query } from "../_generated/server";
+const portalAwareOrgId = v.optional(
+  v.union(v.id("organizations"), v.literal(PORTAL_TENANT_ID)),
+);
 
 // Remove the auth import since we'll use raw identity
 
@@ -9,7 +14,7 @@ export const get = query({
   args: {
     metaKey: v.string(),
     type: v.optional(v.union(v.literal("store"), v.literal("site"))),
-    orgId: v.optional(v.id("organizations")),
+    orgId: portalAwareOrgId,
   },
   handler: async (ctx, args) => {
     const option = await ctx.db
@@ -30,7 +35,7 @@ export const get = query({
 export const getByType = query({
   args: {
     type: v.optional(v.union(v.literal("store"), v.literal("site"))),
-    orgId: v.optional(v.id("organizations")),
+    orgId: portalAwareOrgId,
   },
   handler: async (ctx, args) => {
     const options = await ctx.db
@@ -47,7 +52,7 @@ export const getByType = query({
 // Get all store options as key-value pairs
 export const getStoreOptions = query({
   args: {
-    orgId: v.optional(v.id("organizations")),
+    orgId: portalAwareOrgId,
   },
   handler: async (ctx, args) => {
     const options = await ctx.db
@@ -73,7 +78,7 @@ export const set = mutation({
     metaKey: v.string(),
     metaValue: v.any(),
     type: v.optional(v.union(v.literal("store"), v.literal("site"))),
-    orgId: v.optional(v.id("organizations")),
+    orgId: portalAwareOrgId,
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -125,7 +130,7 @@ export const setBatch = mutation({
       }),
     ),
     type: v.optional(v.union(v.literal("store"), v.literal("site"))),
-    orgId: v.optional(v.id("organizations")),
+    orgId: portalAwareOrgId,
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -178,7 +183,7 @@ export const remove = mutation({
   args: {
     metaKey: v.string(),
     type: v.optional(v.union(v.literal("store"), v.literal("site"))),
-    orgId: v.optional(v.id("organizations")),
+    orgId: portalAwareOrgId,
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db

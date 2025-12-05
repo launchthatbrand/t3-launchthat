@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { api } from "@/convex/_generated/api";
 import { formatStreamPart } from "@ai-sdk/ui-utils";
 import { getConvex } from "~/lib/convex";
+import { PORTAL_TENANT_ID, PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
 import { z } from "zod";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -153,8 +154,17 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const organizationId = organizationIdParam as Id<"organizations">;
     const convex = getConvex();
+    const organizationId = await resolveOrganizationId(
+      convex,
+      organizationIdParam,
+    );
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: "organization not found" },
+        { status: 404 },
+      );
+    }
 
     if (view === "helpdesk") {
       const limitParam = searchParams.get("limit");
@@ -174,7 +184,10 @@ export async function GET(req: NextRequest) {
 
       const normalized = articles.map((article) => ({
         id: article._id,
-        title: article.title ?? "Untitled article",
+        title:
+          article.title && article.title.length > 0
+            ? article.title
+            : "Untitled article",
         summary: buildSummary(article.excerpt ?? "", article.content ?? ""),
         updatedAt: formatRelativeTime(
           article.updatedAt ?? article._creationTime,
@@ -211,9 +224,9 @@ export async function GET(req: NextRequest) {
   }
 }
 
-function streamTextResponse(content: string) {
+function streamTextResponse(content = "") {
   const messageId = `assistant-${Date.now().toString(36)}`;
-  const normalized = content ?? "";
+  const normalized = content;
 
   const payload =
     formatStreamPart("assistant_message", {
@@ -273,4 +286,35 @@ function formatRelativeTime(timestamp?: number | null) {
   }
   const days = Math.round(deltaMs / 86_400_000);
   return `${days}d ago`;
+}
+
+async function resolveOrganizationId(
+  convex: ReturnType<typeof getConvex>,
+  candidate: string,
+) {
+  if (!candidate) {
+    return null;
+  }
+  const looksLikeId = !candidate.includes(" ");
+  if (looksLikeId && candidate.length >= 24 && !candidate.includes("/")) {
+    return candidate as Id<"organizations">;
+  }
+
+  const slugCandidates = [
+    candidate,
+    candidate === PORTAL_TENANT_ID ? PORTAL_TENANT_SUMMARY.slug : null,
+  ].filter((slug): slug is string => !!slug);
+
+  for (const slug of slugCandidates) {
+    const organization = await convex.query(
+      api.core.organizations.queries.getBySlug,
+      {
+        slug,
+      },
+    );
+    if (organization?._id) {
+      return organization._id;
+    }
+  }
+  return null;
 }
