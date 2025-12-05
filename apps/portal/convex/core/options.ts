@@ -1,10 +1,10 @@
+import { PORTAL_TENANT_ID, PORTAL_TENANT_SLUG } from "../constants";
 import { mutation, query } from "../_generated/server";
 
-import { PORTAL_TENANT_ID } from "../constants";
 import { v } from "convex/values";
 
 const portalAwareOrgId = v.optional(
-  v.union(v.id("organizations"), v.literal(PORTAL_TENANT_ID)),
+  v.union(v.id("organizations"), v.literal(PORTAL_TENANT_SLUG)),
 );
 
 // Remove the auth import since we'll use raw identity

@@ -1,4 +1,4 @@
-import { PORTAL_TENANT_ID } from "../../constants";
+import { PORTAL_TENANT_SLUG } from "../../constants";
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -142,14 +142,14 @@ export const postTypeMetaBoxValidator = v.object({
 
 const enabledOrgIdValidator = v.union(
   v.id("organizations"),
-  v.literal(PORTAL_TENANT_ID),
+  v.literal(PORTAL_TENANT_SLUG),
 );
 
 /**
  * Content Types Table - Defines different content types in the system
  */
 export const postTypesTable = defineTable({
-  organizationId: v.optional(v.id("organizations")),
+  organizationId: v.optional(enabledOrgIdValidator),
   enabledOrganizationIds: v.optional(v.array(enabledOrgIdValidator)),
   // Basic Info
   name: v.string(), // Display name (e.g., "Blog Post")

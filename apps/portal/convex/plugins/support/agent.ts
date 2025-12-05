@@ -7,6 +7,7 @@ import { Agent } from "@convex-dev/agent";
 import type { Id } from "@convex-config/_generated/dataModel";
 import { action } from "@convex-config/_generated/server";
 import { createOpenAI } from "@ai-sdk/openai";
+import { normalizeOrganizationId } from "../../constants";
 import { supportOrganizationIdValidator } from "./schema";
 import { v } from "convex/values";
 
@@ -31,10 +32,6 @@ const BASE_INSTRUCTIONS = [
 
 const KNOWN_MISSING_KEY_MESSAGE =
   "Support assistant is not fully configured yet (missing API key).";
-
-const normalizeOrganizationId = (
-  organizationId: Id<"organizations"> | string,
-): Id<"organizations"> => organizationId as Id<"organizations">;
 
 export const supportAgent = new Agent(components.agent, {
   name: "LaunchThat Support Assistant",

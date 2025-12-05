@@ -3,6 +3,7 @@ import { internalMutation, mutation } from "../../_generated/server";
 
 import type { MutationCtx } from "../../_generated/server";
 import { generateDefaultAliasParts } from "./queries";
+import { normalizeOrganizationId } from "../../constants";
 import { supportOrganizationIdValidator } from "./schema";
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { v } from "convex/values";
@@ -10,10 +11,6 @@ import { v } from "convex/values";
 const ragFieldSelection = v.array(
   v.union(v.literal("title"), v.literal("excerpt"), v.literal("content")),
 );
-
-const normalizeOrganizationId = (
-  organizationId: Id<"organizations"> | string,
-): Id<"organizations"> => organizationId as Id<"organizations">;
 
 type ConversationDoc = Doc<"supportConversations">;
 type EmailSettingsDoc = Doc<"supportEmailSettings">;

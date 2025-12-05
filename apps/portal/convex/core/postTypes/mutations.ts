@@ -5,7 +5,11 @@ import { v } from "convex/values";
 import type { MutationCtx } from "../../_generated/server";
 import type { PostTypeField } from "./lib/contentTypes";
 import { mutation } from "../../_generated/server";
-import { PORTAL_TENANT_ID } from "../../constants";
+import {
+  isPortalOrganizationValue,
+  PORTAL_TENANT_ID,
+  PORTAL_TENANT_SLUG,
+} from "../../constants";
 import { seedDefaultTaxonomies } from "../taxonomies/mutations";
 import {
   createSystemFields,
@@ -722,7 +726,7 @@ export const create = mutation({
 
 const organizationAccessValidator = v.union(
   v.id("organizations"),
-  v.literal(PORTAL_TENANT_ID),
+  v.literal(PORTAL_TENANT_SLUG),
 );
 
 const fetchScopedPostType = async (
@@ -819,7 +823,10 @@ export const enableForOrganization = mutation({
   },
   handler: async (ctx, args) => {
     const resolvedOrgId = resolveScopedOrganizationId(args.organizationId);
-    const isPortal = args.organizationId === PORTAL_TENANT_ID;
+    const isPortal = isPortalOrganizationValue(args.organizationId);
+    const targetOrgId = isPortal
+      ? PORTAL_ORGANIZATION_ID
+      : (args.organizationId as Id<"organizations">);
 
     let postType = await fetchScopedPostType(ctx, args.slug, resolvedOrgId);
 
@@ -897,26 +904,22 @@ export const enableForOrganization = mutation({
     }
 
     if (isPortal) {
-      const portalOrgId = PORTAL_ORGANIZATION_ID;
-      if (existing.includes(portalOrgId)) {
+      if (existing.includes(targetOrgId)) {
         return { updated: false };
       }
       await ctx.db.patch(postType._id, {
-        enabledOrganizationIds: [...existing, portalOrgId],
+        enabledOrganizationIds: [...existing, targetOrgId],
         updatedAt: Date.now(),
       });
       return { updated: true };
     }
 
-    if (existing.includes(args.organizationId as Id<"organizations">)) {
+    if (existing.includes(targetOrgId)) {
       return { updated: false };
     }
 
     await ctx.db.patch(postType._id, {
-      enabledOrganizationIds: [
-        ...existing,
-        args.organizationId as Id<"organizations">,
-      ],
+      enabledOrganizationIds: [...existing, targetOrgId],
       updatedAt: Date.now(),
     });
 
@@ -931,7 +934,10 @@ export const disableForOrganization = mutation({
   },
   handler: async (ctx, args) => {
     const resolvedOrgId = resolveScopedOrganizationId(args.organizationId);
-    const isPortal = args.organizationId === PORTAL_TENANT_ID;
+    const isPortal = isPortalOrganizationValue(args.organizationId);
+    const targetOrgId = isPortal
+      ? PORTAL_ORGANIZATION_ID
+      : (args.organizationId as Id<"organizations">);
 
     const postType = await fetchScopedPostType(ctx, args.slug, resolvedOrgId);
 
@@ -946,10 +952,13 @@ export const disableForOrganization = mutation({
 
     const enabledOrgIds = postType.enabledOrganizationIds;
     const existing = enabledOrgIds ?? [];
+    const matchesTargetOrg =
+      postType.organizationId === targetOrgId ||
+      (isPortalOrganizationValue(postType.organizationId) &&
+        targetOrgId === PORTAL_ORGANIZATION_ID);
     const hasLegacyOwnership =
       enabledOrgIds === undefined &&
-      (postType.organizationId === args.organizationId ||
-        (isPortal && postType.organizationId === undefined));
+      (matchesTargetOrg || (isPortal && postType.organizationId === undefined));
 
     if (resolvedOrgId && postType.organizationId === resolvedOrgId) {
       if (!existing.includes(resolvedOrgId) || existing.length === 0) {
@@ -964,11 +973,10 @@ export const disableForOrganization = mutation({
     }
 
     if (isPortal) {
-      const portalOrgId = PORTAL_ORGANIZATION_ID;
-      if (!existing.includes(portalOrgId)) {
+      if (!existing.includes(targetOrgId)) {
         return { updated: false };
       }
-      const next = existing.filter((id) => id !== portalOrgId);
+      const next = existing.filter((id) => id !== targetOrgId);
       await ctx.db.patch(postType._id, {
         enabledOrganizationIds: next,
         updatedAt: Date.now(),
@@ -976,10 +984,7 @@ export const disableForOrganization = mutation({
       return { updated: true };
     }
 
-    if (
-      !existing.includes(args.organizationId as Id<"organizations">) &&
-      !hasLegacyOwnership
-    ) {
+    if (!existing.includes(targetOrgId) && !hasLegacyOwnership) {
       return { updated: false };
     }
 
@@ -991,9 +996,7 @@ export const disableForOrganization = mutation({
       return { updated: true };
     }
 
-    const next = existing.filter(
-      (id) => id !== (args.organizationId as Id<"organizations">),
-    );
+    const next = existing.filter((id) => id !== targetOrgId);
 
     await ctx.db.patch(postType._id, {
       enabledOrganizationIds: next,

@@ -128,6 +128,7 @@ import type * as lib_permissions_requirePermission from "../lib/permissions/requ
 import type * as lib_permissions_userAuth from "../lib/permissions/userAuth.js";
 import type * as lib_queryAnalyzer from "../lib/queryAnalyzer.js";
 import type * as lib_slugs from "../lib/slugs.js";
+import type * as migrations_portal from "../migrations/portal.js";
 import type * as notifications_helpers from "../notifications/helpers.js";
 import type * as notifications_lib_feedNotifications from "../notifications/lib/feedNotifications.js";
 import type * as notifications_lib_formatters from "../notifications/lib/formatters.js";
@@ -314,6 +315,7 @@ declare const fullApi: ApiFromModules<{
   "lib/permissions/userAuth": typeof lib_permissions_userAuth;
   "lib/queryAnalyzer": typeof lib_queryAnalyzer;
   "lib/slugs": typeof lib_slugs;
+  "migrations/portal": typeof migrations_portal;
   "notifications/helpers": typeof notifications_helpers;
   "notifications/lib/feedNotifications": typeof notifications_lib_feedNotifications;
   "notifications/lib/formatters": typeof notifications_lib_formatters;

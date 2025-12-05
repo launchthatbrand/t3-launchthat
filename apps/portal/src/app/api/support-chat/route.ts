@@ -182,25 +182,19 @@ export async function GET(req: NextRequest) {
           ? Math.max(1, Math.min(25, Number(limitParam)))
           : 6;
 
-      const articles = await convex.query(api.core.posts.queries.getAllPosts, {
-        organizationId,
-        filters: {
-          postTypeSlug: "helpdeskarticles",
-          status: "published",
+      const articles = await convex.query(
+        api.plugins.support.queries.listHelpdeskArticles,
+        {
+          organizationId,
           limit,
         },
-      });
+      );
 
       const normalized = articles.map((article) => ({
-        id: article._id,
-        title:
-          article.title && article.title.length > 0
-            ? article.title
-            : "Untitled article",
+        id: article.entryId,
+        title: article.title ?? "Untitled article",
         summary: buildSummary(article.excerpt ?? "", article.content ?? ""),
-        updatedAt: formatRelativeTime(
-          article.updatedAt ?? article._creationTime,
-        ),
+        updatedAt: formatRelativeTime(article.updatedAt ?? Date.now()),
         slug: article.slug ?? undefined,
       }));
 

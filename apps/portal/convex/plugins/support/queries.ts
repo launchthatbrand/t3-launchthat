@@ -3,6 +3,7 @@ import { internalQuery, query } from "../../_generated/server";
 
 import type { QueryCtx } from "../../_generated/server";
 import { getEmailSettingsByAliasHelper } from "./helpers";
+import { normalizeOrganizationId } from "../../constants";
 import { supportOrganizationIdValidator } from "./schema";
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { v } from "convex/values";
@@ -26,12 +27,15 @@ const DEFAULT_EMAIL_DOMAIN =
   process.env.SUPPORT_EMAIL_DOMAIN ?? "support.launchthat.dev";
 
 const resultShape = v.object({
+  entryId: v.id("posts"),
   title: v.string(),
   content: v.string(),
+  excerpt: v.optional(v.string()),
   slug: v.optional(v.string()),
   tags: v.optional(v.array(v.string())),
   type: v.optional(v.string()),
   source: v.optional(v.string()),
+  updatedAt: v.number(),
 });
 
 const sanitizeOrganizationId = (organizationId: Id<"organizations">) => {
@@ -48,10 +52,6 @@ const randomSuffix = (length: number) => {
       .charAt(0),
   ).join("");
 };
-
-const normalizeOrganizationId = (
-  organizationId: Id<"organizations"> | string,
-): Id<"organizations"> => organizationId as Id<"organizations">;
 
 export const generateDefaultAliasParts = (
   organizationId: Id<"organizations">,
@@ -157,12 +157,15 @@ export const listHelpdeskArticles = query({
       )
       .slice(0, limit)
       .map(({ entry }) => ({
-        title: entry.title,
+        entryId: entry._id,
+        title: entry.title ?? "Untitled article",
         content: entry.content ?? entry.excerpt ?? "",
+        excerpt: entry.excerpt ?? undefined,
         slug: entry.slug ?? undefined,
         tags: entry.tags ?? undefined,
         type: entry.postTypeSlug ?? undefined,
         source: "helpdesk",
+        updatedAt: entry.updatedAt ?? entry._creationTime,
       }));
 
     if (scoredEntries.length > 0) {
@@ -174,12 +177,15 @@ export const listHelpdeskArticles = query({
       .slice(0, limit);
 
     return fallbackPosts.map((post) => ({
-      title: post.title,
+      entryId: post._id,
+      title: post.title ?? "Untitled article",
       content: post.excerpt ?? post.content ?? "",
+      excerpt: post.excerpt ?? undefined,
       slug: post.slug ?? undefined,
       tags: post.tags ?? undefined,
       type: post.postTypeSlug ?? undefined,
       source: "helpdesk",
+      updatedAt: post.updatedAt ?? post._creationTime,
     }));
   },
 });
@@ -372,7 +378,12 @@ export const matchHelpdeskArticle = query({
       entryId: bestMatch.entryId,
       title: bestMatch.title,
       content: bestMatch.content,
+      excerpt: undefined,
       slug: bestMatch.slug,
+      tags: undefined,
+      type: undefined,
+      source: "helpdesk",
+      updatedAt: bestMatch.updatedAt,
     };
   },
 });

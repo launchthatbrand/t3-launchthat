@@ -5,9 +5,13 @@
  */
 import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "@convex-config/_generated/server";
+import {
+  PORTAL_TENANT_ID,
+  PORTAL_TENANT_SLUG,
+  isPortalOrganizationValue,
+} from "../../../constants";
 
 import { FIELD_TYPES } from "../schema";
-import { PORTAL_TENANT_ID } from "../../../constants";
 
 /**
  * Field definition interface
@@ -35,12 +39,12 @@ export interface PostTypeField {
 export type ConvexCtx = QueryCtx | MutationCtx;
 
 export const resolveScopedOrganizationId = (
-  organizationId?: Id<"organizations">,
+  organizationId?: Id<"organizations"> | typeof PORTAL_TENANT_SLUG,
 ) => {
-  if (!organizationId || organizationId === PORTAL_TENANT_ID) {
+  if (!organizationId || isPortalOrganizationValue(organizationId)) {
     return undefined;
   }
-  return organizationId;
+  return organizationId as Id<"organizations">;
 };
 
 export async function getScopedPostTypeBySlug(

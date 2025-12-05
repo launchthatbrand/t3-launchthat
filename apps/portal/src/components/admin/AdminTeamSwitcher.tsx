@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { api } from "@convex-config/_generated/api";
-import { useQuery } from "convex/react";
 
-import type { TeamSwitcherOrganization } from "@acme/ui/general/team-switcher";
+import { PORTAL_TENANT_SLUG } from "~/lib/tenant-fetcher";
 import { TeamSwitcher } from "@acme/ui/general/team-switcher";
-
-import { useTenant } from "~/context/TenantContext";
+import type { TeamSwitcherOrganization } from "@acme/ui/general/team-switcher";
+import { api } from "@convex-config/_generated/api";
 import { rootDomain } from "~/lib/utils";
+import { useQuery } from "convex/react";
+import { useTenant } from "~/context/TenantContext";
 
 export function AdminTeamSwitcher() {
   const tenant = useTenant();
@@ -25,49 +25,44 @@ export function AdminTeamSwitcher() {
       return [];
     }
 
-    return organizationsResult
-      .map((org) => {
-        if (!org || typeof org !== "object") {
-          return null;
-        }
+    return organizationsResult.flatMap((org) => {
+      if (!org || typeof org !== "object") {
+        return [];
+      }
+      const idValue =
+        typeof (org as { _id?: unknown })._id === "string"
+          ? (org as { _id: string })._id
+          : undefined;
+      if (!idValue) {
+        return [];
+      }
+      const nameValue =
+        typeof (org as { name?: unknown }).name === "string"
+          ? (org as { name: string }).name
+          : "Untitled";
+      const slugValue =
+        typeof (org as { slug?: unknown }).slug === "string"
+          ? (org as { slug: string }).slug
+          : undefined;
+      const customDomainValue =
+        typeof (org as { customDomain?: unknown }).customDomain === "string"
+          ? (org as { customDomain: string }).customDomain
+          : undefined;
+      const roleValue =
+        typeof (org as { userRole?: unknown }).userRole === "string"
+          ? (org as { userRole: string }).userRole
+          : undefined;
 
-        const idValue =
-          typeof (org as { _id?: unknown })._id === "string"
-            ? (org as { _id: string })._id
-            : null;
-        const nameValue =
-          typeof (org as { name?: unknown }).name === "string"
-            ? (org as { name: string }).name
-            : "Untitled";
-        const slugValue =
-          typeof (org as { slug?: unknown }).slug === "string"
-            ? (org as { slug: string }).slug
-            : undefined;
-        const customDomainValue =
-          typeof (org as { customDomain?: unknown }).customDomain === "string"
-            ? (org as { customDomain: string }).customDomain
-            : undefined;
-        const roleValue =
-          typeof (org as { userRole?: unknown }).userRole === "string"
-            ? (org as { userRole: string }).userRole
-            : undefined;
-
-        if (!idValue) {
-          return null;
-        }
-
-        return {
+      return [
+        {
           id: idValue,
           name: nameValue,
           slug: slugValue,
           customDomain: customDomainValue,
           role: roleValue,
-        };
-      })
-      .filter(
-        (org): org is TeamSwitcherOrganization =>
-          org !== null && org !== undefined,
-      );
+        },
+      ];
+    });
   }, [organizationsResult]);
 
   const tenantFallbackOrganization =
@@ -78,17 +73,11 @@ export function AdminTeamSwitcher() {
 
       const slug = typeof tenant.slug === "string" ? tenant.slug : undefined;
       const fallbackId =
-        typeof tenant._id === "string"
-          ? tenant._id
-          : slug !== undefined
-            ? slug
-            : "tenant";
+        (typeof tenant._id === "string" ? tenant._id : slug) ?? "tenant";
       const fallbackName =
         typeof tenant.name === "string"
           ? tenant.name
-          : slug !== undefined
-            ? slug
-            : "Current Organization";
+          : (slug ?? "Current Organization");
       const fallbackDomain =
         typeof tenant.customDomain === "string"
           ? tenant.customDomain
@@ -142,6 +131,9 @@ export function AdminTeamSwitcher() {
       const normalizedProtocol = currentProtocol.replace(":", "") || "http";
       const portSegment = port ? `:${port}` : "";
 
+      const stripProtocol = (domain: string) =>
+        domain.replace(/^https?:\/\//, "");
+
       let host: string;
 
       if (org.customDomain) {
@@ -153,7 +145,25 @@ export function AdminTeamSwitcher() {
           hostname.endsWith(".localhost") ||
           hostname.endsWith(".127.0.0.1");
 
-        if (isLocalHost) {
+        const isPortalSlug =
+          typeof org.slug === "string" && org.slug === PORTAL_TENANT_SLUG;
+
+        if (isPortalSlug) {
+          if (
+            hostname === "localhost" ||
+            hostname === "127.0.0.1" ||
+            hostname.endsWith(".localhost") ||
+            hostname.endsWith(".127.0.0.1")
+          ) {
+            const baseLocal =
+              hostname === "localhost" || hostname.endsWith(".localhost")
+                ? "localhost"
+                : "127.0.0.1";
+            host = `${baseLocal}${portSegment}`;
+          } else {
+            host = stripProtocol(rootDomain);
+          }
+        } else if (isLocalHost) {
           const localSuffix = (() => {
             if (hostname.includes(".localhost")) {
               return hostname.substring(hostname.indexOf(".localhost"));
@@ -171,7 +181,7 @@ export function AdminTeamSwitcher() {
           })();
           host = `${org.slug}${localSuffix}${portSegment}`;
         } else {
-          host = `${org.slug}.${rootDomain}`;
+          host = `${org.slug}.${stripProtocol(rootDomain)}`;
         }
       }
 
@@ -197,4 +207,3 @@ export function AdminTeamSwitcher() {
     />
   );
 }
-

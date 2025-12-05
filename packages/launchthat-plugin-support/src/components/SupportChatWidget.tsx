@@ -40,6 +40,9 @@ const stripFormattedPayload = (rawContent: string) => {
   }
 };
 
+const isConvexId = (value?: string | null): boolean =>
+  typeof value === "string" && /^[a-z0-9]{24}$/i.test(value);
+
 export interface SupportChatWidgetProps {
   organizationId?: string | null;
   tenantName?: string;
@@ -178,10 +181,18 @@ function ChatSurface({
   helpdeskArticles,
   defaultContact,
 }: ChatSurfaceProps) {
-  const supportsDirectConvex = useMemo(() => {
-    if (!organizationId) return false;
-    return /^[a-z0-9]{24}$/i.test(organizationId);
-  }, [organizationId]);
+  const supportsDirectConvex = useMemo(
+    () => isConvexId(organizationId),
+    [organizationId],
+  );
+
+  const normalizedContactId = useMemo(
+    () =>
+      contact?.contactId && isConvexId(contact.contactId)
+        ? (contact.contactId as Id<"contacts">)
+        : undefined,
+    [contact?.contactId],
+  );
 
   const openStorageKey = useMemo(
     () => `support-chat-open-${organizationId}`,
@@ -202,6 +213,20 @@ function ChatSurface({
   const [activeTab, setActiveTab] = useState<ChatWidgetTab>("conversations");
   const [presenceState, setPresenceState] = useState<PresenceEntry[]>([]);
 
+  const defaultContactConvexId = useMemo(
+    () =>
+      defaultContact && isConvexId(defaultContact.contactId)
+        ? defaultContact.contactId
+        : undefined,
+    [defaultContact?.contactId],
+  );
+
+  const fallbackContactId = useMemo(
+    () =>
+      contact?.contactId ?? defaultContact?.contactId ?? `visitor-${sessionId}`,
+    [contact?.contactId, defaultContact?.contactId, sessionId],
+  );
+
   useEffect(() => {
     if (!defaultContact) {
       return;
@@ -211,15 +236,22 @@ function ChatSurface({
       !contact ||
       contact.email !== defaultContact.email ||
       contact.fullName !== defaultContact.fullName ||
-      (!contact.contactId && defaultContact.contactId)
+      (defaultContactConvexId && normalizedContactId !== defaultContactConvexId)
     ) {
       onContactSaved({
-        contactId: defaultContact.contactId ?? contact?.contactId,
+        contactId: defaultContactConvexId ?? fallbackContactId,
         fullName: defaultContact.fullName ?? contact?.fullName,
         email: defaultContact.email ?? contact?.email,
       });
     }
-  }, [contact, defaultContact, onContactSaved]);
+  }, [
+    contact,
+    defaultContact,
+    defaultContactConvexId,
+    fallbackContactId,
+    normalizedContactId,
+    onContactSaved,
+  ]);
 
   const shouldCollectContact = settings.requireContact && !contact;
 
@@ -240,7 +272,7 @@ function ChatSurface({
     body: {
       organizationId,
       sessionId,
-      contactId: contact?.contactId,
+      contactId: normalizedContactId,
     },
     onError: (err) => {
       console.error("[support-chat] streaming error", err);
@@ -464,9 +496,7 @@ function ChatSurface({
             sessionId,
             role: "user",
             content,
-            contactId: contact?.contactId
-              ? (contact.contactId as Id<"contacts">)
-              : undefined,
+            contactId: normalizedContactId,
             contactName: contact?.fullName,
             contactEmail: contact?.email,
           });

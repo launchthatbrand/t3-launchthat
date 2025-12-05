@@ -1,15 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 "use client";
 
-import {
-  PORTAL_TENANT_ID,
-  PORTAL_TENANT_SUMMARY,
-  getTenantOrganizationId,
-  isPortalTenant,
-} from "~/lib/tenant-fetcher";
-
 import type { Id } from "@/convex/_generated/dataModel";
 import { SupportSystem } from "launchthat-plugin-support";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { useTenant } from "~/context/TenantContext";
 import { useUser } from "@clerk/nextjs";
 
@@ -24,9 +18,9 @@ export function SupportSystemClient({
 }: SupportSystemClientProps) {
   const { user } = useUser();
   const tenant = useTenant();
-  const organizationId = (
-    isPortalTenant(tenant) ? PORTAL_TENANT_ID : getTenantOrganizationId(tenant)
-  ) as Id<"organizations"> | undefined;
+  const organizationId = getTenantOrganizationId(tenant) as
+    | Id<"organizations">
+    | undefined;
 
   if (!organizationId) {
     return (

@@ -1,3 +1,4 @@
+import { PORTAL_TENANT_ID, PORTAL_TENANT_SLUG } from "../../constants";
 import {
   postTypeAdminMenuValidator,
   postTypeMetaBoxValidator,
@@ -7,7 +8,7 @@ import {
   postTypeSupportsValidator,
 } from "./schema";
 
-import { PORTAL_TENANT_ID } from "../../constants";
+import type { Id } from "../../_generated/dataModel";
 import { getScopedPostTypeBySlug } from "./lib/contentTypes";
 import { query } from "../../_generated/server";
 /**
@@ -19,8 +20,15 @@ import { v } from "convex/values";
 
 const enabledOrgIdValidator = v.union(
   v.id("organizations"),
-  v.literal(PORTAL_TENANT_ID),
+  v.literal(PORTAL_TENANT_SLUG),
 );
+
+const matchesOrganizationId = (
+  stored: Id<"organizations"> | typeof PORTAL_TENANT_SLUG,
+  requested: Id<"organizations">,
+) =>
+  stored === requested ||
+  (stored === PORTAL_TENANT_SLUG && requested === PORTAL_TENANT_ID);
 
 /**
  * List all content types
@@ -63,7 +71,10 @@ export const list = query({
 
     const filtered = allPostTypes.filter((type) => {
       if (organizationId) {
-        if (type.organizationId && type.organizationId !== organizationId) {
+        if (
+          type.organizationId &&
+          !matchesOrganizationId(type.organizationId, organizationId)
+        ) {
           return false;
         }
 
@@ -71,7 +82,10 @@ export const list = query({
           if (type.enabledOrganizationIds.length === 0) {
             return false;
           }
-          if (!type.enabledOrganizationIds.includes(organizationId)) {
+          const isEnabled = type.enabledOrganizationIds.some((candidate) =>
+            matchesOrganizationId(candidate, organizationId),
+          );
+          if (!isEnabled) {
             return false;
           }
         }
