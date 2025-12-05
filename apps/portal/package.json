@@ -120,7 +120,7 @@
     "lucide-react": "^0.555.0",
     "mermaid": "^10.9.3",
     "monday-sdk-js": "^0.5.6",
-    "next": "^16.0.0",
+    "next": "catalog:",
     "officegen": "^0.6.5",
     "pdfjs-dist": "^3.5.141",
     "react": "catalog:react19",
