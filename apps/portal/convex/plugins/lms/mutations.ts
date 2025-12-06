@@ -1,3 +1,9 @@
+import { v } from "convex/values";
+
+import type { Id } from "../../_generated/dataModel";
+import type { MutationCtx } from "../../_generated/server";
+import { internal } from "../../_generated/api";
+import { mutation } from "../../_generated/server";
 import {
   deletePostMetaValue,
   getPostMetaMap,
@@ -5,12 +11,6 @@ import {
   serializeCourseStructureMeta,
   setPostMetaValue,
 } from "./helpers";
-
-import type { Id } from "../../_generated/dataModel";
-import type { MutationCtx } from "../../_generated/server";
-import { internal } from "../../_generated/api";
-import { mutation } from "../../_generated/server";
-import { v } from "convex/values";
 
 const ensureCourseAndLesson = async (
   ctx: MutationCtx,
@@ -53,6 +53,9 @@ const vimeoVideoInput = v.object({
   embedUrl: v.optional(v.string()),
   thumbnailUrl: v.optional(v.string()),
 });
+const postStatusValidator = v.optional(
+  v.union(v.literal("draft"), v.literal("published")),
+);
 
 const slugify = (value: string) =>
   value
@@ -64,6 +67,135 @@ const slugify = (value: string) =>
 const buildSlug = (prefix: string, videoTitle: string, videoId: string) => {
   const base = slugify(videoTitle) || `${prefix}-video`;
   return `${base}-${videoId.slice(-6)}`.toLowerCase();
+};
+
+const DEFAULT_EMBED_WIDTH = 640;
+const DEFAULT_EMBED_HEIGHT = 360;
+const VIMEO_PLAYER_BASE_URL = "https://player.vimeo.com/video/";
+
+const extractNumericVideoId = (video: {
+  videoId: string;
+  embedUrl?: string;
+}) => {
+  const directMatch = video.videoId.match(/\d+/g);
+  if (directMatch?.length) {
+    return directMatch[directMatch.length - 1] ?? video.videoId;
+  }
+  if (video.embedUrl) {
+    try {
+      const parsed = new URL(video.embedUrl);
+      const numericSegment = parsed.pathname
+        .split("/")
+        .filter(Boolean)
+        .reverse()
+        .find((segment) => /^\d+$/.test(segment));
+      if (numericSegment) {
+        return numericSegment;
+      }
+    } catch {
+      // noop
+    }
+  }
+  return video.videoId;
+};
+
+const normalizeVimeoEmbedUrl = (video: {
+  videoId: string;
+  embedUrl?: string;
+}) => {
+  const numericVideoId = extractNumericVideoId(video);
+  const fallbackUrl = `${VIMEO_PLAYER_BASE_URL}${encodeURIComponent(
+    numericVideoId,
+  )}`;
+
+  if (!video.embedUrl) {
+    return fallbackUrl;
+  }
+
+  try {
+    const parsed = new URL(video.embedUrl);
+    const hostname = parsed.hostname.toLowerCase();
+
+    if (hostname === "player.vimeo.com") {
+      if (!parsed.pathname.includes(numericVideoId)) {
+        parsed.pathname = `/video/${encodeURIComponent(numericVideoId)}`;
+      }
+      return parsed.toString();
+    }
+
+    if (!hostname.endsWith("vimeo.com")) {
+      return fallbackUrl;
+    }
+
+    const pathSegments = parsed.pathname.split("/").filter(Boolean);
+    const numericSegmentIndex = pathSegments.findIndex(
+      (segment) => segment === numericVideoId || /^\d+$/.test(segment),
+    );
+    const hashFromPath =
+      numericSegmentIndex >= 0 && numericSegmentIndex + 1 < pathSegments.length
+        ? pathSegments[numericSegmentIndex + 1]
+        : undefined;
+
+    const normalized = new URL(
+      `${VIMEO_PLAYER_BASE_URL}${encodeURIComponent(numericVideoId)}`,
+    );
+    const hashParam = parsed.searchParams.get("h") ?? hashFromPath;
+
+    if (hashParam) {
+      normalized.searchParams.set("h", hashParam);
+    }
+
+    parsed.searchParams.forEach((value, key) => {
+      if (key === "h") {
+        return;
+      }
+      normalized.searchParams.set(key, value);
+    });
+
+    return normalized.toString();
+  } catch {
+    return fallbackUrl;
+  }
+};
+
+const buildVimeoEmbedHtml = (embedUrl: string) => {
+  return `<iframe src="${embedUrl}" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="width:100%;height:${DEFAULT_EMBED_HEIGHT}px;"></iframe>`;
+};
+
+const createLexicalStateWithVimeoEmbed = (video: {
+  videoId: string;
+  title: string;
+  embedUrl?: string;
+  thumbnailUrl?: string;
+}) => {
+  const embedUrl = normalizeVimeoEmbedUrl(video);
+  const html = buildVimeoEmbedHtml(embedUrl);
+  return JSON.stringify({
+    root: {
+      children: [
+        {
+          type: "oembed",
+          format: "",
+          indent: 0,
+          direction: "ltr",
+          version: 1,
+          url: embedUrl,
+          providerName: "Vimeo",
+          title: video.title,
+          html,
+          width: DEFAULT_EMBED_WIDTH,
+          height: DEFAULT_EMBED_HEIGHT,
+          thumbnailUrl: video.thumbnailUrl ?? undefined,
+        },
+      ],
+      direction: "ltr",
+      format: "",
+      indent: 0,
+      type: "root",
+      version: 1,
+    },
+    version: 1,
+  });
 };
 
 const attachLessonToCourseInternal = async (
@@ -367,22 +499,29 @@ export const createLessonFromVimeo = mutation({
     courseId: v.id("posts"),
     organizationId: v.optional(v.id("organizations")),
     video: vimeoVideoInput,
+    status: postStatusValidator,
   },
   returns: v.object({
     lessonId: v.id("posts"),
   }),
   handler: async (ctx, args) => {
+    const normalizedEmbedUrl = normalizeVimeoEmbedUrl(args.video);
+    const status = args.status ?? "draft";
     const lessonId = await ctx.runMutation(
       internal.core.posts.mutations.createPost,
       {
         title: args.video.title,
         slug: buildSlug("lesson", args.video.title, args.video.videoId),
-        status: "draft",
+        status,
         postTypeSlug: "lessons",
         organizationId: args.organizationId,
+        content: createLexicalStateWithVimeoEmbed({
+          ...args.video,
+          embedUrl: normalizedEmbedUrl,
+        }),
         meta: {
           vimeoVideoId: args.video.videoId,
-          vimeoEmbedUrl: args.video.embedUrl ?? "",
+          vimeoEmbedUrl: normalizedEmbedUrl,
           vimeoThumbnailUrl: args.video.thumbnailUrl ?? "",
           source: "vimeo",
         },
@@ -398,22 +537,29 @@ export const createTopicFromVimeo = mutation({
     lessonId: v.id("posts"),
     organizationId: v.optional(v.id("organizations")),
     video: vimeoVideoInput,
+    status: postStatusValidator,
   },
   returns: v.object({
     topicId: v.id("posts"),
   }),
   handler: async (ctx, args) => {
+    const normalizedEmbedUrl = normalizeVimeoEmbedUrl(args.video);
+    const status = args.status ?? "draft";
     const topicId = await ctx.runMutation(
       internal.core.posts.mutations.createPost,
       {
         title: args.video.title,
         slug: buildSlug("topic", args.video.title, args.video.videoId),
-        status: "draft",
+        status,
         postTypeSlug: "topics",
         organizationId: args.organizationId,
+        content: createLexicalStateWithVimeoEmbed({
+          ...args.video,
+          embedUrl: normalizedEmbedUrl,
+        }),
         meta: {
           vimeoVideoId: args.video.videoId,
-          vimeoEmbedUrl: args.video.embedUrl ?? "",
+          vimeoEmbedUrl: normalizedEmbedUrl,
           vimeoThumbnailUrl: args.video.thumbnailUrl ?? "",
           source: "vimeo",
         },
@@ -434,6 +580,7 @@ export const createQuizFromVimeo = mutation({
     targetTopicId: v.optional(v.id("posts")),
     organizationId: v.optional(v.id("organizations")),
     video: vimeoVideoInput,
+    status: postStatusValidator,
   },
   returns: v.object({
     quizId: v.id("posts"),
@@ -442,17 +589,19 @@ export const createQuizFromVimeo = mutation({
     if (!args.targetLessonId) {
       throw new Error("targetLessonId is required when creating quizzes");
     }
+    const normalizedEmbedUrl = normalizeVimeoEmbedUrl(args.video);
+    const status = args.status ?? "draft";
     const quizId = await ctx.runMutation(
       internal.core.posts.mutations.createPost,
       {
         title: args.video.title,
         slug: buildSlug("quiz", args.video.title, args.video.videoId),
-        status: "draft",
+        status,
         postTypeSlug: "quizzes",
         organizationId: args.organizationId,
         meta: {
           vimeoVideoId: args.video.videoId,
-          vimeoEmbedUrl: args.video.embedUrl ?? "",
+          vimeoEmbedUrl: normalizedEmbedUrl,
           vimeoThumbnailUrl: args.video.thumbnailUrl ?? "",
           source: "vimeo",
         },

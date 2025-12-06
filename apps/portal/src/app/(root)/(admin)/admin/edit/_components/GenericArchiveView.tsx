@@ -1,11 +1,11 @@
 "use client";
 
-import type { Doc } from "@/convex/_generated/dataModel";
-import { useMemo } from "react";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { useCallback, useMemo } from "react";
 import Link from "next/link";
-import { useGetAllPosts } from "@/lib/blog";
+import { useDeletePost, useGetAllPosts } from "@/lib/blog";
 import { formatDistanceToNow } from "date-fns";
-import { Eye, Info, Plus, Sparkles } from "lucide-react";
+import { Eye, Info, Plus, Sparkles, Trash2 } from "lucide-react";
 
 import type { ColumnDefinition } from "@acme/ui/entity-list";
 import type { EntityAction } from "@acme/ui/entity-list/types";
@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@acme/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { toast } from "@acme/ui/toast";
 
 import type { PermalinkSettings } from "./permalink";
 import {
@@ -148,7 +149,7 @@ export function GenericArchiveView({
         accessorKey: "title",
         header: "Title",
         sortable: true,
-        cell: (item) => {
+        cell: (item: ArchiveDisplayRow) => {
           if (item.permalink) {
             return (
               <Link
@@ -166,7 +167,7 @@ export function GenericArchiveView({
         id: "statusLabel",
         accessorKey: "statusLabel",
         header: "Status",
-        cell: (item) => (
+        cell: (item: ArchiveDisplayRow) => (
           <Badge variant={item.statusVariant}>{item.statusLabel}</Badge>
         ),
       },
@@ -180,7 +181,7 @@ export function GenericArchiveView({
         id: "updatedAt",
         header: "Updated",
         sortable: true,
-        cell: (item) => (
+        cell: (item: ArchiveDisplayRow) => (
           <span className="text-muted-foreground text-sm">
             {formatDistanceToNow(item.updatedAt, { addSuffix: true })}
           </span>
@@ -189,8 +190,34 @@ export function GenericArchiveView({
     ],
     [slug],
   );
-  const entityActions = useMemo<EntityAction<ArchiveDisplayRow>[]>(
-    () => [
+  const deletePost = useDeletePost();
+  const handleDeleteLesson = useCallback(
+    async (item: ArchiveDisplayRow) => {
+      if (item.isPlaceholder) {
+        return;
+      }
+      const confirmed = window.confirm(
+        `Delete “${item.title}”? This action cannot be undone.`,
+      );
+      if (!confirmed) {
+        return;
+      }
+      try {
+        await deletePost({
+          id: item.id as Id<"posts">,
+        });
+        toast.success("Lesson deleted.");
+      } catch (error) {
+        toast.error("Failed to delete lesson.", {
+          description:
+            error instanceof Error ? error.message : "Unexpected error.",
+        });
+      }
+    },
+    [deletePost],
+  );
+  const entityActions = useMemo<EntityAction<ArchiveDisplayRow>[]>(() => {
+    const actions: EntityAction<ArchiveDisplayRow>[] = [
       {
         id: "view",
         label: "View",
@@ -203,9 +230,23 @@ export function GenericArchiveView({
         variant: "ghost",
         isDisabled: (item) => !item.permalink,
       },
-    ],
-    [],
-  );
+    ];
+
+    if (slug === "lessons") {
+      actions.push({
+        id: "delete",
+        label: "Delete",
+        icon: <Trash2 className="h-4 w-4" />,
+        variant: "destructive",
+        isDisabled: (item) => Boolean(item.isPlaceholder),
+        onClick: (item) => {
+          void handleDeleteLesson(item);
+        },
+      });
+    }
+
+    return actions;
+  }, [handleDeleteLesson, slug]);
 
   const mainContent = (
     <div className="container space-y-6 py-6">

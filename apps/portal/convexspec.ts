@@ -1,4 +1,5 @@
-import { type FunctionReference, anyApi } from "convex/server";
+import type { FunctionReference } from "convex/server";
+import { anyApi } from "convex/server";
 import { type GenericId as Id } from "convex/values";
 
 export const api: PublicApiType = anyApi as unknown as PublicApiType;
@@ -4548,6 +4549,17 @@ export type PublicApiType = {
   plugins: {
     lms: {
       queries: {
+        listCourses: FunctionReference<
+          "query",
+          "public",
+          { organizationId?: Id<"organizations"> },
+          Array<{
+            _id: Id<"posts">;
+            slug?: string;
+            status?: string;
+            title: string;
+          }>
+        >;
         getCourseStructureWithItems: FunctionReference<
           "query",
           "public",
@@ -4701,6 +4713,7 @@ export type PublicApiType = {
           {
             courseId: Id<"posts">;
             organizationId?: Id<"organizations">;
+            status?: "draft" | "published";
             video: {
               description?: string;
               embedUrl?: string;
@@ -4717,6 +4730,7 @@ export type PublicApiType = {
           {
             lessonId: Id<"posts">;
             organizationId?: Id<"organizations">;
+            status?: "draft" | "published";
             video: {
               description?: string;
               embedUrl?: string;
@@ -4732,6 +4746,7 @@ export type PublicApiType = {
           "public",
           {
             organizationId?: Id<"organizations">;
+            status?: "draft" | "published";
             targetLessonId?: Id<"posts">;
             targetTopicId?: Id<"posts">;
             video: {

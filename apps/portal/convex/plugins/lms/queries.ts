@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { v } from "convex/values";
 
 import type { Id } from "../../_generated/dataModel";
@@ -49,6 +50,43 @@ const courseStructureValidator = v.array(
     lessonId: v.id("posts"),
   }),
 );
+
+const courseSummaryValidator = v.object({
+  _id: v.id("posts"),
+  title: v.string(),
+  slug: v.optional(v.string()),
+  status: v.optional(v.string()),
+});
+
+export const listCourses = query({
+  args: {
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.array(courseSummaryValidator),
+  handler: async (ctx, args) => {
+    let queryBuilder = ctx.db
+      .query("posts")
+      .withIndex("by_postTypeSlug", (q) => q.eq("postTypeSlug", "courses"));
+
+    if (args.organizationId) {
+      queryBuilder = queryBuilder.filter((q) =>
+        q.eq(q.field("organizationId"), args.organizationId),
+      );
+    } else {
+      queryBuilder = queryBuilder.filter((q) =>
+        q.eq(q.field("organizationId"), undefined),
+      );
+    }
+
+    const courses = await queryBuilder.collect();
+    return courses.map((course) => ({
+      _id: course._id,
+      title: course.title ?? "Untitled course",
+      slug: course.slug ?? undefined,
+      status: course.status ?? undefined,
+    }));
+  },
+});
 
 export const getCourseStructureWithItems = query({
   args: {

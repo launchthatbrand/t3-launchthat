@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { api } from "@portal/convexspec";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Loader2, MoreHorizontal } from "lucide-react";
 
 import type { ColumnDefinition } from "@acme/ui/entity-list/types";
@@ -33,6 +33,17 @@ import {
   DropdownMenuTrigger,
 } from "@acme/ui/dropdown-menu";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
+import { Label } from "@acme/ui/label";
+import { RadioGroup, RadioGroupItem } from "@acme/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@acme/ui/select";
+import { Skeleton } from "@acme/ui/skeleton";
+import { Switch } from "@acme/ui/switch";
 import { toast } from "@acme/ui/toast";
 
 import type { VimeoHookBag } from "../types";
@@ -46,11 +57,21 @@ interface VimeoLibraryProps {
 
 interface VimeoVideoRow extends Record<string, unknown> {
   id: string;
+  videoId: string;
   title: string;
   status: "synced";
   publishedAtLabel: string;
   thumbnail: string;
   embedUrl: string;
+  description?: string;
+}
+
+type AssignmentType = "lesson" | "topic";
+
+interface CourseSummary {
+  _id: Id<"posts">;
+  title: string;
+  slug?: string;
 }
 
 interface VimeoApiVideo {
@@ -67,12 +88,89 @@ interface VimeoApiVideo {
 
 const FALLBACK_THUMBNAIL =
   "https://images.unsplash.com/photo-1470229538611-16ba8c7ffbd7?q=80";
+const VIMEO_PLAYER_BASE_URL = "https://player.vimeo.com/video/";
 
 const formatPublishedAt = (timestamp: number) => {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(timestamp));
+};
+
+const pickNumericSegment = (value: string | undefined) => {
+  if (!value) {
+    return null;
+  }
+  const segments = value.split(/[/?#]/).filter(Boolean);
+  for (let i = segments.length - 1; i >= 0; i -= 1) {
+    if (/^\d+$/.test(segments[i] ?? "")) {
+      return segments[i] ?? null;
+    }
+  }
+  return null;
+};
+
+const deriveVideoId = (video: VimeoApiVideo) => {
+  const candidates = [video.id, video.uri, video.link].filter(
+    (candidate): candidate is string => Boolean(candidate),
+  );
+  for (const candidate of candidates) {
+    const numeric = pickNumericSegment(candidate);
+    if (numeric) {
+      return numeric;
+    }
+  }
+  return candidates[0] ?? crypto.randomUUID();
+};
+
+const normalizeVimeoEmbedUrl = (videoId: string, rawUrl?: string) => {
+  const fallbackUrl = `${VIMEO_PLAYER_BASE_URL}${encodeURIComponent(videoId)}`;
+  if (!rawUrl) {
+    return fallbackUrl;
+  }
+
+  try {
+    const parsed = new URL(rawUrl);
+    const hostname = parsed.hostname.toLowerCase();
+
+    if (hostname === "player.vimeo.com") {
+      if (!parsed.pathname.includes(videoId)) {
+        parsed.pathname = `/video/${encodeURIComponent(videoId)}`;
+      }
+      return parsed.toString();
+    }
+
+    if (!hostname.endsWith("vimeo.com")) {
+      return fallbackUrl;
+    }
+
+    const pathSegments = parsed.pathname.split("/").filter(Boolean);
+    const idIndex = pathSegments.findIndex((segment) => /^\d+$/.test(segment));
+    const hashFromPath =
+      idIndex >= 0 && idIndex + 1 < pathSegments.length
+        ? pathSegments[idIndex + 1]
+        : undefined;
+
+    const normalized = new URL(
+      `${VIMEO_PLAYER_BASE_URL}${encodeURIComponent(videoId)}`,
+    );
+    const hashParam = parsed.searchParams.get("h") ?? hashFromPath;
+
+    if (hashParam) {
+      normalized.searchParams.set("h", hashParam);
+    }
+
+    parsed.searchParams.forEach((value, key) => {
+      if (key === "h") {
+        return;
+      }
+      normalized.searchParams.set(key, value);
+    });
+
+    return normalized.toString();
+  } catch {
+    return fallbackUrl;
+  }
 };
 
 export function VimeoLibrary({
@@ -87,6 +185,8 @@ export function VimeoLibrary({
   const useQueryHook = hooks?.useQuery ?? configuredHooks?.useQuery ?? useQuery;
   const useActionHook =
     hooks?.useAction ?? configuredHooks?.useAction ?? useAction;
+  const useMutationHook =
+    hooks?.useMutation ?? configuredHooks?.useMutation ?? useMutation;
 
   const connectionArgs = organizationId
     ? { nodeType: "vimeo", ownerId: organizationId }
@@ -118,33 +218,36 @@ export function VimeoLibrary({
       return [];
     })();
 
-    return rawVideos
-      .map((video) => {
-        if (!video || typeof video !== "object") {
-          return null;
-        }
-        const v = video as VimeoApiVideo;
-        const publishedAt = v.created_time
-          ? Date.parse(v.created_time)
-          : Date.now();
-        const thumbnail =
-          v.pictures?.sizes?.[0]?.link ?? v.pictures?.sizes?.at?.(-1)?.link;
-        const idCandidate = v.uri ?? v.id ?? v.link;
-        if (!idCandidate || !v.name || !v.link) {
-          return null;
-        }
-        return {
-          id: idCandidate,
-          title: v.name,
-          status: "synced",
-          publishedAtLabel: formatPublishedAt(
-            Number.isNaN(publishedAt) ? Date.now() : publishedAt,
-          ),
-          thumbnail: thumbnail ?? FALLBACK_THUMBNAIL,
-          embedUrl: v.link,
-        } satisfies VimeoVideoRow;
-      })
-      .filter((row): row is VimeoVideoRow => Boolean(row));
+    const mappedVideos: VimeoVideoRow[] = [];
+    for (const video of rawVideos) {
+      if (!video || typeof video !== "object") {
+        continue;
+      }
+      const v = video as VimeoApiVideo;
+      if (!v.name) {
+        continue;
+      }
+      const publishedAt = v.created_time
+        ? Date.parse(v.created_time)
+        : Date.now();
+      const thumbnail =
+        v.pictures?.sizes?.[0]?.link ?? v.pictures?.sizes?.at?.(-1)?.link;
+      const videoId = deriveVideoId(v);
+      const embedUrl = normalizeVimeoEmbedUrl(videoId, v.link);
+      mappedVideos.push({
+        id: videoId,
+        videoId,
+        title: v.name,
+        status: "synced",
+        publishedAtLabel: formatPublishedAt(
+          Number.isNaN(publishedAt) ? Date.now() : publishedAt,
+        ),
+        thumbnail: thumbnail ?? FALLBACK_THUMBNAIL,
+        embedUrl,
+        description: v.description ?? undefined,
+      });
+    }
+    return mappedVideos;
   }, []);
 
   const loadLiveVideos = useCallback(async () => {
@@ -188,6 +291,14 @@ export function VimeoLibrary({
   const [courseDialogVideo, setCourseDialogVideo] =
     useState<VimeoVideoRow | null>(null);
   const [isCourseDialogOpen, setIsCourseDialogOpen] = useState(false);
+  const [assignmentType, setAssignmentType] =
+    useState<AssignmentType>("lesson");
+  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+  const [selectedLessonId, setSelectedLessonId] = useState<string>("");
+  const [isSubmittingAssignment, setIsSubmittingAssignment] = useState(false);
+  const [desiredStatus, setDesiredStatus] = useState<"draft" | "published">(
+    "published",
+  );
 
   const handleSelectVideo = useCallback(
     (video: VimeoVideoRow) => {
@@ -210,6 +321,161 @@ export function VimeoLibrary({
     setIsCourseDialogOpen(false);
     setCourseDialogVideo(null);
   }, []);
+
+  const coursesResult = useQueryHook(
+    api.plugins.lms.queries.listCourses,
+    organizationId
+      ? ({
+          organizationId,
+        } as {
+          organizationId: Id<"organizations">;
+        })
+      : "skip",
+  ) as CourseSummary[] | undefined;
+
+  const courses = coursesResult ?? [];
+  const isCoursesLoading =
+    Boolean(organizationId) && coursesResult === undefined;
+
+  const selectedCourseLessonsResult = useQueryHook(
+    api.plugins.lms.queries.getCourseStructureWithItems,
+    selectedCourseId
+      ? ({
+          courseId: selectedCourseId as Id<"posts">,
+          organizationId,
+        } as {
+          courseId: Id<"posts">;
+          organizationId?: Id<"organizations">;
+        })
+      : "skip",
+  ) as
+    | {
+        attachedLessons: Array<{
+          _id: Id<"posts">;
+          title: string;
+        }>;
+      }
+    | null
+    | undefined;
+
+  const lessonOptions = selectedCourseLessonsResult?.attachedLessons ?? [];
+  const lessonsLoading =
+    Boolean(selectedCourseId) && selectedCourseLessonsResult === undefined;
+
+  const createLessonFromVimeoMutation = useMutationHook(
+    api.plugins.lms.mutations.createLessonFromVimeo,
+  );
+  const createTopicFromVimeoMutation = useMutationHook(
+    api.plugins.lms.mutations.createTopicFromVimeo,
+  );
+
+  useEffect(() => {
+    if (!isCourseDialogOpen) {
+      setSelectedCourseId("");
+      setSelectedLessonId("");
+      setAssignmentType("lesson");
+      setIsSubmittingAssignment(false);
+      setDesiredStatus("published");
+    }
+  }, [isCourseDialogOpen]);
+
+  useEffect(() => {
+    if (
+      !isCourseDialogOpen ||
+      selectedCourseId ||
+      courses.length === 0 ||
+      isCoursesLoading
+    ) {
+      return;
+    }
+    setSelectedCourseId(courses[0]._id);
+  }, [courses, isCourseDialogOpen, isCoursesLoading, selectedCourseId]);
+
+  useEffect(() => {
+    if (!isCourseDialogOpen) {
+      return;
+    }
+    if (assignmentType !== "topic") {
+      setSelectedLessonId("");
+      return;
+    }
+    if (selectedLessonId || lessonsLoading || lessonOptions.length === 0) {
+      return;
+    }
+    setSelectedLessonId(lessonOptions[0]._id);
+  }, [
+    assignmentType,
+    isCourseDialogOpen,
+    lessonOptions,
+    lessonsLoading,
+    selectedLessonId,
+  ]);
+
+  const handleAddVideoToCourse = useCallback(async () => {
+    if (
+      !courseDialogVideo ||
+      !organizationId ||
+      !selectedCourseId ||
+      (assignmentType === "topic" && !selectedLessonId)
+    ) {
+      return;
+    }
+    setIsSubmittingAssignment(true);
+    const status = desiredStatus;
+    const videoPayload = {
+      videoId: courseDialogVideo.videoId ?? courseDialogVideo.id,
+      title: courseDialogVideo.title,
+      description: courseDialogVideo.description,
+      embedUrl: courseDialogVideo.embedUrl,
+      thumbnailUrl: courseDialogVideo.thumbnail,
+    };
+
+    try {
+      if (assignmentType === "lesson") {
+        await createLessonFromVimeoMutation({
+          courseId: selectedCourseId as Id<"posts">,
+          organizationId,
+          video: videoPayload,
+          status,
+        });
+        toast.success("Video added to course as a lesson.");
+      } else if (selectedLessonId) {
+        await createTopicFromVimeoMutation({
+          lessonId: selectedLessonId as Id<"posts">,
+          organizationId,
+          video: videoPayload,
+          status,
+        });
+        toast.success("Video added to selected lesson as a topic.");
+      }
+      closeCourseDialog();
+    } catch (error) {
+      toast.error("Unable to add video to course.", {
+        description:
+          error instanceof Error ? error.message : "Unexpected error occurred.",
+      });
+    } finally {
+      setIsSubmittingAssignment(false);
+    }
+  }, [
+    assignmentType,
+    closeCourseDialog,
+    courseDialogVideo,
+    createLessonFromVimeoMutation,
+    createTopicFromVimeoMutation,
+    organizationId,
+    selectedCourseId,
+    selectedLessonId,
+  ]);
+
+  const canSubmitAssignment =
+    Boolean(courseDialogVideo) &&
+    Boolean(organizationId) &&
+    Boolean(selectedCourseId) &&
+    (assignmentType === "lesson" || Boolean(selectedLessonId)) &&
+    !isSubmittingAssignment &&
+    !isCoursesLoading &&
+    !(assignmentType === "topic" && lessonsLoading);
 
   const listColumns = useMemo<ColumnDefinition<VimeoVideoRow>[]>(() => {
     return [
@@ -434,26 +700,183 @@ export function VimeoLibrary({
           }
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-w-xl space-y-4">
           <DialogHeader>
             <DialogTitle>
               Add “{courseDialogVideo?.title ?? "selected video"}” to a course
             </DialogTitle>
             <DialogDescription>
-              Select a target course and placement. (Mock dialog content.)
+              Choose the target course and how this Vimeo video should be
+              inserted.
             </DialogDescription>
           </DialogHeader>
-          <div className="text-muted-foreground space-y-2 text-sm">
-            <p>
-              This is placeholder content for the future course-assignment UI.
-            </p>
-            <p>
-              Video URL:{" "}
-              <span className="font-mono text-xs break-all">
-                {courseDialogVideo?.embedUrl ?? "n/a"}
-              </span>
-            </p>
-            <Button onClick={closeCourseDialog}>Close</Button>
+          {!organizationId ? (
+            <Alert>
+              <AlertTitle>Select an organization</AlertTitle>
+              <AlertDescription>
+                Switch to an organization to assign this video to a course.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Course</Label>
+                {isCoursesLoading ? (
+                  <Skeleton className="h-10 w-full" />
+                ) : courses.length ? (
+                  <Select
+                    value={selectedCourseId}
+                    onValueChange={(value) => setSelectedCourseId(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a course" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courses.map((course) => (
+                        <SelectItem key={course._id} value={course._id}>
+                          {course.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Alert>
+                    <AlertTitle>No courses available</AlertTitle>
+                    <AlertDescription>
+                      Create a course first, then return to attach this video.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Placement</Label>
+                <RadioGroup
+                  value={assignmentType}
+                  onValueChange={(value) =>
+                    setAssignmentType(value as AssignmentType)
+                  }
+                  className="grid gap-3 sm:grid-cols-2"
+                >
+                  <div className="rounded-md border p-3">
+                    <div className="flex items-start gap-3">
+                      <RadioGroupItem value="lesson" id="assignment-lesson" />
+                      <div className="space-y-1">
+                        <Label htmlFor="assignment-lesson">New lesson</Label>
+                        <p className="text-muted-foreground text-xs">
+                          Create a lesson that embeds this Vimeo video in its
+                          content automatically.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <div className="flex items-start gap-3">
+                      <RadioGroupItem value="topic" id="assignment-topic" />
+                      <div className="space-y-1">
+                        <Label htmlFor="assignment-topic">New topic</Label>
+                        <p className="text-muted-foreground text-xs">
+                          Choose an existing lesson and add a topic underneath
+                          it with this video.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {assignmentType === "topic" ? (
+                <div className="space-y-2">
+                  <Label>Lesson destination</Label>
+                  {!selectedCourseId ? (
+                    <p className="text-muted-foreground text-xs">
+                      Select a course first.
+                    </p>
+                  ) : lessonsLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : lessonOptions.length ? (
+                    <Select
+                      value={selectedLessonId}
+                      onValueChange={(value) => setSelectedLessonId(value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a lesson" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {lessonOptions.map((lesson) => (
+                          <SelectItem key={lesson._id} value={lesson._id}>
+                            {lesson.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Alert>
+                      <AlertTitle>No lessons found</AlertTitle>
+                      <AlertDescription>
+                        This course has no lessons yet. Add one first or switch
+                        placement to “New lesson”.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              ) : null}
+
+              <div className="bg-muted/40 space-y-2 rounded-md p-3 text-sm">
+                <p className="font-medium">Video details</p>
+                <p className="text-muted-foreground">
+                  {courseDialogVideo?.description
+                    ? courseDialogVideo.description
+                    : "No description provided from Vimeo."}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  URL:{" "}
+                  <span className="font-mono break-all">
+                    {courseDialogVideo?.embedUrl ?? "n/a"}
+                  </span>
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <div className="flex items-center justify-between rounded-md border p-3">
+                  <div className="space-y-1">
+                    <p className="font-medium">Publish immediately</p>
+                    <p className="text-muted-foreground text-xs">
+                      Toggle to save the new{" "}
+                      {assignmentType === "lesson" ? "lesson" : "topic"} as{" "}
+                      <span className="font-medium">{desiredStatus}</span>.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={desiredStatus === "published"}
+                    onCheckedChange={(checked) =>
+                      setDesiredStatus(checked ? "published" : "draft")
+                    }
+                    aria-label="Toggle publish status"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={closeCourseDialog}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddVideoToCourse}
+              disabled={!canSubmitAssignment}
+            >
+              {isSubmittingAssignment ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding…
+                </>
+              ) : (
+                `Add as ${assignmentType === "lesson" ? "lesson" : "topic"}`
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

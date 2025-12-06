@@ -1,5 +1,13 @@
 "use client";
 
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { api } from "@portal/convexspec";
+import { useAction, useMutation, useQuery } from "convex/react";
+
+import { toast } from "@acme/ui/toast";
+
+import type { VimeoVideoItem } from "../CourseBuilderV3/CourseBuilder";
+import type { Id } from "../lib/convexId";
 import type {
   LmsBuilderLesson,
   LmsBuilderQuiz,
@@ -7,14 +15,7 @@ import type {
   LmsCourseBuilderData,
   LmsCourseStructureItem,
 } from "../types";
-import { useAction, useMutation, useQuery } from "convex/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-
 import { CourseBuilder } from "../CourseBuilderV3";
-import type { Id } from "../lib/convexId";
-import type { VimeoVideoItem } from "../CourseBuilderV3/CourseBuilder";
-import { api } from "@portal/convexspec";
-import { toast } from "@acme/ui/toast";
 
 interface CourseBuilderScreenProps {
   courseId?: Id<"posts">;
