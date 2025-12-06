@@ -1,8 +1,26 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
+import Link from "next/link";
+import { api } from "@/convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
+import { toast } from "sonner";
+
+import type { ColumnDefinition } from "@acme/ui/entity-list/types";
 import {
   Accordion,
   AccordionContent,
+  AccordionItem,
   AccordionTrigger,
 } from "@acme/ui/accordion";
 import {
@@ -15,6 +33,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@acme/ui/alert-dialog";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -23,45 +43,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@acme/ui/collapsible";
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import { Separator } from "@acme/ui/separator";
+
 import type {
   PluginDefinition,
   PluginPostTypeConfig,
 } from "~/lib/plugins/types";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useTransition,
-} from "react";
+import { useTenant } from "~/context/TenantContext";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import {
   useCreatePostType,
   useDisablePostTypeAccess,
   useEnsurePostTypeAccess,
   usePostTypes,
 } from "../settings/post-types/_api/postTypes";
-import { useMutation, useQuery } from "convex/react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import type { ColumnDefinition } from "@acme/ui/entity-list/types";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import Link from "next/link";
-import { Separator } from "@acme/ui/separator";
-import { api } from "@/convex/_generated/api";
-import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
-import { pluginDefinitions } from "~/lib/plugins/definitions";
-import { toast } from "sonner";
-import { useTenant } from "~/context/TenantContext";
 
 const isPostTypeEnabledForTenant = (
   postType: Doc<"postTypes">,
@@ -107,6 +104,9 @@ export default function PluginsPage() {
   const ensurePostTypeAccess = useEnsurePostTypeAccess();
   const disablePostTypeAccess = useDisablePostTypeAccess();
   const setOption = useMutation(api.core.options.set);
+  const ensureQuizQuestionPostType = useMutation(
+    api.plugins.lms.mutations.ensureQuizQuestionPostType,
+  );
   const [isPending, startTransition] = useTransition();
   const [pluginToDisable, setPluginToDisable] = useState<PluginRow | null>(
     null,
@@ -240,6 +240,11 @@ export default function PluginsPage() {
               optionResult,
             });
           }
+          if (plugin.id === "lms") {
+            await ensureQuizQuestionPostType({
+              organizationId: tenantId,
+            });
+          }
           toast.success(`${plugin.name} plugin enabled`);
           console.log("[plugins] enable success", {
             tenantId,
@@ -260,6 +265,7 @@ export default function PluginsPage() {
       ensurePostTypeAccess,
       createPostType,
       setOption,
+      ensureQuizQuestionPostType,
     ],
   );
 
@@ -440,40 +446,46 @@ export default function PluginsPage() {
                   ))}
                 </ul>
               </div>
-              <Accordion>
-                <AccordionTrigger>
-                  <p className="text-sm font-medium">Provisioned Post Types</p>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <p className="text-sm font-medium">Provisioned Post Types</p>
-                  <div className="mt-2 grid gap-2">
-                    {plugin.postTypes.map((type) => {
-                      const exists = postTypes.some(
-                        (existing: Doc<"postTypes">) =>
-                          existing.slug === type.slug,
-                      );
-                      return (
-                        <div
-                          key={type.slug}
-                          className="flex flex-wrap items-center justify-between rounded-md border px-3 py-2 text-sm"
-                        >
-                          <div>
-                            <p className="font-medium">{type.name}</p>
-                            <p className="text-muted-foreground text-xs">
-                              Slug: {type.slug}
-                            </p>
-                          </div>
-                          <Badge
-                            variant={exists ? "outline" : "secondary"}
-                            className="mt-2 md:mt-0"
+              <Accordion type="single" collapsible value="post-types">
+                <AccordionItem value="post-types">
+                  <AccordionTrigger>
+                    <p className="text-sm font-medium">
+                      Provisioned Post Types
+                    </p>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <p className="text-sm font-medium">
+                      Provisioned Post Types
+                    </p>
+                    <div className="mt-2 grid gap-2">
+                      {plugin.postTypes.map((type) => {
+                        const exists = postTypes.some(
+                          (existing: Doc<"postTypes">) =>
+                            existing.slug === type.slug,
+                        );
+                        return (
+                          <div
+                            key={type.slug}
+                            className="flex flex-wrap items-center justify-between rounded-md border px-3 py-2 text-sm"
                           >
-                            {exists ? "Exists" : "Will be created"}
-                          </Badge>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </AccordionContent>
+                            <div>
+                              <p className="font-medium">{type.name}</p>
+                              <p className="text-muted-foreground text-xs">
+                                Slug: {type.slug}
+                              </p>
+                            </div>
+                            <Badge
+                              variant={exists ? "outline" : "secondary"}
+                              className="mt-2 md:mt-0"
+                            >
+                              {exists ? "Exists" : "Will be created"}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
               </Accordion>
               {plugin.settingsPages?.length ? (
                 <div className="rounded-md border px-3 py-2">

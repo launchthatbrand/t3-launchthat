@@ -1,5 +1,4 @@
-import type { FunctionReference } from "convex/server";
-import { anyApi } from "convex/server";
+import { type FunctionReference, anyApi } from "convex/server";
 import { type GenericId as Id } from "convex/values";
 
 export const api: PublicApiType = anyApi as unknown as PublicApiType;
@@ -4671,8 +4670,42 @@ export type PublicApiType = {
             topicId?: Id<"posts">;
           }>
         >;
+        getQuizBuilderState: FunctionReference<
+          "query",
+          "public",
+          { organizationId?: Id<"organizations">; quizId: Id<"posts"> },
+          {
+            questions: Array<{
+              _id: Id<"posts">;
+              answerText?: string | null;
+              correctOptionIds: Array<string>;
+              options: Array<{ id: string; label: string }>;
+              order: number;
+              prompt: string;
+              questionType:
+                | "singleChoice"
+                | "multipleChoice"
+                | "shortText"
+                | "longText";
+              quizId: Id<"posts">;
+              title: string;
+            }>;
+            quiz: {
+              _id: Id<"posts">;
+              slug?: string;
+              status?: string;
+              title: string;
+            };
+          }
+        >;
       };
       mutations: {
+        ensureQuizQuestionPostType: FunctionReference<
+          "mutation",
+          "public",
+          { organizationId?: Id<"organizations"> },
+          { success: boolean }
+        >;
         addLessonToCourse: FunctionReference<
           "mutation",
           "public",
@@ -4778,6 +4811,90 @@ export type PublicApiType = {
             };
           },
           { quizId: Id<"posts"> }
+        >;
+        createQuizQuestion: FunctionReference<
+          "mutation",
+          "public",
+          {
+            organizationId?: Id<"organizations">;
+            question: {
+              answerText?: string | null;
+              correctOptionIds?: Array<string>;
+              options?: Array<{ id: string; label: string }>;
+              prompt: string;
+              questionType:
+                | "singleChoice"
+                | "multipleChoice"
+                | "shortText"
+                | "longText";
+            };
+            quizId: Id<"posts">;
+          },
+          {
+            question: {
+              _id: Id<"posts">;
+              answerText?: string | null;
+              correctOptionIds: Array<string>;
+              options: Array<{ id: string; label: string }>;
+              order: number;
+              prompt: string;
+              questionType:
+                | "singleChoice"
+                | "multipleChoice"
+                | "shortText"
+                | "longText";
+              quizId: Id<"posts">;
+              title: string;
+            };
+          }
+        >;
+        updateQuizQuestion: FunctionReference<
+          "mutation",
+          "public",
+          {
+            question: {
+              answerText?: string | null;
+              correctOptionIds?: Array<string>;
+              options?: Array<{ id: string; label: string }>;
+              prompt: string;
+              questionType:
+                | "singleChoice"
+                | "multipleChoice"
+                | "shortText"
+                | "longText";
+            };
+            questionId: Id<"posts">;
+            quizId: Id<"posts">;
+          },
+          {
+            question: {
+              _id: Id<"posts">;
+              answerText?: string | null;
+              correctOptionIds: Array<string>;
+              options: Array<{ id: string; label: string }>;
+              order: number;
+              prompt: string;
+              questionType:
+                | "singleChoice"
+                | "multipleChoice"
+                | "shortText"
+                | "longText";
+              quizId: Id<"posts">;
+              title: string;
+            };
+          }
+        >;
+        deleteQuizQuestion: FunctionReference<
+          "mutation",
+          "public",
+          { questionId: Id<"posts">; quizId: Id<"posts"> },
+          { success: boolean }
+        >;
+        reorderQuizQuestions: FunctionReference<
+          "mutation",
+          "public",
+          { orderedQuestionIds: Array<Id<"posts">>; quizId: Id<"posts"> },
+          { success: boolean }
         >;
         setLessonCompletionStatus: FunctionReference<
           "mutation",

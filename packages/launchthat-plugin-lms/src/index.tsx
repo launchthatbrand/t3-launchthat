@@ -21,6 +21,7 @@ import { CourseBuilderTab } from "./tabs/CourseBuilderTab";
 import { CourseLinkedProductTab } from "./tabs/CourseLinkedProductTab";
 import { CourseMembersTab } from "./tabs/CourseMembersTab";
 import { CourseSettingsTab } from "./tabs/CourseSettingsTab";
+import { QuizBuilderTab } from "./tabs/QuizBuilderTab";
 
 export type { CourseSummary } from "./frontend/CoursesArchive";
 
@@ -45,6 +46,7 @@ export interface LmsPluginComponents {
   CourseMembersTab: ComponentType<PluginSingleViewComponentProps>;
   CourseLinkedProductTab: ComponentType<PluginSingleViewComponentProps>;
   CourseSettingsTab: ComponentType<PluginSingleViewComponentProps>;
+  QuizBuilderTab: ComponentType<PluginSingleViewComponentProps>;
 }
 
 // const buildCompletionSlot = (slug: string) => ({
@@ -76,6 +78,7 @@ export const createLmsPluginDefinition = ({
   CourseMembersTab,
   CourseLinkedProductTab,
   CourseSettingsTab,
+  QuizBuilderTab,
 }: LmsPluginComponents): PluginDefinition => ({
   id: "lms",
   name: "Learning Management System",
@@ -335,7 +338,50 @@ export const createLmsPluginDefinition = ({
         icon: "ClipboardCheck",
         position: 33,
       },
-      // singleViewSlots: [buildCompletionSlot("quizzes")],
+      singleView: {
+        basePath: "/admin/lms/quizzes",
+        defaultTab: "edit",
+        tabs: [
+          {
+            id: "edit",
+            slug: "edit",
+            label: "Edit",
+            description: "Manage quiz metadata and content.",
+            usesDefaultEditor: true,
+          },
+          {
+            id: "builder",
+            slug: "builder",
+            label: "Builder",
+            description: "Create questions and configure answer logic.",
+            render: (props) => <QuizBuilderTab {...props} />,
+          },
+        ],
+      },
+    },
+    {
+      name: "Quiz Questions",
+      slug: "lms-quiz-question",
+      description: "Individual quiz questions managed through the builder.",
+      isPublic: false,
+      includeTimestamps: true,
+      enableApi: false,
+      supports: {
+        title: true,
+        editor: true,
+        customFields: true,
+      },
+      rewrite: {
+        hasArchive: false,
+      },
+      adminMenu: {
+        enabled: true,
+        label: "Quiz Questions",
+        slug: "lms-quiz-question",
+        parent: "lms",
+        icon: "HelpCircle",
+        position: 34,
+      },
     },
   ],
   settingsPages: [
@@ -354,6 +400,7 @@ export const getDefaultLmsComponents = () => ({
   CourseMembersTab,
   CourseLinkedProductTab,
   CourseSettingsTab,
+  QuizBuilderTab,
 });
 
 export let lmsPlugin: PluginDefinition = createLmsPluginDefinition(
@@ -365,6 +412,7 @@ type ConfigureLmsPluginArgs = {
   CourseMembersTab?: ComponentType<PluginSingleViewComponentProps>;
   CourseLinkedProductTab?: ComponentType<PluginSingleViewComponentProps>;
   CourseSettingsTab?: ComponentType<PluginSingleViewComponentProps>;
+  QuizBuilderTab?: ComponentType<PluginSingleViewComponentProps>;
 };
 
 export const configureLmsPlugin = ({
@@ -372,12 +420,14 @@ export const configureLmsPlugin = ({
   CourseMembersTab: membersOverride,
   CourseLinkedProductTab: linkedProductOverride,
   CourseSettingsTab: settingsOverride,
+  QuizBuilderTab: quizBuilderOverride,
 }: ConfigureLmsPluginArgs) => {
   lmsPlugin = createLmsPluginDefinition({
     CourseBuilderTab,
     CourseMembersTab: membersOverride ?? CourseMembersTab,
     CourseLinkedProductTab: linkedProductOverride ?? CourseLinkedProductTab,
     CourseSettingsTab: settingsOverride ?? CourseSettingsTab,
+    QuizBuilderTab: quizBuilderOverride ?? QuizBuilderTab,
   });
 };
 

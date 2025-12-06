@@ -4,11 +4,16 @@ import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import { internal } from "../../_generated/api";
 import { mutation } from "../../_generated/server";
+import { PORTAL_TENANT_SLUG } from "../../constants";
 import { getAuthenticatedUserDocIdByToken } from "../../core/lib/permissions";
 import {
+  buildQuizQuestionMetaPayload,
   deletePostMetaValue,
+  fetchQuizQuestionsForQuiz,
   getPostMetaMap,
+  loadQuizQuestionById,
   parseCourseStructureMeta,
+  QUIZ_QUESTION_META_KEYS,
   serializeCourseStructureMeta,
   setPostMetaValue,
 } from "./helpers";
@@ -58,6 +63,91 @@ const postStatusValidator = v.optional(
   v.union(v.literal("draft"), v.literal("published")),
 );
 
+const quizQuestionOptionInput = v.object({
+  id: v.string(),
+  label: v.string(),
+});
+
+const quizQuestionTypeValidator = v.union(
+  v.literal("singleChoice"),
+  v.literal("multipleChoice"),
+  v.literal("shortText"),
+  v.literal("longText"),
+);
+
+const quizQuestionInputValidator: any = v.object({
+  prompt: v.string(),
+  questionType: quizQuestionTypeValidator,
+  options: v.optional(v.array(quizQuestionOptionInput)),
+  correctOptionIds: v.optional(v.array(v.string())),
+  answerText: v.optional(v.union(v.string(), v.null())),
+});
+
+const quizQuestionOptionValidator: any = v.object({
+  id: v.string(),
+  label: v.string(),
+});
+
+const quizQuestionValidator: any = v.object({
+  _id: v.id("posts"),
+  title: v.string(),
+  prompt: v.string(),
+  quizId: v.id("posts"),
+  questionType: quizQuestionTypeValidator,
+  options: v.array(quizQuestionOptionValidator),
+  correctOptionIds: v.array(v.string()),
+  answerText: v.optional(v.union(v.string(), v.null())),
+  order: v.number(),
+});
+
+export const ensureQuizQuestionPostType = mutation({
+  args: {
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.object({
+    success: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    await ctx.runMutation(
+      internal.core.postTypes.mutations.enableForOrganization,
+      {
+        slug: "lms-quiz-question",
+        organizationId: args.organizationId ?? PORTAL_TENANT_SLUG,
+        definition: {
+          name: "Quiz Questions",
+          description: "Individual quiz questions managed through the builder.",
+          isPublic: false,
+          enableApi: false,
+          includeTimestamps: true,
+          supports: {
+            title: true,
+            editor: true,
+            customFields: true,
+          },
+          rewrite: {
+            hasArchive: false,
+            withFront: true,
+            feeds: false,
+            pages: false,
+          },
+          adminMenu: {
+            enabled: true,
+            label: "Quiz Questions",
+            slug: "lms-quiz-question",
+            parent: "lms",
+            icon: "HelpCircle",
+            position: 34,
+          },
+          storageKind: "posts",
+          storageTables: ["posts", "postsMeta"],
+        },
+      },
+    );
+
+    return { success: true };
+  },
+});
+
 const slugify = (value: string) =>
   value
     .toLowerCase()
@@ -68,6 +158,12 @@ const slugify = (value: string) =>
 const buildSlug = (prefix: string, videoTitle: string, videoId: string) => {
   const base = slugify(videoTitle) || `${prefix}-video`;
   return `${base}-${videoId.slice(-6)}`.toLowerCase();
+};
+
+const buildEntitySlug = (prefix: string, label: string) => {
+  const base = slugify(label) || prefix;
+  const randomSuffix = Math.random().toString(36).slice(-6);
+  return `${base}-${randomSuffix}`;
 };
 
 const DEFAULT_EMBED_WIDTH = 640;
@@ -720,6 +816,160 @@ export const createQuizFromVimeo = mutation({
       topicId: args.targetTopicId,
     });
     return { quizId };
+  },
+});
+
+export const createQuizQuestion = mutation({
+  args: {
+    quizId: v.id("posts"),
+    organizationId: v.optional(v.id("organizations")),
+    question: quizQuestionInputValidator,
+  },
+  returns: v.object({
+    question: quizQuestionValidator,
+  }),
+  handler: async (ctx, args) => {
+    const quiz = await ctx.db.get(args.quizId);
+    if (!quiz || quiz.postTypeSlug !== "quizzes") {
+      throw new Error("Quiz not found");
+    }
+    const quizOrganizationId = quiz.organizationId ?? undefined;
+    if (
+      args.organizationId &&
+      quizOrganizationId !== (args.organizationId ?? undefined)
+    ) {
+      throw new Error("Quiz does not belong to this organization");
+    }
+
+    const existingQuestions = await fetchQuizQuestionsForQuiz(
+      ctx,
+      args.quizId,
+      quizOrganizationId,
+    );
+    const nextOrder =
+      existingQuestions.length > 0
+        ? Math.max(...existingQuestions.map((question) => question.order)) + 1
+        : 0;
+
+    const slug = buildEntitySlug("quiz-question", args.question.prompt);
+    const questionId = await ctx.runMutation(
+      internal.core.posts.mutations.createPost,
+      {
+        title: args.question.prompt,
+        slug,
+        status: "draft",
+        postTypeSlug: "lms-quiz-question",
+        organizationId: quizOrganizationId,
+      },
+    );
+
+    const metaPayload = buildQuizQuestionMetaPayload(
+      args.quizId,
+      args.question,
+      nextOrder,
+    );
+    await Promise.all(
+      Object.entries(metaPayload).map(([key, value]) =>
+        setPostMetaValue(ctx, questionId, key, value),
+      ),
+    );
+
+    const question = await loadQuizQuestionById(ctx, questionId);
+    if (!question) {
+      throw new Error("Unable to load newly created question");
+    }
+    return { question };
+  },
+});
+
+export const updateQuizQuestion = mutation({
+  args: {
+    quizId: v.id("posts"),
+    questionId: v.id("posts"),
+    question: quizQuestionInputValidator,
+  },
+  returns: v.object({
+    question: quizQuestionValidator,
+  }),
+  handler: async (ctx, args) => {
+    const existingQuestion = await loadQuizQuestionById(ctx, args.questionId);
+    if (!existingQuestion || existingQuestion.quizId !== args.quizId) {
+      throw new Error("Quiz question not found");
+    }
+
+    await ctx.runMutation(internal.core.posts.mutations.updatePost, {
+      id: args.questionId,
+      title: args.question.prompt,
+    });
+
+    const metaPayload = buildQuizQuestionMetaPayload(
+      args.quizId,
+      args.question,
+      existingQuestion.order,
+    );
+    await Promise.all(
+      Object.entries(metaPayload).map(([key, value]) =>
+        setPostMetaValue(ctx, args.questionId, key, value),
+      ),
+    );
+
+    const refreshed = await loadQuizQuestionById(ctx, args.questionId);
+    if (!refreshed) {
+      throw new Error("Unable to reload quiz question");
+    }
+    return { question: refreshed };
+  },
+});
+
+export const deleteQuizQuestion = mutation({
+  args: {
+    quizId: v.id("posts"),
+    questionId: v.id("posts"),
+  },
+  returns: v.object({
+    success: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const existingQuestion = await loadQuizQuestionById(ctx, args.questionId);
+    if (!existingQuestion || existingQuestion.quizId !== args.quizId) {
+      throw new Error("Quiz question not found");
+    }
+
+    await ctx.runMutation(internal.core.posts.mutations.deletePost, {
+      id: args.questionId,
+    });
+    return { success: true };
+  },
+});
+
+export const reorderQuizQuestions = mutation({
+  args: {
+    quizId: v.id("posts"),
+    orderedQuestionIds: v.array(v.id("posts")),
+  },
+  returns: v.object({
+    success: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const questions = await fetchQuizQuestionsForQuiz(ctx, args.quizId);
+    if (questions.length !== args.orderedQuestionIds.length) {
+      throw new Error("Question order mismatch");
+    }
+
+    const questionSet = new Set(questions.map((question) => question._id));
+    for (const questionId of args.orderedQuestionIds) {
+      if (!questionSet.has(questionId)) {
+        throw new Error("Question list contains unknown entries");
+      }
+    }
+
+    await Promise.all(
+      args.orderedQuestionIds.map((questionId, index) =>
+        setPostMetaValue(ctx, questionId, QUIZ_QUESTION_META_KEYS.order, index),
+      ),
+    );
+
+    return { success: true };
   },
 });
 

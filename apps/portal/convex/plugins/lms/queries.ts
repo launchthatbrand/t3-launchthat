@@ -9,10 +9,15 @@ import type {
   LmsBuilderTopic,
   LmsCourseBuilderData,
   LmsCourseStructureItem,
+  QuizQuestion,
 } from "../../../../../packages/launchthat-plugin-lms/src/types";
 import { query } from "../../_generated/server";
 import { getAuthenticatedUserDocIdByToken } from "../../core/lib/permissions";
-import { getPostMetaMap, parseCourseStructureMeta } from "./helpers";
+import {
+  fetchQuizQuestionsForQuiz,
+  getPostMetaMap,
+  parseCourseStructureMeta,
+} from "./helpers";
 
 const builderLessonValidator = v.object({
   _id: v.id("posts"),
@@ -44,6 +49,28 @@ const builderQuizValidator = v.object({
   topicId: v.optional(v.id("posts")),
   order: v.optional(v.number()),
   isFinal: v.optional(v.boolean()),
+});
+
+const quizQuestionOptionValidator: any = v.object({
+  id: v.string(),
+  label: v.string(),
+});
+
+const quizQuestionValidator: any = v.object({
+  _id: v.id("posts"),
+  title: v.string(),
+  prompt: v.string(),
+  quizId: v.id("posts"),
+  questionType: v.union(
+    v.literal("singleChoice"),
+    v.literal("multipleChoice"),
+    v.literal("shortText"),
+    v.literal("longText"),
+  ),
+  options: v.array(quizQuestionOptionValidator),
+  correctOptionIds: v.array(v.string()),
+  answerText: v.optional(v.union(v.string(), v.null())),
+  order: v.number(),
 });
 
 const courseStructureValidator = v.array(
@@ -323,6 +350,51 @@ export const getAvailableQuizzes = query({
       args.organizationId ?? undefined,
     );
     return quizzes.filter((quiz) => !quiz.lessonId);
+  },
+});
+
+export const getQuizBuilderState = query({
+  args: {
+    quizId: v.id("posts"),
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.object({
+    quiz: v.object({
+      _id: v.id("posts"),
+      title: v.string(),
+      slug: v.optional(v.string()),
+      status: v.optional(v.string()),
+    }),
+    questions: v.array(quizQuestionValidator),
+  }),
+  handler: async (ctx, args) => {
+    const quiz = await ctx.db.get(args.quizId);
+    if (!quiz || quiz.postTypeSlug !== "quizzes") {
+      throw new Error("Quiz not found");
+    }
+    const quizOrganizationId = quiz.organizationId ?? undefined;
+    if (
+      args.organizationId &&
+      quizOrganizationId !== (args.organizationId ?? undefined)
+    ) {
+      throw new Error("Quiz does not belong to this organization");
+    }
+
+    const questions: QuizQuestion[] = await fetchQuizQuestionsForQuiz(
+      ctx,
+      args.quizId,
+      quizOrganizationId,
+    );
+
+    return {
+      quiz: {
+        _id: quiz._id,
+        title: quiz.title ?? "Untitled quiz",
+        slug: quiz.slug ?? undefined,
+        status: quiz.status ?? undefined,
+      },
+      questions,
+    };
   },
 });
 
