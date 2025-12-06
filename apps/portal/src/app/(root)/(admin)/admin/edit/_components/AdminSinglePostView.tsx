@@ -1,11 +1,18 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 "use client";
 
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
+import "./metaBoxes/attachments";
+import "./metaBoxes/general";
+import "./metaBoxes/customFields";
+import "./metaBoxes/actions";
+import "./metaBoxes/metadata";
+
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-type-assertion */
 import type { SerializedEditorState } from "lexical";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import {
@@ -14,17 +21,7 @@ import {
   useUpdatePost,
 } from "@/lib/blog";
 import { useQuery } from "convex/react";
-import { formatDistanceToNow } from "date-fns";
-import {
-  ArrowLeft,
-  Copy,
-  ExternalLink,
-  Loader2,
-  Pencil,
-  PenSquare,
-  Save,
-  Sparkles,
-} from "lucide-react";
+import { ArrowLeft, Loader2, Save } from "lucide-react";
 
 import {
   Accordion,
@@ -46,10 +43,25 @@ import {
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 
-import type { PluginSingleViewInstance } from "~/lib/plugins/helpers";
+import type { MetaBoxLocation } from "./metaBoxes/registry";
+import type { ExternalMetaBoxRenderer } from "./metaBoxes/utils";
 import type {
-  PluginMetaBoxRendererProps,
-  PluginPostSingleViewConfig,
+  AdminMetaBoxContext,
+  CustomFieldsMetaBoxData,
+  CustomFieldValue,
+  GeneralMetaBoxData,
+  MetaBoxVisibilityConfig,
+  NormalizedMetaBox,
+  ResolvedMetaBox,
+  SidebarActionsMetaBoxData,
+  SidebarMetadataMetaBoxData,
+} from "./types";
+import type {
+  PluginSingleViewInstance,
+  PluginSingleViewSlotRegistration,
+} from "~/lib/plugins/helpers";
+import type {
+  PluginSingleViewSlotLocation,
   PluginSingleViewTabDefinition,
 } from "~/lib/plugins/types";
 import {
@@ -59,7 +71,6 @@ import {
   AdminLayoutMain,
   AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
-import { Editor } from "~/components/blocks/editor-x/editor";
 import {
   createLexicalStateFromPlainText,
   parseLexicalSerializedState,
@@ -69,17 +80,38 @@ import {
   getFrontendProvidersForPostType,
   wrapWithFrontendProviders,
 } from "~/lib/plugins/frontendProviders";
+import {
+  getPluginSingleViewSlotsForSlug,
+  wrapWithPluginProviders,
+} from "~/lib/plugins/helpers";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import { getCanonicalPostPath } from "~/lib/postTypes/routing";
 import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
 import { useMetaBoxState } from "../_state/useMetaBoxState";
 import { usePostTypeFields } from "../../settings/post-types/_api/postTypes";
+import { useAttachmentsMetaBox } from "./hooks/useAttachmentsMetaBox";
+import { ATTACHMENTS_META_KEY } from "./metaBoxes/constants";
+import { collectRegisteredMetaBoxes } from "./metaBoxes/registry";
+import {
+  deriveSystemFieldValue,
+  pickMetaBoxes,
+  sortMetaBoxes,
+} from "./metaBoxes/utils";
 import { getFrontendBaseUrl } from "./permalink";
 import { PlaceholderState } from "./PlaceholderState";
 
-type CustomFieldValue = string | number | boolean | null;
-
 const stripHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
+
+const resolveSupportFlag = (
+  supports: Doc<"postTypes">["supports"] | undefined,
+  key: string,
+) => {
+  if (!supports) {
+    return false;
+  }
+  const record = supports as Record<string, unknown>;
+  return typeof record[key] === "boolean" ? (record[key] as boolean) : false;
+};
 
 const normalizeFieldOptions = (
   options: Doc<"postTypeFields">["options"],
@@ -114,95 +146,6 @@ const normalizeFieldOptions = (
 const buildCustomFieldControlId = (fieldId: string, suffix?: string) =>
   `custom-field-${fieldId}${suffix ? `-${suffix}` : ""}`;
 
-interface NormalizedMetaBox {
-  id: string;
-  title: string;
-  description?: string | null;
-  location: "main" | "sidebar";
-  priority: number;
-  fields: Doc<"postTypeFields">[];
-  rendererKey?: string | null;
-}
-
-interface ResolvedMetaBox {
-  id: string;
-  title: string;
-  description?: string | null;
-  location: "main" | "sidebar";
-  priority: number;
-  render: () => ReactNode;
-}
-
-type ExternalMetaBoxRenderer = (props: PluginMetaBoxRendererProps) => ReactNode;
-
-const pickMetaBoxes = (
-  allowedIds: string[] | undefined,
-  fallback: NormalizedMetaBox[],
-  registry: Record<string, NormalizedMetaBox>,
-  useFallback: boolean,
-) => {
-  if (allowedIds === undefined) {
-    return useFallback ? fallback : [];
-  }
-  if (allowedIds.length === 0) {
-    return [];
-  }
-  const seen = new Set<string>();
-  const selections: NormalizedMetaBox[] = [];
-  for (const id of allowedIds) {
-    if (seen.has(id)) continue;
-    const resolved = registry[id] ?? fallback.find((box) => box.id === id);
-    if (resolved) {
-      selections.push(resolved);
-      seen.add(id);
-    }
-  }
-  return selections;
-};
-
-const sortMetaBoxes = <T extends { priority: number; title: string }>(
-  metaBoxes: T[],
-) =>
-  [...metaBoxes].sort((a, b) =>
-    a.priority === b.priority
-      ? a.title.localeCompare(b.title)
-      : a.priority - b.priority,
-  );
-
-const formatTimestamp = (timestamp?: number | null) => {
-  if (typeof timestamp !== "number" || Number.isNaN(timestamp)) {
-    return "";
-  }
-  return new Date(timestamp).toISOString();
-};
-
-const deriveSystemFieldValue = (
-  field: Doc<"postTypeFields">,
-  post: Doc<"posts"> | null | undefined,
-  isNewRecord: boolean,
-): CustomFieldValue => {
-  if (!post) {
-    return isNewRecord ? "Will be generated on save" : "";
-  }
-
-  switch (field.key) {
-    case "_id":
-      return post._id;
-    case "_creationTime":
-      return formatTimestamp(post._creationTime);
-    case "createdAt":
-      return formatTimestamp(post.createdAt ?? post._creationTime);
-    case "updatedAt":
-      return formatTimestamp(post.updatedAt ?? post._creationTime);
-    case "slug":
-      return post.slug ?? "";
-    case "status":
-      return post.status ?? "";
-    default:
-      return "";
-  }
-};
-
 export interface AdminSinglePostViewProps {
   post?: Doc<"posts"> | null;
   postType: Doc<"postTypes"> | null;
@@ -236,8 +179,15 @@ export function AdminSinglePostView({
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const supportsPostsTable = !!postType || isBuiltInPostTypeSlug(slug);
+  const supportsAttachments =
+    resolveSupportFlag(postType?.supports, "attachments") ||
+    resolveSupportFlag(postType?.supports, "featuredImage");
   const pluginTabs: PluginSingleViewTabDefinition[] =
     pluginSingleView?.config.tabs ?? [];
+  const pluginSlotRegistrations = useMemo<PluginSingleViewSlotRegistration[]>(
+    () => getPluginSingleViewSlotsForSlug(slug),
+    [slug],
+  );
   const pluginMatch = useMemo(
     () => findPostTypeBySlug(postType?.slug ?? slug),
     [postType?.slug, slug],
@@ -252,8 +202,6 @@ export function AdminSinglePostView({
     ? queriedTab
     : defaultTab;
   const [activeTab, setActiveTab] = useState(normalizedTab);
-  const [isSlugEditing, setIsSlugEditing] = useState(false);
-  const slugInputRef = useRef<HTMLInputElement | null>(null);
   const derivedEditorState = useMemo<SerializedEditorState | undefined>(() => {
     console.log("[AdminSinglePostView] deriving editor state", {
       postId: post?._id,
@@ -297,17 +245,15 @@ export function AdminSinglePostView({
     setActiveTab(normalizedTab);
   }, [normalizedTab]);
 
-  useEffect(() => {
-    if (isSlugEditing) {
-      slugInputRef.current?.focus();
-      slugInputRef.current?.select();
-    }
-  }, [isSlugEditing]);
-
   const { data: postTypeFields = [], isLoading: postTypeFieldsLoading } =
     usePostTypeFields(slug, true);
+  type PostsApi = NonNullable<typeof api.core>["posts"];
+  const postsApi: PostsApi | undefined = api.core?.posts;
+  if (!postsApi) {
+    throw new Error("core.posts API is not registered");
+  }
   const postMeta = useQuery(
-    api.core.posts.queries.getPostMeta,
+    postsApi.queries.getPostMeta,
     post?._id
       ? organizationId
         ? ({ postId: post._id, organizationId } as const)
@@ -320,10 +266,23 @@ export function AdminSinglePostView({
       return {};
     }
     return postMeta.reduce<Record<string, CustomFieldValue>>((acc, meta) => {
-      acc[meta.key] = meta.value ?? "";
+      const normalizedValue = (meta.value ?? "") as CustomFieldValue;
+      acc[meta.key] = normalizedValue;
       return acc;
     }, {});
   }, [postMeta]);
+
+  const [customFieldValues, setCustomFieldValues] = useState<
+    Record<string, CustomFieldValue>
+  >({});
+  const {
+    context: attachmentsContext,
+    serializedValue: attachmentsSerializedValue,
+  } = useAttachmentsMetaBox({
+    postMetaMap,
+    supportsAttachments,
+  });
+  const headerLabel = postType?.name ?? slug;
 
   const slugPreviewUrl = useMemo(() => {
     if (!slugValue) {
@@ -347,9 +306,44 @@ export function AdminSinglePostView({
     return baseUrl ? `${baseUrl}${path}` : path;
   }, [post, postType, slugValue]);
 
-  const [customFieldValues, setCustomFieldValues] = useState<
-    Record<string, CustomFieldValue>
-  >({});
+  const generalMetaBoxData = useMemo<GeneralMetaBoxData>(
+    () => ({
+      headerLabel,
+      originalSlug: post?.slug ?? "",
+      title,
+      setTitle,
+      slugValue,
+      setSlugValue,
+      slugPreviewUrl,
+      supportsPostsTable,
+      isPublished,
+      setIsPublished,
+      editorKey,
+      derivedEditorState,
+      setContent,
+      organizationId,
+      excerpt,
+      setExcerpt,
+    }),
+    [
+      derivedEditorState,
+      editorKey,
+      excerpt,
+      headerLabel,
+      isPublished,
+      organizationId,
+      post?.slug,
+      setContent,
+      setExcerpt,
+      setIsPublished,
+      setSlugValue,
+      setTitle,
+      slugPreviewUrl,
+      slugValue,
+      supportsPostsTable,
+      title,
+    ],
+  );
 
   const frontendProviders = useMemo(
     () => getFrontendProvidersForPostType(slug),
@@ -688,6 +682,23 @@ export function AdminSinglePostView({
     [customFieldValues, handleCustomFieldChange],
   );
 
+  const customFieldsMetaBoxData = useMemo<CustomFieldsMetaBoxData>(
+    () => ({
+      postTypeFieldsLoading,
+      unassignedFields,
+      renderCustomFieldControl,
+      postMetaMap,
+      slug,
+    }),
+    [
+      postMetaMap,
+      postTypeFieldsLoading,
+      renderCustomFieldControl,
+      slug,
+      unassignedFields,
+    ],
+  );
+
   const renderFieldBlock = useCallback(
     (
       field: Doc<"postTypeFields">,
@@ -797,7 +808,7 @@ export function AdminSinglePostView({
               })),
               getValue: (fieldKey) => customFieldValues[fieldKey],
               setValue: (fieldKey, value) =>
-                handleCustomFieldChange(fieldKey, value),
+                handleCustomFieldChange(fieldKey, value as CustomFieldValue),
               renderField: (fieldKey, options) =>
                 renderFieldByKey(fieldKey, options),
               renderFieldControl: (fieldKey, options) =>
@@ -880,6 +891,53 @@ export function AdminSinglePostView({
     );
   };
 
+  const renderPluginSlots = useCallback(
+    (location: PluginSingleViewSlotLocation) => {
+      if (pluginSlotRegistrations.length === 0) {
+        return null;
+      }
+      const nodes = pluginSlotRegistrations
+        .filter((registration) => registration.slot.location === location)
+        .map((registration) => {
+          const element = registration.slot.render({
+            pluginId: registration.pluginId,
+            pluginName: registration.pluginName,
+            postId: post?._id ?? undefined,
+            postTypeSlug: slug,
+            organizationId,
+            mediaPickerContext: undefined,
+            isNewRecord,
+            post,
+            postType,
+          });
+          if (!element) {
+            return null;
+          }
+          return (
+            <div
+              key={`${registration.pluginId}-${registration.slot.id}`}
+              className="w-full"
+            >
+              {wrapWithPluginProviders(element, registration.pluginId)}
+            </div>
+          );
+        })
+        .filter((node) => node !== null) as ReactNode[];
+      if (nodes.length === 0) {
+        return null;
+      }
+      return <div className="space-y-4">{nodes}</div>;
+    },
+    [
+      isNewRecord,
+      organizationId,
+      pluginSlotRegistrations,
+      post,
+      postType,
+      slug,
+    ],
+  );
+
   const buildMetaPayload = useCallback(() => {
     const payload: Record<string, CustomFieldValue> = {};
     sortedCustomFields.forEach((field) => {
@@ -903,8 +961,23 @@ export function AdminSinglePostView({
 
       payload[field.key] = value;
     });
+
+    if (supportsAttachments) {
+      if (attachmentsSerializedValue) {
+        payload[ATTACHMENTS_META_KEY] = attachmentsSerializedValue;
+      } else if (postMetaMap[ATTACHMENTS_META_KEY] !== undefined) {
+        payload[ATTACHMENTS_META_KEY] = "";
+      }
+    }
+
     return payload;
-  }, [customFieldValues, postMetaMap, sortedCustomFields]);
+  }, [
+    attachmentsSerializedValue,
+    customFieldValues,
+    postMetaMap,
+    sortedCustomFields,
+    supportsAttachments,
+  ]);
 
   const handleTabChange = useCallback(
     (value: string) => {
@@ -938,7 +1011,6 @@ export function AdminSinglePostView({
     }
   }, [post, isNewRecord]);
 
-  const headerLabel = postType?.name ?? slug;
   const pageIdentifier = useMemo(
     () =>
       getTenantScopedPageIdentifier(pathname, {
@@ -963,34 +1035,7 @@ export function AdminSinglePostView({
     return `/puck/edit?${params.toString()}`;
   }, [headerLabel, pageIdentifier, post?._id, slug, title]);
 
-  if (!isNewRecord && post === undefined) {
-    return (
-      <div className="text-muted-foreground flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading entry…
-      </div>
-    );
-  }
-
-  if (!isNewRecord && post === null) {
-    return (
-      <AdminLayoutContent>
-        <AdminLayoutMain>
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground mb-4">
-                The requested entry was not found or no longer exists.
-              </p>
-              <Button variant="outline" onClick={onBack}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back to archive
-              </Button>
-            </CardContent>
-          </Card>
-        </AdminLayoutMain>
-      </AdminLayoutContent>
-    );
-  }
-
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!supportsPostsTable) {
       setSaveError("Saving is not yet available for this post type.");
       return;
@@ -1049,29 +1094,49 @@ export function AdminSinglePostView({
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [
+    buildMetaPayload,
+    content,
+    createPost,
+    excerpt,
+    isNewRecord,
+    isPublished,
+    post,
+    router,
+    setIsSaving,
+    setSaveError,
+    setSlugValue,
+    slug,
+    slugValue,
+    supportsPostsTable,
+    title,
+    updatePost,
+  ]);
 
-  const renderSaveButton = (options?: { fullWidth?: boolean }) => (
-    <Button
-      type="button"
-      onClick={handleSave}
-      disabled={isSaving || !supportsPostsTable}
-      className={options?.fullWidth ? "w-full" : undefined}
-    >
-      {isSaving ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Saving…
-        </>
-      ) : (
-        <>
-          <Save className="mr-2 h-4 w-4" /> Save Changes
-        </>
-      )}
-    </Button>
+  const renderSaveButton = useCallback(
+    (options?: { fullWidth?: boolean }) => (
+      <Button
+        type="button"
+        onClick={handleSave}
+        disabled={isSaving || !supportsPostsTable}
+        className={options?.fullWidth ? "w-full" : undefined}
+      >
+        {isSaving ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Saving…
+          </>
+        ) : (
+          <>
+            <Save className="mr-2 h-4 w-4" /> Save Changes
+          </>
+        )}
+      </Button>
+    ),
+    [handleSave, isSaving, supportsPostsTable],
   );
 
-  const handleDuplicate = async () => {
+  const handleDuplicate = useCallback(async () => {
     if (!supportsPostsTable || !post?._id || isNewRecord) {
       return;
     }
@@ -1113,7 +1178,113 @@ export function AdminSinglePostView({
     } finally {
       setIsDuplicating(false);
     }
-  };
+  }, [
+    buildMetaPayload,
+    content,
+    createPost,
+    excerpt,
+    headerLabel,
+    isNewRecord,
+    post?._id,
+    post?.slug,
+    post?.status,
+    post?.title,
+    router,
+    slug,
+    slugValue,
+    supportsPostsTable,
+    title,
+  ]);
+
+  const sidebarActionsMetaBoxData = useMemo<SidebarActionsMetaBoxData>(
+    () => ({
+      renderSaveButton,
+      handleDuplicate,
+      isDuplicating,
+      isSaving,
+      supportsPostsTable,
+      puckEditorHref,
+      isNewRecord,
+    }),
+    [
+      handleDuplicate,
+      isDuplicating,
+      isNewRecord,
+      isSaving,
+      puckEditorHref,
+      renderSaveButton,
+      supportsPostsTable,
+    ],
+  );
+
+  const sidebarMetadataMetaBoxData = useMemo<SidebarMetadataMetaBoxData>(
+    () => ({
+      headerLabel,
+      post,
+      postType,
+      isNewRecord,
+    }),
+    [headerLabel, isNewRecord, post, postType],
+  );
+
+  const metaBoxContext = useMemo<AdminMetaBoxContext>(
+    () => ({
+      post,
+      postType,
+      slug,
+      isNewRecord,
+      organizationId,
+      attachmentsContext,
+      general: generalMetaBoxData,
+      customFields: customFieldsMetaBoxData,
+      sidebar: {
+        actions: sidebarActionsMetaBoxData,
+        metadata: sidebarMetadataMetaBoxData,
+      },
+    }),
+    [
+      attachmentsContext,
+      customFieldsMetaBoxData,
+      generalMetaBoxData,
+      isNewRecord,
+      organizationId,
+      post,
+      postType,
+      sidebarActionsMetaBoxData,
+      sidebarMetadataMetaBoxData,
+      slug,
+    ],
+  );
+
+  const appendRegisteredMetaBoxes = useCallback(
+    (
+      target: ResolvedMetaBox[],
+      location: MetaBoxLocation,
+      visibilityOverride?: Partial<MetaBoxVisibilityConfig>,
+    ) => {
+      const context: AdminMetaBoxContext = visibilityOverride
+        ? {
+            ...metaBoxContext,
+            visibility: {
+              ...metaBoxContext.visibility,
+              ...visibilityOverride,
+            },
+          }
+        : metaBoxContext;
+      const registered = collectRegisteredMetaBoxes(location, context);
+      registered.forEach((registeredMetaBox) => {
+        target.push({
+          id: registeredMetaBox.id,
+          title: registeredMetaBox.title,
+          description: registeredMetaBox.description,
+          location: registeredMetaBox.location,
+          priority: registeredMetaBox.priority ?? 50,
+          render: () => registeredMetaBox.render(context),
+        });
+      });
+    },
+    [metaBoxContext],
+  );
 
   const renderDefaultContent = (options?: {
     showGeneralPanel?: boolean;
@@ -1133,232 +1304,19 @@ export function AdminSinglePostView({
 
     const resolvedMetaBoxes: ResolvedMetaBox[] = [];
 
-    if (shouldShowGeneral) {
-      resolvedMetaBoxes.push({
-        id: "core-general",
-        title: "General",
-        description: `Fundamental settings for this ${headerLabel} entry.`,
-        location: "main",
-        priority: 0,
-        render: () => (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="post-title">Title</Label>
-              <Input
-                id="post-title"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="Add a descriptive title"
-              />
-            </div>
-            {supportsPostsTable && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="post-slug">Frontend Slug</Label>
-                  {!isSlugEditing && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsSlugEditing(true)}
-                      className="text-xs"
-                    >
-                      <Pencil className="mr-2 h-3.5 w-3.5" />
-                      Edit
-                    </Button>
-                  )}
-                </div>
-                {isSlugEditing ? (
-                  <Input
-                    id="post-slug"
-                    ref={slugInputRef}
-                    value={slugValue}
-                    onChange={(event) => setSlugValue(event.target.value)}
-                    placeholder="friendly-url-slug"
-                    onBlur={() => setIsSlugEditing(false)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        slugInputRef.current?.blur();
-                      }
-                      if (event.key === "Escape") {
-                        event.preventDefault();
-                        setSlugValue(post?.slug ?? "");
-                        setIsSlugEditing(false);
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="border-input bg-muted/40 flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
-                    {slugPreviewUrl ? (
-                      <a
-                        className="text-primary min-w-0 flex-1 truncate font-medium hover:underline"
-                        href={slugPreviewUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {slugPreviewUrl}
-                      </a>
-                    ) : (
-                      <span className="text-muted-foreground">
-                        Slug will be generated after saving.
-                      </span>
-                    )}
-                    {slugPreviewUrl ? (
-                      <a
-                        href={slugPreviewUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:text-primary/80"
-                        aria-label="Open public page"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    ) : null}
-                  </div>
-                )}
-                <p className="text-muted-foreground text-xs">
-                  Must be unique; determines the public URL.
-                </p>
-              </div>
-            )}
-            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-              <div>
-                <p className="text-sm font-medium">Published</p>
-                <p className="text-muted-foreground text-xs">
-                  Toggle visibility for this entry.
-                </p>
-              </div>
-              <Switch
-                id="post-status"
-                checked={isPublished}
-                onCheckedChange={(checked) => setIsPublished(checked)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Content</Label>
-              <Editor
-                key={editorKey}
-                editorSerializedState={derivedEditorState}
-                onSerializedChange={(state) => {
-                  setContent(JSON.stringify(state));
-                }}
-                organizationId={organizationId}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="post-excerpt">Excerpt</Label>
-              <Textarea
-                id="post-excerpt"
-                rows={3}
-                value={excerpt}
-                onChange={(event) => setExcerpt(event.target.value)}
-                placeholder="Short summary for listing views"
-              />
-            </div>
-          </>
-        ),
-      });
-    }
-
-    if (shouldShowCustomFields) {
-      resolvedMetaBoxes.push({
-        id: "core-custom-fields",
-        title: "Custom Fields",
-        description:
-          "Fields defined in Post Type settings are stored as post_meta records.",
-        location: "main",
-        priority: 90,
-        render: () => {
-          if (postTypeFieldsLoading) {
-            return (
-              <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Fetching the latest custom fields for this post type.
-              </div>
-            );
-          }
-
-          if (unassignedFields.length === 0) {
-            return (
-              <div className="space-y-3">
-                <Button variant="outline" asChild>
-                  <Link
-                    href={`/admin/settings/post-types?tab=fields&post_type=${slug}`}
-                  >
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Configure Fields
-                  </Link>
-                </Button>
-                <p className="text-muted-foreground text-sm">
-                  Custom fields mirror WordPress&apos; post_meta table so
-                  plugins can rely on a familiar contract.
-                </p>
-              </div>
-            );
-          }
-
-          return (
-            <>
-              {unassignedFields.map((field) => (
-                <div
-                  key={field._id}
-                  className="space-y-2 rounded-md border p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Label htmlFor={buildCustomFieldControlId(field._id)}>
-                      {field.name}
-                      {field.required ? " *" : ""}
-                    </Label>
-                    <span className="text-muted-foreground text-xs tracking-wide uppercase">
-                      {field.type}
-                    </span>
-                  </div>
-                  {field.description ? (
-                    <p className="text-muted-foreground text-sm">
-                      {field.description}
-                    </p>
-                  ) : null}
-                  {renderCustomFieldControl(field)}
-                </div>
-              ))}
-              <div className="space-y-2 rounded-md border p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Label htmlFor="custom-field-puck-data">
-                    Puck Data (JSON)
-                  </Label>
-                  <span className="text-muted-foreground text-xs tracking-wide uppercase">
-                    system
-                  </span>
-                </div>
-                <p className="text-muted-foreground text-sm">
-                  Read-only representation of the stored Puck layout. Updates
-                  are managed automatically when using the Puck editor.
-                </p>
-                <Textarea
-                  id="custom-field-puck-data"
-                  value={
-                    typeof postMetaMap.puck_data === "string"
-                      ? postMetaMap.puck_data
-                      : ""
-                  }
-                  readOnly
-                  rows={8}
-                  className="font-mono text-xs"
-                />
-              </div>
-            </>
-          );
-        },
-      });
-    }
+    appendRegisteredMetaBoxes(resolvedMetaBoxes, "main", {
+      showGeneralPanel: shouldShowGeneral,
+      showCustomFieldsPanel: shouldShowCustomFields,
+    });
 
     resolvedMetaBoxes.push(...visibleFieldMetaBoxes);
+    const afterContentSlots = renderPluginSlots("afterMainContent");
 
     return (
       <div className="space-y-6">
         {saveError && <p className="text-destructive text-sm">{saveError}</p>}
         {renderMetaBoxList(resolvedMetaBoxes, "main")}
+        {afterContentSlots}
       </div>
     );
   };
@@ -1368,100 +1326,12 @@ export function AdminSinglePostView({
     sidebarMetaBoxIds?: string[];
     useDefaultSidebarMetaBoxes?: boolean;
   }) => {
-    const resolvedMetaBoxes: ResolvedMetaBox[] = [
-      {
-        id: "core-actions",
-        title: "Actions",
-        description: "Save, duplicate, or preview this entry.",
-        location: "sidebar",
-        priority: 0,
-        render: () => (
-          <div className="space-y-3">
-            {renderSaveButton({ fullWidth: true })}
-            <Button
-              variant="outline"
-              className="w-full gap-2"
-              disabled={
-                isDuplicating || isSaving || isNewRecord || !supportsPostsTable
-              }
-              onClick={handleDuplicate}
-            >
-              {isDuplicating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Duplicating…
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4" />
-                  Duplicate Entry
-                </>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              disabled={!puckEditorHref || isNewRecord}
-              asChild={!!(puckEditorHref && !isNewRecord)}
-              className="w-full gap-2"
-            >
-              {puckEditorHref && !isNewRecord ? (
-                <Link href={puckEditorHref} target="_blank" rel="noreferrer">
-                  <PenSquare className="h-4 w-4" />
-                  Edit with Puck
-                </Link>
-              ) : (
-                <>
-                  <PenSquare className="h-4 w-4" />
-                  Edit with Puck
-                </>
-              )}
-            </Button>
-            {!supportsPostsTable ? (
-              <p className="text-muted-foreground text-xs">
-                Saving is not available for this post type.
-              </p>
-            ) : (
-              <p className="text-muted-foreground text-xs">
-                Saved content is available across all tabs.
-              </p>
-            )}
-          </div>
-        ),
-      },
-      {
-        id: "core-metadata",
-        title: "Metadata",
-        description: "High-level attributes for this entry.",
-        location: "sidebar",
-        priority: 10,
-        render: () => (
-          <div className="text-muted-foreground space-y-3 text-sm">
-            <div>
-              <p className="text-foreground font-medium">Post Type</p>
-              <p>{headerLabel}</p>
-            </div>
-            {!isNewRecord && post ? (
-              <>
-                <div>
-                  <p className="text-foreground font-medium">Status</p>
-                  <p className="capitalize">{post.status ?? "draft"}</p>
-                </div>
-                <div>
-                  <p className="text-foreground font-medium">Updated</p>
-                  <p>
-                    {post.updatedAt
-                      ? formatDistanceToNow(post.updatedAt, { addSuffix: true })
-                      : "Not updated"}
-                  </p>
-                </div>
-              </>
-            ) : (
-              <p>This entry has not been saved yet.</p>
-            )}
-          </div>
-        ),
-      },
-    ];
+    const resolvedMetaBoxes: ResolvedMetaBox[] = [];
+
+    appendRegisteredMetaBoxes(resolvedMetaBoxes, "sidebar", {
+      showSidebarActions: options?.useDefaultSidebarMetaBoxes ?? true,
+      showSidebarMetadata: options?.useDefaultSidebarMetaBoxes ?? true,
+    });
 
     const pluginMetaBoxes = pickMetaBoxes(
       options?.sidebarMetaBoxIds ?? options?.metaBoxIds,
@@ -1472,8 +1342,44 @@ export function AdminSinglePostView({
 
     resolvedMetaBoxes.push(...pluginMetaBoxes);
 
-    return renderMetaBoxList(resolvedMetaBoxes, "sidebar");
+    const sidebarTopSlots = renderPluginSlots("sidebarTop");
+    const sidebarBottomSlots = renderPluginSlots("sidebarBottom");
+
+    return (
+      <div className="space-y-4">
+        {sidebarTopSlots}
+        {renderMetaBoxList(resolvedMetaBoxes, "sidebar")}
+        {sidebarBottomSlots}
+      </div>
+    );
   };
+
+  if (!isNewRecord && post === undefined) {
+    return (
+      <div className="text-muted-foreground flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading entry…
+      </div>
+    );
+  }
+
+  if (!isNewRecord && post === null) {
+    return (
+      <AdminLayoutContent>
+        <AdminLayoutMain>
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground mb-4">
+                The requested entry was not found or no longer exists.
+              </p>
+              <Button variant="outline" onClick={onBack}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back to archive
+              </Button>
+            </CardContent>
+          </Card>
+        </AdminLayoutMain>
+      </AdminLayoutContent>
+    );
+  }
 
   if (pluginSingleView && pluginTabs.length > 0) {
     const activeTabDefinition =

@@ -24,6 +24,7 @@ export const vimeoPlugin: PluginDefinition = {
       isPublic: false,
       supports: {
         title: true,
+        attachments: true,
         featuredImage: true,
         customFields: true,
         postMeta: true,

@@ -3287,6 +3287,7 @@ export type PublicApiType = {
               customFields?: boolean;
               editor?: boolean;
               excerpt?: boolean;
+              attachments?: boolean;
               featuredImage?: boolean;
               postMeta?: boolean;
               revisions?: boolean;
@@ -3341,6 +3342,7 @@ export type PublicApiType = {
                 customFields?: boolean;
                 editor?: boolean;
                 excerpt?: boolean;
+                attachments?: boolean;
                 featuredImage?: boolean;
                 postMeta?: boolean;
                 revisions?: boolean;
@@ -3405,6 +3407,7 @@ export type PublicApiType = {
                 customFields?: boolean;
                 editor?: boolean;
                 excerpt?: boolean;
+                attachments?: boolean;
                 featuredImage?: boolean;
                 postMeta?: boolean;
                 revisions?: boolean;
@@ -3537,6 +3540,7 @@ export type PublicApiType = {
               customFields?: boolean;
               editor?: boolean;
               excerpt?: boolean;
+              attachments?: boolean;
               featuredImage?: boolean;
               postMeta?: boolean;
               revisions?: boolean;
@@ -3601,6 +3605,7 @@ export type PublicApiType = {
               customFields?: boolean;
               editor?: boolean;
               excerpt?: boolean;
+              attachments?: boolean;
               featuredImage?: boolean;
               postMeta?: boolean;
               revisions?: boolean;
@@ -3665,6 +3670,7 @@ export type PublicApiType = {
               customFields?: boolean;
               editor?: boolean;
               excerpt?: boolean;
+              attachments?: boolean;
               featuredImage?: boolean;
               postMeta?: boolean;
               revisions?: boolean;

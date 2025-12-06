@@ -176,6 +176,7 @@ const DEFAULT_POST_TYPES: DefaultPostTypeConfig[] = [
       title: true,
       editor: true,
       excerpt: true,
+      attachments: true,
       featuredImage: true,
       comments: true,
       revisions: true,
@@ -207,6 +208,7 @@ const DEFAULT_POST_TYPES: DefaultPostTypeConfig[] = [
     supports: {
       title: true,
       editor: true,
+      attachments: true,
       featuredImage: true,
       revisions: true,
     },
@@ -235,6 +237,7 @@ const DEFAULT_POST_TYPES: DefaultPostTypeConfig[] = [
     isPublic: false,
     supports: {
       title: true,
+      attachments: true,
       featuredImage: true,
       customFields: true,
       postMeta: true,

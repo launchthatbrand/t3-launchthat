@@ -29,6 +29,7 @@
   "dependencies": {
     "@acme/auth": "workspace:*",
     "@acme/db": "workspace:*",
+    "@acme/dnd": "workspace:*",
     "@acme/puck-config": "workspace:*",
     "@acme/ui": "workspace:*",
     "@acme/validators": "workspace:*",

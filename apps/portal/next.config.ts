@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
     "@acme/puck-config",
     "launchthat-plugin-calendar",
     "launchthat-plugin-cms",
+    "launchthat-plugin-core",
     "launchthat-plugin-commerce",
     "launchthat-plugin-helpdesk",
     "launchthat-plugin-support",

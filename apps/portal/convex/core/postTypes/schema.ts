@@ -6,6 +6,7 @@ export const postTypeSupportsValidator = v.object({
   title: v.optional(v.boolean()),
   editor: v.optional(v.boolean()),
   excerpt: v.optional(v.boolean()),
+  attachments: v.optional(v.boolean()),
   featuredImage: v.optional(v.boolean()),
   customFields: v.optional(v.boolean()),
   comments: v.optional(v.boolean()),

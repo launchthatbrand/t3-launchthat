@@ -8,6 +8,7 @@ export interface PluginPostTypeSupports {
   title?: boolean;
   editor?: boolean;
   excerpt?: boolean;
+  attachments?: boolean;
   featuredImage?: boolean;
   customFields?: boolean;
   comments?: boolean;
@@ -46,6 +47,27 @@ export interface PluginFrontendSingleRendererProps {
   postType: PluginPostTypeConfig;
 }
 
+export type PluginFrontendSingleSlotLocation =
+  | "beforeContent"
+  | "afterContent"
+  | "sidebarTop"
+  | "sidebarBottom";
+
+export interface PluginFrontendSingleSlotProps {
+  pluginId: string;
+  pluginName: string;
+  postTypeSlug: string;
+  post?: unknown;
+  postType?: PluginPostTypeConfig | null;
+  organizationId?: Id<"organizations">;
+}
+
+export interface PluginFrontendSingleSlotDefinition {
+  id: string;
+  location: PluginFrontendSingleSlotLocation;
+  render: (props: PluginFrontendSingleSlotProps) => ReactNode;
+}
+
 export interface PluginPostTypeFrontendConfig {
   archive?: {
     render: (props: PluginFrontendArchiveRendererProps) => ReactNode;
@@ -53,6 +75,7 @@ export interface PluginPostTypeFrontendConfig {
   single?: {
     render: (props: PluginFrontendSingleRendererProps) => ReactNode;
   };
+  singleSlots?: PluginFrontendSingleSlotDefinition[];
   providers?: string[];
 }
 
@@ -165,6 +188,7 @@ export interface PluginPostTypeConfig {
   storageKind?: "posts" | "custom";
   storageTables?: string[];
   singleView?: PluginPostSingleViewConfig;
+  singleViewSlots?: PluginSingleViewSlotDefinition[];
   adminArchiveView?: PluginPostArchiveViewConfig;
   frontend?: PluginPostTypeFrontendConfig;
   metaBoxes?: PluginPostTypeMetaBox[];
@@ -208,6 +232,25 @@ export interface PluginSingleViewComponentProps {
   postTypeSlug: string;
   organizationId?: Id<"organizations">;
   mediaPickerContext?: PluginMediaPickerContext;
+}
+
+export type PluginSingleViewSlotLocation =
+  | "beforeMainContent"
+  | "afterMainContent"
+  | "sidebarTop"
+  | "sidebarBottom";
+
+export interface PluginSingleViewSlotProps
+  extends PluginSingleViewComponentProps {
+  post?: unknown;
+  postType?: unknown;
+  isNewRecord: boolean;
+}
+
+export interface PluginSingleViewSlotDefinition {
+  id: string;
+  location: PluginSingleViewSlotLocation;
+  render: (props: PluginSingleViewSlotProps) => ReactNode;
 }
 
 export interface PluginSingleViewTabDefinition {

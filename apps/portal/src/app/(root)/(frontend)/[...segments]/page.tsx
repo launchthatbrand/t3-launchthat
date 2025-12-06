@@ -2,21 +2,28 @@
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { Data as PuckData } from "@measured/puck";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
 
+import type { PluginFrontendSingleSlotRegistration } from "~/lib/plugins/helpers";
 import { EditorViewer } from "~/components/blocks/editor-x/viewer";
 import { parseLexicalSerializedState } from "~/lib/editor/lexical";
 import { findPostTypeBySlug } from "~/lib/plugins/frontend";
 import { wrapWithFrontendProviders } from "~/lib/plugins/frontendProviders";
 import {
+  getPluginFrontendSingleSlotsForSlug,
+  wrapWithPluginProviders,
+} from "~/lib/plugins/helpers";
+import {
   getCanonicalPostPath,
   getCanonicalPostSegments,
 } from "~/lib/postTypes/routing";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { cn } from "~/lib/utils";
 import { PuckContentRenderer } from "../../../../components/puckeditor/PuckContentRenderer";
 
 type PluginMatch = ReturnType<typeof findPostTypeBySlug>;
@@ -180,6 +187,17 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     );
   }
 
+  const frontendSlotRegistrations =
+    post.postTypeSlug && pluginMatch
+      ? getPluginFrontendSingleSlotsForSlug(post.postTypeSlug)
+      : [];
+  const pluginSlotNodes = buildFrontendSlotNodes({
+    registrations: frontendSlotRegistrations,
+    post,
+    postType,
+    organizationId,
+  });
+
   return (
     <PostDetail
       post={post}
@@ -187,6 +205,7 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       fields={postFields}
       postMeta={postMeta}
       puckData={puckData}
+      pluginSlots={pluginSlotNodes}
     />
   );
 }
@@ -295,12 +314,83 @@ function normalizePath(path: string): string {
     .join("/");
 }
 
+interface FrontendSlotBuckets {
+  beforeContent: ReactNode[];
+  afterContent: ReactNode[];
+  sidebarTop: ReactNode[];
+  sidebarBottom: ReactNode[];
+}
+
+const EMPTY_SLOT_BUCKETS: FrontendSlotBuckets = {
+  beforeContent: [],
+  afterContent: [],
+  sidebarTop: [],
+  sidebarBottom: [],
+};
+
+function buildFrontendSlotNodes({
+  registrations,
+  post,
+  postType,
+  organizationId,
+}: {
+  registrations: PluginFrontendSingleSlotRegistration[];
+  post: Doc<"posts">;
+  postType: PostTypeDoc | null;
+  organizationId?: Id<"organizations"> | null;
+}): FrontendSlotBuckets {
+  if (!registrations.length) {
+    return EMPTY_SLOT_BUCKETS;
+  }
+
+  const buckets: FrontendSlotBuckets = {
+    beforeContent: [],
+    afterContent: [],
+    sidebarTop: [],
+    sidebarBottom: [],
+  };
+
+  registrations.forEach((registration) => {
+    const element = registration.slot.render({
+      pluginId: registration.pluginId,
+      pluginName: registration.pluginName,
+      postTypeSlug: post.postTypeSlug ?? "",
+      post,
+      postType,
+      organizationId: organizationId ?? undefined,
+    });
+    if (!element) {
+      return;
+    }
+    const wrapped = wrapWithPluginProviders(element, registration.pluginId);
+    switch (registration.slot.location) {
+      case "beforeContent":
+        buckets.beforeContent.push(wrapped);
+        break;
+      case "afterContent":
+        buckets.afterContent.push(wrapped);
+        break;
+      case "sidebarTop":
+        buckets.sidebarTop.push(wrapped);
+        break;
+      case "sidebarBottom":
+        buckets.sidebarBottom.push(wrapped);
+        break;
+      default:
+        break;
+    }
+  });
+
+  return buckets;
+}
+
 interface PostDetailProps {
   post: Doc<"posts">;
   postType: PostTypeDoc | null;
   fields: PostFieldDoc[];
   postMeta: PostMetaDoc[];
   puckData: PuckData | null;
+  pluginSlots: FrontendSlotBuckets;
 }
 
 function PostDetail({
@@ -309,6 +399,7 @@ function PostDetail({
   fields,
   postMeta,
   puckData,
+  pluginSlots,
 }: PostDetailProps) {
   const contextLabel = resolveContextLabel(post, postType);
   const customFieldEntries = buildCustomFieldEntries({
@@ -327,52 +418,79 @@ function PostDetail({
     );
   }
 
+  const hasSidebar =
+    pluginSlots.sidebarTop.length > 0 || pluginSlots.sidebarBottom.length > 0;
+
   return (
-    <main className="container mx-auto max-w-4xl space-y-6 py-10">
-      <article className="space-y-6">
-        <header className="space-y-2">
-          <p className="text-muted-foreground text-sm tracking-wide uppercase">
-            {contextLabel}
-          </p>
-          <h1 className="text-4xl font-bold">{post.title}</h1>
-          {post.excerpt && (
-            <p className="text-muted-foreground text-lg">{post.excerpt}</p>
-          )}
-          <PostMetaSummary post={post} postType={postType} />
-        </header>
-        {lexicalContent ? (
-          <EditorViewer
-            editorSerializedState={lexicalContent}
-            className="prose max-w-none"
-          />
-        ) : post.content ? (
-          <div
-            className="prose max-w-none"
-            dangerouslySetInnerHTML={{ __html: post.content }}
-          />
-        ) : (
-          <p className="text-muted-foreground text-sm">
-            This {contextLabel.toLowerCase()} does not have any content yet.
-          </p>
+    <main className="container mx-auto max-w-6xl space-y-6 py-10">
+      {pluginSlots.beforeContent.length > 0 && (
+        <div className="space-y-4">{pluginSlots.beforeContent}</div>
+      )}
+      <div
+        className={cn(
+          "gap-8",
+          hasSidebar ? "grid lg:grid-cols-[minmax(0,1fr)_320px]" : "space-y-6",
         )}
-        {customFieldEntries.length > 0 ? (
-          <section className="bg-card rounded-lg border p-6">
-            <h2 className="text-foreground text-xl font-semibold">
-              Custom Fields
-            </h2>
-            <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-              {customFieldEntries?.map((entry) => (
-                <div key={entry.key} className="space-y-1">
-                  <dt className="text-muted-foreground text-sm font-medium">
-                    {entry.label}
-                  </dt>
-                  <dd className="text-foreground text-base">{entry.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-        ) : null}
-      </article>
+      >
+        <article className="space-y-6">
+          <header className="space-y-2">
+            <p className="text-muted-foreground text-sm tracking-wide uppercase">
+              {contextLabel}
+            </p>
+            <h1 className="text-4xl font-bold">{post.title}</h1>
+            {post.excerpt && (
+              <p className="text-muted-foreground text-lg">{post.excerpt}</p>
+            )}
+            <PostMetaSummary post={post} postType={postType} />
+          </header>
+          {lexicalContent ? (
+            <EditorViewer
+              editorSerializedState={lexicalContent}
+              className="prose max-w-none"
+            />
+          ) : post.content ? (
+            <div
+              className="prose max-w-none"
+              dangerouslySetInnerHTML={{ __html: post.content }}
+            />
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              This {contextLabel.toLowerCase()} does not have any content yet.
+            </p>
+          )}
+          {pluginSlots.afterContent.length > 0 && (
+            <div className="space-y-4">{pluginSlots.afterContent}</div>
+          )}
+
+          {customFieldEntries.length > 0 ? (
+            <section className="bg-card rounded-lg border p-6">
+              <h2 className="text-foreground text-xl font-semibold">
+                Custom Fields
+              </h2>
+              <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+                {customFieldEntries?.map((entry) => (
+                  <div key={entry.key} className="space-y-1">
+                    <dt className="text-muted-foreground text-sm font-medium">
+                      {entry.label}
+                    </dt>
+                    <dd className="text-foreground text-base">{entry.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ) : null}
+        </article>
+        {hasSidebar && (
+          <aside className="space-y-4">
+            {pluginSlots.sidebarTop.length > 0 && (
+              <div className="space-y-4">{pluginSlots.sidebarTop}</div>
+            )}
+            {pluginSlots.sidebarBottom.length > 0 && (
+              <div className="space-y-4">{pluginSlots.sidebarBottom}</div>
+            )}
+          </aside>
+        )}
+      </div>
     </main>
   );
 }

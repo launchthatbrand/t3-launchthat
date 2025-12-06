@@ -1,12 +1,16 @@
 import type {
   PluginDefinition,
   PluginFrontendSingleRendererProps,
+  PluginFrontendSingleSlotProps,
   PluginSingleViewComponentProps,
+  PluginSingleViewSlotProps,
 } from "launchthat-plugin-core";
 import type { ComponentType } from "react";
 
 import type { CourseSummary } from "./frontend/CoursesArchive";
 import type { Id } from "./lib/convexId";
+import { AdminLessonCompletionCallout } from "./components/AdminLessonCompletionCallout";
+import { FrontendLessonCompletionCallout } from "./components/FrontendLessonCompletionCallout";
 import { CourseNav } from "./frontend/CourseNav";
 import { CoursesArchive } from "./frontend/CoursesArchive";
 import { CourseSingle } from "./frontend/CourseSingle";
@@ -34,6 +38,22 @@ export interface LmsPluginComponents {
   CourseMembersTab: ComponentType<PluginSingleViewComponentProps>;
   CourseLinkedProductTab: ComponentType<PluginSingleViewComponentProps>;
 }
+
+const buildCompletionSlot = (slug: string) => ({
+  id: `lms-${slug}-completion-slot`,
+  location: "afterMainContent" as const,
+  render: (props: PluginSingleViewSlotProps) => (
+    <AdminLessonCompletionCallout {...props} />
+  ),
+});
+
+const buildFrontendCompletionSlot = (slug: string) => ({
+  id: `lms-frontend-${slug}-completion-slot`,
+  location: "afterContent" as const,
+  render: (props: PluginFrontendSingleSlotProps) => (
+    <FrontendLessonCompletionCallout {...props} />
+  ),
+});
 
 export const createLmsPluginDefinition = ({
   CourseBuilderTab,
@@ -63,6 +83,7 @@ export const createLmsPluginDefinition = ({
         title: true,
         editor: true,
         excerpt: true,
+        attachments: true,
         featuredImage: true,
         customFields: true,
         revisions: true,
@@ -100,6 +121,7 @@ export const createLmsPluginDefinition = ({
             );
           },
         },
+        singleSlots: [buildFrontendCompletionSlot("courses")],
       },
       adminMenu: {
         enabled: true,
@@ -143,6 +165,7 @@ export const createLmsPluginDefinition = ({
           },
         ],
       },
+      singleViewSlots: [buildCompletionSlot("courses")],
     },
     {
       name: "Lessons",
@@ -154,6 +177,7 @@ export const createLmsPluginDefinition = ({
       supports: {
         title: true,
         editor: true,
+        attachments: true,
         featuredImage: true,
         customFields: true,
         revisions: true,
@@ -169,6 +193,9 @@ export const createLmsPluginDefinition = ({
           aliases: ["/lesson/{slug}"],
         },
       },
+      frontend: {
+        singleSlots: [buildFrontendCompletionSlot("lessons")],
+      },
       adminMenu: {
         enabled: true,
         label: "Lessons",
@@ -177,6 +204,7 @@ export const createLmsPluginDefinition = ({
         icon: "BookOpenCheck",
         position: 31,
       },
+      singleViewSlots: [buildCompletionSlot("lessons")],
     },
     {
       name: "Topics",
@@ -202,6 +230,9 @@ export const createLmsPluginDefinition = ({
           aliases: ["/topic/{slug}"],
         },
       },
+      frontend: {
+        singleSlots: [buildFrontendCompletionSlot("topics")],
+      },
       adminMenu: {
         enabled: true,
         label: "Topics",
@@ -210,6 +241,7 @@ export const createLmsPluginDefinition = ({
         icon: "ListChecks",
         position: 32,
       },
+      singleViewSlots: [buildCompletionSlot("topics")],
     },
     {
       name: "Quizzes",
@@ -235,6 +267,9 @@ export const createLmsPluginDefinition = ({
           aliases: ["/quiz/{slug}"],
         },
       },
+      frontend: {
+        singleSlots: [buildFrontendCompletionSlot("quizzes")],
+      },
       adminMenu: {
         enabled: true,
         label: "Quizzes",
@@ -243,6 +278,7 @@ export const createLmsPluginDefinition = ({
         icon: "ClipboardCheck",
         position: 33,
       },
+      singleViewSlots: [buildCompletionSlot("quizzes")],
     },
   ],
   settingsPages: [

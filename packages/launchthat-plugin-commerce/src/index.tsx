@@ -34,6 +34,7 @@ export const createCommercePluginDefinition = ({
         title: true,
         editor: true,
         excerpt: true,
+        attachments: true,
         featuredImage: true,
         customFields: true,
         postMeta: true,

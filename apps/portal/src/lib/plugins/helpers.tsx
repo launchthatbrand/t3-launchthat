@@ -2,8 +2,10 @@ import type { ReactElement, ReactNode } from "react";
 import { PortalSocialFeedProvider } from "@/src/providers/SocialFeedProvider";
 
 import type {
+  PluginFrontendSingleSlotDefinition,
   PluginPostArchiveViewConfig,
   PluginPostSingleViewConfig,
+  PluginSingleViewSlotDefinition,
 } from "./types";
 import { PortalConvexProvider } from "~/providers/ConvexClientProvider";
 import { pluginDefinitions } from "./definitions";
@@ -18,6 +20,18 @@ export interface PluginArchiveViewInstance {
   pluginId: string;
   pluginName: string;
   config: PluginPostArchiveViewConfig;
+}
+
+export interface PluginSingleViewSlotRegistration {
+  pluginId: string;
+  pluginName: string;
+  slot: PluginSingleViewSlotDefinition;
+}
+
+export interface PluginFrontendSingleSlotRegistration {
+  pluginId: string;
+  pluginName: string;
+  slot: PluginFrontendSingleSlotDefinition;
 }
 
 export function getPluginSingleViewForSlug(
@@ -50,6 +64,50 @@ export function getPluginArchiveViewForSlug(
     }
   }
   return null;
+}
+
+export function getPluginSingleViewSlotsForSlug(
+  slug: string,
+): PluginSingleViewSlotRegistration[] {
+  const registrations: PluginSingleViewSlotRegistration[] = [];
+
+  for (const plugin of pluginDefinitions) {
+    const postType = plugin.postTypes.find((type) => type.slug === slug);
+    if (!postType?.singleViewSlots?.length) {
+      continue;
+    }
+    for (const slot of postType.singleViewSlots) {
+      registrations.push({
+        pluginId: plugin.id,
+        pluginName: plugin.name,
+        slot,
+      });
+    }
+  }
+
+  return registrations;
+}
+
+export function getPluginFrontendSingleSlotsForSlug(
+  slug: string,
+): PluginFrontendSingleSlotRegistration[] {
+  const registrations: PluginFrontendSingleSlotRegistration[] = [];
+
+  for (const plugin of pluginDefinitions) {
+    const postType = plugin.postTypes.find((type) => type.slug === slug);
+    if (!postType?.frontend?.singleSlots?.length) {
+      continue;
+    }
+    for (const slot of postType.frontend.singleSlots) {
+      registrations.push({
+        pluginId: plugin.id,
+        pluginName: plugin.name,
+        slot,
+      });
+    }
+  }
+
+  return registrations;
 }
 
 export function wrapWithPluginProviders(

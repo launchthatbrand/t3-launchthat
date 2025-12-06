@@ -37,6 +37,7 @@ export const supportPlugin: PluginDefinition = {
         title: true,
         editor: true,
         excerpt: true,
+        attachments: true,
         featuredImage: true,
         customFields: true,
         postMeta: true,

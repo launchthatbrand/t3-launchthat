@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Id } from "@/convex/_generated/dataModel";
+import type { Id } from "@/convex/_generated/dataModel";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -37,7 +37,7 @@ const supportsOptions = [
   { key: "title", label: "Title" },
   { key: "editor", label: "Editor" },
   { key: "excerpt", label: "Excerpt" },
-  { key: "featuredImage", label: "Featured Image" },
+  { key: "attachments", label: "Attachments" },
   { key: "customFields", label: "Custom Fields" },
   { key: "postMeta", label: "Post Meta" },
   { key: "comments", label: "Comments" },
@@ -64,7 +64,7 @@ const adminMenuSchema = z.object({
   position: z
     .string()
     .optional()
-    .transform((value) => (value && value.length ? value : undefined)),
+    .transform((value) => (value?.length ? value : undefined)),
 });
 
 const contentTypeFormSchema = z.object({
@@ -93,6 +93,30 @@ const defaultSupports: ContentTypeFormValues["supports"] =
     {} as ContentTypeFormValues["supports"],
   );
 
+const normalizeSupports = (
+  supports?:
+    | ContentTypeFormValues["supports"]
+    | (ContentTypeFormValues["supports"] & { featuredImage?: boolean }),
+) => {
+  const next = { ...defaultSupports };
+  if (!supports) {
+    return next;
+  }
+  supportsOptions.forEach((option) => {
+    const value = supports[option.key];
+    if (typeof value === "boolean") {
+      next[option.key] = value;
+    }
+  });
+  if (
+    supports.attachments === undefined &&
+    typeof supports.featuredImage === "boolean"
+  ) {
+    next.attachments = supports.featuredImage;
+  }
+  return next;
+};
+
 const defaultRewrite: ContentTypeFormValues["rewrite"] = {
   hasArchive: true,
   archiveSlug: "",
@@ -115,7 +139,7 @@ const defaultAdminMenu: ContentTypeFormValues["adminMenu"] = {
 export default function ContentTypeDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const contentTypeId = params?.id as Id<"contentTypes"> | undefined;
+  const contentTypeId = params?.id as Id<"postTypes"> | undefined;
 
   const contentType = usePostType(contentTypeId);
   const updateContentType = useUpdatePostType();
@@ -146,10 +170,7 @@ export default function ContentTypeDetailPage() {
         enableApi: contentType.enableApi ?? true,
         includeTimestamps: contentType.includeTimestamps ?? true,
         enableVersioning: contentType.enableVersioning ?? false,
-        supports: {
-          ...defaultSupports,
-          ...(contentType.supports ?? {}),
-        },
+        supports: normalizeSupports(contentType.supports ?? undefined),
         rewrite: {
           ...defaultRewrite,
           ...(contentType.rewrite ?? {}),
@@ -174,7 +195,9 @@ export default function ContentTypeDetailPage() {
 
   const isSaving = form.formState.isSubmitting;
   const adminMenuEnabled = form.watch("adminMenu.enabled");
-  const rewriteValues = form.watch("rewrite");
+  const rewriteValues = form.watch(
+    "rewrite",
+  ) as ContentTypeFormValues["rewrite"];
 
   const previewPaths = useMemo(() => {
     const archiveSlug = rewriteValues.archiveSlug?.length
@@ -239,6 +262,33 @@ export default function ContentTypeDetailPage() {
       values.adminMenu.position !== undefined
         ? Number(values.adminMenu.position)
         : undefined;
+    const normalizedArchiveSlug = values.rewrite.archiveSlug?.trim();
+    const resolvedArchiveSlug =
+      normalizedArchiveSlug && normalizedArchiveSlug.length > 0
+        ? normalizedArchiveSlug
+        : undefined;
+    const normalizedSingleSlug = values.rewrite.singleSlug?.trim();
+    const resolvedSingleSlug =
+      normalizedSingleSlug && normalizedSingleSlug.length > 0
+        ? normalizedSingleSlug
+        : undefined;
+    const adminMenuSlug = values.adminMenu.slug?.trim();
+    const resolvedAdminMenuSlug =
+      adminMenuSlug && adminMenuSlug.length > 0
+        ? adminMenuSlug
+        : values.slug;
+    const adminMenuLabel = values.adminMenu.label?.trim();
+    const resolvedAdminMenuLabel =
+      adminMenuLabel && adminMenuLabel.length > 0
+        ? adminMenuLabel
+        : values.name;
+
+    const supportsPayload: ContentTypeFormValues["supports"] & {
+      featuredImage?: boolean;
+    } = {
+      ...values.supports,
+      featuredImage: values.supports.attachments,
+    };
 
     await updateContentType({
       id: contentType._id,
@@ -250,16 +300,16 @@ export default function ContentTypeDetailPage() {
         enableApi: values.enableApi,
         includeTimestamps: values.includeTimestamps,
         enableVersioning: values.enableVersioning,
-        supports: values.supports,
+        supports: supportsPayload,
         rewrite: {
           ...values.rewrite,
-          archiveSlug: values.rewrite.archiveSlug?.trim() || undefined,
-          singleSlug: values.rewrite.singleSlug?.trim() || undefined,
+          archiveSlug: resolvedArchiveSlug,
+          singleSlug: resolvedSingleSlug,
         },
         adminMenu: {
           ...values.adminMenu,
-          slug: values.adminMenu.slug?.trim() || values.slug,
-          label: values.adminMenu.label?.trim() || values.name,
+          slug: resolvedAdminMenuSlug,
+          label: resolvedAdminMenuLabel,
           position: Number.isNaN(menuPosition) ? undefined : menuPosition,
         },
       },

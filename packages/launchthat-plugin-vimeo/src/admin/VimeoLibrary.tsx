@@ -1,5 +1,6 @@
 "use client";
 
+import type { GenericId } from "convex/values";
 import type { Id, PluginMediaPickerContext } from "launchthat-plugin-core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
@@ -89,6 +90,15 @@ interface VimeoApiVideo {
 const FALLBACK_THUMBNAIL =
   "https://images.unsplash.com/photo-1470229538611-16ba8c7ffbd7?q=80";
 const VIMEO_PLAYER_BASE_URL = "https://player.vimeo.com/video/";
+
+const asConvexId = <TableName extends string>(
+  value: Id<TableName>,
+): GenericId<TableName> => value as unknown as GenericId<TableName>;
+
+const asOptionalConvexId = <TableName extends string>(
+  value: Id<TableName> | undefined,
+): GenericId<TableName> | undefined =>
+  value ? (value as unknown as GenericId<TableName>) : undefined;
 
 const formatPublishedAt = (timestamp: number) => {
   return new Intl.DateTimeFormat(undefined, {
@@ -293,8 +303,12 @@ export function VimeoLibrary({
   const [isCourseDialogOpen, setIsCourseDialogOpen] = useState(false);
   const [assignmentType, setAssignmentType] =
     useState<AssignmentType>("lesson");
-  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
-  const [selectedLessonId, setSelectedLessonId] = useState<string>("");
+  const [selectedCourseId, setSelectedCourseId] = useState<Id<"posts"> | "">(
+    "",
+  );
+  const [selectedLessonId, setSelectedLessonId] = useState<Id<"posts"> | "">(
+    "",
+  );
   const [isSubmittingAssignment, setIsSubmittingAssignment] = useState(false);
   const [desiredStatus, setDesiredStatus] = useState<"draft" | "published">(
     "published",
@@ -325,11 +339,9 @@ export function VimeoLibrary({
   const coursesResult = useQueryHook(
     api.plugins.lms.queries.listCourses,
     organizationId
-      ? ({
-          organizationId,
-        } as {
-          organizationId: Id<"organizations">;
-        })
+      ? {
+          organizationId: asConvexId(organizationId),
+        }
       : "skip",
   ) as CourseSummary[] | undefined;
 
@@ -340,13 +352,10 @@ export function VimeoLibrary({
   const selectedCourseLessonsResult = useQueryHook(
     api.plugins.lms.queries.getCourseStructureWithItems,
     selectedCourseId
-      ? ({
-          courseId: selectedCourseId as Id<"posts">,
-          organizationId,
-        } as {
-          courseId: Id<"posts">;
-          organizationId?: Id<"organizations">;
-        })
+      ? {
+          courseId: asConvexId(selectedCourseId),
+          organizationId: asOptionalConvexId(organizationId),
+        }
       : "skip",
   ) as
     | {
@@ -380,15 +389,13 @@ export function VimeoLibrary({
   }, [isCourseDialogOpen]);
 
   useEffect(() => {
-    if (
-      !isCourseDialogOpen ||
-      selectedCourseId ||
-      courses.length === 0 ||
-      isCoursesLoading
-    ) {
+    if (!isCourseDialogOpen || selectedCourseId || isCoursesLoading) {
       return;
     }
-    setSelectedCourseId(courses[0]._id);
+    const firstCourseId = courses[0]?._id;
+    if (firstCourseId) {
+      setSelectedCourseId(firstCourseId);
+    }
   }, [courses, isCourseDialogOpen, isCoursesLoading, selectedCourseId]);
 
   useEffect(() => {
@@ -399,10 +406,13 @@ export function VimeoLibrary({
       setSelectedLessonId("");
       return;
     }
-    if (selectedLessonId || lessonsLoading || lessonOptions.length === 0) {
+    if (selectedLessonId || lessonsLoading) {
       return;
     }
-    setSelectedLessonId(lessonOptions[0]._id);
+    const firstLessonId = lessonOptions[0]?._id;
+    if (firstLessonId) {
+      setSelectedLessonId(firstLessonId);
+    }
   }, [
     assignmentType,
     isCourseDialogOpen,
@@ -433,16 +443,16 @@ export function VimeoLibrary({
     try {
       if (assignmentType === "lesson") {
         await createLessonFromVimeoMutation({
-          courseId: selectedCourseId as Id<"posts">,
-          organizationId,
+          courseId: asConvexId(selectedCourseId),
+          organizationId: asConvexId(organizationId),
           video: videoPayload,
           status,
         });
         toast.success("Video added to course as a lesson.");
       } else if (selectedLessonId) {
         await createTopicFromVimeoMutation({
-          lessonId: selectedLessonId as Id<"posts">,
-          organizationId,
+          lessonId: asConvexId(selectedLessonId),
+          organizationId: asConvexId(organizationId),
           video: videoPayload,
           status,
         });
