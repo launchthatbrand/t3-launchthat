@@ -1,5 +1,7 @@
 "use client";
 
+import "../filters/registerFrontendFilters";
+
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo } from "react";
 import { api } from "@portal/convexspec";
@@ -81,9 +83,9 @@ export interface LmsCourseContextValue {
   blockingLessonTitle?: string | null;
   segments: LessonSegment[];
   navEntries: CourseNavEntry[];
-  currentEntry?: CourseNavEntry | null;
-  previousEntry?: CourseNavEntry | null;
-  nextEntry?: CourseNavEntry | null;
+  currentEntry: CourseNavEntry | null;
+  previousEntry: CourseNavEntry | null;
+  nextEntry: CourseNavEntry | null;
   completedLessonIds: Set<Id<"posts">>;
   completedTopicIds: Set<Id<"posts">>;
   activeLessonId?: Id<"posts">;
@@ -184,22 +186,39 @@ export function LmsCourseProvider({
     return "skip";
   }, [courseId, courseSlug, normalizedOrganizationId]);
 
-  const courseProgressArgs = useMemo<CourseProgressArgs>(() => {
-    if (!courseId) {
-      return "skip";
-    }
-    return normalizedOrganizationId
-      ? { courseId, organizationId: normalizedOrganizationId }
-      : { courseId };
-  }, [courseId, normalizedOrganizationId]);
-
   const rawCourseStructure = useQuery(
     api.plugins.lms.queries.getCourseStructureWithItems,
     courseStructureArgs === "skip" ? "skip" : courseStructureArgs,
   );
   const isCourseStructureLoading =
     courseStructureArgs !== "skip" && rawCourseStructure === undefined;
-  const courseStructure = (rawCourseStructure ?? null) as LmsCourseBuilderData | null;
+  const courseStructure = (rawCourseStructure ??
+    null) as LmsCourseBuilderData | null;
+
+  const resolvedCourseId = useMemo<Id<"posts"> | undefined>(() => {
+    if (courseId) {
+      return courseId;
+    }
+    const structureCourseId = courseStructure?.course?._id;
+    return structureCourseId ? (structureCourseId as Id<"posts">) : undefined;
+  }, [courseId, courseStructure]);
+
+  const resolvedCourseSlug = useMemo<string | undefined>(() => {
+    if (courseSlug) {
+      return courseSlug;
+    }
+    const structureSlug = courseStructure?.course?.slug;
+    return structureSlug ?? undefined;
+  }, [courseSlug, courseStructure]);
+
+  const courseProgressArgs = useMemo<CourseProgressArgs>(() => {
+    if (!resolvedCourseId) {
+      return "skip";
+    }
+    return normalizedOrganizationId
+      ? { courseId: resolvedCourseId, organizationId: normalizedOrganizationId }
+      : { courseId: resolvedCourseId };
+  }, [normalizedOrganizationId, resolvedCourseId]);
 
   const rawCourseProgress = useQuery(
     api.plugins.lms.queries.getCourseProgressForViewer,
@@ -210,8 +229,8 @@ export function LmsCourseProvider({
   const courseProgress = (rawCourseProgress ?? null) as CourseProgressRecord;
 
   const courseSettingsOptionKey =
-    courseId !== undefined
-      ? buildCourseSettingsOptionKey(String(courseId))
+    resolvedCourseId !== undefined
+      ? buildCourseSettingsOptionKey(String(resolvedCourseId))
       : null;
 
   const courseSettingsOption = useQuery(
@@ -356,11 +375,11 @@ export function LmsCourseProvider({
     return navEntries.findIndex((entry) => entry === currentEntry);
   }, [currentEntry, navEntries]);
 
-  const previousEntry =
-    currentEntryIndex > 0 ? navEntries[currentEntryIndex - 1] : null;
-  const nextEntry =
+  const previousEntry: CourseNavEntry | null =
+    currentEntryIndex > 0 ? (navEntries[currentEntryIndex - 1] ?? null) : null;
+  const nextEntry: CourseNavEntry | null =
     currentEntryIndex >= 0 && currentEntryIndex < navEntries.length - 1
-      ? navEntries[currentEntryIndex + 1]
+      ? (navEntries[currentEntryIndex + 1] ?? null)
       : null;
 
   const requiresLinearProgression = courseSettings.progressionMode === "linear";
@@ -374,10 +393,11 @@ export function LmsCourseProvider({
 
   const activeLessonId =
     resolvedPostTypeSlug === "topics"
-      ? lessonId ??
-        (currentEntry?.type === "topic" ? currentEntry.lessonId : undefined)
+      ? (lessonId ??
+        (currentEntry?.type === "topic" ? currentEntry.lessonId : undefined))
       : resolvedPostTypeSlug === "lessons"
-        ? lessonId ?? (currentEntry?.type === "lesson" ? currentEntry.id : undefined)
+        ? (lessonId ??
+          (currentEntry?.type === "lesson" ? currentEntry.id : undefined))
         : undefined;
 
   const isLinearBlocked =
@@ -388,8 +408,8 @@ export function LmsCourseProvider({
 
   const value: LmsCourseContextValue = {
     postTypeSlug: resolvedPostTypeSlug,
-    courseId,
-    courseSlug,
+    courseId: resolvedCourseId,
+    courseSlug: resolvedCourseSlug,
     lessonId,
     lessonSlug,
     topicId,

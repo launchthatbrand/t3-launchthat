@@ -70,6 +70,17 @@ export interface PluginFrontendSingleSlotDefinition {
   render: (props: PluginFrontendSingleSlotProps) => ReactNode;
 }
 
+export type PluginFrontendFilterLocation =
+  | "content"
+  | "header"
+  | "main"
+  | "footer";
+
+export interface PluginFrontendFilterDefinition {
+  id: string;
+  location: PluginFrontendFilterLocation;
+}
+
 export interface PluginPostTypeFrontendConfig {
   archive?: {
     render: (props: PluginFrontendArchiveRendererProps) => ReactNode;
@@ -79,6 +90,7 @@ export interface PluginPostTypeFrontendConfig {
   };
   singleSlots?: PluginFrontendSingleSlotDefinition[];
   providers?: string[];
+  filters?: PluginFrontendFilterDefinition[];
 }
 
 export interface PluginPermalinkConfig {

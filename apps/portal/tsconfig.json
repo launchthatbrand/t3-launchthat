@@ -24,6 +24,9 @@
       "launchthat-plugin-core": [
         "../../packages/launchthat-plugin-core/src/index"
       ],
+      "launchthat-plugin-core/frontendFilters": [
+        "../../packages/launchthat-plugin-core/src/frontendFilters"
+      ],
       "launchthat-plugin-calendar": [
         "../../packages/launchthat-plugin-calendar/src/index"
       ],

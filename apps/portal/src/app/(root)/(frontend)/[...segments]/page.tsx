@@ -1,6 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { Data as PuckData } from "@measured/puck";
+import type { FrontendFilterContext } from "launchthat-plugin-core/frontendFilters";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Fragment } from "react";
@@ -13,10 +14,12 @@ import { LmsCourseProvider } from "launchthat-plugin-lms";
 
 import type { PluginFrontendSingleSlotRegistration } from "~/lib/plugins/helpers";
 import { EditorViewer } from "~/components/blocks/editor-x/viewer";
+import { FrontendContentFilterHost } from "~/components/frontend/FrontendContentFilterHost";
 import { parseLexicalSerializedState } from "~/lib/editor/lexical";
 import { findPostTypeBySlug } from "~/lib/plugins/frontend";
 import { wrapWithFrontendProviders } from "~/lib/plugins/frontendProviders";
 import {
+  getPluginFrontendFiltersForSlug,
   getPluginFrontendSingleSlotsForSlug,
   wrapWithPluginProviders,
 } from "~/lib/plugins/helpers";
@@ -235,6 +238,22 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     organizationId,
     postMeta: postMetaObject,
   });
+  const frontendFilterRegistrations =
+    post.postTypeSlug && pluginMatch
+      ? getPluginFrontendFiltersForSlug(post.postTypeSlug)
+      : [];
+  const contentFilterIds = frontendFilterRegistrations.reduce<string[]>(
+    (acc, registration) => {
+      if (
+        registration.filter.location === "content" &&
+        typeof registration.filter.id === "string"
+      ) {
+        acc.push(registration.filter.id);
+      }
+      return acc;
+    },
+    [],
+  );
 
   return wrapWithLmsProviderIfNeeded(
     <PostDetail
@@ -244,6 +263,8 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       postMeta={postMeta}
       puckData={puckData}
       pluginSlots={pluginSlotNodes}
+      contentFilterIds={contentFilterIds}
+      postMetaObject={postMetaObject}
     />,
   );
 }
@@ -371,7 +392,7 @@ const EMPTY_SLOT_BUCKETS: FrontendSlotBuckets = {
 function buildFrontendSlotNodes({
   registrations,
   post,
-  postType,
+  postType: _postType,
   organizationId,
   postMeta,
 }: {
@@ -399,7 +420,7 @@ function buildFrontendSlotNodes({
       pluginName: registration.pluginName,
       postTypeSlug: post.postTypeSlug ?? "",
       post,
-      postType,
+      postType: null,
       organizationId: organizationId ?? undefined,
       postMeta,
     });
@@ -443,6 +464,8 @@ interface PostDetailProps {
   postMeta: PostMetaDoc[];
   puckData: PuckData | null;
   pluginSlots: FrontendSlotBuckets;
+  contentFilterIds: string[];
+  postMetaObject: Record<string, PostMetaValue>;
 }
 
 function PostDetail({
@@ -452,6 +475,8 @@ function PostDetail({
   postMeta,
   puckData,
   pluginSlots,
+  contentFilterIds,
+  postMetaObject,
 }: PostDetailProps) {
   const contextLabel = resolveContextLabel(post, postType);
   const customFieldEntries = buildCustomFieldEntries({
@@ -498,21 +523,17 @@ function PostDetail({
               <div className="space-y-3">{pluginSlots.header}</div>
             )}
           </header>
-          {lexicalContent ? (
-            <EditorViewer
-              editorSerializedState={lexicalContent}
-              className="prose max-w-none"
-            />
-          ) : post.content ? (
-            <div
-              className="prose max-w-none"
-              dangerouslySetInnerHTML={{ __html: post.content }}
-            />
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              This {contextLabel.toLowerCase()} does not have any content yet.
-            </p>
-          )}
+          <FilteredContent
+            lexicalContent={lexicalContent}
+            rawContent={post.content ?? null}
+            contextLabel={contextLabel}
+            filterIds={contentFilterIds}
+            filterContext={{
+              postTypeSlug: post.postTypeSlug ?? "",
+              postId: post._id,
+              postMeta: postMetaObject,
+            }}
+          />
           {pluginSlots.afterContent.length > 0 && (
             <div className="space-y-4">{pluginSlots.afterContent}</div>
           )}
@@ -547,6 +568,58 @@ function PostDetail({
         )}
       </div>
     </main>
+  );
+}
+
+type LexicalSerializedState = ReturnType<typeof parseLexicalSerializedState>;
+
+interface FilteredContentProps {
+  lexicalContent: LexicalSerializedState;
+  rawContent: string | null;
+  contextLabel: string;
+  filterIds: string[];
+  filterContext: FrontendFilterContext;
+}
+
+function FilteredContent({
+  lexicalContent,
+  rawContent,
+  contextLabel,
+  filterIds,
+  filterContext,
+}: FilteredContentProps) {
+  let contentNode: ReactNode;
+
+  if (lexicalContent) {
+    contentNode = (
+      <EditorViewer
+        editorSerializedState={lexicalContent}
+        className="prose max-w-none"
+      />
+    );
+  } else if (rawContent) {
+    contentNode = (
+      <div
+        className="prose max-w-none"
+        dangerouslySetInnerHTML={{ __html: rawContent }}
+      />
+    );
+  } else {
+    contentNode = (
+      <p className="text-muted-foreground text-sm">
+        This {contextLabel.toLowerCase()} does not have any content yet.
+      </p>
+    );
+  }
+
+  if (!filterIds.length) {
+    return contentNode;
+  }
+
+  return (
+    <FrontendContentFilterHost filterIds={filterIds} context={filterContext}>
+      {contentNode}
+    </FrontendContentFilterHost>
   );
 }
 

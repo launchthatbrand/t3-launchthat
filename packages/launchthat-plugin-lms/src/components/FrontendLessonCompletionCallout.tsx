@@ -1,8 +1,8 @@
 "use client";
 
 import type { PluginFrontendSingleSlotProps } from "launchthat-plugin-core";
-import Link from "next/link";
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { api } from "@portal/convexspec";
 import { useMutation } from "convex/react";
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
@@ -11,6 +11,7 @@ import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { toast } from "@acme/ui/toast";
 
+import type { Id } from "../lib/convexId";
 import type { CourseNavEntry } from "../providers/LmsCourseProvider";
 import { useLmsCourseContext } from "../providers/LmsCourseProvider";
 
@@ -55,32 +56,37 @@ export function FrontendLessonCompletionCallout({
     api.plugins.lms.mutations.setTopicCompletionStatus,
   );
 
-  if (!config || !post || !courseContext) {
+  if (!config || !post) {
     return null;
   }
 
-  const {
-    courseId,
-    courseSlug,
-    lessonId,
-    lessonSlug,
-    topicId,
-    topicSlug,
-    completedLessonIds,
-    completedTopicIds,
-    navEntries,
-    previousEntry,
-    nextEntry,
-    courseProgress,
-    isCourseProgressLoading,
-    requiresLinearProgression,
-    isLinearBlocked,
-    blockingLessonTitle,
-  } = courseContext;
+  const courseId = courseContext?.courseId;
+  const courseSlug = courseContext?.courseSlug;
+  const resolvedCourseSlug = courseSlug ?? "";
+  const lessonId = courseContext?.lessonId;
+  const lessonSlug = courseContext?.lessonSlug;
+  const topicId = courseContext?.topicId;
+  const topicSlug = courseContext?.topicSlug;
+  const completedLessonIds =
+    courseContext?.completedLessonIds ?? new Set<Id<"posts">>();
+  const completedTopicIds =
+    courseContext?.completedTopicIds ?? new Set<Id<"posts">>();
+  const navEntries = courseContext?.navEntries ?? [];
+  const previousEntry = courseContext?.previousEntry ?? null;
+  const nextEntry = courseContext?.nextEntry ?? null;
+  const courseProgress = courseContext?.courseProgress ?? null;
+  const isCourseProgressLoading =
+    courseContext?.isCourseProgressLoading ?? false;
+  const requiresLinearProgression =
+    courseContext?.requiresLinearProgression ?? false;
+  const isLinearBlocked = courseContext?.isLinearBlocked ?? false;
+  const blockingLessonTitle = courseContext?.blockingLessonTitle ?? null;
 
-  if (!courseId || !courseSlug) {
-    return null;
-  }
+  const isCourseContextReady =
+    courseContext !== null &&
+    courseContext !== undefined &&
+    Boolean(courseId) &&
+    Boolean(courseSlug);
 
   const title =
     typeof (post as { title?: unknown }).title === "string"
@@ -99,12 +105,12 @@ export function FrontendLessonCompletionCallout({
   const isAuthenticatedProgress = courseProgress !== null;
 
   const previousHref = useMemo(
-    () => buildEntryHref(previousEntry, courseSlug),
-    [courseSlug, previousEntry],
+    () => buildEntryHref(previousEntry, resolvedCourseSlug),
+    [resolvedCourseSlug, previousEntry],
   );
   const nextHref = useMemo(
-    () => buildEntryHref(nextEntry, courseSlug),
-    [courseSlug, nextEntry],
+    () => buildEntryHref(nextEntry, resolvedCourseSlug),
+    [resolvedCourseSlug, nextEntry],
   );
   const previousLabel = buildEntryLabel(previousEntry);
   const nextLabel = buildEntryLabel(nextEntry);
@@ -118,9 +124,7 @@ export function FrontendLessonCompletionCallout({
       ? `/course/${courseSlug}/lesson/${lessonSlug}`
       : null;
   const canonicalTopicPath =
-    canonicalLessonPath &&
-    typeof topicSlug === "string" &&
-    topicSlug.length > 0
+    canonicalLessonPath && typeof topicSlug === "string" && topicSlug.length > 0
       ? `${canonicalLessonPath}/topic/${topicSlug}`
       : null;
 
@@ -131,6 +135,10 @@ export function FrontendLessonCompletionCallout({
     (postTypeSlug === "lessons" && !lessonId) ||
     (postTypeSlug === "topics" && !topicId) ||
     isLinearBlocked;
+
+  if (!isCourseContextReady) {
+    return null;
+  }
 
   const handleComplete = async () => {
     if (!courseId) {
@@ -200,7 +208,7 @@ export function FrontendLessonCompletionCallout({
           onClick={handleComplete}
           disabled={buttonDisabled}
           variant={isCompleted ? "secondary" : "default"}
-          className="flex-shrink-0"
+          className="shrink-0"
         >
           <CheckCircle2 className="mr-2 h-4 w-4" />
           {isCompleted ? `Mark ${config.noun} incomplete` : config.cta}
@@ -214,21 +222,13 @@ export function FrontendLessonCompletionCallout({
       {linearBlockMessage ? (
         <p className="text-destructive mt-3 text-sm">{linearBlockMessage}</p>
       ) : null}
-      <div className="mt-4 rounded-lg border bg-muted/40 p-3 text-xs">
-        <p className="text-muted-foreground">Permalink</p>
-        {canonicalTopicPath || canonicalLessonPath ? (
-          <Link
-            href={canonicalTopicPath ?? canonicalLessonPath ?? "#"}
-            className="text-primary break-all underline"
-          >
-            {canonicalTopicPath ?? canonicalLessonPath}
-          </Link>
-        ) : (
-          <span className="text-muted-foreground">Unavailable</span>
-        )}
-      </div>
-      <div className="mt-4 grid gap-3 rounded-xl border bg-muted/30 p-3 sm:grid-cols-2">
-        <NavLink direction="Previous" href={previousHref} label={previousLabel} />
+
+      <div className="bg-muted/30 mt-4 grid gap-3 rounded-xl border p-3 sm:grid-cols-2">
+        <NavLink
+          direction="Previous"
+          href={previousHref}
+          label={previousLabel}
+        />
         <NavLink direction="Next" href={nextHref} label={nextLabel} />
       </div>
     </div>
@@ -246,7 +246,7 @@ function NavLink({
 }) {
   if (!href || !label) {
     return (
-      <div className="rounded-lg border border-dashed border-border/60 bg-background/40 p-3">
+      <div className="border-border/60 bg-background/40 rounded-lg border border-dashed p-3">
         <p className="text-muted-foreground text-xs">{direction}</p>
         <p className="text-muted-foreground font-medium">None available</p>
       </div>
@@ -255,11 +255,11 @@ function NavLink({
   return (
     <Link
       href={href}
-      className="rounded-lg border bg-background p-3 transition hover:border-primary/60 hover:shadow-sm"
+      className="bg-background hover:border-primary/60 rounded-lg border p-3 transition hover:shadow-sm"
     >
       <p className="text-muted-foreground text-xs">{direction}</p>
       <p className="text-foreground font-semibold">{label}</p>
-      <div className="mt-2 flex items-center text-muted-foreground text-xs">
+      <div className="text-muted-foreground mt-2 flex items-center text-xs">
         {direction === "Previous" ? (
           <ArrowLeft className="mr-1 h-3 w-3" />
         ) : (
@@ -302,4 +302,3 @@ function buildEntryLabel(entry: CourseNavEntry | null) {
   }
   return entry.title;
 }
-

@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./src/index.ts"
+    },
+    "./frontendFilters": {
+      "types": "./src/frontendFilters.ts",
+      "default": "./src/frontendFilters.ts"
     }
   },
   "license": "MIT",
@@ -31,4 +35,3 @@
   },
   "prettier": "@acme/prettier-config"
 }
-

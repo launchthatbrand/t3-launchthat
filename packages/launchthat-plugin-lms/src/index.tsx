@@ -35,7 +35,10 @@ export {
   CourseSingle,
   CourseNav,
 };
-export { LmsCourseProvider, useLmsCourseContext } from "./providers/LmsCourseProvider";
+export {
+  LmsCourseProvider,
+  useLmsCourseContext,
+} from "./providers/LmsCourseProvider";
 
 export interface LmsPluginComponents {
   CourseBuilderTab: ComponentType<PluginSingleViewComponentProps>;
@@ -44,13 +47,13 @@ export interface LmsPluginComponents {
   CourseSettingsTab: ComponentType<PluginSingleViewComponentProps>;
 }
 
-const buildCompletionSlot = (slug: string) => ({
-  id: `lms-${slug}-completion-slot`,
-  location: "afterMainContent" as const,
-  render: (props: PluginSingleViewSlotProps) => (
-    <AdminLessonCompletionCallout {...props} />
-  ),
-});
+// const buildCompletionSlot = (slug: string) => ({
+//   id: `lms-${slug}-completion-slot`,
+//   location: "afterMainContent" as const,
+//   render: (props: PluginSingleViewSlotProps) => (
+//     <AdminLessonCompletionCallout {...props} />
+//   ),
+// });
 
 const buildFrontendCompletionSlot = (slug: string) => ({
   id: `lms-frontend-${slug}-completion-slot`,
@@ -139,6 +142,12 @@ export const createLmsPluginDefinition = ({
           buildFrontendProgressSlot("courses"),
           buildFrontendCompletionSlot("courses"),
         ],
+        filters: [
+          {
+            id: "lms-linear-progress-content-guard",
+            location: "content",
+          },
+        ],
       },
       adminMenu: {
         enabled: true,
@@ -189,7 +198,7 @@ export const createLmsPluginDefinition = ({
           },
         ],
       },
-      singleViewSlots: [buildCompletionSlot("courses")],
+      // singleViewSlots: [buildCompletionSlot("courses")],
     },
     {
       name: "Lessons",
@@ -222,6 +231,12 @@ export const createLmsPluginDefinition = ({
           buildFrontendProgressSlot("lessons"),
           buildFrontendCompletionSlot("lessons"),
         ],
+        filters: [
+          {
+            id: "lms-linear-progress-content-guard",
+            location: "content",
+          },
+        ],
       },
       adminMenu: {
         enabled: true,
@@ -231,7 +246,7 @@ export const createLmsPluginDefinition = ({
         icon: "BookOpenCheck",
         position: 31,
       },
-      singleViewSlots: [buildCompletionSlot("lessons")],
+      // singleViewSlots: [buildCompletionSlot("lessons")],
     },
     {
       name: "Topics",
@@ -262,6 +277,12 @@ export const createLmsPluginDefinition = ({
           buildFrontendProgressSlot("topics"),
           buildFrontendCompletionSlot("topics"),
         ],
+        filters: [
+          {
+            id: "lms-linear-progress-content-guard",
+            location: "content",
+          },
+        ],
       },
       adminMenu: {
         enabled: true,
@@ -271,7 +292,7 @@ export const createLmsPluginDefinition = ({
         icon: "ListChecks",
         position: 32,
       },
-      singleViewSlots: [buildCompletionSlot("topics")],
+      // singleViewSlots: [buildCompletionSlot("topics")],
     },
     {
       name: "Quizzes",
@@ -299,6 +320,12 @@ export const createLmsPluginDefinition = ({
       },
       frontend: {
         singleSlots: [buildFrontendCompletionSlot("quizzes")],
+        filters: [
+          {
+            id: "lms-linear-progress-content-guard",
+            location: "content",
+          },
+        ],
       },
       adminMenu: {
         enabled: true,
@@ -308,7 +335,7 @@ export const createLmsPluginDefinition = ({
         icon: "ClipboardCheck",
         position: 33,
       },
-      singleViewSlots: [buildCompletionSlot("quizzes")],
+      // singleViewSlots: [buildCompletionSlot("quizzes")],
     },
   ],
   settingsPages: [

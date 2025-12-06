@@ -2,6 +2,7 @@ import type { ReactElement, ReactNode } from "react";
 import { PortalSocialFeedProvider } from "@/src/providers/SocialFeedProvider";
 
 import type {
+  PluginFrontendFilterDefinition,
   PluginFrontendSingleSlotDefinition,
   PluginPostArchiveViewConfig,
   PluginPostSingleViewConfig,
@@ -32,6 +33,12 @@ export interface PluginFrontendSingleSlotRegistration {
   pluginId: string;
   pluginName: string;
   slot: PluginFrontendSingleSlotDefinition;
+}
+
+export interface PluginFrontendFilterRegistration {
+  pluginId: string;
+  pluginName: string;
+  filter: PluginFrontendFilterDefinition;
 }
 
 export function getPluginSingleViewForSlug(
@@ -103,6 +110,28 @@ export function getPluginFrontendSingleSlotsForSlug(
         pluginId: plugin.id,
         pluginName: plugin.name,
         slot,
+      });
+    }
+  }
+
+  return registrations;
+}
+
+export function getPluginFrontendFiltersForSlug(
+  slug: string,
+): PluginFrontendFilterRegistration[] {
+  const registrations: PluginFrontendFilterRegistration[] = [];
+
+  for (const plugin of pluginDefinitions) {
+    const postType = plugin.postTypes.find((type) => type.slug === slug);
+    if (!postType?.frontend?.filters?.length) {
+      continue;
+    }
+    for (const filter of postType.frontend.filters) {
+      registrations.push({
+        pluginId: plugin.id,
+        pluginName: plugin.name,
+        filter,
       });
     }
   }
