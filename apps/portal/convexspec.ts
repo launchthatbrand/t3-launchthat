@@ -3283,11 +3283,11 @@ export type PublicApiType = {
             storageKind?: "posts" | "custom";
             storageTables?: Array<string>;
             supports?: {
+              attachments?: boolean;
               comments?: boolean;
               customFields?: boolean;
               editor?: boolean;
               excerpt?: boolean;
-              attachments?: boolean;
               featuredImage?: boolean;
               postMeta?: boolean;
               revisions?: boolean;
@@ -3338,11 +3338,11 @@ export type PublicApiType = {
               storageKind?: "posts" | "custom";
               storageTables?: Array<string>;
               supports?: {
+                attachments?: boolean;
                 comments?: boolean;
                 customFields?: boolean;
                 editor?: boolean;
                 excerpt?: boolean;
-                attachments?: boolean;
                 featuredImage?: boolean;
                 postMeta?: boolean;
                 revisions?: boolean;
@@ -3403,11 +3403,11 @@ export type PublicApiType = {
               storageKind?: "posts" | "custom";
               storageTables?: Array<string>;
               supports?: {
+                attachments?: boolean;
                 comments?: boolean;
                 customFields?: boolean;
                 editor?: boolean;
                 excerpt?: boolean;
-                attachments?: boolean;
                 featuredImage?: boolean;
                 postMeta?: boolean;
                 revisions?: boolean;
@@ -3536,11 +3536,11 @@ export type PublicApiType = {
             storageKind?: "posts" | "custom";
             storageTables?: Array<string>;
             supports?: {
+              attachments?: boolean;
               comments?: boolean;
               customFields?: boolean;
               editor?: boolean;
               excerpt?: boolean;
-              attachments?: boolean;
               featuredImage?: boolean;
               postMeta?: boolean;
               revisions?: boolean;
@@ -3601,11 +3601,11 @@ export type PublicApiType = {
             storageKind?: "posts" | "custom";
             storageTables?: Array<string>;
             supports?: {
+              attachments?: boolean;
               comments?: boolean;
               customFields?: boolean;
               editor?: boolean;
               excerpt?: boolean;
-              attachments?: boolean;
               featuredImage?: boolean;
               postMeta?: boolean;
               revisions?: boolean;
@@ -3666,11 +3666,11 @@ export type PublicApiType = {
             storageKind?: "posts" | "custom";
             storageTables?: Array<string>;
             supports?: {
+              attachments?: boolean;
               comments?: boolean;
               customFields?: boolean;
               editor?: boolean;
               excerpt?: boolean;
-              attachments?: boolean;
               featuredImage?: boolean;
               postMeta?: boolean;
               revisions?: boolean;
@@ -4613,6 +4613,26 @@ export type PublicApiType = {
             };
           }
         >;
+        getCourseProgressForViewer: FunctionReference<
+          "query",
+          "public",
+          {
+            courseId: Id<"posts">;
+            organizationId?: Id<"organizations">;
+          },
+          {
+            completedLessonIds: Array<Id<"posts">>;
+            completedTopicIds: Array<Id<"posts">>;
+            completedAt?: number;
+            courseId: Id<"posts">;
+            lastAccessedAt?: number;
+            lastAccessedId?: Id<"posts">;
+            lastAccessedType?: "lesson" | "topic";
+            startedAt?: number;
+            updatedAt?: number;
+            userId: Id<"users">;
+          } | null
+        >;
         getAvailableLessons: FunctionReference<
           "query",
           "public",
@@ -4764,6 +4784,27 @@ export type PublicApiType = {
             };
           },
           { quizId: Id<"posts"> }
+        >;
+        setLessonCompletionStatus: FunctionReference<
+          "mutation",
+          "public",
+          {
+            completed: boolean;
+            courseId?: Id<"posts">;
+            lessonId: Id<"posts">;
+          },
+          { completedLessonIds: Array<Id<"posts">> }
+        >;
+        setTopicCompletionStatus: FunctionReference<
+          "mutation",
+          "public",
+          {
+            completed: boolean;
+            courseId?: Id<"posts">;
+            lessonId?: Id<"posts">;
+            topicId: Id<"posts">;
+          },
+          { completedTopicIds: Array<Id<"posts">> }
         >;
       };
     };

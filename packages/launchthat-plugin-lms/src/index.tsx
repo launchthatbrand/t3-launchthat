@@ -10,6 +10,7 @@ import type { ComponentType } from "react";
 import type { CourseSummary } from "./frontend/CoursesArchive";
 import type { Id } from "./lib/convexId";
 import { AdminLessonCompletionCallout } from "./components/AdminLessonCompletionCallout";
+import { CourseProgress } from "./components/CourseProgress";
 import { FrontendLessonCompletionCallout } from "./components/FrontendLessonCompletionCallout";
 import { CourseNav } from "./frontend/CourseNav";
 import { CoursesArchive } from "./frontend/CoursesArchive";
@@ -52,6 +53,14 @@ const buildFrontendCompletionSlot = (slug: string) => ({
   location: "afterContent" as const,
   render: (props: PluginFrontendSingleSlotProps) => (
     <FrontendLessonCompletionCallout {...props} />
+  ),
+});
+
+const buildFrontendProgressSlot = (slug: string) => ({
+  id: `lms-frontend-${slug}-progress-slot`,
+  location: "header" as const,
+  render: (props: PluginFrontendSingleSlotProps) => (
+    <CourseProgress {...props} />
   ),
 });
 
@@ -121,7 +130,10 @@ export const createLmsPluginDefinition = ({
             );
           },
         },
-        singleSlots: [buildFrontendCompletionSlot("courses")],
+        singleSlots: [
+          buildFrontendProgressSlot("courses"),
+          buildFrontendCompletionSlot("courses"),
+        ],
       },
       adminMenu: {
         enabled: true,
@@ -194,7 +206,10 @@ export const createLmsPluginDefinition = ({
         },
       },
       frontend: {
-        singleSlots: [buildFrontendCompletionSlot("lessons")],
+        singleSlots: [
+          buildFrontendProgressSlot("lessons"),
+          buildFrontendCompletionSlot("lessons"),
+        ],
       },
       adminMenu: {
         enabled: true,
@@ -231,7 +246,10 @@ export const createLmsPluginDefinition = ({
         },
       },
       frontend: {
-        singleSlots: [buildFrontendCompletionSlot("topics")],
+        singleSlots: [
+          buildFrontendProgressSlot("topics"),
+          buildFrontendCompletionSlot("topics"),
+        ],
       },
       adminMenu: {
         enabled: true,

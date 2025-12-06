@@ -3,6 +3,7 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { Data as PuckData } from "@measured/puck";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Fragment } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { api } from "@/convex/_generated/api";
@@ -127,6 +128,10 @@ export default async function FrontendCatchAllPage(props: PageProps) {
   );
   const postMeta = postMetaResult ?? [];
   const postMetaMap = buildPostMetaMap(postMeta);
+  const postMetaObject = Object.fromEntries(postMetaMap.entries()) as Record<
+    string,
+    PostMetaValue
+  >;
   console.log("[FrontendCatchAllPage] Post Meta:", postMeta);
 
   const puckMetaEntry = postMeta.find((meta) => meta.key === "puck_data");
@@ -196,6 +201,7 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     post,
     postType,
     organizationId,
+    postMeta: postMetaObject,
   });
 
   return (
@@ -319,6 +325,7 @@ interface FrontendSlotBuckets {
   afterContent: ReactNode[];
   sidebarTop: ReactNode[];
   sidebarBottom: ReactNode[];
+  header: ReactNode[];
 }
 
 const EMPTY_SLOT_BUCKETS: FrontendSlotBuckets = {
@@ -326,6 +333,7 @@ const EMPTY_SLOT_BUCKETS: FrontendSlotBuckets = {
   afterContent: [],
   sidebarTop: [],
   sidebarBottom: [],
+  header: [],
 };
 
 function buildFrontendSlotNodes({
@@ -333,11 +341,13 @@ function buildFrontendSlotNodes({
   post,
   postType,
   organizationId,
+  postMeta,
 }: {
   registrations: PluginFrontendSingleSlotRegistration[];
   post: Doc<"posts">;
   postType: PostTypeDoc | null;
   organizationId?: Id<"organizations"> | null;
+  postMeta?: Record<string, PostMetaValue>;
 }): FrontendSlotBuckets {
   if (!registrations.length) {
     return EMPTY_SLOT_BUCKETS;
@@ -348,6 +358,7 @@ function buildFrontendSlotNodes({
     afterContent: [],
     sidebarTop: [],
     sidebarBottom: [],
+    header: [],
   };
 
   registrations.forEach((registration) => {
@@ -358,23 +369,32 @@ function buildFrontendSlotNodes({
       post,
       postType,
       organizationId: organizationId ?? undefined,
+      postMeta,
     });
     if (!element) {
       return;
     }
     const wrapped = wrapWithPluginProviders(element, registration.pluginId);
+    const keyedWrapped = (
+      <Fragment key={`${registration.pluginId}-${registration.slot.id}`}>
+        {wrapped}
+      </Fragment>
+    );
     switch (registration.slot.location) {
       case "beforeContent":
-        buckets.beforeContent.push(wrapped);
+        buckets.beforeContent.push(keyedWrapped);
         break;
       case "afterContent":
-        buckets.afterContent.push(wrapped);
+        buckets.afterContent.push(keyedWrapped);
         break;
       case "sidebarTop":
-        buckets.sidebarTop.push(wrapped);
+        buckets.sidebarTop.push(keyedWrapped);
         break;
       case "sidebarBottom":
-        buckets.sidebarBottom.push(wrapped);
+        buckets.sidebarBottom.push(keyedWrapped);
+        break;
+      case "header":
+        buckets.header.push(keyedWrapped);
         break;
       default:
         break;
@@ -433,7 +453,7 @@ function PostDetail({
         )}
       >
         <article className="space-y-6">
-          <header className="space-y-2">
+          <header className="space-y-3">
             <p className="text-muted-foreground text-sm tracking-wide uppercase">
               {contextLabel}
             </p>
@@ -442,6 +462,9 @@ function PostDetail({
               <p className="text-muted-foreground text-lg">{post.excerpt}</p>
             )}
             <PostMetaSummary post={post} postType={postType} />
+            {pluginSlots.header.length > 0 && (
+              <div className="space-y-3">{pluginSlots.header}</div>
+            )}
           </header>
           {lexicalContent ? (
             <EditorViewer

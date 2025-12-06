@@ -11,6 +11,7 @@ import type {
   LmsCourseStructureItem,
 } from "../../../../../packages/launchthat-plugin-lms/src/types";
 import { query } from "../../_generated/server";
+import { getAuthenticatedUserDocIdByToken } from "../../core/lib/permissions";
 import { getPostMetaMap, parseCourseStructureMeta } from "./helpers";
 
 const builderLessonValidator = v.object({
@@ -161,6 +162,76 @@ export const getCourseStructureWithItems = query({
       attachedLessons,
       attachedTopics,
       attachedQuizzes,
+    };
+  },
+});
+
+export const getCourseProgressForViewer = query({
+  args: {
+    courseId: v.id("posts"),
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.union(
+    v.object({
+      courseId: v.id("posts"),
+      userId: v.id("users"),
+      completedLessonIds: v.array(v.id("posts")),
+      completedTopicIds: v.array(v.id("posts")),
+      startedAt: v.optional(v.number()),
+      completedAt: v.optional(v.number()),
+      updatedAt: v.optional(v.number()),
+      lastAccessedAt: v.optional(v.number()),
+      lastAccessedId: v.optional(v.id("posts")),
+      lastAccessedType: v.optional(
+        v.union(v.literal("lesson"), v.literal("topic")),
+      ),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+    const userId = await getAuthenticatedUserDocIdByToken(ctx);
+    const progress = await ctx.db
+      .query("courseProgress")
+      .withIndex("by_user_course", (q) =>
+        q.eq("userId", userId).eq("courseId", args.courseId),
+      )
+      .unique();
+    if (!progress) {
+      return {
+        courseId: args.courseId,
+        userId,
+        completedLessonIds: [],
+        completedTopicIds: [],
+        startedAt: undefined,
+        completedAt: undefined,
+        updatedAt: undefined,
+        lastAccessedAt: undefined,
+        lastAccessedId: undefined,
+        lastAccessedType: undefined,
+      };
+    }
+    if (
+      args.organizationId &&
+      progress.organizationId &&
+      progress.organizationId !== args.organizationId
+    ) {
+      return null;
+    }
+    return {
+      courseId: progress.courseId,
+      userId: progress.userId,
+      completedLessonIds: progress.completedLessonIds,
+      completedTopicIds: progress.completedTopicIds,
+      startedAt: progress.startedAt,
+      completedAt: progress.completedAt,
+      updatedAt: progress.updatedAt,
+      lastAccessedAt: progress.lastAccessedAt,
+      lastAccessedId: progress.lastAccessedId,
+      lastAccessedType: progress.lastAccessedType,
     };
   },
 });

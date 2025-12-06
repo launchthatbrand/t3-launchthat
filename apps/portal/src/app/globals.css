@@ -4,6 +4,7 @@
 
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
 @source "../../../../packages/launchthat-plugin-support/src/**/*.{ts,tsx}";
+@source "../../../../packages/launchthat-plugin-lms/src/**/*.{ts,tsx}";
 
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant light (&:where(.light, .light *));

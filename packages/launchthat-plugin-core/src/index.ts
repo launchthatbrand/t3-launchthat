@@ -51,7 +51,8 @@ export type PluginFrontendSingleSlotLocation =
   | "beforeContent"
   | "afterContent"
   | "sidebarTop"
-  | "sidebarBottom";
+  | "sidebarBottom"
+  | "header";
 
 export interface PluginFrontendSingleSlotProps {
   pluginId: string;
@@ -60,6 +61,7 @@ export interface PluginFrontendSingleSlotProps {
   post?: unknown;
   postType?: PluginPostTypeConfig | null;
   organizationId?: Id<"organizations">;
+  postMeta?: Record<string, unknown>;
 }
 
 export interface PluginFrontendSingleSlotDefinition {

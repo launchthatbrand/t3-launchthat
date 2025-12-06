@@ -4,6 +4,7 @@ import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import { internal } from "../../_generated/api";
 import { mutation } from "../../_generated/server";
+import { getAuthenticatedUserDocIdByToken } from "../../core/lib/permissions";
 import {
   deletePostMetaValue,
   getPostMetaMap,
@@ -196,6 +197,110 @@ const createLexicalStateWithVimeoEmbed = (video: {
     },
     version: 1,
   });
+};
+
+const getCourseProgressDoc = async (
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  courseId: Id<"posts">,
+) => {
+  return ctx.db
+    .query("courseProgress")
+    .withIndex("by_user_course", (q) =>
+      q.eq("userId", userId).eq("courseId", courseId),
+    )
+    .unique();
+};
+
+const createCourseProgressDoc = async (
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  courseId: Id<"posts">,
+  organizationId: Id<"organizations"> | undefined,
+) => {
+  const timestamp = Date.now();
+  const progressId = await ctx.db.insert("courseProgress", {
+    organizationId,
+    userId,
+    courseId,
+    completedLessonIds: [],
+    completedTopicIds: [],
+    startedAt: timestamp,
+    updatedAt: timestamp,
+  });
+  const created = await ctx.db.get(progressId);
+  if (!created) {
+    throw new Error("Failed to create course progress document");
+  }
+  return created;
+};
+
+const ensureCourseProgressDoc = async (
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  courseId: Id<"posts">,
+  organizationId: Id<"organizations"> | undefined,
+) => {
+  const existing = await getCourseProgressDoc(ctx, userId, courseId);
+  if (existing) {
+    return existing;
+  }
+  return createCourseProgressDoc(ctx, userId, courseId, organizationId);
+};
+
+const resolveCourseContextFromLesson = async (
+  ctx: MutationCtx,
+  lessonId: Id<"posts">,
+  explicitCourseId?: Id<"posts">,
+) => {
+  const lesson = await ctx.db.get(lessonId);
+  if (!lesson || lesson.postTypeSlug !== "lessons") {
+    throw new Error("Lesson not found");
+  }
+
+  const lessonMeta = await getPostMetaMap(ctx, lessonId);
+  const metaCourseId = getMetaString(lessonMeta, "courseId");
+  const courseId = explicitCourseId ?? (metaCourseId as Id<"posts"> | null);
+  if (!courseId) {
+    throw new Error("Lesson is not attached to a course");
+  }
+  const course = await ctx.db.get(courseId);
+  if (!course || course.postTypeSlug !== "courses") {
+    throw new Error("Course not found");
+  }
+
+  return {
+    courseId,
+    organizationId: course.organizationId ?? undefined,
+  };
+};
+
+const resolveCourseContextFromTopic = async (
+  ctx: MutationCtx,
+  topicId: Id<"posts">,
+  explicitLessonId?: Id<"posts">,
+  explicitCourseId?: Id<"posts">,
+) => {
+  const topic = await ctx.db.get(topicId);
+  if (!topic || topic.postTypeSlug !== "topics") {
+    throw new Error("Topic not found");
+  }
+  const topicMeta = await getPostMetaMap(ctx, topicId);
+  const metaLessonId = getMetaString(topicMeta, "lessonId");
+  const lessonId = explicitLessonId ?? (metaLessonId as Id<"posts"> | null);
+  if (!lessonId) {
+    throw new Error("Topic is not attached to a lesson");
+  }
+  const lessonContext = await resolveCourseContextFromLesson(
+    ctx,
+    lessonId,
+    explicitCourseId,
+  );
+  return {
+    lessonId,
+    courseId: lessonContext.courseId,
+    organizationId: lessonContext.organizationId,
+  };
 };
 
 const attachLessonToCourseInternal = async (
@@ -615,5 +720,88 @@ export const createQuizFromVimeo = mutation({
       topicId: args.targetTopicId,
     });
     return { quizId };
+  },
+});
+
+export const setLessonCompletionStatus = mutation({
+  args: {
+    lessonId: v.id("posts"),
+    courseId: v.optional(v.id("posts")),
+    completed: v.boolean(),
+  },
+  returns: v.object({
+    completedLessonIds: v.array(v.id("posts")),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await getAuthenticatedUserDocIdByToken(ctx);
+    const { courseId, organizationId } = await resolveCourseContextFromLesson(
+      ctx,
+      args.lessonId,
+      args.courseId ?? undefined,
+    );
+    const progress = await ensureCourseProgressDoc(
+      ctx,
+      userId,
+      courseId,
+      organizationId,
+    );
+    const completedSet = new Set(progress.completedLessonIds);
+    if (args.completed) {
+      completedSet.add(args.lessonId);
+    } else {
+      completedSet.delete(args.lessonId);
+    }
+    const completedLessonIds = Array.from(completedSet);
+    await ctx.db.patch(progress._id, {
+      completedLessonIds,
+      updatedAt: Date.now(),
+      lastAccessedAt: Date.now(),
+      lastAccessedId: args.lessonId,
+      lastAccessedType: "lesson",
+    });
+    return { completedLessonIds };
+  },
+});
+
+export const setTopicCompletionStatus = mutation({
+  args: {
+    topicId: v.id("posts"),
+    lessonId: v.optional(v.id("posts")),
+    courseId: v.optional(v.id("posts")),
+    completed: v.boolean(),
+  },
+  returns: v.object({
+    completedTopicIds: v.array(v.id("posts")),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await getAuthenticatedUserDocIdByToken(ctx);
+    const { lessonId, courseId, organizationId } =
+      await resolveCourseContextFromTopic(
+        ctx,
+        args.topicId,
+        args.lessonId ?? undefined,
+        args.courseId ?? undefined,
+      );
+    const progress = await ensureCourseProgressDoc(
+      ctx,
+      userId,
+      courseId,
+      organizationId,
+    );
+    const topicSet = new Set(progress.completedTopicIds);
+    if (args.completed) {
+      topicSet.add(args.topicId);
+    } else {
+      topicSet.delete(args.topicId);
+    }
+    const completedTopicIds = Array.from(topicSet);
+    await ctx.db.patch(progress._id, {
+      completedTopicIds,
+      updatedAt: Date.now(),
+      lastAccessedAt: Date.now(),
+      lastAccessedId: args.topicId,
+      lastAccessedType: "topic",
+    });
+    return { completedTopicIds };
   },
 });
