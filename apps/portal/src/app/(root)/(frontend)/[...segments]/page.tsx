@@ -9,6 +9,7 @@ import { notFound, redirect } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
+import { LmsCourseProvider } from "launchthat-plugin-lms";
 
 import type { PluginFrontendSingleSlotRegistration } from "~/lib/plugins/helpers";
 import { EditorViewer } from "~/components/blocks/editor-x/viewer";
@@ -25,6 +26,7 @@ import {
 } from "~/lib/postTypes/routing";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { cn } from "~/lib/utils";
+import { PortalConvexProvider } from "~/providers/ConvexClientProvider";
 import { PuckContentRenderer } from "../../../../components/puckeditor/PuckContentRenderer";
 
 type PluginMatch = ReturnType<typeof findPostTypeBySlug>;
@@ -36,6 +38,13 @@ interface PageProps {
 export const metadata: Metadata = {
   title: "Post",
 };
+
+const LMS_POST_TYPE_SLUGS = new Set([
+  "courses",
+  "lessons",
+  "topics",
+  "quizzes",
+]);
 
 export default async function FrontendCatchAllPage(props: PageProps) {
   const resolvedParams = await props.params;
@@ -180,12 +189,35 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       }
     }
   }
+  const shouldWrapWithLmsProvider =
+    typeof post.postTypeSlug === "string" &&
+    LMS_POST_TYPE_SLUGS.has(post.postTypeSlug);
+
+  const wrapWithLmsProviderIfNeeded = (node: ReactNode) => {
+    if (!node || !shouldWrapWithLmsProvider) {
+      return node;
+    }
+    return (
+      <PortalConvexProvider>
+        <LmsCourseProvider
+          post={post}
+          postTypeSlug={post.postTypeSlug}
+          postMeta={postMetaObject}
+          organizationId={organizationId}
+        >
+          {node}
+        </LmsCourseProvider>
+      </PortalConvexProvider>
+    );
+  };
+
   const pluginSingle = pluginMatch?.postType.frontend?.single;
   if (pluginMatch && pluginSingle?.render) {
-    const rendered = pluginSingle.render({
+    let rendered = pluginSingle.render({
       post,
       postType: pluginMatch.postType,
     });
+    rendered = wrapWithLmsProviderIfNeeded(rendered);
     return wrapWithFrontendProviders(
       rendered,
       pluginMatch.postType.frontend?.providers,
@@ -204,7 +236,7 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     postMeta: postMetaObject,
   });
 
-  return (
+  return wrapWithLmsProviderIfNeeded(
     <PostDetail
       post={post}
       postType={postType}
@@ -212,7 +244,7 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       postMeta={postMeta}
       puckData={puckData}
       pluginSlots={pluginSlotNodes}
-    />
+    />,
   );
 }
 

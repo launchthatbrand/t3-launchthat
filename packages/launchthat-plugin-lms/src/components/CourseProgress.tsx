@@ -1,9 +1,6 @@
 "use client";
 
 import type { PluginFrontendSingleSlotProps } from "launchthat-plugin-core";
-import { useMemo } from "react";
-import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
 import { CheckCircle2 } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
@@ -14,115 +11,45 @@ import {
 } from "@acme/ui/hover-card";
 
 import type { Id } from "../lib/convexId";
-import type { LmsBuilderLesson } from "../types";
-import {
-  deriveCourseId,
-  deriveCourseSlug,
-  deriveLessonId,
-} from "../lib/progressUtils";
+import type { LessonSegment } from "../providers/LmsCourseProvider";
+import { useLmsCourseContext } from "../providers/LmsCourseProvider";
 
 const SUPPORTED_POST_TYPES = new Set(["courses", "lessons", "topics"]);
-
-type CourseStructureArgs =
-  | {
-      courseId: Id<"posts">;
-      organizationId?: Id<"organizations">;
-    }
-  | {
-      courseSlug: string;
-      organizationId?: Id<"organizations">;
-    }
-  | "skip";
-
-type CourseProgressArgs =
-  | {
-      courseId: Id<"posts">;
-      organizationId?: Id<"organizations">;
-    }
-  | "skip";
 
 export function CourseProgress({
   post,
   postTypeSlug,
-  postMeta,
-  organizationId,
 }: PluginFrontendSingleSlotProps) {
-  const normalizedPostType =
-    typeof postTypeSlug === "string" ? postTypeSlug : "";
+  const courseContext = useLmsCourseContext();
+  if (!courseContext) {
+    return null;
+  }
+
+  const {
+    postTypeSlug: contextPostType,
+    segments,
+    courseStructure,
+    courseProgress,
+    completedLessonIds,
+    activeLessonId,
+    isCourseStructureLoading,
+    isCourseProgressLoading,
+  } = courseContext;
+
+  const effectivePostType =
+    typeof postTypeSlug === "string" && postTypeSlug.length > 0
+      ? postTypeSlug
+      : (contextPostType ?? "");
+
   if (
     !post ||
-    !normalizedPostType ||
-    !SUPPORTED_POST_TYPES.has(normalizedPostType)
+    !effectivePostType ||
+    !SUPPORTED_POST_TYPES.has(effectivePostType)
   ) {
     return null;
   }
 
-  const postRecord = post as Record<string, unknown>;
-  const metaRecord = (postMeta ?? {}) as Record<string, unknown>;
-
-  const normalizedOrganizationId = organizationId
-    ? (organizationId as unknown as Id<"organizations">)
-    : undefined;
-
-  const courseId = deriveCourseId(normalizedPostType, postRecord, metaRecord);
-  const courseSlug = deriveCourseSlug(
-    normalizedPostType,
-    postRecord,
-    metaRecord,
-  );
-
-  if (!courseId && !courseSlug) {
-    return null;
-  }
-
-  const courseArgs = useMemo(() => {
-    if (courseId) {
-      return normalizedOrganizationId
-        ? { courseId, organizationId: normalizedOrganizationId }
-        : { courseId };
-    }
-    if (courseSlug) {
-      return normalizedOrganizationId
-        ? { courseSlug, organizationId: normalizedOrganizationId }
-        : { courseSlug };
-    }
-    return "skip";
-  }, [courseId, courseSlug, normalizedOrganizationId]) as CourseStructureArgs;
-
-  const courseData = useQuery(
-    api.plugins.lms.queries.getCourseStructureWithItems,
-    courseArgs === "skip" ? "skip" : courseArgs,
-  );
-
-  const shouldSkipCourse = courseArgs === "skip";
-  const isCourseLoading = !shouldSkipCourse && courseData === undefined;
-  const resolvedCourseId =
-    (courseData?.course?._id as Id<"posts"> | undefined) ??
-    (courseId as Id<"posts"> | undefined);
-
-  const progressArgs = useMemo<CourseProgressArgs>(() => {
-    if (!resolvedCourseId) {
-      return "skip";
-    }
-    if (normalizedOrganizationId) {
-      return {
-        courseId: resolvedCourseId,
-        organizationId: normalizedOrganizationId,
-      };
-    }
-    return { courseId: resolvedCourseId };
-  }, [normalizedOrganizationId, resolvedCourseId]);
-
-  const courseProgress = useQuery(
-    api.plugins.lms.queries.getCourseProgressForViewer,
-    progressArgs === "skip" ? "skip" : progressArgs,
-  );
-
-  if (shouldSkipCourse || progressArgs === "skip") {
-    return null;
-  }
-
-  if (isCourseLoading) {
+  if (isCourseStructureLoading || isCourseProgressLoading) {
     return (
       <div className="bg-card/80 rounded-2xl border p-4 shadow-sm">
         <p className="text-muted-foreground text-sm">
@@ -132,18 +59,8 @@ export function CourseProgress({
     );
   }
 
-  if (!courseData) {
+  if (!courseStructure) {
     return null;
-  }
-
-  if (courseProgress === undefined) {
-    return (
-      <div className="bg-card/80 rounded-2xl border p-4 shadow-sm">
-        <p className="text-muted-foreground text-sm">
-          Loading course progress…
-        </p>
-      </div>
-    );
   }
 
   if (courseProgress === null) {
@@ -159,51 +76,8 @@ export function CourseProgress({
     );
   }
 
-  const orderedLessonIds =
-    courseData.course?.courseStructure?.map((entry) => entry.lessonId) ?? [];
-
-  const lessonsById = new Map<Id<"posts">, LmsBuilderLesson>();
-  courseData.attachedLessons.forEach((lesson) => {
-    lessonsById.set(lesson._id, lesson as LmsBuilderLesson);
-  });
-
-  const topicsByLesson = new Map<Id<"posts">, Id<"posts">[]>();
-  courseData.attachedTopics.forEach((topic) => {
-    if (!topic.lessonId) {
-      return;
-    }
-    const list = topicsByLesson.get(topic.lessonId) ?? [];
-    list.push(topic._id as Id<"posts">);
-    topicsByLesson.set(topic.lessonId, list);
-  });
-
-  const completedLessonSet = new Set(courseProgress.completedLessonIds ?? []);
-  const completedTopicSet = new Set(courseProgress.completedTopicIds ?? []);
-
-  const segments = orderedLessonIds
-    .map((lessonId) => {
-      const lesson = lessonsById.get(lessonId as Id<"posts">);
-      if (!lesson) {
-        return null;
-      }
-      const topics = topicsByLesson.get(lesson._id) ?? [];
-      const completedTopics = topics.filter((topicId) =>
-        completedTopicSet.has(topicId),
-      ).length;
-      return {
-        lessonId: lesson._id,
-        title: lesson.title,
-        completed: completedLessonSet.has(lesson._id),
-        topicsTotal: topics.length,
-        topicsCompleted: completedTopics,
-      };
-    })
-    .filter(
-      (segment): segment is NonNullable<typeof segment> => segment !== null,
-    );
-
   const totalLessons = segments.length;
-  const completedLessons = completedLessonSet.size;
+  const completedLessons = completedLessonIds.size;
   const percentComplete =
     totalLessons > 0
       ? Math.round(
@@ -211,13 +85,8 @@ export function CourseProgress({
         )
       : 0;
 
-  const activeLessonId = deriveLessonId(
-    normalizedPostType,
-    postRecord,
-    metaRecord,
-  );
   const activeLessonTitle = activeLessonId
-    ? (lessonsById.get(activeLessonId as Id<"posts">)?.title ?? null)
+    ? getSegmentTitle(activeLessonId, segments)
     : null;
 
   return (
@@ -241,12 +110,6 @@ export function CourseProgress({
         <div className="bg-muted/40 mt-3 flex gap-2 rounded-2xl border p-2">
           {segments.map((segment) => {
             const isActive = activeLessonId === segment.lessonId;
-            const completionRatio =
-              segment.topicsTotal > 0
-                ? Math.min(segment.topicsCompleted / segment.topicsTotal, 1)
-                : segment.completed
-                  ? 1
-                  : 0;
             return (
               <HoverCard key={segment.lessonId} openDelay={75}>
                 <HoverCardTrigger asChild>
@@ -273,9 +136,10 @@ export function CourseProgress({
                   <p className="text-muted-foreground text-xs">
                     {segment.completed ? "Completed" : "Incomplete"}
                   </p>
-                  {segment.topicsTotal > 0 ? (
+                  {segment.topics.length > 0 ? (
                     <p className="text-muted-foreground text-xs">
-                      {segment.topicsCompleted}/{segment.topicsTotal} topics
+                      {segment.topics.filter((topic) => topic.completed).length}
+                      /{segment.topics.length} topics
                     </p>
                   ) : null}
                 </HoverCardContent>
@@ -296,10 +160,11 @@ export function CourseProgress({
   );
 }
 
-function getLessonTitle(
-  lessonId: Id<"posts">,
-  lessons: LmsBuilderLesson[],
+function getSegmentTitle(
+  lessonId: Id<"posts"> | undefined,
+  segments: LessonSegment[],
 ): string | null {
-  const match = lessons.find((lesson) => lesson._id === lessonId);
-  return match?.title ?? null;
+  if (!lessonId) return null;
+  const segment = segments.find((entry) => entry.lessonId === lessonId);
+  return segment?.title ?? null;
 }

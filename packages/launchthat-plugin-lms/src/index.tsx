@@ -35,6 +35,7 @@ export {
   CourseSingle,
   CourseNav,
 };
+export { LmsCourseProvider, useLmsCourseContext } from "./providers/LmsCourseProvider";
 
 export interface LmsPluginComponents {
   CourseBuilderTab: ComponentType<PluginSingleViewComponentProps>;
