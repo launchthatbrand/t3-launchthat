@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 
-import { v } from "convex/values";
-
 import type { Doc, Id } from "../../_generated/dataModel";
-import { internal } from "../../_generated/api";
 import {
   internalAction,
   internalMutation,
   internalQuery,
   mutation,
 } from "../../_generated/server";
+
+import { internal } from "../../_generated/api";
+import { v } from "convex/values";
 
 /**
  * Create default connections for internal node types
@@ -274,7 +274,7 @@ export const insertConnectionWithSecrets = internalMutation({
     nodeType: v.string(),
     name: v.string(),
     credentials: v.string(),
-    ciphertext: v.string(),
+    ciphertext: v.bytes(),
     maskedCredentials: v.any(),
     config: v.optional(v.string()),
     ownerId: v.any(),
@@ -308,7 +308,7 @@ export const updateConnectionSecrets = internalMutation({
   args: {
     connectionId: v.id("connections"),
     credentials: v.optional(v.string()),
-    ciphertext: v.string(),
+    ciphertext: v.bytes(),
     maskedCredentials: v.any(),
     expiresAt: v.optional(v.number()),
   },
@@ -332,5 +332,37 @@ export const updateConnectionSecrets = internalMutation({
     });
 
     return { success: true };
+  },
+});
+
+export const updateConnectionMetadata = internalMutation({
+  args: {
+    id: v.id("connections"),
+    name: v.optional(v.string()),
+    status: v.optional(v.string()),
+    config: v.optional(v.string()),
+    lastUsed: v.optional(v.number()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.id);
+    if (!existing) {
+      throw new Error("Connection not found");
+    }
+
+    const updates: Record<string, unknown> = { updatedAt: Date.now() };
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.status !== undefined) updates.status = args.status;
+    if (args.config !== undefined) updates.config = args.config;
+
+    if (args.lastUsed !== undefined) {
+      updates.metadata = {
+        ...(existing.metadata ?? {}),
+        lastUsed: args.lastUsed,
+      };
+    }
+
+    await ctx.db.patch(args.id, updates);
+    return null;
   },
 });

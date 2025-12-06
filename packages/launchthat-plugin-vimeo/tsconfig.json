@@ -10,7 +10,8 @@
       "@acme/ui": ["../ui/src/index"],
       "@acme/ui/*": ["../ui/src/*"],
       "@acme/ui/entity-list": ["../ui/src/entity-list"],
-      "@acme/ui/entity-list/*": ["../ui/src/entity-list/*"]
+      "@acme/ui/entity-list/*": ["../ui/src/entity-list/*"],
+      "@portal/convexspec": ["../../apps/portal/convexspec.ts"]
     }
   },
   "include": ["src"],

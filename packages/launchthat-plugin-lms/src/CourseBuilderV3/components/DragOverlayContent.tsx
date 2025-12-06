@@ -1,11 +1,10 @@
-// Expect Lesson/Quiz union for main items
-import type { Active } from "@dnd-kit/core";
-import React from "react";
-
-import { DragOverlayPreview } from "@acme/dnd";
-
 import type { Lesson, Quiz } from "../store/useCourseBuilderStore";
 import type { LessonItem, QuizItem, TopicItem } from "../types/content";
+
+// Expect Lesson/Quiz union for main items
+import type { Active } from "@dnd-kit/core";
+import { DragOverlayPreview } from "@acme/dnd";
+import React from "react";
 import { cn } from "../../lib/cn";
 
 type OverlaySourceItem = { id: string; title?: string; type?: string };
@@ -56,7 +55,18 @@ const DragOverlayContent: React.FC<DragOverlayContentProps> = ({
           | undefined);
 
       if (!source) {
-        return null;
+        const activePayload = active.data.current as
+          | { label?: string; vimeoVideo?: { title?: string }; type?: string }
+          | undefined;
+        const fallbackLabel =
+          activePayload?.label ?? activePayload?.vimeoVideo?.title;
+        return fallbackLabel
+          ? {
+              id: activeId,
+              label: fallbackLabel,
+              type: activePayload?.type ?? activeType,
+            }
+          : null;
       }
 
       const displayType = source.type ?? activeType;

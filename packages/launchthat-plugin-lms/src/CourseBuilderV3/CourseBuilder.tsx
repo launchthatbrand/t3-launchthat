@@ -1,6 +1,16 @@
 "use client";
 
-import React from "react";
+import type {
+  AccessibilityConfig,
+  I18nConfig,
+  SidebarConfig,
+  ThemeConfig,
+} from "./types/theme";
+// Restore ContentItemRenderer for props
+import type {
+  ContentItemRenderer,
+  SidebarItemRenderer,
+} from "./types/callbacks";
 import {
   DndContext,
   DragOverlay,
@@ -9,28 +19,18 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-
-import type { CourseBuilderState } from "./store/useCourseBuilderStore";
-// Restore ContentItemRenderer for props
-import type {
-  ContentItemRenderer,
-  SidebarItemRenderer,
-} from "./types/callbacks";
 // Import types needed for props and mapping
 // Remove unused store types (Lesson, Quiz, Topic)
 import type { LessonItem, QuizItem, TopicItem } from "./types/content";
-import type { SidebarItem } from "./types/navigation";
+
+import type { CourseBuilderState } from "./store/useCourseBuilderStore";
 // Restore CourseStructure for props
 import type { CourseStructure } from "./types/structure";
-import type {
-  AccessibilityConfig,
-  I18nConfig,
-  SidebarConfig,
-  ThemeConfig,
-} from "./types/theme";
 import DragOverlayContent from "./components/DragOverlayContent";
 import MainContent from "./components/MainContent";
+import React from "react";
 import Sidebar from "./components/Sidebar";
+import type { SidebarItem } from "./types/navigation";
 // Import the new layout components
 import TopBar from "./components/TopBar";
 // Import the new DND hook
@@ -50,6 +50,14 @@ import { useCourseBuilderStore } from "./store/useCourseBuilderStore";
 /**
  * Props for the CourseBuilderV3 component.
  */
+export interface VimeoVideoItem {
+  videoId: string;
+  title: string;
+  description?: string;
+  embedUrl?: string;
+  thumbnailUrl?: string;
+}
+
 export interface CourseBuilderProps {
   // Restore core structure and action callbacks
   courseStructure?: CourseStructure; // Might be used for initial state
@@ -93,6 +101,15 @@ export interface CourseBuilderProps {
     courseId: string,
     order: number,
   ) => Promise<void>;
+  onCreateLessonFromVimeo?: (video: VimeoVideoItem) => Promise<void>;
+  onCreateTopicFromVimeo?: (
+    lessonId: string,
+    video: VimeoVideoItem,
+  ) => Promise<void>;
+  onCreateQuizFromVimeo?: (
+    context: { lessonId?: string; topicId?: string },
+    video: VimeoVideoItem,
+  ) => Promise<void>;
 
   // Restore optional renderer props
   renderLessonItem?: ContentItemRenderer<LessonItem>;
@@ -123,6 +140,8 @@ export interface CourseBuilderProps {
     topicId: string,
     orderedQuizIds: string[],
   ) => Promise<void>;
+  availableVimeoVideos?: VimeoVideoItem[];
+  isLoadingVimeoVideos?: boolean;
 }
 
 // Default no-op async function for callbacks
@@ -157,6 +176,9 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
   onAttachTopic: _onAttachTopic = noopAsyncWithArgs,
   onAttachQuizToTopic: _onAttachQuizToTopic = noopAsyncWithArgs,
   onAttachQuizToFinal: _onAttachQuizToFinal = noopAsyncWithArgs,
+  onCreateLessonFromVimeo,
+  onCreateTopicFromVimeo,
+  onCreateQuizFromVimeo,
   renderLessonItem: _renderLessonItem,
   renderTopicItem: _renderTopicItem,
   renderQuizItem: _renderQuizItem,
@@ -171,6 +193,8 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
   onReorderLessonTopics = noopAsyncWithArgs,
   onReorderLessonQuizzes = noopAsyncWithArgs,
   onReorderTopicQuizzes = noopAsyncWithArgs,
+  availableVimeoVideos,
+  isLoadingVimeoVideos,
 }) => {
   // 1. Get state and actions from the store
   const {
@@ -239,6 +263,9 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
       onAttachQuizToTopic: _onAttachQuizToTopic,
       onAttachQuizToFinal: _onAttachQuizToFinal,
       onAddQuiz: _onAddQuiz,
+      onCreateLessonFromVimeo,
+      onCreateTopicFromVimeo,
+      onCreateQuizFromVimeo,
     });
 
   // 3. Set up sensors
@@ -330,6 +357,8 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
             availableTopics={availableTopics}
             availableQuizzes={availableQuizzes}
             renderSidebarItem={renderSidebarItem}
+            vimeoVideos={availableVimeoVideos}
+            isLoadingVimeoVideos={isLoadingVimeoVideos}
           />
           <MainContent
             // Pass the unified items array

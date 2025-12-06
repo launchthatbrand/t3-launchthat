@@ -1,13 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
-/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 "use client";
 
-import {
-  AdminLayout,
-  AdminLayoutContent,
-  AdminLayoutHeader,
-  AdminLayoutMain,
-} from "~/components/admin/AdminLayout";
+import "@/lib/plugins/vimeo/configureClient";
+
+import type { Doc } from "@/convex/_generated/dataModel";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { api } from "@/convex/_generated/api";
+import { useQuery } from "convex/react";
+
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -15,32 +18,33 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+
+import type { PermalinkSettings } from "../_components/permalink";
+import {
+  AdminLayout,
+  AdminLayoutContent,
+  AdminLayoutHeader,
+  AdminLayoutMain,
+} from "~/components/admin/AdminLayout";
+import { useTenant } from "~/context/TenantContext";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
+import {
+  getPluginArchiveViewForSlug,
+  getPluginSingleViewForSlug,
+  wrapWithPluginProviders,
+} from "~/lib/plugins/helpers";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { AdminSinglePostView } from "../_components/AdminSinglePostView";
+import { AttachmentsArchiveView } from "../_components/AttachmentsArchiveView";
+import { GenericArchiveView } from "../_components/GenericArchiveView";
 import {
   defaultPermalinkSettings,
   isPermalinkSettingsValue,
 } from "../_components/permalink";
-import { useRouter, useSearchParams } from "next/navigation";
-
-import { AdminSinglePostView } from "../_components/AdminSinglePostView";
-import { AttachmentsArchiveView } from "../_components/AttachmentsArchiveView";
-import { Button } from "@acme/ui/button";
-import type { Doc } from "@/convex/_generated/dataModel";
-import { GenericArchiveView } from "../_components/GenericArchiveView";
-import Link from "next/link";
-import type { PermalinkSettings } from "../_components/permalink";
 import { PlaceholderState } from "../_components/PlaceholderState";
-import type { PluginPostArchiveViewConfig } from "~/lib/plugins/types";
-import type { PluginSingleViewInstance } from "../_components/AdminSinglePostView";
-import { PortalSocialFeedProvider } from "@/src/providers/SocialFeedProvider";
 import { TaxonomyTermsView } from "../_components/TaxonomyTermsView";
-import { api } from "@/convex/_generated/api";
-import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
-import { pluginDefinitions } from "~/lib/plugins/definitions";
 import { useAdminPostContext } from "../../_providers/AdminPostProvider";
 import { usePostTypes } from "../../settings/post-types/_api/postTypes";
-import { useQuery } from "convex/react";
-import { useTenant } from "~/context/TenantContext";
 
 const DEFAULT_POST_TYPE = "course";
 const PERMALINK_OPTION_KEY = "permalink_settings";
@@ -140,7 +144,10 @@ function AdminEditPageBody() {
     return getPluginArchiveViewForSlug(hydratedPostType.slug);
   }, [hydratedPostType]);
 
-  const archiveTabs = pluginArchiveView?.config.tabs ?? [];
+  const archiveTabs = useMemo(
+    () => pluginArchiveView?.config.tabs ?? [],
+    [pluginArchiveView],
+  );
   const archiveDefaultTab = useMemo(() => {
     if (!pluginArchiveView) {
       return "list";
@@ -230,16 +237,6 @@ function AdminEditPageBody() {
     ],
   );
 
-  const wrapWithPluginProviders = useCallback(
-    (node: JSX.Element, pluginId?: string | null) =>
-      pluginId === "socialfeed" ? (
-        <PortalSocialFeedProvider>{node}</PortalSocialFeedProvider>
-      ) : (
-        node
-      ),
-    [],
-  );
-
   if (pluginParam && !pluginDefinition) {
     return (
       <AdminLayoutContent>
@@ -318,7 +315,7 @@ function AdminEditPageBody() {
   }
 
   if (viewMode === "single") {
-    return (
+    const singleView = (
       <AdminSinglePostView
         post={post}
         postType={hydratedPostType}
@@ -333,6 +330,9 @@ function AdminEditPageBody() {
         }}
       />
     );
+    return pluginSingleView
+      ? wrapWithPluginProviders(singleView, pluginSingleView.pluginId)
+      : singleView;
   }
 
   if (
@@ -406,42 +406,4 @@ export default function AdminEditPage() {
       <AdminEditPageBody />
     </Suspense>
   );
-}
-
-function getPluginSingleViewForSlug(
-  slug: string,
-): PluginSingleViewInstance | null {
-  for (const plugin of pluginDefinitions) {
-    const postType = plugin.postTypes.find((type) => type.slug === slug);
-    if (postType?.singleView) {
-      return {
-        pluginId: plugin.id,
-        pluginName: plugin.name,
-        config: postType.singleView,
-      };
-    }
-  }
-  return null;
-}
-
-interface PluginArchiveViewInstance {
-  pluginId: string;
-  pluginName: string;
-  config: PluginPostArchiveViewConfig;
-}
-
-function getPluginArchiveViewForSlug(
-  slug: string,
-): PluginArchiveViewInstance | null {
-  for (const plugin of pluginDefinitions) {
-    const postType = plugin.postTypes.find((type) => type.slug === slug);
-    if (postType?.adminArchiveView) {
-      return {
-        pluginId: plugin.id,
-        pluginName: plugin.name,
-        config: postType.adminArchiveView,
-      };
-    }
-  }
-  return null;
 }

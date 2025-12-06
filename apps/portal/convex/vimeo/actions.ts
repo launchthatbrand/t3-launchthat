@@ -1,9 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 "use node";
 
-import { v } from "convex/values";
-
-import { internal } from "../_generated/api";
 import { action, internalAction } from "../_generated/server";
+import { components, internal } from "../_generated/api";
+
+import { v } from "convex/values";
 
 interface VimeoApiVideo {
   uri: string; // e.g. "/videos/123456"
@@ -21,9 +25,8 @@ export const syncVimeoVideos = internalAction({
     connectionId: v.id("connections"),
   },
   handler: async (ctx, args) => {
-    // Load connection to get access token
     const connection = await ctx.runQuery(
-      internal.integrations.connections.get,
+      internal.integrations.connections.queries.get,
       {
         id: args.connectionId,
       },
@@ -33,19 +36,21 @@ export const syncVimeoVideos = internalAction({
       throw new Error("Connection not found");
     }
 
-    // credentials expected to be JSON with accessToken or client credentials (simplified)
-    let credentials: { accessToken?: string };
-    try {
-      credentials = JSON.parse(connection.credentials);
-    } catch {
-      throw new Error("Invalid credentials JSON for connection");
-    }
+    const decrypted = await ctx.runAction(
+      internal.integrations.connections.cryptoActions.getDecryptedSecrets,
+      {
+        connectionId: args.connectionId,
+      },
+    );
 
-    if (!credentials.accessToken) {
+    const accessToken =
+      decrypted?.credentials?.accessToken ??
+      decrypted?.credentials?.access_token ??
+      decrypted?.credentials?.token;
+
+    if (!accessToken) {
       throw new Error("Access token missing in credentials");
     }
-
-    const accessToken = credentials.accessToken;
 
     // Fetch videos from Vimeo
     const response = await fetch(
@@ -140,15 +145,14 @@ export const listFolders = action({
 
     if (!connection) throw new Error("Connection not found");
 
-    // Parse credentials
-    let creds: { accessToken?: string; access_token?: string } = {};
-    if (connection.credentials) {
-      creds =
-        typeof connection.credentials === "string"
-          ? JSON.parse(connection.credentials)
-          : (connection.credentials as typeof creds);
-    }
-    const token = creds.accessToken ?? creds.access_token;
+    const decrypted = await ctx.runAction(
+      internal.integrations.connections.cryptoActions.getDecryptedSecrets,
+      { connectionId: args.connectionId },
+    );
+    const token =
+      decrypted?.credentials?.accessToken ??
+      decrypted?.credentials?.access_token ??
+      decrypted?.credentials?.token;
     if (!token) throw new Error("Missing Vimeo access token");
 
     const res = await fetch("https://api.vimeo.com/me/projects?per_page=100", {
@@ -178,33 +182,29 @@ export const fetchVimeoVideos = internalAction({
     ownerId: v.union(v.id("users"), v.string()),
   },
   handler: async (ctx, args) => {
-    // 1. Find the Vimeo app
-    const vimeoApp = await ctx.runQuery(
-      internal.integrations.connections.queries.getVimeoApp,
-      {},
-    );
-    if (!vimeoApp) throw new Error("Vimeo app not found");
-
-    // 2. Find the connection for this user/org
     const connection = await ctx.runQuery(
-      internal["integrations/connections"].queries.getConnectionByAppAndOwner,
-      { appId: vimeoApp._id, ownerId: args.ownerId },
+      internal.integrations.connections.queries.getConnectionByNodeTypeAndOwner,
+      { nodeType: "vimeo", ownerId: args.ownerId },
     );
-    console.log("connection", connection);
-    if (!connection)
+
+    if (!connection) {
       throw new Error("No Vimeo connection found for this user/org");
-
-    // 3. Extract accessToken from credentials
-    let credentials: { accessToken?: string; access_token?: string } = {};
-    try {
-      credentials = JSON.parse(connection.credentials);
-    } catch {
-      throw new Error("Invalid credentials JSON for connection");
     }
-    const accessToken = credentials.accessToken || credentials.access_token;
-    if (!accessToken) throw new Error("Access token missing in credentials");
 
-    // 4. Fetch videos from Vimeo API
+    const decrypted = await ctx.runAction(
+      internal.integrations.connections.cryptoActions.getDecryptedSecrets,
+      { connectionId: connection._id },
+    );
+
+    const accessToken =
+      decrypted?.credentials?.accessToken ??
+      decrypted?.credentials?.access_token ??
+      decrypted?.credentials?.token;
+
+    if (!accessToken) {
+      throw new Error("Access token missing in credentials");
+    }
+
     const response = await fetch(
       "https://api.vimeo.com/me/videos?fields=id,uri,name,folder,description,link,created_time,pictures.sizes&page=1&per_page=100",
       {
@@ -221,17 +221,41 @@ export const fetchVimeoVideos = internalAction({
       );
     }
     const data = await response.json();
-    console.log("fetchVimeoVideos data", data);
     return data;
   },
 });
 
-// Public action to get cached Vimeo videos
+const VIMEO_CACHE_NAME = "vimeo-fetch-v1";
+const VIMEO_CACHE_TTL = 1000 * 60 * 5;
+
 export const getCachedVimeoVideos = action({
   args: {
     ownerId: v.union(v.id("users"), v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.runAction(internal.vimeo.actions.fetchVimeoVideos, args);
+    const cached = await ctx.runQuery(components.actionCache.lib.get, {
+      name: VIMEO_CACHE_NAME,
+      args,
+      ttl: VIMEO_CACHE_TTL,
+    });
+
+    if (cached?.kind === "hit") {
+      return cached.value;
+    }
+
+    const freshValue = await ctx.runAction(
+      internal.vimeo.actions.fetchVimeoVideos,
+      args,
+    );
+
+    await ctx.runMutation(components.actionCache.lib.put, {
+      name: VIMEO_CACHE_NAME,
+      args,
+      ttl: VIMEO_CACHE_TTL,
+      value: freshValue,
+      expiredEntry: cached?.expiredEntry,
+    });
+
+    return freshValue;
   },
 });

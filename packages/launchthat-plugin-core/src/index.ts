@@ -122,6 +122,34 @@ export type PluginMetaBoxRenderer = (
   props: PluginMetaBoxRendererProps,
 ) => ReactNode;
 
+export interface PluginMediaAttachment {
+  id: string;
+  url: string;
+  title?: string;
+  alt?: string;
+  mimeType?: string;
+  width?: number;
+  height?: number;
+}
+
+export interface PluginMediaEmbed {
+  url: string;
+  html?: string;
+  providerName?: string;
+  title?: string;
+  width?: number;
+  height?: number;
+  thumbnailUrl?: string;
+}
+
+export type PluginMediaSelection =
+  | { kind: "attachment"; attachment: PluginMediaAttachment }
+  | { kind: "embed"; embed: PluginMediaEmbed };
+
+export interface PluginMediaPickerContext {
+  onSelectMedia?: (selection: PluginMediaSelection) => void;
+}
+
 export interface PluginPostTypeConfig {
   name: string;
   slug: string;
@@ -179,6 +207,7 @@ export interface PluginSingleViewComponentProps {
   postId?: string;
   postTypeSlug: string;
   organizationId?: Id<"organizations">;
+  mediaPickerContext?: PluginMediaPickerContext;
 }
 
 export interface PluginSingleViewTabDefinition {

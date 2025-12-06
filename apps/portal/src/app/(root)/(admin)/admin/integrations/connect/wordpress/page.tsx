@@ -1,16 +1,6 @@
 "use client";
 
-import type { Doc } from "@/convex/_generated/dataModel";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-// Use absolute paths for Convex imports
-import { api } from "@/convex/_generated/api";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-
 import {
   Button,
   Card,
@@ -27,6 +17,16 @@ import {
   FormMessage,
   Input,
 } from "@acme/ui";
+import { useAction, useMutation, useQuery } from "convex/react";
+import { useEffect, useState } from "react";
+
+import type { Doc } from "@/convex/_generated/dataModel";
+// Use absolute paths for Convex imports
+import { api } from "@/convex/_generated/api";
+import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 // Connection form validation schema
 const formSchema = z.object({
@@ -101,8 +101,8 @@ export default function WordPressConnectionPage() {
   const currentUserId = "system"; // In production, get from auth context
 
   // Create connection mutation
-  const createConnection = useMutation(
-    api.integrations.connections.mutations.create,
+  const createConnection = useAction(
+    api.integrations.connections.actions.create,
   );
 
   const form = useForm<FormValues>({
@@ -349,7 +349,7 @@ export default function WordPressConnectionPage() {
               )}
 
               {debugInfo && (
-                <div className="whitespace-pre-line rounded border border-blue-200 bg-blue-50 px-4 py-3 text-blue-700">
+                <div className="rounded border border-blue-200 bg-blue-50 px-4 py-3 whitespace-pre-line text-blue-700">
                   <p className="font-bold">Debug Info:</p>
                   {debugInfo}
                 </div>

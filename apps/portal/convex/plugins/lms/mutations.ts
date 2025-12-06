@@ -1,8 +1,3 @@
-import { v } from "convex/values";
-
-import type { Id } from "../../_generated/dataModel";
-import type { MutationCtx } from "../../_generated/server";
-import { mutation } from "../../_generated/server";
 import {
   deletePostMetaValue,
   getPostMetaMap,
@@ -10,6 +5,12 @@ import {
   serializeCourseStructureMeta,
   setPostMetaValue,
 } from "./helpers";
+
+import type { Id } from "../../_generated/dataModel";
+import type { MutationCtx } from "../../_generated/server";
+import { internal } from "../../_generated/api";
+import { mutation } from "../../_generated/server";
+import { v } from "convex/values";
 
 const ensureCourseAndLesson = async (
   ctx: MutationCtx,
@@ -45,6 +46,60 @@ const getMetaString = (map: PostMetaMap, key: string): string | null => {
   return null;
 };
 
+const vimeoVideoInput = v.object({
+  videoId: v.string(),
+  title: v.string(),
+  description: v.optional(v.string()),
+  embedUrl: v.optional(v.string()),
+  thumbnailUrl: v.optional(v.string()),
+});
+
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "")
+    .slice(0, 48);
+
+const buildSlug = (prefix: string, videoTitle: string, videoId: string) => {
+  const base = slugify(videoTitle) || `${prefix}-video`;
+  return `${base}-${videoId.slice(-6)}`.toLowerCase();
+};
+
+const attachLessonToCourseInternal = async (
+  ctx: MutationCtx,
+  courseId: Id<"posts">,
+  lessonId: Id<"posts">,
+) => {
+  const { course } = await ensureCourseAndLesson(ctx, courseId, lessonId);
+
+  const courseMeta = await getPostMetaMap(ctx, course._id);
+  const structure = parseCourseStructureMeta(courseMeta.get("courseStructure"));
+  if (!structure.includes(lessonId)) {
+    structure.push(lessonId);
+    await setPostMetaValue(
+      ctx,
+      course._id,
+      "courseStructure",
+      serializeCourseStructureMeta(structure),
+    );
+  }
+
+  await setPostMetaValue(ctx, lessonId, "courseId", course._id);
+  await setPostMetaValue(
+    ctx,
+    lessonId,
+    "courseOrder",
+    structure.indexOf(lessonId),
+  );
+  await setPostMetaValue(
+    ctx,
+    lessonId,
+    "courseSlug",
+    course.slug ?? course._id,
+  );
+};
+
 export const addLessonToCourse = mutation({
   args: {
     courseId: v.id("posts"),
@@ -54,39 +109,7 @@ export const addLessonToCourse = mutation({
     success: v.boolean(),
   }),
   handler: async (ctx, args) => {
-    const { course } = await ensureCourseAndLesson(
-      ctx,
-      args.courseId,
-      args.lessonId,
-    );
-
-    const courseMeta = await getPostMetaMap(ctx, course._id);
-    const structure = parseCourseStructureMeta(
-      courseMeta.get("courseStructure"),
-    );
-    if (!structure.includes(args.lessonId)) {
-      structure.push(args.lessonId);
-      await setPostMetaValue(
-        ctx,
-        course._id,
-        "courseStructure",
-        serializeCourseStructureMeta(structure),
-      );
-    }
-
-    await setPostMetaValue(ctx, args.lessonId, "courseId", course._id);
-    await setPostMetaValue(
-      ctx,
-      args.lessonId,
-      "courseOrder",
-      structure.indexOf(args.lessonId),
-    );
-    await setPostMetaValue(
-      ctx,
-      args.lessonId,
-      "courseSlug",
-      course.slug ?? course._id,
-    );
+    await attachLessonToCourseInternal(ctx, args.courseId, args.lessonId);
     return { success: true };
   },
 });
@@ -259,6 +282,7 @@ export const attachQuizToLesson = mutation({
     quizId: v.id("posts"),
     order: v.optional(v.number()),
     isFinal: v.optional(v.boolean()),
+    topicId: v.optional(v.id("posts")),
   },
   returns: v.object({
     success: v.boolean(),
@@ -314,6 +338,9 @@ export const attachQuizToLesson = mutation({
     if (typeof args.isFinal === "boolean") {
       await setPostMetaValue(ctx, args.quizId, "isFinal", args.isFinal);
     }
+    if (args.topicId) {
+      await setPostMetaValue(ctx, args.quizId, "topicId", args.topicId);
+    }
     return { success: true };
   },
 });
@@ -332,5 +359,112 @@ export const removeQuizFromLesson = mutation({
     await deletePostMetaValue(ctx, args.quizId, "lessonSlug");
     await deletePostMetaValue(ctx, args.quizId, "courseSlug");
     return { success: true };
+  },
+});
+
+export const createLessonFromVimeo = mutation({
+  args: {
+    courseId: v.id("posts"),
+    organizationId: v.optional(v.id("organizations")),
+    video: vimeoVideoInput,
+  },
+  returns: v.object({
+    lessonId: v.id("posts"),
+  }),
+  handler: async (ctx, args) => {
+    const lessonId = await ctx.runMutation(
+      internal.core.posts.mutations.createPost,
+      {
+        title: args.video.title,
+        slug: buildSlug("lesson", args.video.title, args.video.videoId),
+        status: "draft",
+        postTypeSlug: "lessons",
+        organizationId: args.organizationId,
+        meta: {
+          vimeoVideoId: args.video.videoId,
+          vimeoEmbedUrl: args.video.embedUrl ?? "",
+          vimeoThumbnailUrl: args.video.thumbnailUrl ?? "",
+          source: "vimeo",
+        },
+      },
+    );
+    await attachLessonToCourseInternal(ctx, args.courseId, lessonId);
+    return { lessonId };
+  },
+});
+
+export const createTopicFromVimeo = mutation({
+  args: {
+    lessonId: v.id("posts"),
+    organizationId: v.optional(v.id("organizations")),
+    video: vimeoVideoInput,
+  },
+  returns: v.object({
+    topicId: v.id("posts"),
+  }),
+  handler: async (ctx, args) => {
+    const topicId = await ctx.runMutation(
+      internal.core.posts.mutations.createPost,
+      {
+        title: args.video.title,
+        slug: buildSlug("topic", args.video.title, args.video.videoId),
+        status: "draft",
+        postTypeSlug: "topics",
+        organizationId: args.organizationId,
+        meta: {
+          vimeoVideoId: args.video.videoId,
+          vimeoEmbedUrl: args.video.embedUrl ?? "",
+          vimeoThumbnailUrl: args.video.thumbnailUrl ?? "",
+          source: "vimeo",
+        },
+      },
+    );
+    await ctx.runMutation(internal.plugins.lms.mutations.attachTopicToLesson, {
+      lessonId: args.lessonId,
+      topicId,
+      order: 0,
+    });
+    return { topicId };
+  },
+});
+
+export const createQuizFromVimeo = mutation({
+  args: {
+    targetLessonId: v.optional(v.id("posts")),
+    targetTopicId: v.optional(v.id("posts")),
+    organizationId: v.optional(v.id("organizations")),
+    video: vimeoVideoInput,
+  },
+  returns: v.object({
+    quizId: v.id("posts"),
+  }),
+  handler: async (ctx, args) => {
+    if (!args.targetLessonId) {
+      throw new Error("targetLessonId is required when creating quizzes");
+    }
+    const quizId = await ctx.runMutation(
+      internal.core.posts.mutations.createPost,
+      {
+        title: args.video.title,
+        slug: buildSlug("quiz", args.video.title, args.video.videoId),
+        status: "draft",
+        postTypeSlug: "quizzes",
+        organizationId: args.organizationId,
+        meta: {
+          vimeoVideoId: args.video.videoId,
+          vimeoEmbedUrl: args.video.embedUrl ?? "",
+          vimeoThumbnailUrl: args.video.thumbnailUrl ?? "",
+          source: "vimeo",
+        },
+      },
+    );
+    await ctx.runMutation(internal.plugins.lms.mutations.attachQuizToLesson, {
+      lessonId: args.targetLessonId,
+      quizId,
+      order: 0,
+      isFinal: false,
+      topicId: args.targetTopicId,
+    });
+    return { quizId };
   },
 });

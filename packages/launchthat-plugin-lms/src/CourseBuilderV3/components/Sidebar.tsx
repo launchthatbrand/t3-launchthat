@@ -1,22 +1,24 @@
-import React from "react";
-
-import { DraggableItem } from "@acme/dnd";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@acme/ui/accordion";
-
-import type { SidebarItemRenderer } from "../types/callbacks";
 import type { LessonItem, QuizItem, TopicItem } from "../types/content";
+
+import { DraggableItem } from "@acme/dnd";
+import React from "react";
 import type { SidebarItem } from "../types/navigation";
+import type { SidebarItemRenderer } from "../types/callbacks";
+import type { VimeoVideoItem } from "../CourseBuilder";
 
 interface SidebarProps {
   availableLessons: LessonItem[];
   availableTopics: TopicItem[];
   availableQuizzes: QuizItem[];
   renderSidebarItem?: SidebarItemRenderer<SidebarItem>;
+  vimeoVideos?: VimeoVideoItem[];
+  isLoadingVimeoVideos?: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -24,7 +26,56 @@ const Sidebar: React.FC<SidebarProps> = ({
   availableTopics,
   availableQuizzes,
   renderSidebarItem,
+  vimeoVideos,
+  isLoadingVimeoVideos,
 }) => {
+  const renderVimeoSection = (
+    label: string,
+    baseType: "lesson" | "topic" | "quiz",
+    emptyLabel: string,
+  ) => {
+    if (!vimeoVideos || vimeoVideos.length === 0) {
+      if (isLoadingVimeoVideos) {
+        return (
+          <p className="text-muted-foreground mt-2 text-xs">
+            Loading Vimeo videos…
+          </p>
+        );
+      }
+      return <p className="text-muted-foreground mt-2 text-xs">{emptyLabel}</p>;
+    }
+
+    return (
+      <>
+        <p className="text-muted-foreground mt-3 mb-1 text-[11px] font-semibold tracking-wide uppercase">
+          {label}
+        </p>
+        {vimeoVideos.map((video) => (
+          <DraggableItem
+            key={`${baseType}-${video.videoId}`}
+            id={`${baseType}-vimeo-${video.videoId}`}
+            type={baseType}
+            className="bg-card mb-1 rounded border p-2 text-xs shadow-sm"
+            data={{
+              vimeoVideo: video,
+              fromVimeo: true,
+              vimeoContentType: baseType,
+              label: video.title,
+            }}
+          >
+            <span className="font-medium">{video.title}</span>
+            {video.description && (
+              <p className="text-muted-foreground mt-1 text-[11px]">
+                {video.description.slice(0, 60)}
+                {video.description.length > 60 ? "…" : ""}
+              </p>
+            )}
+          </DraggableItem>
+        ))}
+      </>
+    );
+  };
+
   return (
     <div className="bg-muted/10 w-64 flex-shrink-0 overflow-y-auto border-r p-4">
       <h2 className="mb-4 text-lg font-semibold">Available Items</h2>
@@ -70,6 +121,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </DraggableItem>
               ),
             )}
+            {renderVimeoSection("Vimeo videos", "lesson", "No Vimeo videos")}
           </AccordionContent>
         </AccordionItem>
 
@@ -104,6 +156,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </DraggableItem>
               ),
             )}
+            {renderVimeoSection("Vimeo videos", "topic", "No Vimeo videos")}
           </AccordionContent>
         </AccordionItem>
 
@@ -138,6 +191,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </DraggableItem>
               ),
             )}
+            {renderVimeoSection("Vimeo videos", "quiz", "No Vimeo videos")}
           </AccordionContent>
         </AccordionItem>
       </Accordion>

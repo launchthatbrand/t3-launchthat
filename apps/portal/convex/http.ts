@@ -1,20 +1,23 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-import { httpRouter } from "convex/server";
-
-import { api, internal } from "./_generated/api";
-import { httpAction } from "./_generated/server";
 import {
   createMediaFromWebhook,
   uploadMediaOptions,
   uploadMediaPost,
 } from "./core/media/http";
+
+import type { Id } from "./_generated/dataModel";
+import { httpAction } from "./_generated/server";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/require-await */
+import { httpRouter } from "convex/server";
+import { internal } from "./_generated/api";
 import { supportEmailInbound } from "./plugins/support/http";
+
+const internalAny = internal as Record<string, any>;
 
 /**
  * Request body structure expected by the createAuthNetTransaction endpoint.
  */
 interface CreateTransactionRequestBody {
-  opaqueData: {
+  opaqueData?: {
     dataDescriptor: string;
     dataValue: string;
   };
@@ -37,11 +40,40 @@ interface CreateTransactionRequestBody {
  * @returns {HeadersInit} Object containing CORS headers.
  */
 const createCorsHeaders = () => ({
-  // eslint-disable-next-line @typescript-eslint/no-restricted-imports, turbo/no-undeclared-env-vars -- CLIENT_ORIGIN is set in Convex dashboard, not turbo.json
+  // eslint-disable-next-line turbo/no-undeclared-env-vars -- CLIENT_ORIGIN is set in Convex dashboard, not turbo.json
   "Access-Control-Allow-Origin": process.env.CLIENT_ORIGIN ?? "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 });
+
+const defaultPortalOrigin =
+  process.env.CLIENT_ORIGIN ?? "http://localhost:3024";
+
+const sanitizeOrigin = (rawOrigin: string | null): string => {
+  if (!rawOrigin) return defaultPortalOrigin;
+  try {
+    const decoded = decodeURIComponent(rawOrigin);
+    const parsed = new URL(decoded);
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch {
+    return defaultPortalOrigin;
+  }
+};
+
+const buildPortalCallbackUrl = (origin: string) => {
+  const destination = new URL("/admin/media/settings", origin);
+  destination.searchParams.set("tab", "vimeo");
+  return destination;
+};
+
+const resolveVimeoClientId = () =>
+  // eslint-disable-next-line turbo/no-undeclared-env-vars
+  process.env.NEXT_PUBLIC_VIMEO_CLIENT_ID ??
+  // eslint-disable-next-line turbo/no-undeclared-env-vars
+  process.env.VIMEO_CLIENT_ID ??
+  "";
+
+const VIMEO_SCOPE = "public private video_files";
 
 /**
  * HTTP action handler for creating an Authorize.Net transaction.
@@ -89,7 +121,7 @@ const createAuthNetTransactionHttpAction = httpAction(async (ctx, request) => {
     // 2. Schedule the internal action (opaqueData is guaranteed to exist here)
     await ctx.scheduler.runAfter(
       0,
-      internal.actions.payments.internalCreateAuthNetTransaction,
+      internalAny.actions.payments.internalCreateAuthNetTransaction,
       {
         // Pass validated properties
         opaqueDataDescriptor: opaqueDataDescriptor,
@@ -136,12 +168,70 @@ const corsPreflight = httpAction(async () => {
   });
 });
 
+const startVimeoOAuth = httpAction(async (_, request) => {
+  const requestUrl = new URL(request.url);
+  const clientId = resolveVimeoClientId();
+  if (!clientId) {
+    return new Response(
+      JSON.stringify({ error: "Vimeo client credentials not configured" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+
+  const baseOrigin = sanitizeOrigin(requestUrl.searchParams.get("origin"));
+  const redirectUri = `${requestUrl.origin}/api/integrations/vimeo`;
+  const params = new URLSearchParams({
+    response_type: "code",
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    scope: VIMEO_SCOPE,
+    state: baseOrigin,
+  });
+
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: `https://api.vimeo.com/oauth/authorize?${params.toString()}`,
+    },
+  });
+});
+
+const relayVimeoOAuth = httpAction(async (_, request) => {
+  const requestUrl = new URL(request.url);
+  const code = requestUrl.searchParams.get("code");
+  const error = requestUrl.searchParams.get("error");
+  const errorDescription = requestUrl.searchParams.get("error_description");
+  const state = requestUrl.searchParams.get("state");
+
+  const baseOrigin = sanitizeOrigin(state);
+  const destination = buildPortalCallbackUrl(baseOrigin);
+
+  if (code) {
+    destination.searchParams.set("code", code);
+  }
+
+  if (error) {
+    destination.searchParams.set("error", error);
+    if (errorDescription) {
+      destination.searchParams.set("error_description", errorDescription);
+    }
+  }
+
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: destination.toString(),
+    },
+  });
+});
+
 http.route({
   path: "/healthz",
   method: "GET",
-  handler: httpAction(async () => {
-    return new Response("ok");
-  }),
+  handler: httpAction(async () => new Response("ok")),
 });
 
 http.route({
@@ -210,6 +300,18 @@ http.route({
   handler: createMediaFromWebhook,
 });
 
+http.route({
+  path: "/api/integrations/vimeo",
+  method: "GET",
+  handler: relayVimeoOAuth,
+});
+
+http.route({
+  path: "/api/integrations/vimeo/start",
+  method: "GET",
+  handler: startVimeoOAuth,
+});
+
 // Webhook endpoint removed - was dependent on apps system which has been removed
 // New webhook system will be implemented based on node types and connections
 
@@ -219,23 +321,25 @@ http.route({
 http.route({
   path: "/health",
   method: "GET",
-  handler: httpAction(async (ctx, request) => {
+  handler: httpAction(async (ctx) => {
     try {
       // Basic health checks
       const startTime = Date.now();
 
       // Test database connectivity by running a simple query
       const dbCheck = await ctx.runQuery(
-        internal.integrations.scenarios.queries.getScenarios,
+        internalAny.integrations.scenarios.queries.getScenarios,
         { limit: 1 },
       );
 
       const responseTime = Date.now() - startTime;
 
       // Get system stats
+      const uptime =
+        typeof process.uptime === "function" ? process.uptime() : "unknown";
       const stats = {
         timestamp: Date.now(),
-        uptime: process.uptime ? process.uptime() : "unknown",
+        uptime,
         responseTime,
         version: "1.0.0",
       };
@@ -277,13 +381,13 @@ http.route({
 http.route({
   path: "/system/info",
   method: "GET",
-  handler: httpAction(async (ctx, request) => {
+  handler: httpAction(async () => {
     try {
       // Get system information
       const info = {
         version: "1.0.0",
         timestamp: Date.now(),
-        environment: process.env.NODE_ENV || "unknown",
+        environment: process.env.NODE_ENV ?? "unknown",
         endpoints: [
           {
             path: "/webhook/:appKey",
@@ -340,7 +444,7 @@ http.route({
       // Parse payload
       let payload = {};
       try {
-        const contentType = request.headers.get("content-type") || "";
+        const contentType = request.headers.get("content-type") ?? "";
         if (contentType.includes("application/json")) {
           payload = await request.json();
         } else {
@@ -349,15 +453,15 @@ http.route({
             payload = { data: text };
           }
         }
-      } catch (error) {
+      } catch (_error) {
         payload = {};
       }
 
       // Trigger the scenario manually
       const result = await ctx.runAction(
-        internal.integrations.webhooks.handler.triggerScenarioManually,
+        internalAny.integrations.webhooks.handler.triggerScenarioManually,
         {
-          scenarioId: scenarioId as any, // Type assertion for ID
+          scenarioId: scenarioId as Id<"scenarios">,
           payload,
         },
       );

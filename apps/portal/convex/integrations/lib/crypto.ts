@@ -12,18 +12,16 @@ const IV_BYTES = 12;
 const TAG_BYTES = 16;
 
 function getKey(): Buffer {
-  const keyB64 = process.env.INTEGRATIONS_SECRET_KEY;
+  const keyB64 = process.env.SECRETS_ENCRYPTION_KEY;
   if (!keyB64) {
     throw new Error(
-      "Missing INTEGRATIONS_SECRET_KEY env var for secrets encryption",
+      "Missing SECRETS_ENCRYPTION_KEY env var for secrets encryption",
     );
   }
   // Expect base64 for flexibility
   const key = Buffer.from(keyB64, "base64");
   if (key.length !== 32) {
-    throw new Error(
-      "INTEGRATIONS_SECRET_KEY must be 32 bytes (base64-encoded)",
-    );
+    throw new Error("SECRETS_ENCRYPTION_KEY must be 32 bytes (base64-encoded)");
   }
   return key;
 }

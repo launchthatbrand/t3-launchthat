@@ -1,16 +1,5 @@
 "use client";
 
-import type { Id } from "@/convex/_generated/dataModel";
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-// Import Convex functions
-import { api } from "@/convex/_generated/api";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, Check, Loader2, Trash2 } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +26,17 @@ import {
   FormMessage,
   Input,
 } from "@acme/ui";
+import { ArrowLeft, Check, Loader2, Trash2 } from "lucide-react";
+import { useAction, useMutation, useQuery } from "convex/react";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+
+import type { Id } from "@/convex/_generated/dataModel";
+// Import Convex functions
+import { api } from "@/convex/_generated/api";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 // Base fields common to all connections
 const baseSchema = {
@@ -100,8 +100,8 @@ export default function ConnectionDetailPage() {
   const currentApp = apps.find((a) => a._id === connection?.appId);
 
   // Mutations
-  const updateConnection = useMutation(
-    api.integrations.connections.mutations.update,
+  const updateConnection = useAction(
+    api.integrations.connections.actions.update,
   );
   const testConnection = useMutation(
     api.integrations.connections.mutations.test,
@@ -289,7 +289,7 @@ export default function ConnectionDetailPage() {
     return (
       <div className="container mx-auto py-10 text-center">
         <h2 className="text-2xl font-bold">Connection not found</h2>
-        <p className="mt-2 text-muted-foreground">
+        <p className="text-muted-foreground mt-2">
           The connection you are looking for doesn't exist or you don't have
           permission to view it.
         </p>
@@ -459,7 +459,7 @@ export default function ConnectionDetailPage() {
               )}
 
               {debugInfo && (
-                <div className="whitespace-pre-line rounded border border-blue-200 bg-blue-50 px-4 py-3 text-blue-700">
+                <div className="rounded border border-blue-200 bg-blue-50 px-4 py-3 whitespace-pre-line text-blue-700">
                   <p className="font-bold">Debug Info:</p>
                   {debugInfo}
                 </div>
@@ -509,7 +509,7 @@ export default function ConnectionDetailPage() {
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="border-t bg-muted/50 px-6 py-4">
+        <CardFooter className="bg-muted/50 border-t px-6 py-4">
           <div className="flex w-full justify-between text-sm">
             <div>
               <p className="font-medium">Connection Status</p>
@@ -528,7 +528,7 @@ export default function ConnectionDetailPage() {
             </div>
             <div>
               <p className="font-medium">Last Checked</p>
-              <p className="mt-1 text-muted-foreground">
+              <p className="text-muted-foreground mt-1">
                 {connection.lastCheckedAt
                   ? new Date(connection.lastCheckedAt).toLocaleString()
                   : "Never"}
@@ -536,7 +536,7 @@ export default function ConnectionDetailPage() {
             </div>
             <div>
               <p className="font-medium">Created</p>
-              <p className="mt-1 text-muted-foreground">
+              <p className="text-muted-foreground mt-1">
                 {new Date(connection.createdAt).toLocaleString()}
               </p>
             </div>

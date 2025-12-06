@@ -1,42 +1,45 @@
-'use client'
+"use client";
 
+import type { Id } from "@/convex/_generated/dataModel";
 import {
   InitialConfigType,
   LexicalComposer,
-} from '@lexical/react/LexicalComposer'
-import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
-import { EditorState, SerializedEditorState } from 'lexical'
+} from "@lexical/react/LexicalComposer";
+import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
+import { EditorState, SerializedEditorState } from "lexical";
 
-import { FloatingLinkContext } from '~/components/editor/context/floating-link-context'
-import { SharedAutocompleteContext } from '~/components/editor/context/shared-autocomplete-context'
-import { editorTheme } from '~/components/editor/themes/editor-theme'
-import { TooltipProvider } from '@acme/ui/tooltip'
+import { TooltipProvider } from "@acme/ui/tooltip";
 
-import { nodes } from './nodes'
-import { Plugins } from './plugins'
+import { FloatingLinkContext } from "~/components/editor/context/floating-link-context";
+import { SharedAutocompleteContext } from "~/components/editor/context/shared-autocomplete-context";
+import { editorTheme } from "~/components/editor/themes/editor-theme";
+import { nodes } from "./nodes";
+import { Plugins } from "./plugins";
 
 const editorConfig: InitialConfigType = {
-  namespace: 'Editor',
+  namespace: "Editor",
   theme: editorTheme,
   nodes,
   onError: (error: Error) => {
-    console.error(error)
+    console.error(error);
   },
-}
+};
 
 export function Editor({
   editorState,
   editorSerializedState,
   onChange,
   onSerializedChange,
+  organizationId,
 }: {
-  editorState?: EditorState
-  editorSerializedState?: SerializedEditorState
-  onChange?: (editorState: EditorState) => void
-  onSerializedChange?: (editorSerializedState: SerializedEditorState) => void
+  editorState?: EditorState;
+  editorSerializedState?: SerializedEditorState;
+  onChange?: (editorState: EditorState) => void;
+  onSerializedChange?: (editorSerializedState: SerializedEditorState) => void;
+  organizationId?: Id<"organizations">;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border bg-background shadow">
+    <div className="bg-background overflow-hidden rounded-lg border shadow">
       <LexicalComposer
         initialConfig={{
           ...editorConfig,
@@ -49,13 +52,13 @@ export function Editor({
         <TooltipProvider>
           <SharedAutocompleteContext>
             <FloatingLinkContext>
-              <Plugins />
+              <Plugins organizationId={organizationId} />
 
               <OnChangePlugin
                 ignoreSelectionChange={true}
                 onChange={(editorState) => {
-                  onChange?.(editorState)
-                  onSerializedChange?.(editorState.toJSON())
+                  onChange?.(editorState);
+                  onSerializedChange?.(editorState.toJSON());
                 }}
               />
             </FloatingLinkContext>
@@ -63,5 +66,5 @@ export function Editor({
         </TooltipProvider>
       </LexicalComposer>
     </div>
-  )
+  );
 }

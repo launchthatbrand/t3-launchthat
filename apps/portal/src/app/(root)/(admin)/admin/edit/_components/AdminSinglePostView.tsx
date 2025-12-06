@@ -1,36 +1,41 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { SerializedEditorState } from "lexical";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { api } from "@/convex/_generated/api";
+import {
+  generateSlugFromTitle,
+  useCreatePost,
+  useUpdatePost,
+} from "@/lib/blog";
+import { useQuery } from "convex/react";
+import { formatDistanceToNow } from "date-fns";
+import {
+  ArrowLeft,
+  Copy,
+  ExternalLink,
+  Loader2,
+  Pencil,
+  PenSquare,
+  Save,
+  Sparkles,
+} from "lucide-react";
+
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@acme/ui/accordion";
-import {
-  AdminLayout,
-  AdminLayoutContent,
-  AdminLayoutHeader,
-  AdminLayoutMain,
-  AdminLayoutSidebar,
-} from "~/components/admin/AdminLayout";
-import {
-  ArrowLeft,
-  Copy,
-  ExternalLink,
-  Loader2,
-  PenSquare,
-  Pencil,
-  Save,
-  Sparkles,
-} from "lucide-react";
+import { Button } from "@acme/ui/button";
 import { Card, CardContent } from "@acme/ui/card";
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import type {
-  PluginMetaBoxRendererProps,
-  PluginPostSingleViewConfig,
-  PluginSingleViewTabDefinition,
-} from "~/lib/plugins/types";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -38,42 +43,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
+import { Switch } from "@acme/ui/switch";
+import { Textarea } from "@acme/ui/textarea";
+
+import type { PluginSingleViewInstance } from "~/lib/plugins/helpers";
+import type {
+  PluginMetaBoxRendererProps,
+  PluginPostSingleViewConfig,
+  PluginSingleViewTabDefinition,
+} from "~/lib/plugins/types";
+import {
+  AdminLayout,
+  AdminLayoutContent,
+  AdminLayoutHeader,
+  AdminLayoutMain,
+  AdminLayoutSidebar,
+} from "~/components/admin/AdminLayout";
+import { Editor } from "~/components/blocks/editor-x/editor";
 import {
   createLexicalStateFromPlainText,
   parseLexicalSerializedState,
 } from "~/lib/editor/lexical";
-import {
-  generateSlugFromTitle,
-  useCreatePost,
-  useUpdatePost,
-} from "@/lib/blog";
+import { findPostTypeBySlug } from "~/lib/plugins/frontend";
 import {
   getFrontendProvidersForPostType,
   wrapWithFrontendProviders,
 } from "~/lib/plugins/frontendProviders";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-
-import { Button } from "@acme/ui/button";
-import { Editor } from "~/components/blocks/editor-x/editor";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import Link from "next/link";
-import { PlaceholderState } from "./PlaceholderState";
-import type { ReactNode } from "react";
-import type { SerializedEditorState } from "lexical";
-import { Switch } from "@acme/ui/switch";
-import { Textarea } from "@acme/ui/textarea";
-import { api } from "@/convex/_generated/api";
-import { findPostTypeBySlug } from "~/lib/plugins/frontend";
-import { formatDistanceToNow } from "date-fns";
-import { getCanonicalPostPath } from "~/lib/postTypes/routing";
-import { getFrontendBaseUrl } from "./permalink";
-import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
+import { getCanonicalPostPath } from "~/lib/postTypes/routing";
+import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
 import { useMetaBoxState } from "../_state/useMetaBoxState";
 import { usePostTypeFields } from "../../settings/post-types/_api/postTypes";
-import { useQuery } from "convex/react";
+import { getFrontendBaseUrl } from "./permalink";
+import { PlaceholderState } from "./PlaceholderState";
 
 type CustomFieldValue = string | number | boolean | null;
 
@@ -200,12 +202,6 @@ const deriveSystemFieldValue = (
       return "";
   }
 };
-
-export interface PluginSingleViewInstance {
-  pluginId: string;
-  pluginName: string;
-  config: PluginPostSingleViewConfig;
-}
 
 export interface AdminSinglePostViewProps {
   post?: Doc<"posts"> | null;
@@ -1247,6 +1243,7 @@ export function AdminSinglePostView({
                 onSerializedChange={(state) => {
                   setContent(JSON.stringify(state));
                 }}
+                organizationId={organizationId}
               />
             </div>
             <div className="space-y-2">

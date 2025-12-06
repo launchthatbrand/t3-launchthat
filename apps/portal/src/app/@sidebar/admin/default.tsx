@@ -66,6 +66,9 @@ const canAccessPostType = (
   const enabledIds = postType.enabledOrganizationIds;
   if (enabledIds !== undefined) {
     if (enabledIds.length === 0) {
+      if (postType.isBuiltIn && postType.organizationId === undefined) {
+        return true;
+      }
       return false;
     }
     return enabledIds.includes(organizationId);
@@ -124,14 +127,14 @@ export default function DefaultSidebar() {
     }[];
   }, [taxonomiesQuery.data]);
 
-  const resolveIcon = (iconName?: string) => {
+  const resolveIcon = useCallback((iconName?: string) => {
     if (!iconName) return BookOpen;
     const Icon = LucideIcons[iconName as keyof typeof LucideIcons];
     if (!Icon) {
       return BookOpen;
     }
     return Icon as typeof BookOpen;
-  };
+  }, []);
 
   const normalizedTaxonomies = useMemo<TaxonomyNavDefinition[]>(() => {
     const list: TaxonomyNavDefinition[] = taxonomyDefs.map((taxonomy) => ({
@@ -297,11 +300,20 @@ export default function DefaultSidebar() {
         group = "tasks";
       }
 
+      let combinedItems = childItems;
+      if (type.slug === "attachments") {
+        const mediaSettingsChild: NavChildItem = {
+          title: "Settings",
+          url: "/admin/media/settings",
+        };
+        combinedItems = [...(combinedItems ?? []), mediaSettingsChild];
+      }
+
       return {
         title: type.adminMenu?.label ?? type.name,
         url,
         icon: IconComponent,
-        items: childItems,
+        items: combinedItems,
         group,
         postTypeSlug: type.slug,
       };

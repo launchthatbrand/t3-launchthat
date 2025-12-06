@@ -1,5 +1,9 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
+
 import { VimeoLibrary } from "./admin/VimeoLibrary";
+import { configureVimeoPlugin } from "./config";
+
+export { configureVimeoPlugin };
 
 export const vimeoPlugin: PluginDefinition = {
   id: "vimeo",
@@ -49,7 +53,12 @@ export const vimeoPlugin: PluginDefinition = {
             label: "Vimeo",
             description:
               "Browse the mock Vimeo library (replace with Vimeo API data later).",
-            render: () => <VimeoLibrary />,
+            render: ({ organizationId, mediaPickerContext }) => (
+              <VimeoLibrary
+                organizationId={organizationId}
+                pickerContext={mediaPickerContext}
+              />
+            ),
           },
         ],
       },
@@ -58,7 +67,7 @@ export const vimeoPlugin: PluginDefinition = {
   activation: {
     optionKey: "plugin_vimeo_enabled",
     optionType: "site",
-    defaultEnabled: true,
+    defaultEnabled: false,
   },
   adminMenus: [
     {

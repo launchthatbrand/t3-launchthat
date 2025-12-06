@@ -30,6 +30,14 @@ const matchesOrganizationId = (
   stored === requested ||
   (stored === PORTAL_TENANT_SLUG && requested === PORTAL_TENANT_ID);
 
+const isGlobalBuiltIn = (type: {
+  isBuiltIn: boolean;
+  organizationId?: Id<"organizations"> | typeof PORTAL_TENANT_SLUG;
+}) =>
+  type.isBuiltIn &&
+  (type.organizationId === undefined ||
+    type.organizationId === PORTAL_TENANT_SLUG);
+
 /**
  * List all content types
  */
@@ -58,7 +66,7 @@ export const list = query({
       createdAt: v.number(),
       updatedAt: v.optional(v.number()),
       createdBy: v.optional(v.id("users")),
-      organizationId: v.optional(v.id("organizations")),
+      organizationId: v.optional(enabledOrgIdValidator),
       enabledOrganizationIds: v.optional(v.array(enabledOrgIdValidator)),
       storageKind: v.optional(postTypeStorageKindValidator),
       storageTables: v.optional(postTypeStorageTablesValidator),
@@ -75,18 +83,42 @@ export const list = query({
           type.organizationId &&
           !matchesOrganizationId(type.organizationId, organizationId)
         ) {
+          console.info("[postTypes:list] skipping due to org mismatch", {
+            slug: type.slug,
+            typeOrganizationId: type.organizationId,
+            requestedOrganizationId: organizationId,
+          });
           return false;
         }
 
         if (type.enabledOrganizationIds) {
+          const builtInBypass = isGlobalBuiltIn(type);
           if (type.enabledOrganizationIds.length === 0) {
-            return false;
-          }
-          const isEnabled = type.enabledOrganizationIds.some((candidate) =>
-            matchesOrganizationId(candidate, organizationId),
-          );
-          if (!isEnabled) {
-            return false;
+            if (!builtInBypass) {
+              console.info(
+                "[postTypes:list] skipping due to empty enabledOrganizationIds",
+                {
+                  slug: type.slug,
+                  requestedOrganizationId: organizationId,
+                },
+              );
+              return false;
+            }
+          } else {
+            const isEnabled = type.enabledOrganizationIds.some((candidate) =>
+              matchesOrganizationId(candidate, organizationId),
+            );
+            if (!isEnabled && !builtInBypass) {
+              console.info(
+                "[postTypes:list] skipping because org not enabled for type",
+                {
+                  slug: type.slug,
+                  enabledOrganizationIds: type.enabledOrganizationIds,
+                  requestedOrganizationId: organizationId,
+                },
+              );
+              return false;
+            }
           }
         }
       }
@@ -130,7 +162,7 @@ export const get = query({
       createdAt: v.number(),
       updatedAt: v.optional(v.number()),
       createdBy: v.optional(v.id("users")),
-      organizationId: v.optional(v.id("organizations")),
+      organizationId: v.optional(enabledOrgIdValidator),
       enabledOrganizationIds: v.optional(v.array(enabledOrgIdValidator)),
       storageKind: v.optional(postTypeStorageKindValidator),
       storageTables: v.optional(postTypeStorageTablesValidator),
@@ -152,13 +184,18 @@ export const get = query({
       return null;
     }
 
-    if (
-      args.organizationId &&
-      postType.enabledOrganizationIds &&
-      (!postType.enabledOrganizationIds.includes(args.organizationId) ||
-        postType.enabledOrganizationIds.length === 0)
-    ) {
-      return null;
+    if (args.organizationId && postType.enabledOrganizationIds) {
+      const builtInBypass = isGlobalBuiltIn(postType);
+      if (postType.enabledOrganizationIds.length === 0 && !builtInBypass) {
+        return null;
+      }
+      if (
+        postType.enabledOrganizationIds.length > 0 &&
+        !postType.enabledOrganizationIds.includes(args.organizationId) &&
+        !builtInBypass
+      ) {
+        return null;
+      }
     }
 
     return postType;
@@ -193,7 +230,7 @@ export const getBySlug = query({
       createdAt: v.number(),
       updatedAt: v.optional(v.number()),
       createdBy: v.optional(v.id("users")),
-      organizationId: v.optional(v.id("organizations")),
+      organizationId: v.optional(enabledOrgIdValidator),
       enabledOrganizationIds: v.optional(v.array(enabledOrgIdValidator)),
       storageKind: v.optional(postTypeStorageKindValidator),
       storageTables: v.optional(postTypeStorageTablesValidator),
@@ -212,10 +249,19 @@ export const getBySlug = query({
       postType &&
       args.organizationId &&
       postType.enabledOrganizationIds &&
-      !postType.enabledOrganizationIds.includes(args.organizationId) &&
       postType.organizationId !== args.organizationId
     ) {
-      return null;
+      const builtInBypass = isGlobalBuiltIn(postType);
+      if (postType.enabledOrganizationIds.length === 0 && !builtInBypass) {
+        return null;
+      }
+      if (
+        postType.enabledOrganizationIds.length > 0 &&
+        !postType.enabledOrganizationIds.includes(args.organizationId) &&
+        !builtInBypass
+      ) {
+        return null;
+      }
     }
 
     return postType;
@@ -266,10 +312,19 @@ export const fieldsBySlug = query({
     if (
       args.organizationId &&
       postType.enabledOrganizationIds &&
-      !postType.enabledOrganizationIds.includes(args.organizationId) &&
       postType.organizationId !== args.organizationId
     ) {
-      return [];
+      const builtInBypass = isGlobalBuiltIn(postType);
+      if (postType.enabledOrganizationIds.length === 0 && !builtInBypass) {
+        return [];
+      }
+      if (
+        postType.enabledOrganizationIds.length > 0 &&
+        !postType.enabledOrganizationIds.includes(args.organizationId) &&
+        !builtInBypass
+      ) {
+        return [];
+      }
     }
 
     const includeSystem = args.includeSystem ?? true;

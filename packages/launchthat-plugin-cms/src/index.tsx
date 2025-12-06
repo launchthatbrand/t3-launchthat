@@ -20,11 +20,32 @@ const createCmsPluginDefinition = (
     "Admin create/edit/delete flows backed by Convex contacts table",
     "Import/export utilities for external sources",
   ],
-  postTypes: [],
+  postTypes: [
+    {
+      name: "Contacts",
+      slug: "contact",
+      description: "CRM contacts managed by the built-in CRM plugin.",
+      isPublic: false,
+      supports: {
+        title: true,
+        customFields: true,
+      },
+      rewrite: {
+        hasArchive: false,
+        singleSlug: "contact",
+      },
+      adminMenu: {
+        enabled: false,
+      },
+      storageKind: "custom",
+      storageTables: ["contacts", "contact_meta"],
+      includeTimestamps: true,
+    },
+  ],
   activation: {
     optionKey: "plugin_cms_enabled",
     optionType: "site",
-    defaultEnabled: true,
+    defaultEnabled: false,
   },
   adminMenus: options.adminMenus ?? [
     {

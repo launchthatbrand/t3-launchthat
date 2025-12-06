@@ -1,3 +1,4 @@
+import type { Id } from "@/convex/_generated/dataModel";
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import {
@@ -20,6 +21,8 @@ import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPl
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { TabIndentationPlugin } from "@lexical/react/LexicalTabIndentationPlugin";
 import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
+
+import { Separator } from "@acme/ui/separator";
 
 import { ContentEditable } from "~/components/editor/editor-ui/content-editable";
 import { ActionsPlugin } from "~/components/editor/plugins/actions/actions-plugin";
@@ -104,6 +107,7 @@ import { InsertExcalidraw } from "~/components/editor/plugins/toolbar/block-inse
 import { InsertHorizontalRule } from "~/components/editor/plugins/toolbar/block-insert/insert-horizontal-rule";
 import { InsertImage } from "~/components/editor/plugins/toolbar/block-insert/insert-image";
 import { InsertInlineImage } from "~/components/editor/plugins/toolbar/block-insert/insert-inline-image";
+import { InsertMedia } from "~/components/editor/plugins/toolbar/block-insert/insert-media";
 import { InsertMermaid } from "~/components/editor/plugins/toolbar/block-insert/insert-mermaid";
 import { InsertPageBreak } from "~/components/editor/plugins/toolbar/block-insert/insert-page-break";
 import { InsertPoll } from "~/components/editor/plugins/toolbar/block-insert/insert-poll";
@@ -127,7 +131,6 @@ import { HR } from "~/components/editor/transformers/markdown-hr-transformer";
 import { IMAGE } from "~/components/editor/transformers/markdown-image-transformer";
 import { TABLE } from "~/components/editor/transformers/markdown-table-transformer";
 import { TWEET } from "~/components/editor/transformers/markdown-tweet-transformer";
-import { Separator } from "@acme/ui/separator";
 
 const SpeechToTextPlugin = dynamic(
   () =>
@@ -140,7 +143,11 @@ const SpeechToTextPlugin = dynamic(
 export const placeholder = "Press / for commands...";
 const maxLength = 15000;
 
-export function Plugins() {
+export function Plugins({
+  organizationId,
+}: {
+  organizationId?: Id<"organizations">;
+}) {
   const [floatingAnchorElem, setFloatingAnchorElem] =
     useState<HTMLDivElement | null>(null);
 
@@ -198,6 +205,7 @@ export function Plugins() {
                 <ElementFormatToolbarPlugin />
                 <Separator orientation="vertical" className="h-8" />
                 <BlockInsertPlugin>
+                  <InsertMedia organizationId={organizationId} />
                   <InsertHorizontalRule />
                   <InsertPageBreak />
                   <InsertImage />

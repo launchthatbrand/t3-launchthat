@@ -1,29 +1,5 @@
-import { v } from "convex/values";
-
-import { internal } from "../../_generated/api";
 import { mutation } from "../../_generated/server";
-
-// Define types for the update fields
-interface UpdateFields {
-  name?: string;
-  // deprecated; keep for legacy writes only
-  credentials?: string;
-  status?: string;
-  config?: string;
-  lastError?: string;
-  lastCheckedAt?: number;
-  updatedAt: number;
-  metadata?: {
-    lastUsed?: number;
-    errorMessage?: string;
-    maskedCredentials?: Record<string, string>;
-  };
-  secrets?: {
-    credentials?: Record<string, string>;
-    ciphertext?: ArrayBuffer;
-    expiresAt?: number;
-  };
-}
+import { v } from "convex/values";
 
 /**
  * Create a new connection for an integration node type
@@ -39,29 +15,30 @@ export const create = mutation({
     status: v.optional(v.string()),
   },
   returns: v.id("connections"),
-  handler: async (ctx, args) => {
-    if (typeof args.ownerId !== "string") {
-      const owner = await ctx.db.get(args.ownerId);
-      if (!owner) {
-        throw new Error(`User with ID ${String(args.ownerId)} not found`);
-      }
-    }
+  handler: () => {
+    throw new Error(
+      "This mutation is deprecated. Use connections.actions.create instead.",
+    );
+  },
+});
 
-    const now = Date.now();
-
-    // Create the connection with encrypted secrets via internal action
-    return await ctx.runMutation(
-      internal.integrations.connections.internalConnections
-        .createWithEncryptedSecrets,
-      {
-        nodeType: args.nodeType,
-        name: args.name,
-        credentials: args.credentials,
-        config: args.config,
-        ownerId: args.ownerId,
-        status: args.status ?? "active",
-        createdAt: now,
-      },
+/**
+ * Create or update a connection for a given owner/node combination.
+ * This prevents duplicate connections per tenant/org.
+ */
+export const upsertForOwner = mutation({
+  args: {
+    nodeType: v.string(),
+    name: v.string(),
+    credentials: v.string(),
+    ownerId: v.union(v.id("users"), v.string()),
+    config: v.optional(v.string()),
+    status: v.optional(v.string()),
+  },
+  returns: v.id("connections"),
+  handler: () => {
+    throw new Error(
+      "This mutation is deprecated. Use connections.actions.upsertForOwner instead.",
     );
   },
 });
@@ -78,36 +55,10 @@ export const update = mutation({
     config: v.optional(v.string()),
   },
   returns: v.boolean(),
-  handler: async (ctx, args) => {
-    // Verify the connection exists
-    const connection = await ctx.db.get(args.id);
-    if (!connection) {
-      throw new Error(`Connection with ID ${args.id} not found`);
-    }
-
-    const now = Date.now();
-    const updatedFields: UpdateFields = { updatedAt: now };
-
-    if (args.name !== undefined) updatedFields.name = args.name;
-    if (args.status !== undefined) updatedFields.status = args.status;
-    if (args.config !== undefined) updatedFields.config = args.config;
-
-    // If rotating credentials via update, use internal action for encryption
-    if (args.credentials !== undefined) {
-      await ctx.runMutation(
-        internal.integrations.connections.internalConnections
-          .rotateEncryptedSecrets,
-        {
-          connectionId: args.id,
-          newCredentials: { token: args.credentials },
-        },
-      );
-    } else {
-      // Update non-secret fields directly
-      await ctx.db.patch(args.id, updatedFields);
-    }
-
-    return true;
+  handler: () => {
+    throw new Error(
+      "This mutation is deprecated. Use connections.actions.update instead.",
+    );
   },
 });
 

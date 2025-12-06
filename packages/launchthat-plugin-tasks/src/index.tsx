@@ -14,7 +14,7 @@ export const tasksPlugin: PluginDefinition = {
   activation: {
     optionKey: "plugin_tasks_enabled",
     optionType: "site",
-    defaultEnabled: true,
+    defaultEnabled: false,
   },
   postTypes: [],
   adminMenus: [

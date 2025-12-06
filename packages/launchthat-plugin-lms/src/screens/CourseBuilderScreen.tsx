@@ -1,12 +1,5 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
-import { api } from "@portal/convexspec";
-import { useMutation, useQuery } from "convex/react";
-
-import { toast } from "@acme/ui/toast";
-
-import type { Id } from "../lib/convexId";
 import type {
   LmsBuilderLesson,
   LmsBuilderQuiz,
@@ -14,12 +7,21 @@ import type {
   LmsCourseBuilderData,
   LmsCourseStructureItem,
 } from "../types";
+import { useAction, useMutation, useQuery } from "convex/react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
 import { CourseBuilder } from "../CourseBuilderV3";
+import type { Id } from "../lib/convexId";
+import type { VimeoVideoItem } from "../CourseBuilderV3/CourseBuilder";
+import { api } from "@portal/convexspec";
+import { toast } from "@acme/ui/toast";
 
 interface CourseBuilderScreenProps {
   courseId?: Id<"posts">;
   organizationId?: Id<"organizations">;
 }
+
+interface NormalizedVimeoVideo extends VimeoVideoItem {}
 
 const sortByOrder = (
   a: { order?: number | null },
@@ -30,6 +32,10 @@ export const CourseBuilderScreen = ({
   courseId,
   organizationId,
 }: CourseBuilderScreenProps) => {
+  const [vimeoVideos, setVimeoVideos] = useState<NormalizedVimeoVideo[]>([]);
+  const [isLoadingVimeoVideos, setIsLoadingVimeoVideos] = useState(false);
+  const [hasAttemptedVimeoFetch, setHasAttemptedVimeoFetch] = useState(false);
+
   const courseData = useQuery(
     api.plugins.lms.queries.getCourseStructureWithItems,
     courseId
@@ -101,6 +107,30 @@ export const CourseBuilderScreen = ({
   );
   const removeQuizFromLesson = useMutation(
     api.plugins.lms.mutations.removeQuizFromLesson,
+  );
+  const createLessonFromVimeo = useMutation(
+    api.plugins.lms.mutations.createLessonFromVimeo,
+  );
+  const createTopicFromVimeo = useMutation(
+    api.plugins.lms.mutations.createTopicFromVimeo,
+  );
+  const createQuizFromVimeo = useMutation(
+    api.plugins.lms.mutations.createQuizFromVimeo,
+  );
+  const fetchVimeoVideos = useAction(api.vimeo.actions.getCachedVimeoVideos);
+  const vimeoEnabledOption = useQuery(
+    api.core.options.get,
+    organizationId
+      ? ({
+          metaKey: "plugin_vimeo_enabled",
+          type: "site",
+          orgId: organizationId,
+        } as {
+          metaKey: string;
+          type: "site";
+          orgId: Id<"organizations">;
+        })
+      : "skip",
   );
 
   const builderInitialState = useMemo(() => {
@@ -387,6 +417,120 @@ export const CourseBuilderScreen = ({
     [removeQuizFromLesson],
   );
 
+  const handleCreateLessonFromVimeo = useCallback(
+    async (video: VimeoVideoItem) => {
+      if (!courseId || !organizationId) return;
+      try {
+        await createLessonFromVimeo({
+          courseId: courseId as Id<"posts">,
+          organizationId: organizationId as Id<"organizations">,
+          video,
+        });
+        toast.success("Lesson created from Vimeo video.");
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to create lesson from Vimeo video.");
+      }
+    },
+    [courseId, createLessonFromVimeo, organizationId],
+  );
+
+  const handleCreateTopicFromVimeo = useCallback(
+    async (lessonId: string, video: VimeoVideoItem) => {
+      if (!organizationId) return;
+      try {
+        await createTopicFromVimeo({
+          lessonId: lessonId as Id<"posts">,
+          organizationId: organizationId as Id<"organizations">,
+          video,
+        });
+        toast.success("Topic created from Vimeo video.");
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to create topic from Vimeo video.");
+      }
+    },
+    [createTopicFromVimeo, organizationId],
+  );
+
+  const handleCreateQuizFromVimeo = useCallback(
+    async (
+      context: { lessonId?: string; topicId?: string },
+      video: VimeoVideoItem,
+    ) => {
+      if (!organizationId) return;
+      try {
+        await createQuizFromVimeo({
+          targetLessonId: context.lessonId
+            ? (context.lessonId as Id<"posts">)
+            : undefined,
+          targetTopicId: context.topicId
+            ? (context.topicId as Id<"posts">)
+            : undefined,
+          organizationId: organizationId as Id<"organizations">,
+          video,
+        });
+        toast.success("Quiz created from Vimeo video.");
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to create quiz from Vimeo video.");
+      }
+    },
+    [createQuizFromVimeo, organizationId],
+  );
+
+  const isVimeoEnabled = Boolean(vimeoEnabledOption?.metaValue);
+
+  useEffect(() => {
+    const shouldLoadVimeo = isVimeoEnabled && Boolean(organizationId);
+    if (!shouldLoadVimeo || hasAttemptedVimeoFetch) {
+      return;
+    }
+    if (!organizationId) return;
+    setHasAttemptedVimeoFetch(true);
+    setIsLoadingVimeoVideos(true);
+    fetchVimeoVideos({ ownerId: organizationId })
+      .then((response) => {
+        const dataArray: unknown[] =
+          (response as { data?: unknown[] })?.data ?? [];
+        const normalized = dataArray
+          .map((item) => {
+            const record = item as {
+              uri?: string;
+              name?: string;
+              description?: string;
+              link?: string;
+              pictures?: { sizes?: Array<{ link?: string }> };
+            };
+            const fallbackId =
+              record.uri?.split("/").pop() ?? record.uri ?? record.name;
+            if (!fallbackId || !record.name) return null;
+            return {
+              videoId: fallbackId,
+              title: record.name,
+              description: record.description ?? undefined,
+              embedUrl: record.link ?? undefined,
+              thumbnailUrl: record.pictures?.sizes?.[0]?.link ?? undefined,
+            };
+          })
+          .filter(Boolean) as NormalizedVimeoVideo[];
+        setVimeoVideos(normalized);
+      })
+      .catch((error) => {
+        console.error("Failed to load Vimeo videos", error);
+        setVimeoVideos([]);
+      })
+      .finally(() => {
+        setIsLoadingVimeoVideos(false);
+      });
+  }, [
+    fetchVimeoVideos,
+    hasAttemptedVimeoFetch,
+    organizationId,
+    isVimeoEnabled,
+    vimeoEnabledOption,
+  ]);
+
   if (!courseId) {
     return (
       <div className="text-muted-foreground rounded-md border p-6 text-sm">
@@ -427,6 +571,11 @@ export const CourseBuilderScreen = ({
       onRemoveLesson={handleRemoveLesson}
       onRemoveTopic={handleRemoveTopic}
       onRemoveQuiz={handleRemoveQuiz}
+      availableVimeoVideos={isVimeoEnabled ? vimeoVideos : undefined}
+      isLoadingVimeoVideos={isVimeoEnabled ? isLoadingVimeoVideos : undefined}
+      onCreateLessonFromVimeo={handleCreateLessonFromVimeo}
+      onCreateTopicFromVimeo={handleCreateTopicFromVimeo}
+      onCreateQuizFromVimeo={handleCreateQuizFromVimeo}
     />
   );
 };

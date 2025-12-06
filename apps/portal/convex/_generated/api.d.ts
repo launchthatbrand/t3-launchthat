@@ -91,6 +91,7 @@ import type * as ecommerce_variations_mutations from "../ecommerce/variations/mu
 import type * as ecommerce_variations_queries from "../ecommerce/variations/queries.js";
 import type * as env from "../env.js";
 import type * as http from "../http.js";
+import type * as integrations_connections_actions from "../integrations/connections/actions.js";
 import type * as integrations_connections_cryptoActions from "../integrations/connections/cryptoActions.js";
 import type * as integrations_connections_internalConnections from "../integrations/connections/internalConnections.js";
 import type * as integrations_connections_mutations from "../integrations/connections/mutations.js";
@@ -128,6 +129,8 @@ import type * as lib_permissions_requirePermission from "../lib/permissions/requ
 import type * as lib_permissions_userAuth from "../lib/permissions/userAuth.js";
 import type * as lib_queryAnalyzer from "../lib/queryAnalyzer.js";
 import type * as lib_slugs from "../lib/slugs.js";
+import type * as lms_contentAccess_mutations from "../lms/contentAccess/mutations.js";
+import type * as lms_contentAccess_queries from "../lms/contentAccess/queries.js";
 import type * as migrations_portal from "../migrations/portal.js";
 import type * as notifications_helpers from "../notifications/helpers.js";
 import type * as notifications_lib_feedNotifications from "../notifications/lib/feedNotifications.js";
@@ -278,6 +281,7 @@ declare const fullApi: ApiFromModules<{
   "ecommerce/variations/queries": typeof ecommerce_variations_queries;
   env: typeof env;
   http: typeof http;
+  "integrations/connections/actions": typeof integrations_connections_actions;
   "integrations/connections/cryptoActions": typeof integrations_connections_cryptoActions;
   "integrations/connections/internalConnections": typeof integrations_connections_internalConnections;
   "integrations/connections/mutations": typeof integrations_connections_mutations;
@@ -315,6 +319,8 @@ declare const fullApi: ApiFromModules<{
   "lib/permissions/userAuth": typeof lib_permissions_userAuth;
   "lib/queryAnalyzer": typeof lib_queryAnalyzer;
   "lib/slugs": typeof lib_slugs;
+  "lms/contentAccess/mutations": typeof lms_contentAccess_mutations;
+  "lms/contentAccess/queries": typeof lms_contentAccess_queries;
   "migrations/portal": typeof migrations_portal;
   "notifications/helpers": typeof notifications_helpers;
   "notifications/lib/feedNotifications": typeof notifications_lib_feedNotifications;
@@ -3685,6 +3691,48 @@ export declare const components: {
             startOrder: number;
           }>;
         }
+      >;
+    };
+  };
+  actionCache: {
+    crons: {
+      purge: FunctionReference<
+        "mutation",
+        "internal",
+        { expiresAt?: number },
+        null
+      >;
+    };
+    lib: {
+      get: FunctionReference<
+        "query",
+        "internal",
+        { args: any; name: string; ttl: number | null },
+        { kind: "hit"; value: any } | { expiredEntry?: string; kind: "miss" }
+      >;
+      put: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          args: any;
+          expiredEntry?: string;
+          name: string;
+          ttl: number | null;
+          value: any;
+        },
+        { cacheHit: boolean; deletedExpiredEntry: boolean }
+      >;
+      remove: FunctionReference<
+        "mutation",
+        "internal",
+        { args: any; name: string },
+        null
+      >;
+      removeAll: FunctionReference<
+        "mutation",
+        "internal",
+        { batchSize?: number; before?: number; name?: string },
+        null
       >;
     };
   };

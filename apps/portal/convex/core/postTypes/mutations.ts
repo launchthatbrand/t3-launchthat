@@ -329,130 +329,11 @@ const DEFAULT_POST_TYPES: DefaultPostTypeConfig[] = [
     storageKind: "posts",
     storageTables: [...DEFAULT_POST_STORAGE_TABLES],
   },
-  {
-    name: "Contacts",
-    slug: "contact",
-    description: "CRM contacts managed by the built-in CRM plugin.",
-    isPublic: false,
-    supports: {
-      title: true,
-      customFields: true,
-    },
-    rewrite: {
-      hasArchive: false,
-      singleSlug: "contact",
-    },
-    adminMenu: {
-      enabled: true,
-      label: "Contacts",
-      slug: "contacts",
-      icon: "Users",
-      position: 15,
-    },
-    storageKind: "custom",
-    storageTables: ["contacts", "contact_meta"],
-  },
-  {
-    name: "Helpdesk Articles",
-    slug: "helpdeskarticles",
-    description: "Knowledge-base articles served to the support chat widget.",
-    isPublic: false,
-    supports: {
-      title: true,
-      editor: true,
-      excerpt: true,
-      featuredImage: true,
-      customFields: true,
-      postMeta: true,
-      taxonomy: true,
-    },
-    rewrite: {
-      hasArchive: false,
-      singleSlug: "helpdesk-article",
-      withFront: true,
-      feeds: false,
-      pages: true,
-    },
-    adminMenu: {
-      enabled: false,
-    },
-    storageKind: "posts",
-    storageTables: [...DEFAULT_POST_STORAGE_TABLES],
-    metaBoxes: [
-      {
-        id: "helpdesk-trigger-meta",
-        title: "Trigger Rules",
-        description:
-          "Control how this article is matched to visitor questions and whether it should respond automatically.",
-        location: "sidebar",
-        priority: 10,
-        fieldKeys: [
-          "trigger_is_active",
-          "trigger_match_mode",
-          "trigger_priority",
-          "trigger_phrases",
-        ],
-        rendererKey: "support.helpdesk.triggerRules",
-      },
-    ],
-  },
-  {
-    name: "Support Conversations",
-    slug: "supportconversations",
-    description: "Conversation threads captured from the support widget.",
-    isPublic: false,
-    supports: {
-      title: true,
-      customFields: true,
-    },
-    rewrite: {
-      hasArchive: false,
-      withFront: false,
-    },
-    adminMenu: {
-      enabled: false,
-    },
-    storageKind: "custom",
-    storageTables: ["supportConversations"],
-  },
-  {
-    name: "Support Threads",
-    slug: "supportthreads",
-    description: "Individual messages within a support conversation.",
-    isPublic: false,
-    supports: {
-      editor: true,
-      customFields: true,
-    },
-    rewrite: {
-      hasArchive: false,
-      withFront: false,
-    },
-    adminMenu: {
-      enabled: false,
-    },
-    storageKind: "custom",
-    storageTables: ["supportMessages"],
-  },
-  {
-    name: "Support RAG Sources",
-    slug: "supportragsources",
-    description: "Knowledge source registry for AI-powered answers.",
-    isPublic: false,
-    supports: {
-      customFields: true,
-    },
-    rewrite: {
-      hasArchive: false,
-      withFront: false,
-    },
-    adminMenu: {
-      enabled: false,
-    },
-    storageKind: "custom",
-    storageTables: ["supportRagSources"],
-  },
 ];
+
+const DEFAULT_POST_TYPE_SLUG_SET = new Set(
+  DEFAULT_POST_TYPES.map((type) => type.slug),
+);
 
 async function seedDefaultPostTypes(ctx: MutationCtx) {
   const now = Date.now();
@@ -537,10 +418,49 @@ async function seedDefaultPostTypes(ctx: MutationCtx) {
       postTypeDoc = existing;
     }
 
+    if (postTypeDoc?.isBuiltIn) {
+      const shouldClearOrgScope =
+        postTypeDoc.organizationId !== undefined &&
+        (postTypeDoc.organizationId === PORTAL_TENANT_SLUG ||
+          postTypeDoc.organizationId === PORTAL_ORGANIZATION_ID);
+      const shouldClearEnabledOrgs =
+        postTypeDoc.enabledOrganizationIds !== undefined;
+
+      if (shouldClearOrgScope || shouldClearEnabledOrgs) {
+        await ctx.db.patch(postTypeDoc._id, {
+          ...(shouldClearOrgScope ? { organizationId: undefined } : {}),
+          ...(shouldClearEnabledOrgs
+            ? { enabledOrganizationIds: undefined }
+            : {}),
+          updatedAt: Date.now(),
+        });
+        postTypeDoc = await ctx.db.get(postTypeDoc._id);
+      }
+    }
+
     if (postTypeDoc) {
       await ensureDefaultFieldsForPostType(ctx, postTypeDoc);
     }
   }
+
+  const globalBuiltIns = await ctx.db.query("postTypes").collect();
+  const obsoleteBuiltIns = globalBuiltIns.filter(
+    (type) =>
+      type.isBuiltIn &&
+      type.organizationId === undefined &&
+      !DEFAULT_POST_TYPE_SLUG_SET.has(type.slug),
+  );
+
+  await Promise.all(
+    obsoleteBuiltIns.map(async (type) => {
+      const fields = await ctx.db
+        .query("postTypeFields")
+        .withIndex("by_postType", (q) => q.eq("postTypeId", type._id))
+        .collect();
+      await Promise.all(fields.map((field) => ctx.db.delete(field._id)));
+      await ctx.db.delete(type._id);
+    }),
+  );
 
   return created;
 }
@@ -720,6 +640,10 @@ export const create = mutation({
     });
 
     await createSystemFields(ctx, id);
+    const created = await ctx.db.get(id);
+    if (created) {
+      await ensureDefaultFieldsForPostType(ctx, created);
+    }
     return id;
   },
 });
@@ -870,6 +794,9 @@ export const enableForOrganization = mutation({
         });
         await createSystemFields(ctx, id);
         postType = await ctx.db.get(id);
+        if (postType) {
+          await ensureDefaultFieldsForPostType(ctx, postType);
+        }
       } else if (resolvedOrgId) {
         postType = await clonePostTypeForOrganization(
           ctx,
@@ -886,6 +813,10 @@ export const enableForOrganization = mutation({
         postType.organizationId !== resolvedOrgId)
     ) {
       throw new Error(`Post type with slug ${args.slug} not found`);
+    }
+
+    if (postType.isBuiltIn && postType.organizationId === undefined) {
+      return { updated: false };
     }
 
     const existing = postType.enabledOrganizationIds ?? [];
@@ -948,6 +879,10 @@ export const disableForOrganization = mutation({
         postType.organizationId !== resolvedOrgId)
     ) {
       throw new Error(`Post type with slug ${args.slug} not found`);
+    }
+
+    if (postType.isBuiltIn && postType.organizationId === undefined) {
+      return { updated: false };
     }
 
     const enabledOrgIds = postType.enabledOrganizationIds;
