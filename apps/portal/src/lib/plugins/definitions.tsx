@@ -13,6 +13,7 @@ import { createCommercePluginDefinition } from "launchthat-plugin-commerce";
 import { lmsPlugin } from "launchthat-plugin-lms";
 import { supportPlugin } from "launchthat-plugin-support";
 import { tasksPlugin } from "launchthat-plugin-tasks";
+import { vimeoPlugin } from "launchthat-plugin-vimeo";
 
 const commercePlugin = createCommercePluginDefinition({
   CommerceStorefrontSettings,
@@ -32,4 +33,5 @@ export const pluginDefinitions: PluginDefinition[] = [
   socialFeedPlugin,
   tasksPlugin,
   supportPlugin,
+  vimeoPlugin,
 ];

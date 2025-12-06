@@ -170,6 +170,7 @@ export interface PluginAdminMenuEntry {
   icon?: string;
   position?: number;
   group?: string;
+  parentPostTypeSlug?: string;
 }
 
 export interface PluginSingleViewComponentProps {

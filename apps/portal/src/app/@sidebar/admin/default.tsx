@@ -50,6 +50,7 @@ type GroupedNavItem = NavItem & {
     | "tasks"
     | "crm";
   position?: number;
+  postTypeSlug?: string;
 };
 
 interface TaxonomyNavDefinition {
@@ -219,7 +220,7 @@ export default function DefaultSidebar() {
     return map;
   }, [normalizedTaxonomies, contentTypes]);
 
-  const dynamicItems: GroupedNavItem[] = contentTypes
+  const baseDynamicItems: GroupedNavItem[] = contentTypes
     .filter((type: PostTypeDoc) => type.adminMenu?.enabled)
     .sort((a: PostTypeDoc, b: PostTypeDoc) => {
       const aPos = a.adminMenu?.position ?? 100;
@@ -302,6 +303,7 @@ export default function DefaultSidebar() {
         icon: IconComponent,
         items: childItems,
         group,
+        postTypeSlug: type.slug,
       };
     });
 
@@ -344,28 +346,71 @@ export default function DefaultSidebar() {
       });
   }, [contentTypes, isPluginEnabled]);
 
-  const pluginNavItems = useMemo<GroupedNavItem[]>(() => {
-    return pluginDefinitions
+  const { pluginStandaloneNavItems, pluginChildNavItems } = useMemo<{
+    pluginStandaloneNavItems: GroupedNavItem[];
+    pluginChildNavItems: { parentSlug: string; item: NavChildItem }[];
+  }>(() => {
+    const standalone: GroupedNavItem[] = [];
+    const children: { parentSlug: string; item: NavChildItem }[] = [];
+
+    pluginDefinitions
       .filter((plugin) => plugin.adminMenus && isPluginEnabled(plugin))
-      .flatMap((plugin) =>
-        (plugin.adminMenus ?? []).map((menu) => {
+      .forEach((plugin) => {
+        (plugin.adminMenus ?? []).forEach((menu) => {
           const IconComponent = resolveIcon(menu.icon);
           const url = menu.slug.startsWith("http")
             ? menu.slug
             : `/admin/${menu.slug.replace(/^\/+/, "")}`;
+
+          if (menu.parentPostTypeSlug) {
+            children.push({
+              parentSlug: menu.parentPostTypeSlug,
+              item: {
+                title: menu.label,
+                url,
+              },
+            });
+            return;
+          }
+
           const group =
             (menu.group?.toLowerCase() as GroupedNavItem["group"]) ?? "support";
-          return {
+          standalone.push({
             title: menu.label,
             url,
             icon: IconComponent,
             group,
             position: menu.position ?? 100,
-          };
-        }),
-      )
-      .sort((a, b) => (a.position ?? 100) - (b.position ?? 100));
-  }, [isPluginEnabled]);
+          });
+        });
+      });
+
+    standalone.sort((a, b) => (a.position ?? 100) - (b.position ?? 100));
+
+    return {
+      pluginStandaloneNavItems: standalone,
+      pluginChildNavItems: children,
+    };
+  }, [isPluginEnabled, resolveIcon]);
+
+  const dynamicItems = useMemo<GroupedNavItem[]>(() => {
+    if (pluginChildNavItems.length === 0) {
+      return baseDynamicItems;
+    }
+    return baseDynamicItems.map((item) => {
+      if (!item.postTypeSlug) return item;
+      const matches = pluginChildNavItems.filter(
+        (child) => child.parentSlug === item.postTypeSlug,
+      );
+      if (matches.length === 0) {
+        return item;
+      }
+      return {
+        ...item,
+        items: [...(item.items ?? []), ...matches.map((child) => child.item)],
+      };
+    });
+  }, [baseDynamicItems, pluginChildNavItems]);
 
   const typedNavItems = navItems as NavItem[];
   const [dashboardItem, ...staticNavItems] = typedNavItems;
@@ -391,27 +436,27 @@ export default function DefaultSidebar() {
 
   const lmsItems = [
     ...dynamicItems.filter((item) => item.group === "lms"),
-    ...pluginNavItems.filter((item) => item.group === "lms"),
+    ...pluginStandaloneNavItems.filter((item) => item.group === "lms"),
   ];
   const crmItems = [
     ...dynamicItems.filter((item) => item.group === "crm"),
-    ...pluginNavItems.filter((item) => item.group === "crm"),
+    ...pluginStandaloneNavItems.filter((item) => item.group === "crm"),
   ];
   const shopItems = [
     ...dynamicItems.filter((item) => item.group === "shop"),
-    ...pluginNavItems.filter((item) => item.group === "shop"),
+    ...pluginStandaloneNavItems.filter((item) => item.group === "shop"),
   ];
   const calendarItems = [
     ...dynamicItems.filter((item) => item.group === "calendar"),
-    ...pluginNavItems.filter((item) => item.group === "calendar"),
+    ...pluginStandaloneNavItems.filter((item) => item.group === "calendar"),
   ];
   const socialItems = [
     ...dynamicItems.filter((item) => item.group === "social"),
-    ...pluginNavItems.filter((item) => item.group === "social"),
+    ...pluginStandaloneNavItems.filter((item) => item.group === "social"),
   ];
   const tasksItems = [
     ...dynamicItems.filter((item) => item.group === "tasks"),
-    ...pluginNavItems.filter((item) => item.group === "tasks"),
+    ...pluginStandaloneNavItems.filter((item) => item.group === "tasks"),
   ];
   const postTypeItems = dynamicItems.filter(
     (item) =>

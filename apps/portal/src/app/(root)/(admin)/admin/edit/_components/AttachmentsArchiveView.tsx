@@ -1,31 +1,5 @@
 "use client";
 
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import type { ColumnDef } from "@tanstack/react-table";
-import { useCallback, useMemo, useRef, useState } from "react";
-import Image from "next/image";
-import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
-import { formatDistanceToNow } from "date-fns";
-import { Sparkles, Upload } from "lucide-react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@acme/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@acme/ui/select";
-
 import {
   AdminLayout,
   AdminLayoutContent,
@@ -33,7 +7,32 @@ import {
   AdminLayoutMain,
   AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@acme/ui/card";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@acme/ui/select";
+import { Sparkles, Upload } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import type { ColumnDefinition } from "@acme/ui/entity-list/types";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
+import Image from "next/image";
+import { api } from "@/convex/_generated/api";
+import { formatDistanceToNow } from "date-fns";
 
 type PostTypeDoc = Doc<"postTypes">;
 type MediaItemDoc = Doc<"mediaItems"> & { url?: string | null };
@@ -43,6 +42,7 @@ export interface AttachmentsArchiveViewProps {
   postType: PostTypeDoc | null;
   options: PostTypeDoc[];
   onPostTypeChange: (slug: string) => void;
+  renderLayout?: boolean;
 }
 
 export function AttachmentsArchiveView({
@@ -50,6 +50,7 @@ export function AttachmentsArchiveView({
   postType,
   options,
   onPostTypeChange,
+  renderLayout = true,
 }: AttachmentsArchiveViewProps) {
   const label = postType?.name ?? "Attachments";
   const description =
@@ -63,7 +64,7 @@ export function AttachmentsArchiveView({
   );
   const saveMedia = useMutation(api.core.media.mutations.saveMedia);
 
-  const mediaResponse = useQuery(api.media.queries.listMediaItemsWithUrl, {
+  const mediaResponse = useQuery(api.core.media.queries.listMediaItemsWithUrl, {
     paginationOpts: { numItems: 60, cursor: null },
   });
   const mediaItems: MediaItemDoc[] = mediaResponse?.page ?? [];
@@ -123,34 +124,34 @@ export function AttachmentsArchiveView({
       "Upload high-resolution assets for the best results. Attachments automatically land in your WordPress-style media library.",
     [description],
   );
-  const columns = useMemo<ColumnDef<MediaItemDoc>[]>(
+  const columns = useMemo<ColumnDefinition<MediaItemDoc>[]>(
     () => [
       {
+        id: "title",
         accessorKey: "title",
         header: "Title",
-        cell: ({ row }) => (
-          <div className="font-medium">{row.original.title ?? "Untitled"}</div>
+        cell: (item: MediaItemDoc) => (
+          <div className="font-medium">{item.title ?? "Untitled"}</div>
         ),
       },
       {
+        id: "status",
         accessorKey: "status",
         header: "Status",
-        cell: ({ row }) => (
+        cell: (item: MediaItemDoc) => (
           <Badge
-            variant={
-              row.original.status === "published" ? "default" : "secondary"
-            }
+            variant={item.status === "published" ? "default" : "secondary"}
           >
-            {row.original.status ?? "draft"}
+            {item.status ?? "draft"}
           </Badge>
         ),
       },
       {
         id: "created",
         header: "Uploaded",
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">
-            {formatDistanceToNow(row.original._creationTime, {
+        cell: (item: MediaItemDoc) => (
+          <span className="text-muted-foreground text-sm">
+            {formatDistanceToNow(item._creationTime, {
               addSuffix: true,
             })}
           </span>
@@ -159,6 +160,112 @@ export function AttachmentsArchiveView({
     ],
     [],
   );
+
+  const libraryBody = (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <Select value={slug} onValueChange={onPostTypeChange}>
+          <SelectTrigger className="w-[240px]">
+            <SelectValue placeholder="Select post type" />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((option: PostTypeDoc) => (
+              <SelectItem key={option._id} value={option.slug}>
+                {option.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex gap-3">
+          <Button
+            className="gap-2"
+            type="button"
+            onClick={handleUploadClick}
+            disabled={isUploading}
+          >
+            <Upload className="h-4 w-4" />
+            {isUploading ? "Uploading…" : "Upload from computer"}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            multiple
+            onChange={handleFilesSelected}
+          />
+        </div>
+      </div>
+
+      {uploadError && <p className="text-destructive text-sm">{uploadError}</p>}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Media Library</CardTitle>
+          <CardDescription>
+            Preview recently uploaded files. Switch between grid and list views
+            to find the right asset faster.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <EntityList
+            data={mediaItems}
+            columns={columns}
+            isLoading={isLoading}
+            enableFooter={false}
+            viewModes={["grid", "list"]}
+            defaultViewMode="grid"
+            enableSearch
+            gridColumns={{ sm: 2, md: 3, lg: 4 }}
+            emptyState={
+              <div className="text-muted-foreground flex h-48 flex-col items-center justify-center text-center">
+                <Sparkles className="mb-2 h-6 w-6" />
+                <p>No attachments yet. Upload your first media item.</p>
+              </div>
+            }
+            className="p-4"
+            itemRender={(item) => (
+              <Card key={item._id}>
+                <CardContent className="space-y-3 p-4">
+                  <div className="bg-muted relative aspect-video overflow-hidden rounded-md">
+                    {item.url ? (
+                      <Image
+                        src={item.url}
+                        alt={item.title ?? "Attachment"}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="text-muted-foreground flex h-full items-center justify-center text-xs">
+                        No preview
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">
+                      {item.title ?? "Untitled"}
+                    </p>
+                    <div className="text-muted-foreground flex items-center justify-between text-xs">
+                      <span>{item.status ?? "draft"}</span>
+                      <span>
+                        {formatDistanceToNow(item._creationTime, {
+                          addSuffix: true,
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  if (!renderLayout) {
+    return libraryBody;
+  }
 
   return (
     <AdminLayout
@@ -169,107 +276,7 @@ export function AttachmentsArchiveView({
       <AdminLayoutContent withSidebar>
         <AdminLayoutMain>
           <AdminLayoutHeader />
-          <div className="container space-y-6 py-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <Select value={slug} onValueChange={onPostTypeChange}>
-                <SelectTrigger className="w-[240px]">
-                  <SelectValue placeholder="Select post type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {options.map((option: PostTypeDoc) => (
-                    <SelectItem key={option._id} value={option.slug}>
-                      {option.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex gap-3">
-                <Button
-                  className="gap-2"
-                  type="button"
-                  onClick={handleUploadClick}
-                  disabled={isUploading}
-                >
-                  <Upload className="h-4 w-4" />
-                  {isUploading ? "Uploading…" : "Upload from computer"}
-                </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  multiple
-                  onChange={handleFilesSelected}
-                />
-              </div>
-            </div>
-
-            {uploadError && (
-              <p className="text-sm text-destructive">{uploadError}</p>
-            )}
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Media Library</CardTitle>
-                <CardDescription>
-                  Preview recently uploaded files. Switch between grid and list
-                  views to find the right asset faster.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <EntityList
-                  data={mediaItems}
-                  columns={columns}
-                  isLoading={isLoading}
-                  enableFooter={false}
-                  viewModes={["grid", "list"]}
-                  defaultViewMode="grid"
-                  enableSearch
-                  gridColumns={{ sm: 2, md: 3, lg: 4 }}
-                  emptyState={
-                    <div className="flex h-48 flex-col items-center justify-center text-center text-muted-foreground">
-                      <Sparkles className="mb-2 h-6 w-6" />
-                      <p>No attachments yet. Upload your first media item.</p>
-                    </div>
-                  }
-                  className="p-4"
-                  itemRender={(item) => (
-                    <Card key={item._id}>
-                      <CardContent className="space-y-3 p-4">
-                        <div className="relative aspect-video overflow-hidden rounded-md bg-muted">
-                          {item.url ? (
-                            <Image
-                              src={item.url}
-                              alt={item.title ?? "Attachment"}
-                              fill
-                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                              No preview
-                            </div>
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium">
-                            {item.title ?? "Untitled"}
-                          </p>
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>{item.status ?? "draft"}</span>
-                            <span>
-                              {formatDistanceToNow(item._creationTime, {
-                                addSuffix: true,
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                />
-              </CardContent>
-            </Card>
-          </div>
+          <div className="container space-y-6 py-6">{libraryBody}</div>
         </AdminLayoutMain>
         <AdminLayoutSidebar className="border-l p-4">
           <Card>

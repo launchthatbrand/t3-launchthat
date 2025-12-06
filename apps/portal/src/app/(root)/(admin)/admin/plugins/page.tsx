@@ -1,6 +1,11 @@
 "use client";
 
 import {
+  Accordion,
+  AccordionContent,
+  AccordionTrigger,
+} from "@acme/ui/accordion";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -18,6 +23,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@acme/ui/collapsible";
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
@@ -404,8 +414,8 @@ export default function PluginsPage() {
         enableSearch
         enableFooter={false}
         viewModes={["grid", "list"]}
-        defaultViewMode="grid"
-        gridColumns={{ sm: 1, md: 2 }}
+        defaultViewMode="list"
+        gridColumns={{ sm: 1, md: 3 }}
         className="pt-2"
         itemRender={(plugin: PluginRow) => (
           <Card key={plugin.id} className="flex h-full flex-col">
@@ -430,36 +440,41 @@ export default function PluginsPage() {
                   ))}
                 </ul>
               </div>
-              <div>
-                <p className="text-sm font-medium">Provisioned Post Types</p>
-                <div className="mt-2 grid gap-2">
-                  {plugin.postTypes.map((type) => {
-                    const exists = postTypes.some(
-                      (existing: Doc<"postTypes">) =>
-                        existing.slug === type.slug,
-                    );
-                    return (
-                      <div
-                        key={type.slug}
-                        className="flex flex-wrap items-center justify-between rounded-md border px-3 py-2 text-sm"
-                      >
-                        <div>
-                          <p className="font-medium">{type.name}</p>
-                          <p className="text-muted-foreground text-xs">
-                            Slug: {type.slug}
-                          </p>
-                        </div>
-                        <Badge
-                          variant={exists ? "outline" : "secondary"}
-                          className="mt-2 md:mt-0"
+              <Accordion>
+                <AccordionTrigger>
+                  <p className="text-sm font-medium">Provisioned Post Types</p>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <p className="text-sm font-medium">Provisioned Post Types</p>
+                  <div className="mt-2 grid gap-2">
+                    {plugin.postTypes.map((type) => {
+                      const exists = postTypes.some(
+                        (existing: Doc<"postTypes">) =>
+                          existing.slug === type.slug,
+                      );
+                      return (
+                        <div
+                          key={type.slug}
+                          className="flex flex-wrap items-center justify-between rounded-md border px-3 py-2 text-sm"
                         >
-                          {exists ? "Exists" : "Will be created"}
-                        </Badge>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+                          <div>
+                            <p className="font-medium">{type.name}</p>
+                            <p className="text-muted-foreground text-xs">
+                              Slug: {type.slug}
+                            </p>
+                          </div>
+                          <Badge
+                            variant={exists ? "outline" : "secondary"}
+                            className="mt-2 md:mt-0"
+                          >
+                            {exists ? "Exists" : "Will be created"}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </AccordionContent>
+              </Accordion>
               {plugin.settingsPages?.length ? (
                 <div className="rounded-md border px-3 py-2">
                   <p className="text-sm font-medium">Plugin Settings</p>

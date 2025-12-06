@@ -2,15 +2,12 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 "use client";
 
-import type { Doc } from "@/convex/_generated/dataModel";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { PortalSocialFeedProvider } from "@/src/providers/SocialFeedProvider";
-import { useQuery } from "convex/react";
-
-import { Button } from "@acme/ui/button";
+import {
+  AdminLayout,
+  AdminLayoutContent,
+  AdminLayoutHeader,
+  AdminLayoutMain,
+} from "~/components/admin/AdminLayout";
 import {
   Card,
   CardContent,
@@ -18,30 +15,32 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-
-import type { PluginSingleViewInstance } from "../_components/AdminSinglePostView";
-import type { PermalinkSettings } from "../_components/permalink";
-import type { PluginPostArchiveViewConfig } from "~/lib/plugins/types";
-import {
-  AdminLayout,
-  AdminLayoutContent,
-  AdminLayoutHeader,
-  AdminLayoutMain,
-} from "~/components/admin/AdminLayout";
-import { useTenant } from "~/context/TenantContext";
-import { pluginDefinitions } from "~/lib/plugins/definitions";
-import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
-import { AdminSinglePostView } from "../_components/AdminSinglePostView";
-import { AttachmentsArchiveView } from "../_components/AttachmentsArchiveView";
-import { GenericArchiveView } from "../_components/GenericArchiveView";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
   defaultPermalinkSettings,
   isPermalinkSettingsValue,
 } from "../_components/permalink";
+import { useRouter, useSearchParams } from "next/navigation";
+
+import { AdminSinglePostView } from "../_components/AdminSinglePostView";
+import { AttachmentsArchiveView } from "../_components/AttachmentsArchiveView";
+import { Button } from "@acme/ui/button";
+import type { Doc } from "@/convex/_generated/dataModel";
+import { GenericArchiveView } from "../_components/GenericArchiveView";
+import Link from "next/link";
+import type { PermalinkSettings } from "../_components/permalink";
 import { PlaceholderState } from "../_components/PlaceholderState";
+import type { PluginPostArchiveViewConfig } from "~/lib/plugins/types";
+import type { PluginSingleViewInstance } from "../_components/AdminSinglePostView";
+import { PortalSocialFeedProvider } from "@/src/providers/SocialFeedProvider";
 import { TaxonomyTermsView } from "../_components/TaxonomyTermsView";
+import { api } from "@/convex/_generated/api";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
 import { useAdminPostContext } from "../../_providers/AdminPostProvider";
 import { usePostTypes } from "../../settings/post-types/_api/postTypes";
+import { useQuery } from "convex/react";
+import { useTenant } from "~/context/TenantContext";
 
 const DEFAULT_POST_TYPE = "course";
 const PERMALINK_OPTION_KEY = "permalink_settings";
@@ -196,6 +195,17 @@ function AdminEditPageBody() {
       const slugToUse = targetSlug ?? resolvedSlug;
       const targetPostType =
         postTypes.find((type) => type.slug === slugToUse) ?? hydratedPostType;
+      if (slugToUse === "attachment" || slugToUse === "attachments") {
+        return (
+          <AttachmentsArchiveView
+            slug={slugToUse}
+            postType={targetPostType}
+            options={postTypes}
+            onPostTypeChange={handlePostTypeChange}
+            renderLayout={renderLayout}
+          />
+        );
+      }
       return (
         <GenericArchiveView
           slug={slugToUse}
@@ -325,7 +335,10 @@ function AdminEditPageBody() {
     );
   }
 
-  if (resolvedSlug === "attachment" || resolvedSlug === "attachments") {
+  if (
+    !pluginArchiveView &&
+    (resolvedSlug === "attachment" || resolvedSlug === "attachments")
+  ) {
     return (
       <AttachmentsArchiveView
         slug={resolvedSlug}

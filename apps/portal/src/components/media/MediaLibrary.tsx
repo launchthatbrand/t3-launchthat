@@ -20,7 +20,7 @@ import {
 } from "@acme/ui/card";
 
 type MediaQueryResult = ReturnType<
-  typeof useQuery<typeof api.media.queries.listMediaItemsWithUrl>
+  typeof useQuery<typeof api.core.media.queries.listMediaItemsWithUrl>
 >;
 
 export type MediaItem = Doc<"mediaItems"> & { url?: string | null };
@@ -37,7 +37,7 @@ export function MediaLibrary({
   className,
 }: MediaLibraryProps) {
   const response: MediaQueryResult = useQuery(
-    api.media.queries.listMediaItemsWithUrl,
+    api.core.media.queries.listMediaItemsWithUrl,
     {
       paginationOpts: { numItems: 60, cursor: null },
     },
@@ -53,7 +53,7 @@ export function MediaLibrary({
           <CardTitle>Loading media…</CardTitle>
           <CardDescription>Fetching your latest uploads.</CardDescription>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
+        <CardContent className="text-muted-foreground text-sm">
           Please wait while we load your media items.
         </CardContent>
       </Card>
@@ -70,7 +70,7 @@ export function MediaLibrary({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Once you upload files, they will appear in this picker
             automatically.
           </p>
@@ -93,12 +93,12 @@ export function MediaLibrary({
             type="button"
             onClick={() => isSelectable && onSelect?.(item)}
             className={cn(
-              "group overflow-hidden rounded-md border text-left transition hover:border-primary",
+              "group hover:border-primary overflow-hidden rounded-md border text-left transition",
               !isSelectable && "cursor-default",
             )}
             disabled={!isSelectable}
           >
-            <div className="relative aspect-video bg-muted">
+            <div className="bg-muted relative aspect-video">
               {item.url ? (
                 <Image
                   src={item.url}
@@ -108,7 +108,7 @@ export function MediaLibrary({
                   className="object-cover transition group-hover:scale-105"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                <div className="text-muted-foreground flex h-full w-full items-center justify-center">
                   <ImageIcon className="h-5 w-5" />
                 </div>
               )}
@@ -117,7 +117,7 @@ export function MediaLibrary({
               <p className="truncate text-sm font-medium">
                 {item.title ?? "Untitled"}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 {formatDistanceToNow(item._creationTime, { addSuffix: true })}
               </p>
               <Badge variant="outline" className="text-xs uppercase">

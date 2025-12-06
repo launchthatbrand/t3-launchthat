@@ -1,0 +1,18 @@
+{
+  "extends": "@acme/tsconfig/compiled-package.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "dom", "dom.iterable"],
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "moduleResolution": "bundler",
+    "paths": {
+      "launchthat-plugin-core": ["../launchthat-plugin-core/src/index"],
+      "@acme/ui": ["../ui/src/index"],
+      "@acme/ui/*": ["../ui/src/*"],
+      "@acme/ui/entity-list": ["../ui/src/entity-list"],
+      "@acme/ui/entity-list/*": ["../ui/src/entity-list/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}

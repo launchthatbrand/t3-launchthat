@@ -328,7 +328,7 @@
    1   // const generateUploadUrl = useMutation(api.files.generateUploadUrl);
    1   // const createLesson = useMutation(api.lessons.createLesson); // TEMPORARY - using existing for now
    1   // const categories = useQuery(api.categories.queries.listCategoriesByPostType, {
-   1   //   api.media.queries.listMedia,
+   1   //   api.core.media.queries.listMedia,
    1   //   api.lms.progress.index.isItemCompleted,
    1     window.location.href = `https
    1     useQuery(api.integrations.connections.queries.listWithInternalApps, {}) ??
@@ -376,7 +376,7 @@
    1     api.notifications.markAllNotificationsAsRead,
    1     api.notifications.listNotifications,
    1     api.notifications.createNotification as any,
-   1     api.media.queries.listMediaItemsWithUrl,
+   1     api.core.media.queries.listMediaItemsWithUrl,
    1     api.media.index.getImageById,
    1     api.lms.topics.index.reorderTopicsInLesson,
    1     api.lms.topics.index.removeTopicFromLesson,
