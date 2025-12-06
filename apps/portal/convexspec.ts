@@ -2083,7 +2083,7 @@ export type PublicApiType = {
         "public",
         {
           metaKey: string;
-          orgId?: Id<"organizations"> | "portal-root";
+          orgId?: Id<"organizations">;
           type?: "store" | "site";
         },
         any
@@ -2091,16 +2091,13 @@ export type PublicApiType = {
       getByType: FunctionReference<
         "query",
         "public",
-        {
-          orgId?: Id<"organizations"> | "portal-root";
-          type?: "store" | "site";
-        },
+        { orgId?: Id<"organizations">; type?: "store" | "site" },
         any
       >;
       getStoreOptions: FunctionReference<
         "query",
         "public",
-        { orgId?: Id<"organizations"> | "portal-root" },
+        { orgId?: Id<"organizations"> },
         any
       >;
       set: FunctionReference<
@@ -2109,7 +2106,7 @@ export type PublicApiType = {
         {
           metaKey: string;
           metaValue: any;
-          orgId?: Id<"organizations"> | "portal-root";
+          orgId?: Id<"organizations">;
           type?: "store" | "site";
         },
         any
@@ -2119,7 +2116,7 @@ export type PublicApiType = {
         "public",
         {
           options: Array<{ metaKey: string; metaValue: any }>;
-          orgId?: Id<"organizations"> | "portal-root";
+          orgId?: Id<"organizations">;
           type?: "store" | "site";
         },
         any
@@ -2129,7 +2126,7 @@ export type PublicApiType = {
         "public",
         {
           metaKey: string;
-          orgId?: Id<"organizations"> | "portal-root";
+          orgId?: Id<"organizations">;
           type?: "store" | "site";
         },
         any
@@ -4616,14 +4613,11 @@ export type PublicApiType = {
         getCourseProgressForViewer: FunctionReference<
           "query",
           "public",
+          { courseId: Id<"posts">; organizationId?: Id<"organizations"> },
           {
-            courseId: Id<"posts">;
-            organizationId?: Id<"organizations">;
-          },
-          {
+            completedAt?: number;
             completedLessonIds: Array<Id<"posts">>;
             completedTopicIds: Array<Id<"posts">>;
-            completedAt?: number;
             courseId: Id<"posts">;
             lastAccessedAt?: number;
             lastAccessedId?: Id<"posts">;
@@ -4788,11 +4782,7 @@ export type PublicApiType = {
         setLessonCompletionStatus: FunctionReference<
           "mutation",
           "public",
-          {
-            completed: boolean;
-            courseId?: Id<"posts">;
-            lessonId: Id<"posts">;
-          },
+          { completed: boolean; courseId?: Id<"posts">; lessonId: Id<"posts"> },
           { completedLessonIds: Array<Id<"posts">> }
         >;
         setTopicCompletionStatus: FunctionReference<

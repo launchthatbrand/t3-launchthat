@@ -11,12 +11,17 @@ import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { toast } from "@acme/ui/toast";
 
+import type { CourseSettings } from "../constants/courseSettings";
 import type { Id } from "../lib/convexId";
 import type {
   LmsBuilderLesson,
   LmsBuilderTopic,
   LmsCourseBuilderData,
 } from "../types";
+import {
+  buildCourseSettingsOptionKey,
+  DEFAULT_COURSE_SETTINGS,
+} from "../constants/courseSettings";
 import {
   coercePostId,
   deriveCourseId,
@@ -181,6 +186,34 @@ export function FrontendLessonCompletionCallout({
     courseStructureArgs === "skip" ? "skip" : courseStructureArgs,
   );
 
+  const courseSettingsOptionKey = courseId
+    ? buildCourseSettingsOptionKey(String(courseId))
+    : null;
+  const courseSettingsOption = useQuery(
+    api.core.options.get,
+    courseSettingsOptionKey && organizationId
+      ? {
+          metaKey: courseSettingsOptionKey,
+          type: "site",
+          orgId: normalizedOrganizationId,
+        }
+      : "skip",
+  );
+  const courseSettings = useMemo<CourseSettings>(() => {
+    if (
+      courseSettingsOption &&
+      courseSettingsOption.metaValue &&
+      typeof courseSettingsOption.metaValue === "object"
+    ) {
+      return {
+        ...DEFAULT_COURSE_SETTINGS,
+        ...(courseSettingsOption.metaValue as Partial<CourseSettings>),
+      };
+    }
+    return DEFAULT_COURSE_SETTINGS;
+  }, [courseSettingsOption]);
+  const requiresLinearProgression = courseSettings.progressionMode === "linear";
+
   const title =
     typeof (post as { title?: unknown }).title === "string"
       ? ((post as { title: string }).title ?? config.noun)
@@ -276,59 +309,6 @@ export function FrontendLessonCompletionCallout({
       : false;
   const isCompleted = isLessonCompleted || isTopicCompleted;
 
-  const handleComplete = async () => {
-    if (!courseId) {
-      toast.error("Missing course reference", {
-        description:
-          "Please attach this lesson or topic to a course to log progress.",
-      });
-      return;
-    }
-    setIsCompleting(true);
-    try {
-      if (postTypeSlug === "lessons" && derivedLessonId) {
-        await markLessonCompletion({
-          courseId,
-          lessonId: derivedLessonId,
-          completed: !isLessonCompleted,
-        });
-      } else if (postTypeSlug === "topics" && derivedTopicId) {
-        await markTopicCompletion({
-          topicId: derivedTopicId,
-          lessonId: derivedLessonId ?? undefined,
-          courseId,
-          completed: !isTopicCompleted,
-        });
-      } else {
-        toast.info("Coming soon", {
-          description:
-            "Course and quiz completion tracking will be added shortly.",
-        });
-        return;
-      }
-      toast.success(
-        isCompleted
-          ? `${config.noun.replace(/^\w/, (c) => c.toUpperCase())} marked incomplete`
-          : `${config.noun.replace(/^\w/, (c) => c.toUpperCase())} completed`,
-        {
-          description: `"${title}" updated via ${pluginName}.`,
-        },
-      );
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unable to update progress.";
-      toast.error("Progress update failed", { description: message });
-    } finally {
-      setIsCompleting(false);
-    }
-  };
-
-  const buttonDisabled =
-    isCompleting ||
-    progressArgs === "skip" ||
-    (postTypeSlug === "lessons" && !derivedLessonId) ||
-    (postTypeSlug === "topics" && !derivedTopicId);
-
   const currentEntryIndex = useMemo(() => {
     if (!navEntries.length) {
       return -1;
@@ -381,6 +361,89 @@ export function FrontendLessonCompletionCallout({
     postTypeSlug,
     topicSlug,
   ]);
+
+  const hasBlockingLesson = useMemo(() => {
+    if (!requiresLinearProgression || currentEntryIndex <= 0) {
+      return false;
+    }
+    const previousLessons = navEntries
+      .slice(0, currentEntryIndex)
+      .filter(
+        (entry): entry is Extract<CourseNavEntry, { type: "lesson" }> =>
+          entry.type === "lesson",
+      );
+    return previousLessons.some((entry) => !completedLessonSet.has(entry.id));
+  }, [
+    completedLessonSet,
+    currentEntryIndex,
+    navEntries,
+    requiresLinearProgression,
+  ]);
+
+  const linearBlockMessage = hasBlockingLesson
+    ? "Complete earlier lessons first. This course enforces linear progression."
+    : null;
+
+  const buttonDisabled =
+    isCompleting ||
+    progressArgs === "skip" ||
+    (postTypeSlug === "lessons" && !derivedLessonId) ||
+    (postTypeSlug === "topics" && !derivedTopicId) ||
+    hasBlockingLesson;
+
+  const handleComplete = async () => {
+    if (!courseId) {
+      toast.error("Missing course reference", {
+        description:
+          "Please attach this lesson or topic to a course to log progress.",
+      });
+      return;
+    }
+    if (hasBlockingLesson) {
+      toast.info("Complete previous lessons first", {
+        description:
+          "This course requires linear progression. Finish earlier lessons before continuing.",
+      });
+      return;
+    }
+    setIsCompleting(true);
+    try {
+      if (postTypeSlug === "lessons" && derivedLessonId) {
+        await markLessonCompletion({
+          courseId,
+          lessonId: derivedLessonId,
+          completed: !isLessonCompleted,
+        });
+      } else if (postTypeSlug === "topics" && derivedTopicId) {
+        await markTopicCompletion({
+          topicId: derivedTopicId,
+          lessonId: derivedLessonId ?? undefined,
+          courseId,
+          completed: !isTopicCompleted,
+        });
+      } else {
+        toast.info("Coming soon", {
+          description:
+            "Course and quiz completion tracking will be added shortly.",
+        });
+        return;
+      }
+      toast.success(
+        isCompleted
+          ? `${config.noun.replace(/^\w/, (c) => c.toUpperCase())} marked incomplete`
+          : `${config.noun.replace(/^\w/, (c) => c.toUpperCase())} completed`,
+        {
+          description: `"${title}" updated via ${pluginName}.`,
+        },
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to update progress.";
+      toast.error("Progress update failed", { description: message });
+    } finally {
+      setIsCompleting(false);
+    }
+  };
 
   const prevEntry =
     currentEntryIndex > 0 ? navEntries[currentEntryIndex - 1] : undefined;
@@ -437,6 +500,11 @@ export function FrontendLessonCompletionCallout({
               ? "Mark incomplete"
               : config.cta}
         </Button>
+        {linearBlockMessage && (
+          <p className="text-muted-foreground mt-2 text-xs">
+            {linearBlockMessage}
+          </p>
+        )}
       </div>
       {(prevHref || nextHref) && (
         <div className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">

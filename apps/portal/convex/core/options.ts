@@ -1,11 +1,9 @@
-import { PORTAL_TENANT_ID, PORTAL_TENANT_SLUG } from "../constants";
-import { mutation, query } from "../_generated/server";
-
 import { v } from "convex/values";
 
-const portalAwareOrgId = v.optional(
-  v.union(v.id("organizations"), v.literal(PORTAL_TENANT_SLUG)),
-);
+import { mutation, query } from "../_generated/server";
+import { PORTAL_TENANT_ID } from "../constants";
+
+const portalAwareOrgId = v.optional(v.id("organizations"));
 
 // Remove the auth import since we'll use raw identity
 
@@ -17,13 +15,11 @@ export const get = query({
     orgId: portalAwareOrgId,
   },
   handler: async (ctx, args) => {
+    const orgId = args.orgId ?? PORTAL_TENANT_ID;
     const option = await ctx.db
       .query("options")
       .withIndex("by_org_key_type", (q) =>
-        q
-          .eq("orgId", args.orgId)
-          .eq("metaKey", args.metaKey)
-          .eq("type", args.type),
+        q.eq("orgId", orgId).eq("metaKey", args.metaKey).eq("type", args.type),
       )
       .first();
 
@@ -38,10 +34,11 @@ export const getByType = query({
     orgId: portalAwareOrgId,
   },
   handler: async (ctx, args) => {
+    const orgId = args.orgId ?? PORTAL_TENANT_ID;
     const options = await ctx.db
       .query("options")
       .withIndex("by_org_and_type", (q) =>
-        q.eq("orgId", args.orgId).eq("type", args.type),
+        q.eq("orgId", orgId).eq("type", args.type),
       )
       .collect();
 
@@ -55,10 +52,11 @@ export const getStoreOptions = query({
     orgId: portalAwareOrgId,
   },
   handler: async (ctx, args) => {
+    const orgId = args.orgId ?? PORTAL_TENANT_ID;
     const options = await ctx.db
       .query("options")
       .withIndex("by_org_and_type", (q) =>
-        q.eq("orgId", args.orgId).eq("type", "store"),
+        q.eq("orgId", orgId).eq("type", "store"),
       )
       .collect();
 
@@ -83,14 +81,12 @@ export const set = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     const userId = identity?.subject;
+    const orgId = args.orgId ?? PORTAL_TENANT_ID;
 
     const existing = await ctx.db
       .query("options")
       .withIndex("by_org_key_type", (q) =>
-        q
-          .eq("orgId", args.orgId)
-          .eq("metaKey", args.metaKey)
-          .eq("type", args.type),
+        q.eq("orgId", orgId).eq("metaKey", args.metaKey).eq("type", args.type),
       )
       .first();
 
@@ -110,7 +106,7 @@ export const set = mutation({
         metaKey: args.metaKey,
         metaValue: args.metaValue as unknown,
         type: args.type,
-        orgId: args.orgId,
+        orgId,
         createdAt: now,
         updatedAt: now,
         createdBy: userId,
@@ -136,6 +132,7 @@ export const setBatch = mutation({
     const identity = await ctx.auth.getUserIdentity();
     const userId = identity?.subject;
     const now = Date.now();
+    const orgId = args.orgId ?? PORTAL_TENANT_ID;
 
     const results = [];
 
@@ -144,7 +141,7 @@ export const setBatch = mutation({
         .query("options")
         .withIndex("by_org_key_type", (q) =>
           q
-            .eq("orgId", args.orgId)
+            .eq("orgId", orgId)
             .eq("metaKey", option.metaKey)
             .eq("type", args.type),
         )
@@ -164,7 +161,7 @@ export const setBatch = mutation({
           metaKey: option.metaKey,
           metaValue: option.metaValue as unknown,
           type: args.type,
-          orgId: args.orgId,
+          orgId,
           createdAt: now,
           updatedAt: now,
           createdBy: userId,
@@ -186,13 +183,11 @@ export const remove = mutation({
     orgId: portalAwareOrgId,
   },
   handler: async (ctx, args) => {
+    const orgId = args.orgId ?? PORTAL_TENANT_ID;
     const existing = await ctx.db
       .query("options")
       .withIndex("by_org_key_type", (q) =>
-        q
-          .eq("orgId", args.orgId)
-          .eq("metaKey", args.metaKey)
-          .eq("type", args.type),
+        q.eq("orgId", orgId).eq("metaKey", args.metaKey).eq("type", args.type),
       )
       .first();
 

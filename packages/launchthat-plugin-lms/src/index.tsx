@@ -20,6 +20,7 @@ import { LmsSettingsPage } from "./settings/LmsSettingsPage";
 import { CourseBuilderTab } from "./tabs/CourseBuilderTab";
 import { CourseLinkedProductTab } from "./tabs/CourseLinkedProductTab";
 import { CourseMembersTab } from "./tabs/CourseMembersTab";
+import { CourseSettingsTab } from "./tabs/CourseSettingsTab";
 
 export type { CourseSummary } from "./frontend/CoursesArchive";
 
@@ -28,6 +29,7 @@ export {
   CourseBuilderTab,
   CourseLinkedProductTab,
   CourseMembersTab,
+  CourseSettingsTab,
   LmsSettingsPage,
   CoursesArchive,
   CourseSingle,
@@ -38,6 +40,7 @@ export interface LmsPluginComponents {
   CourseBuilderTab: ComponentType<PluginSingleViewComponentProps>;
   CourseMembersTab: ComponentType<PluginSingleViewComponentProps>;
   CourseLinkedProductTab: ComponentType<PluginSingleViewComponentProps>;
+  CourseSettingsTab: ComponentType<PluginSingleViewComponentProps>;
 }
 
 const buildCompletionSlot = (slug: string) => ({
@@ -68,6 +71,7 @@ export const createLmsPluginDefinition = ({
   CourseBuilderTab,
   CourseMembersTab,
   CourseLinkedProductTab,
+  CourseSettingsTab,
 }: LmsPluginComponents): PluginDefinition => ({
   id: "lms",
   name: "Learning Management System",
@@ -174,6 +178,13 @@ export const createLmsPluginDefinition = ({
             label: "Linked Product",
             description: "Map this course to a storefront listing.",
             render: (props) => <CourseLinkedProductTab {...props} />,
+          },
+          {
+            id: "settings",
+            slug: "settings",
+            label: "Settings",
+            description: "Control access, prerequisites, and pacing.",
+            render: (props) => <CourseSettingsTab {...props} />,
           },
         ],
       },
@@ -314,6 +325,7 @@ export const getDefaultLmsComponents = () => ({
   CourseBuilderTab,
   CourseMembersTab,
   CourseLinkedProductTab,
+  CourseSettingsTab,
 });
 
 export let lmsPlugin: PluginDefinition = createLmsPluginDefinition(
@@ -324,17 +336,20 @@ type ConfigureLmsPluginArgs = {
   CourseBuilderTab: ComponentType<PluginSingleViewComponentProps>;
   CourseMembersTab?: ComponentType<PluginSingleViewComponentProps>;
   CourseLinkedProductTab?: ComponentType<PluginSingleViewComponentProps>;
+  CourseSettingsTab?: ComponentType<PluginSingleViewComponentProps>;
 };
 
 export const configureLmsPlugin = ({
   CourseBuilderTab,
   CourseMembersTab: membersOverride,
   CourseLinkedProductTab: linkedProductOverride,
+  CourseSettingsTab: settingsOverride,
 }: ConfigureLmsPluginArgs) => {
   lmsPlugin = createLmsPluginDefinition({
     CourseBuilderTab,
     CourseMembersTab: membersOverride ?? CourseMembersTab,
     CourseLinkedProductTab: linkedProductOverride ?? CourseLinkedProductTab,
+    CourseSettingsTab: settingsOverride ?? CourseSettingsTab,
   });
 };
 
