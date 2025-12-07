@@ -328,6 +328,10 @@ export const createLmsPluginDefinition = ({
             id: "lms-linear-progress-content-guard",
             location: "content",
           },
+          {
+            id: "lms-quiz-content-injector",
+            location: "content",
+          },
         ],
       },
       adminMenu: {

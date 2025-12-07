@@ -4,6 +4,8 @@ import type {
   DragEndEvent,
   DragStartEvent,
 } from "@dnd-kit/core";
+import { useState } from "react";
+
 import type { CourseBuilderProps, VimeoVideoItem } from "../CourseBuilder";
 import type {
   CourseBuilderState,
@@ -11,8 +13,6 @@ import type {
   Topic,
 } from "../store/useCourseBuilderStore";
 import type { LessonItem, QuizItem, TopicItem } from "../types/content";
-
-import { useState } from "react";
 
 interface UseCourseBuilderDndProps {
   mainContentItems: CourseBuilderState["mainContentItems"];
@@ -136,6 +136,7 @@ export const useCourseBuilderDnd = ({
       vimeoVideo?: VimeoVideoItem;
       fromVimeo?: boolean;
       vimeoContentType?: "lesson" | "topic" | "quiz";
+      label?: string;
     };
     const isVimeoItem =
       Boolean(activeData?.fromVimeo) && Boolean(activeData?.vimeoVideo);
@@ -144,7 +145,20 @@ export const useCourseBuilderDnd = ({
     const overKind = overData.kind;
     const overType = overData.type;
 
-    if (currentActiveId === currentOverId) return;
+    console.log("[CourseBuilderDnd] dragEnd", {
+      activeId: currentActiveId,
+      overId: currentOverId,
+      currentActiveType,
+      overKind,
+      overType,
+      activeData,
+      overData,
+    });
+
+    if (currentActiveId === currentOverId) {
+      console.log("[CourseBuilderDnd] Same source/target, abort");
+      return;
+    }
 
     if (overKind) {
       switch (overKind) {
@@ -171,21 +185,42 @@ export const useCourseBuilderDnd = ({
               // Final quizzes from Vimeo are not supported yet.
               // Users should drop onto a lesson or topic.
             } else {
-              const quizData = availableQuizzes.find(
+              const availableQuiz = availableQuizzes.find(
                 (q) => q.id === currentActiveId,
               );
-              if (quizData) {
-                if (onAttachQuizToFinal && courseId) {
-                  await onAttachQuizToFinal(quizData.id, courseId, 0);
-                } else if (onAddQuiz) {
-                  await onAddQuiz({
-                    isFinalQuiz: true,
-                    courseId: courseId ?? "",
-                    order: 0,
-                  });
-                }
-                addMainContentItem(quizData);
+              const fallbackQuiz =
+                availableQuiz ??
+                ({
+                  id: currentActiveId,
+                  title:
+                    (activeData?.label as string | undefined) ??
+                    "Untitled quiz",
+                  type: "quiz",
+                } as QuizItem);
+              if (courseId && onAttachQuizToFinal) {
+                console.log("[CourseBuilderDnd] Attaching final quiz", {
+                  quizId: fallbackQuiz.id,
+                  courseId,
+                });
+                await onAttachQuizToFinal(fallbackQuiz.id, courseId, 0);
+              } else if (onAddQuiz && courseId) {
+                console.log(
+                  "[CourseBuilderDnd] Using onAddQuiz for final quiz",
+                  {
+                    courseId,
+                  },
+                );
+                await onAddQuiz({
+                  isFinalQuiz: true,
+                  courseId,
+                  order: 0,
+                });
+              } else {
+                console.warn(
+                  "[CourseBuilderDnd] No handler available for final quiz attachment",
+                );
               }
+              addMainContentItem(fallbackQuiz);
             }
           }
           break;
@@ -225,18 +260,40 @@ export const useCourseBuilderDnd = ({
                 { lessonId: targetLessonId },
                 activeData.vimeoVideo,
               );
+              console.log(
+                "[CourseBuilderDnd] Created quiz from Vimeo for lesson",
+                targetLessonId,
+              );
             } else {
-              const quiz = availableQuizzes.find(
+              const availableQuiz = availableQuizzes.find(
                 (q) => q.id === currentActiveId,
               );
-              if (quiz) {
-                if (onAttachQuizToLesson) {
-                  await onAttachQuizToLesson(targetLessonId, quiz.id, 0);
-                } else if (onAddQuiz) {
-                  await onAddQuiz({ lessonId: targetLessonId, order: 0 });
-                }
-                addQuizToLesson(targetLessonId, quiz);
+              const fallbackQuiz =
+                availableQuiz ??
+                ({
+                  id: currentActiveId,
+                  title:
+                    (activeData?.label as string | undefined) ??
+                    "Untitled quiz",
+                  type: "quiz",
+                } as QuizItem);
+              if (onAttachQuizToLesson) {
+                console.log(
+                  "[CourseBuilderDnd] Attaching quiz to lesson via callback",
+                  { lessonId: targetLessonId, quizId: fallbackQuiz.id },
+                );
+                await onAttachQuizToLesson(targetLessonId, fallbackQuiz.id, 0);
+              } else if (onAddQuiz) {
+                console.log("[CourseBuilderDnd] Using onAddQuiz fallback", {
+                  lessonId: targetLessonId,
+                });
+                await onAddQuiz({ lessonId: targetLessonId, order: 0 });
+              } else {
+                console.warn(
+                  "[CourseBuilderDnd] No quiz attachment callbacks available",
+                );
               }
+              addQuizToLesson(targetLessonId, fallbackQuiz);
             }
           }
           break;

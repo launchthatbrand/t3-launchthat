@@ -183,10 +183,9 @@ const courseBuilderStore: StateCreator<CourseBuilderState> = (set) => {
 
     addQuizToLesson: (lessonId, quiz) =>
       set((state: CourseBuilderState) => {
-        if (!state.availableQuizzes.some((aq) => aq.id === quiz.id)) {
-          return state;
-        }
-
+        const isQuizAvailable = state.availableQuizzes.some(
+          (aq) => aq.id === quiz.id,
+        );
         const lessonIndex = state.mainContentItems.findIndex(
           (item) => item.type === "lesson" && item.id === lessonId,
         );
@@ -208,9 +207,9 @@ const courseBuilderStore: StateCreator<CourseBuilderState> = (set) => {
         return {
           ...state,
           mainContentItems: updatedItems,
-          availableQuizzes: state.availableQuizzes.filter(
-            (q) => q.id !== quiz.id,
-          ),
+          availableQuizzes: isQuizAvailable
+            ? state.availableQuizzes.filter((q) => q.id !== quiz.id)
+            : state.availableQuizzes,
         };
       }),
 

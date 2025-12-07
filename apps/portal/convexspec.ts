@@ -1,4 +1,5 @@
-import { type FunctionReference, anyApi } from "convex/server";
+import type { FunctionReference } from "convex/server";
+import { anyApi } from "convex/server";
 import { type GenericId as Id } from "convex/values";
 
 export const api: PublicApiType = anyApi as unknown as PublicApiType;
@@ -4698,6 +4699,20 @@ export type PublicApiType = {
             };
           }
         >;
+        getQuizAttemptsForViewer: FunctionReference<
+          "query",
+          "public",
+          { quizId: Id<"posts"> },
+          Array<{
+            _id: Id<"quizAttempts">;
+            completedAt: number;
+            correctCount: number;
+            durationMs?: number;
+            gradedQuestions: number;
+            scorePercent: number;
+            totalQuestions: number;
+          }>
+        >;
       };
       mutations: {
         ensureQuizQuestionPostType: FunctionReference<
@@ -4755,6 +4770,18 @@ export type PublicApiType = {
           { success: boolean }
         >;
         removeQuizFromLesson: FunctionReference<
+          "mutation",
+          "public",
+          { quizId: Id<"posts"> },
+          { success: boolean }
+        >;
+        attachFinalQuizToCourse: FunctionReference<
+          "mutation",
+          "public",
+          { courseId: Id<"posts">; order?: number; quizId: Id<"posts"> },
+          { success: boolean }
+        >;
+        removeFinalQuizFromCourse: FunctionReference<
           "mutation",
           "public",
           { quizId: Id<"posts"> },
@@ -4895,6 +4922,37 @@ export type PublicApiType = {
           "public",
           { orderedQuestionIds: Array<Id<"posts">>; quizId: Id<"posts"> },
           { success: boolean }
+        >;
+        submitQuizAttempt: FunctionReference<
+          "mutation",
+          "public",
+          {
+            courseId?: Id<"posts">;
+            durationMs?: number;
+            lessonId?: Id<"posts">;
+            quizId: Id<"posts">;
+            responses: Array<{
+              answerText?: string;
+              questionId: Id<"posts">;
+              questionType:
+                | "singleChoice"
+                | "multipleChoice"
+                | "shortText"
+                | "longText";
+              selectedOptionIds?: Array<string>;
+            }>;
+          },
+          {
+            attempt: {
+              _id: Id<"quizAttempts">;
+              completedAt: number;
+              correctCount: number;
+              durationMs?: number;
+              gradedQuestions: number;
+              scorePercent: number;
+              totalQuestions: number;
+            };
+          }
         >;
         setLessonCompletionStatus: FunctionReference<
           "mutation",

@@ -90,6 +90,16 @@ export interface QuizQuestion {
   order: number;
 }
 
+export interface QuizAttemptSummary {
+  _id: Id<"quizAttempts">;
+  scorePercent: number;
+  totalQuestions: number;
+  gradedQuestions: number;
+  correctCount: number;
+  completedAt: number;
+  durationMs?: number;
+}
+
 export interface QuizQuestionInput {
   prompt: string;
   questionType: QuizQuestionType;

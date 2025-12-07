@@ -9,7 +9,11 @@ import { useQuery } from "convex/react";
 
 import type { CourseSettings } from "../constants/courseSettings";
 import type { Id } from "../lib/convexId";
-import type { LmsBuilderTopic, LmsCourseBuilderData } from "../types";
+import type {
+  LmsBuilderQuiz,
+  LmsBuilderTopic,
+  LmsCourseBuilderData,
+} from "../types";
 import {
   buildCourseSettingsOptionKey,
   DEFAULT_COURSE_SETTINGS,
@@ -49,6 +53,13 @@ export type CourseNavEntry =
       title: string;
       lessonId?: Id<"posts">;
       lessonSlug?: string;
+    }
+  | {
+      type: "quiz";
+      id: Id<"posts">;
+      slug?: string;
+      title: string;
+      isFinal?: boolean;
     };
 
 export interface LessonSegment {
@@ -72,6 +83,8 @@ export interface LmsCourseContextValue {
   lessonSlug?: string;
   topicId?: Id<"posts">;
   topicSlug?: string;
+  quizId?: Id<"posts">;
+  quizSlug?: string;
   organizationId?: Id<"organizations">;
   courseStructure?: LmsCourseBuilderData | null;
   courseProgress?: CourseProgressRecord;
@@ -171,6 +184,14 @@ export function LmsCourseProvider({
     resolvedPostTypeSlug === "topics"
       ? (rawPostSlug ?? coerceString(metaRecord.topicSlug))
       : coerceString(metaRecord.topicSlug);
+  const quizId =
+    resolvedPostTypeSlug === "quizzes"
+      ? coercePostId(postRecord._id)
+      : coercePostId(metaRecord.quizId ?? metaRecord.quiz_id);
+  const quizSlug =
+    resolvedPostTypeSlug === "quizzes"
+      ? (rawPostSlug ?? coerceString(metaRecord.quizSlug))
+      : coerceString(metaRecord.quizSlug);
 
   const courseStructureArgs = useMemo<CourseStructureArgs>(() => {
     if (courseId) {
@@ -308,6 +329,20 @@ export function LmsCourseProvider({
       list.push(topic);
       topicMap.set(topic.lessonId, list);
     });
+    const attachedQuizzes = (courseStructure.attachedQuizzes ??
+      []) as LmsBuilderQuiz[];
+    const quizzesByKey = new Map<string, LmsBuilderQuiz[]>();
+    attachedQuizzes.forEach((quiz) => {
+      const key =
+        quiz.lessonId && quiz.topicId
+          ? `lesson:${quiz.lessonId}:topic:${quiz.topicId}`
+          : quiz.lessonId
+            ? `lesson:${quiz.lessonId}`
+            : "course";
+      const list = quizzesByKey.get(key) ?? [];
+      list.push(quiz);
+      quizzesByKey.set(key, list);
+    });
     courseStructure.attachedLessons
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
       .forEach((lesson) => {
@@ -329,7 +364,55 @@ export function LmsCourseProvider({
               lessonId: lesson._id,
               lessonSlug: lesson.slug,
             });
+            const topicQuizzes =
+              quizzesByKey.get(`lesson:${lesson._id}:topic:${topic._id}`) ?? [];
+            topicQuizzes
+              .sort(
+                (a, b) =>
+                  (a.order ?? Number.MAX_SAFE_INTEGER) -
+                  (b.order ?? Number.MAX_SAFE_INTEGER),
+              )
+              .forEach((quiz) => {
+                entries.push({
+                  type: "quiz",
+                  id: quiz._id,
+                  slug: quiz.slug,
+                  title: quiz.title ?? "Untitled Quiz",
+                  isFinal: quiz.isFinal ?? false,
+                });
+              });
           });
+        const lessonQuizzes = quizzesByKey.get(`lesson:${lesson._id}`) ?? [];
+        lessonQuizzes
+          .sort(
+            (a, b) =>
+              (a.order ?? Number.MAX_SAFE_INTEGER) -
+              (b.order ?? Number.MAX_SAFE_INTEGER),
+          )
+          .forEach((quiz) => {
+            entries.push({
+              type: "quiz",
+              id: quiz._id,
+              slug: quiz.slug,
+              title: quiz.title ?? "Untitled Quiz",
+              isFinal: quiz.isFinal ?? false,
+            });
+          });
+      });
+    (quizzesByKey.get("course") ?? [])
+      .sort(
+        (a, b) =>
+          (a.order ?? Number.MAX_SAFE_INTEGER) -
+          (b.order ?? Number.MAX_SAFE_INTEGER),
+      )
+      .forEach((quiz) => {
+        entries.push({
+          type: "quiz",
+          id: quiz._id,
+          slug: quiz.slug,
+          title: quiz.title ?? "Untitled Quiz",
+          isFinal: quiz.isFinal ?? false,
+        });
       });
     return entries;
   }, [courseStructure]);
@@ -345,6 +428,16 @@ export function LmsCourseProvider({
             entry.type === "topic" &&
             (entry.id === topicId ||
               (topicSlug && entry.slug && entry.slug === topicSlug)),
+        ) ?? null
+      );
+    }
+    if (resolvedPostTypeSlug === "quizzes" && quizId) {
+      return (
+        navEntries.find(
+          (entry) =>
+            entry.type === "quiz" &&
+            (entry.id === quizId ||
+              (quizSlug && entry.slug && entry.slug === quizSlug)),
         ) ?? null
       );
     }
@@ -431,6 +524,8 @@ export function LmsCourseProvider({
     completedLessonIds,
     completedTopicIds,
     activeLessonId,
+    quizId,
+    quizSlug,
   };
 
   return (

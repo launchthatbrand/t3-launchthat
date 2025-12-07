@@ -26,15 +26,35 @@ export const LinearProgressContentGate = ({ children }: Props) => {
     return <CourseContentLoadingState />;
   }
 
-  if (
-    !courseContext.requiresLinearProgression ||
-    !courseContext.isLinearBlocked
-  ) {
-    return <>{children}</>;
+  const {
+    requiresLinearProgression,
+    isLinearBlocked,
+    blockingLessonTitle,
+    postTypeSlug,
+    previousEntry,
+    completedLessonIds,
+    completedTopicIds,
+  } = courseContext;
+
+  let blockingMessage: string | null = null;
+
+  if (isLinearBlocked) {
+    blockingMessage = blockingLessonTitle ?? "the previous lesson";
+  } else if (requiresLinearProgression && postTypeSlug === "quizzes") {
+    if (previousEntry?.type === "lesson") {
+      blockingMessage = completedLessonIds.has(previousEntry.id)
+        ? null
+        : (previousEntry.title ?? "the previous lesson");
+    } else if (previousEntry?.type === "topic") {
+      blockingMessage = completedTopicIds.has(previousEntry.id)
+        ? null
+        : (previousEntry.title ?? "the previous topic");
+    }
   }
 
-  const blockingLessonTitle =
-    courseContext.blockingLessonTitle ?? "the previous lesson";
+  if (!requiresLinearProgression || !blockingMessage) {
+    return <>{children}</>;
+  }
 
   return (
     <Alert variant="destructive" className="flex items-start gap-3">
@@ -46,7 +66,7 @@ export const LinearProgressContentGate = ({ children }: Props) => {
         <AlertDescription className="text-muted-foreground text-sm">
           This course enforces linear progression. Complete{" "}
           <span className="text-foreground font-semibold">
-            {blockingLessonTitle}
+            {blockingMessage}
           </span>{" "}
           before accessing this step.
         </AlertDescription>

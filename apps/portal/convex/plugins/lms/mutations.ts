@@ -100,6 +100,23 @@ const quizQuestionValidator: any = v.object({
   order: v.number(),
 });
 
+const quizAttemptResponseInput = v.object({
+  questionId: v.id("posts"),
+  questionType: quizQuestionTypeValidator,
+  selectedOptionIds: v.optional(v.array(v.string())),
+  answerText: v.optional(v.string()),
+});
+
+const quizAttemptSummaryValidator = v.object({
+  _id: v.id("quizAttempts"),
+  scorePercent: v.number(),
+  totalQuestions: v.number(),
+  gradedQuestions: v.number(),
+  correctCount: v.number(),
+  completedAt: v.number(),
+  durationMs: v.optional(v.number()),
+});
+
 export const ensureQuizQuestionPostType = mutation({
   args: {
     organizationId: v.optional(v.id("organizations")),
@@ -645,8 +662,11 @@ export const attachQuizToLesson = mutation({
     );
     const lessonMeta: PostMetaMap = await getPostMetaMap(ctx, args.lessonId);
     let lessonCourseSlug = getMetaString(lessonMeta, "courseSlug");
+    const lessonCourseIdMeta = getMetaString(lessonMeta, "courseId");
+    if (lessonCourseIdMeta) {
+      await setPostMetaValue(ctx, args.quizId, "courseId", lessonCourseIdMeta);
+    }
     if (!lessonCourseSlug) {
-      const lessonCourseIdMeta = getMetaString(lessonMeta, "courseId");
       if (lessonCourseIdMeta) {
         const parentCourse = await ctx.db.get(
           lessonCourseIdMeta as Id<"posts">,
@@ -691,6 +711,67 @@ export const removeQuizFromLesson = mutation({
     await deletePostMetaValue(ctx, args.quizId, "isFinal");
     await deletePostMetaValue(ctx, args.quizId, "lessonSlug");
     await deletePostMetaValue(ctx, args.quizId, "courseSlug");
+    await deletePostMetaValue(ctx, args.quizId, "courseId");
+    return { success: true };
+  },
+});
+
+export const attachFinalQuizToCourse = mutation({
+  args: {
+    courseId: v.id("posts"),
+    quizId: v.id("posts"),
+    order: v.optional(v.number()),
+  },
+  returns: v.object({
+    success: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const course = await ctx.db.get(args.courseId);
+    if (!course || course.postTypeSlug !== "courses") {
+      throw new Error("Course not found");
+    }
+    const quiz = await ctx.db.get(args.quizId);
+    if (!quiz || quiz.postTypeSlug !== "quizzes") {
+      throw new Error("Quiz not found");
+    }
+    if (
+      (course.organizationId ?? undefined) !==
+      (quiz.organizationId ?? undefined)
+    ) {
+      throw new Error("Course and quiz must belong to the same organization");
+    }
+
+    await deletePostMetaValue(ctx, args.quizId, "lessonId");
+    await deletePostMetaValue(ctx, args.quizId, "topicId");
+    await deletePostMetaValue(ctx, args.quizId, "lessonSlug");
+
+    await setPostMetaValue(ctx, args.quizId, "courseId", args.courseId);
+    await setPostMetaValue(
+      ctx,
+      args.quizId,
+      "courseSlug",
+      course.slug ?? course._id,
+    );
+    if (typeof args.order === "number") {
+      await setPostMetaValue(ctx, args.quizId, "order", args.order);
+    }
+    await setPostMetaValue(ctx, args.quizId, "isFinal", true);
+    return { success: true };
+  },
+});
+
+export const removeFinalQuizFromCourse = mutation({
+  args: {
+    quizId: v.id("posts"),
+  },
+  returns: v.object({
+    success: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    await deletePostMetaValue(ctx, args.quizId, "courseId");
+    await deletePostMetaValue(ctx, args.quizId, "courseSlug");
+    await deletePostMetaValue(ctx, args.quizId, "order");
+    await deletePostMetaValue(ctx, args.quizId, "isFinal");
     return { success: true };
   },
 });
@@ -970,6 +1051,160 @@ export const reorderQuizQuestions = mutation({
     );
 
     return { success: true };
+  },
+});
+
+export const submitQuizAttempt = mutation({
+  args: {
+    quizId: v.id("posts"),
+    courseId: v.optional(v.id("posts")),
+    lessonId: v.optional(v.id("posts")),
+    durationMs: v.optional(v.number()),
+    responses: v.array(quizAttemptResponseInput),
+  },
+  returns: v.object({
+    attempt: quizAttemptSummaryValidator,
+  }),
+  handler: async (ctx, args) => {
+    const userId = await getAuthenticatedUserDocIdByToken(ctx);
+    const quiz = await ctx.db.get(args.quizId);
+    if (!quiz || quiz.postTypeSlug !== "quizzes") {
+      throw new Error("Quiz not found");
+    }
+
+    const quizMeta = await getPostMetaMap(ctx, args.quizId);
+    const resolvedLessonId =
+      args.lessonId ??
+      (getMetaString(quizMeta, "lessonId") as Id<"posts"> | null) ??
+      undefined;
+    const resolvedCourseId =
+      args.courseId ??
+      (getMetaString(quizMeta, "courseId") as Id<"posts"> | null) ??
+      undefined;
+
+    const questions = await fetchQuizQuestionsForQuiz(
+      ctx,
+      args.quizId,
+      quiz.organizationId ?? undefined,
+    );
+
+    if (questions.length === 0) {
+      throw new Error("Quiz has no questions to attempt");
+    }
+    if (args.responses.length !== questions.length) {
+      throw new Error("All questions must be answered before submission");
+    }
+
+    const responseMap = new Map(
+      args.responses.map((response) => [response.questionId, response]),
+    );
+
+    let correctCount = 0;
+    let gradedQuestions = 0;
+    const normalizedResponses: {
+      questionId: Id<"posts">;
+      questionType: (typeof questions)[number]["questionType"];
+      selectedOptionIds?: string[];
+      answerText?: string;
+      isCorrect?: boolean;
+    }[] = [];
+
+    for (const question of questions) {
+      const response = responseMap.get(question._id);
+      if (!response) {
+        throw new Error("All questions must be answered before submission");
+      }
+
+      if (question.questionType === "singleChoice") {
+        const selection = response.selectedOptionIds?.[0];
+        if (!selection) {
+          throw new Error("Please select an answer for every question");
+        }
+        gradedQuestions += 1;
+        const cleanedSelection =
+          question.options.find((option) => option.id === selection)?.id ??
+          selection;
+        const isCorrect = question.correctOptionIds.includes(cleanedSelection);
+        if (isCorrect) {
+          correctCount += 1;
+        }
+        normalizedResponses.push({
+          questionId: question._id,
+          questionType: question.questionType,
+          selectedOptionIds: [cleanedSelection],
+          isCorrect,
+        });
+        continue;
+      }
+
+      if (question.questionType === "multipleChoice") {
+        const selections = Array.from(
+          new Set(response.selectedOptionIds ?? []),
+        );
+        if (selections.length === 0) {
+          throw new Error("Please select at least one option per question");
+        }
+        gradedQuestions += 1;
+        const selectionSet = new Set(selections);
+        const correctSet = new Set(question.correctOptionIds);
+        const isCorrect =
+          selectionSet.size === correctSet.size &&
+          question.correctOptionIds.every((id) => selectionSet.has(id));
+        if (isCorrect) {
+          correctCount += 1;
+        }
+        normalizedResponses.push({
+          questionId: question._id,
+          questionType: question.questionType,
+          selectedOptionIds: selections,
+          isCorrect,
+        });
+        continue;
+      }
+
+      const answerText = response.answerText?.trim();
+      if (!answerText) {
+        throw new Error("Please provide a response for every question");
+      }
+      normalizedResponses.push({
+        questionId: question._id,
+        questionType: question.questionType,
+        answerText,
+      });
+    }
+
+    const completedAt = Date.now();
+    const scorePercent =
+      gradedQuestions > 0
+        ? Math.round((correctCount / gradedQuestions) * 10000) / 100
+        : 0;
+
+    const attemptId = await ctx.db.insert("quizAttempts", {
+      quizId: args.quizId,
+      userId,
+      organizationId: quiz.organizationId ?? undefined,
+      courseId: resolvedCourseId,
+      lessonId: resolvedLessonId,
+      responses: normalizedResponses,
+      totalQuestions: questions.length,
+      gradedQuestions,
+      correctCount,
+      scorePercent,
+      durationMs: args.durationMs,
+      completedAt,
+    });
+
+    const attemptSummary = {
+      _id: attemptId,
+      scorePercent,
+      totalQuestions: questions.length,
+      gradedQuestions,
+      correctCount,
+      completedAt,
+      durationMs: args.durationMs ?? undefined,
+    };
+
+    return { attempt: attemptSummary };
   },
 });
 

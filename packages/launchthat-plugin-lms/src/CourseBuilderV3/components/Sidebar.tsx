@@ -1,16 +1,17 @@
+import React from "react";
+
+import { DraggableItem } from "@acme/dnd";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@acme/ui/accordion";
-import type { LessonItem, QuizItem, TopicItem } from "../types/content";
 
-import { DraggableItem } from "@acme/dnd";
-import React from "react";
-import type { SidebarItem } from "../types/navigation";
-import type { SidebarItemRenderer } from "../types/callbacks";
 import type { VimeoVideoItem } from "../CourseBuilder";
+import type { SidebarItemRenderer } from "../types/callbacks";
+import type { LessonItem, QuizItem, TopicItem } from "../types/content";
+import type { SidebarItem } from "../types/navigation";
 
 interface SidebarProps {
   availableLessons: LessonItem[];
@@ -77,7 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <div className="bg-muted/10 w-64 flex-shrink-0 overflow-y-auto border-r p-4">
+    <div className="bg-muted/10 w-64 shrink-0 overflow-y-auto border-r p-4">
       <h2 className="mb-4 text-lg font-semibold">Available Items</h2>
 
       <Accordion
@@ -116,6 +117,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   id={lesson.id}
                   type="lesson"
                   className="bg-card mb-1 rounded border p-2 text-sm shadow-sm"
+                  data={{ label: lesson.title }}
                 >
                   {lesson.title}
                 </DraggableItem>
@@ -151,6 +153,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   id={topic.id}
                   type="topic"
                   className="bg-card mb-1 rounded border p-2 text-sm shadow-sm"
+                  data={{ label: topic.title }}
                 >
                   {topic.title}
                 </DraggableItem>
@@ -186,6 +189,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   id={quiz.id}
                   type="quiz"
                   className="bg-card mb-1 rounded border p-2 text-xs shadow-sm"
+                  data={{ label: quiz.title }}
                 >
                   {quiz.title}
                 </DraggableItem>

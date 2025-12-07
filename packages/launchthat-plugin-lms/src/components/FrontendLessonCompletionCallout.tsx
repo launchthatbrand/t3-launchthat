@@ -278,6 +278,13 @@ function buildEntryHref(
   if (!entry) {
     return null;
   }
+  if (entry.type === "quiz") {
+    const quizSlug =
+      typeof entry.slug === "string" && entry.slug.length > 0
+        ? entry.slug
+        : (entry.id as string);
+    return `/course/${courseSlug}/quiz/${quizSlug}`;
+  }
   if (entry.type === "lesson") {
     const lessonSlug =
       typeof entry.slug === "string" && entry.slug.length > 0

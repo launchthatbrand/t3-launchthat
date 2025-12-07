@@ -1,15 +1,16 @@
 "use client";
 
-import type { LmsBuilderQuiz, LmsBuilderTopic } from "../types";
-
-import { BookOpen } from "lucide-react";
-import type { Id } from "../lib/convexId";
 import type { LucideIcon } from "lucide-react";
+import { useMemo } from "react";
+import { api } from "@portal/convexspec";
+import { useQuery } from "convex/react";
+import { BookOpen } from "lucide-react";
+
 import type { NavItem } from "@acme/ui/general/nav-main";
 import { NavMain } from "@acme/ui/general/nav-main";
-import { api } from "@portal/convexspec";
-import { useMemo } from "react";
-import { useQuery } from "convex/react";
+
+import type { Id } from "../lib/convexId";
+import type { LmsBuilderQuiz, LmsBuilderTopic } from "../types";
 
 type ChildNavItem = { title: string; url: string };
 
@@ -64,15 +65,18 @@ export function CourseNav({
       return [];
     }
 
-    const derivedSlug =
-      (() => {
-        if (courseSlug) return courseSlug;
-        if (courseStructure.course && typeof courseStructure.course === "object") {
-          if (courseStructure.course.slug) return courseStructure.course.slug;
-          if (courseStructure.course._id) return courseStructure.course._id as string;
-        }
-        return "";
-      })();
+    const derivedSlug = (() => {
+      if (courseSlug) return courseSlug;
+      if (
+        courseStructure.course &&
+        typeof courseStructure.course === "object"
+      ) {
+        if (courseStructure.course.slug) return courseStructure.course.slug;
+        if (courseStructure.course._id)
+          return courseStructure.course._id as string;
+      }
+      return "";
+    })();
 
     const baseUrl = `/course/${derivedSlug}`;
 
@@ -125,7 +129,17 @@ export function CourseNav({
         items: childItems,
       } as NavItem;
     });
-
+    const finalQuizzes = attachedQuizzes.filter(
+      (quiz) => !quiz.lessonId && (quiz.isFinal ?? false),
+    );
+    finalQuizzes.forEach((quiz) => {
+      sections.push({
+        title: quiz.title ?? "Untitled quiz",
+        url: `${baseUrl}/quiz/${quiz.slug ?? quiz._id}`,
+        icon,
+        items: [],
+      });
+    });
     return [{ label: "Course Outline", items: sections }];
   }, [courseStructure, courseSlug, icon]);
 

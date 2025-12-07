@@ -1,16 +1,6 @@
 "use client";
 
-import type {
-  AccessibilityConfig,
-  I18nConfig,
-  SidebarConfig,
-  ThemeConfig,
-} from "./types/theme";
-// Restore ContentItemRenderer for props
-import type {
-  ContentItemRenderer,
-  SidebarItemRenderer,
-} from "./types/callbacks";
+import React from "react";
 import {
   DndContext,
   DragOverlay,
@@ -19,18 +9,28 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+
+import type { CourseBuilderState } from "./store/useCourseBuilderStore";
+// Restore ContentItemRenderer for props
+import type {
+  ContentItemRenderer,
+  SidebarItemRenderer,
+} from "./types/callbacks";
 // Import types needed for props and mapping
 // Remove unused store types (Lesson, Quiz, Topic)
 import type { LessonItem, QuizItem, TopicItem } from "./types/content";
-
-import type { CourseBuilderState } from "./store/useCourseBuilderStore";
+import type { SidebarItem } from "./types/navigation";
 // Restore CourseStructure for props
 import type { CourseStructure } from "./types/structure";
+import type {
+  AccessibilityConfig,
+  I18nConfig,
+  SidebarConfig,
+  ThemeConfig,
+} from "./types/theme";
 import DragOverlayContent from "./components/DragOverlayContent";
 import MainContent from "./components/MainContent";
-import React from "react";
 import Sidebar from "./components/Sidebar";
-import type { SidebarItem } from "./types/navigation";
 // Import the new layout components
 import TopBar from "./components/TopBar";
 // Import the new DND hook
@@ -73,6 +73,7 @@ export interface CourseBuilderProps {
   onRemoveLesson?: (lessonId: string) => Promise<void>;
   onRemoveTopic?: (topicId: string) => Promise<void>;
   onRemoveQuiz?: (quizId: string) => Promise<void>;
+  onRemoveFinalQuiz?: (quizId: string) => Promise<void>;
   onTitleChangeLesson?: (lessonId: string, newTitle: string) => Promise<void>;
   onTitleChangeTopic?: (topicId: string, newTitle: string) => Promise<void>;
   onTitleChangeQuiz?: (quizId: string, newTitle: string) => Promise<void>;
@@ -168,6 +169,7 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
   onRemoveLesson: _onRemoveLesson = noopAsyncWithArgs,
   onRemoveTopic: _onRemoveTopic = noopAsyncWithArgs,
   onRemoveQuiz: _onRemoveQuiz = noopAsyncWithArgs,
+  onRemoveFinalQuiz: _onRemoveFinalQuiz = noopAsyncWithArgs,
   onTitleChangeLesson: _onTitleChangeLesson = noopAsyncWithArgs,
   onTitleChangeTopic: _onTitleChangeTopic = noopAsyncWithArgs,
   onTitleChangeQuiz: _onTitleChangeQuiz = noopAsyncWithArgs,
@@ -330,13 +332,13 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
   const handleRemoveFinalQuiz = React.useCallback(
     async (quizId: string) => {
       try {
-        await _onRemoveQuiz(quizId);
+        await _onRemoveFinalQuiz(quizId);
         removeFinalQuiz(quizId);
       } catch (error) {
         console.error("Failed to remove final quiz", error);
       }
     },
-    [_onRemoveQuiz, removeFinalQuiz],
+    [_onRemoveFinalQuiz, removeFinalQuiz],
   );
 
   // 5. Render the component structure
@@ -351,7 +353,7 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
       <div className="flex h-full w-full flex-col">
         <TopBar onLogStructure={handleLogStructure} />
 
-        <div className="flex flex-grow flex-row overflow-hidden">
+        <div className="flex grow flex-row overflow-hidden">
           <Sidebar
             availableLessons={availableLessons}
             availableTopics={availableTopics}

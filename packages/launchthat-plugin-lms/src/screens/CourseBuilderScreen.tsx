@@ -100,6 +100,9 @@ export const CourseBuilderScreen = ({
   const attachQuizToLesson = useMutation(
     api.plugins.lms.mutations.attachQuizToLesson,
   );
+  const attachFinalQuizToCourse = useMutation(
+    api.plugins.lms.mutations.attachFinalQuizToCourse,
+  );
   const removeLessonFromCourse = useMutation(
     api.plugins.lms.mutations.removeLessonFromCourseStructure,
   );
@@ -108,6 +111,9 @@ export const CourseBuilderScreen = ({
   );
   const removeQuizFromLesson = useMutation(
     api.plugins.lms.mutations.removeQuizFromLesson,
+  );
+  const removeFinalQuizFromCourse = useMutation(
+    api.plugins.lms.mutations.removeFinalQuizFromCourse,
   );
   const createLessonFromVimeo = useMutation(
     api.plugins.lms.mutations.createLessonFromVimeo,
@@ -338,6 +344,27 @@ export const CourseBuilderScreen = ({
     [attachQuizToLesson],
   );
 
+  const handleAttachFinalQuiz = useCallback(
+    async (quizId: string, incomingCourseId?: string, _order?: number) => {
+      const resolvedCourseId = (incomingCourseId ?? courseId) as
+        | Id<"posts">
+        | undefined;
+      if (!resolvedCourseId) return;
+      try {
+        await attachFinalQuizToCourse({
+          courseId: resolvedCourseId,
+          quizId: quizId as Id<"posts">,
+          order: 0,
+        });
+        toast.success("Final quiz attached.");
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to attach final quiz.");
+      }
+    },
+    [attachFinalQuizToCourse, courseId],
+  );
+
   const handleReorderLessons = useCallback(
     async (orderedLessonIds: string[]) => {
       if (!courseId) return;
@@ -416,6 +443,21 @@ export const CourseBuilderScreen = ({
       }
     },
     [removeQuizFromLesson],
+  );
+
+  const handleRemoveFinalQuiz = useCallback(
+    async (quizId: string) => {
+      try {
+        await removeFinalQuizFromCourse({
+          quizId: quizId as Id<"posts">,
+        });
+        toast.success("Final quiz removed.");
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to remove final quiz.");
+      }
+    },
+    [removeFinalQuizFromCourse],
   );
 
   const handleCreateLessonFromVimeo = useCallback(
@@ -567,11 +609,13 @@ export const CourseBuilderScreen = ({
         handleAttachTopic(topicId, lessonId)
       }
       onAttachQuizToLesson={handleAttachQuizToLesson}
+      onAttachQuizToFinal={handleAttachFinalQuiz}
       onReorderLessons={handleReorderLessons}
       onReorderLessonTopics={handleReorderLessonTopics}
       onRemoveLesson={handleRemoveLesson}
       onRemoveTopic={handleRemoveTopic}
       onRemoveQuiz={handleRemoveQuiz}
+      onRemoveFinalQuiz={handleRemoveFinalQuiz}
       availableVimeoVideos={isVimeoEnabled ? vimeoVideos : undefined}
       isLoadingVimeoVideos={isVimeoEnabled ? isLoadingVimeoVideos : undefined}
       onCreateLessonFromVimeo={handleCreateLessonFromVimeo}

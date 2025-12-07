@@ -73,6 +73,16 @@ const quizQuestionValidator: any = v.object({
   order: v.number(),
 });
 
+const quizAttemptSummaryValidator = v.object({
+  _id: v.id("quizAttempts"),
+  scorePercent: v.number(),
+  totalQuestions: v.number(),
+  gradedQuestions: v.number(),
+  correctCount: v.number(),
+  completedAt: v.number(),
+  durationMs: v.optional(v.number()),
+});
+
 const courseStructureValidator = v.array(
   v.object({
     lessonId: v.id("posts"),
@@ -172,6 +182,7 @@ export const getCourseStructureWithItems = query({
       ctx,
       lessonIdSet,
       organizationId,
+      course._id,
     );
 
     const structure: LmsCourseStructureItem[] = structureIds.map(
@@ -348,6 +359,7 @@ export const getAvailableQuizzes = query({
       ctx,
       new Set<Id<"posts">>(),
       args.organizationId ?? undefined,
+      undefined,
     );
     return quizzes.filter((quiz) => !quiz.lessonId);
   },
@@ -395,6 +407,38 @@ export const getQuizBuilderState = query({
       },
       questions,
     };
+  },
+});
+
+export const getQuizAttemptsForViewer = query({
+  args: {
+    quizId: v.id("posts"),
+  },
+  returns: v.array(quizAttemptSummaryValidator),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
+    const userId = await getAuthenticatedUserDocIdByToken(ctx);
+    const attempts = await ctx.db
+      .query("quizAttempts")
+      .withIndex("by_quiz_user", (q) =>
+        q.eq("quizId", args.quizId).eq("userId", userId),
+      )
+      .order("desc")
+      .take(10);
+
+    return attempts.map((attempt) => ({
+      _id: attempt._id,
+      scorePercent: attempt.scorePercent,
+      totalQuestions: attempt.totalQuestions,
+      gradedQuestions: attempt.gradedQuestions,
+      correctCount: attempt.correctCount,
+      completedAt: attempt.completedAt,
+      durationMs: attempt.durationMs ?? undefined,
+    }));
   },
 });
 
@@ -540,17 +584,19 @@ async function fetchQuizzesForLessons(
   ctx: QueryCtx,
   lessonIds: Set<Id<"posts">>,
   organizationId: Id<"organizations"> | undefined,
+  courseId?: Id<"posts">,
 ): Promise<LmsBuilderQuiz[]> {
   if (lessonIds.size === 0) {
     return [];
   }
-  return fetchQuizzesByType(ctx, lessonIds, organizationId);
+  return fetchQuizzesByType(ctx, lessonIds, organizationId, courseId);
 }
 
 async function fetchQuizzesByType(
   ctx: QueryCtx,
   lessonIds: Set<Id<"posts">>,
   organizationId: Id<"organizations"> | undefined,
+  courseId?: Id<"posts">,
 ): Promise<LmsBuilderQuiz[]> {
   let queryBuilder = ctx.db
     .query("posts")
@@ -575,8 +621,12 @@ async function fetchQuizzesByType(
       lessonIds.size === 0 ||
       (lessonId && lessonIds.has(lessonId as Id<"posts">));
     const topicId = meta.get("topicId");
+    const metaCourseId = meta.get("courseId");
+    const courseMatches =
+      !courseId ||
+      (typeof metaCourseId === "string" && metaCourseId === courseId);
 
-    if (lessonMatches) {
+    if (lessonMatches || courseMatches) {
       attached.push({
         _id: quiz._id,
         title: quiz.title,
