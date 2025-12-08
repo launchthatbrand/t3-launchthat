@@ -1,36 +1,38 @@
 "use client";
 
-import { Card, CardContent } from "@acme/ui/card";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { LexicalEditor } from "lexical";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { api } from "@/convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
+import { formatDistanceToNow } from "date-fns";
 import { Loader2, Search, Sparkles, Upload } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Card, CardContent } from "@acme/ui/card";
+import { Input } from "@acme/ui/input";
+import { Separator } from "@acme/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { toast } from "@acme/ui/toast";
+
+import type { OEmbedPayload } from "~/components/editor/utils/oembed";
+import type { PluginArchiveViewInstance } from "~/lib/plugins/helpers";
 import type {
   PluginMediaPickerContext,
   PluginMediaSelection,
 } from "~/lib/plugins/types";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { PlaceholderState } from "~/app/(root)/(admin)/admin/edit/_components/PlaceholderState";
+import { INSERT_OEMBED_COMMAND } from "~/components/editor/plugins/embeds/oembed-plugin";
+import { INSERT_IMAGE_COMMAND } from "~/components/editor/plugins/images-plugin";
+import { fetchOEmbedPayload } from "~/components/editor/utils/oembed";
 import {
   getPluginArchiveViewForSlug,
   wrapWithPluginProviders,
 } from "~/lib/plugins/helpers";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { INSERT_IMAGE_COMMAND } from "~/components/editor/plugins/images-plugin";
-import { INSERT_OEMBED_COMMAND } from "~/components/editor/plugins/embeds/oembed-plugin";
-import Image from "next/image";
-import { Input } from "@acme/ui/input";
-import type { LexicalEditor } from "lexical";
-import Link from "next/link";
-import { PlaceholderState } from "~/app/(root)/(admin)/admin/edit/_components/PlaceholderState";
-import type { PluginArchiveViewInstance } from "~/lib/plugins/helpers";
-import type { ReactNode } from "react";
-import { Separator } from "@acme/ui/separator";
-import { api } from "@/convex/_generated/api";
-import { fetchOEmbedPayload } from "~/components/editor/utils/oembed";
-import { formatDistanceToNow } from "date-fns";
-import { toast } from "@acme/ui/toast";
 
 type MediaItemWithUrl = Doc<"mediaItems"> & { url?: string | null };
 type AttachmentSelection = Extract<
@@ -116,14 +118,26 @@ export function MediaPickerDialog({
 
   const insertEmbed = useCallback(
     async (embed: EmbedSelection["embed"]) => {
-      const payload =
-        embed.html !== undefined ? embed : await fetchOEmbedPayload(embed.url);
+      const payload: OEmbedPayload | null =
+        embed.html !== undefined
+          ? (embed as OEmbedPayload)
+          : await fetchOEmbedPayload(embed.url);
 
       if (!payload) {
         throw new Error("Unable to embed this media item.");
       }
 
-      activeEditor.dispatchCommand(INSERT_OEMBED_COMMAND, payload);
+      const mergedPayload: OEmbedPayload = {
+        ...payload,
+        providerName: embed.providerName ?? payload.providerName,
+        title: embed.title ?? payload.title,
+        width: embed.width ?? payload.width,
+        height: embed.height ?? payload.height,
+        thumbnailUrl: embed.thumbnailUrl ?? payload.thumbnailUrl,
+        videoId: embed.videoId ?? payload.videoId,
+      };
+
+      activeEditor.dispatchCommand(INSERT_OEMBED_COMMAND, mergedPayload);
     },
     [activeEditor],
   );

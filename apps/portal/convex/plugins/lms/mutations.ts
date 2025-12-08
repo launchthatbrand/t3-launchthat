@@ -300,6 +300,7 @@ const createLexicalStateWithVimeoEmbed = (video: {
           width: DEFAULT_EMBED_WIDTH,
           height: DEFAULT_EMBED_HEIGHT,
           thumbnailUrl: video.thumbnailUrl ?? undefined,
+          videoId: video.videoId,
         },
       ],
       direction: "ltr",

@@ -3,9 +3,10 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { api } from "@/convex/_generated/api";
 import { formatDataStreamPart } from "@ai-sdk/ui-utils";
+import { LMS_QUIZ_ASSISTANT_EXPERIENCE_ID } from "launchthat-plugin-support/assistant";
+
 import { getConvex } from "~/lib/convex";
 import { resolveSupportOrganizationId } from "~/lib/support/resolveOrganizationId";
-import { z } from "zod";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -22,27 +23,72 @@ interface HelpdeskArticleSummary {
   updatedAt?: number | null;
 }
 
-const messageSchema = z.object({
-  id: z.string().optional(),
-  role: z.enum(["user", "assistant", "system"]),
-  content: z.string(),
-});
+interface SupportMessage {
+  id?: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+}
 
-type SupportMessage = z.infer<typeof messageSchema>;
+interface SupportRequestPayload {
+  organizationId: string;
+  sessionId?: string;
+  contactId?: string;
+  contactEmail?: string;
+  contactName?: string;
+  messages: SupportMessage[];
+  experienceId?: string;
+  experienceContext?: Record<string, unknown>;
+}
 
-const requestSchema = z.object({
-  organizationId: z.string().min(1),
-  sessionId: z.string().optional(),
-  contactId: z.string().optional(),
-  contactEmail: z.string().email().optional(),
-  contactName: z.string().optional(),
-  messages: z.array(messageSchema),
-});
+const parseRequest = (payload: unknown): SupportRequestPayload => {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Invalid request payload");
+  }
+  const body = payload as Record<string, unknown>;
+  const organizationId = body.organizationId;
+  if (
+    typeof organizationId !== "string" ||
+    organizationId.trim().length === 0
+  ) {
+    throw new Error("organizationId is required");
+  }
+  const messagesRaw = Array.isArray(body.messages) ? body.messages : [];
+  const messages: SupportMessage[] = messagesRaw
+    .map((message) => ({
+      id: typeof message?.id === "string" ? message.id : undefined,
+      role:
+        message?.role === "assistant" ||
+        message?.role === "system" ||
+        message?.role === "user"
+          ? (message.role as SupportMessage["role"])
+          : "user",
+      content: typeof message?.content === "string" ? message.content : "",
+    }))
+    .filter((message) => message.content.length > 0);
+  return {
+    organizationId,
+    sessionId: typeof body.sessionId === "string" ? body.sessionId : undefined,
+    contactId: typeof body.contactId === "string" ? body.contactId : undefined,
+    contactEmail:
+      typeof body.contactEmail === "string" ? body.contactEmail : undefined,
+    contactName:
+      typeof body.contactName === "string" ? body.contactName : undefined,
+    messages,
+    experienceId:
+      typeof body.experienceId === "string" ? body.experienceId : undefined,
+    experienceContext:
+      (body.experienceContext &&
+      typeof body.experienceContext === "object" &&
+      !Array.isArray(body.experienceContext)
+        ? (body.experienceContext as Record<string, unknown>)
+        : undefined) ?? {},
+  };
+};
 
 export async function POST(req: Request) {
   try {
     console.log("[support-chat] incoming request");
-    const parsed = requestSchema.parse(await req.json());
+    const parsed = parseRequest(await req.json());
     const convex = getConvex();
     const organizationId = await resolveSupportOrganizationId(
       convex,
@@ -62,6 +108,10 @@ export async function POST(req: Request) {
       : undefined;
     const contactEmail = parsed.contactEmail;
     const contactName = parsed.contactName;
+    const experienceId =
+      (parsed.experienceId as string | undefined) ?? "support";
+    const experienceContext =
+      (parsed.experienceContext as Record<string, unknown>) ?? {};
 
     const userMessages = parsed.messages.filter(
       (message: SupportMessage) => message.role === "user",
@@ -109,6 +159,18 @@ export async function POST(req: Request) {
         source: "agent",
       });
       return streamTextResponse(fallbackMessage);
+    }
+
+    if (experienceId === LMS_QUIZ_ASSISTANT_EXPERIENCE_ID) {
+      return await handleQuizAssistantExperience({
+        convex,
+        organizationId,
+        sessionId,
+        contactId,
+        contactEmail,
+        contactName,
+        experienceContext,
+      });
     }
 
     const articleMatch =
@@ -286,4 +348,73 @@ function formatRelativeTime(timestamp?: number | null) {
   }
   const days = Math.round(deltaMs / 86_400_000);
   return `${days}d ago`;
+}
+
+interface QuizExperienceArgs {
+  convex: ReturnType<typeof getConvex>;
+  organizationId: Id<"organizations">;
+  sessionId: string;
+  contactId?: Id<"contacts">;
+  contactEmail?: string;
+  contactName?: string;
+  experienceContext: Record<string, unknown>;
+}
+
+async function handleQuizAssistantExperience(
+  args: QuizExperienceArgs,
+): Promise<Response> {
+  const lessonIdRaw = args.experienceContext.lessonId;
+  if (typeof lessonIdRaw !== "string") {
+    const message =
+      "Unable to generate a quiz because the lesson context was missing.";
+    await recordAssistantMessage(args, message);
+    return streamTextResponse(message);
+  }
+
+  const lessonOrgIdRaw = args.experienceContext.organizationId;
+  const lessonOrganizationId =
+    typeof lessonOrgIdRaw === "string"
+      ? (lessonOrgIdRaw as Id<"organizations">)
+      : args.organizationId;
+
+  try {
+    const result = await args.convex.action(
+      api.plugins.lms.actions.generateQuizFromTranscript,
+      {
+        organizationId: lessonOrganizationId,
+        lessonId: lessonIdRaw as Id<"posts">,
+        questionCount:
+          typeof args.experienceContext.questionCount === "number"
+            ? (args.experienceContext.questionCount as number)
+            : undefined,
+      },
+    );
+    const builderUrl = result.builderUrl;
+    const successMessage = `Created quiz "${result.quizTitle}" with ${result.questionCount} questions. Open builder: ${builderUrl}`;
+    await recordAssistantMessage(args, successMessage);
+    return streamTextResponse(successMessage);
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Quiz assistant failed to complete the request.";
+    await recordAssistantMessage(args, message);
+    return streamTextResponse(message);
+  }
+}
+
+async function recordAssistantMessage(
+  args: QuizExperienceArgs,
+  content: string,
+) {
+  await args.convex.mutation(api.plugins.support.mutations.recordMessage, {
+    organizationId: args.organizationId,
+    sessionId: args.sessionId,
+    role: "assistant",
+    content,
+    contactId: args.contactId,
+    contactEmail: args.contactEmail,
+    contactName: args.contactName,
+    source: "agent",
+  });
 }

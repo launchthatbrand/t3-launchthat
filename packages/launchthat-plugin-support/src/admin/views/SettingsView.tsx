@@ -3,7 +3,7 @@
 import type { GenericId as Id } from "convex/values";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@portal/convexspec";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Copy, Loader2, PencilLine, Plus, Trash2 } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
@@ -31,6 +31,10 @@ import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
 
 import type { SupportChatSettings } from "../../settings";
+import {
+  buildSupportOpenAiOwnerKey,
+  SUPPORT_OPENAI_NODE_TYPE,
+} from "../../assistant/openai";
 import {
   defaultSupportChatSettings,
   supportChatSettingsOptionKey,
@@ -114,7 +118,7 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
   );
   const [isSaving, setIsSaving] = useState(false);
   const [tabValue, setTabValue] = useState<
-    "general" | "copy" | "email" | "knowledge"
+    "general" | "copy" | "email" | "assistant" | "knowledge"
   >("general");
   const [domainInput, setDomainInput] = useState("");
   const [isEmailTogglePending, setIsEmailTogglePending] = useState(false);
@@ -133,9 +137,47 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
   const deleteRagSource = useMutation(
     api.plugins.support.mutations.deleteRagSourceConfig,
   );
+  const upsertConnection = useAction(
+    api.integrations.connections.actions.upsertForOwner,
+  );
+  const deleteConnection = useMutation(
+    api.integrations.connections.mutations.remove,
+  );
   const [knowledgeForm, setKnowledgeForm] = useState<RagSourceFormState>(
     createDefaultRagFormState(),
   );
+  const [openAiKeyInput, setOpenAiKeyInput] = useState("");
+  const [isSavingOpenAiKey, setIsSavingOpenAiKey] = useState(false);
+  const [isRemovingOpenAiKey, setIsRemovingOpenAiKey] = useState(false);
+  const openAiOwnerKey = useMemo(
+    () => buildSupportOpenAiOwnerKey(organizationId as string),
+    [organizationId],
+  );
+  const openAiConnections = useQuery(
+    api.integrations.connections.queries.list,
+    openAiOwnerKey
+      ? {
+          nodeType: SUPPORT_OPENAI_NODE_TYPE,
+          ownerId: openAiOwnerKey,
+        }
+      : "skip",
+  ) as
+    | Array<{
+        _id: string;
+        metadata?: {
+          maskedCredentials?: Record<string, string>;
+        } | null;
+      }>
+    | undefined;
+  const openAiConnection = Array.isArray(openAiConnections)
+    ? openAiConnections[0]
+    : undefined;
+  const openAiMaskedCredential =
+    openAiConnection?.metadata?.maskedCredentials?.token ??
+    (openAiConnection?.metadata?.maskedCredentials
+      ? Object.values(openAiConnection.metadata.maskedCredentials)[0]
+      : undefined);
+  const isOpenAiConnected = Boolean(openAiConnection);
   const activePostTypeSlug = knowledgeForm.postTypeSlug;
   const postTypeFields = useQuery(
     api.core.postTypes.queries.fieldsBySlug,
@@ -303,6 +345,55 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
     }
   };
 
+  const handleSaveOpenAiKey = async () => {
+    const trimmed = openAiKeyInput.trim();
+    if (!trimmed) {
+      toast.error("Enter your OpenAI API key.");
+      return;
+    }
+    setIsSavingOpenAiKey(true);
+    try {
+      await upsertConnection({
+        nodeType: SUPPORT_OPENAI_NODE_TYPE,
+        name: "Support OpenAI",
+        ownerId: openAiOwnerKey,
+        credentials: trimmed,
+        status: "connected",
+      });
+      setOpenAiKeyInput("");
+      toast.success("OpenAI API key saved.");
+    } catch (error) {
+      console.error("[support-settings] save openai key", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to save OpenAI API key.",
+      );
+    } finally {
+      setIsSavingOpenAiKey(false);
+    }
+  };
+
+  const handleDisconnectOpenAi = async () => {
+    if (!openAiConnection) {
+      return;
+    }
+    setIsRemovingOpenAiKey(true);
+    try {
+      await deleteConnection({ id: openAiConnection._id as Id<"connections"> });
+      toast.success("OpenAI key removed.");
+    } catch (error) {
+      console.error("[support-settings] remove openai key", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to remove the OpenAI key.",
+      );
+    } finally {
+      setIsRemovingOpenAiKey(false);
+    }
+  };
+
   const handleToggleKnowledgeSource = async (
     source: (typeof knowledgeSources)[number],
     nextValue: boolean,
@@ -376,6 +467,7 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
     { label: "General", value: "general" },
     { label: "Form copy", value: "copy" },
     { label: "Email intake", value: "email" },
+    { label: "AI assistant", value: "assistant" },
     { label: "Knowledge sources", value: "knowledge" },
   ];
 
@@ -510,6 +602,7 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
             value === "general" ||
             value === "copy" ||
             value === "email" ||
+            value === "assistant" ||
             value === "knowledge"
           ) {
             setTabValue(value);
@@ -683,6 +776,81 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
                     "Save changes"
                   )}
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="assistant" className="space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle>OpenAI connection</CardTitle>
+                <CardDescription>
+                  Store an organization-specific OpenAI API key to power AI
+                  responses and quiz generation. Keys are encrypted inside the
+                  integrations vault.
+                </CardDescription>
+              </div>
+              <div className="text-right">
+                <Badge variant={isOpenAiConnected ? "secondary" : "outline"}>
+                  {isOpenAiConnected ? "Connected" : "Not connected"}
+                </Badge>
+                {openAiMaskedCredential && (
+                  <p className="text-muted-foreground mt-1 font-mono text-xs">
+                    {openAiMaskedCredential}
+                  </p>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="support-openai-key">OpenAI API key</Label>
+                <Input
+                  id="support-openai-key"
+                  type="password"
+                  autoComplete="off"
+                  value={openAiKeyInput}
+                  onChange={(event) => setOpenAiKeyInput(event.target.value)}
+                  placeholder="sk-..."
+                />
+                <p className="text-muted-foreground text-xs">
+                  Paste a secret key with access to GPT-4o-mini or higher. The
+                  key stays scoped to this organization.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  type="button"
+                  onClick={handleSaveOpenAiKey}
+                  disabled={isSavingOpenAiKey || !openAiKeyInput.trim()}
+                >
+                  {isSavingOpenAiKey ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    "Save API key"
+                  )}
+                </Button>
+                {isOpenAiConnected && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleDisconnectOpenAi}
+                    disabled={isRemovingOpenAiKey}
+                  >
+                    {isRemovingOpenAiKey ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Removing…
+                      </>
+                    ) : (
+                      "Remove key"
+                    )}
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -1,28 +1,25 @@
 "use node";
 
-import { api, components, internal } from "@convex-config/_generated/api";
-
-import type { ActionCtx } from "@convex-config/_generated/server";
-import { Agent } from "@convex-dev/agent";
 import type { Id } from "@convex-config/_generated/dataModel";
-import { action } from "@convex-config/_generated/server";
+import type { ActionCtx } from "@convex-config/_generated/server";
 import { createOpenAI } from "@ai-sdk/openai";
+import { api, components, internal } from "@convex-config/_generated/api";
+import { action } from "@convex-config/_generated/server";
+import { Agent } from "@convex-dev/agent";
+import { v } from "convex/values";
+import {
+  buildSupportOpenAiOwnerKey,
+  SUPPORT_OPENAI_NODE_TYPE,
+} from "launchthat-plugin-support/assistant/openai";
+
 import { normalizeOrganizationId } from "../../constants";
 import { supportOrganizationIdValidator } from "./schema";
-import { v } from "convex/values";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-
-// eslint-disable-next-line turbo/no-undeclared-env-vars
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
-const openai = createOpenAI({
-  apiKey: OPENAI_API_KEY,
-});
 
 const BASE_INSTRUCTIONS = [
   "You are a helpful support assistant for LaunchThat customers.",
@@ -31,15 +28,18 @@ const BASE_INSTRUCTIONS = [
 ].join("\n");
 
 const KNOWN_MISSING_KEY_MESSAGE =
-  "Support assistant is not fully configured yet (missing API key).";
+  "Support assistant is not fully configured yet (missing OpenAI API key). Add one in Support → Settings → AI Assistant.";
 
-export const supportAgent = new Agent(components.agent, {
-  name: "LaunchThat Support Assistant",
-  description:
-    "An AI helper that answers customer questions using LaunchThat data.",
-  instructions: BASE_INSTRUCTIONS,
-  languageModel: openai.chat("gpt-4o-mini"),
-});
+const createSupportAgent = (apiKey: string) => {
+  const openai = createOpenAI({ apiKey });
+  return new Agent(components.agent, {
+    name: "LaunchThat Support Assistant",
+    description:
+      "An AI helper that answers customer questions using LaunchThat data.",
+    instructions: BASE_INSTRUCTIONS,
+    languageModel: openai.chat("gpt-4o-mini"),
+  });
+};
 
 interface EnsureThreadArgs {
   organizationId: Id<"organizations">;
@@ -49,6 +49,7 @@ interface EnsureThreadArgs {
 const ensureAgentThreadId = async (
   ctx: ActionCtx,
   args: EnsureThreadArgs,
+  agent: Agent,
 ): Promise<string> => {
   const conversationMetadata = await ctx.runQuery(
     internal.plugins.support.queries.getConversationMetadata,
@@ -65,7 +66,7 @@ const ensureAgentThreadId = async (
   const userId =
     conversationMetadata?.contactId ??
     `${args.organizationId}:${args.sessionId}`;
-  const { threadId } = await supportAgent.createThread(ctx, {
+  const { threadId } = await agent.createThread(ctx, {
     userId,
     title: `support-${args.sessionId}`,
   });
@@ -96,6 +97,40 @@ const buildKnowledgeContext = (
     .join("\n\n");
 };
 
+const resolveOrganizationOpenAiKey = async (
+  ctx: ActionCtx,
+  organizationId: Id<"organizations">,
+) => {
+  const ownerId = buildSupportOpenAiOwnerKey(organizationId);
+  const connection = await ctx.runQuery(
+    internal.integrations.connections.queries.getConnectionByNodeTypeAndOwner,
+    {
+      nodeType: SUPPORT_OPENAI_NODE_TYPE,
+      ownerId,
+    },
+  );
+  if (!connection) {
+    return null;
+  }
+  const decrypted = await ctx.runAction(
+    internal.integrations.connections.cryptoActions.getDecryptedSecrets,
+    {
+      connectionId: connection._id,
+    },
+  );
+  if (!decrypted?.credentials) {
+    return null;
+  }
+  const credentials = decrypted.credentials;
+  return (
+    credentials.token ??
+    credentials.apiKey ??
+    credentials.api_key ??
+    credentials.key ??
+    null
+  );
+};
+
 export const generateAgentReply = action({
   args: {
     organizationId: supportOrganizationIdValidator,
@@ -110,9 +145,13 @@ export const generateAgentReply = action({
   }),
   handler: async (ctx, args) => {
     const organizationId = normalizeOrganizationId(args.organizationId);
+    const apiKey = await resolveOrganizationOpenAiKey(ctx, organizationId);
 
-    if (!OPENAI_API_KEY) {
-      console.warn("[support-agent] missing OPENAI_API_KEY");
+    if (!apiKey) {
+      console.warn(
+        "[support-agent] missing OpenAI key for org",
+        organizationId,
+      );
       await ctx.runMutation(
         internal.plugins.support.mutations.recordMessageInternal,
         {
@@ -129,15 +168,20 @@ export const generateAgentReply = action({
       return { text: KNOWN_MISSING_KEY_MESSAGE };
     }
 
+    const supportAgent = createSupportAgent(apiKey);
     const trimmedPrompt = args.prompt.trim();
     if (!trimmedPrompt) {
       return { text: "" };
     }
 
-    const threadId = await ensureAgentThreadId(ctx, {
-      ...args,
-      organizationId,
-    });
+    const threadId = await ensureAgentThreadId(
+      ctx,
+      {
+        ...args,
+        organizationId,
+      },
+      supportAgent,
+    );
 
     let knowledgeEntries: Array<{
       title: string;

@@ -28,6 +28,29 @@ export interface AttachmentsContext {
 
 export type CustomFieldValue = string | number | boolean | null;
 
+export type CustomFieldSource = "schema" | "plugin" | "detected";
+
+export interface EditorCustomField
+  extends Pick<
+    Doc<"postTypeFields">,
+    | "_id"
+    | "key"
+    | "name"
+    | "description"
+    | "type"
+    | "required"
+    | "options"
+    | "defaultValue"
+    | "isSystem"
+    | "order"
+  > {
+  __source?: CustomFieldSource;
+  __pluginName?: string;
+  __readOnly?: boolean;
+  createdAt?: number | null;
+  updatedAt?: number | null;
+}
+
 export interface GeneralMetaBoxData {
   headerLabel: string;
   originalSlug: string;
@@ -49,9 +72,13 @@ export interface GeneralMetaBoxData {
 
 export interface CustomFieldsMetaBoxData {
   postTypeFieldsLoading: boolean;
-  unassignedFields: Doc<"postTypeFields">[];
+  unassignedFields: EditorCustomField[];
   renderCustomFieldControl: (
-    field: Doc<"postTypeFields">,
+    field: EditorCustomField,
+    options?: { idSuffix?: string },
+  ) => ReactNode;
+  renderFieldBlock: (
+    field: EditorCustomField,
     options?: { idSuffix?: string },
   ) => ReactNode;
   postMetaMap: Record<string, string | number | boolean | null>;
@@ -88,7 +115,7 @@ export interface NormalizedMetaBox {
   description?: string | null;
   location: "main" | "sidebar";
   priority: number;
-  fields: Doc<"postTypeFields">[];
+  fields: EditorCustomField[];
   rendererKey?: string | null;
 }
 

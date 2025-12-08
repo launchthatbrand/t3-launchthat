@@ -6,6 +6,7 @@ export interface OEmbedPayload {
   width?: number;
   height?: number;
   thumbnailUrl?: string;
+  videoId?: string;
 }
 
 interface RawOEmbedResponse {
@@ -51,6 +52,36 @@ const buildEndpointUrl = (provider: OEmbedProvider, url: string) => {
 const extractProvider = (url: string) =>
   OEMBED_PROVIDERS.find((provider) => provider.matcher.test(url)) ?? null;
 
+const pickNumericSegment = (value: string | undefined | null) => {
+  if (!value) {
+    return null;
+  }
+  const segments = value.split(/[/?#]/).filter(Boolean);
+  for (let index = segments.length - 1; index >= 0; index -= 1) {
+    if (/^\d+$/.test(segments[index] ?? "")) {
+      return segments[index] ?? null;
+    }
+  }
+  return null;
+};
+
+export const extractVimeoVideoId = (value?: string | null) => {
+  if (!value) {
+    return null;
+  }
+  try {
+    const url = new URL(value);
+    const numeric = pickNumericSegment(`${url.pathname}${url.hash}`);
+    if (numeric) {
+      return numeric;
+    }
+  } catch {
+    // Ignore parsing errors and fall back to regex extraction.
+  }
+  const fallbackMatch = value.match(/(?:video\/|\/)(\d{5,})/i);
+  return fallbackMatch ? (fallbackMatch[1] ?? null) : null;
+};
+
 const normalizeResponse = (
   url: string,
   provider: OEmbedProvider,
@@ -68,6 +99,9 @@ const normalizeResponse = (
     width: typeof response.width === "number" ? response.width : undefined,
     height: typeof response.height === "number" ? response.height : undefined,
     thumbnailUrl: response.thumbnail_url,
+    videoId: provider.name.startsWith("vimeo")
+      ? (extractVimeoVideoId(url) ?? undefined)
+      : undefined,
   };
 };
 

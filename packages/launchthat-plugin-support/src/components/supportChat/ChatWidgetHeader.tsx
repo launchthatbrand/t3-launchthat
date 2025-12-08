@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 
+import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
@@ -17,6 +18,7 @@ interface ChatWidgetHeaderProps {
   resolvedAgentName: string;
   tenantName: string;
   onlineAgentCount: number;
+  experienceLabel?: string;
 }
 
 export const ChatWidgetHeader = ({
@@ -28,6 +30,7 @@ export const ChatWidgetHeader = ({
   resolvedAgentName,
   tenantName,
   onlineAgentCount,
+  experienceLabel,
 }: ChatWidgetHeaderProps) => {
   return (
     <div className="border-border/60 flex flex-col border-b px-4 py-3">
@@ -36,6 +39,11 @@ export const ChatWidgetHeader = ({
           <p className="text-sm font-semibold">
             {shouldCollectContact ? settings.introHeadline : "Ask Support"}
           </p>
+          {experienceLabel ? (
+            <Badge variant="secondary" className="mt-1 text-[11px]">
+              {experienceLabel}
+            </Badge>
+          ) : null}
           <p className="text-muted-foreground text-xs">
             {shouldCollectContact
               ? settings.welcomeMessage

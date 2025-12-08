@@ -1,7 +1,11 @@
 import type { Doc } from "@/convex/_generated/dataModel";
 import type { ReactNode } from "react";
 
-import type { NormalizedMetaBox, ResolvedMetaBox } from "../types";
+import type {
+  EditorCustomField,
+  NormalizedMetaBox,
+  ResolvedMetaBox,
+} from "../types";
 
 export const pickMetaBoxes = (
   allowedIds: string[] | undefined,
@@ -47,7 +51,7 @@ export const formatTimestamp = (timestamp?: number | null) => {
 };
 
 export const deriveSystemFieldValue = (
-  field: Doc<"postTypeFields">,
+  field: Pick<EditorCustomField, "key">,
   post: Doc<"posts"> | null | undefined,
   isNewRecord: boolean,
 ): string => {
@@ -88,10 +92,10 @@ export type ExternalMetaBoxRenderer = (props: {
   fields: Array<{
     key: string;
     name: string;
-    description: string | null;
+    description: string | null | undefined;
     type: string;
     required: boolean;
-    options: Doc<"postTypeFields">["options"] | null;
+    options: EditorCustomField["options"] | null;
   }>;
   getValue: (fieldKey: string) => unknown;
   setValue: (fieldKey: string, value: unknown) => void;

@@ -7,6 +7,7 @@ import "./metaBoxes/general";
 import "./metaBoxes/customFields";
 import "./metaBoxes/actions";
 import "./metaBoxes/metadata";
+import "./metaBoxes/vimeo";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-type-assertion */
@@ -29,6 +30,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@acme/ui/accordion";
+import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
@@ -49,6 +51,7 @@ import type {
   AdminMetaBoxContext,
   CustomFieldsMetaBoxData,
   CustomFieldValue,
+  EditorCustomField,
   GeneralMetaBoxData,
   MetaBoxVisibilityConfig,
   NormalizedMetaBox,
@@ -71,6 +74,7 @@ import {
   AdminLayoutMain,
   AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
+import { extractVimeoVideoId } from "~/components/editor/utils/oembed";
 import {
   createLexicalStateFromPlainText,
   parseLexicalSerializedState,
@@ -81,6 +85,7 @@ import {
   wrapWithFrontendProviders,
 } from "~/lib/plugins/frontendProviders";
 import {
+  getPluginFieldDefinitionsForSlug,
   getPluginSingleViewSlotsForSlug,
   wrapWithPluginProviders,
 } from "~/lib/plugins/helpers";
@@ -143,8 +148,130 @@ const normalizeFieldOptions = (
   return null;
 };
 
+const formatCustomFieldLabel = (key: string) =>
+  key.replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+
+const buildSyntheticFieldId = (
+  source: string,
+  slug: string,
+  key: string,
+): Id<"postTypeFields"> =>
+  `${source}-${slug}-${key}` as unknown as Id<"postTypeFields">;
+
+const createSyntheticField = (
+  slug: string,
+  key: string,
+  overrides: Partial<EditorCustomField> = {},
+): EditorCustomField => ({
+  _id: buildSyntheticFieldId(overrides.__source ?? "synthetic", slug, key),
+  key,
+  name: overrides.name ?? formatCustomFieldLabel(key),
+  description: overrides.description ?? null,
+  type: overrides.type ?? "text",
+  required: overrides.required ?? false,
+  options: overrides.options ?? null,
+  defaultValue: overrides.defaultValue ?? null,
+  isSystem: overrides.isSystem ?? false,
+  order: overrides.order ?? 1000,
+  __source: overrides.__source ?? "detected",
+  __pluginName: overrides.__pluginName,
+  __readOnly: overrides.__readOnly ?? false,
+  createdAt: overrides.createdAt,
+  updatedAt: overrides.updatedAt,
+});
+
 const buildCustomFieldControlId = (fieldId: string, suffix?: string) =>
   `custom-field-${fieldId}${suffix ? `-${suffix}` : ""}`;
+
+type SerializedLexicalNodeWithChildren = {
+  type?: string;
+  url?: string;
+  html?: string;
+  providerName?: string;
+  videoId?: string;
+  thumbnailUrl?: string;
+  children?: SerializedLexicalNodeWithChildren[];
+};
+
+interface ExtractedVimeoMeta {
+  videoId?: string;
+  embedUrl?: string;
+  thumbnailUrl?: string;
+}
+
+const VIMEO_META_POST_TYPES = new Set(["lessons", "topics", "quizzes"]);
+
+const isSerializedNodeArray = (
+  value: unknown,
+): value is SerializedLexicalNodeWithChildren[] =>
+  Array.isArray(value) &&
+  value.every(
+    (entry) => entry && typeof entry === "object" && !Array.isArray(entry),
+  );
+
+const extractEmbedUrlFromHtml = (html?: string) => {
+  if (!html) {
+    return null;
+  }
+  const match = html.match(/src="([^"]+)"/i);
+  return match ? (match[1] ?? null) : null;
+};
+
+const isVimeoEmbedNode = (node: SerializedLexicalNodeWithChildren) => {
+  const url = typeof node.url === "string" ? node.url : "";
+  const html = typeof node.html === "string" ? node.html : "";
+  const provider =
+    typeof node.providerName === "string" ? node.providerName : "";
+  return (
+    /vimeo\.com/i.test(url) ||
+    /vimeo\.com/i.test(html) ||
+    provider.toLowerCase() === "vimeo"
+  );
+};
+
+const deriveVimeoMetaFromContent = (
+  content: string | null | undefined,
+): ExtractedVimeoMeta | null => {
+  if (!content) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(content) as SerializedEditorState;
+    const rootChildren = parsed?.root?.children;
+    if (!isSerializedNodeArray(rootChildren)) {
+      return null;
+    }
+    const queue: SerializedLexicalNodeWithChildren[] = [...rootChildren];
+    while (queue.length > 0) {
+      const node = queue.shift();
+      if (!node) {
+        continue;
+      }
+      if (isSerializedNodeArray(node.children)) {
+        queue.push(...node.children);
+      }
+      if (node.type === "oembed" && isVimeoEmbedNode(node)) {
+        const embedUrl =
+          (typeof node.url === "string" && node.url) ||
+          extractEmbedUrlFromHtml(node.html ?? undefined) ||
+          undefined;
+        const videoId =
+          (node.videoId || extractVimeoVideoId(embedUrl ?? node.html ?? "")) ??
+          undefined;
+        const thumbnailUrl =
+          typeof node.thumbnailUrl === "string" ? node.thumbnailUrl : undefined;
+        return {
+          videoId,
+          embedUrl,
+          thumbnailUrl,
+        };
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
 
 export interface AdminSinglePostViewProps {
   post?: Doc<"posts"> | null;
@@ -284,6 +411,77 @@ export function AdminSinglePostView({
   });
   const headerLabel = postType?.name ?? slug;
 
+  const schemaFields = useMemo<EditorCustomField[]>(
+    () =>
+      postTypeFields.map((field) => ({
+        ...field,
+        __source: "schema" as const,
+      })),
+    [postTypeFields],
+  );
+
+  const pluginFieldDefinitions = useMemo<EditorCustomField[]>(() => {
+    const seen = new Set(schemaFields.map((field) => field.key));
+    const registrations = getPluginFieldDefinitionsForSlug(slug);
+    const fields: EditorCustomField[] = [];
+    registrations.forEach(({ pluginId, pluginName, field }, index) => {
+      if (!field.key || seen.has(field.key)) {
+        return;
+      }
+      fields.push(
+        createSyntheticField(slug, field.key, {
+          name: field.name,
+          description: field.description,
+          type: field.type ?? "text",
+          required: field.required ?? false,
+          options: (field.options ?? null) as EditorCustomField["options"],
+          defaultValue: field.defaultValue ?? null,
+          order: 2000 + index,
+          __source: "plugin",
+          __pluginName: pluginName,
+          __readOnly: field.readOnly ?? true,
+        }),
+      );
+      seen.add(field.key);
+    });
+    return fields;
+  }, [schemaFields, slug]);
+
+  const detectedFields = useMemo<EditorCustomField[]>(() => {
+    const seen = new Set<string>([
+      ...schemaFields.map((field) => field.key),
+      ...pluginFieldDefinitions.map((field) => field.key),
+    ]);
+    const fields: EditorCustomField[] = [];
+    Object.entries(postMetaMap).forEach(([key, value], index) => {
+      if (seen.has(key) || key === "puck_data") {
+        return;
+      }
+      fields.push(
+        createSyntheticField(slug, key, {
+          type: typeof value === "boolean" ? "boolean" : "text",
+          description: "Detected post meta value",
+          order: 3000 + index,
+          __source: "detected",
+          __readOnly: false,
+        }),
+      );
+      seen.add(key);
+    });
+    return fields;
+  }, [pluginFieldDefinitions, postMetaMap, schemaFields, slug]);
+
+  const combinedFields = useMemo(
+    () => [...schemaFields, ...pluginFieldDefinitions, ...detectedFields],
+    [schemaFields, pluginFieldDefinitions, detectedFields],
+  );
+
+  const shouldTrackVimeoMeta = VIMEO_META_POST_TYPES.has(slug);
+  const resolvedVimeoMeta = useMemo(
+    () => (shouldTrackVimeoMeta ? deriveVimeoMetaFromContent(content) : null),
+    [content, shouldTrackVimeoMeta],
+  );
+
   const slugPreviewUrl = useMemo(() => {
     if (!slugValue) {
       return null;
@@ -355,6 +553,7 @@ export function AdminSinglePostView({
     [frontendProviders],
   );
 
+  const generalHydrationRef = useRef("");
   const customFieldHydrationRef = useRef({
     fieldSig: "",
     metaSig: "",
@@ -362,14 +561,17 @@ export function AdminSinglePostView({
     slug,
   });
 
-  const postTypeFieldSignature = useMemo(
+  const fieldDefinitionSignature = useMemo(
     () =>
-      postTypeFields
+      combinedFields
         .map(
-          (field) => `${field._id}-${field.updatedAt ?? field.createdAt ?? 0}`,
+          (field) =>
+            `${field.key}-${field.__source ?? "schema"}-${
+              field.updatedAt ?? field.createdAt ?? 0
+            }`,
         )
         .join("|"),
-    [postTypeFields],
+    [combinedFields],
   );
 
   const postMetaSignature = useMemo(
@@ -394,7 +596,7 @@ export function AdminSinglePostView({
 
   useEffect(() => {
     const shouldHydrate =
-      customFieldHydrationRef.current.fieldSig !== postTypeFieldSignature ||
+      customFieldHydrationRef.current.fieldSig !== fieldDefinitionSignature ||
       customFieldHydrationRef.current.metaSig !== postMetaSignature ||
       customFieldHydrationRef.current.slug !== slug ||
       customFieldHydrationRef.current.postSig !== postIdentitySignature;
@@ -403,7 +605,7 @@ export function AdminSinglePostView({
     }
 
     customFieldHydrationRef.current = {
-      fieldSig: postTypeFieldSignature,
+      fieldSig: fieldDefinitionSignature,
       metaSig: postMetaSignature,
       postSig: postIdentitySignature,
       slug,
@@ -411,7 +613,7 @@ export function AdminSinglePostView({
 
     setCustomFieldValues(() => {
       const next: Record<string, CustomFieldValue> = {};
-      postTypeFields.forEach((field) => {
+      combinedFields.forEach((field) => {
         if (field.isSystem) {
           next[field.key] = deriveSystemFieldValue(field, post, isNewRecord);
           return;
@@ -419,7 +621,10 @@ export function AdminSinglePostView({
         const storedValue = postMetaMap[field.key];
         if (storedValue !== undefined) {
           next[field.key] = storedValue;
-        } else if (field.defaultValue !== undefined) {
+        } else if (
+          field.defaultValue !== undefined &&
+          field.__source !== "detected"
+        ) {
           next[field.key] = field.defaultValue as CustomFieldValue;
         } else if (field.type === "boolean") {
           next[field.key] = false;
@@ -430,23 +635,23 @@ export function AdminSinglePostView({
       return next;
     });
   }, [
+    combinedFields,
+    fieldDefinitionSignature,
     isNewRecord,
     post,
     postIdentitySignature,
     postMetaMap,
     postMetaSignature,
-    postTypeFieldSignature,
-    postTypeFields,
     slug,
   ]);
 
   const sortedCustomFields = useMemo(
-    () => [...postTypeFields].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
-    [postTypeFields],
+    () => [...combinedFields].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+    [combinedFields],
   );
 
   const fieldRegistry = useMemo(() => {
-    const map = new Map<string, Doc<"postTypeFields">>();
+    const map = new Map<string, EditorCustomField>();
     sortedCustomFields.forEach((field) => {
       map.set(field.key, field);
     });
@@ -459,7 +664,7 @@ export function AdminSinglePostView({
     }
     const boxes: NormalizedMetaBox[] = [];
     for (const box of postType.metaBoxes) {
-      const fields: Doc<"postTypeFields">[] = [];
+      const fields: EditorCustomField[] = [];
       for (const key of box.fieldKeys ?? []) {
         const matchedField = fieldRegistry.get(key);
         if (matchedField) {
@@ -532,7 +737,7 @@ export function AdminSinglePostView({
 
   const renderCustomFieldControl = useCallback(
     (
-      field: Doc<"postTypeFields">,
+      field: EditorCustomField,
       options?: {
         idSuffix?: string;
       },
@@ -540,6 +745,7 @@ export function AdminSinglePostView({
       const controlId = buildCustomFieldControlId(field._id, options?.idSuffix);
       const value = customFieldValues[field.key];
       const normalizedOptions = normalizeFieldOptions(field.options);
+      const isReadOnly = field.__readOnly ?? false;
 
       if (field.isSystem) {
         const displayValue = value == null ? "" : String(value);
@@ -554,12 +760,18 @@ export function AdminSinglePostView({
         );
       }
 
+      const sharedInputProps = {
+        id: controlId,
+        readOnly: isReadOnly,
+        disabled: isReadOnly,
+      };
+
       switch (field.type) {
         case "textarea":
         case "richText":
           return (
             <Textarea
-              id={controlId}
+              {...sharedInputProps}
               rows={4}
               value={value == null ? "" : String(value)}
               onChange={(event) =>
@@ -577,6 +789,7 @@ export function AdminSinglePostView({
                 onCheckedChange={(checked) =>
                   handleCustomFieldChange(field.key, checked)
                 }
+                disabled={isReadOnly}
               />
               <span className="text-muted-foreground text-sm">
                 {value === true ? "Enabled" : "Disabled"}
@@ -586,7 +799,7 @@ export function AdminSinglePostView({
         case "number":
           return (
             <Input
-              id={controlId}
+              {...sharedInputProps}
               type="number"
               value={
                 typeof value === "number" || typeof value === "string"
@@ -606,7 +819,7 @@ export function AdminSinglePostView({
         case "date":
           return (
             <Input
-              id={controlId}
+              {...sharedInputProps}
               type="date"
               value={typeof value === "string" ? value : ""}
               onChange={(event) =>
@@ -617,7 +830,7 @@ export function AdminSinglePostView({
         case "datetime":
           return (
             <Input
-              id={controlId}
+              {...sharedInputProps}
               type="datetime-local"
               value={typeof value === "string" ? value : ""}
               onChange={(event) =>
@@ -637,6 +850,7 @@ export function AdminSinglePostView({
                 onValueChange={(selected) =>
                   handleCustomFieldChange(field.key, selected)
                 }
+                disabled={isReadOnly}
               >
                 <SelectTrigger id={controlId}>
                   <SelectValue placeholder={`Select ${field.name}`} />
@@ -653,7 +867,7 @@ export function AdminSinglePostView({
           }
           return (
             <Input
-              id={controlId}
+              {...sharedInputProps}
               value={value == null ? "" : String(value)}
               onChange={(event) =>
                 handleCustomFieldChange(field.key, event.target.value)
@@ -663,7 +877,7 @@ export function AdminSinglePostView({
         default:
           return (
             <Input
-              id={controlId}
+              {...sharedInputProps}
               value={
                 typeof value === "string" || typeof value === "number"
                   ? String(value)
@@ -682,26 +896,9 @@ export function AdminSinglePostView({
     [customFieldValues, handleCustomFieldChange],
   );
 
-  const customFieldsMetaBoxData = useMemo<CustomFieldsMetaBoxData>(
-    () => ({
-      postTypeFieldsLoading,
-      unassignedFields,
-      renderCustomFieldControl,
-      postMetaMap,
-      slug,
-    }),
-    [
-      postMetaMap,
-      postTypeFieldsLoading,
-      renderCustomFieldControl,
-      slug,
-      unassignedFields,
-    ],
-  );
-
   const renderFieldBlock = useCallback(
     (
-      field: Doc<"postTypeFields">,
+      field: EditorCustomField,
       options?: {
         idSuffix?: string;
       },
@@ -717,9 +914,18 @@ export function AdminSinglePostView({
               {field.name}
               {field.required ? " *" : ""}
             </Label>
-            <span className="text-muted-foreground text-xs tracking-wide uppercase">
-              {field.type}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground text-xs tracking-wide uppercase">
+                {field.type}
+              </span>
+              {field.__source === "plugin" ? (
+                <Badge variant="outline">
+                  Plugin{field.__pluginName ? ` · ${field.__pluginName}` : ""}
+                </Badge>
+              ) : field.__source === "detected" ? (
+                <Badge variant="secondary">Detected</Badge>
+              ) : null}
+            </div>
           </div>
           {field.description ? (
             <p className="text-muted-foreground text-sm">{field.description}</p>
@@ -729,6 +935,25 @@ export function AdminSinglePostView({
       );
     },
     [renderCustomFieldControl],
+  );
+
+  const customFieldsMetaBoxData = useMemo<CustomFieldsMetaBoxData>(
+    () => ({
+      postTypeFieldsLoading,
+      unassignedFields,
+      renderCustomFieldControl,
+      renderFieldBlock,
+      postMetaMap,
+      slug,
+    }),
+    [
+      postMetaMap,
+      postTypeFieldsLoading,
+      renderCustomFieldControl,
+      renderFieldBlock,
+      slug,
+      unassignedFields,
+    ],
   );
 
   const renderFieldByKey = useCallback(
@@ -970,11 +1195,39 @@ export function AdminSinglePostView({
       }
     }
 
+    if (shouldTrackVimeoMeta) {
+      if (resolvedVimeoMeta?.videoId) {
+        payload.vimeoVideoId = resolvedVimeoMeta.videoId;
+      } else if (postMetaMap.vimeoVideoId !== undefined) {
+        payload.vimeoVideoId = "";
+      }
+
+      if (resolvedVimeoMeta?.embedUrl) {
+        payload.vimeoEmbedUrl = resolvedVimeoMeta.embedUrl;
+      } else if (postMetaMap.vimeoEmbedUrl !== undefined) {
+        payload.vimeoEmbedUrl = "";
+      }
+
+      if (resolvedVimeoMeta?.thumbnailUrl) {
+        payload.vimeoThumbnailUrl = resolvedVimeoMeta.thumbnailUrl;
+      } else if (postMetaMap.vimeoThumbnailUrl !== undefined) {
+        payload.vimeoThumbnailUrl = "";
+      }
+
+      if (resolvedVimeoMeta) {
+        payload.source = "vimeo";
+      } else if (postMetaMap.source === "vimeo") {
+        payload.source = "";
+      }
+    }
+
     return payload;
   }, [
     attachmentsSerializedValue,
     customFieldValues,
     postMetaMap,
+    resolvedVimeoMeta,
+    shouldTrackVimeoMeta,
     sortedCustomFields,
     supportsAttachments,
   ]);
@@ -996,20 +1249,40 @@ export function AdminSinglePostView({
   );
 
   useEffect(() => {
+    const signature = post
+      ? [
+          post._id,
+          post.title ?? "",
+          post.slug ?? "",
+          post.excerpt ?? "",
+          post.content ?? "",
+          post.status ?? "",
+        ].join("|")
+      : isNewRecord
+        ? "new-record"
+        : "no-post";
+
+    if (generalHydrationRef.current === signature) {
+      return;
+    }
+    generalHydrationRef.current = signature;
+
     if (post) {
-      setTitle(post.title);
+      setTitle(post.title ?? "");
       setSlugValue(post.slug ?? "");
       setExcerpt(post.excerpt ?? "");
       setContent(post.content ?? "");
       setIsPublished(post.status === "published");
-    } else if (isNewRecord) {
+      return;
+    }
+    if (isNewRecord) {
       setTitle("");
       setSlugValue("");
       setExcerpt("");
       setContent("");
       setIsPublished(false);
     }
-  }, [post, isNewRecord]);
+  }, [isNewRecord, post]);
 
   const pageIdentifier = useMemo(
     () =>

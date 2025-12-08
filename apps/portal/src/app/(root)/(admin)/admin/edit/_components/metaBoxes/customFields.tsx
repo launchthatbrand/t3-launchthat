@@ -14,7 +14,7 @@ const CustomFieldsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
   const {
     postTypeFieldsLoading,
     unassignedFields,
-    renderCustomFieldControl,
+    renderFieldBlock,
     postMetaMap,
     slug,
   } = data;
@@ -49,23 +49,9 @@ const CustomFieldsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
 
   return (
     <>
-      {unassignedFields.map((field) => (
-        <div key={field._id} className="space-y-2 rounded-md border p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Label htmlFor={`custom-field-${field._id}`}>
-              {field.name}
-              {field.required ? " *" : ""}
-            </Label>
-            <span className="text-muted-foreground text-xs tracking-wide uppercase">
-              {field.type}
-            </span>
-          </div>
-          {field.description ? (
-            <p className="text-muted-foreground text-sm">{field.description}</p>
-          ) : null}
-          {renderCustomFieldControl(field)}
-        </div>
-      ))}
+      {unassignedFields.map((field) =>
+        renderFieldBlock(field, { idSuffix: "custom-fields-panel" }),
+      )}
       <div className="space-y-2 rounded-md border p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Label htmlFor="custom-field-puck-data">Puck Data (JSON)</Label>

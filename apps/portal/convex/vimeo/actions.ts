@@ -4,10 +4,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 "use node";
 
-import { action, internalAction } from "../_generated/server";
-import { components, internal } from "../_generated/api";
-
 import { v } from "convex/values";
+
+import type { Id } from "../_generated/dataModel";
+import type { ActionCtx } from "../_generated/server";
+import { components, internal } from "../_generated/api";
+import { action, internalAction } from "../_generated/server";
 
 interface VimeoApiVideo {
   uri: string; // e.g. "/videos/123456"
@@ -19,6 +21,115 @@ interface VimeoApiVideo {
     sizes?: { width: number; link: string }[];
   };
 }
+
+interface VimeoTextTrack {
+  uri: string;
+  active?: boolean;
+  language?: string;
+  name?: string;
+  link?: string;
+  type?: string;
+  release_time?: string;
+}
+
+const resolveVimeoAccessToken = async (
+  ctx: ActionCtx,
+  ownerId: Id<"organizations"> | string,
+) => {
+  const connection = await ctx.runQuery(
+    internal.integrations.connections.queries.getConnectionByNodeTypeAndOwner,
+    { nodeType: "vimeo", ownerId },
+  );
+
+  if (!connection) {
+    throw new Error(
+      "No connected Vimeo account found. Connect Vimeo in Media Settings first.",
+    );
+  }
+
+  const decrypted = await ctx.runAction(
+    internal.integrations.connections.cryptoActions.getDecryptedSecrets,
+    {
+      connectionId: connection._id,
+    },
+  );
+
+  const accessToken =
+    decrypted?.credentials?.accessToken ??
+    decrypted?.credentials?.access_token ??
+    decrypted?.credentials?.token;
+
+  if (!accessToken) {
+    throw new Error("Access token missing in Vimeo credentials.");
+  }
+
+  return { accessToken };
+};
+
+const pickPreferredTextTrack = (tracks: VimeoTextTrack[]) => {
+  if (!tracks.length) {
+    return null;
+  }
+  const normalizedTracks = tracks.filter(
+    (track) => !!track.link || !!track.uri,
+  );
+  if (!normalizedTracks.length) {
+    return null;
+  }
+  const captionLike = normalizedTracks.filter((track) => {
+    const type = (track.type ?? "").toLowerCase();
+    return type === "captions" || type === "subtitles" || type === "subtitle";
+  });
+  const ordered = captionLike.length ? captionLike : normalizedTracks;
+  const english = ordered.find((track) =>
+    (track.language ?? "").toLowerCase().startsWith("en"),
+  );
+  return english ?? ordered[0];
+};
+
+const normalizeTrackDownloadUrl = (track: VimeoTextTrack) => {
+  if (track.link) {
+    return track.link;
+  }
+  if (track.uri) {
+    return track.uri.startsWith("http")
+      ? track.uri
+      : `https://api.vimeo.com${track.uri}`;
+  }
+  return null;
+};
+
+const convertWebVttToPlainText = (raw: string) => {
+  const lines = raw.split(/\r?\n/);
+  const filtered: string[] = [];
+  let buffer = "";
+  const flush = () => {
+    if (buffer.trim().length > 0) {
+      filtered.push(buffer.trim());
+    }
+    buffer = "";
+  };
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flush();
+      continue;
+    }
+    if (trimmed.startsWith("WEBVTT")) {
+      continue;
+    }
+    if (/^\d+$/.test(trimmed)) {
+      continue;
+    }
+    if (trimmed.includes("-->")) {
+      flush();
+      continue;
+    }
+    buffer = buffer.length > 0 ? `${buffer} ${trimmed}` : trimmed;
+  }
+  flush();
+  return filtered.join("\n");
+};
 
 export const syncVimeoVideos = internalAction({
   args: {
@@ -257,5 +368,97 @@ export const getCachedVimeoVideos = action({
     });
 
     return freshValue;
+  },
+});
+
+export const fetchTranscript = action({
+  args: {
+    ownerId: v.union(v.id("organizations"), v.string()),
+    videoId: v.string(),
+  },
+  returns: v.object({
+    transcript: v.string(),
+    rawVtt: v.string(),
+    track: v.object({
+      id: v.string(),
+      label: v.optional(v.string()),
+      language: v.optional(v.string()),
+      type: v.optional(v.string()),
+    }),
+  }),
+  handler: async (ctx, args) => {
+    const { accessToken } = await resolveVimeoAccessToken(ctx, args.ownerId);
+
+    const textTracksResponse = await fetch(
+      `https://api.vimeo.com/videos/${encodeURIComponent(args.videoId)}/texttracks?per_page=100`,
+      {
+        headers: {
+          Authorization: `bearer ${accessToken}`,
+          Accept: "application/vnd.vimeo.*+json;version=3.4",
+        },
+      },
+    );
+
+    if (!textTracksResponse.ok) {
+      const message = await textTracksResponse.text();
+      throw new Error(
+        `Failed to load Vimeo text tracks (${textTracksResponse.status}): ${message}`,
+      );
+    }
+
+    const textTrackJson = (await textTracksResponse.json()) as {
+      data?: VimeoTextTrack[];
+    };
+
+    const track = pickPreferredTextTrack(textTrackJson.data ?? []);
+    if (!track) {
+      throw new Error(
+        "This Vimeo video does not expose any caption/subtitle tracks.",
+      );
+    }
+
+    const downloadUrl = normalizeTrackDownloadUrl(track);
+    if (!downloadUrl) {
+      throw new Error("Unable to determine a download URL for the text track.");
+    }
+
+    const transcriptResponse = await fetch(downloadUrl, {
+      headers: downloadUrl.startsWith("https://api.vimeo.com")
+        ? {
+            Authorization: `bearer ${accessToken}`,
+            Accept: "text/vtt, text/plain;q=0.9",
+          }
+        : undefined,
+    });
+
+    if (!transcriptResponse.ok) {
+      const message = await transcriptResponse.text();
+      throw new Error(
+        `Failed to download transcript (${transcriptResponse.status}): ${message}`,
+      );
+    }
+
+    const rawTranscript = await transcriptResponse.text();
+    const plainText = convertWebVttToPlainText(rawTranscript);
+
+    const trackLabel =
+      track.name ??
+      (track.language ? track.language.toUpperCase() : undefined) ??
+      track.type ??
+      "Text Track";
+
+    const trackId =
+      track.uri?.split("/").filter(Boolean).pop() ?? track.uri ?? args.videoId;
+
+    return {
+      transcript: plainText.length > 0 ? plainText : rawTranscript,
+      rawVtt: rawTranscript,
+      track: {
+        id: trackId,
+        label: trackLabel,
+        language: track.language ?? undefined,
+        type: track.type ?? undefined,
+      },
+    };
   },
 });

@@ -1,28 +1,38 @@
 "use client";
 
-import type { ChangeEvent, FormEvent } from "react";
-import type { ChatWidgetTab, HelpdeskArticle } from "./supportChat/types";
-import { Loader2, MessageCircle } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-
-import type { ChatHistoryMessage } from "./hooks/useSupportChatHistory";
-import { ChatWidgetContent } from "./supportChat/ChatWidgetContent";
-import { ChatWidgetFooter } from "./supportChat/ChatWidgetFooter";
-import { ChatWidgetHeader } from "./supportChat/ChatWidgetHeader";
 import type { GenericId as Id } from "convex/values";
-import type { StoredSupportContact } from "./supportChat/utils";
-import type { SupportChatSettings } from "../settings";
-import { api } from "@portal/convexspec";
-import { cn } from "@acme/ui";
-import { parseLexicalRichText } from "./supportChat/utils";
+import type { ChangeEvent, FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import { useHelpdeskArticles } from "./hooks/useHelpdeskArticles";
 import usePresence from "@convex-dev/presence/react";
+import { api } from "@portal/convexspec";
+import { useMutation, useQuery } from "convex/react";
+import { Loader2, MessageCircle } from "lucide-react";
+
+import { cn } from "@acme/ui";
+
+import type {
+  AssistantExperienceId,
+  AssistantExperienceTrigger,
+} from "../assistant/experiences";
+import type { SupportChatSettings } from "../settings";
+import type { ChatHistoryMessage } from "./hooks/useSupportChatHistory";
+import type { ChatWidgetTab, HelpdeskArticle } from "./supportChat/types";
+import type { StoredSupportContact } from "./supportChat/utils";
+import {
+  DEFAULT_ASSISTANT_EXPERIENCE_ID,
+  getAssistantExperience,
+  SUPPORT_ASSISTANT_EVENT,
+} from "../assistant/experiences";
+import { useHelpdeskArticles } from "./hooks/useHelpdeskArticles";
 import { useSupportChatHistory } from "./hooks/useSupportChatHistory";
 import { useSupportChatSession } from "./hooks/useSupportChatSession";
 import { useSupportChatSettings } from "./hooks/useSupportChatSettings";
 import { useSupportContactStorage } from "./hooks/useSupportContactStorage";
+import { ChatWidgetContent } from "./supportChat/ChatWidgetContent";
+import { ChatWidgetFooter } from "./supportChat/ChatWidgetFooter";
+import { ChatWidgetHeader } from "./supportChat/ChatWidgetHeader";
+import { parseLexicalRichText } from "./supportChat/utils";
 
 const stripFormattedPayload = (rawContent: string) => {
   if (!rawContent) {
@@ -212,6 +222,15 @@ function ChatSurface({
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const [activeTab, setActiveTab] = useState<ChatWidgetTab>("conversations");
   const [presenceState, setPresenceState] = useState<PresenceEntry[]>([]);
+  const [activeExperienceId, setActiveExperienceId] =
+    useState<AssistantExperienceId>(DEFAULT_ASSISTANT_EXPERIENCE_ID);
+  const [experienceContext, setExperienceContext] = useState<
+    Record<string, unknown>
+  >({});
+  const activeExperience = useMemo(
+    () => getAssistantExperience(activeExperienceId),
+    [activeExperienceId],
+  );
 
   const defaultContactConvexId = useMemo(
     () =>
@@ -273,11 +292,47 @@ function ChatSurface({
       organizationId,
       sessionId,
       contactId: normalizedContactId,
+      experienceId: activeExperienceId,
+      experienceContext,
     },
     onError: (err) => {
       console.error("[support-chat] streaming error", err);
     },
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<AssistantExperienceTrigger>).detail;
+      if (!detail) {
+        return;
+      }
+      setIsOpen(true);
+      const nextExperienceId =
+        detail.experienceId ?? DEFAULT_ASSISTANT_EXPERIENCE_ID;
+      setActiveExperienceId(nextExperienceId);
+      setExperienceContext(detail.context ?? {});
+      if (detail.message && detail.message.length > 0) {
+        setInput(detail.message);
+        window.requestAnimationFrame(() => {
+          handleSubmit(
+            new Event("submit") as unknown as FormEvent<HTMLFormElement>,
+          );
+        });
+      }
+    };
+
+    window.addEventListener(SUPPORT_ASSISTANT_EVENT, handler as EventListener);
+    return () => {
+      window.removeEventListener(
+        SUPPORT_ASSISTANT_EVENT,
+        handler as EventListener,
+      );
+    };
+  }, [handleSubmit, setInput]);
 
   const displayedMessages = useMemo(
     () =>
@@ -637,6 +692,11 @@ function ChatSurface({
             resolvedAgentName={resolvedAgentName}
             tenantName={tenantName}
             onlineAgentCount={onlineAgentCount}
+            experienceLabel={
+              activeExperienceId === DEFAULT_ASSISTANT_EXPERIENCE_ID
+                ? undefined
+                : activeExperience.label
+            }
           />
           <ChatWidgetContent
             activeTab={activeTab}

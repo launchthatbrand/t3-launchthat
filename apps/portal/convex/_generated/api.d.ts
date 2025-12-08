@@ -147,6 +147,7 @@ import type * as plugins_calendar_events_orders from "../plugins/calendar/events
 import type * as plugins_calendar_events_queries from "../plugins/calendar/events/queries.js";
 import type * as plugins_calendar_helpers from "../plugins/calendar/helpers.js";
 import type * as plugins_calendar_queries from "../plugins/calendar/queries.js";
+import type * as plugins_lms_actions from "../plugins/lms/actions.js";
 import type * as plugins_lms_helpers from "../plugins/lms/helpers.js";
 import type * as plugins_lms_mutations from "../plugins/lms/mutations.js";
 import type * as plugins_lms_queries from "../plugins/lms/queries.js";
@@ -337,6 +338,7 @@ declare const fullApi: ApiFromModules<{
   "plugins/calendar/events/queries": typeof plugins_calendar_events_queries;
   "plugins/calendar/helpers": typeof plugins_calendar_helpers;
   "plugins/calendar/queries": typeof plugins_calendar_queries;
+  "plugins/lms/actions": typeof plugins_lms_actions;
   "plugins/lms/helpers": typeof plugins_lms_helpers;
   "plugins/lms/mutations": typeof plugins_lms_mutations;
   "plugins/lms/queries": typeof plugins_lms_queries;

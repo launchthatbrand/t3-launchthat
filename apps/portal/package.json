@@ -107,6 +107,7 @@
     "framer-motion": "^12.12.2",
     "geist": "^1.5.1",
     "katex": "^0.16.22",
+    "launchthat-ai": "workspace:*",
     "launchthat-plugin-calendar": "workspace:*",
     "launchthat-plugin-cms": "workspace:*",
     "launchthat-plugin-commerce": "workspace:*",

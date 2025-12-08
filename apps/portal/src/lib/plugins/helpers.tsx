@@ -6,6 +6,7 @@ import type {
   PluginFrontendSingleSlotDefinition,
   PluginPostArchiveViewConfig,
   PluginPostSingleViewConfig,
+  PluginPostTypeFieldDefinition,
   PluginSingleViewSlotDefinition,
 } from "./types";
 import { PortalConvexProvider } from "~/providers/ConvexClientProvider";
@@ -39,6 +40,12 @@ export interface PluginFrontendFilterRegistration {
   pluginId: string;
   pluginName: string;
   filter: PluginFrontendFilterDefinition;
+}
+
+export interface PluginFieldDefinitionRegistration {
+  pluginId: string;
+  pluginName: string;
+  field: PluginPostTypeFieldDefinition;
 }
 
 export function getPluginSingleViewForSlug(
@@ -133,6 +140,32 @@ export function getPluginFrontendFiltersForSlug(
         pluginName: plugin.name,
         filter,
       });
+    }
+  }
+
+  return registrations;
+}
+
+export function getPluginFieldDefinitionsForSlug(
+  slug: string,
+): PluginFieldDefinitionRegistration[] {
+  const registrations: PluginFieldDefinitionRegistration[] = [];
+
+  for (const plugin of pluginDefinitions) {
+    const fieldGroups = plugin.fieldRegistrations?.filter(
+      (registration) => registration.postTypeSlug === slug,
+    );
+    if (!fieldGroups?.length) {
+      continue;
+    }
+    for (const group of fieldGroups) {
+      for (const field of group.fields) {
+        registrations.push({
+          pluginId: plugin.id,
+          pluginName: plugin.name,
+          field,
+        });
+      }
     }
   }
 

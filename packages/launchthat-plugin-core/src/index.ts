@@ -177,6 +177,7 @@ export interface PluginMediaEmbed {
   width?: number;
   height?: number;
   thumbnailUrl?: string;
+  videoId?: string;
 }
 
 export type PluginMediaSelection =
@@ -185,6 +186,26 @@ export type PluginMediaSelection =
 
 export interface PluginMediaPickerContext {
   onSelectMedia?: (selection: PluginMediaSelection) => void;
+}
+
+export type PluginCustomFieldValue = string | number | boolean | null;
+
+export interface PluginPostTypeFieldDefinition {
+  key: string;
+  name: string;
+  description?: string;
+  type?: string;
+  required?: boolean;
+  options?:
+    | Array<string | number>
+    | Array<{ label: string; value: string | number }>;
+  defaultValue?: PluginCustomFieldValue;
+  readOnly?: boolean;
+}
+
+export interface PluginPostTypeFieldRegistration {
+  postTypeSlug: string;
+  fields: PluginPostTypeFieldDefinition[];
 }
 
 export interface PluginPostTypeConfig {
@@ -311,6 +332,7 @@ export interface PluginDefinition {
   longDescription: string;
   features: string[];
   postTypes: PluginPostTypeConfig[];
+  fieldRegistrations?: PluginPostTypeFieldRegistration[];
   settingsPages?: PluginSettingDefinition[];
   activation?: PluginActivationConfig;
   adminMenus?: PluginAdminMenuEntry[];

@@ -1,15 +1,16 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 "use client";
 
 import type { Doc } from "@/convex/_generated/dataModel";
-import {
-  AdminLayout,
-  AdminLayoutContent,
-  AdminLayoutHeader,
-  AdminLayoutMain,
-} from "~/components/admin/AdminLayout";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { api } from "@convex-config/_generated/api";
+import { useAction, useMutation, useQuery } from "convex/react";
+
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -17,19 +18,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-import { useAction, useMutation, useQuery } from "convex/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-
-import { Button } from "@acme/ui/button";
-import Link from "next/link";
-import { MediaSettingsForm } from "./_components/MediaSettingsForm";
 import { Separator } from "@acme/ui/separator";
-import { api } from "@convex-config/_generated/api";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
+
+import {
+  AdminLayout,
+  AdminLayoutContent,
+  AdminLayoutHeader,
+  AdminLayoutMain,
+} from "~/components/admin/AdminLayout";
+import { useTenant } from "~/context/TenantContext";
 import { env } from "~/env";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
-import { useTenant } from "~/context/TenantContext";
+import { MediaSettingsForm } from "./_components/MediaSettingsForm";
 
 export default function MediaSettingsPage() {
   const searchParams = useSearchParams();
@@ -83,7 +84,6 @@ export default function MediaSettingsPage() {
   const activeConnection = connections[0];
   const isConnected = Boolean(activeConnection);
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
   const upsertConnection = useAction(
     api.integrations.connections.actions.upsertForOwner,
   );

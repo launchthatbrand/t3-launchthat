@@ -3,6 +3,30 @@ import type { PluginDefinition } from "launchthat-plugin-core";
 import { VimeoLibrary } from "./admin/VimeoLibrary";
 import { configureVimeoPlugin } from "./config";
 
+const buildVimeoFieldDefinitions = () => [
+  {
+    key: "vimeoVideoId",
+    name: "Vimeo Video ID",
+    description: "Captured automatically when embedding a Vimeo video.",
+    type: "text",
+    readOnly: true,
+  },
+  {
+    key: "vimeoEmbedUrl",
+    name: "Vimeo Embed URL",
+    description: "Normalized Vimeo player URL used for the embed iframe.",
+    type: "url",
+    readOnly: true,
+  },
+  {
+    key: "vimeoThumbnailUrl",
+    name: "Vimeo Thumbnail URL",
+    description: "Preview image associated with the selected Vimeo video.",
+    type: "url",
+    readOnly: true,
+  },
+];
+
 export { configureVimeoPlugin };
 
 export const vimeoPlugin: PluginDefinition = {
@@ -63,6 +87,20 @@ export const vimeoPlugin: PluginDefinition = {
           },
         ],
       },
+    },
+  ],
+  fieldRegistrations: [
+    {
+      postTypeSlug: "lessons",
+      fields: buildVimeoFieldDefinitions(),
+    },
+    {
+      postTypeSlug: "topics",
+      fields: buildVimeoFieldDefinitions(),
+    },
+    {
+      postTypeSlug: "quizzes",
+      fields: buildVimeoFieldDefinitions(),
     },
   ],
   activation: {

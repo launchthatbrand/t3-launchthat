@@ -11,6 +11,14 @@
     "./settings": {
       "types": "./dist/settings.d.ts",
       "default": "./src/settings.ts"
+    },
+    "./assistant": {
+      "types": "./src/assistant/experiences.ts",
+      "default": "./src/assistant/experiences.ts"
+    },
+    "./assistant/openai": {
+      "types": "./src/assistant/openai.ts",
+      "default": "./src/assistant/openai.ts"
     }
   },
   "license": "MIT",

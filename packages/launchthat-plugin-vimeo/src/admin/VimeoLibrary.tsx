@@ -320,6 +320,10 @@ export function VimeoLibrary({
         kind: "embed",
         embed: {
           url: video.embedUrl,
+          providerName: "Vimeo",
+          title: video.title,
+          thumbnailUrl: video.thumbnail,
+          videoId: video.videoId ?? video.id,
         },
       });
     },

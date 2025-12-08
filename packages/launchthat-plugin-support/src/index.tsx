@@ -1,10 +1,22 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
+
 import { TriggerRulesMetaBox } from "./admin/metaBoxes/TriggerRulesMetaBox";
 
 export { SupportChatWidget } from "./components/SupportChatWidget";
 export type { SupportChatWidgetProps } from "./components/SupportChatWidget";
 export { SupportSystem } from "./admin/SupportSystem";
 export type { SupportChatSettings, SupportChatFieldToggles } from "./settings";
+export {
+  openSupportAssistantExperience,
+  SUPPORT_ASSISTANT_EVENT,
+  DEFAULT_ASSISTANT_EXPERIENCE_ID,
+  LMS_QUIZ_ASSISTANT_EXPERIENCE_ID,
+  type AssistantExperienceTrigger,
+} from "./assistant/experiences";
+export {
+  SUPPORT_OPENAI_NODE_TYPE,
+  buildSupportOpenAiOwnerKey,
+} from "./assistant/openai";
 export {
   defaultSupportChatSettings,
   supportChatSettingsOptionKey,
