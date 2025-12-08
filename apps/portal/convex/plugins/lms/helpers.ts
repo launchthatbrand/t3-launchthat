@@ -19,7 +19,7 @@ import {
 
 type Ctx = QueryCtx | MutationCtx;
 
-interface StoredQuizQuestion {
+export interface StoredQuizQuestion {
   _id: Id<"posts">;
   title: string;
   prompt: string;

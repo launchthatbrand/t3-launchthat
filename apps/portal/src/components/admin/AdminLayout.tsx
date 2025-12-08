@@ -419,6 +419,7 @@ export const STORE_TABS: TabConfig[] = [
     href: "/admin/store/chargebacks",
   },
   { value: "balances", label: "Balances", href: "/admin/store/balances" },
+  { value: "plans", label: "Plans", href: "/admin/store/plans" },
   { value: "settings", label: "Settings", href: "/admin/store/settings" },
 ];
 

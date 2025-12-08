@@ -1,5 +1,4 @@
-import type { FunctionReference } from "convex/server";
-import { anyApi } from "convex/server";
+import { type FunctionReference, anyApi } from "convex/server";
 import { type GenericId as Id } from "convex/values";
 
 export const api: PublicApiType = anyApi as unknown as PublicApiType;
@@ -74,6 +73,98 @@ export type PublicApiType = {
           "mutation",
           "public",
           { orderId: Id<"orders"> },
+          any
+        >;
+        updateOrder: FunctionReference<
+          "mutation",
+          "public",
+          {
+            adminNotes?: string;
+            billingAddress: {
+              addressLine1: string;
+              addressLine2?: string;
+              city: string;
+              country: string;
+              fullName: string;
+              phoneNumber?: string;
+              postalCode: string;
+              stateOrProvince: string;
+            };
+            company?: string;
+            couponCode?: string;
+            createdAt?: number;
+            differentShippingAddress?: boolean;
+            discount?: number;
+            email: string;
+            firstName: string;
+            id: Id<"orders">;
+            lastName: string;
+            lineItems: Array<{
+              id: string;
+              lineTotal: number;
+              price: number;
+              productId: Id<"products">;
+              productSnapshot: {
+                description: string;
+                imageUrl?: string;
+                name: string;
+                price: number;
+              };
+              quantity: number;
+              variantId?: Id<"productVariants">;
+              variantSnapshot?: {
+                attributes: any;
+                name: string;
+                price: number;
+              };
+            }>;
+            notes?: string;
+            paymentMethod:
+              | "credit_card"
+              | "paypal"
+              | "apple_pay"
+              | "google_pay"
+              | "bank_transfer"
+              | "crypto"
+              | "other";
+            paymentStatus?:
+              | "pending"
+              | "processing"
+              | "paid"
+              | "failed"
+              | "refunded"
+              | "partially_refunded";
+            phone?: string;
+            shipping?: number;
+            shippingAddress: {
+              addressLine1: string;
+              addressLine2?: string;
+              city: string;
+              country: string;
+              fullName: string;
+              phoneNumber?: string;
+              postalCode: string;
+              stateOrProvince: string;
+            };
+            shippingDetails?: {
+              cost: number;
+              description: string;
+              method: string;
+            } | null;
+            status?:
+              | "pending"
+              | "processing"
+              | "shipped"
+              | "delivered"
+              | "completed"
+              | "cancelled"
+              | "refunded"
+              | "partially_refunded"
+              | "on_hold"
+              | "chargeback";
+            tax?: number;
+            userId?: Id<"users">;
+          },
           any
         >;
       };
@@ -394,6 +485,103 @@ export type PublicApiType = {
           "public",
           { bankAccountId: Id<"bankAccounts"> },
           any
+        >;
+        getStoreBalance: FunctionReference<
+          "query",
+          "public",
+          { storeId?: string },
+          {
+            _creationTime: number;
+            _id: Id<"storeBalances">;
+            availableBalance: number;
+            currency: string;
+            lastUpdated: number;
+            paymentProcessor: string;
+            pendingBalance: number;
+            processorAccountId?: string;
+            storeId?: string;
+            storeName?: string;
+            totalBalance: number;
+            updatedBy?: Id<"users">;
+          } | null
+        >;
+        getTransfers: FunctionReference<
+          "query",
+          "public",
+          {
+            limit?: number;
+            status?:
+              | "pending"
+              | "in_transit"
+              | "completed"
+              | "failed"
+              | "cancelled"
+              | "reversed";
+          },
+          Array<{
+            _creationTime: number;
+            _id: Id<"transfers">;
+            amount: number;
+            bankAccountId: Id<"bankAccounts">;
+            completedAt?: number;
+            currency: string;
+            description?: string;
+            expectedArrival?: number;
+            failureReason?: string;
+            fees?: number;
+            initiatedAt: number;
+            initiatedBy: Id<"users">;
+            notes?: string;
+            paymentProcessor: string;
+            processorTransferId?: string;
+            status:
+              | "pending"
+              | "in_transit"
+              | "completed"
+              | "failed"
+              | "cancelled"
+              | "reversed";
+            transferId: string;
+          }>
+        >;
+        getBankAccounts: FunctionReference<
+          "query",
+          "public",
+          {
+            status?:
+              | "pending_verification"
+              | "verified"
+              | "failed_verification"
+              | "disabled";
+          },
+          Array<{
+            _creationTime: number;
+            _id: Id<"bankAccounts">;
+            accountName: string;
+            accountNumber: string;
+            accountType: "checking" | "savings";
+            address: {
+              city: string;
+              country: string;
+              postalCode: string;
+              state: string;
+              street1: string;
+              street2?: string;
+            };
+            bankName: string;
+            createdAt: number;
+            createdBy: Id<"users">;
+            isDefault: boolean;
+            paymentProcessor: string;
+            providerAccountId?: string;
+            routingNumber: string;
+            status:
+              | "pending_verification"
+              | "verified"
+              | "failed_verification"
+              | "disabled";
+            updatedAt: number;
+          }>
         >;
       };
       mutations: {
@@ -913,6 +1101,29 @@ export type PublicApiType = {
           "public",
           { chargebackId: Id<"chargebacks">; evidence: string },
           any
+        >;
+        createChargeback: FunctionReference<
+          "mutation",
+          "public",
+          {
+            amount: number;
+            chargebackFee: number;
+            currency: string;
+            customerInfo: { customerId?: string; email: string; name: string };
+            internalNotes?: string;
+            orderId: Id<"orders">;
+            processorName: string;
+            reasonCode: string;
+            reasonDescription: string;
+            transactionId?: string;
+          },
+          any
+        >;
+        deleteChargeback: FunctionReference<
+          "mutation",
+          "public",
+          { id: Id<"chargebacks"> },
+          null
         >;
       };
       queries: {
@@ -1818,6 +2029,21 @@ export type PublicApiType = {
         "public",
         { ownerId: Id<"users"> | string },
         any
+      >;
+      fetchTranscript: FunctionReference<
+        "action",
+        "public",
+        { ownerId: Id<"organizations"> | string; videoId: string },
+        {
+          rawVtt: string;
+          track: {
+            id: string;
+            label?: string;
+            language?: string;
+            type?: string;
+          };
+          transcript: string;
+        }
       >;
     };
     mutations: {
@@ -4970,6 +5196,23 @@ export type PublicApiType = {
             topicId: Id<"posts">;
           },
           { completedTopicIds: Array<Id<"posts">> }
+        >;
+      };
+      actions: {
+        generateQuizFromTranscript: FunctionReference<
+          "action",
+          "public",
+          {
+            lessonId: Id<"posts">;
+            organizationId: Id<"organizations">;
+            questionCount?: number;
+          },
+          {
+            builderUrl: string;
+            questionCount: number;
+            quizId: Id<"posts">;
+            quizTitle: string;
+          }
         >;
       };
     };

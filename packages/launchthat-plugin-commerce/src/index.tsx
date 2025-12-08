@@ -83,6 +83,57 @@ export const createCommercePluginDefinition = ({
         position: 41,
       },
     },
+    {
+      name: "Subscription Plans",
+      slug: "plans",
+      description: "Defines the subscription tiers available to organizations.",
+      isPublic: false,
+      includeTimestamps: true,
+      enableApi: false,
+      supports: {
+        title: true,
+        customFields: true,
+      },
+      adminMenu: {
+        enabled: false,
+      },
+      storageKind: "custom",
+      storageTables: ["plans"],
+    },
+    {
+      name: "Store Coupons",
+      slug: "ecom-coupon",
+      description: "Discount codes and promotions for the ecommerce store.",
+      isPublic: false,
+      includeTimestamps: true,
+      enableApi: false,
+      supports: {
+        title: true,
+        customFields: true,
+      },
+      adminMenu: {
+        enabled: false,
+      },
+      storageKind: "custom",
+      storageTables: ["coupons"],
+    },
+    {
+      name: "Chargebacks",
+      slug: "ecom-chargeback",
+      description: "Chargeback disputes, evidence packages, and resolutions.",
+      isPublic: false,
+      includeTimestamps: true,
+      enableApi: false,
+      supports: {
+        title: true,
+        customFields: true,
+      },
+      adminMenu: {
+        enabled: false,
+      },
+      storageKind: "custom",
+      storageTables: ["chargebacks"],
+    },
   ],
   settingsPages: [
     {
@@ -91,6 +142,29 @@ export const createCommercePluginDefinition = ({
       label: "Storefront",
       description: "Currency, shipping and checkout defaults.",
       render: (props) => <CommerceStorefrontSettings {...props} />,
+    },
+  ],
+  adminMenus: [
+    {
+      label: "Plans",
+      slug: "store/plans",
+      icon: "Layers3",
+      group: "shop",
+      position: 45,
+    },
+    {
+      label: "Coupons",
+      slug: "store/coupons",
+      icon: "Ticket",
+      group: "shop",
+      position: 46,
+    },
+    {
+      label: "Chargebacks",
+      slug: "store/chargebacks",
+      icon: "ShieldAlert",
+      group: "shop",
+      position: 47,
     },
   ],
 });
@@ -105,3 +179,5 @@ export {
   useCommerceMutation,
   useCommerceQuery,
 } from "./context/CommerceClientProvider";
+export * from "./components";
+export { StoreSystem } from "./admin/store/StoreSystem";

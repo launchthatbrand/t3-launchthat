@@ -60,6 +60,7 @@ export const chargebackEvidenceSchema = defineTable({
     v.literal("billing_statement"),
     v.literal("transaction_history"),
     v.literal("dispute_response"),
+    v.literal("audit_log"),
     v.literal("other"),
   ),
   title: v.string(),

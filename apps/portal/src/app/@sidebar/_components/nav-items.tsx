@@ -182,7 +182,7 @@ export const navItems = [
       },
       {
         title: "Plans",
-        url: "/admin/settings/plans",
+        url: "/admin/store/plans",
       },
       {
         title: "Organizations",

@@ -1,10 +1,16 @@
 "use client";
 
+import type { AuditLog } from "launchthat-plugin-commerce";
 import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
 import { useQuery } from "convex/react";
+import {
+  auditLogFilters,
+  AuditLogTable,
+  createAuditLogColumns,
+} from "launchthat-plugin-commerce";
 import {
   Activity,
   AlertTriangle,
@@ -16,13 +22,6 @@ import {
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-
-import type { AuditLog } from "~/components/admin/AuditLogViewer";
-import {
-  auditLogFilters,
-  AuditLogTable,
-  createAuditLogColumns,
-} from "~/components/admin/AuditLogViewer";
 
 // Import shared utilities from AuditLogViewer
 
@@ -42,7 +41,7 @@ export default function AuditLogPage() {
         <div className="flex h-64 items-center justify-center">
           <div className="text-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900" />
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="text-muted-foreground mt-2 text-sm">
               Loading audit log data...
             </p>
           </div>
@@ -64,7 +63,7 @@ export default function AuditLogPage() {
             </Button>
             <h1 className="text-3xl font-bold">Audit Log</h1>
           </div>
-          <p className="mt-2 text-muted-foreground">
+          <p className="text-muted-foreground mt-2">
             Monitor system activity and user actions across the portal
           </p>
         </div>
@@ -75,26 +74,26 @@ export default function AuditLogPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Entries</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <Activity className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {auditLogStats.totalEntries}
             </div>
-            <p className="text-xs text-muted-foreground">All time</p>
+            <p className="text-muted-foreground text-xs">All time</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
               {auditLogStats.successRate.toFixed(1)}%
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Successful operations
             </p>
           </CardContent>
@@ -103,13 +102,13 @@ export default function AuditLogPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Unique Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {auditLogStats.uniqueUsers}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Active users tracked
             </p>
           </CardContent>
@@ -120,13 +119,13 @@ export default function AuditLogPage() {
             <CardTitle className="text-sm font-medium">
               Critical Issues
             </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
+            <AlertTriangle className="text-destructive h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">
+            <div className="text-destructive text-2xl font-bold">
               {auditLogStats.entriesBySeverity.critical}
             </div>
-            <p className="text-xs text-muted-foreground">Require attention</p>
+            <p className="text-muted-foreground text-xs">Require attention</p>
           </CardContent>
         </Card>
       </div>

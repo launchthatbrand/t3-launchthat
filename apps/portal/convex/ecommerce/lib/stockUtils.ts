@@ -29,7 +29,7 @@ export function isVariationInStock(
   variation: Doc<"productVariants">,
   quantity = 1,
 ): boolean {
-  return variation.stockQuantity >= quantity;
+  return (variation.quantity ?? 0) >= quantity;
 }
 
 /**
@@ -86,11 +86,11 @@ export async function decreaseVariationStock(
   }
 
   // Calculate new stock quantity (min 0)
-  const newStock = Math.max(0, variation.stockQuantity - quantity);
+  const newStock = Math.max(0, (variation.quantity ?? 0) - quantity);
 
   // Update the variation
   await ctx.db.patch(variationId, {
-    stockQuantity: newStock,
+    quantity: newStock,
     updatedAt: Date.now(),
   });
 

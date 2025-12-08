@@ -1,7 +1,7 @@
-import type { MutationCtx, QueryCtx } from "../../_generated/server";
+import type { PermissionScope } from "@convex-config/core/permissions/schema";
 
 import type { Id } from "../../_generated/dataModel";
-import type { PermissionScope } from "../../core/schema/permissionsSchema";
+import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import { getAuthenticatedUser } from "./userAuth";
 
 /**
@@ -24,7 +24,7 @@ export const hasPermission = async (
 ): Promise<boolean> => {
   try {
     // If userId is provided, use it; otherwise get the authenticated user
-    const userId = options?.userId || (await getAuthenticatedUser(ctx))._id;
+    const userId = options?.userId ?? (await getAuthenticatedUser(ctx))._id;
 
     // Simple role-based permission check
     const user = await ctx.db.get(userId);
@@ -124,12 +124,12 @@ export const isAdmin = async (
     if (adminRoles.includes(roleNormalized)) return true;
 
     // Support older rows that store permissions array containing "admin"
-    if (
-      Array.isArray((user as any).permissions) &&
-      (user as any).permissions.includes("admin")
-    ) {
-      return true;
-    }
+    // if (
+    //   Array.isArray((user as Doc<"users">).permissions) &&
+    //   (user as any).permissions.includes("admin")
+    // ) {
+    //   return true;
+    // }
 
     return false;
   } catch {

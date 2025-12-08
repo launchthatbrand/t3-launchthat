@@ -1,6 +1,7 @@
 {
   "name": "launchthat-plugin-commerce",
   "version": "0.1.0",
+  
   "private": true,
   "type": "module",
   "exports": {
@@ -25,6 +26,7 @@
   "dependencies": {
     "@acme/ui": "workspace:*",
     "@hookform/resolvers": "catalog:",
+    "convex": "^1.23.0",
     "launchthat-plugin-core": "workspace:*",
     "react-hook-form": "catalog:",
     "zod": "catalog:"
