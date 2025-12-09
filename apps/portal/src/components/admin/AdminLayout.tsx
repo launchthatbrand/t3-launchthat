@@ -355,10 +355,12 @@ interface AdminLayoutMainProps {
 const AdminLayoutMain = React.forwardRef<HTMLDivElement, AdminLayoutMainProps>(
   ({ children, className, ...props }, ref) => {
     return (
-      <div ref={ref} className={`TEST md:col-span-3 ${className}`} {...props}>
-        <Card className="border-none p-0 shadow-none">
-          <CardContent className="p-0">{children}</CardContent>
-        </Card>
+      <div
+        ref={ref}
+        className={`TEST2 md:col-span-3 ${className && `${className}`}`}
+        {...props}
+      >
+        {children}
       </div>
     );
   },

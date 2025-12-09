@@ -282,39 +282,12 @@ export function NavMain({ items, sections }: NavMainProps) {
           };
 
           return (
-            <Collapsible
+            <div
               key={section.label}
-              defaultOpen={true}
               className="group/collapsible flex flex-col gap-2"
             >
-              <SidebarGroupLabel className="group/label text-sidebar-foreground text-sm">
-                <div className="flex items-center gap-2 px-2 py-1">
-                  <button
-                    type="button"
-                    onClick={handleFocusSection}
-                    className={cn(
-                      "flex-1 text-left transition-colors",
-                      focusedSectionLabel === section.label
-                        ? "text-sidebar-accent-foreground font-semibold"
-                        : "hover:text-sidebar-accent-foreground",
-                    )}
-                  >
-                    {section.label}
-                  </button>
-                  <CollapsibleTrigger asChild>
-                    <button
-                      type="button"
-                      className="hover:text-sidebar-accent-foreground text-sidebar-foreground transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </CollapsibleTrigger>
-                </div>
-              </SidebarGroupLabel>
-              <CollapsibleContent>
-                {renderMenuItems(section.items)}
-              </CollapsibleContent>
-            </Collapsible>
+              {renderMenuItems(section.items)}
+            </div>
           );
         })}
       </SidebarGroupContent>

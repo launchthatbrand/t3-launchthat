@@ -1,27 +1,33 @@
 "use client";
 
-import type {
-  ContactDoc,
-  ConversationSummary,
-} from "./components/ConversationInspector";
+import type { GenericId as Id } from "convex/values";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+
+import { Button } from "@acme/ui/button";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@acme/ui/sidebar";
 import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
-import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { ArticlesView } from "./views/ArticlesView";
-import { Button } from "@acme/ui/button";
+import type {
+  ContactDoc,
+  ConversationSummary,
+} from "./components/ConversationInspector";
 import { ConversationLeftSidebar } from "./components/ConversationLeftSidebar";
 import { ConversationRightSidebar } from "./components/ConversationRightSidebar";
-import { DashboardView } from "./views/DashboardView";
-import type { GenericId as Id } from "convex/values";
-import Link from "next/link";
-import { SettingsView } from "./views/SettingsView";
-import { TestView } from "./views/ConversationsView";
 import { useSupportConversations } from "./hooks/useSupportConversations";
+import { ArticlesView } from "./views/ArticlesView";
+import { TestView } from "./views/ConversationsView";
+import { DashboardView } from "./views/DashboardView";
+import { SettingsView } from "./views/SettingsView";
+
+type NavHrefBuilder = (slug: string) => string;
+
+const defaultNavHref: NavHrefBuilder = (slug) =>
+  slug ? `/admin/support/${slug}` : "/admin/support";
 
 export interface SupportSystemProps {
   organizationId: Id<"organizations">;
@@ -33,6 +39,7 @@ export interface SupportSystemProps {
     name?: string;
     imageUrl?: string;
   };
+  buildNavHref?: NavHrefBuilder;
 }
 
 const NAV_LINKS = [
@@ -48,6 +55,7 @@ export function SupportSystem({
   params,
   searchParams,
   currentAgent,
+  buildNavHref = defaultNavHref,
 }: SupportSystemProps) {
   const segments = params?.segments ?? [];
   const routeKey = segments[0] ?? "";
@@ -134,6 +142,7 @@ export function SupportSystem({
           <DashboardView
             organizationId={organizationId}
             tenantName={tenantName}
+            buildNavHref={buildNavHref}
           />
         );
     }
@@ -144,6 +153,7 @@ export function SupportSystem({
     conversations,
     testSessionId,
     handleConversationChange,
+    buildNavHref,
   ]);
   return (
     <SidebarProvider className="SIDEBAR_PROVIDER relative max-h-[calc(100vh-56px)] min-h-0 flex-1 overflow-hidden bg-red-500">
@@ -160,9 +170,7 @@ export function SupportSystem({
             <Tabs>
               <TabsList className="h-auto rounded-none">
                 {NAV_LINKS.map((link) => {
-                  const href = link.slug
-                    ? `/admin/support/${link.slug}`
-                    : "/admin/support";
+                  const href = buildNavHref(link.slug ?? "");
                   const isActive = routeKey === (link.slug ?? "");
                   return (
                     <TabsTrigger key={link.slug} value={link.slug} asChild>

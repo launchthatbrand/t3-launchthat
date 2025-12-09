@@ -1,15 +1,15 @@
 "use client";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-import { Suspense, createContext, useContext, useMemo } from "react";
-
-import { api } from "@/convex/_generated/api";
-import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
-import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
-import { usePostTypeBySlug } from "../settings/post-types/_api/postTypes";
-import { useQuery } from "convex/react";
+import { createContext, Suspense, useContext, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import { api } from "@/convex/_generated/api";
+import { useQuery } from "convex/react";
+
 import { useTenant } from "~/context/TenantContext";
+import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { usePostTypeBySlug } from "../settings/post-types/_api/postTypes";
 
 type AdminPostViewMode = "archive" | "single";
 

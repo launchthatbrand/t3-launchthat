@@ -1,11 +1,18 @@
 "use client";
 
+import type { GenericId as Id } from "convex/values";
+import Link from "next/link";
+import { api } from "@portal/convexspec";
+import { useQuery } from "convex/react";
 import {
   Activity,
   ArrowRight,
   MessageSquareText,
   NotebookPen,
 } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -14,13 +21,7 @@ import {
   CardTitle,
 } from "@acme/ui/card";
 
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import type { GenericId as Id } from "convex/values";
-import Link from "next/link";
 import { SUPPORT_COPY } from "../constants/supportCopy";
-import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
 
 interface ConversationSummary {
   sessionId: string;
@@ -37,11 +38,13 @@ interface ArticleSummary {
 interface DashboardViewProps {
   organizationId: Id<"organizations">;
   tenantName?: string;
+  buildNavHref: (slug: string) => string;
 }
 
 export function DashboardView({
   organizationId,
   tenantName,
+  buildNavHref,
 }: DashboardViewProps) {
   const helpdeskArticles = (useQuery(api.core.posts.queries.getAllPosts, {
     organizationId,
@@ -108,17 +111,17 @@ export function DashboardView({
           </CardHeader>
           <CardContent className="space-y-3">
             <QuickLink
-              href="/admin/support/conversations"
+              href={buildNavHref("conversations")}
               label="Review live conversations"
               description="Inspect transcripts, escalate, or follow up."
             />
             <QuickLink
-              href="/admin/support/articles"
+              href={buildNavHref("articles")}
               label="Helpdesk articles"
               description="Manage long-form answers for the widget."
             />
             <QuickLink
-              href="/admin/support/settings"
+              href={buildNavHref("settings")}
               label="Support settings"
               description="Configure the floating assistant experience."
             />
@@ -162,7 +165,7 @@ export function DashboardView({
               </p>
             )}
             <Button asChild variant="outline" className="w-full">
-              <Link href="/admin/support/conversations">
+              <Link href={buildNavHref("conversations")}>
                 View all conversations
               </Link>
             </Button>

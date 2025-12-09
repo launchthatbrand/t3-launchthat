@@ -1,3 +1,4 @@
+import type React from "react";
 import {
   BookOpen,
   HammerIcon,
@@ -10,7 +11,18 @@ import {
   Users,
 } from "lucide-react";
 
-export const navItems = [
+import type { MenuItemInput } from "~/lib/adminMenu";
+import { adminMenuRegistry } from "~/lib/adminMenu";
+
+interface CoreNavItem {
+  title: string;
+  url: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  isActive?: boolean;
+  items?: CoreNavItem[];
+}
+
+export const navItems: CoreNavItem[] = [
   {
     title: "Dashboard",
     url: "/dashboard",
@@ -45,99 +57,99 @@ export const navItems = [
   //   ],
   // },
 
-  {
-    title: "Shop",
-    url: "/admin/store",
-    icon: User,
-    items: [
-      {
-        title: "Dashboard",
-        url: "/admin/store",
-        icon: BookOpen,
-      },
-      {
-        title: "Orders",
-        url: "/admin/store/orders",
-        icon: BookOpen,
-      },
-      {
-        title: "Products",
-        url: "/admin/store/products",
-        icon: BookOpen,
-      },
-      {
-        title: "Funnels",
-        url: "/admin/store/funnels",
-        icon: BookOpen,
-      },
-      {
-        title: "Categories",
-        url: "/admin/store/products/categories",
-        icon: BookOpen,
-      },
+  // {
+  //   title: "Shop",
+  //   url: "/admin/store",
+  //   icon: User,
+  //   items: [
+  //     {
+  //       title: "Dashboard",
+  //       url: "/admin/store",
+  //       icon: BookOpen,
+  //     },
+  //     {
+  //       title: "Orders",
+  //       url: "/admin/store/orders",
+  //       icon: BookOpen,
+  //     },
+  //     {
+  //       title: "Products",
+  //       url: "/admin/store/products",
+  //       icon: BookOpen,
+  //     },
+  //     {
+  //       title: "Funnels",
+  //       url: "/admin/store/funnels",
+  //       icon: BookOpen,
+  //     },
+  //     {
+  //       title: "Categories",
+  //       url: "/admin/store/products/categories",
+  //       icon: BookOpen,
+  //     },
 
-      {
-        title: "Tags",
-        url: "/admin/store/products/tags",
-        icon: BookOpen,
-      },
-      {
-        title: "Chargebacks",
-        url: "/admin/store/chargebacks",
-        icon: BookOpen,
-      },
-      {
-        title: "Balances",
-        url: "/admin/store/balances",
-        icon: BookOpen,
-      },
-      {
-        title: "Settings",
-        url: "/admin/store/settings",
-        icon: BookOpen,
-      },
-    ],
-  },
-  {
-    title: "Helpdesk",
-    url: "/admin/helpdesk",
-    icon: HelpCircle,
-    items: [
-      {
-        title: "Tickets",
-        url: "/admin/helpdesk/tickets",
-        icon: BookOpen,
-      },
-    ],
-  },
-  {
-    title: "Social",
-    url: "/social/feed",
-    icon: Twitter,
-    items: [
-      {
-        title: "Feed",
-        url: "#",
-      },
-      {
-        title: "Team",
-        url: "#",
-      },
-      {
-        title: "Billing",
-        url: "#",
-      },
-      {
-        title: "Limits",
-        url: "#",
-      },
-    ],
-  },
-  {
-    title: "Tasks",
-    url: "/admin/tasks",
-    icon: BookOpen,
-  },
+  //     {
+  //       title: "Tags",
+  //       url: "/admin/store/products/tags",
+  //       icon: BookOpen,
+  //     },
+  //     {
+  //       title: "Chargebacks",
+  //       url: "/admin/store/chargebacks",
+  //       icon: BookOpen,
+  //     },
+  //     {
+  //       title: "Balances",
+  //       url: "/admin/store/balances",
+  //       icon: BookOpen,
+  //     },
+  //     {
+  //       title: "Settings",
+  //       url: "/admin/store/settings",
+  //       icon: BookOpen,
+  //     },
+  //   ],
+  // },
+  // {
+  //   title: "Helpdesk",
+  //   url: "/admin/helpdesk",
+  //   icon: HelpCircle,
+  //   items: [
+  //     {
+  //       title: "Tickets",
+  //       url: "/admin/helpdesk/tickets",
+  //       icon: BookOpen,
+  //     },
+  //   ],
+  // },
+  // {
+  //   title: "Social",
+  //   url: "/social/feed",
+  //   icon: Twitter,
+  //   items: [
+  //     {
+  //       title: "Feed",
+  //       url: "#",
+  //     },
+  //     {
+  //       title: "Team",
+  //       url: "#",
+  //     },
+  //     {
+  //       title: "Billing",
+  //       url: "#",
+  //     },
+  //     {
+  //       title: "Limits",
+  //       url: "#",
+  //     },
+  //   ],
+  // },
+  // {
+  //   title: "Tasks",
+  //   url: "/admin/tasks",
+  //   icon: BookOpen,
+  // },
   {
     title: "Users",
     url: "/admin/users",
@@ -220,3 +232,48 @@ export const navItems = [
     ],
   },
 ];
+
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const buildCoreNavMenuItems = (
+  items: CoreNavItem[],
+  parentId?: string,
+  parentOrder = 0,
+) => {
+  const results: MenuItemInput[] = [];
+
+  items.forEach((item, index) => {
+    const baseId = parentId
+      ? `${parentId}:${slugify(item.title)}`
+      : `core:${slugify(item.title)}`;
+    const iconComponent = item.icon as
+      | (React.ComponentType & { displayName?: string })
+      | undefined;
+    const iconName = iconComponent?.displayName ?? undefined;
+
+    results.push({
+      id: baseId,
+      label: item.title,
+      href: item.url,
+      icon: iconName,
+      order: parentOrder + index,
+      parentId,
+    });
+
+    if (Array.isArray(item.items) && item.items.length > 0) {
+      results.push(
+        ...buildCoreNavMenuItems(item.items, baseId, parentOrder + index),
+      );
+    }
+  });
+
+  return results;
+};
+
+adminMenuRegistry.registerSource("core:nav", () =>
+  buildCoreNavMenuItems(navItems),
+);

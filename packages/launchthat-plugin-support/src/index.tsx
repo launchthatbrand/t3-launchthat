@@ -98,7 +98,7 @@ export const supportPlugin: PluginDefinition = {
             description: "Edit article content, slug, and SEO settings.",
             usesDefaultEditor: true,
             useDefaultMainMetaBoxes: false,
-            useDefaultSidebarMetaBoxes: false,
+            useDefaultSidebarMetaBoxes: true,
           },
           {
             id: "trigger-rules",
@@ -109,7 +109,7 @@ export const supportPlugin: PluginDefinition = {
             showGeneralPanel: false,
             showCustomFieldsPanel: false,
             mainMetaBoxIds: ["helpdesk-trigger-meta"],
-            useDefaultSidebarMetaBoxes: false,
+            useDefaultSidebarMetaBoxes: true,
           },
         ],
       },

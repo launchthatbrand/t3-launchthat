@@ -198,6 +198,21 @@ export default function MenusSettingsPage() {
         </p>
       </div>
 
+      <Card className="mb-6">
+        <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">Admin Menu</h2>
+            <p className="text-muted-foreground text-sm">
+              The admin sidebar menu is built-in and cannot be deleted, but you
+              can reorder items, hide entries, or add custom links.
+            </p>
+          </div>
+          <Button asChild>
+            <Link href="/admin/settings/menus/admin">Configure Admin Menu</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardContent className="p-6">
           <EntityList<Doc<"menus">>
