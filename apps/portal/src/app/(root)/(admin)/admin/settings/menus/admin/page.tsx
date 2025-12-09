@@ -6,29 +6,23 @@ import "~/lib/adminMenu/sources/postTypes";
 import "../../../../../../@sidebar/_components/nav-items";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-import type { DragEndEvent } from "@dnd-kit/core";
-import { useEffect, useMemo, useState } from "react";
+import type { Active, DragEndEvent, DragStartEvent } from "@dnd-kit/core";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
 import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
   arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQuery } from "convex/react";
-import { ChevronLeft, Edit, GripVertical, Plus, Trash } from "lucide-react";
+import { ChevronLeft, Edit, Plus, Trash } from "lucide-react";
 
-import { cn } from "@acme/ui";
+import {
+  BuilderDndProvider,
+  DragOverlayPreview,
+  SortableItem,
+} from "@acme/dnd";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
@@ -322,8 +316,55 @@ const buildOverridesFromMenu = (
 
   return overrides;
 };
+const findMenuItemById = (
+  items: EditableMenuItem[],
+  targetId: string,
+): EditableMenuItem | null => {
+  for (const item of items) {
+    if (item.id === targetId) {
+      return item;
+    }
+    if (item.children.length > 0) {
+      const match = findMenuItemById(item.children, targetId);
+      if (match) {
+        return match;
+      }
+    }
+  }
+  return null;
+};
 
-const SortableMenuRow = ({
+const reorderChildItems = (
+  items: EditableMenuItem[],
+  parentId: string,
+  activeId: string,
+  overId: string,
+): EditableMenuItem[] =>
+  items.map((item) => {
+    if (item.id === parentId) {
+      const oldIndex = item.children.findIndex(
+        (child) => child.id === activeId,
+      );
+      const newIndex = item.children.findIndex((child) => child.id === overId);
+      if (oldIndex === -1 || newIndex === -1) {
+        return item;
+      }
+      const nextChildren = arrayMove(item.children, oldIndex, newIndex);
+      return {
+        ...item,
+        children: nextChildren,
+      };
+    }
+    if (item.children.length > 0) {
+      return {
+        ...item,
+        children: reorderChildItems(item.children, parentId, activeId, overId),
+      };
+    }
+    return item;
+  });
+
+const MenuItemRow = ({
   item,
   onToggleHidden,
   onEditCustom,
@@ -336,44 +377,14 @@ const SortableMenuRow = ({
   onDeleteCustom: () => void;
   onToggleChildHidden: (childId: string, visible: boolean) => void;
 }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: item.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "bg-card flex flex-col gap-3 rounded-md border p-4 text-sm md:flex-row md:items-center md:gap-4",
-        isDragging && "ring-primary/30 shadow-lg ring-2",
-      )}
-    >
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          className="bg-muted text-muted-foreground flex h-10 w-10 items-center justify-center rounded border"
-          {...attributes}
-          {...listeners}
-          aria-label="Drag to reorder"
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
+    <div className="flex w-full flex-col gap-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <div className="font-medium">
+          <div className="flex items-center gap-2 font-medium">
             {item.label}
             {item.isCustom && (
-              <span className="bg-secondary text-secondary-foreground ml-2 rounded px-2 py-0.5 text-xs tracking-wide uppercase">
+              <span className="bg-secondary text-secondary-foreground rounded px-2 py-0.5 text-xs tracking-wide uppercase">
                 Custom
               </span>
             )}
@@ -386,97 +397,83 @@ const SortableMenuRow = ({
                 : item.sectionKey)}
           </div>
         </div>
-      </div>
-      <div className="flex flex-1 items-center justify-between gap-3">
-        <div className="text-muted-foreground text-xs">
-          {item.children.length > 0
-            ? `${item.children.length} nested ${item.children.length === 1 ? "item" : "items"}`
-            : "No nested items"}
-        </div>
-        <div className="flex items-center gap-2">
-          <Label className="text-xs">Visible</Label>
-          <Switch checked={!item.hidden} onCheckedChange={onToggleHidden} />
-        </div>
-        {item.isCustom && (
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              onClick={onEditCustom}
-              aria-label="Edit custom link"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              onClick={onDeleteCustom}
-              aria-label="Delete custom link"
-            >
-              <Trash className="text-destructive h-4 w-4" />
-            </Button>
+            <Label className="text-xs">Visible</Label>
+            <Switch checked={!item.hidden} onCheckedChange={onToggleHidden} />
           </div>
-        )}
+          {item.isCustom && (
+            <>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={onEditCustom}
+                aria-label="Edit custom link"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={onDeleteCustom}
+                aria-label="Delete custom link"
+              >
+                <Trash className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>
       </div>
       {item.children.length > 0 && (
-        <div className="w-full space-y-2 md:ml-12">
-          {item.children.map((child) => (
-            <ChildMenuRow
-              key={child.id}
-              item={child}
-              depth={1}
-              onToggleHiddenById={(id, visible) =>
-                onToggleChildHidden(id, visible)
-              }
-            />
-          ))}
-        </div>
+        <SortableContext
+          items={item.children.map((child) => child.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="bg-muted/50 space-y-2 rounded-md border p-3 text-xs">
+            <div className="text-muted-foreground font-semibold uppercase">
+              Child links
+            </div>
+            {item.children.map((child) => (
+              <SortableItem
+                key={child.id}
+                id={child.id}
+                data={{ type: "child", parentId: item.id }}
+                className="bg-background flex flex-col gap-2 rounded-md p-3 md:flex-row md:items-center md:justify-between"
+              >
+                <ChildMenuContent
+                  item={child}
+                  onToggleHidden={(visible) =>
+                    onToggleChildHidden(child.id, visible)
+                  }
+                />
+              </SortableItem>
+            ))}
+          </div>
+        </SortableContext>
       )}
     </div>
   );
 };
 
-const ChildMenuRow = ({
+const ChildMenuContent = ({
   item,
-  depth,
-  onToggleHiddenById,
+  onToggleHidden,
 }: {
   item: EditableMenuItem;
-  depth: number;
-  onToggleHiddenById: (id: string, visible: boolean) => void;
+  onToggleHidden: (visible: boolean) => void;
 }) => {
   return (
-    <div
-      className="bg-muted/10 flex flex-col gap-2 rounded-md border p-3 text-sm"
-      style={{ marginLeft: depth * 16 }}
-    >
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="font-medium">{item.label}</div>
-          <div className="text-muted-foreground text-xs">{item.href}</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Label className="text-xs">Visible</Label>
-          <Switch
-            checked={!item.hidden}
-            onCheckedChange={(visible) => onToggleHiddenById(item.id, visible)}
-          />
-        </div>
+    <div className="flex w-full flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <div>
+        <div className="font-medium">{item.label}</div>
+        <div className="text-muted-foreground">{item.href}</div>
       </div>
-      {item.children.length > 0 && (
-        <div className="space-y-2">
-          {item.children.map((child) => (
-            <ChildMenuRow
-              key={child.id}
-              item={child}
-              depth={depth + 1}
-              onToggleHiddenById={onToggleHiddenById}
-            />
-          ))}
-        </div>
-      )}
+      <div className="flex items-center gap-2">
+        <Label className="text-xs">Visible</Label>
+        <Switch checked={!item.hidden} onCheckedChange={onToggleHidden} />
+      </div>
     </div>
   );
 };
@@ -515,7 +512,7 @@ const AdminMenuEditorPage = () => {
   }, [postTypesQuery.data, tenantId]);
 
   const taxonomyDefs = useMemo<TaxonomyNavDefinition[]>(() => {
-    return (taxonomiesQuery.data ?? []).map((taxonomy) => ({
+    return (taxonomiesQuery.data ?? []).map((taxonomy: Doc<"taxonomies">) => ({
       slug: taxonomy.slug,
       name: taxonomy.name,
       postTypeSlugs: Array.isArray(taxonomy.postTypeSlugs)
@@ -646,12 +643,7 @@ const AdminMenuEditorPage = () => {
   const [dialogSectionKey, setDialogSectionKey] =
     useState<string>(DEFAULT_SECTION_KEY);
   const [isSaving, setIsSaving] = useState(false);
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
+  const [activeDragItem, setActiveDragItem] = useState<Active | null>(null);
 
   useEffect(() => {
     setMenuItems(initialMenuItems);
@@ -666,9 +658,44 @@ const AdminMenuEditorPage = () => {
     [sectionLabelMap],
   );
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragItem(event.active);
+  };
+
+  const handleDragCancel = () => {
+    setActiveDragItem(null);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragItem(null);
     const { active, over } = event;
     if (!active?.id || !over?.id || active.id === over.id) {
+      return;
+    }
+
+    const activeType = active.data.current?.type as string | undefined;
+    const overType = over.data.current?.type as string | undefined;
+
+    if (activeType === "child") {
+      const activeParentId = active.data.current?.parentId as
+        | string
+        | undefined;
+      const overParentId = over.data.current?.parentId as string | undefined;
+      if (!activeParentId || !overParentId || activeParentId !== overParentId) {
+        return;
+      }
+      setMenuItems((prev) =>
+        reorderChildItems(
+          prev,
+          activeParentId,
+          String(active.id),
+          String(over.id),
+        ),
+      );
+      return;
+    }
+
+    if (overType && overType !== "section") {
       return;
     }
 
@@ -681,6 +708,21 @@ const AdminMenuEditorPage = () => {
       return arrayMove(prev, oldIndex, newIndex);
     });
   };
+
+  const resolveOverlayItem = useCallback(
+    (active: Active) => {
+      const target = findMenuItemById(menuItems, String(active.id));
+      if (!target) {
+        return null;
+      }
+      return {
+        id: target.id,
+        label: target.label,
+        className: "rounded border bg-card px-3 py-2 text-sm shadow-lg",
+      };
+    },
+    [menuItems],
+  );
 
   const updateItemById = (
     items: EditableMenuItem[],
@@ -881,33 +923,47 @@ const AdminMenuEditorPage = () => {
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">
-          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+          <BuilderDndProvider
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
             <SortableContext
               items={menuItems.map((item) => item.id)}
               strategy={verticalListSortingStrategy}
             >
               {menuItems.map((item) => (
-                <SortableMenuRow
+                <SortableItem
                   key={item.id}
-                  item={item}
-                  onToggleHidden={(visible) =>
-                    handleToggleHidden(item.id, visible)
-                  }
-                  onEditCustom={() =>
-                    openDialog({
-                      mode: "edit",
-                      sectionKey: item.sectionKey,
-                      item,
-                    })
-                  }
-                  onDeleteCustom={() => handleDeleteCustom(item.id)}
-                  onToggleChildHidden={(childId, visible) =>
-                    handleToggleHidden(childId, visible)
-                  }
-                />
+                  id={item.id}
+                  data={{ type: "section", sectionId: item.id }}
+                  className="bg-card flex w-full flex-col gap-3 rounded-md border p-4 text-sm shadow-sm md:flex-row md:items-start"
+                >
+                  <MenuItemRow
+                    item={item}
+                    onToggleHidden={(visible) =>
+                      handleToggleHidden(item.id, visible)
+                    }
+                    onEditCustom={() =>
+                      openDialog({
+                        mode: "edit",
+                        sectionKey: item.sectionKey,
+                        item,
+                      })
+                    }
+                    onDeleteCustom={() => handleDeleteCustom(item.id)}
+                    onToggleChildHidden={(childId, visible) =>
+                      handleToggleHidden(childId, visible)
+                    }
+                  />
+                </SortableItem>
               ))}
             </SortableContext>
-          </DndContext>
+            <DragOverlayPreview
+              active={activeDragItem}
+              resolveItem={resolveOverlayItem}
+            />
+          </BuilderDndProvider>
         </CardContent>
       </Card>
 

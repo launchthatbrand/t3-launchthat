@@ -261,11 +261,10 @@ function AdminEditPageBody() {
 
   if (pluginParam && pluginDefinition && pluginSetting) {
     return (
-      <AdminLayoutContent>
+      <AdminLayoutContent className="flex flex-1">
         {/* <AdminLayoutHeader /> */}
-        <AdminLayoutMain>
-          <div className="flex flex-col gap-6">
-            {/* <div className="flex flex-wrap items-center justify-between gap-4">
+        <AdminLayoutMain className="flex flex-1 flex-col">
+          {/* <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-1">
                 <p className="text-muted-foreground text-sm">
                   Admin / Integrations / {pluginDefinition.name}
@@ -283,22 +282,21 @@ function AdminEditPageBody() {
               </Button>
             </div> */}
 
-            <Card className="border-none p-0 shadow-none">
-              {/* <CardHeader>
+          <Card className="flex flex-1 flex-col border-none p-0 shadow-none">
+            {/* <CardHeader>
                 <CardTitle>{pluginSetting.label}</CardTitle>
                 {pluginSetting.description ? (
                   <CardDescription>{pluginSetting.description}</CardDescription>
                 ) : null}
               </CardHeader> */}
-              <CardContent className="p-0">
-                {pluginSettingContent ?? (
-                  <p className="text-muted-foreground text-sm">
-                    This plugin does not expose configurable settings yet.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+            <CardContent className="flex flex-1 flex-col p-0">
+              {pluginSettingContent ?? (
+                <p className="text-muted-foreground text-sm">
+                  This plugin does not expose configurable settings yet.
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </AdminLayoutMain>
       </AdminLayoutContent>
     );

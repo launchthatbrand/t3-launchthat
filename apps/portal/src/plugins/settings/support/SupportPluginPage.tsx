@@ -1,77 +1,68 @@
 "use client";
 
-import { useMemo } from "react";
+import type { PluginSettingComponentProps } from "launchthat-plugin-core";
+import { useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 
-import type { PluginSettingComponentProps } from "~/lib/plugins/types";
 import { SupportSystemClient } from "~/app/(root)/(admin)/admin/support/[[...segments]]/SupportSystemClient";
 
-type SupportPluginPageSlug =
-  | "dashboard"
-  | "conversations"
-  | "settings"
-  | "helpdesk-articles";
+const PAGE_TO_NAV_SLUG = {
+  dashboard: "",
+  conversations: "conversations",
+  "helpdesk-articles": "articles",
+  settings: "settings",
+} as const;
+
+const NAV_SLUG_TO_PAGE = {
+  "": "dashboard",
+  conversations: "conversations",
+  articles: "helpdesk-articles",
+  settings: "settings",
+};
+
+export type SupportPluginPageSlug = keyof typeof PAGE_TO_NAV_SLUG;
 
 interface SupportPluginPageProps extends PluginSettingComponentProps {
   page: SupportPluginPageSlug;
 }
 
-const pluginHrefForSlug = (slug: string) => {
-  if (!slug || slug === "dashboard") {
-    return "/admin/edit?plugin=support&page=dashboard";
-  }
-  return `/admin/edit?plugin=support&page=${slug}`;
-};
+export const SupportPluginPage = ({ page }: SupportPluginPageProps) => {
+  const searchParams = useSearchParams();
 
-export function SupportPluginPage({ page }: SupportPluginPageProps) {
-  const nextSearchParams = useSearchParams();
+  const activeNavSlug = PAGE_TO_NAV_SLUG[page] ?? "";
+  const segments = activeNavSlug ? [activeNavSlug] : [];
 
   const searchParamsObject = useMemo(() => {
-    const entries = Array.from(nextSearchParams.entries());
-    return entries.reduce<Record<string, string>>((acc, [key, value]) => {
-      acc[key] = value;
-      return acc;
-    }, {});
-  }, [nextSearchParams]);
-
-  const params = useMemo(() => {
-    if (page === "dashboard") {
-      return { segments: [] };
+    if (!searchParams) {
+      return undefined;
     }
-    if (page === "helpdesk-articles") {
-      return { segments: ["articles"] };
-    }
-    return {
-      segments: [page],
-    };
-  }, [page]);
+    const entries: Record<string, string> = {};
+    searchParams.forEach((value, key) => {
+      entries[key] = value;
+    });
+    return entries;
+  }, [searchParams]);
 
-  const buildNavHref = useMemo(
-    () => (slug: string) => {
-      if (!slug || slug === "conversations") {
-        return pluginHrefForSlug("conversations");
+  const buildNavHref = useCallback(
+    (slug: string) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      params.set("plugin", "support");
+      const targetPage =
+        NAV_SLUG_TO_PAGE[slug as keyof typeof NAV_SLUG_TO_PAGE] ?? "dashboard";
+      params.set("page", targetPage);
+      if (slug !== "conversations") {
+        params.delete("sessionId");
       }
-      if (slug === "articles" || slug === "helpdesk-articles") {
-        return pluginHrefForSlug("helpdesk-articles");
-      }
-      if (slug === "") {
-        return pluginHrefForSlug("dashboard");
-      }
-      if (slug === "settings") {
-        return pluginHrefForSlug("settings");
-      }
-      return slug ? `/admin/support/${slug}` : "/admin/support";
+      return `/admin/edit?${params.toString()}`;
     },
-    [],
+    [searchParams],
   );
 
   return (
-    <div className="bg-card rounded-md border">
-      <SupportSystemClient
-        params={params}
-        searchParams={searchParamsObject}
-        buildNavHref={buildNavHref}
-      />
-    </div>
+    <SupportSystemClient
+      params={{ segments }}
+      searchParams={searchParamsObject}
+      buildNavHref={buildNavHref}
+    />
   );
-}
+};

@@ -18,6 +18,7 @@ import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 // Import the new navigation context
 import type { TabConfig } from "./NavigationContext";
+import { cn } from "~/lib/utils";
 import {
   detectNavigationContext,
   ENTITY_PATTERNS,
@@ -343,7 +344,9 @@ const AdminLayoutContent: React.FC<AdminLayoutContentProps> = ({
   }
 
   // Original single-column layout
-  return <div className={`w-full ${className}`}>{children}</div>;
+  return (
+    <div className={cn("AdminLayoutContent w-full", className)}>{children}</div>
+  );
 };
 
 // AdminLayoutMain - Main content area (when using sidebar layout)
@@ -357,7 +360,7 @@ const AdminLayoutMain = React.forwardRef<HTMLDivElement, AdminLayoutMainProps>(
     return (
       <div
         ref={ref}
-        className={`TEST2 md:col-span-3 ${className && `${className}`}`}
+        className={`AdminLayoutMain md:col-span-3 ${className && `${className}`}`}
         {...props}
       >
         {children}

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { MessageSquare } from "lucide-react";
 
+import { cn } from "@acme/ui";
 import {
   Sidebar,
   SidebarContent,
@@ -22,12 +23,14 @@ interface ConversationSidebarProps {
   conversations: ConversationSummary[];
   activeSessionId?: string;
   onSelect: (sessionId: string) => void;
+  className?: string;
 }
 
 export function ConversationLeftSidebar({
   conversations,
   activeSessionId,
   onSelect,
+  className,
 }: ConversationSidebarProps) {
   const [filter, setFilter] = useState<SidebarFilter>("all");
 
@@ -43,7 +46,10 @@ export function ConversationLeftSidebar({
   }, [conversations, filter]);
 
   return (
-    <Sidebar collapsible="none" className="hidden border-r md:flex">
+    <Sidebar
+      collapsible="none"
+      className={cn("hidden border-r md:flex", className)}
+    >
       <Tabs
         value={filter}
         onValueChange={(value) => setFilter(value as SidebarFilter)}

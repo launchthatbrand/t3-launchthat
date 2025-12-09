@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { Button } from "@acme/ui/button";
+import { AppSidebar } from "@acme/ui/layout/app-sidebar";
 import {
   SidebarInset,
   SidebarProvider,
@@ -156,30 +157,35 @@ export function SupportSystem({
     buildNavHref,
   ]);
   return (
-    <SidebarProvider className="SIDEBAR_PROVIDER relative max-h-[calc(100vh-56px)] min-h-0 flex-1 overflow-hidden bg-red-500">
-      {routeKey === "conversations" && (
-        <ConversationLeftSidebar
-          conversations={conversations}
-          activeSessionId={testSessionId}
-          onSelect={updateTestSessionId}
-        />
-      )}
-      <SidebarInset className="h-full overflow-hidden">
+    <div className="flex flex-1 flex-col">
+      <SidebarProvider
+        className="flex h-auto min-h-auto flex-1 flex-col"
+        style={
+          {
+            "--sidebar-width": "calc(var(--spacing) * 72)",
+            "--header-height": "calc(var(--spacing) * 12)",
+          } as React.CSSProperties
+        }
+      >
         <header className="flex h-12 shrink-0 items-center justify-end gap-2 border-b px-4">
-          <div>
+          <div className="w-full">
             <Tabs>
               <TabsList className="h-auto rounded-none">
                 {NAV_LINKS.map((link) => {
                   const href = buildNavHref(link.slug ?? "");
                   const isActive = routeKey === (link.slug ?? "");
                   return (
-                    <TabsTrigger key={link.slug} value={link.slug} asChild>
+                    <TabsTrigger
+                      key={link.slug}
+                      value={link.slug ?? ""}
+                      asChild
+                    >
                       <Link
                         href={href}
-                        className={`rounded-none px-4 py-1 text-sm font-medium ${
+                        className={`bg-muted rounded-none px-4 py-1 text-sm font-medium ${
                           isActive
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                            ? "bg-primary"
+                            : "text-muted-foreground hover:bg-muted/80"
                         }`}
                       >
                         {link.label}
@@ -192,69 +198,36 @@ export function SupportSystem({
           </div>
           <SidebarTrigger className="-mr-1 rotate-180" />
         </header>
-        {content}
-      </SidebarInset>
-      {routeKey === "conversations" && (
-        <ConversationRightSidebar
-          side="right"
-          className="absolute"
-          conversation={sidebarConversation}
-          contact={sidebarContact}
-          fallbackName={
-            sidebarConversation?.contactName ??
-            (sidebarConversation
-              ? `Session ${sidebarConversation.sessionId.slice(-6)}`
-              : undefined)
-          }
-          fallbackEmail={sidebarConversation?.contactEmail}
-          organizationName={tenantName}
-          organizationId={organizationId}
-          currentAgent={currentAgent}
-        />
-      )}
-    </SidebarProvider>
-    // <div className="bg-background flex flex-1 flex-col">
-    //   <header className="bg-card border-b">
-    //     <div className="mx-auto mt-5 flex flex-wrap items-center justify-between gap-4 p-0">
-    //       <div className="flex items-center justify-between gap-4">
-    //         <div className="space-y-1">
-    //           {/* <p className="text-muted-foreground text-xs uppercase">
-    //             Support assistant
-    //           </p>
-    //           <div className="flex flex-wrap items-center gap-3">
-    //             <h1 className="text-xl font-semibold">
-    //               {tenantName ?? "Organization"}
-    //             </h1>
-    //           </div> */}
-    //         </div>
-    //         <Tabs>
-    //           <TabsList className="h-auto rounded-none pb-0">
-    //             {NAV_LINKS.map((link) => {
-    //               const href = link.slug
-    //                 ? `/admin/support/${link.slug}`
-    //                 : "/admin/support";
-    //               const isActive = routeKey === (link.slug ?? "");
-    //               return (
-    //                 <TabsTrigger key={link.slug} value={link.slug} asChild>
-    //                   <Link
-    //                     href={href}
-    //                     className={`rounded-none px-4 py-1 text-sm font-medium ${
-    //                       isActive
-    //                         ? "bg-primary text-primary-foreground"
-    //                         : "bg-muted text-muted-foreground hover:bg-muted/80"
-    //                     }`}
-    //                   >
-    //                     {link.label}
-    //                   </Link>
-    //                 </TabsTrigger>
-    //               );
-    //             })}
-    //           </TabsList>
-    //         </Tabs>
-    //       </div>
-    //     </div>
-    //   </header>
-    //   <main className="h-full w-full flex-1">{content}</main>
-    // </div>
+        <div className="relative flex w-full flex-1">
+          {routeKey === "conversations" && (
+            <ConversationLeftSidebar
+              conversations={conversations}
+              activeSessionId={testSessionId}
+              onSelect={updateTestSessionId}
+              className="h-auto"
+            />
+          )}
+          <SidebarInset className="INSET relative">{content}</SidebarInset>
+          {routeKey === "conversations" && (
+            <ConversationRightSidebar
+              side="right"
+              className="absolute h-auto"
+              conversation={sidebarConversation}
+              contact={sidebarContact}
+              fallbackName={
+                sidebarConversation?.contactName ??
+                (sidebarConversation
+                  ? `Session ${sidebarConversation.sessionId.slice(-6)}`
+                  : undefined)
+              }
+              fallbackEmail={sidebarConversation?.contactEmail}
+              organizationName={tenantName}
+              organizationId={organizationId}
+              currentAgent={currentAgent}
+            />
+          )}
+        </div>
+      </SidebarProvider>
+    </div>
   );
 }

@@ -121,7 +121,7 @@ export const ArticlesView = ({ organizationId }: ArticlesViewProps) => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden border-0 shadow-none">
           <EntityList
             data={rows}
             columns={columns}
