@@ -1,16 +1,16 @@
 "use client";
 
-import type { AuditLog } from "launchthat-plugin-commerce";
+// import {
+//   auditLogFilters,
+//   AuditLogTable,
+//   createAuditLogColumns,
+// } from "launchthat-plugin-commerce";
+// import type { AuditLog } from "launchthat-plugin-commerce";
 import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
 import { useQuery } from "convex/react";
-import {
-  auditLogFilters,
-  AuditLogTable,
-  createAuditLogColumns,
-} from "launchthat-plugin-commerce";
 import {
   Activity,
   AlertTriangle,
@@ -30,7 +30,7 @@ export default function AuditLogPage() {
 
   // Get audit log statistics
   const auditLogStats = useQuery(
-    api["core/auditLog/queries"].getAuditLogStats,
+    api.core.auditLog.queries.getAuditLogStats,
     {},
   );
 

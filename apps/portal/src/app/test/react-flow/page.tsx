@@ -31,7 +31,7 @@ import {
 } from "@acme/ui/sheet";
 
 import type { RouterKind } from "./types";
-import { FunnelCheckoutForm } from "../../(root)/(admin)/admin/store/funnels/[id]/steps/_components/FunnelCheckoutForm";
+// import { FunnelCheckoutForm } from "../../(root)/(admin)/admin/store/funnels/[id]/steps/_components/FunnelCheckoutForm";
 import { BRANCH_X_OFFSET, NODE_H, NODE_W, VERTICAL_GAP } from "./constants";
 import CreateNode from "./CreateNode";
 import { initialEdges, initialNodesBase } from "./initialData";
@@ -626,7 +626,7 @@ export default function ReactFlowPage() {
             <SheetTitle>Edit node</SheetTitle>
             <SheetDescription>Configure the selected node.</SheetDescription>
           </SheetHeader>
-          {editingKind === "checkout" && editingNodeId && (
+          {/* {editingKind === "checkout" && editingNodeId && (
             <FunnelCheckoutForm
               stepId={editingNodeId as unknown as Id<"funnelSteps">}
               initial={{
@@ -640,7 +640,7 @@ export default function ReactFlowPage() {
                 config: {} as Record<string, unknown>,
               }}
             />
-          )}
+          )} */}
         </SheetContent>
       </Sheet>
     </div>
