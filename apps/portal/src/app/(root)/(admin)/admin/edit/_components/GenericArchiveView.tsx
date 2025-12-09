@@ -281,7 +281,7 @@ export function GenericArchiveView({
       }
       return (
         <div
-          className="space-y-2 pt-2"
+          className="space-y-2"
           data-hook-slot={`admin.archive.header.${slot}`}
         >
           {items.map((node, index) => (

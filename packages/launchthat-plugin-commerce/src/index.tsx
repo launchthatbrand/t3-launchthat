@@ -4,8 +4,10 @@ import type {
   PluginSettingComponentProps,
 } from "launchthat-plugin-core";
 import type { ComponentType, ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 
+import { ScrollArea, ScrollBar } from "@acme/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 export interface CommercePluginComponents {
@@ -41,28 +43,107 @@ const STORE_ARCHIVE_TABS = [
   },
 ];
 
-export const CommerceArchiveHeader = () => {
+interface CommerceArchiveHeaderProps {
+  activeTab?: string;
+}
+export interface Artwork {
+  artist: string;
+  art: string;
+}
+export const works: Artwork[] = [
+  {
+    artist: "Ornella Binni",
+    art: "https://images.unsplash.com/photo-1465869185982-5a1a7522cbcb?auto=format&fit=crop&w=300&q=80",
+  },
+  {
+    artist: "Tom Byrom",
+    art: "https://images.unsplash.com/photo-1548516173-3cabfa4607e9?auto=format&fit=crop&w=300&q=80",
+  },
+  {
+    artist: "Vladimir Malyavko",
+    art: "https://images.unsplash.com/photo-1494337480532-3725c85fd2ab?auto=format&fit=crop&w=300&q=80",
+  },
+];
+
+const getValidTabValue = (value?: string) => {
+  if (!value) return undefined;
+  return STORE_ARCHIVE_TABS.some((tab) => tab.value === value)
+    ? value
+    : undefined;
+};
+
+export const CommerceArchiveHeader = ({
+  activeTab,
+}: CommerceArchiveHeaderProps) => {
+  const resolvedValue = getValidTabValue(activeTab) ?? "products";
+  console.log("resolvedValue", resolvedValue);
+
   return (
-    <div className="border-border/80 bg-muted/40 rounded-lg border p-0">
-      <Tabs defaultValue="products" className="w-full">
-        <TabsList className="bg-background w-full flex-wrap justify-start gap-2 overflow-x-auto border-b px-4 py-3">
-          {STORE_ARCHIVE_TABS.map((tab) => (
-            <TabsTrigger
-              key={tab.value}
-              value={tab.value}
-              asChild
-              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
-            >
-              <Link href={tab.href}>{tab.label}</Link>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+    // <Tabs
+    //   value={resolvedValue}
+    //   onValueChange={() => {
+    //     // Tabs are driven by navigation links; ignore internal state updates.
+    //   }}
+    //   className="w-full"
+    // >
+    //   <TabsList className="bg-background w-full flex-wrap justify-start gap-1 overflow-x-auto border-b">
+    //     {STORE_ARCHIVE_TABS.map((tab) => (
+    //       <TabsTrigger
+    //         key={tab.value}
+    //         value={tab.value}
+    //         asChild
+    //         className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+    //       >
+    //         <Link href={tab.href} className="">
+    //           {tab.label}
+    //         </Link>
+    //       </TabsTrigger>
+    //     ))}
+    //   </TabsList>
+    // </Tabs>
+    <div className="bg-muted flex w-full flex-col gap-6">
+      <Tabs value={resolvedValue}>
+        {/* <ScrollArea className="w-full rounded-md border whitespace-nowrap">
+         
+        </ScrollArea> */}
+        <ScrollArea className="w-full whitespace-nowrap">
+          <TabsList className="rounded-none p-0 pt-2">
+            {STORE_ARCHIVE_TABS.map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                asChild
+                className="data-[state=active]:border-b-primary data-[state=active]:border-b"
+              >
+                <Link
+                  href={tab.href}
+                  className="h-full rounded-xs data-[state=active]:border-b-2"
+                >
+                  {tab.label}
+                </Link>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          <ScrollBar
+            orientation="horizontal"
+            className="primary flex h-[5px]"
+            style={{ "--border": "#bababa" } as React.CSSProperties}
+          />
+        </ScrollArea>
       </Tabs>
     </div>
   );
 };
 
 type ArchiveLayoutContext = "default" | "plugin" | "content-only";
+
+const POST_TYPE_TO_TAB: Record<string, string> = {
+  products: "products",
+  orders: "orders",
+  plans: "plans",
+  "ecom-coupon": "coupons",
+  "ecom-chargeback": "chargebacks",
+};
 
 const injectCommerceArchiveHeader = (
   value: unknown,
@@ -91,7 +172,15 @@ const injectCommerceArchiveHeader = (
     return nodes;
   }
 
-  return [...nodes, <CommerceArchiveHeader key="commerce-archive-header" />];
+  const activeTab = POST_TYPE_TO_TAB[typedContext?.postType ?? ""];
+
+  return [
+    ...nodes,
+    <CommerceArchiveHeader
+      key="commerce-archive-header"
+      activeTab={activeTab}
+    />,
+  ];
 };
 
 const injectCommerceSettingsHeader = (
@@ -107,7 +196,16 @@ const injectCommerceSettingsHeader = (
     return nodes;
   }
 
-  return [...nodes, <CommerceArchiveHeader key="commerce-settings-header" />];
+  const activeTab =
+    typedContext?.pageSlug === "storefront" ? "storefront" : undefined;
+
+  return [
+    ...nodes,
+    <CommerceArchiveHeader
+      key="commerce-settings-header"
+      activeTab={activeTab}
+    />,
+  ];
 };
 
 export const createCommercePluginDefinition = ({

@@ -136,7 +136,7 @@ function AdminEditPageBody() {
       }
       return (
         <div
-          className="space-y-2 pt-2"
+          className="space-y-2"
           data-hook-slot={`admin.plugin.settings.header.${slot}`}
         >
           {items.map((node, index) => (
