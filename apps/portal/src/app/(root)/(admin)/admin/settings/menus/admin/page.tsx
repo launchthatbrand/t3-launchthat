@@ -615,7 +615,7 @@ const AdminMenuEditorPage = () => {
   }, [contentTypes, pluginOptionMap]);
 
   const pluginParentMap = useMemo(() => {
-    const map: Record<string, string> = {};
+    const map: Record<string, { parentId: string; customPath?: string }> = {};
     pluginDefinitions.forEach((plugin) => {
       if (!plugin.settingsPages?.length) {
         return;
@@ -624,7 +624,10 @@ const AdminMenuEditorPage = () => {
         return;
       }
       plugin.postTypes.forEach((definition) => {
-        map[definition.slug] = `plugin:${plugin.id}`;
+        map[definition.slug] = {
+          parentId: `plugin:${plugin.id}`,
+          customPath: definition.adminMenu?.slug,
+        };
       });
     });
     return map;

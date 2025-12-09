@@ -1,6 +1,7 @@
 "use client";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useDeletePost, useGetAllPosts } from "@/lib/blog";
@@ -37,6 +38,7 @@ import {
   AdminLayoutMain,
   AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
+import { useApplyFilters } from "~/lib/hooks";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import { buildPermalink } from "./permalink";
 import { PlaceholderState } from "./PlaceholderState";
@@ -87,6 +89,7 @@ export interface GenericArchiveViewProps {
   onPostTypeChange: (slug: string) => void;
   onCreate: () => void;
   renderLayout?: boolean;
+  withSidebar?: boolean;
 }
 
 export function GenericArchiveView({
@@ -98,6 +101,7 @@ export function GenericArchiveView({
   onPostTypeChange,
   onCreate,
   renderLayout = true,
+  withSidebar = true,
 }: GenericArchiveViewProps) {
   const label = postType?.name ?? slug.replace(/-/g, " ");
   const description =
@@ -106,9 +110,11 @@ export function GenericArchiveView({
   const shouldLoadPosts = postType
     ? true
     : isBuiltInPostTypeSlug(normalizedSlug);
-  const { posts, isLoading: postsLoading } = useGetAllPosts(
+  const postsQuery = useGetAllPosts(
     shouldLoadPosts ? { postTypeSlug: normalizedSlug } : undefined,
   );
+  const posts = postsQuery.posts;
+  const postsLoading = postsQuery.isLoading;
   const rows: ArchiveRow[] = shouldLoadPosts
     ? (posts as ArchiveRow[])
     : FALLBACK_ROWS;
@@ -248,6 +254,45 @@ export function GenericArchiveView({
     return actions;
   }, [handleDeleteLesson, slug]);
 
+  const archiveHookContext = useMemo(
+    () => ({
+      postType: slug,
+      postTypeDefinition: postType,
+      layout: renderLayout ? ("default" as const) : ("content-only" as const),
+    }),
+    [postType, renderLayout, slug],
+  );
+
+  const headerBefore = useApplyFilters<ReactNode[]>(
+    "admin.archive.header.before",
+    [],
+    archiveHookContext,
+  );
+  const headerAfter = useApplyFilters<ReactNode[]>(
+    "admin.archive.header.after",
+    [],
+    archiveHookContext,
+  );
+
+  const renderInjectedHeaderContent = useCallback(
+    (items: ReactNode[], slot: "before" | "after") => {
+      if (items.length === 0) {
+        return null;
+      }
+      return (
+        <div
+          className="space-y-2 pt-2"
+          data-hook-slot={`admin.archive.header.${slot}`}
+        >
+          {items.map((node, index) => (
+            <div key={`admin-archive-header-${slot}-${index}`}>{node}</div>
+          ))}
+        </div>
+      );
+    },
+    [],
+  );
+
   const mainContent = (
     <div className="container space-y-6 py-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -313,8 +358,23 @@ export function GenericArchiveView({
     </div>
   );
 
+  const headerBeforeContent = renderInjectedHeaderContent(
+    headerBefore,
+    "before",
+  );
+  const headerAfterContent = renderInjectedHeaderContent(headerAfter, "after");
+
+  const contentWithHooks = (
+    <>
+      {headerBeforeContent}
+      {renderLayout ? <AdminLayoutHeader /> : null}
+      {headerAfterContent}
+      {mainContent}
+    </>
+  );
+
   if (!renderLayout) {
-    return mainContent;
+    return contentWithHooks;
   }
 
   return (
@@ -323,36 +383,39 @@ export function GenericArchiveView({
       description={description}
       pathname={`/admin/edit?post_type=${slug}`}
     >
-      <AdminLayoutContent withSidebar>
-        <AdminLayoutMain>
-          <AdminLayoutHeader />
-          {mainContent}
-        </AdminLayoutMain>
-        <AdminLayoutSidebar className="border-l p-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-3">
-              <Info className="text-muted-foreground h-5 w-5" />
-              <div>
-                <CardTitle className="text-base">Need custom fields?</CardTitle>
-                <CardDescription>
-                  Connect post types to marketing tags, menus, and integrations.
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button variant="outline" asChild>
-                <Link href="/admin/settings/post-types">
-                  <Sparkles className="mr-2 h-4 w-4" /> Configure Post Types
-                </Link>
-              </Button>
-              <p className="text-muted-foreground text-sm">
-                This scaffold reuses the same Shadcn table primitives as the LMS
-                Courses view so every post type feels consistent.
-              </p>
-            </CardContent>
-          </Card>
-        </AdminLayoutSidebar>
+      <AdminLayoutContent withSidebar={withSidebar}>
+        <AdminLayoutMain>{contentWithHooks}</AdminLayoutMain>
+        {withSidebar ? (
+          <AdminLayoutSidebar className="border-l p-4">
+            <DefaultArchiveSidebar />
+          </AdminLayoutSidebar>
+        ) : null}
       </AdminLayoutContent>
     </AdminLayout>
   );
 }
+
+export const DefaultArchiveSidebar = () => (
+  <Card>
+    <CardHeader className="flex flex-row items-center gap-3">
+      <Info className="text-muted-foreground h-5 w-5" />
+      <div>
+        <CardTitle className="text-base">Need custom fields?</CardTitle>
+        <CardDescription>
+          Connect post types to marketing tags, menus, and integrations.
+        </CardDescription>
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-2">
+      <Button variant="outline" asChild>
+        <Link href="/admin/settings/post-types">
+          <Sparkles className="mr-2 h-4 w-4" /> Configure Post Types
+        </Link>
+      </Button>
+      <p className="text-muted-foreground text-sm">
+        This scaffold reuses the same Shadcn table primitives as the LMS Courses
+        view so every post type feels consistent.
+      </p>
+    </CardContent>
+  </Card>
+);

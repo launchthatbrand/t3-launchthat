@@ -1,12 +1,114 @@
 import type {
+  PluginContext,
   PluginDefinition,
   PluginSettingComponentProps,
 } from "launchthat-plugin-core";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
+import Link from "next/link";
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 export interface CommercePluginComponents {
   CommerceStorefrontSettings: ComponentType<PluginSettingComponentProps>;
 }
+
+const STORE_ARCHIVE_TABS = [
+  {
+    value: "storefront",
+    label: "Storefront",
+    href: "/admin/edit?plugin=commerce&page=storefront",
+  },
+  {
+    value: "products",
+    label: "Products",
+    href: "/admin/edit?post_type=products",
+  },
+  { value: "orders", label: "Orders", href: "/admin/edit?post_type=orders" },
+  {
+    value: "chargebacks",
+    label: "Chargebacks",
+    href: "/admin/edit?post_type=ecom-chargeback",
+  },
+  {
+    value: "coupons",
+    label: "Store Coupons",
+    href: "/admin/edit?post_type=ecom-coupon",
+  },
+  {
+    value: "plans",
+    label: "Subscription Plans",
+    href: "/admin/edit?post_type=plans",
+  },
+];
+
+export const CommerceArchiveHeader = () => {
+  return (
+    <div className="border-border/80 bg-muted/40 rounded-lg border p-0">
+      <Tabs defaultValue="products" className="w-full">
+        <TabsList className="bg-background w-full flex-wrap justify-start gap-2 overflow-x-auto border-b px-4 py-3">
+          {STORE_ARCHIVE_TABS.map((tab) => (
+            <TabsTrigger
+              key={tab.value}
+              value={tab.value}
+              asChild
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+            >
+              <Link href={tab.href}>{tab.label}</Link>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+    </div>
+  );
+};
+
+type ArchiveLayoutContext = "default" | "plugin" | "content-only";
+
+const injectCommerceArchiveHeader = (
+  value: unknown,
+  context?: unknown,
+): ReactNode[] => {
+  const nodes = Array.isArray(value) ? [...(value as ReactNode[])] : [];
+  const typedContext = context as
+    | { postType?: string; layout?: ArchiveLayoutContext }
+    | undefined;
+
+  const SUPPORTED_ARCHIVE_POST_TYPES = new Set([
+    "products",
+    "orders",
+    "plans",
+    "ecom-coupon",
+    "ecom-chargeback",
+  ]);
+
+  const layout = typedContext?.layout ?? "default";
+  const shouldRender =
+    layout !== "content-only" &&
+    !!typedContext?.postType &&
+    SUPPORTED_ARCHIVE_POST_TYPES.has(typedContext.postType);
+
+  if (!shouldRender) {
+    return nodes;
+  }
+
+  return [...nodes, <CommerceArchiveHeader key="commerce-archive-header" />];
+};
+
+const injectCommerceSettingsHeader = (
+  value: unknown,
+  context?: unknown,
+): ReactNode[] => {
+  const nodes = Array.isArray(value) ? [...(value as ReactNode[])] : [];
+  const typedContext = context as
+    | { pluginId?: string; pageSlug?: string }
+    | undefined;
+
+  if (typedContext?.pluginId !== "commerce") {
+    return nodes;
+  }
+
+  return [...nodes, <CommerceArchiveHeader key="commerce-settings-header" />];
+};
 
 export const createCommercePluginDefinition = ({
   CommerceStorefrontSettings,
@@ -51,10 +153,12 @@ export const createCommercePluginDefinition = ({
       adminMenu: {
         enabled: true,
         label: "Products",
-        slug: "store/products",
         icon: "Package",
         position: 40,
         parent: "plugin:commerce",
+      },
+      adminArchiveView: {
+        showSidebar: false,
       },
     },
     {
@@ -79,10 +183,12 @@ export const createCommercePluginDefinition = ({
       adminMenu: {
         enabled: true,
         label: "Orders",
-        slug: "store/orders",
         icon: "Receipt",
         position: 41,
         parent: "plugin:commerce",
+      },
+      adminArchiveView: {
+        showSidebar: false,
       },
     },
     {
@@ -97,10 +203,17 @@ export const createCommercePluginDefinition = ({
         customFields: true,
       },
       adminMenu: {
-        enabled: false,
+        enabled: true,
+        label: "Plans",
+        icon: "Layers3",
+        position: 45,
+        parent: "plugin:commerce",
       },
       storageKind: "custom",
       storageTables: ["plans"],
+      adminArchiveView: {
+        showSidebar: false,
+      },
     },
     {
       name: "Store Coupons",
@@ -114,10 +227,17 @@ export const createCommercePluginDefinition = ({
         customFields: true,
       },
       adminMenu: {
-        enabled: false,
+        enabled: true,
+        label: "Coupons",
+        icon: "Ticket",
+        position: 46,
+        parent: "plugin:commerce",
       },
       storageKind: "custom",
       storageTables: ["coupons"],
+      adminArchiveView: {
+        showSidebar: false,
+      },
     },
     {
       name: "Chargebacks",
@@ -131,10 +251,17 @@ export const createCommercePluginDefinition = ({
         customFields: true,
       },
       adminMenu: {
-        enabled: false,
+        enabled: true,
+        label: "Chargebacksss",
+        icon: "ShieldAlert",
+        position: 47,
+        parent: "plugin:commerce",
       },
       storageKind: "custom",
       storageTables: ["chargebacks"],
+      adminArchiveView: {
+        showSidebar: false,
+      },
     },
   ],
   settingsPages: [
@@ -169,6 +296,22 @@ export const createCommercePluginDefinition = ({
       position: 47,
     },
   ],
+  hooks: {
+    filters: [
+      {
+        hook: "admin.archive.header.before",
+        priority: 10,
+        acceptedArgs: 2,
+        callback: injectCommerceArchiveHeader,
+      },
+      {
+        hook: "admin.plugin.settings.header.before",
+        priority: 10,
+        acceptedArgs: 2,
+        callback: injectCommerceSettingsHeader,
+      },
+    ],
+  },
 });
 
 export default createCommercePluginDefinition;

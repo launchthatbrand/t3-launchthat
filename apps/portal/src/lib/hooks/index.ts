@@ -1,4 +1,5 @@
 // WordPress-style hook system - Main exports
+import "~/lib/plugins/installHooks";
 
 // Core hook functions
 export {

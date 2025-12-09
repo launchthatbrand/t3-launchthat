@@ -4,6 +4,7 @@
 import "@/lib/plugins/vimeo/configureClient";
 
 import type { Doc } from "@/convex/_generated/dataModel";
+import type { ReactNode } from "react";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -25,18 +26,27 @@ import {
   AdminLayoutContent,
   AdminLayoutHeader,
   AdminLayoutMain,
+  AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
 import { useTenant } from "~/context/TenantContext";
+import { useApplyFilters } from "~/lib/hooks/react";
 import { pluginDefinitions } from "~/lib/plugins/definitions";
 import {
   getPluginArchiveViewForSlug,
   getPluginSingleViewForSlug,
   wrapWithPluginProviders,
 } from "~/lib/plugins/helpers";
+import {
+  ADMIN_PLUGIN_SETTINGS_HEADER_AFTER,
+  ADMIN_PLUGIN_SETTINGS_HEADER_BEFORE,
+} from "~/lib/plugins/hookSlots";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { AdminSinglePostView } from "../_components/AdminSinglePostView";
 import { AttachmentsArchiveView } from "../_components/AttachmentsArchiveView";
-import { GenericArchiveView } from "../_components/GenericArchiveView";
+import {
+  DefaultArchiveSidebar,
+  GenericArchiveView,
+} from "../_components/GenericArchiveView";
 import {
   defaultPermalinkSettings,
   isPermalinkSettingsValue,
@@ -99,6 +109,44 @@ function AdminEditPageBody() {
       organizationId,
     });
   }, [pluginDefinition, pluginSetting, organizationId]);
+  const pluginSettingsHookContext = useMemo(() => {
+    if (!pluginDefinition || !pluginSetting) {
+      return undefined;
+    }
+    return {
+      pluginId: pluginDefinition.id,
+      plugin: pluginDefinition,
+      pageSlug: pluginSetting.slug,
+    };
+  }, [pluginDefinition, pluginSetting]);
+  const pluginSettingsHeaderBefore = useApplyFilters<ReactNode[]>(
+    ADMIN_PLUGIN_SETTINGS_HEADER_BEFORE,
+    [],
+    pluginSettingsHookContext,
+  );
+  const pluginSettingsHeaderAfter = useApplyFilters<ReactNode[]>(
+    ADMIN_PLUGIN_SETTINGS_HEADER_AFTER,
+    [],
+    pluginSettingsHookContext,
+  );
+  const renderPluginSettingsHeaderContent = useCallback(
+    (items: ReactNode[] | undefined, slot: "before" | "after") => {
+      if (!items?.length) {
+        return null;
+      }
+      return (
+        <div
+          className="space-y-2 pt-2"
+          data-hook-slot={`admin.plugin.settings.header.${slot}`}
+        >
+          {items.map((node, index) => (
+            <div key={`plugin-settings-header-${slot}-${index}`}>{node}</div>
+          ))}
+        </div>
+      );
+    },
+    [],
+  );
   const { viewMode, post, postType, postTypeSlug, isLoading, isNewRecord } =
     useAdminPostContext();
   const permalinkOption = useQuery(api.core.options.get, {
@@ -140,9 +188,8 @@ function AdminEditPageBody() {
   }, [hydratedPostType]);
 
   const pluginArchiveView = useMemo(() => {
-    if (!hydratedPostType) return null;
-    return getPluginArchiveViewForSlug(hydratedPostType.slug);
-  }, [hydratedPostType]);
+    return getPluginArchiveViewForSlug(resolvedSlug);
+  }, [resolvedSlug]);
 
   const archiveTabs = useMemo(
     () => pluginArchiveView?.config.tabs ?? [],
@@ -154,7 +201,7 @@ function AdminEditPageBody() {
     }
     return (
       pluginArchiveView.config.defaultTab ??
-      pluginArchiveView.config.tabs[0]?.slug ??
+      pluginArchiveView.config.tabs?.[0]?.slug ??
       "list"
     );
   }, [pluginArchiveView]);
@@ -197,8 +244,16 @@ function AdminEditPageBody() {
     router.replace(`/admin/edit?${params.toString()}`);
   }, [resolvedSlug, router, searchParams]);
 
+  interface RenderArchiveOptions {
+    withSidebar?: boolean;
+  }
+
   const renderGenericArchive = useCallback(
-    (renderLayout: boolean, targetSlug?: string) => {
+    (
+      renderLayout: boolean,
+      targetSlug?: string,
+      options?: RenderArchiveOptions,
+    ) => {
       const slugToUse = targetSlug ?? resolvedSlug;
       const targetPostType =
         postTypes.find((type) => type.slug === slugToUse) ?? hydratedPostType;
@@ -223,6 +278,7 @@ function AdminEditPageBody() {
           onPostTypeChange={handlePostTypeChange}
           onCreate={handleCreate}
           renderLayout={renderLayout}
+          withSidebar={options?.withSidebar ?? true}
         />
       );
     },
@@ -262,33 +318,12 @@ function AdminEditPageBody() {
   if (pluginParam && pluginDefinition && pluginSetting) {
     return (
       <AdminLayoutContent className="flex flex-1">
-        {/* <AdminLayoutHeader /> */}
-        <AdminLayoutMain className="flex flex-1 flex-col">
-          {/* <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-sm">
-                  Admin / Integrations / {pluginDefinition.name}
-                </p>
-                <h1 className="text-3xl font-bold">
-                  {pluginDefinition.name} Settings
-                </h1>
-                <p className="text-muted-foreground">
-                  {pluginDefinition.longDescription ??
-                    pluginDefinition.description}
-                </p>
-              </div>
-              <Button asChild variant="outline" size="sm">
-                <Link href="/admin/integrations/plugins">Back to plugins</Link>
-              </Button>
-            </div> */}
-
+        <AdminLayoutMain className="flex flex-1 flex-col space-y-6">
+          {renderPluginSettingsHeaderContent(
+            pluginSettingsHeaderBefore,
+            "before",
+          )}
           <Card className="flex flex-1 flex-col border-none p-0 shadow-none">
-            {/* <CardHeader>
-                <CardTitle>{pluginSetting.label}</CardTitle>
-                {pluginSetting.description ? (
-                  <CardDescription>{pluginSetting.description}</CardDescription>
-                ) : null}
-              </CardHeader> */}
             <CardContent className="flex flex-1 flex-col p-0">
               {pluginSettingContent ?? (
                 <p className="text-muted-foreground text-sm">
@@ -297,6 +332,10 @@ function AdminEditPageBody() {
               )}
             </CardContent>
           </Card>
+          {renderPluginSettingsHeaderContent(
+            pluginSettingsHeaderAfter,
+            "after",
+          )}
         </AdminLayoutMain>
       </AdminLayoutContent>
     );
@@ -348,6 +387,13 @@ function AdminEditPageBody() {
     );
   }
 
+  const rawSidebarPreference =
+    pluginArchiveView &&
+    typeof pluginArchiveView.config?.showSidebar === "boolean"
+      ? (pluginArchiveView.config.showSidebar as boolean)
+      : undefined;
+  const normalizedSidebarPreference = rawSidebarPreference;
+
   if (pluginArchiveView && archiveTabs.length > 0) {
     const activeArchiveDefinition =
       archiveTabs.find((tab) => tab.slug === activeArchiveTab) ??
@@ -375,29 +421,122 @@ function AdminEditPageBody() {
       label: tab.label,
       onClick: () => handleArchiveTabChange(tab.slug),
     }));
+    const showPluginSidebar = normalizedSidebarPreference ?? true;
     const archiveLayout = (
-      <AdminLayout
-        title={`${archivePostType?.name ?? archiveSlug} Archive`}
-        description={
-          archivePostType?.description ??
-          "Manage structured entries for this post type."
-        }
-        activeTab={activeArchiveTab}
-        pathname={`/admin/edit?post_type=${archiveSlug}`}
-      >
-        <AdminLayoutContent withSidebar={false}>
-          <AdminLayoutMain>
-            <AdminLayoutHeader customTabs={layoutTabs} />
-            <div className="container py-6">{archiveContent}</div>
-          </AdminLayoutMain>
-        </AdminLayoutContent>
-      </AdminLayout>
+      <PluginArchiveLayout
+        archiveSlug={archiveSlug}
+        archivePostType={archivePostType}
+        activeArchiveTab={activeArchiveTab}
+        layoutTabs={layoutTabs}
+        archiveContent={archiveContent}
+        showDefaultArchive={showDefaultArchive}
+        showSidebar={showPluginSidebar}
+      />
     );
     return wrapWithPluginProviders(archiveLayout, pluginArchiveView.pluginId);
   }
 
-  return renderGenericArchive(true);
+  return renderGenericArchive(true, undefined, {
+    withSidebar: normalizedSidebarPreference ?? true,
+  });
 }
+
+interface ArchiveTabConfig {
+  value: string;
+  label: string;
+  onClick: () => void;
+}
+
+interface PluginArchiveLayoutProps {
+  archiveSlug: string;
+  archivePostType: PostTypeDoc | null;
+  activeArchiveTab: string;
+  layoutTabs: ArchiveTabConfig[];
+  archiveContent: ReactNode;
+  showDefaultArchive: boolean;
+  showSidebar: boolean;
+}
+
+const PluginArchiveLayout: React.FC<PluginArchiveLayoutProps> = ({
+  archiveSlug,
+  archivePostType,
+  activeArchiveTab,
+  layoutTabs,
+  archiveContent,
+  showDefaultArchive,
+  showSidebar,
+}) => {
+  const archiveHookContext = useMemo(
+    () => ({
+      postType: archiveSlug,
+      postTypeDefinition: archivePostType,
+      layout: "plugin" as const,
+    }),
+    [archivePostType, archiveSlug],
+  );
+
+  const headerBefore = useApplyFilters<ReactNode[]>(
+    "admin.archive.header.before",
+    [],
+    archiveHookContext,
+  );
+  const headerAfter = useApplyFilters<ReactNode[]>(
+    "admin.archive.header.after",
+    [],
+    archiveHookContext,
+  );
+
+  const renderInjectedHeaderContent = useCallback(
+    (items: ReactNode[], slot: "before" | "after") => {
+      if (items.length === 0) {
+        return null;
+      }
+      return (
+        <div
+          className="space-y-2 pt-4"
+          data-hook-slot={`admin.archive.header.${slot}`}
+        >
+          {items.map((node, index) => (
+            <div key={`plugin-archive-header-${slot}-${index}`}>{node}</div>
+          ))}
+        </div>
+      );
+    },
+    [],
+  );
+
+  const headerBeforeContent = renderInjectedHeaderContent(
+    headerBefore,
+    "before",
+  );
+  const headerAfterContent = renderInjectedHeaderContent(headerAfter, "after");
+
+  return (
+    <AdminLayout
+      title={`${archivePostType?.name ?? archiveSlug} Archive`}
+      description={
+        archivePostType?.description ??
+        "Manage structured entries for this post type."
+      }
+      activeTab={activeArchiveTab}
+      pathname={`/admin/edit?post_type=${archiveSlug}`}
+    >
+      <AdminLayoutContent withSidebar={showSidebar}>
+        <AdminLayoutMain>
+          {showDefaultArchive ? headerBeforeContent : null}
+          <AdminLayoutHeader customTabs={layoutTabs} />
+          {showDefaultArchive ? headerAfterContent : null}
+          <div className="container py-6">{archiveContent}</div>
+        </AdminLayoutMain>
+        {showSidebar ? (
+          <AdminLayoutSidebar className="border-l p-4">
+            <DefaultArchiveSidebar />
+          </AdminLayoutSidebar>
+        ) : null}
+      </AdminLayoutContent>
+    </AdminLayout>
+  );
+};
 
 export default function AdminEditPage() {
   return (

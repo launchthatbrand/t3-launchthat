@@ -40,7 +40,7 @@ export function CommerceStorefrontSettings({
         <div className="flex items-center justify-between rounded-md border px-4 py-3">
           <div>
             <Label className="text-base">Collect shipping addresses</Label>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Disable this for digital-only products.
             </p>
           </div>
@@ -57,19 +57,3 @@ export function CommerceStorefrontSettings({
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

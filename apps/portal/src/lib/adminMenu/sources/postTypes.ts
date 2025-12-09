@@ -62,7 +62,9 @@ const registerPostTypeMenus = () => {
         | Map<string, TaxonomyDefinition[]>
         | undefined) ?? new Map<string, TaxonomyDefinition[]>();
     const pluginParents =
-      (context.pluginParents as Record<string, string> | undefined) ?? {};
+      (context.pluginParents as
+        | Record<string, { parentId: string; customPath?: string }>
+        | undefined) ?? {};
 
     const items: MenuItemInput[] = [];
 
@@ -77,27 +79,33 @@ const registerPostTypeMenus = () => {
         const slug = postType.slug;
         const section = getSectionForPostType(postType);
         const adminSlug = postType.adminMenu?.slug?.trim();
-        const customPath = hasCustomAdminPath(adminSlug)
-          ? adminSlug
+        let customPath = hasCustomAdminPath(adminSlug) ? adminSlug : undefined;
+
+        const menuId = `postType:${slug}`;
+        const parentValue = postType.adminMenu?.parent?.trim();
+        const pluginMeta = pluginParents[slug];
+
+        const normalizedParent = parentValue?.toLowerCase();
+        let pluginParentId = normalizedParent?.startsWith("plugin:")
+          ? normalizedParent
           : undefined;
+        if (!pluginParentId && pluginMeta) {
+          pluginParentId = pluginMeta.parentId;
+        }
+
+        if (
+          !customPath &&
+          pluginMeta?.customPath &&
+          hasCustomAdminPath(pluginMeta.customPath)
+        ) {
+          customPath = pluginMeta.customPath;
+        }
+
         const href = customPath
           ? customPath.startsWith("http")
             ? customPath
             : `/admin/${customPath.replace(/^\/+/, "")}`
           : `/admin/edit?post_type=${encodeURIComponent(slug)}`;
-
-        const menuId = `postType:${slug}`;
-        const parentValue = postType.adminMenu?.parent?.trim();
-        let pluginParentId =
-          parentValue && parentValue.toLowerCase().startsWith("plugin:")
-            ? parentValue.toLowerCase()
-            : undefined;
-        if (!pluginParentId) {
-          const mappedParent = pluginParents[slug];
-          if (mappedParent) {
-            pluginParentId = mappedParent;
-          }
-        }
 
         const baseItem: MenuItemInput = {
           id: menuId,

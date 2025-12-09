@@ -264,24 +264,26 @@ export default function DefaultSidebar() {
       }
       return Boolean(isPluginEnabled(plugin));
     };
-    const pluginParentMap = pluginDefinitions.reduce<Record<string, string>>(
-      (acc, plugin) => {
-        if (!plugin.settingsPages?.length) {
-          return acc;
-        }
-        if (!isPluginDefinition(plugin)) {
-          return acc;
-        }
-        if (!isPluginEnabled(plugin)) {
-          return acc;
-        }
-        plugin.postTypes.forEach((definition) => {
-          acc[definition.slug] = `plugin:${plugin.id}`;
-        });
+    const pluginParentMap = pluginDefinitions.reduce<
+      Record<string, { parentId: string; customPath?: string }>
+    >((acc, plugin) => {
+      if (!plugin.settingsPages?.length) {
         return acc;
-      },
-      {},
-    );
+      }
+      if (!isPluginDefinition(plugin)) {
+        return acc;
+      }
+      if (!isPluginEnabled(plugin)) {
+        return acc;
+      }
+      plugin.postTypes.forEach((definition) => {
+        acc[definition.slug] = {
+          parentId: `plugin:${plugin.id}`,
+          customPath: definition.adminMenu?.slug,
+        };
+      });
+      return acc;
+    }, {});
     return adminMenuRegistry.getMenuSections({
       postTypes: contentTypes,
       taxonomyAssignments,

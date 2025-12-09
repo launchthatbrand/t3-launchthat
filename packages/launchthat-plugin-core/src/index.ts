@@ -321,8 +321,21 @@ export interface PluginArchiveViewTabDefinition {
 }
 
 export interface PluginPostArchiveViewConfig {
-  defaultTab: string;
-  tabs: PluginArchiveViewTabDefinition[];
+  defaultTab?: string;
+  tabs?: PluginArchiveViewTabDefinition[];
+  showSidebar?: boolean;
+}
+
+export interface PluginHookRegistration {
+  hook: string;
+  callback: (...args: unknown[]) => unknown;
+  priority?: number;
+  acceptedArgs?: number;
+}
+
+export interface PluginHookConfig {
+  actions?: PluginHookRegistration[];
+  filters?: PluginHookRegistration[];
 }
 
 export interface PluginDefinition {
@@ -337,6 +350,7 @@ export interface PluginDefinition {
   activation?: PluginActivationConfig;
   adminMenus?: PluginAdminMenuEntry[];
   providers?: Record<string, ComponentType<{ children: ReactNode }>>;
+  hooks?: PluginHookConfig;
 }
 
 export interface PluginContext {
