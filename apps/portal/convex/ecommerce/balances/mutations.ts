@@ -229,17 +229,55 @@ export const createTransfer = mutation({
  */
 export const updateStoreBalance = mutation({
   args: {
-    amount: v.number(),
-    operation: v.union(v.literal("add"), v.literal("subtract")),
+    storeBalanceId: v.optional(v.id("storeBalances")),
+    storeId: v.optional(v.string()),
+    storeName: v.optional(v.string()),
+    currency: v.string(),
+    availableBalance: v.number(),
+    pendingBalance: v.number(),
+    paymentProcessor: v.string(),
+    processorAccountId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await Promise.resolve();
-    // This would typically update balance in a payments processor
-    // For now, just return success
-    return {
-      success: true,
-      message: `Balance ${args.operation}ed by ${args.amount}`,
+    const identity = await ctx.auth.getUserIdentity();
+    const user = identity
+      ? await ctx.db
+          .query("users")
+          .withIndex("by_token", (q) =>
+            q.eq("tokenIdentifier", identity.tokenIdentifier),
+          )
+          .first()
+      : null;
+
+    const existing = args.storeBalanceId
+      ? await ctx.db.get(args.storeBalanceId)
+      : args.storeId
+        ? await ctx.db
+            .query("storeBalances")
+            .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+            .first()
+        : null;
+
+    const payload = {
+      storeId: args.storeId,
+      storeName: args.storeName,
+      currency: args.currency,
+      availableBalance: args.availableBalance,
+      pendingBalance: args.pendingBalance,
+      totalBalance: args.availableBalance + args.pendingBalance,
+      paymentProcessor: args.paymentProcessor,
+      processorAccountId: args.processorAccountId,
+      lastUpdated: Date.now(),
+      updatedBy: user?._id,
     };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, payload);
+      return { success: true, storeBalanceId: existing._id };
+    }
+
+    const id = await ctx.db.insert("storeBalances", payload);
+    return { success: true, storeBalanceId: id };
   },
 });
 
@@ -252,6 +290,14 @@ export const deleteBankAccount = mutation({
   },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.bankAccountId);
+    return { success: true };
+  },
+});
+
+export const deleteStoreBalance = mutation({
+  args: { storeBalanceId: v.id("storeBalances") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.storeBalanceId);
     return { success: true };
   },
 });

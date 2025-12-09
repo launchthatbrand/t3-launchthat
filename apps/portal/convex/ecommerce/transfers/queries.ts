@@ -23,3 +23,15 @@ export const getTransfer = query({
     return await ctx.db.get(args.transferId);
   },
 });
+
+export const getTransferDetails = query({
+  args: { transferId: v.id("transfers") },
+  handler: async (ctx, args) => {
+    const transfer = await ctx.db.get(args.transferId);
+    if (!transfer) {
+      return null;
+    }
+    const bankAccount = await ctx.db.get(transfer.bankAccountId);
+    return { ...transfer, bankAccount };
+  },
+});

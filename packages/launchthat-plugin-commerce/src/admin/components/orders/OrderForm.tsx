@@ -182,7 +182,14 @@ export function OrderForm({
   );
 
   // Fetch users for selection - only when auth is ready
-  const { isLoaded: isAuthLoaded } = useAuth();
+  const authContext = (() => {
+    try {
+      return useAuth();
+    } catch {
+      return undefined;
+    }
+  })();
+  const isAuthLoaded = authContext?.isLoaded ?? true;
   const usersQuery = useQuery(
     api.core.users.queries.listUsers,
     isAuthLoaded ? {} : "skip",

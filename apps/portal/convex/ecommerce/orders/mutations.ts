@@ -68,6 +68,10 @@ export const createOrder = mutation({
     totalAmount: v.number(),
     notes: v.optional(v.string()),
   },
+  returns: v.object({
+    recordId: v.id("orders"),
+    orderNumber: v.string(),
+  }),
   handler: async (ctx, args) => {
     const timestamp = Date.now();
 
@@ -103,7 +107,7 @@ export const createOrder = mutation({
 
     const orderId = `ORD-${timestamp}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
-    await ctx.db.insert("orders", {
+    const recordId = await ctx.db.insert("orders", {
       orderId,
       email: args.email,
       userId: args.userId,
@@ -118,6 +122,8 @@ export const createOrder = mutation({
       updatedAt: timestamp,
       notes: args.notes,
     } as unknown as Doc<"orders">);
+
+    return { recordId, orderNumber: orderId };
   },
 });
 

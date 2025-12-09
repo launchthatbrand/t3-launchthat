@@ -1,4 +1,5 @@
-import { type FunctionReference, anyApi } from "convex/server";
+import type { FunctionReference } from "convex/server";
+import { anyApi } from "convex/server";
 import { type GenericId as Id } from "convex/values";
 
 export const api: PublicApiType = anyApi as unknown as PublicApiType;
@@ -67,7 +68,7 @@ export type PublicApiType = {
             totalAmount: number;
             userId?: Id<"users">;
           },
-          any
+          { recordId: Id<"orders">; orderNumber: string }
         >;
         deleteOrder: FunctionReference<
           "mutation",

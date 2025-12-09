@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-misused-promises */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 "use client";
 
 import "./metaBoxes/attachments";
@@ -10,6 +10,7 @@ import "./metaBoxes/metadata";
 import "./metaBoxes/vimeo";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { OrderFormData } from "launchthat-plugin-commerce";
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-type-assertion */
 import type { SerializedEditorState } from "lexical";
 import type { ReactNode } from "react";
@@ -21,7 +22,8 @@ import {
   useCreatePost,
   useUpdatePost,
 } from "@/lib/blog";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
+import { ChargebackForm, OrderForm } from "launchthat-plugin-commerce";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 
 import {
@@ -32,7 +34,7 @@ import {
 } from "@acme/ui/accordion";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent } from "@acme/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import {
@@ -44,6 +46,7 @@ import {
 } from "@acme/ui/select";
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
+import { toast } from "@acme/ui/toast";
 
 import type { MetaBoxLocation } from "./metaBoxes/registry";
 import type { ExternalMetaBoxRenderer } from "./metaBoxes/utils";
@@ -90,6 +93,10 @@ import {
   wrapWithPluginProviders,
 } from "~/lib/plugins/helpers";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
+import {
+  COMMERCE_CHARGEBACK_POST_TYPE,
+  COMMERCE_ORDER_POST_TYPE,
+} from "~/lib/postTypes/customAdapters";
 import { getCanonicalPostPath } from "~/lib/postTypes/routing";
 import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
 import { useMetaBoxState } from "../_state/useMetaBoxState";
@@ -166,7 +173,7 @@ const createSyntheticField = (
   _id: buildSyntheticFieldId(overrides.__source ?? "synthetic", slug, key),
   key,
   name: overrides.name ?? formatCustomFieldLabel(key),
-  description: overrides.description ?? null,
+  description: overrides.description ?? undefined,
   type: overrides.type ?? "text",
   required: overrides.required ?? false,
   options: overrides.options ?? null,
@@ -183,7 +190,7 @@ const createSyntheticField = (
 const buildCustomFieldControlId = (fieldId: string, suffix?: string) =>
   `custom-field-${fieldId}${suffix ? `-${suffix}` : ""}`;
 
-type SerializedLexicalNodeWithChildren = {
+interface SerializedLexicalNodeWithChildren {
   type?: string;
   url?: string;
   html?: string;
@@ -191,13 +198,34 @@ type SerializedLexicalNodeWithChildren = {
   videoId?: string;
   thumbnailUrl?: string;
   children?: SerializedLexicalNodeWithChildren[];
-};
+}
 
 interface ExtractedVimeoMeta {
   videoId?: string;
   embedUrl?: string;
   thumbnailUrl?: string;
 }
+
+interface ProductLineItem {
+  productId: Id<"products">;
+  quantity: number;
+  price: number;
+  lineTotal?: number;
+  type: "product";
+}
+
+const isProductLineItem = (item: unknown): item is ProductLineItem => {
+  if (!item || typeof item !== "object") {
+    return false;
+  }
+  const candidate = item as Record<string, unknown>;
+  return (
+    typeof candidate.productId === "string" &&
+    typeof candidate.quantity === "number" &&
+    typeof candidate.price === "number" &&
+    candidate.type === "product"
+  );
+};
 
 const VIMEO_META_POST_TYPES = new Set(["lessons", "topics", "quizzes"]);
 
@@ -213,7 +241,7 @@ const extractEmbedUrlFromHtml = (html?: string) => {
   if (!html) {
     return null;
   }
-  const match = html.match(/src="([^"]+)"/i);
+  const match = /src="([^"]+)"/i.exec(html);
   return match ? (match[1] ?? null) : null;
 };
 
@@ -304,11 +332,26 @@ export function AdminSinglePostView({
   const [isPublished, setIsPublished] = useState(post?.status === "published");
   const [isSaving, setIsSaving] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const supportsPostsTable = !!postType || isBuiltInPostTypeSlug(slug);
+  const createOrderMutation = useMutation(
+    api.ecommerce.orders.mutations.createOrder,
+  );
+  const normalizedSlug = slug.toLowerCase();
+  const isChargebackPostType = normalizedSlug === COMMERCE_CHARGEBACK_POST_TYPE;
+  const isOrderPostType = normalizedSlug === COMMERCE_ORDER_POST_TYPE;
+  const storageKind =
+    postType?.storageKind ??
+    (isChargebackPostType || isOrderPostType ? ("custom" as const) : "posts");
+  const supportsPostsTable =
+    storageKind === "posts" &&
+    (!!postType || isBuiltInPostTypeSlug(slug)) &&
+    !isChargebackPostType &&
+    !isOrderPostType;
   const supportsAttachments =
-    resolveSupportFlag(postType?.supports, "attachments") ||
-    resolveSupportFlag(postType?.supports, "featuredImage");
+    supportsPostsTable &&
+    (resolveSupportFlag(postType?.supports, "attachments") ||
+      resolveSupportFlag(postType?.supports, "featuredImage"));
   const pluginTabs: PluginSingleViewTabDefinition[] =
     pluginSingleView?.config.tabs ?? [];
   const pluginSlotRegistrations = useMemo<PluginSingleViewSlotRegistration[]>(
@@ -374,19 +417,16 @@ export function AdminSinglePostView({
 
   const { data: postTypeFields = [], isLoading: postTypeFieldsLoading } =
     usePostTypeFields(slug, true);
-  type PostsApi = NonNullable<typeof api.core>["posts"];
-  const postsApi: PostsApi | undefined = api.core?.posts;
-  if (!postsApi) {
-    throw new Error("core.posts API is not registered");
-  }
-  const postMeta = useQuery(
-    postsApi.queries.getPostMeta,
-    post?._id
-      ? organizationId
-        ? ({ postId: post._id, organizationId } as const)
-        : ({ postId: post._id } as const)
-      : "skip",
+  const postMetaQueryArgs = post?._id
+    ? organizationId
+      ? ({ postId: post._id, organizationId } as const)
+      : ({ postId: post._id } as const)
+    : "skip";
+  const postMetaResult = useQuery(
+    api.core.posts.queries.getPostMeta,
+    supportsPostsTable ? postMetaQueryArgs : "skip",
   ) as Doc<"postsMeta">[] | undefined;
+  const postMeta = supportsPostsTable ? postMetaResult : undefined;
 
   const postMetaMap = useMemo<Record<string, CustomFieldValue>>(() => {
     if (!postMeta) {
@@ -410,6 +450,58 @@ export function AdminSinglePostView({
     supportsAttachments,
   });
   const headerLabel = postType?.name ?? slug;
+  const handleInlineOrderCancel = useCallback(() => {
+    router.push("/admin/edit?post_type=orders");
+  }, [router]);
+  const handleInlineOrderSubmit = useCallback(
+    async (formData: OrderFormData) => {
+      const lineItems = Array.isArray(formData.lineItems)
+        ? (formData.lineItems as unknown[])
+        : [];
+      const productItems = lineItems.filter(isProductLineItem);
+      if (productItems.length === 0) {
+        toast.error("Add at least one product before creating an order.");
+        return;
+      }
+      setIsCreatingOrder(true);
+      try {
+        const subtotal = productItems.reduce(
+          (sum, item) => sum + (item.lineTotal ?? item.price * item.quantity),
+          0,
+        );
+        const tax = subtotal * 0.08;
+        const shipping = subtotal > 100 ? 0 : 10;
+        const total = subtotal + tax + shipping;
+        const result = await createOrderMutation({
+          userId: formData.userId,
+          email: formData.email,
+          customerInfo: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            phone: formData.phone || undefined,
+            company: formData.company || undefined,
+          },
+          items: productItems.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+          totalAmount: total,
+          notes: formData.notes || undefined,
+        });
+        toast.success("Order created successfully.");
+        router.replace(
+          `/admin/edit?post_type=${slug}&post_id=${result.recordId}`,
+        );
+      } catch (error) {
+        console.error("[AdminSinglePostView] failed to create order", error);
+        toast.error("Failed to create order. Please try again.");
+      } finally {
+        setIsCreatingOrder(false);
+      }
+    },
+    [createOrderMutation, router, slug],
+  );
 
   const schemaFields = useMemo<EditorCustomField[]>(
     () =>
@@ -424,7 +516,7 @@ export function AdminSinglePostView({
     const seen = new Set(schemaFields.map((field) => field.key));
     const registrations = getPluginFieldDefinitionsForSlug(slug);
     const fields: EditorCustomField[] = [];
-    registrations.forEach(({ pluginId, pluginName, field }, index) => {
+    registrations.forEach(({ pluginName, field }, index) => {
       if (!field.key || seen.has(field.key)) {
         return;
       }
@@ -1626,6 +1718,70 @@ export function AdminSinglePostView({
       </div>
     );
   };
+
+  if (isOrderPostType && isNewRecord) {
+    return (
+      <AdminLayout
+        title={`Create ${headerLabel}`}
+        description="Capture customer, items, and payment details for a new order."
+        pathname={`/admin/edit?post_type=${slug}`}
+      >
+        <AdminLayoutContent withSidebar={false}>
+          <AdminLayoutMain>
+            <AdminLayoutHeader />
+            <div className="container py-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Order Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <OrderForm
+                    onSubmit={handleInlineOrderSubmit}
+                    onCancel={handleInlineOrderCancel}
+                    isSubmitting={isCreatingOrder}
+                    submitButtonText="Create Order"
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </AdminLayoutMain>
+        </AdminLayoutContent>
+      </AdminLayout>
+    );
+  }
+
+  if (isChargebackPostType && isNewRecord) {
+    return (
+      <AdminLayout
+        title={`Create ${headerLabel}`}
+        description={postType?.description ?? "Create a new chargeback entry."}
+        pathname={`/admin/edit?post_type=${slug}`}
+      >
+        <AdminLayoutContent withSidebar={false}>
+          <AdminLayoutMain>
+            <AdminLayoutHeader />
+            <div className="container py-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Chargeback Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChargebackForm
+                    variant="inline"
+                    onChargebackCreated={({ id }) => {
+                      router.replace(
+                        `/admin/edit?post_type=${slug}&post_id=${id}`,
+                      );
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </AdminLayoutMain>
+        </AdminLayoutContent>
+      </AdminLayout>
+    );
+  }
 
   if (!isNewRecord && post === undefined) {
     return (

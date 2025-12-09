@@ -27,6 +27,11 @@ const STORE_ARCHIVE_TABS = [
   },
   { value: "orders", label: "Orders", href: "/admin/edit?post_type=orders" },
   {
+    value: "plans",
+    label: "Subscriptions",
+    href: "/admin/edit?post_type=plans",
+  },
+  {
     value: "chargebacks",
     label: "Chargebacks",
     href: "/admin/edit?post_type=ecom-chargeback",
@@ -36,10 +41,16 @@ const STORE_ARCHIVE_TABS = [
     label: "Store Coupons",
     href: "/admin/edit?post_type=ecom-coupon",
   },
+
   {
-    value: "plans",
-    label: "Subscription Plans",
-    href: "/admin/edit?post_type=plans",
+    value: "balances",
+    label: "Balances",
+    href: "/admin/edit?post_type=ecom-balance",
+  },
+  {
+    value: "transfers",
+    label: "Transfers",
+    href: "/admin/edit?post_type=ecom-transfer",
   },
 ];
 
@@ -143,6 +154,8 @@ const POST_TYPE_TO_TAB: Record<string, string> = {
   plans: "plans",
   "ecom-coupon": "coupons",
   "ecom-chargeback": "chargebacks",
+  "ecom-balance": "balances",
+  "ecom-transfer": "transfers",
 };
 
 const injectCommerceArchiveHeader = (
@@ -160,6 +173,9 @@ const injectCommerceArchiveHeader = (
     "plans",
     "ecom-coupon",
     "ecom-chargeback",
+    "ecom-balance",
+    "ecom-transfer",
+    "ecom-chargeback-evidence",
   ]);
 
   const layout = typedContext?.layout ?? "default";
@@ -285,6 +301,8 @@ export const createCommercePluginDefinition = ({
         position: 41,
         parent: "plugin:commerce",
       },
+      storageKind: "custom",
+      storageTables: ["orders"],
       adminArchiveView: {
         showSidebar: false,
       },
@@ -361,6 +379,78 @@ export const createCommercePluginDefinition = ({
         showSidebar: false,
       },
     },
+    {
+      name: "Balances",
+      slug: "ecom-balance",
+      description: "Aggregated balance snapshots for payouts and settlements.",
+      isPublic: false,
+      includeTimestamps: true,
+      enableApi: false,
+      supports: {
+        title: true,
+        customFields: true,
+      },
+      adminMenu: {
+        enabled: true,
+        label: "Balances",
+        icon: "Wallet",
+        position: 48,
+        parent: "plugin:commerce",
+      },
+      storageKind: "custom",
+      storageTables: ["balances"],
+      adminArchiveView: {
+        showSidebar: false,
+      },
+    },
+    {
+      name: "Transfers",
+      slug: "ecom-transfer",
+      description: "Money movement records for payouts and internal transfers.",
+      isPublic: false,
+      includeTimestamps: true,
+      enableApi: false,
+      supports: {
+        title: true,
+        customFields: true,
+      },
+      adminMenu: {
+        enabled: true,
+        label: "Transfers",
+        icon: "ArrowLeftRight",
+        position: 49,
+        parent: "plugin:commerce",
+      },
+      storageKind: "custom",
+      storageTables: ["transfers"],
+      adminArchiveView: {
+        showSidebar: false,
+      },
+    },
+    {
+      name: "Chargeback Evidence",
+      slug: "ecom-chargeback-evidence",
+      description: "Evidence packages and documents linked to chargebacks.",
+      isPublic: false,
+      includeTimestamps: true,
+      enableApi: false,
+      supports: {
+        title: true,
+        customFields: true,
+      },
+      adminMenu: {
+        enabled: false,
+        label: "Chargeback Evidence",
+        icon: "FileText",
+        position: 50,
+        parent: "plugin:commerce",
+      },
+      storageKind: "custom",
+      storageTables: ["chargebackEvidence"],
+      adminArchiveView: {
+        showSidebar: false,
+      },
+    },
   ],
   settingsPages: [
     {
@@ -424,3 +514,9 @@ export {
 } from "./context/CommerceClientProvider";
 export * from "./components";
 export { StoreSystem } from "./admin/store/StoreSystem";
+export { ChargebackForm } from "./admin/components/chargebacks/ChargebackForm";
+export {
+  OrderForm,
+  type OrderFormData,
+  type OrderLineItem,
+} from "./admin/components/orders/OrderForm";

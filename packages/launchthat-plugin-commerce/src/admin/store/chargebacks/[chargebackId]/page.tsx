@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Id } from "@convex-config/_generated/dataModel";
@@ -52,11 +52,43 @@ import { ChargebackForm } from "../../../components/chargebacks/ChargebackForm";
 // import { AuditLogViewer } from "../../../components/shared/AuditLogViewer";
 import { useStoreRouteSegments } from "../../StoreRouteContext";
 
-export default function ChargebackDetailPage() {
+interface ChargebackDetailPageProps {
+  chargebackId?: Id<"chargebacks">;
+  onNavigate?: (href: string) => void;
+  buildBackHref?: () => string;
+  buildOrderHref?: (id: Id<"orders">) => string;
+}
+
+export default function ChargebackDetailPage({
+  chargebackId: chargebackIdProp,
+  onNavigate,
+  buildBackHref,
+  buildOrderHref,
+}: ChargebackDetailPageProps = {}) {
   const router = useRouter();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const segments = useStoreRouteSegments();
-  const chargebackId = segments[1] as Id<"chargebacks"> | undefined;
+  const chargebackId =
+    chargebackIdProp ?? (segments[1] as Id<"chargebacks"> | undefined);
+  const navigate = useCallback(
+    (href: string) => {
+      if (onNavigate) {
+        onNavigate(href);
+        return;
+      }
+      router.push(href);
+    },
+    [onNavigate, router],
+  );
+  const backHref = useMemo(
+    () => (buildBackHref ? buildBackHref() : "/admin/store/chargebacks"),
+    [buildBackHref],
+  );
+  const resolveOrderHref = useCallback(
+    (id: Id<"orders">) =>
+      buildOrderHref ? buildOrderHref(id) : `/admin/store/orders/${id}`,
+    [buildOrderHref],
+  );
 
   if (!chargebackId) {
     return (
@@ -122,7 +154,7 @@ export default function ChargebackDetailPage() {
             <Button
               variant="outline"
               className="mt-4"
-              onClick={() => router.push("/admin/store/chargebacks")}
+              onClick={() => navigate(backHref)}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Chargebacks
@@ -166,7 +198,7 @@ export default function ChargebackDetailPage() {
     try {
       await deleteChargeback({ id: chargeback._id });
       toast.success("Chargeback deleted successfully");
-      router.push("/admin/store/chargebacks");
+      navigate(backHref);
     } catch (error) {
       toast.error("Failed to delete chargeback");
       console.error(error);
@@ -194,7 +226,7 @@ export default function ChargebackDetailPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => router.push("/admin/store/chargebacks")}
+            onClick={() => navigate(backHref)}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Chargebacks
@@ -586,7 +618,7 @@ export default function ChargebackDetailPage() {
                   size="sm"
                   className="mt-3 w-full"
                   onClick={() =>
-                    router.push(`/admin/store/orders/${order._id}`)
+                    navigate(resolveOrderHref(order._id as Id<"orders">))
                   }
                 >
                   <ExternalLink className="mr-2 h-4 w-4" />

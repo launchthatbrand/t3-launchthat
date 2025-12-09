@@ -80,9 +80,9 @@ export default function NewOrderPage() {
         notes: formData.notes || undefined,
       };
 
-      const result = await createOrder(orderData);
+      const { recordId } = await createOrder(orderData);
       toast.success("Order created successfully!");
-      router.push(`/admin/orders/${result.orderId}`);
+      router.push(`/admin/orders/${recordId}`);
     } catch (error) {
       console.error("Error creating order:", error);
       toast.error("Failed to create order. Please try again.");

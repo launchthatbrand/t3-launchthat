@@ -79,11 +79,23 @@ const registerPostTypeMenus = () => {
         const slug = postType.slug;
         const section = getSectionForPostType(postType);
         const adminSlug = postType.adminMenu?.slug?.trim();
-        let customPath = hasCustomAdminPath(adminSlug) ? adminSlug : undefined;
+        const pluginMeta = pluginParents[slug];
+        const pluginControlsNav = Boolean(pluginMeta);
+        let customPath: string | undefined;
+
+        if (pluginControlsNav) {
+          if (
+            pluginMeta?.customPath &&
+            hasCustomAdminPath(pluginMeta.customPath)
+          ) {
+            customPath = pluginMeta.customPath;
+          }
+        } else if (hasCustomAdminPath(adminSlug)) {
+          customPath = adminSlug;
+        }
 
         const menuId = `postType:${slug}`;
         const parentValue = postType.adminMenu?.parent?.trim();
-        const pluginMeta = pluginParents[slug];
 
         const normalizedParent = parentValue?.toLowerCase();
         let pluginParentId = normalizedParent?.startsWith("plugin:")
@@ -91,14 +103,6 @@ const registerPostTypeMenus = () => {
           : undefined;
         if (!pluginParentId && pluginMeta) {
           pluginParentId = pluginMeta.parentId;
-        }
-
-        if (
-          !customPath &&
-          pluginMeta?.customPath &&
-          hasCustomAdminPath(pluginMeta.customPath)
-        ) {
-          customPath = pluginMeta.customPath;
         }
 
         const href = customPath

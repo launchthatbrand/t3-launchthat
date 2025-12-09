@@ -1,14 +1,22 @@
 "use client";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-import { createContext, Suspense, useContext, useMemo } from "react";
+import {
+  createContext,
+  Suspense,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useSearchParams } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
 
-import { useTenant } from "~/context/TenantContext";
-import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
-import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { useGetPostById } from "~/lib/blog";
+import {
+  COMMERCE_CHARGEBACK_POST_TYPE,
+  COMMERCE_ORDER_POST_TYPE,
+  ensureChargebackSyntheticId,
+} from "~/lib/postTypes/customAdapters";
 import { usePostTypeBySlug } from "../settings/post-types/_api/postTypes";
 
 type AdminPostViewMode = "archive" | "single";
@@ -34,8 +42,6 @@ const AdminPostProviderInner = ({
   children: React.ReactNode;
 }) => {
   const searchParams = useSearchParams();
-  const tenant = useTenant();
-  const organizationId = getTenantOrganizationId(tenant);
   const postIdParam = searchParams.get("post_id") ?? undefined;
   const queryPostTypeParam = searchParams.get("post_type") ?? undefined;
 
@@ -43,29 +49,54 @@ const AdminPostProviderInner = ({
     postIdParam !== undefined && /^[a-z0-9]{16,}$/i.test(postIdParam);
   const isNewRecord = postIdParam === "new";
 
-  const normalizedPostId = isConvexId
-    ? (postIdParam as Id<"posts">)
-    : undefined;
-
-  const loweredQuerySlug = queryPostTypeParam?.toLowerCase();
-  const post = useQuery(
-    api.core.posts.queries.getPostById,
-    normalizedPostId
-      ? organizationId
-        ? { id: normalizedPostId, organizationId }
-        : { id: normalizedPostId }
-      : "skip",
+  const loweredQuerySlug = queryPostTypeParam?.toLowerCase().trim();
+  const [slugHint, setSlugHint] = useState(
+    loweredQuerySlug ?? DEFAULT_POST_TYPE_SLUG,
   );
+  const postType = usePostTypeBySlug(slugHint);
+  const resolvedSlug = slugHint;
+  const normalizedSlug = resolvedSlug.toLowerCase();
+  const isChargebackType = normalizedSlug === COMMERCE_CHARGEBACK_POST_TYPE;
+  const isOrderType = normalizedSlug === COMMERCE_ORDER_POST_TYPE;
+  const normalizedPostId = useMemo<Id<"posts"> | undefined>(() => {
+    if (!postIdParam || postIdParam === "new") {
+      return undefined;
+    }
+    if (isChargebackType) {
+      return ensureChargebackSyntheticId(postIdParam);
+    }
+    if (isOrderType) {
+      return postIdParam.startsWith(`custom:${COMMERCE_ORDER_POST_TYPE}:`)
+        ? (postIdParam as Id<"posts">)
+        : (`custom:${COMMERCE_ORDER_POST_TYPE}:${postIdParam}` as Id<"posts">);
+    }
+    return isConvexId ? (postIdParam as Id<"posts">) : undefined;
+  }, [isChargebackType, isOrderType, isConvexId, postIdParam]);
+  const post = useGetPostById(normalizedPostId);
+  const slugFromPost =
+    post && typeof post.postTypeSlug === "string"
+      ? post.postTypeSlug.toLowerCase()
+      : undefined;
 
-  const slugFromPost = post?.postTypeSlug;
-  const rawSlug = (
-    slugFromPost ??
-    loweredQuerySlug ??
-    DEFAULT_POST_TYPE_SLUG
-  ).trim();
-  const resolvedSlug = rawSlug.toLowerCase();
+  useEffect(() => {
+    if (
+      typeof loweredQuerySlug === "string" &&
+      loweredQuerySlug.length > 0 &&
+      loweredQuerySlug !== slugHint
+    ) {
+      setSlugHint(loweredQuerySlug);
+    }
+  }, [loweredQuerySlug, slugHint]);
 
-  const postType = usePostTypeBySlug(resolvedSlug);
+  useEffect(() => {
+    if (
+      typeof slugFromPost === "string" &&
+      slugFromPost.length > 0 &&
+      slugFromPost !== slugHint
+    ) {
+      setSlugHint(slugFromPost);
+    }
+  }, [slugFromPost, slugHint]);
 
   const value = useMemo<AdminPostContextValue>(() => {
     const viewMode: AdminPostViewMode =
@@ -74,7 +105,7 @@ const AdminPostProviderInner = ({
     return {
       viewMode,
       postId: normalizedPostId,
-      post,
+      post: post ?? null,
       postTypeSlug: resolvedSlug,
       postType,
       isNewRecord,
@@ -82,7 +113,7 @@ const AdminPostProviderInner = ({
         (normalizedPostId ? post === undefined : false) ||
         postType === undefined,
     };
-  }, [normalizedPostId, post, postType, resolvedSlug, isNewRecord]);
+  }, [isNewRecord, normalizedPostId, postType, post, resolvedSlug]);
 
   return (
     <AdminPostContext.Provider value={value}>

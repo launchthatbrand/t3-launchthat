@@ -28,7 +28,8 @@ import { toast } from "@acme/ui/toast";
 
 interface ChargebackFormProps {
   orderId?: Id<"orders">;
-  onChargebackCreated?: () => void;
+  onChargebackCreated?: (payload: { id: Id<"chargebacks"> }) => void;
+  variant?: "dialog" | "inline";
 }
 
 const commonReasonCodes = [
@@ -44,8 +45,10 @@ const commonReasonCodes = [
 export const ChargebackForm: React.FC<ChargebackFormProps> = ({
   orderId,
   onChargebackCreated,
+  variant = "dialog",
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const isDialogVariant = variant !== "inline";
+  const [isOpen, setIsOpen] = useState(isDialogVariant ? false : true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     orderIdInput: orderId ?? "",
@@ -97,7 +100,9 @@ export const ChargebackForm: React.FC<ChargebackFormProps> = ({
         toast.success(
           `Chargeback created successfully! ID: ${result.chargebackId}`,
         );
-        setIsOpen(false);
+        if (isDialogVariant) {
+          setIsOpen(false);
+        }
         setFormData({
           orderIdInput: orderId ?? "",
           transactionId: "",
@@ -108,7 +113,7 @@ export const ChargebackForm: React.FC<ChargebackFormProps> = ({
           chargebackFee: "1500",
           internalNotes: "",
         });
-        onChargebackCreated?.();
+        onChargebackCreated?.({ id: result.chargebackId });
       } else {
         toast.error(`Failed to create chargeback: ${result.error}`);
       }
@@ -129,6 +134,155 @@ export const ChargebackForm: React.FC<ChargebackFormProps> = ({
     });
   };
 
+  const formContent = (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        {!orderId && (
+          <div className="col-span-2">
+            <Label htmlFor="orderId">Order ID</Label>
+            <Input
+              id="orderId"
+              value={formData.orderIdInput}
+              onChange={(e) =>
+                setFormData({ ...formData, orderIdInput: e.target.value })
+              }
+              placeholder="ord_abc123..."
+              required
+            />
+          </div>
+        )}
+        <div>
+          <Label htmlFor="transactionId">Transaction ID</Label>
+          <Input
+            id="transactionId"
+            value={formData.transactionId}
+            onChange={(e) =>
+              setFormData({ ...formData, transactionId: e.target.value })
+            }
+            placeholder="Auto-generated if empty"
+          />
+        </div>
+        <div>
+          <Label htmlFor="amount">Amount ($)</Label>
+          <Input
+            id="amount"
+            type="number"
+            step="0.01"
+            value={formData.amount}
+            onChange={(e) =>
+              setFormData({ ...formData, amount: e.target.value })
+            }
+            placeholder="Order total if empty"
+            required
+          />
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="reasonCode">Reason Code</Label>
+        <Select
+          value={formData.reasonCode}
+          onValueChange={handleReasonCodeChange}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select a reason code" />
+          </SelectTrigger>
+          <SelectContent>
+            {commonReasonCodes.map((reason) => (
+              <SelectItem key={reason.code} value={reason.code}>
+                {reason.code} - {reason.description}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label htmlFor="reasonDescription">Reason Description</Label>
+        <Input
+          id="reasonDescription"
+          value={formData.reasonDescription}
+          onChange={(e) =>
+            setFormData({ ...formData, reasonDescription: e.target.value })
+          }
+          required
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="processorName">Processor</Label>
+          <Select
+            value={formData.processorName}
+            onValueChange={(value) =>
+              setFormData({ ...formData, processorName: value })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Stripe">Stripe</SelectItem>
+              <SelectItem value="PayPal">PayPal</SelectItem>
+              <SelectItem value="Square">Square</SelectItem>
+              <SelectItem value="Authorize.Net">Authorize.Net</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="chargebackFee">Chargeback Fee (cents)</Label>
+          <Input
+            id="chargebackFee"
+            type="number"
+            value={formData.chargebackFee}
+            onChange={(e) =>
+              setFormData({ ...formData, chargebackFee: e.target.value })
+            }
+          />
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="internalNotes">Internal Notes</Label>
+        <Textarea
+          id="internalNotes"
+          value={formData.internalNotes}
+          onChange={(e) =>
+            setFormData({ ...formData, internalNotes: e.target.value })
+          }
+          placeholder="Internal notes about this chargeback..."
+        />
+      </div>
+
+      <div className="flex justify-end space-x-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setIsOpen(false)}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isSubmitting} variant="destructive">
+          {isSubmitting ? "Creating Chargeback..." : "Create Chargeback"}
+        </Button>
+      </div>
+    </form>
+  );
+
+  if (!isDialogVariant) {
+    return (
+      <div className="bg-card rounded-lg border">
+        <div className="border-b px-6 py-4">
+          <h3 className="text-lg font-semibold">Create Chargeback</h3>
+          <p className="text-muted-foreground text-sm">
+            Submit a new chargeback record using the form below.
+          </p>
+        </div>
+        <div className="px-6 py-4">{formContent}</div>
+      </div>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -141,138 +295,7 @@ export const ChargebackForm: React.FC<ChargebackFormProps> = ({
         <DialogHeader>
           <DialogTitle>Create Chargeback</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            {!orderId && (
-              <div className="col-span-2">
-                <Label htmlFor="orderId">Order ID</Label>
-                <Input
-                  id="orderId"
-                  value={formData.orderIdInput}
-                  onChange={(e) =>
-                    setFormData({ ...formData, orderIdInput: e.target.value })
-                  }
-                  placeholder="ord_abc123..."
-                  required
-                />
-              </div>
-            )}
-            <div>
-              <Label htmlFor="transactionId">Transaction ID</Label>
-              <Input
-                id="transactionId"
-                value={formData.transactionId}
-                onChange={(e) =>
-                  setFormData({ ...formData, transactionId: e.target.value })
-                }
-                placeholder="Auto-generated if empty"
-              />
-            </div>
-            <div>
-              <Label htmlFor="amount">Amount ($)</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) =>
-                  setFormData({ ...formData, amount: e.target.value })
-                }
-                placeholder="Order total if empty"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="reasonCode">Reason Code</Label>
-            <Select
-              value={formData.reasonCode}
-              onValueChange={handleReasonCodeChange}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a reason code" />
-              </SelectTrigger>
-              <SelectContent>
-                {commonReasonCodes.map((reason) => (
-                  <SelectItem key={reason.code} value={reason.code}>
-                    {reason.code} - {reason.description}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="reasonDescription">Reason Description</Label>
-            <Input
-              id="reasonDescription"
-              value={formData.reasonDescription}
-              onChange={(e) =>
-                setFormData({ ...formData, reasonDescription: e.target.value })
-              }
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="processorName">Processor</Label>
-              <Select
-                value={formData.processorName}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, processorName: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Stripe">Stripe</SelectItem>
-                  <SelectItem value="PayPal">PayPal</SelectItem>
-                  <SelectItem value="Square">Square</SelectItem>
-                  <SelectItem value="Authorize.Net">Authorize.Net</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="chargebackFee">Chargeback Fee (cents)</Label>
-              <Input
-                id="chargebackFee"
-                type="number"
-                value={formData.chargebackFee}
-                onChange={(e) =>
-                  setFormData({ ...formData, chargebackFee: e.target.value })
-                }
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="internalNotes">Internal Notes</Label>
-            <Textarea
-              id="internalNotes"
-              value={formData.internalNotes}
-              onChange={(e) =>
-                setFormData({ ...formData, internalNotes: e.target.value })
-              }
-              placeholder="Internal notes about this chargeback..."
-            />
-          </div>
-
-          <div className="flex justify-end space-x-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting} variant="destructive">
-              {isSubmitting ? "Creating Chargeback..." : "Create Chargeback"}
-            </Button>
-          </div>
-        </form>
+        {formContent}
       </DialogContent>
     </Dialog>
   );

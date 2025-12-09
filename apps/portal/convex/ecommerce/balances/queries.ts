@@ -84,6 +84,29 @@ export const getStoreBalance = query({
   },
 });
 
+export const listStoreBalances = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("storeBalances"),
+      _creationTime: v.number(),
+      availableBalance: v.number(),
+      pendingBalance: v.number(),
+      totalBalance: v.number(),
+      currency: v.string(),
+      storeId: v.optional(v.string()),
+      storeName: v.optional(v.string()),
+      lastUpdated: v.number(),
+      updatedBy: v.optional(v.id("users")),
+      paymentProcessor: v.string(),
+      processorAccountId: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx) => {
+    return await ctx.db.query("storeBalances").order("desc").collect();
+  },
+});
+
 /**
  * Get all transfers
  */

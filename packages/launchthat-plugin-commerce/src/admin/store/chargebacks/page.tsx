@@ -1,7 +1,7 @@
 "use client";
 
-import type { Doc } from "@convex-config/_generated/dataModel";
-import { useMemo, useState } from "react";
+import type { Doc, Id } from "@convex-config/_generated/dataModel";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@portal/convexspec";
@@ -29,9 +29,41 @@ import { ChargebackForm } from "../../components/chargebacks/ChargebackForm";
 
 type ChargebackRow = Doc<"chargebacks"> & Record<string, unknown>;
 
-export default function ChargebacksPage() {
+interface ChargebacksPageProps {
+  buildChargebackHref?: (id: Id<"chargebacks">) => string;
+  buildOrderHref?: (id: Id<"orders">) => string;
+  onNavigate?: (href: string) => void;
+}
+
+export default function ChargebacksPage({
+  buildChargebackHref,
+  buildOrderHref,
+  onNavigate,
+}: ChargebacksPageProps = {}) {
   const router = useRouter();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const navigate = useCallback(
+    (href: string) => {
+      if (onNavigate) {
+        onNavigate(href);
+        return;
+      }
+      router.push(href);
+    },
+    [onNavigate, router],
+  );
+  const resolveChargebackHref = useCallback(
+    (id: Id<"chargebacks">) =>
+      buildChargebackHref
+        ? buildChargebackHref(id)
+        : `/admin/store/chargebacks/${id}`,
+    [buildChargebackHref],
+  );
+  const resolveOrderHref = useCallback(
+    (id: Id<"orders">) =>
+      buildOrderHref ? buildOrderHref(id) : `/admin/store/orders/${id}`,
+    [buildOrderHref],
+  );
 
   // Get all chargebacks
   const chargebacksResult = useQuery(
@@ -74,7 +106,7 @@ export default function ChargebacksPage() {
         accessorKey: "_id",
         header: "Chargeback ID",
         cell: (chargeback: ChargebackRow) => (
-          <Link href={`/admin/store/chargebacks/${chargeback._id}`}>
+          <Link href={resolveChargebackHref(chargeback._id)}>
             {chargeback._id}
           </Link>
         ),
@@ -88,7 +120,7 @@ export default function ChargebacksPage() {
             variant="link"
             className="h-auto p-0 text-left"
             onClick={() =>
-              router.push(`/admin/store/orders/${chargeback.orderId}`)
+              navigate(resolveOrderHref(chargeback.orderId as Id<"orders">))
             }
           >
             {chargeback.orderId}
@@ -175,7 +207,7 @@ export default function ChargebacksPage() {
         },
       },
     ];
-  }, [router]);
+  }, [navigate, resolveChargebackHref, resolveOrderHref]);
 
   // Filter configurations
   const filters: FilterConfig<ChargebackRow>[] = [
@@ -220,8 +252,7 @@ export default function ChargebacksPage() {
       id: "view",
       label: "View Details",
       icon: <Eye className="h-4 w-4" />,
-      onClick: (chargeback) =>
-        router.push(`/admin/store/chargebacks/${chargeback._id}`),
+      onClick: (chargeback) => navigate(resolveChargebackHref(chargeback._id)),
       variant: "outline",
     },
   ];

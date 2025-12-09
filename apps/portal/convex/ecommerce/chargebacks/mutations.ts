@@ -95,6 +95,29 @@ export const createChargeback = mutation({
   },
 });
 
+export const updateChargebackDetails = mutation({
+  args: {
+    chargebackId: v.id("chargebacks"),
+    amount: v.optional(v.number()),
+    currency: v.optional(v.string()),
+    reasonCode: v.optional(v.string()),
+    reasonDescription: v.optional(v.string()),
+    disputeDeadline: v.optional(v.number()),
+    processorName: v.optional(v.string()),
+    chargebackFee: v.optional(v.number()),
+    refundAmount: v.optional(v.number()),
+    internalNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { chargebackId, ...updates } = args;
+    if (Object.keys(updates).length === 0) {
+      return { success: true };
+    }
+    await ctx.db.patch(chargebackId, updates);
+    return { success: true };
+  },
+});
+
 export const deleteChargeback = mutation({
   args: { id: v.id("chargebacks") },
   returns: v.null(),
