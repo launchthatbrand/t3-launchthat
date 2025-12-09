@@ -614,13 +614,30 @@ const AdminMenuEditorPage = () => {
     return lookup;
   }, [contentTypes, pluginOptionMap]);
 
+  const pluginParentMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    pluginDefinitions.forEach((plugin) => {
+      if (!plugin.settingsPages?.length) {
+        return;
+      }
+      if (!isPluginEnabled(plugin.id)) {
+        return;
+      }
+      plugin.postTypes.forEach((definition) => {
+        map[definition.slug] = `plugin:${plugin.id}`;
+      });
+    });
+    return map;
+  }, [isPluginEnabled]);
+
   const registrySections = useMemo(() => {
     return adminMenuRegistry.getMenuSections({
       postTypes: contentTypes,
       taxonomyAssignments,
       isPluginEnabled,
+      pluginParents: pluginParentMap,
     });
-  }, [contentTypes, taxonomyAssignments, isPluginEnabled]);
+  }, [contentTypes, taxonomyAssignments, isPluginEnabled, pluginParentMap]);
 
   const overrides = parseAdminMenuOverrides(overridesDoc?.metaValue ?? null);
   const sectionLabelMap = useMemo(

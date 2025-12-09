@@ -38,6 +38,7 @@ export interface AdminMenuContext {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   taxonomyAssignments?: Map<string, any[]>;
   isPluginEnabled?: (pluginId: string) => boolean;
+  pluginParents?: Record<string, string>;
 }
 
 type MenuSourceResolver = (context: AdminMenuContext) => MenuItemInput[];

@@ -264,10 +264,29 @@ export default function DefaultSidebar() {
       }
       return Boolean(isPluginEnabled(plugin));
     };
+    const pluginParentMap = pluginDefinitions.reduce<Record<string, string>>(
+      (acc, plugin) => {
+        if (!plugin.settingsPages?.length) {
+          return acc;
+        }
+        if (!isPluginDefinition(plugin)) {
+          return acc;
+        }
+        if (!isPluginEnabled(plugin)) {
+          return acc;
+        }
+        plugin.postTypes.forEach((definition) => {
+          acc[definition.slug] = `plugin:${plugin.id}`;
+        });
+        return acc;
+      },
+      {},
+    );
     return adminMenuRegistry.getMenuSections({
       postTypes: contentTypes,
       taxonomyAssignments,
       isPluginEnabled: pluginEnabledLookup,
+      pluginParents: pluginParentMap,
     });
   }, [contentTypes, taxonomyAssignments, isPluginEnabled]);
 

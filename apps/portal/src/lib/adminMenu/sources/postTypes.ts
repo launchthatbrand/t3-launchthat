@@ -61,6 +61,8 @@ const registerPostTypeMenus = () => {
       (context.taxonomyAssignments as
         | Map<string, TaxonomyDefinition[]>
         | undefined) ?? new Map<string, TaxonomyDefinition[]>();
+    const pluginParents =
+      (context.pluginParents as Record<string, string> | undefined) ?? {};
 
     const items: MenuItemInput[] = [];
 
@@ -85,14 +87,33 @@ const registerPostTypeMenus = () => {
           : `/admin/edit?post_type=${encodeURIComponent(slug)}`;
 
         const menuId = `postType:${slug}`;
-        items.push({
+        const parentValue = postType.adminMenu?.parent?.trim();
+        let pluginParentId =
+          parentValue && parentValue.toLowerCase().startsWith("plugin:")
+            ? parentValue.toLowerCase()
+            : undefined;
+        if (!pluginParentId) {
+          const mappedParent = pluginParents[slug];
+          if (mappedParent) {
+            pluginParentId = mappedParent;
+          }
+        }
+
+        const baseItem: MenuItemInput = {
           id: menuId,
           label: postType.adminMenu?.label ?? postType.name,
           href,
           icon: postType.adminMenu?.icon,
           order: postType.adminMenu?.position ?? 100,
-          section,
-        });
+        };
+
+        if (pluginParentId) {
+          baseItem.parentId = pluginParentId;
+        } else if (section) {
+          baseItem.section = section;
+        }
+
+        items.push(baseItem);
 
         const taxonomies = taxonomyAssignments.get(slug) ?? [];
         taxonomies.forEach((taxonomy, index) => {

@@ -54,6 +54,7 @@ export const createCommercePluginDefinition = ({
         slug: "store/products",
         icon: "Package",
         position: 40,
+        parent: "plugin:commerce",
       },
     },
     {
@@ -81,6 +82,7 @@ export const createCommercePluginDefinition = ({
         slug: "store/orders",
         icon: "Receipt",
         position: 41,
+        parent: "plugin:commerce",
       },
     },
     {
