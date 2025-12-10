@@ -80,6 +80,12 @@ type ArchiveRow = PostDoc | PlaceholderRow;
 
 const isPostRow = (row: ArchiveRow): row is PostDoc => "_id" in row;
 
+export interface PluginMenuItem {
+  id: string;
+  label: string;
+  href: string;
+}
+
 export interface GenericArchiveViewProps {
   slug: string;
   postType: PostTypeDoc | null;
@@ -90,6 +96,7 @@ export interface GenericArchiveViewProps {
   onCreate: () => void;
   renderLayout?: boolean;
   withSidebar?: boolean;
+  pluginMenus?: Record<string, PluginMenuItem[]>;
 }
 
 export function GenericArchiveView({
@@ -102,6 +109,7 @@ export function GenericArchiveView({
   onCreate,
   renderLayout = true,
   withSidebar = true,
+  pluginMenus,
 }: GenericArchiveViewProps) {
   const label = postType?.name ?? slug.replace(/-/g, " ");
   const description =
@@ -259,8 +267,9 @@ export function GenericArchiveView({
       postType: slug,
       postTypeDefinition: postType,
       layout: renderLayout ? ("default" as const) : ("content-only" as const),
+      pluginMenus,
     }),
-    [postType, renderLayout, slug],
+    [pluginMenus, postType, renderLayout, slug],
   );
 
   const headerBefore = useApplyFilters<ReactNode[]>(

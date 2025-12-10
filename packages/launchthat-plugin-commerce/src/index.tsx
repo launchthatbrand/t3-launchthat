@@ -1,9 +1,5 @@
-import type {
-  PluginContext,
-  PluginDefinition,
-  PluginSettingComponentProps,
-} from "launchthat-plugin-core";
-import type { ComponentType, ReactNode } from "react";
+import type { PluginContext, PluginDefinition } from "launchthat-plugin-core";
+import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -11,16 +7,22 @@ import { ScrollArea, ScrollBar } from "@acme/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 import { registerCommerceAdminMetaBoxes } from "./admin/metaBoxes";
+import { CommerceStorefrontSettings } from "./admin/settings/CommerceStorefrontSettings";
+import OrderAnalyticsPage from "./admin/store/orders/analytics/page";
+import ProductsAdminPage from "./admin/store/page";
+import { StoreSystem } from "./admin/store/StoreSystem";
 
-export interface CommercePluginComponents {
-  CommerceStorefrontSettings: ComponentType<PluginSettingComponentProps>;
+interface CommerceTab {
+  value: string;
+  label: string;
+  href: string;
 }
 
-const STORE_ARCHIVE_TABS = [
+const STORE_ARCHIVE_TABS: CommerceTab[] = [
   {
-    value: "storefront",
-    label: "Storefront",
-    href: "/admin/edit?plugin=commerce&page=storefront",
+    value: "dashboard",
+    label: "Dashboard",
+    href: "/admin/edit?plugin=commerce&page=commerce-dashboard",
   },
   {
     value: "products",
@@ -54,10 +56,21 @@ const STORE_ARCHIVE_TABS = [
     label: "Transfers",
     href: "/admin/edit?post_type=ecom-transfer",
   },
+  {
+    value: "analytics",
+    label: "Analytics",
+    href: "/admin/edit?plugin=commerce&page=analytics",
+  },
+  {
+    value: "settings",
+    label: "Settings",
+    href: "/admin/edit?plugin=commerce&page=settings",
+  },
 ];
 
 interface CommerceArchiveHeaderProps {
   activeTab?: string;
+  tabs?: CommerceTab[];
 }
 export interface Artwork {
   artist: string;
@@ -78,18 +91,18 @@ export const works: Artwork[] = [
   },
 ];
 
-const getValidTabValue = (value?: string) => {
+const getValidTabValue = (value: string | undefined, tabs: CommerceTab[]) => {
   if (!value) return undefined;
-  return STORE_ARCHIVE_TABS.some((tab) => tab.value === value)
-    ? value
-    : undefined;
+  return tabs.some((tab) => tab.value === value) ? value : undefined;
 };
 
 export const CommerceArchiveHeader = ({
   activeTab,
+  tabs: providedTabs,
 }: CommerceArchiveHeaderProps) => {
-  const resolvedValue = getValidTabValue(activeTab) ?? "products";
-  console.log("resolvedValue", resolvedValue);
+  const tabs = providedTabs?.length ? providedTabs : STORE_ARCHIVE_TABS;
+  const resolvedValue =
+    getValidTabValue(activeTab, tabs) ?? tabs[0]?.value ?? "products";
 
   return (
     // <Tabs
@@ -121,7 +134,7 @@ export const CommerceArchiveHeader = ({
         </ScrollArea> */}
         <ScrollArea className="w-full whitespace-nowrap">
           <TabsList className="rounded-none p-0 pt-2">
-            {STORE_ARCHIVE_TABS.map((tab) => (
+            {tabs.map((tab) => (
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
@@ -149,6 +162,21 @@ export const CommerceArchiveHeader = ({
 };
 
 type ArchiveLayoutContext = "default" | "plugin" | "content-only";
+type PluginMenuItem = { id: string; label: string; href: string };
+type PluginMenuMap = Record<string, PluginMenuItem[]>;
+
+const COMMERCE_PLUGIN_ID = "commerce";
+
+const buildTabsFromMenu = (items?: PluginMenuItem[]): CommerceTab[] => {
+  if (!items?.length) {
+    return [];
+  }
+  return items.map((item) => ({
+    value: item.id,
+    label: item.label,
+    href: item.href,
+  }));
+};
 
 const POST_TYPE_TO_TAB: Record<string, string> = {
   products: "products",
@@ -160,13 +188,23 @@ const POST_TYPE_TO_TAB: Record<string, string> = {
   "ecom-transfer": "transfers",
 };
 
+const SETTINGS_PAGE_TO_TAB: Record<string, string> = {
+  "commerce-dashboard": "dashboard",
+  analytics: "analytics",
+  settings: "settings",
+};
+
 const injectCommerceArchiveHeader = (
   value: unknown,
   context?: unknown,
 ): ReactNode[] => {
   const nodes = Array.isArray(value) ? [...(value as ReactNode[])] : [];
   const typedContext = context as
-    | { postType?: string; layout?: ArchiveLayoutContext }
+    | {
+        postType?: string;
+        layout?: ArchiveLayoutContext;
+        pluginMenus?: PluginMenuMap;
+      }
     | undefined;
 
   const SUPPORTED_ARCHIVE_POST_TYPES = new Set([
@@ -190,13 +228,25 @@ const injectCommerceArchiveHeader = (
     return nodes;
   }
 
-  const activeTab = POST_TYPE_TO_TAB[typedContext?.postType ?? ""];
+  const menuTabs = buildTabsFromMenu(
+    typedContext?.pluginMenus?.[COMMERCE_PLUGIN_ID],
+  );
+  const desiredTabId = typedContext?.postType
+    ? `postType:${typedContext.postType}`
+    : undefined;
+  const hasMenuMatch = desiredTabId
+    ? menuTabs.some((tab) => tab.value === desiredTabId)
+    : false;
+  const activeTab = hasMenuMatch
+    ? desiredTabId
+    : POST_TYPE_TO_TAB[typedContext?.postType ?? ""];
 
   return [
     ...nodes,
     <CommerceArchiveHeader
       key="commerce-archive-header"
       activeTab={activeTab}
+      tabs={menuTabs.length > 0 ? menuTabs : undefined}
     />,
   ];
 };
@@ -207,28 +257,43 @@ const injectCommerceSettingsHeader = (
 ): ReactNode[] => {
   const nodes = Array.isArray(value) ? [...(value as ReactNode[])] : [];
   const typedContext = context as
-    | { pluginId?: string; pageSlug?: string }
+    | {
+        pluginId?: string;
+        pageSlug?: string;
+        pluginMenus?: PluginMenuMap;
+      }
     | undefined;
 
-  if (typedContext?.pluginId !== "commerce") {
+  if (typedContext?.pluginId !== COMMERCE_PLUGIN_ID) {
     return nodes;
   }
 
-  const activeTab =
-    typedContext?.pageSlug === "storefront" ? "storefront" : undefined;
+  const menuTabs = buildTabsFromMenu(
+    typedContext?.pluginMenus?.[COMMERCE_PLUGIN_ID],
+  );
+  const desiredTabId = typedContext?.pageSlug
+    ? `plugin:${COMMERCE_PLUGIN_ID}:${typedContext.pageSlug}`
+    : undefined;
+  const hasMenuMatch = desiredTabId
+    ? menuTabs.some((tab) => tab.value === desiredTabId)
+    : false;
+  const fallbackTab =
+    typedContext?.pageSlug && SETTINGS_PAGE_TO_TAB[typedContext.pageSlug]
+      ? SETTINGS_PAGE_TO_TAB[typedContext.pageSlug]
+      : undefined;
+  const activeTab = hasMenuMatch ? desiredTabId : fallbackTab;
 
   return [
     ...nodes,
     <CommerceArchiveHeader
       key="commerce-settings-header"
       activeTab={activeTab}
+      tabs={menuTabs.length > 0 ? menuTabs : undefined}
     />,
   ];
 };
 
-export const createCommercePluginDefinition = ({
-  CommerceStorefrontSettings,
-}: CommercePluginComponents): PluginDefinition => ({
+export const createCommercePluginDefinition = (): PluginDefinition => ({
   id: "commerce",
   name: "Ecommerce",
   description: "Products, orders and catalog components.",
@@ -459,36 +524,50 @@ export const createCommercePluginDefinition = ({
   ],
   settingsPages: [
     {
-      id: "commerce-storefront",
-      slug: "storefront",
-      label: "Storefront",
-      description: "Currency, shipping and checkout defaults.",
+      id: "commerce-dashboard",
+      slug: "commerce-dashboard",
+      label: "Commerce Dashboard",
+      description: "Ecommerce store dashboard.",
+      render: () => <ProductsAdminPage />,
+    },
+    {
+      id: "commerce-analytics",
+      slug: "analytics",
+      label: "Analytics",
+      description: "Store performance analytics.",
+      render: () => <OrderAnalyticsPage />,
+    },
+    {
+      id: "commerce-settings",
+      slug: "settings",
+      label: "Settings",
+      description: "Ecommerce store settings.",
       render: (props) => <CommerceStorefrontSettings {...props} />,
     },
   ],
-  adminMenus: [
-    {
-      label: "Plans",
-      slug: "store/plans",
-      icon: "Layers3",
-      group: "shop",
-      position: 45,
-    },
-    {
-      label: "Coupons",
-      slug: "store/coupons",
-      icon: "Ticket",
-      group: "shop",
-      position: 46,
-    },
-    {
-      label: "Chargebacks",
-      slug: "store/chargebacks",
-      icon: "ShieldAlert",
-      group: "shop",
-      position: 47,
-    },
-  ],
+  // adminMenus: [
+  //   {
+  //     label: "Plans",
+  //     slug: "store/plans",
+  //     icon: "Layers3",
+  //     group: "shop",
+  //     position: 45,
+  //   },
+  //   {
+  //     label: "Coupons",
+  //     slug: "store/coupons",
+  //     icon: "Ticket",
+  //     group: "shop",
+  //     position: 46,
+  //   },
+  //   {
+  //     label: "Chargebacks",
+  //     slug: "store/chargebacks",
+  //     icon: "ShieldAlert",
+  //     group: "shop",
+  //     position: 47,
+  //   },
+  // ],
   hooks: {
     filters: [
       {

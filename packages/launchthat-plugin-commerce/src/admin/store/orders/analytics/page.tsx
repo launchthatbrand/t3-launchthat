@@ -33,7 +33,7 @@ import {
 } from "@acme/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
-export default function OrderAnalyticsPage() {
+export default function c() {
   const [timeframe, setTimeframe] = useState("30days");
 
   // We're not implementing real analytics data fetching in this example

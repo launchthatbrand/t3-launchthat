@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
 import "./metaBoxes/attachments";
 import "./metaBoxes/general";
+import "./metaBoxes/content";
 import "./metaBoxes/customFields";
 import "./metaBoxes/actions";
 import "./metaBoxes/metadata";
@@ -48,12 +49,14 @@ import { Textarea } from "@acme/ui/textarea";
 import type { ExternalMetaBoxRenderer } from "./metaBoxes/utils";
 import type {
   AdminMetaBoxContext,
+  AdminPostStatus,
   CustomFieldsMetaBoxData,
   CustomFieldValue,
   EditorCustomField,
   GeneralMetaBoxData,
   MetaBoxVisibilityConfig,
   NormalizedMetaBox,
+  PostStatusOption,
   ResolvedMetaBox,
   SidebarActionsMetaBoxData,
   SidebarMetadataMetaBoxData,
@@ -303,7 +306,9 @@ export function AdminSinglePostView({
   const [slugValue, setSlugValue] = useState(post?.slug ?? "");
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? "");
   const [content, setContent] = useState(post?.content ?? "");
-  const [isPublished, setIsPublished] = useState(post?.status === "published");
+  const [postStatus, setPostStatus] = useState<AdminPostStatus>(
+    (post?.status as AdminPostStatus) ?? "draft",
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -318,6 +323,7 @@ export function AdminSinglePostView({
     (!!postType || isBuiltInPostTypeSlug(slug)) &&
     !isChargebackPostType &&
     !isOrderPostType;
+  const canSaveRecord = supportsPostsTable || storageKind === "custom";
   const supportsAttachments =
     supportsPostsTable &&
     (resolveSupportFlag(postType?.supports, "attachments") ||
@@ -514,6 +520,17 @@ export function AdminSinglePostView({
     return baseUrl ? `${baseUrl}${path}` : path;
   }, [post, postType, slugValue]);
 
+  const beforeSaveHandlers = useRef<Set<() => Promise<void> | void>>(new Set());
+  const registerBeforeSave = useCallback(
+    (handler: () => Promise<void> | void) => {
+      beforeSaveHandlers.current.add(handler);
+      return () => {
+        beforeSaveHandlers.current.delete(handler);
+      };
+    },
+    [],
+  );
+
   const generalMetaBoxData = useMemo<GeneralMetaBoxData>(
     () => ({
       headerLabel,
@@ -524,8 +541,6 @@ export function AdminSinglePostView({
       setSlugValue,
       slugPreviewUrl,
       supportsPostsTable,
-      isPublished,
-      setIsPublished,
       editorKey,
       derivedEditorState,
       setContent,
@@ -538,12 +553,10 @@ export function AdminSinglePostView({
       editorKey,
       excerpt,
       headerLabel,
-      isPublished,
       organizationId,
       post?.slug,
       setContent,
       setExcerpt,
-      setIsPublished,
       setSlugValue,
       setTitle,
       slugPreviewUrl,
@@ -551,6 +564,27 @@ export function AdminSinglePostView({
       supportsPostsTable,
       title,
     ],
+  );
+
+  const statusOptions = useMemo<PostStatusOption[]>(
+    () => [
+      {
+        value: "draft",
+        label: "Draft",
+        description: "Keep editing privately until you're ready to share.",
+      },
+      {
+        value: "published",
+        label: "Published",
+        description: "Live and visible to anyone with access.",
+      },
+      {
+        value: "archived",
+        label: "Archived",
+        description: "Hidden from learners but retained for reference.",
+      },
+    ],
+    [],
   );
 
   const frontendProviders = useMemo(
@@ -1282,7 +1316,7 @@ export function AdminSinglePostView({
       setSlugValue(post.slug ?? "");
       setExcerpt(post.excerpt ?? "");
       setContent(post.content ?? "");
-      setIsPublished(post.status === "published");
+      setPostStatus((post.status as AdminPostStatus) ?? "draft");
       return;
     }
     if (isNewRecord) {
@@ -1290,7 +1324,7 @@ export function AdminSinglePostView({
       setSlugValue("");
       setExcerpt("");
       setContent("");
-      setIsPublished(false);
+      setPostStatus("draft");
     }
   }, [isNewRecord, post]);
 
@@ -1319,7 +1353,7 @@ export function AdminSinglePostView({
   }, [headerLabel, pageIdentifier, post?._id, slug, title]);
 
   const handleSave = useCallback(async () => {
-    if (!supportsPostsTable) {
+    if (!canSaveRecord) {
       setSaveError("Saving is not yet available for this post type.");
       return;
     }
@@ -1332,6 +1366,9 @@ export function AdminSinglePostView({
 
     setIsSaving(true);
     try {
+      for (const handler of beforeSaveHandlers.current) {
+        await handler();
+      }
       const metaPayload = buildMetaPayload();
       const hasMetaEntries = Object.keys(metaPayload).length > 0;
       const manualSlug = slugValue.trim();
@@ -1340,7 +1377,7 @@ export function AdminSinglePostView({
       const normalizedSlug =
         generateSlugFromTitle(baseSlug) || `post-${Date.now()}`;
       setSlugValue(normalizedSlug);
-      const status = isPublished ? "published" : "draft";
+      const status = postStatus;
 
       if (isNewRecord) {
         const newId = await createPost({
@@ -1383,7 +1420,7 @@ export function AdminSinglePostView({
     createPost,
     excerpt,
     isNewRecord,
-    isPublished,
+    postStatus,
     post,
     router,
     setIsSaving,
@@ -1391,9 +1428,9 @@ export function AdminSinglePostView({
     setSlugValue,
     slug,
     slugValue,
-    supportsPostsTable,
     title,
     updatePost,
+    canSaveRecord,
   ]);
 
   const renderSaveButton = useCallback(
@@ -1401,7 +1438,7 @@ export function AdminSinglePostView({
       <Button
         type="button"
         onClick={handleSave}
-        disabled={isSaving || !supportsPostsTable}
+        disabled={isSaving || !canSaveRecord}
         className={options?.fullWidth ? "w-full" : undefined}
       >
         {isSaving ? (
@@ -1416,7 +1453,7 @@ export function AdminSinglePostView({
         )}
       </Button>
     ),
-    [handleSave, isSaving, supportsPostsTable],
+    [canSaveRecord, handleSave, isSaving],
   );
 
   const handleDuplicate = useCallback(async () => {
@@ -1488,15 +1525,23 @@ export function AdminSinglePostView({
       supportsPostsTable,
       puckEditorHref,
       isNewRecord,
+      canSaveRecord,
+      postStatus,
+      setPostStatus,
+      statusOptions,
     }),
     [
+      canSaveRecord,
       handleDuplicate,
       isDuplicating,
       isNewRecord,
       isSaving,
       puckEditorHref,
+      postStatus,
       renderSaveButton,
       supportsPostsTable,
+      statusOptions,
+      setPostStatus,
     ],
   );
 
@@ -1524,6 +1569,7 @@ export function AdminSinglePostView({
         actions: sidebarActionsMetaBoxData,
         metadata: sidebarMetadataMetaBoxData,
       },
+      registerBeforeSave,
     }),
     [
       attachmentsContext,
@@ -1535,6 +1581,7 @@ export function AdminSinglePostView({
       postType,
       sidebarActionsMetaBoxData,
       sidebarMetadataMetaBoxData,
+      registerBeforeSave,
       slug,
     ],
   );

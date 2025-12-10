@@ -12,7 +12,7 @@ import { ArrowUpRight, Loader2 } from "lucide-react";
 import type { AdminMetaBoxContext } from "@acme/admin-runtime";
 import { registerMetaBoxHook } from "@acme/admin-runtime";
 import { Badge } from "@acme/ui/badge";
-import { Button, buttonVariants } from "@acme/ui/button";
+import { buttonVariants } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import {
@@ -103,6 +103,7 @@ const CommerceChargebackGeneralMetaBox = ({
 }: {
   context: CommerceAdminContext;
 }) => {
+  const registerBeforeSave = context.registerBeforeSave;
   const router = useRouter();
   const [isSavingDetails, setIsSavingDetails] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -149,60 +150,66 @@ const CommerceChargebackGeneralMetaBox = ({
     [router],
   );
 
-  const handleDetailsSubmit = useCallback(
-    async (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      if (!chargebackRecordId) {
-        return;
+  const submitDetails = useCallback(async () => {
+    if (!chargebackRecordId) {
+      return;
+    }
+    setIsSavingDetails(true);
+    try {
+      const payload: Parameters<typeof updateDetails>[0] = {
+        chargebackId: chargebackRecordId,
+      };
+
+      const amount = parseFloat(detailForm.amount);
+      if (!Number.isNaN(amount)) {
+        payload.amount = amount;
       }
-      setIsSavingDetails(true);
-      try {
-        const payload: Parameters<typeof updateDetails>[0] = {
-          chargebackId: chargebackRecordId,
-        };
 
-        const amount = parseFloat(detailForm.amount);
-        if (!Number.isNaN(amount)) {
-          payload.amount = amount;
-        }
-
-        if (detailForm.currency?.length) {
-          payload.currency = detailForm.currency;
-        }
-
-        if (detailForm.reasonCode?.length) {
-          payload.reasonCode = detailForm.reasonCode;
-        }
-        if (detailForm.reasonDescription?.length) {
-          payload.reasonDescription = detailForm.reasonDescription;
-        }
-        if (detailForm.processorName?.length) {
-          payload.processorName = detailForm.processorName;
-        }
-
-        const chargebackFee = parseFloat(detailForm.chargebackFee);
-        if (!Number.isNaN(chargebackFee)) {
-          payload.chargebackFee = chargebackFee;
-        }
-
-        const refundAmount = parseFloat(detailForm.refundAmount);
-        if (!Number.isNaN(refundAmount)) {
-          payload.refundAmount = refundAmount;
-        }
-
-        payload.internalNotes = detailForm.internalNotes ?? "";
-
-        await updateDetails(payload);
-        toast.success("Chargeback details updated.");
-      } catch (error) {
-        console.error("Failed to update chargeback details", error);
-        toast.error("Unable to update chargeback details.");
-      } finally {
-        setIsSavingDetails(false);
+      if (detailForm.currency?.length) {
+        payload.currency = detailForm.currency;
       }
-    },
-    [chargebackRecordId, detailForm, updateDetails],
-  );
+
+      if (detailForm.reasonCode?.length) {
+        payload.reasonCode = detailForm.reasonCode;
+      }
+      if (detailForm.reasonDescription?.length) {
+        payload.reasonDescription = detailForm.reasonDescription;
+      }
+      if (detailForm.processorName?.length) {
+        payload.processorName = detailForm.processorName;
+      }
+
+      const chargebackFee = parseFloat(detailForm.chargebackFee);
+      if (!Number.isNaN(chargebackFee)) {
+        payload.chargebackFee = chargebackFee;
+      }
+
+      const refundAmount = parseFloat(detailForm.refundAmount);
+      if (!Number.isNaN(refundAmount)) {
+        payload.refundAmount = refundAmount;
+      }
+
+      payload.internalNotes = detailForm.internalNotes ?? "";
+
+      await updateDetails(payload);
+      toast.success("Chargeback details updated.");
+    } catch (error) {
+      console.error("Failed to update chargeback details", error);
+      toast.error("Unable to update chargeback details.");
+    } finally {
+      setIsSavingDetails(false);
+    }
+  }, [chargebackRecordId, detailForm, updateDetails]);
+
+  useEffect(() => {
+    if (!registerBeforeSave || isNewRecord || !chargebackRecordId) {
+      return;
+    }
+    const unregister = registerBeforeSave(async () => {
+      await submitDetails();
+    });
+    return unregister;
+  }, [chargebackRecordId, isNewRecord, registerBeforeSave, submitDetails]);
 
   const handleStatusChange = useCallback(
     async (value: ChargebackStatus) => {
@@ -331,14 +338,12 @@ const CommerceChargebackGeneralMetaBox = ({
         </div>
       </div>
 
-      <form
-        onSubmit={handleDetailsSubmit}
-        className="bg-card space-y-6 rounded-lg border p-4"
-      >
+      <div className="bg-card space-y-6 rounded-lg border p-4">
         <div>
           <h4 className="text-base font-semibold">Chargeback Details</h4>
           <p className="text-muted-foreground text-sm">
             Update financials, processor information, and internal notes.
+            Changes apply when you click Save in the Actions panel.
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
@@ -448,18 +453,16 @@ const CommerceChargebackGeneralMetaBox = ({
             placeholder="Document communication, evidence, or other relevant details."
           />
         </div>
-        <div className="flex items-center justify-end gap-3">
-          {isSavingDetails && (
-            <span className="text-muted-foreground flex items-center gap-2 text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" />
+        <div className="text-muted-foreground flex items-center justify-between text-xs">
+          <span>Use the Save button in Actions to persist these details.</span>
+          {isSavingDetails ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-3 w-3 animate-spin" />
               Saving…
             </span>
-          )}
-          <Button type="submit" disabled={isSavingDetails}>
-            Save Details
-          </Button>
+          ) : null}
         </div>
-      </form>
+      </div>
     </div>
   );
 };

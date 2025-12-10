@@ -20,6 +20,7 @@ import {
   CardTitle,
 } from "@acme/ui/card";
 
+import type { PluginMenuItem } from "../_components/GenericArchiveView";
 import type { PermalinkSettings } from "../_components/permalink";
 import {
   AdminLayout,
@@ -29,6 +30,7 @@ import {
   AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
 import { useTenant } from "~/context/TenantContext";
+import { useAdminMenuSections } from "~/lib/adminMenu/useAdminMenuSections";
 import { useApplyFilters } from "~/lib/hooks/react";
 import { pluginDefinitions } from "~/lib/plugins/definitions";
 import {
@@ -54,7 +56,6 @@ import {
 import { PlaceholderState } from "../_components/PlaceholderState";
 import { TaxonomyTermsView } from "../_components/TaxonomyTermsView";
 import { useAdminPostContext } from "../../_providers/AdminPostProvider";
-import { usePostTypes } from "../../settings/post-types/_api/postTypes";
 
 const DEFAULT_POST_TYPE = "course";
 const PERMALINK_OPTION_KEY = "permalink_settings";
@@ -65,13 +66,7 @@ function AdminEditPageBody() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tenant = useTenant();
-  const { data: postTypesResponse } = usePostTypes();
-  const postTypes = useMemo<Doc<"postTypes">[]>(() => {
-    if (postTypesResponse === undefined) {
-      return [];
-    }
-    return postTypesResponse;
-  }, [postTypesResponse]);
+  const { sections: adminMenuSections, postTypes } = useAdminMenuSections();
   const pluginParam = searchParams.get("plugin")?.toLowerCase().trim() ?? "";
   const pluginPage =
     searchParams.get("page")?.toLowerCase().trim() ?? "settings";
@@ -109,6 +104,28 @@ function AdminEditPageBody() {
       organizationId,
     });
   }, [pluginDefinition, pluginSetting, organizationId]);
+  const pluginMenus = useMemo<Record<string, PluginMenuItem[]>>(() => {
+    const map: Record<string, PluginMenuItem[]> = {};
+    adminMenuSections.forEach((section) => {
+      if (!section.id) {
+        return;
+      }
+      const pluginId = section.id;
+      const pluginRoot = section.items.find(
+        (node) => node.id === `plugin:${pluginId}`,
+      );
+      const children = pluginRoot?.children ?? section.items;
+      if (children.length === 0) {
+        return;
+      }
+      map[pluginId] = children.map((child) => ({
+        id: child.id,
+        label: child.label,
+        href: child.href,
+      }));
+    });
+    return map;
+  }, [adminMenuSections]);
   const pluginSettingsHookContext = useMemo(() => {
     if (!pluginDefinition || !pluginSetting) {
       return undefined;
@@ -117,8 +134,9 @@ function AdminEditPageBody() {
       pluginId: pluginDefinition.id,
       plugin: pluginDefinition,
       pageSlug: pluginSetting.slug,
+      pluginMenus,
     };
-  }, [pluginDefinition, pluginSetting]);
+  }, [pluginDefinition, pluginSetting, pluginMenus]);
   const pluginSettingsHeaderBefore = useApplyFilters<ReactNode[]>(
     ADMIN_PLUGIN_SETTINGS_HEADER_BEFORE,
     [],
@@ -279,6 +297,7 @@ function AdminEditPageBody() {
           onCreate={handleCreate}
           renderLayout={renderLayout}
           withSidebar={options?.withSidebar ?? true}
+          pluginMenus={pluginMenus}
         />
       );
     },
@@ -288,6 +307,7 @@ function AdminEditPageBody() {
       hydratedPostType,
       isLoading,
       permalinkSettings,
+      pluginMenus,
       postTypes,
       resolvedSlug,
     ],

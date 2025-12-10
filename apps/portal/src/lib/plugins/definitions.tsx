@@ -14,13 +14,10 @@ import { vimeoPlugin } from "launchthat-plugin-vimeo";
 import type { PluginDefinition } from "./types";
 import type { MenuItemInput, MenuSectionRef } from "~/lib/adminMenu";
 import { adminMenuRegistry } from "~/lib/adminMenu";
-import { CommerceStorefrontSettings } from "~/plugins/settings/commerce-storefront-settings";
 import { SupportPluginPage } from "~/plugins/settings/support/SupportPluginPage";
 import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
 
-const commercePlugin = createCommercePluginDefinition({
-  CommerceStorefrontSettings,
-});
+const commercePlugin = createCommercePluginDefinition();
 
 configureSocialFeedPlugin({
   providers: {

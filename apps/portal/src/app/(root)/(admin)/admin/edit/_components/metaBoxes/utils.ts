@@ -34,14 +34,30 @@ export const pickMetaBoxes = (
   return selections;
 };
 
+const getBoxId = <T extends object>(box: T): string | undefined => {
+  const candidate = (box as { id?: unknown }).id;
+  return typeof candidate === "string" ? candidate : undefined;
+};
+
+const getSortPriority = <T extends { priority: number }>(box: T) => {
+  const id = getBoxId(box);
+  if (id === "core-general") {
+    return Number.NEGATIVE_INFINITY;
+  }
+  return box.priority;
+};
+
 export const sortMetaBoxes = <T extends { priority: number; title: string }>(
   metaBoxes: T[],
 ) =>
-  [...metaBoxes].sort((a, b) =>
-    a.priority === b.priority
-      ? a.title.localeCompare(b.title)
-      : a.priority - b.priority,
-  );
+  [...metaBoxes].sort((a, b) => {
+    const aPriority = getSortPriority(a);
+    const bPriority = getSortPriority(b);
+    if (aPriority === bPriority) {
+      return a.title.localeCompare(b.title);
+    }
+    return aPriority - bPriority;
+  });
 
 export const formatTimestamp = (timestamp?: number | null) => {
   if (typeof timestamp !== "number" || Number.isNaN(timestamp)) {

@@ -19,6 +19,10 @@
     "./admin/metaBoxes": {
       "types": "./dist/admin/metaBoxes/index.d.ts",
       "default": "./src/admin/metaBoxes/index.ts"
+    },
+    "./convex/component": {
+      "types": "./dist/convex/component/index.d.ts",
+      "default": "./src/convex/component/index.ts"
     }
   },
   "license": "MIT",

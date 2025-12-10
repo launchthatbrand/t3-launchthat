@@ -1,17 +1,17 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ExternalLink, Pencil } from "lucide-react";
 
+import { registerMetaBoxHook } from "@acme/admin-runtime";
 import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
-import { Switch } from "@acme/ui/switch";
-import { Textarea } from "@acme/ui/textarea";
 
-import type { RegisteredMetaBox } from "@acme/admin-runtime";
-import { registerMetaBoxHook } from "@acme/admin-runtime";
 import type { AdminMetaBoxContext, GeneralMetaBoxData } from "../types";
-import { Editor } from "~/components/blocks/editor-x/editor";
 
 const GeneralMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
   const {
@@ -21,14 +21,6 @@ const GeneralMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
     slugValue,
     setSlugValue,
     slugPreviewUrl,
-    isPublished,
-    setIsPublished,
-    editorKey,
-    derivedEditorState,
-    setContent,
-    organizationId,
-    excerpt,
-    setExcerpt,
     originalSlug,
   } = data;
 
@@ -124,62 +116,25 @@ const GeneralMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
           </p>
         </div>
       )}
-      <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-        <div>
-          <p className="text-sm font-medium">Published</p>
-          <p className="text-muted-foreground text-xs">
-            Toggle visibility for this entry.
-          </p>
-        </div>
-        <Switch
-          id="post-status"
-          checked={isPublished}
-          onCheckedChange={(checked) => setIsPublished(checked)}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Content</Label>
-        <Editor
-          key={editorKey}
-          editorSerializedState={derivedEditorState}
-          onSerializedChange={(state) => {
-            setContent(JSON.stringify(state));
-          }}
-          organizationId={organizationId}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="post-excerpt">Excerpt</Label>
-        <Textarea
-          id="post-excerpt"
-          rows={3}
-          value={excerpt}
-          onChange={(event) => setExcerpt(event.target.value)}
-          placeholder="Short summary for listing views"
-        />
-      </div>
     </>
   );
 };
 
 const registerGeneralMetaBox = () =>
-  registerMetaBoxHook<AdminMetaBoxContext>(
-    "main",
-    (context): RegisteredMetaBox<AdminMetaBoxContext> | null => {
-      const data = context.general;
-      if (context.visibility?.showGeneralPanel === false || !data) {
-        return null;
-      }
+  registerMetaBoxHook<AdminMetaBoxContext>("main", (context) => {
+    const data = context.general;
+    if (context.visibility?.showGeneralPanel === false || !data) {
+      return null;
+    }
 
-      return {
-        id: "core-general",
-        title: "General",
-        description: `Fundamental settings for this ${data.headerLabel} entry.`,
-        location: "main",
-        priority: 0,
-        render: () => <GeneralMetaBox data={data} />,
-      };
-    },
-  );
+    return {
+      id: "core-general",
+      title: "Title & Visibility",
+      description: `Title and URL settings for this ${data.headerLabel} entry.`,
+      location: "main",
+      priority: 0,
+      render: () => <GeneralMetaBox data={data} />,
+    };
+  });
 
 registerGeneralMetaBox();

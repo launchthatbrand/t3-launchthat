@@ -30,7 +30,7 @@ export default function ProductsAdminPage() {
       icon: <Package className="h-8 w-8 text-blue-500" />,
       count: productCount,
       label: "Products",
-      link: "/admin/products/catalog",
+      link: "/admin/edit?post_type=products",
     },
     {
       title: "Attributes",
@@ -46,7 +46,7 @@ export default function ProductsAdminPage() {
       icon: <ShoppingCart className="h-8 w-8 text-amber-500" />,
       count: 0,
       label: "Orders",
-      link: "/admin/orders",
+      link: "/admin/edit?post_type=orders",
     },
   ];
 

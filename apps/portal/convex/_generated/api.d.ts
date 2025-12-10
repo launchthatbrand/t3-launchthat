@@ -3744,4 +3744,5 @@ export declare const components: {
       >;
     };
   };
+  launchthat_ecommerce: {};
 };

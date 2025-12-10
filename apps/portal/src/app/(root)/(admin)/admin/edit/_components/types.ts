@@ -32,6 +32,14 @@ export type CustomFieldValue = string | number | boolean | null;
 
 export type CustomFieldSource = "schema" | "plugin" | "detected";
 
+export type AdminPostStatus = "draft" | "published" | "archived";
+
+export interface PostStatusOption {
+  value: AdminPostStatus;
+  label: string;
+  description?: string;
+}
+
 export interface EditorCustomField
   extends Pick<
     Doc<"postTypeFields">,
@@ -62,8 +70,6 @@ export interface GeneralMetaBoxData {
   setSlugValue: (value: string) => void;
   slugPreviewUrl: string | null;
   supportsPostsTable: boolean;
-  isPublished: boolean;
-  setIsPublished: (value: boolean) => void;
   editorKey: string;
   derivedEditorState?: SerializedEditorState;
   setContent: (value: string) => void;
@@ -93,8 +99,12 @@ export interface SidebarActionsMetaBoxData {
   isDuplicating: boolean;
   isSaving: boolean;
   supportsPostsTable: boolean;
+  canSaveRecord: boolean;
   puckEditorHref: string | null;
   isNewRecord: boolean;
+  postStatus: AdminPostStatus;
+  setPostStatus: (status: AdminPostStatus) => void;
+  statusOptions: PostStatusOption[];
 }
 
 export interface SidebarMetadataMetaBoxData {

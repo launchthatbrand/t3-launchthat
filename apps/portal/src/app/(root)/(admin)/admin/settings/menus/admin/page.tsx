@@ -149,6 +149,7 @@ const buildEditableMenuItems = (
 ): EditableMenuItem[] => {
   const hiddenSet = new Set(overrides?.hiddenIds ?? []);
   const orderBySection = overrides?.orderBySection ?? {};
+  const childOrder = overrides?.childOrder ?? {};
   const customBySection = new Map<string, EditableMenuItem[]>();
   const sectionOrderOverride = overrides?.sectionOrder ?? [];
   const sectionOrder = [...sectionOrderOverride];
@@ -180,19 +181,28 @@ const buildEditableMenuItems = (
     node: MenuNode,
     sectionKey: string,
     sectionLabel?: string,
-  ): EditableMenuItem => ({
-    id: node.id,
-    label: node.label,
-    href: node.href,
-    icon: node.icon,
-    hidden: hiddenSet.has(node.id),
-    isCustom: false,
-    sectionKey,
-    sectionLabel,
-    children: node.children.map((child) =>
+  ): EditableMenuItem => {
+    const rawChildren = node.children.map((child) =>
       convertNode(child, sectionKey, sectionLabel),
-    ),
-  });
+    );
+    const orderList = childOrder[node.id];
+    const children =
+      orderList && orderList.length > 0
+        ? sortEditableItems(rawChildren, orderList)
+        : rawChildren;
+
+    return {
+      id: node.id,
+      label: node.label,
+      href: node.href,
+      icon: node.icon,
+      hidden: hiddenSet.has(node.id),
+      isCustom: false,
+      sectionKey,
+      sectionLabel,
+      children,
+    };
+  };
 
   const grouped = new Map<string, EditableMenuItem[]>();
 
@@ -244,7 +254,9 @@ const parseAdminMenuOverrides = (value: unknown): AdminMenuOverrides | null => {
   if (!value || typeof value !== "object") {
     return null;
   }
-  return value as AdminMenuOverrides;
+  const parsed = value as AdminMenuOverrides;
+  console.log("[AdminMenuEditor] parsed overrides", parsed);
+  return parsed;
 };
 
 const sortEditableItems = (items: EditableMenuItem[], orderList: string[]) => {
@@ -266,13 +278,27 @@ const buildOverridesFromMenu = (
 ): AdminMenuOverrides => {
   const hiddenIds = new Set<string>();
   const orderBySection = new Map<string, string[]>();
+  const childOrder = new Map<string, string[]>();
   const sectionOrder: string[] = [];
   const customItems: CustomAdminMenuItem[] = [];
 
-  const registerOrder = (sectionKey: string, itemId: string) => {
+  const registerSectionOrder = (sectionKey: string, itemId: string) => {
     const list = orderBySection.get(sectionKey) ?? [];
     list.push(itemId);
     orderBySection.set(sectionKey, list);
+  };
+
+  const registerChildOrder = (
+    parentId: string,
+    children: EditableMenuItem[],
+  ) => {
+    if (children.length === 0) {
+      return;
+    }
+    childOrder.set(
+      parentId,
+      children.map((child) => child.id),
+    );
   };
 
   const processNode = (node: EditableMenuItem) => {
@@ -289,14 +315,19 @@ const buildOverridesFromMenu = (
           node.sectionKey === DEFAULT_SECTION_KEY ? undefined : node.sectionKey,
       });
     }
+    registerChildOrder(node.id, node.children);
     node.children.forEach(processNode);
   };
 
   menuItems.forEach((item) => {
+    console.log("[AdminMenuEditor] registering root order", {
+      sectionKey: item.sectionKey,
+      id: item.id,
+    });
     if (!sectionOrder.includes(item.sectionKey)) {
       sectionOrder.push(item.sectionKey);
     }
-    registerOrder(item.sectionKey, item.id);
+    registerSectionOrder(item.sectionKey, item.id);
     processNode(item);
   });
 
@@ -307,12 +338,17 @@ const buildOverridesFromMenu = (
   if (orderBySection.size > 0) {
     overrides.orderBySection = Object.fromEntries(orderBySection);
   }
+  if (childOrder.size > 0) {
+    overrides.childOrder = Object.fromEntries(childOrder);
+  }
   if (sectionOrder.length > 0) {
     overrides.sectionOrder = sectionOrder;
   }
   if (customItems.length > 0) {
     overrides.customItems = customItems;
   }
+
+  console.log("[AdminMenuEditor] final overrides to save", overrides);
 
   return overrides;
 };

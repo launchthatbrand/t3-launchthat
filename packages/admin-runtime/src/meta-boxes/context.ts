@@ -28,6 +28,7 @@ export interface AdminMetaBoxContext<
     metadata?: TSidebarMetadataMetaBoxData;
   };
   visibility?: MetaBoxVisibilityConfig;
+  registerBeforeSave?: (handler: () => Promise<void> | void) => () => void;
   // Allow hosts to tack on arbitrary values without losing type safety.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;

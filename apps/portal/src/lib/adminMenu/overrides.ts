@@ -18,6 +18,7 @@ export interface CustomAdminMenuItem {
 export interface AdminMenuOverrides {
   sectionOrder?: string[];
   orderBySection?: Record<string, string[]>;
+  childOrder?: Record<string, string[]>;
   hiddenIds?: string[];
   labelOverrides?: Record<string, string>;
   customItems?: CustomAdminMenuItem[];
@@ -36,9 +37,8 @@ const sortByOrderList = (nodes: MenuNode[], orderList: string[]) => {
     }
     if (aRank !== undefined) return -1;
     if (bRank !== undefined) return 1;
-    return (
-      (a.order ?? 100) - (b.order ?? 100) || a.label.localeCompare(b.label)
-    );
+    const orderDiff = a.order - b.order;
+    return orderDiff || a.label.localeCompare(b.label);
   });
 };
 
@@ -46,19 +46,28 @@ const mapNodeWithOverrides = (
   node: MenuNode,
   hiddenSet: Set<string>,
   labelMap: Record<string, string>,
+  childOrder: Record<string, string[]>,
 ): MenuNode | null => {
   if (hiddenSet.has(node.id)) {
     return null;
   }
 
   const nextChildren = node.children
-    .map((child) => mapNodeWithOverrides(child, hiddenSet, labelMap))
+    .map((child) =>
+      mapNodeWithOverrides(child, hiddenSet, labelMap, childOrder),
+    )
     .filter((child): child is MenuNode => Boolean(child));
+
+  const orderList = childOrder[node.id];
+  const children =
+    orderList && orderList.length > 0
+      ? sortByOrderList(nextChildren, orderList)
+      : nextChildren;
 
   return {
     ...node,
     label: labelMap[node.id] ?? node.label,
-    children: nextChildren,
+    children,
   };
 };
 
@@ -73,6 +82,7 @@ export const applyAdminMenuOverrides = (
   const hiddenSet = new Set(overrides.hiddenIds ?? []);
   const labelMap = overrides.labelOverrides ?? {};
   const orderBySection = overrides.orderBySection ?? {};
+  const childOrder = overrides.childOrder ?? {};
 
   const customBySection = new Map<string, MenuNode[]>();
   (overrides.customItems ?? []).forEach((item) => {
@@ -92,7 +102,9 @@ export const applyAdminMenuOverrides = (
   const nextSections: MenuSectionNode[] = sections.map((section) => {
     const sectionKey = sectionKeyFor(section);
     const filteredItems = section.items
-      .map((item) => mapNodeWithOverrides(item, hiddenSet, labelMap))
+      .map((item) =>
+        mapNodeWithOverrides(item, hiddenSet, labelMap, childOrder),
+      )
       .filter((node): node is MenuNode => Boolean(node));
 
     const customItems = customBySection.get(sectionKey) ?? [];
