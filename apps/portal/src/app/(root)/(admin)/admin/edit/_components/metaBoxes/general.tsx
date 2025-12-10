@@ -8,10 +8,10 @@ import { Label } from "@acme/ui/label";
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 
-import type { GeneralMetaBoxData } from "../types";
-import type { RegisteredMetaBox } from "./registry";
+import type { RegisteredMetaBox } from "@acme/admin-runtime";
+import { registerMetaBoxHook } from "@acme/admin-runtime";
+import type { AdminMetaBoxContext, GeneralMetaBoxData } from "../types";
 import { Editor } from "~/components/blocks/editor-x/editor";
-import { registerMetaBoxHook } from "./registry";
 
 const GeneralMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
   const {
@@ -163,20 +163,23 @@ const GeneralMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
 };
 
 const registerGeneralMetaBox = () =>
-  registerMetaBoxHook("main", (context): RegisteredMetaBox | null => {
-    const data = context.general;
-    if (context.visibility?.showGeneralPanel === false || !data) {
-      return null;
-    }
+  registerMetaBoxHook<AdminMetaBoxContext>(
+    "main",
+    (context): RegisteredMetaBox<AdminMetaBoxContext> | null => {
+      const data = context.general;
+      if (context.visibility?.showGeneralPanel === false || !data) {
+        return null;
+      }
 
-    return {
-      id: "core-general",
-      title: "General",
-      description: `Fundamental settings for this ${data.headerLabel} entry.`,
-      location: "main",
-      priority: 0,
-      render: () => <GeneralMetaBox data={data} />,
-    };
-  });
+      return {
+        id: "core-general",
+        title: "General",
+        description: `Fundamental settings for this ${data.headerLabel} entry.`,
+        location: "main",
+        priority: 0,
+        render: () => <GeneralMetaBox data={data} />,
+      };
+    },
+  );
 
 registerGeneralMetaBox();

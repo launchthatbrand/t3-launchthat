@@ -10,6 +10,8 @@ import Link from "next/link";
 import { ScrollArea, ScrollBar } from "@acme/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
+import { registerCommerceAdminMetaBoxes } from "./admin/metaBoxes";
+
 export interface CommercePluginComponents {
   CommerceStorefrontSettings: ComponentType<PluginSettingComponentProps>;
 }
@@ -238,6 +240,9 @@ export const createCommercePluginDefinition = ({
     "Catalog API endpoints",
     "Admin store sidebar items",
   ],
+  admin: {
+    bootstrap: registerCommerceAdminMetaBoxes,
+  },
   postTypes: [
     {
       name: "Products",

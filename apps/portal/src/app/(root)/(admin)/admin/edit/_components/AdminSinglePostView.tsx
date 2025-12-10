@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-misused-promises */
 "use client";
 
+/* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
 import "./metaBoxes/attachments";
 import "./metaBoxes/general";
 import "./metaBoxes/customFields";
@@ -10,8 +9,6 @@ import "./metaBoxes/metadata";
 import "./metaBoxes/vimeo";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-import type { OrderFormData } from "launchthat-plugin-commerce";
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-type-assertion */
 import type { SerializedEditorState } from "lexical";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -22,10 +19,11 @@ import {
   useCreatePost,
   useUpdatePost,
 } from "@/lib/blog";
-import { useMutation, useQuery } from "convex/react";
-import { ChargebackForm, OrderForm } from "launchthat-plugin-commerce";
+import { useQuery } from "convex/react";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 
+import type { MetaBoxLocation, RegisteredMetaBox } from "@acme/admin-runtime";
+import { collectRegisteredMetaBoxes } from "@acme/admin-runtime";
 import {
   Accordion,
   AccordionContent,
@@ -34,7 +32,7 @@ import {
 } from "@acme/ui/accordion";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Card, CardContent } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import {
@@ -46,9 +44,7 @@ import {
 } from "@acme/ui/select";
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
-import { toast } from "@acme/ui/toast";
 
-import type { MetaBoxLocation } from "./metaBoxes/registry";
 import type { ExternalMetaBoxRenderer } from "./metaBoxes/utils";
 import type {
   AdminMetaBoxContext,
@@ -103,7 +99,6 @@ import { useMetaBoxState } from "../_state/useMetaBoxState";
 import { usePostTypeFields } from "../../settings/post-types/_api/postTypes";
 import { useAttachmentsMetaBox } from "./hooks/useAttachmentsMetaBox";
 import { ATTACHMENTS_META_KEY } from "./metaBoxes/constants";
-import { collectRegisteredMetaBoxes } from "./metaBoxes/registry";
 import {
   deriveSystemFieldValue,
   pickMetaBoxes,
@@ -205,27 +200,6 @@ interface ExtractedVimeoMeta {
   embedUrl?: string;
   thumbnailUrl?: string;
 }
-
-interface ProductLineItem {
-  productId: Id<"products">;
-  quantity: number;
-  price: number;
-  lineTotal?: number;
-  type: "product";
-}
-
-const isProductLineItem = (item: unknown): item is ProductLineItem => {
-  if (!item || typeof item !== "object") {
-    return false;
-  }
-  const candidate = item as Record<string, unknown>;
-  return (
-    typeof candidate.productId === "string" &&
-    typeof candidate.quantity === "number" &&
-    typeof candidate.price === "number" &&
-    candidate.type === "product"
-  );
-};
 
 const VIMEO_META_POST_TYPES = new Set(["lessons", "topics", "quizzes"]);
 
@@ -332,11 +306,7 @@ export function AdminSinglePostView({
   const [isPublished, setIsPublished] = useState(post?.status === "published");
   const [isSaving, setIsSaving] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
-  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const createOrderMutation = useMutation(
-    api.ecommerce.orders.mutations.createOrder,
-  );
   const normalizedSlug = slug.toLowerCase();
   const isChargebackPostType = normalizedSlug === COMMERCE_CHARGEBACK_POST_TYPE;
   const isOrderPostType = normalizedSlug === COMMERCE_ORDER_POST_TYPE;
@@ -450,58 +420,6 @@ export function AdminSinglePostView({
     supportsAttachments,
   });
   const headerLabel = postType?.name ?? slug;
-  const handleInlineOrderCancel = useCallback(() => {
-    router.push("/admin/edit?post_type=orders");
-  }, [router]);
-  const handleInlineOrderSubmit = useCallback(
-    async (formData: OrderFormData) => {
-      const lineItems = Array.isArray(formData.lineItems)
-        ? (formData.lineItems as unknown[])
-        : [];
-      const productItems = lineItems.filter(isProductLineItem);
-      if (productItems.length === 0) {
-        toast.error("Add at least one product before creating an order.");
-        return;
-      }
-      setIsCreatingOrder(true);
-      try {
-        const subtotal = productItems.reduce(
-          (sum, item) => sum + (item.lineTotal ?? item.price * item.quantity),
-          0,
-        );
-        const tax = subtotal * 0.08;
-        const shipping = subtotal > 100 ? 0 : 10;
-        const total = subtotal + tax + shipping;
-        const result = await createOrderMutation({
-          userId: formData.userId,
-          email: formData.email,
-          customerInfo: {
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            phone: formData.phone || undefined,
-            company: formData.company || undefined,
-          },
-          items: productItems.map((item) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-          })),
-          totalAmount: total,
-          notes: formData.notes || undefined,
-        });
-        toast.success("Order created successfully.");
-        router.replace(
-          `/admin/edit?post_type=${slug}&post_id=${result.recordId}`,
-        );
-      } catch (error) {
-        console.error("[AdminSinglePostView] failed to create order", error);
-        toast.error("Failed to create order. Please try again.");
-      } finally {
-        setIsCreatingOrder(false);
-      }
-    },
-    [createOrderMutation, router, slug],
-  );
 
   const schemaFields = useMemo<EditorCustomField[]>(
     () =>
@@ -1627,7 +1545,7 @@ export function AdminSinglePostView({
       location: MetaBoxLocation,
       visibilityOverride?: Partial<MetaBoxVisibilityConfig>,
     ) => {
-      const context: AdminMetaBoxContext = visibilityOverride
+      const contextForHooks: AdminMetaBoxContext = visibilityOverride
         ? {
             ...metaBoxContext,
             visibility: {
@@ -1636,15 +1554,21 @@ export function AdminSinglePostView({
             },
           }
         : metaBoxContext;
-      const registered = collectRegisteredMetaBoxes(location, context);
-      registered.forEach((registeredMetaBox) => {
+
+      const registeredMetaBoxes: RegisteredMetaBox<AdminMetaBoxContext>[] =
+        collectRegisteredMetaBoxes<AdminMetaBoxContext>(
+          location,
+          contextForHooks,
+        );
+
+      registeredMetaBoxes.forEach((registeredMetaBox) => {
         target.push({
           id: registeredMetaBox.id,
           title: registeredMetaBox.title,
           description: registeredMetaBox.description,
           location: registeredMetaBox.location,
           priority: registeredMetaBox.priority ?? 50,
-          render: () => registeredMetaBox.render(context),
+          render: () => registeredMetaBox.render(contextForHooks),
         });
       });
     },
@@ -1718,70 +1642,6 @@ export function AdminSinglePostView({
       </div>
     );
   };
-
-  if (isOrderPostType && isNewRecord) {
-    return (
-      <AdminLayout
-        title={`Create ${headerLabel}`}
-        description="Capture customer, items, and payment details for a new order."
-        pathname={`/admin/edit?post_type=${slug}`}
-      >
-        <AdminLayoutContent withSidebar={false}>
-          <AdminLayoutMain>
-            <AdminLayoutHeader />
-            <div className="container py-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Order Details</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <OrderForm
-                    onSubmit={handleInlineOrderSubmit}
-                    onCancel={handleInlineOrderCancel}
-                    isSubmitting={isCreatingOrder}
-                    submitButtonText="Create Order"
-                  />
-                </CardContent>
-              </Card>
-            </div>
-          </AdminLayoutMain>
-        </AdminLayoutContent>
-      </AdminLayout>
-    );
-  }
-
-  if (isChargebackPostType && isNewRecord) {
-    return (
-      <AdminLayout
-        title={`Create ${headerLabel}`}
-        description={postType?.description ?? "Create a new chargeback entry."}
-        pathname={`/admin/edit?post_type=${slug}`}
-      >
-        <AdminLayoutContent withSidebar={false}>
-          <AdminLayoutMain>
-            <AdminLayoutHeader />
-            <div className="container py-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Chargeback Details</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ChargebackForm
-                    variant="inline"
-                    onChargebackCreated={({ id }) => {
-                      router.replace(
-                        `/admin/edit?post_type=${slug}&post_id=${id}`,
-                      );
-                    }}
-                  />
-                </CardContent>
-              </Card>
-            </div>
-          </AdminLayoutMain>
-        </AdminLayoutContent>
-      </AdminLayout>
-    );
-  }
 
   if (!isNewRecord && post === undefined) {
     return (

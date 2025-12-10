@@ -18,9 +18,9 @@ import { ScrollArea } from "@acme/ui/scroll-area";
 import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
 
+import type { RegisteredMetaBox } from "@acme/admin-runtime";
+import { registerMetaBoxHook } from "@acme/admin-runtime";
 import type { AdminMetaBoxContext } from "../types";
-import type { RegisteredMetaBox } from "./registry";
-import { registerMetaBoxHook } from "./registry";
 
 const formatTimestamp = (value?: number | null) => {
   if (typeof value !== "number" || Number.isNaN(value)) {
@@ -322,23 +322,27 @@ const VimeoTranscriptMetaBox = ({
 };
 
 const registerVimeoMetaBox = () =>
-  registerMetaBoxHook("sidebar", (context): RegisteredMetaBox | null => {
-    const postMetaMap = context.customFields?.postMetaMap ?? {};
-    const videoId = postMetaMap.vimeoVideoId;
-    const hasVideoId = typeof videoId === "string" && videoId.trim().length > 0;
-    if (!hasVideoId) {
-      return null;
-    }
+  registerMetaBoxHook<AdminMetaBoxContext>(
+    "sidebar",
+    (context): RegisteredMetaBox<AdminMetaBoxContext> | null => {
+      const postMetaMap = context.customFields?.postMetaMap ?? {};
+      const videoId = postMetaMap.vimeoVideoId;
+      const hasVideoId =
+        typeof videoId === "string" && videoId.trim().length > 0;
+      if (!hasVideoId) {
+        return null;
+      }
 
-    return {
-      id: "vimeo-transcript",
-      title: "Vimeo Transcript",
-      description:
-        "Fetch subtitle tracks from Vimeo to power quiz generation and accessibility tooling.",
-      location: "sidebar",
-      priority: 45,
-      render: () => <VimeoTranscriptMetaBox context={context} />,
-    };
-  });
+      return {
+        id: "vimeo-transcript",
+        title: "Vimeo Transcript",
+        description:
+          "Fetch subtitle tracks from Vimeo to power quiz generation and accessibility tooling.",
+        location: "sidebar",
+        priority: 45,
+        render: () => <VimeoTranscriptMetaBox context={context} />,
+      };
+    },
+  );
 
 registerVimeoMetaBox();

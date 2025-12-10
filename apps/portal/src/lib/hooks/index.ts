@@ -1,7 +1,7 @@
 // WordPress-style hook system - Main exports
 import "~/lib/plugins/installHooks";
 
-// Core hook functions
+// Core hook functions proxied from the shared runtime
 export {
   addAction,
   addFilter,
@@ -13,9 +13,9 @@ export {
   hasFilter,
   getRegisteredActions,
   getRegisteredFilters,
-} from "./core";
+} from "@acme/admin-runtime";
 
-// React integration
+// React integration (portal-specific utilities)
 export {
   useApplyFilters,
   useDoAction,
@@ -35,4 +35,4 @@ export type {
   PluginTab,
   PluginSidebar,
   PluginSlotContent,
-} from "./types";
+} from "@acme/admin-runtime";

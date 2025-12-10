@@ -3,6 +3,8 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import type { SerializedEditorState } from "lexical";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 
+import type { AdminMetaBoxContext as RuntimeAdminMetaBoxContext } from "@acme/admin-runtime";
+
 import type { MediaItem } from "~/components/media/MediaLibrary";
 
 export interface AttachmentEntry {
@@ -102,13 +104,6 @@ export interface SidebarMetadataMetaBoxData {
   isNewRecord: boolean;
 }
 
-export interface MetaBoxVisibilityConfig {
-  showGeneralPanel?: boolean;
-  showCustomFieldsPanel?: boolean;
-  showSidebarActions?: boolean;
-  showSidebarMetadata?: boolean;
-}
-
 export interface NormalizedMetaBox {
   id: string;
   title: string;
@@ -128,18 +123,15 @@ export interface ResolvedMetaBox {
   render: () => ReactNode;
 }
 
-export interface AdminMetaBoxContext {
-  post: Doc<"posts"> | null | undefined;
-  postType: Doc<"postTypes"> | null;
-  slug: string;
-  isNewRecord: boolean;
-  organizationId?: Id<"organizations">;
-  attachmentsContext?: AttachmentsContext;
-  general?: GeneralMetaBoxData;
-  customFields?: CustomFieldsMetaBoxData;
-  sidebar?: {
-    actions?: SidebarActionsMetaBoxData;
-    metadata?: SidebarMetadataMetaBoxData;
-  };
-  visibility?: MetaBoxVisibilityConfig;
-}
+export type AdminMetaBoxContext = RuntimeAdminMetaBoxContext<
+  Doc<"posts">,
+  Doc<"postTypes">,
+  Id<"organizations">,
+  AttachmentsContext,
+  GeneralMetaBoxData,
+  CustomFieldsMetaBoxData,
+  SidebarActionsMetaBoxData,
+  SidebarMetadataMetaBoxData
+>;
+
+export type { MetaBoxVisibilityConfig } from "@acme/admin-runtime";

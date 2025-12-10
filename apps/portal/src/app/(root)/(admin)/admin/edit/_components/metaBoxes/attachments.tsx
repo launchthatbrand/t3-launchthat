@@ -12,10 +12,10 @@ import {
   DialogTitle,
 } from "@acme/ui/dialog";
 
+import type { RegisteredMetaBox } from "@acme/admin-runtime";
+import { registerMetaBoxHook } from "@acme/admin-runtime";
 import type { AdminMetaBoxContext, AttachmentEntry } from "../types";
-import type { RegisteredMetaBox } from "./registry";
 import { MediaLibrary } from "~/components/media/MediaLibrary";
-import { registerMetaBoxHook } from "./registry";
 
 const AttachmentsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
   const attachmentsContext = context.attachmentsContext;
@@ -129,7 +129,9 @@ const AttachmentsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
 };
 
 const registerAttachmentsMetaBox = () =>
-  registerMetaBoxHook("main", (context): RegisteredMetaBox | null => {
+  registerMetaBoxHook<AdminMetaBoxContext>(
+    "main",
+    (context): RegisteredMetaBox<AdminMetaBoxContext> | null => {
     const attachmentsContext = context.attachmentsContext;
     if (!attachmentsContext?.supportsAttachments) {
       return null;
@@ -143,6 +145,7 @@ const registerAttachmentsMetaBox = () =>
       priority: 10,
       render: () => <AttachmentsMetaBox context={context} />,
     };
-  });
+    },
+  );
 
 registerAttachmentsMetaBox();

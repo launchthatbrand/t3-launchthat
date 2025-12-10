@@ -1,7 +1,6 @@
 {
   "name": "launchthat-plugin-commerce",
   "version": "0.1.0",
-  
   "private": true,
   "type": "module",
   "exports": {
@@ -12,6 +11,14 @@
     "./components": {
       "types": "./dist/components/index.d.ts",
       "default": "./src/components/index.ts"
+    },
+    "./admin/adapters": {
+      "types": "./dist/admin/adapters.d.ts",
+      "default": "./src/admin/adapters.ts"
+    },
+    "./admin/metaBoxes": {
+      "types": "./dist/admin/metaBoxes/index.d.ts",
+      "default": "./src/admin/metaBoxes/index.ts"
     }
   },
   "license": "MIT",
@@ -24,6 +31,7 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
+    "@acme/admin-runtime": "workspace:*",
     "@acme/ui": "workspace:*",
     "@hookform/resolvers": "catalog:",
     "convex": "^1.23.0",

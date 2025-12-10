@@ -27,6 +27,7 @@
     "btools": "npx @agentdeskai/browser-tools-server@latest"
   },
   "dependencies": {
+    "@acme/admin-runtime": "workspace:*",
     "@acme/auth": "workspace:*",
     "@acme/db": "workspace:*",
     "@acme/dnd": "workspace:*",

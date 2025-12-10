@@ -2,9 +2,9 @@ import { Copy, Loader2, PenSquare } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
 
+import type { RegisteredMetaBox } from "@acme/admin-runtime";
+import { registerMetaBoxHook } from "@acme/admin-runtime";
 import type { AdminMetaBoxContext } from "../types";
-import type { RegisteredMetaBox } from "./registry";
-import { registerMetaBoxHook } from "./registry";
 
 const ActionsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
   const data = context.sidebar?.actions!;
@@ -70,22 +70,25 @@ const ActionsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
 };
 
 const registerActionsMetaBox = () =>
-  registerMetaBoxHook("sidebar", (context): RegisteredMetaBox | null => {
-    if (
-      context.visibility?.showSidebarActions === false ||
-      !context.sidebar?.actions
-    ) {
-      return null;
-    }
+  registerMetaBoxHook<AdminMetaBoxContext>(
+    "sidebar",
+    (context): RegisteredMetaBox<AdminMetaBoxContext> | null => {
+      if (
+        context.visibility?.showSidebarActions === false ||
+        !context.sidebar?.actions
+      ) {
+        return null;
+      }
 
-    return {
-      id: "core-actions",
-      title: "Actions",
-      description: "Save, duplicate, or preview this entry.",
-      location: "sidebar",
-      priority: 0,
-      render: () => <ActionsMetaBox context={context} />,
-    };
-  });
+      return {
+        id: "core-actions",
+        title: "Actions",
+        description: "Save, duplicate, or preview this entry.",
+        location: "sidebar",
+        priority: 0,
+        render: () => <ActionsMetaBox context={context} />,
+      };
+    },
+  );
 
 registerActionsMetaBox();

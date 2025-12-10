@@ -1,8 +1,8 @@
 import { formatDistanceToNow } from "date-fns";
 
+import type { RegisteredMetaBox } from "@acme/admin-runtime";
+import { registerMetaBoxHook } from "@acme/admin-runtime";
 import type { AdminMetaBoxContext } from "../types";
-import type { RegisteredMetaBox } from "./registry";
-import { registerMetaBoxHook } from "./registry";
 
 const MetadataMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
   const data = context.sidebar?.metadata!;
@@ -37,22 +37,25 @@ const MetadataMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
 };
 
 const registerMetadataMetaBox = () =>
-  registerMetaBoxHook("sidebar", (context): RegisteredMetaBox | null => {
-    if (
-      context.visibility?.showSidebarMetadata === false ||
-      !context.sidebar?.metadata
-    ) {
-      return null;
-    }
+  registerMetaBoxHook<AdminMetaBoxContext>(
+    "sidebar",
+    (context): RegisteredMetaBox<AdminMetaBoxContext> | null => {
+      if (
+        context.visibility?.showSidebarMetadata === false ||
+        !context.sidebar?.metadata
+      ) {
+        return null;
+      }
 
-    return {
-      id: "core-metadata",
-      title: "Metadata",
-      description: "High-level attributes for this entry.",
-      location: "sidebar",
-      priority: 10,
-      render: () => <MetadataMetaBox context={context} />,
-    };
-  });
+      return {
+        id: "core-metadata",
+        title: "Metadata",
+        description: "High-level attributes for this entry.",
+        location: "sidebar",
+        priority: 10,
+        render: () => <MetadataMetaBox context={context} />,
+      };
+    },
+  );
 
 registerMetadataMetaBox();

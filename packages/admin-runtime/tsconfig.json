@@ -1,0 +1,10 @@
+{
+  "extends": "../../tooling/typescript/compiled-package.json",
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "baseUrl": "."
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

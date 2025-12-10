@@ -1,4 +1,8 @@
 import { pluginDefinitions } from "./definitions";
-import { registerPluginDefinitionHooks } from "./registerHooks";
+import {
+  bootstrapPluginDefinitions,
+  registerPluginDefinitionHooks,
+} from "./registerHooks";
 
+bootstrapPluginDefinitions(pluginDefinitions);
 registerPluginDefinitionHooks(pluginDefinitions);

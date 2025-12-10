@@ -6,8 +6,8 @@ import type {
   PluginSidebar,
   PluginSlotContent,
   PluginTab,
-} from "./types";
-import { applyFilters, doAction } from "./core";
+} from "@acme/admin-runtime";
+import { applyFilters, doAction } from "@acme/admin-runtime";
 
 /**
  * React hook to apply filters with memoization

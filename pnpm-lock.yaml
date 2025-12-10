@@ -747,6 +747,9 @@ importers:
 
   apps/portal:
     dependencies:
+      '@acme/admin-runtime':
+        specifier: workspace:*
+        version: link:../../packages/admin-runtime
       '@acme/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -1407,6 +1410,34 @@ importers:
       tailwindcss:
         specifier: 'catalog:'
         version: 4.1.17
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
+  packages/admin-runtime:
+    dependencies:
+      react:
+        specifier: catalog:react19
+        version: 19.0.0
+    devDependencies:
+      '@acme/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint
+      '@acme/prettier-config':
+        specifier: workspace:*
+        version: link:../../tooling/prettier
+      '@acme/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      '@types/react':
+        specifier: catalog:react19
+        version: 19.0.12
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.1(jiti@2.6.1)
+      prettier:
+        specifier: 'catalog:'
+        version: 3.6.2
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -2322,6 +2353,9 @@ importers:
 
   packages/launchthat-plugin-commerce:
     dependencies:
+      '@acme/admin-runtime':
+        specifier: workspace:*
+        version: link:../admin-runtime
       '@acme/ui':
         specifier: workspace:*
         version: link:../ui

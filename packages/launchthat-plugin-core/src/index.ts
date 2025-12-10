@@ -338,6 +338,10 @@ export interface PluginHookConfig {
   filters?: PluginHookRegistration[];
 }
 
+export interface PluginAdminConfig {
+  bootstrap?: () => void;
+}
+
 export interface PluginDefinition {
   id: string;
   name: string;
@@ -351,6 +355,7 @@ export interface PluginDefinition {
   adminMenus?: PluginAdminMenuEntry[];
   providers?: Record<string, ComponentType<{ children: ReactNode }>>;
   hooks?: PluginHookConfig;
+  admin?: PluginAdminConfig;
 }
 
 export interface PluginContext {

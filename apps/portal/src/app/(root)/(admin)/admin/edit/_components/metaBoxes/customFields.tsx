@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { Loader2, Sparkles } from "lucide-react";
 
+import type { RegisteredMetaBox } from "@acme/admin-runtime";
+import { registerMetaBoxHook } from "@acme/admin-runtime";
 import { Button } from "@acme/ui/button";
 import { Label } from "@acme/ui/label";
 import { Textarea } from "@acme/ui/textarea";
 
 import type { AdminMetaBoxContext } from "../types";
-import type { RegisteredMetaBox } from "./registry";
-import { registerMetaBoxHook } from "./registry";
 
 const CustomFieldsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
   const data = context.customFields!;
@@ -80,23 +80,26 @@ const CustomFieldsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
 };
 
 const registerCustomFieldsMetaBox = () =>
-  registerMetaBoxHook("main", (context): RegisteredMetaBox | null => {
-    if (
-      context.visibility?.showCustomFieldsPanel === false ||
-      !context.customFields
-    ) {
-      return null;
-    }
+  registerMetaBoxHook<AdminMetaBoxContext>(
+    "main",
+    (context): RegisteredMetaBox<AdminMetaBoxContext> | null => {
+      if (
+        context.visibility?.showCustomFieldsPanel === false ||
+        !context.customFields
+      ) {
+        return null;
+      }
 
-    return {
-      id: "core-custom-fields",
-      title: "Custom Fields",
-      description:
-        "Fields defined in Post Type settings are stored as post_meta records.",
-      location: "main",
-      priority: 90,
-      render: () => <CustomFieldsMetaBox context={context} />,
-    };
-  });
+      return {
+        id: "core-custom-fields",
+        title: "Custom Fields",
+        description:
+          "Fields defined in Post Type settings are stored as post_meta records.",
+        location: "main",
+        priority: 90,
+        render: () => <CustomFieldsMetaBox context={context} />,
+      };
+    },
+  );
 
 registerCustomFieldsMetaBox();

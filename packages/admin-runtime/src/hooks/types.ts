@@ -1,4 +1,4 @@
-// WordPress-style hook system types
+import type { ComponentType } from "react";
 
 export type HookCallback = (...args: unknown[]) => unknown;
 
@@ -13,7 +13,8 @@ export interface HookRegistry {
   filters: Map<string, HookRegistration[]>;
 }
 
-// Context passed to all hook callbacks
+// Context passed to hook callbacks. The structure is intentionally loose so the
+// host app can augment it with its own fields.
 export interface HookContext {
   postType?: string;
   postId?: string;
@@ -23,29 +24,26 @@ export interface HookContext {
   [key: string]: unknown;
 }
 
-// Plugin tab definition (returned by action callbacks)
 export interface PluginTab {
   id: string;
   label: string;
-  component: React.ComponentType<HookContext>;
+  component: ComponentType<HookContext>;
   order?: number;
   condition?: (context: HookContext) => boolean;
-  icon?: React.ComponentType<{ className?: string }>;
+  icon?: ComponentType<{ className?: string }>;
 }
 
-// Plugin sidebar definition (returned by action callbacks)
 export interface PluginSidebar {
-  id: string;
-  component: React.ComponentType<HookContext>;
+  position: "top" | "middle" | "bottom";
+  component: ComponentType<HookContext>;
   order?: number;
   condition?: (context: HookContext) => boolean;
-  position?: "top" | "middle" | "bottom";
 }
 
-// Plugin slot content definition (returned by action callbacks)
 export interface PluginSlotContent {
   id: string;
-  component: React.ComponentType<HookContext>;
+  component: ComponentType<HookContext>;
   order?: number;
   condition?: (context: HookContext) => boolean;
 }
+

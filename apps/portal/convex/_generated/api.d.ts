@@ -13,6 +13,7 @@ import type * as core_accessControl_helpers from "../core/accessControl/helpers.
 import type * as core_accessControl_mutations from "../core/accessControl/mutations.js";
 import type * as core_accessControl_queries from "../core/accessControl/queries.js";
 import type * as core_accessControl_types from "../core/accessControl/types.js";
+import type * as core_auditLog_queries from "../core/auditLog/queries.js";
 import type * as core_categories_mutations from "../core/categories/mutations.js";
 import type * as core_categories_queries from "../core/categories/queries.js";
 import type * as core_crm_contacts_mutations from "../core/crm/contacts/mutations.js";
@@ -67,6 +68,8 @@ import type * as ecommerce_checkout_mutations from "../ecommerce/checkout/mutati
 import type * as ecommerce_checkout_queries from "../ecommerce/checkout/queries.js";
 import type * as ecommerce_checkouts_mutations from "../ecommerce/checkouts/mutations.js";
 import type * as ecommerce_checkouts_queries from "../ecommerce/checkouts/queries.js";
+import type * as ecommerce_coupons_mutations from "../ecommerce/coupons/mutations.js";
+import type * as ecommerce_coupons_queries from "../ecommerce/coupons/queries.js";
 import type * as ecommerce_funnels_mutations from "../ecommerce/funnels/mutations.js";
 import type * as ecommerce_funnels_queries from "../ecommerce/funnels/queries.js";
 import type * as ecommerce_lib_index from "../ecommerce/lib/index.js";
@@ -204,6 +207,7 @@ declare const fullApi: ApiFromModules<{
   "core/accessControl/mutations": typeof core_accessControl_mutations;
   "core/accessControl/queries": typeof core_accessControl_queries;
   "core/accessControl/types": typeof core_accessControl_types;
+  "core/auditLog/queries": typeof core_auditLog_queries;
   "core/categories/mutations": typeof core_categories_mutations;
   "core/categories/queries": typeof core_categories_queries;
   "core/crm/contacts/mutations": typeof core_crm_contacts_mutations;
@@ -258,6 +262,8 @@ declare const fullApi: ApiFromModules<{
   "ecommerce/checkout/queries": typeof ecommerce_checkout_queries;
   "ecommerce/checkouts/mutations": typeof ecommerce_checkouts_mutations;
   "ecommerce/checkouts/queries": typeof ecommerce_checkouts_queries;
+  "ecommerce/coupons/mutations": typeof ecommerce_coupons_mutations;
+  "ecommerce/coupons/queries": typeof ecommerce_coupons_queries;
   "ecommerce/funnels/mutations": typeof ecommerce_funnels_mutations;
   "ecommerce/funnels/queries": typeof ecommerce_funnels_queries;
   "ecommerce/lib/index": typeof ecommerce_lib_index;

@@ -1,5 +1,4 @@
-import type { FunctionReference } from "convex/server";
-import { anyApi } from "convex/server";
+import { type FunctionReference, anyApi } from "convex/server";
 import { type GenericId as Id } from "convex/values";
 
 export const api: PublicApiType = anyApi as unknown as PublicApiType;
@@ -68,7 +67,7 @@ export type PublicApiType = {
             totalAmount: number;
             userId?: Id<"users">;
           },
-          { recordId: Id<"orders">; orderNumber: string }
+          { orderNumber: string; recordId: Id<"orders"> }
         >;
         deleteOrder: FunctionReference<
           "mutation",
@@ -506,6 +505,25 @@ export type PublicApiType = {
             updatedBy?: Id<"users">;
           } | null
         >;
+        listStoreBalances: FunctionReference<
+          "query",
+          "public",
+          Record<string, never>,
+          Array<{
+            _creationTime: number;
+            _id: Id<"storeBalances">;
+            availableBalance: number;
+            currency: string;
+            lastUpdated: number;
+            paymentProcessor: string;
+            pendingBalance: number;
+            processorAccountId?: string;
+            storeId?: string;
+            storeName?: string;
+            totalBalance: number;
+            updatedBy?: Id<"users">;
+          }>
+        >;
         getTransfers: FunctionReference<
           "query",
           "public",
@@ -642,13 +660,28 @@ export type PublicApiType = {
         updateStoreBalance: FunctionReference<
           "mutation",
           "public",
-          { amount: number; operation: "add" | "subtract" },
+          {
+            availableBalance: number;
+            currency: string;
+            paymentProcessor: string;
+            pendingBalance: number;
+            processorAccountId?: string;
+            storeBalanceId?: Id<"storeBalances">;
+            storeId?: string;
+            storeName?: string;
+          },
           any
         >;
         deleteBankAccount: FunctionReference<
           "mutation",
           "public",
           { bankAccountId: Id<"bankAccounts"> },
+          any
+        >;
+        deleteStoreBalance: FunctionReference<
+          "mutation",
+          "public",
+          { storeBalanceId: Id<"storeBalances"> },
           any
         >;
       };
@@ -1120,6 +1153,23 @@ export type PublicApiType = {
           },
           any
         >;
+        updateChargebackDetails: FunctionReference<
+          "mutation",
+          "public",
+          {
+            amount?: number;
+            chargebackFee?: number;
+            chargebackId: Id<"chargebacks">;
+            currency?: string;
+            disputeDeadline?: number;
+            internalNotes?: string;
+            processorName?: string;
+            reasonCode?: string;
+            reasonDescription?: string;
+            refundAmount?: number;
+          },
+          any
+        >;
         deleteChargeback: FunctionReference<
           "mutation",
           "public",
@@ -1282,13 +1332,22 @@ export type PublicApiType = {
         createTransfer: FunctionReference<
           "mutation",
           "public",
-          { amount: number; bankAccountId: Id<"bankAccounts"> },
+          {
+            amount: number;
+            bankAccountId: Id<"bankAccounts">;
+            currency: string;
+            description?: string;
+            expectedArrival?: number;
+            fees?: number;
+            notes?: string;
+          },
           any
         >;
         updateTransferStatus: FunctionReference<
           "mutation",
           "public",
           {
+            failureReason?: string;
             status:
               | "pending"
               | "completed"
@@ -1300,6 +1359,24 @@ export type PublicApiType = {
           },
           any
         >;
+        updateTransferDetails: FunctionReference<
+          "mutation",
+          "public",
+          {
+            description?: string;
+            expectedArrival?: number;
+            fees?: number;
+            notes?: string;
+            transferId: Id<"transfers">;
+          },
+          any
+        >;
+        deleteTransfer: FunctionReference<
+          "mutation",
+          "public",
+          { transferId: Id<"transfers"> },
+          any
+        >;
       };
       queries: {
         getTransfers: FunctionReference<
@@ -1309,6 +1386,12 @@ export type PublicApiType = {
           any
         >;
         getTransfer: FunctionReference<
+          "query",
+          "public",
+          { transferId: Id<"transfers"> },
+          any
+        >;
+        getTransferDetails: FunctionReference<
           "query",
           "public",
           { transferId: Id<"transfers"> },
@@ -1662,6 +1745,160 @@ export type PublicApiType = {
             sessionId: Id<"funnelSessions">;
           },
           any
+        >;
+      };
+    };
+    coupons: {
+      mutations: {
+        createCoupon: FunctionReference<
+          "mutation",
+          "public",
+          {
+            applicableCategoryIds?: Array<Id<"productCategories">>;
+            applicableProductIds?: Array<Id<"products">>;
+            code: string;
+            description?: string;
+            discountType: "percentage" | "fixed_amount";
+            discountValue: number;
+            endDate?: number;
+            excludeCategoryIds?: Array<Id<"productCategories">>;
+            excludeProductIds?: Array<Id<"products">>;
+            isAutomatic?: boolean;
+            isEnabled?: boolean;
+            isStackable?: boolean;
+            maximumSpend?: number;
+            minimumSpend?: number;
+            startDate?: number;
+            usageLimit?: number;
+            usageLimitPerUser?: number;
+          },
+          any
+        >;
+        updateCoupon: FunctionReference<
+          "mutation",
+          "public",
+          {
+            applicableCategoryIds?: Array<Id<"productCategories">>;
+            applicableProductIds?: Array<Id<"products">>;
+            code?: string;
+            couponId: Id<"coupons">;
+            description?: string;
+            discountType: "percentage" | "fixed_amount";
+            discountValue: number;
+            endDate?: number;
+            excludeCategoryIds?: Array<Id<"productCategories">>;
+            excludeProductIds?: Array<Id<"products">>;
+            isAutomatic?: boolean;
+            isEnabled?: boolean;
+            isStackable?: boolean;
+            maximumSpend?: number;
+            minimumSpend?: number;
+            startDate?: number;
+            usageLimit?: number;
+            usageLimitPerUser?: number;
+          },
+          any
+        >;
+        incrementCouponUsage: FunctionReference<
+          "mutation",
+          "public",
+          { couponId: Id<"coupons"> },
+          any
+        >;
+        deleteCoupon: FunctionReference<
+          "mutation",
+          "public",
+          { couponId: Id<"coupons"> },
+          any
+        >;
+      };
+      queries: {
+        listCoupons: FunctionReference<
+          "query",
+          "public",
+          { includeDisabled?: boolean; search?: string },
+          Array<{
+            _creationTime: number;
+            _id: Id<"coupons">;
+            applicableCategoryIds?: Array<Id<"productCategories">>;
+            applicableProductIds?: Array<Id<"products">>;
+            code: string;
+            createdAt: number;
+            description?: string;
+            discountType: "percentage" | "fixed_amount";
+            discountValue: number;
+            endDate?: number;
+            excludeCategoryIds?: Array<Id<"productCategories">>;
+            excludeProductIds?: Array<Id<"products">>;
+            isAutomatic?: boolean;
+            isEnabled: boolean;
+            isStackable?: boolean;
+            maximumSpend?: number;
+            minimumSpend?: number;
+            startDate?: number;
+            timesUsed: number;
+            updatedAt: number;
+            usageLimit?: number;
+            usageLimitPerUser?: number;
+          }>
+        >;
+        getCouponById: FunctionReference<
+          "query",
+          "public",
+          { id: Id<"coupons"> },
+          {
+            _creationTime: number;
+            _id: Id<"coupons">;
+            applicableCategoryIds?: Array<Id<"productCategories">>;
+            applicableProductIds?: Array<Id<"products">>;
+            code: string;
+            createdAt: number;
+            description?: string;
+            discountType: "percentage" | "fixed_amount";
+            discountValue: number;
+            endDate?: number;
+            excludeCategoryIds?: Array<Id<"productCategories">>;
+            excludeProductIds?: Array<Id<"products">>;
+            isAutomatic?: boolean;
+            isEnabled: boolean;
+            isStackable?: boolean;
+            maximumSpend?: number;
+            minimumSpend?: number;
+            startDate?: number;
+            timesUsed: number;
+            updatedAt: number;
+            usageLimit?: number;
+            usageLimitPerUser?: number;
+          } | null
+        >;
+        getCouponByCode: FunctionReference<
+          "query",
+          "public",
+          { code: string },
+          {
+            _creationTime: number;
+            _id: Id<"coupons">;
+            applicableCategoryIds?: Array<Id<"productCategories">>;
+            applicableProductIds?: Array<Id<"products">>;
+            code: string;
+            createdAt: number;
+            description?: string;
+            discountType: "percentage" | "fixed_amount";
+            discountValue: number;
+            endDate?: number;
+            excludeCategoryIds?: Array<Id<"productCategories">>;
+            excludeProductIds?: Array<Id<"products">>;
+            isAutomatic?: boolean;
+            isEnabled: boolean;
+            isStackable?: boolean;
+            maximumSpend?: number;
+            minimumSpend?: number;
+            startDate?: number;
+            timesUsed: number;
+            updatedAt: number;
+            usageLimit?: number;
+            usageLimitPerUser?: number;
+          } | null
         >;
       };
     };
@@ -4429,6 +4666,36 @@ export type PublicApiType = {
             any
           >;
         };
+      };
+    };
+    auditLog: {
+      queries: {
+        getAuditLogStats: FunctionReference<
+          "query",
+          "public",
+          { endDate?: number; startDate?: number },
+          {
+            entriesByCategory: {
+              authentication: number;
+              authorization: number;
+              data_access: number;
+              data_modification: number;
+              ecommerce: number;
+              navigation: number;
+              security: number;
+              system: number;
+            };
+            entriesBySeverity: {
+              critical: number;
+              error: number;
+              info: number;
+              warning: number;
+            };
+            successRate: number;
+            totalEntries: number;
+            uniqueUsers: number;
+          }
+        >;
       };
     };
   };
