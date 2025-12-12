@@ -12,7 +12,14 @@ import "./metaBoxes/vimeo";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { SerializedEditorState } from "lexical";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import {
@@ -69,6 +76,7 @@ import type {
   PluginSingleViewSlotLocation,
   PluginSingleViewTabDefinition,
 } from "~/lib/plugins/types";
+import type { CommerceComponentPostMeta } from "~/lib/postTypes/customAdapters";
 import {
   AdminLayout,
   AdminLayoutContent,
@@ -77,6 +85,7 @@ import {
   AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
 import { extractVimeoVideoId } from "~/components/editor/utils/oembed";
+import { env } from "~/env";
 import {
   createLexicalStateFromPlainText,
   parseLexicalSerializedState,
@@ -93,8 +102,8 @@ import {
 } from "~/lib/plugins/helpers";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import {
-  COMMERCE_CHARGEBACK_POST_TYPE,
-  COMMERCE_ORDER_POST_TYPE,
+  adaptCommercePostMetaToPortal,
+  decodeCommerceSyntheticId,
 } from "~/lib/postTypes/customAdapters";
 import { getCanonicalPostPath } from "~/lib/postTypes/routing";
 import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
@@ -111,7 +120,6 @@ import { getFrontendBaseUrl } from "./permalink";
 import { PlaceholderState } from "./PlaceholderState";
 
 const stripHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
-
 const resolveSupportFlag = (
   supports: Doc<"postTypes">["supports"] | undefined,
   key: string,
@@ -297,6 +305,15 @@ export function AdminSinglePostView({
   pluginSingleView,
   onBack,
 }: AdminSinglePostViewProps) {
+  const isDev = env.NODE_ENV !== "production";
+  const log = useCallback(
+    (...args: unknown[]) => {
+      if (isDev) {
+        console.log("[AdminSinglePostView]", ...args);
+      }
+    },
+    [isDev],
+  );
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -313,21 +330,24 @@ export function AdminSinglePostView({
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const normalizedSlug = slug.toLowerCase();
-  const isChargebackPostType = normalizedSlug === COMMERCE_CHARGEBACK_POST_TYPE;
-  const isOrderPostType = normalizedSlug === COMMERCE_ORDER_POST_TYPE;
-  const storageKind =
-    postType?.storageKind ??
-    (isChargebackPostType || isOrderPostType ? ("custom" as const) : "posts");
+  type StorageKind = "posts" | "custom" | "component";
+  const storageKind: StorageKind =
+    (postType?.storageKind as StorageKind | undefined) ??
+    (post?._id?.startsWith("custom:") ? "component" : "posts");
+  const isCustomStorage = storageKind === "custom";
+  const isComponentStorage = storageKind === "component";
+  const isSyntheticPostId = Boolean(post?._id?.startsWith("custom:"));
   const supportsPostsTable =
-    storageKind === "posts" &&
-    (!!postType || isBuiltInPostTypeSlug(slug)) &&
-    !isChargebackPostType &&
-    !isOrderPostType;
-  const canSaveRecord = supportsPostsTable || storageKind === "custom";
+    storageKind === "posts" && (!!postType || isBuiltInPostTypeSlug(slug));
+  const canSaveRecord =
+    supportsPostsTable || isCustomStorage || isComponentStorage;
   const supportsAttachments =
     supportsPostsTable &&
     (resolveSupportFlag(postType?.supports, "attachments") ||
       resolveSupportFlag(postType?.supports, "featuredImage"));
+  const commerceOrganizationId = organizationId
+    ? (organizationId as unknown as string)
+    : undefined;
   const pluginTabs: PluginSingleViewTabDefinition[] =
     pluginSingleView?.config.tabs ?? [];
   const pluginSlotRegistrations = useMemo<PluginSingleViewSlotRegistration[]>(
@@ -393,16 +413,53 @@ export function AdminSinglePostView({
 
   const { data: postTypeFields = [], isLoading: postTypeFieldsLoading } =
     usePostTypeFields(slug, true);
-  const postMetaQueryArgs = post?._id
-    ? organizationId
-      ? ({ postId: post._id, organizationId } as const)
-      : ({ postId: post._id } as const)
-    : "skip";
-  const postMetaResult = useQuery(
+  const standardMetaArgs =
+    post?._id && supportsPostsTable && !isSyntheticPostId
+      ? organizationId
+        ? ({ postId: post._id, organizationId } as const)
+        : ({ postId: post._id } as const)
+      : "skip";
+  const standardMetaResult = useQuery(
     api.core.posts.queries.getPostMeta,
-    supportsPostsTable ? postMetaQueryArgs : "skip",
+    standardMetaArgs,
   ) as Doc<"postsMeta">[] | undefined;
-  const postMeta = supportsPostsTable ? postMetaResult : undefined;
+  const commerceMetaArgs =
+    post?._id && isComponentStorage
+      ? (() => {
+          const decoded = decodeCommerceSyntheticId(post._id);
+          return decoded
+            ? ({
+                postId: decoded.componentId,
+                organizationId: commerceOrganizationId,
+              } as const)
+            : ("skip" as const);
+        })()
+      : "skip";
+  const commerceMetaResult = useQuery(
+    api.commercePosts.getPostMeta,
+    commerceMetaArgs,
+  ) as CommerceComponentPostMeta[] | null | undefined;
+  const postMeta = useMemo(() => {
+    if (isComponentStorage) {
+      if (commerceMetaResult === undefined) {
+        return undefined;
+      }
+      if (commerceMetaResult === null) {
+        return [] as Doc<"postsMeta">[];
+      }
+      const slugSource = post?.postTypeSlug ?? normalizedSlug;
+      return commerceMetaResult.map((entry) =>
+        adaptCommercePostMetaToPortal(entry, slugSource),
+      );
+    }
+    return standardMetaResult ?? undefined;
+  }, [
+    commerceMetaResult,
+    isComponentStorage,
+    normalizedSlug,
+    post?.postTypeSlug,
+    standardMetaResult,
+  ]);
 
   const postMetaMap = useMemo<Record<string, CustomFieldValue>>(() => {
     if (!postMeta) {
@@ -418,6 +475,33 @@ export function AdminSinglePostView({
   const [customFieldValues, setCustomFieldValues] = useState<
     Record<string, CustomFieldValue>
   >({});
+  const getMetaValue = useCallback(
+    (key: string) => customFieldValues[key],
+    [customFieldValues],
+  );
+  const setMetaValue = useCallback((key: string, value: unknown) => {
+    setCustomFieldValues((prev) => {
+      if (value === undefined) {
+        if (!(key in prev)) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      const normalizedValue: CustomFieldValue =
+        typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean" ||
+        value === null
+          ? (value as CustomFieldValue)
+          : (JSON.stringify(value) as CustomFieldValue);
+      if (prev[key] === normalizedValue) {
+        return prev;
+      }
+      return { ...prev, [key]: normalizedValue };
+    });
+  }, []);
   const {
     context: attachmentsContext,
     serializedValue: attachmentsSerializedValue,
@@ -521,15 +605,73 @@ export function AdminSinglePostView({
   }, [post, postType, slugValue]);
 
   const beforeSaveHandlers = useRef<Set<() => Promise<void> | void>>(new Set());
+  const metaPayloadCollectors = useRef<
+    Map<number, () => Record<string, unknown> | null | undefined>
+  >(new Map());
+  const metaPayloadCollectorId = useRef(0);
   const registerBeforeSave = useCallback(
     (handler: () => Promise<void> | void) => {
+      log("registerBeforeSave called");
       beforeSaveHandlers.current.add(handler);
       return () => {
+        log("registerBeforeSave cleanup");
         beforeSaveHandlers.current.delete(handler);
+      };
+    },
+    [log],
+  );
+  const registerMetaPayloadCollector = useCallback(
+    (collector: () => Record<string, unknown> | null | undefined) => {
+      const collectorId = metaPayloadCollectorId.current++;
+      metaPayloadCollectors.current.set(collectorId, collector);
+      return () => {
+        metaPayloadCollectors.current.delete(collectorId);
       };
     },
     [],
   );
+  const metaBoxAssetsRef = useRef<{
+    scripts: Map<number, ReactNode>;
+    styles: Map<number, ReactNode>;
+  }>({
+    scripts: new Map(),
+    styles: new Map(),
+  });
+  const metaBoxAssetId = useRef(0);
+  const [metaBoxAssetVersion, setMetaBoxAssetVersion] = useState(0);
+  const enqueueMetaBoxAsset = useCallback(
+    (type: "scripts" | "styles", node: ReactNode) => {
+      const id = metaBoxAssetId.current++;
+      metaBoxAssetsRef.current[type].set(id, node);
+      setMetaBoxAssetVersion((version) => version + 1);
+      return () => {
+        if (metaBoxAssetsRef.current[type].delete(id)) {
+          setMetaBoxAssetVersion((version) => version + 1);
+        }
+      };
+    },
+    [],
+  );
+  const enqueueScript = useCallback(
+    (node: ReactNode) => enqueueMetaBoxAsset("scripts", node),
+    [enqueueMetaBoxAsset],
+  );
+  const enqueueStyle = useCallback(
+    (node: ReactNode) => enqueueMetaBoxAsset("styles", node),
+    [enqueueMetaBoxAsset],
+  );
+  const metaBoxScripts = useMemo(() => {
+    if (metaBoxAssetVersion < 0) {
+      return [];
+    }
+    return Array.from(metaBoxAssetsRef.current.scripts.entries());
+  }, [metaBoxAssetVersion]);
+  const metaBoxStyles = useMemo(() => {
+    if (metaBoxAssetVersion < 0) {
+      return [];
+    }
+    return Array.from(metaBoxAssetsRef.current.styles.entries());
+  }, [metaBoxAssetVersion]);
 
   const generalMetaBoxData = useMemo<GeneralMetaBoxData>(
     () => ({
@@ -1265,6 +1407,23 @@ export function AdminSinglePostView({
       }
     }
 
+    metaPayloadCollectors.current.forEach((collector) => {
+      try {
+        const result = collector();
+        if (!result) {
+          return;
+        }
+        Object.entries(result).forEach(([key, value]) => {
+          payload[key] = value as CustomFieldValue;
+        });
+      } catch (error) {
+        console.error(
+          "[AdminSinglePostView] meta payload collector failed",
+          error,
+        );
+      }
+    });
+
     return payload;
   }, [
     attachmentsSerializedValue,
@@ -1359,7 +1518,8 @@ export function AdminSinglePostView({
     }
 
     const normalizedTitle = title.trim();
-    if (!normalizedTitle) {
+    const requiresTitle = storageKind === "posts";
+    if (requiresTitle && !normalizedTitle) {
       setSaveError("Title is required.");
       return;
     }
@@ -1367,7 +1527,13 @@ export function AdminSinglePostView({
     setIsSaving(true);
     try {
       for (const handler of beforeSaveHandlers.current) {
+        log("Running beforeSave handler", handler.name ?? "anonymous");
         await handler();
+      }
+      if (isCustomStorage || isComponentStorage) {
+        log("External storage detected, skipping core save", { storageKind });
+        setSaveError(null);
+        return;
       }
       const metaPayload = buildMetaPayload();
       const hasMetaEntries = Object.keys(metaPayload).length > 0;
@@ -1380,6 +1546,11 @@ export function AdminSinglePostView({
       const status = postStatus;
 
       if (isNewRecord) {
+        log("Creating core post", {
+          slug: normalizedSlug,
+          status,
+          metaPayload,
+        });
         const newId = await createPost({
           title: normalizedTitle,
           content,
@@ -1395,6 +1566,11 @@ export function AdminSinglePostView({
       }
 
       if (post?._id) {
+        log("Updating core post", {
+          postId: post._id,
+          status,
+          metaPayload,
+        });
         await updatePost({
           id: post._id,
           title: normalizedTitle,
@@ -1416,21 +1592,25 @@ export function AdminSinglePostView({
     }
   }, [
     buildMetaPayload,
+    canSaveRecord,
     content,
     createPost,
     excerpt,
+    isComponentStorage,
+    isCustomStorage,
     isNewRecord,
-    postStatus,
+    log,
     post,
+    postStatus,
     router,
     setIsSaving,
     setSaveError,
     setSlugValue,
     slug,
     slugValue,
+    storageKind,
     title,
     updatePost,
-    canSaveRecord,
   ]);
 
   const renderSaveButton = useCallback(
@@ -1570,20 +1750,41 @@ export function AdminSinglePostView({
         metadata: sidebarMetadataMetaBoxData,
       },
       registerBeforeSave,
+      registerMetaPayloadCollector,
+      getMetaValue,
+      setMetaValue,
+      enqueueScript,
+      enqueueStyle,
     }),
     [
       attachmentsContext,
       customFieldsMetaBoxData,
+      enqueueScript,
+      enqueueStyle,
       generalMetaBoxData,
+      getMetaValue,
       isNewRecord,
       organizationId,
       post,
       postType,
+      registerMetaPayloadCollector,
       sidebarActionsMetaBoxData,
       sidebarMetadataMetaBoxData,
+      setMetaValue,
       registerBeforeSave,
       slug,
     ],
+  );
+  const metaBoxAssetNodes = useMemo(
+    () => ({
+      styles: metaBoxStyles.map(([id, node]) => (
+        <Fragment key={`meta-style-${id}`}>{node}</Fragment>
+      )),
+      scripts: metaBoxScripts.map(([id, node]) => (
+        <Fragment key={`meta-script-${id}`}>{node}</Fragment>
+      )),
+    }),
+    [metaBoxScripts, metaBoxStyles],
   );
 
   const appendRegisteredMetaBoxes = useCallback(
@@ -1749,50 +1950,58 @@ export function AdminSinglePostView({
     }));
 
     return wrapWithPostTypeProviders(
-      <AdminLayout
-        title={`Edit ${headerLabel}`}
-        description={postType?.description ?? "Manage this post entry."}
-        activeTab={activeTab}
-        pathname={pathname}
-      >
-        <AdminLayoutContent withSidebar={showSidebar}>
-          <AdminLayoutMain>
-            <AdminLayoutHeader customTabs={layoutTabs} />
-            <div className="container py-6">
-              {activeTabDefinition?.usesDefaultEditor ? (
-                renderDefaultContent(defaultTabOptions)
-              ) : activeTabDefinition?.render ? (
-                activeTabDefinition.render(pluginTabProps)
-              ) : (
-                <PlaceholderState label={activeTabDefinition?.label ?? ""} />
-              )}
-            </div>
-          </AdminLayoutMain>
-          {showSidebar && (
-            <AdminLayoutSidebar className="border-l p-4">
-              {renderSidebar(sidebarTabOptions)}
-            </AdminLayoutSidebar>
-          )}
-        </AdminLayoutContent>
-      </AdminLayout>,
+      <>
+        <AdminLayout
+          title={`Edit ${headerLabel}`}
+          description={postType?.description ?? "Manage this post entry."}
+          activeTab={activeTab}
+          pathname={pathname}
+        >
+          <AdminLayoutContent withSidebar={showSidebar}>
+            <AdminLayoutMain>
+              <AdminLayoutHeader customTabs={layoutTabs} />
+              <div className="container py-6">
+                {activeTabDefinition?.usesDefaultEditor ? (
+                  renderDefaultContent(defaultTabOptions)
+                ) : activeTabDefinition?.render ? (
+                  activeTabDefinition.render(pluginTabProps)
+                ) : (
+                  <PlaceholderState label={activeTabDefinition?.label ?? ""} />
+                )}
+              </div>
+            </AdminLayoutMain>
+            {showSidebar && (
+              <AdminLayoutSidebar className="border-l p-4">
+                {renderSidebar(sidebarTabOptions)}
+              </AdminLayoutSidebar>
+            )}
+          </AdminLayoutContent>
+        </AdminLayout>
+        {metaBoxAssetNodes.styles}
+        {metaBoxAssetNodes.scripts}
+      </>,
     );
   }
 
   return wrapWithPostTypeProviders(
-    <AdminLayout
-      title={`Edit ${headerLabel}`}
-      description={postType?.description ?? "Manage this post entry."}
-      pathname={pathname}
-    >
-      <AdminLayoutContent withSidebar>
-        <AdminLayoutMain>
-          <AdminLayoutHeader />
-          <div className="container py-6">{renderDefaultContent()}</div>
-        </AdminLayoutMain>
-        <AdminLayoutSidebar className="border-l p-4">
-          {renderSidebar()}
-        </AdminLayoutSidebar>
-      </AdminLayoutContent>
-    </AdminLayout>,
+    <>
+      <AdminLayout
+        title={`Edit ${headerLabel}`}
+        description={postType?.description ?? "Manage this post entry."}
+        pathname={pathname}
+      >
+        <AdminLayoutContent withSidebar>
+          <AdminLayoutMain>
+            <AdminLayoutHeader />
+            <div className="container py-6">{renderDefaultContent()}</div>
+          </AdminLayoutMain>
+          <AdminLayoutSidebar className="border-l p-4">
+            {renderSidebar()}
+          </AdminLayoutSidebar>
+        </AdminLayoutContent>
+      </AdminLayout>
+      {metaBoxAssetNodes.styles}
+      {metaBoxAssetNodes.scripts}
+    </>,
   );
 }

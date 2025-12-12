@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as commercePosts from "../commercePosts.js";
 import type * as constants from "../constants.js";
 import type * as core_accessControl_helpers from "../core/accessControl/helpers.js";
 import type * as core_accessControl_mutations from "../core/accessControl/mutations.js";
@@ -202,6 +203,7 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  commercePosts: typeof commercePosts;
   constants: typeof constants;
   "core/accessControl/helpers": typeof core_accessControl_helpers;
   "core/accessControl/mutations": typeof core_accessControl_mutations;
@@ -3744,5 +3746,121 @@ export declare const components: {
       >;
     };
   };
-  launchthat_ecommerce: {};
+  launchthat_ecommerce: {
+    posts: {
+      mutations: {
+        bulkUpdatePostStatus: FunctionReference<
+          "mutation",
+          "internal",
+          { ids: Array<string>; status: "published" | "draft" | "archived" },
+          any
+        >;
+        createPost: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            category?: string;
+            content?: string;
+            excerpt?: string;
+            featuredImage?: string;
+            meta?: Record<string, string | number | boolean | null>;
+            organizationId?: string;
+            postTypeSlug: string;
+            slug: string;
+            status: "published" | "draft" | "archived";
+            tags?: Array<string>;
+            title: string;
+          },
+          any
+        >;
+        deletePost: FunctionReference<
+          "mutation",
+          "internal",
+          { id: string },
+          any
+        >;
+        updatePost: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            category?: string;
+            content?: string;
+            excerpt?: string;
+            featuredImage?: string;
+            id: string;
+            meta?: Record<string, string | number | boolean | null>;
+            slug?: string;
+            status?: "published" | "draft" | "archived";
+            tags?: Array<string>;
+            title?: string;
+          },
+          any
+        >;
+        updatePostStatus: FunctionReference<
+          "mutation",
+          "internal",
+          { id: string; status: "published" | "draft" | "archived" },
+          any
+        >;
+      };
+      queries: {
+        getAllPosts: FunctionReference<
+          "query",
+          "internal",
+          {
+            filters?: {
+              authorId?: string;
+              category?: string;
+              limit?: number;
+              postTypeSlug?: string;
+              status?: "published" | "draft" | "archived";
+            };
+            organizationId?: string;
+          },
+          any
+        >;
+        getPostById: FunctionReference<
+          "query",
+          "internal",
+          { id: string; organizationId?: string },
+          any
+        >;
+        getPostBySlug: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; slug: string },
+          any
+        >;
+        getPostCategories: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; postTypeSlug?: string },
+          any
+        >;
+        getPostMeta: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; postId: string },
+          any
+        >;
+        getPostTags: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; postTypeSlug?: string },
+          any
+        >;
+        searchPosts: FunctionReference<
+          "query",
+          "internal",
+          {
+            limit?: number;
+            organizationId?: string;
+            postTypeSlug?: string;
+            searchTerm: string;
+          },
+          any
+        >;
+      };
+    };
+  };
 };

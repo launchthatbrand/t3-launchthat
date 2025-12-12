@@ -111,7 +111,7 @@ interface DefaultPostTypeConfig {
   supports?: Doc<"postTypes">["supports"];
   rewrite?: Doc<"postTypes">["rewrite"];
   adminMenu: Doc<"postTypes">["adminMenu"];
-  storageKind?: "posts" | "custom";
+  storageKind?: "posts" | "custom" | "component";
   storageTables?: string[];
   metaBoxes?: Doc<"postTypes">["metaBoxes"];
 }
@@ -806,6 +806,58 @@ export const enableForOrganization = mutation({
           args.slug,
           resolvedOrgId,
         );
+      }
+    } else if (args.definition) {
+      const desiredStorageKind = args.definition.storageKind ?? "posts";
+      const desiredStorageTables =
+        args.definition.storageTables ??
+        (desiredStorageKind === "posts"
+          ? [...DEFAULT_POST_STORAGE_TABLES]
+          : []);
+      const desiredMetaBoxes = args.definition.metaBoxes;
+      const storageKindNeedsUpdate =
+        (postType.storageKind ?? "posts") !== desiredStorageKind;
+      const storageTablesNeedsUpdate = !storageTablesEqual(
+        postType.storageTables,
+        desiredStorageTables,
+      );
+      const metaBoxesNeedUpdate =
+        desiredMetaBoxes !== undefined &&
+        !metaBoxesEqual(postType.metaBoxes, desiredMetaBoxes);
+
+      if (
+        storageKindNeedsUpdate ||
+        storageTablesNeedsUpdate ||
+        metaBoxesNeedUpdate
+      ) {
+        const timestamp = Date.now();
+        await ctx.db.patch(postType._id, {
+          ...(storageKindNeedsUpdate
+            ? {
+                storageKind: desiredStorageKind,
+                storageTables: desiredStorageTables,
+              }
+            : {}),
+          ...(storageTablesNeedsUpdate && !storageKindNeedsUpdate
+            ? { storageTables: desiredStorageTables }
+            : {}),
+          ...(metaBoxesNeedUpdate ? { metaBoxes: desiredMetaBoxes } : {}),
+          updatedAt: timestamp,
+        });
+        postType = {
+          ...postType,
+          ...(storageKindNeedsUpdate
+            ? {
+                storageKind: desiredStorageKind,
+                storageTables: desiredStorageTables,
+              }
+            : {}),
+          ...(storageTablesNeedsUpdate && !storageKindNeedsUpdate
+            ? { storageTables: desiredStorageTables }
+            : {}),
+          ...(metaBoxesNeedUpdate ? { metaBoxes: desiredMetaBoxes } : {}),
+          updatedAt: timestamp,
+        };
       }
     }
 

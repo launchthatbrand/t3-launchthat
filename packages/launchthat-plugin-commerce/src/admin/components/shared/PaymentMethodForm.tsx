@@ -27,7 +27,7 @@ import {
 } from "@acme/ui/select";
 import { toast } from "@acme/ui/toast";
 
-import type { Id } from "../../../../../../apps/portal/convex/_generated/dataModel";
+import type { Id } from "@convex-config/_generated/dataModel";
 
 const accountTypes = ["checking", "savings"] as const;
 

@@ -1,9 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
-import { api } from "@portal/convexspec";
-import { useMutation, useQuery } from "convex/react";
-import { format } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@acme/ui/alert-dialog";
 import {
   AlertTriangle,
   CheckCircle,
@@ -18,32 +25,33 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import type { Doc, Id } from "@convex-config/_generated/dataModel";
+import React, { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@acme/ui/alert-dialog";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { ChargebackEvidenceWizard } from "./ChargebackEvidenceWizard";
 import { Checkbox } from "@acme/ui/checkbox";
 import { Separator } from "@acme/ui/separator";
+import { api } from "@portal/convexspec";
+import { format } from "date-fns";
 import { toast } from "@acme/ui/toast";
 
-import type {
-  Doc,
-  Id,
-} from "../../../../../../apps/portal/convex/_generated/dataModel";
-import { ChargebackEvidenceWizard } from "./ChargebackEvidenceWizard";
-
 type ChargebackEvidence = Doc<"chargebackEvidence">;
+type ChargebackEvidenceSummary = {
+  total: number;
+  draftCount: number;
+  readyCount: number;
+  submittedCount: number;
+  rejectedCount: number;
+  acceptedCount: number;
+  criticalCount: number;
+  documentsWithFiles: number;
+  documentsWithText: number;
+  documentsWithUrls: number;
+};
 
 // Type definitions for configuration objects
 type DocumentTypeConfig = {
@@ -86,13 +94,31 @@ export function ChargebackEvidenceManager({
   // Queries with proper error handling
   const evidence = useQuery(
     api.ecommerce.chargebacks.evidence.getChargebackEvidence,
-    { chargebackId },
-  );
+    {
+      chargebackId,
+    },
+  ) as Doc<"chargebackEvidence">[] | null;
 
   const evidenceSummary = useQuery(
     api.ecommerce.chargebacks.evidence.getEvidenceSummary,
-    { chargebackId },
-  );
+    {
+      chargebackId,
+    },
+  ) as unknown as ChargebackEvidenceSummary | null;
+
+  const normalizedSummary: ChargebackEvidenceSummary = {
+    total: evidenceSummary?.total ?? 0,
+    draftCount: evidenceSummary?.draftCount ?? 0,
+    readyCount: evidenceSummary?.readyCount ?? 0,
+    submittedCount: evidenceSummary?.submittedCount ?? 0,
+    rejectedCount: evidenceSummary?.rejectedCount ?? 0,
+    acceptedCount: evidenceSummary?.acceptedCount ?? 0,
+    criticalCount: evidenceSummary?.criticalCount ?? 0,
+    documentsWithFiles: evidenceSummary?.documentsWithFiles ?? 0,
+    documentsWithText: evidenceSummary?.documentsWithText ?? 0,
+    documentsWithUrls: evidenceSummary?.documentsWithUrls ?? 0,
+  };
+  const evidenceList = evidence ?? [];
 
   // Mutations
   const deleteEvidence = useMutation(
@@ -257,7 +283,7 @@ export function ChargebackEvidenceManager({
           <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
             <div className="text-center">
               <div className="text-2xl font-bold">
-                {evidenceSummary.totalCount}
+                {normalizedSummary.total ?? 0}
               </div>
               <div className="text-muted-foreground text-sm">
                 Total Documents
@@ -265,25 +291,25 @@ export function ChargebackEvidenceManager({
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">
-                {evidenceSummary.draftCount}
+                {normalizedSummary.draftCount ?? 0}
               </div>
               <div className="text-muted-foreground text-sm">Draft</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {evidenceSummary.readyCount}
+                {normalizedSummary.readyCount ?? 0}
               </div>
               <div className="text-muted-foreground text-sm">Ready</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {evidenceSummary.submittedCount}
+                {normalizedSummary.submittedCount ?? 0}
               </div>
               <div className="text-muted-foreground text-sm">Submitted</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-red-600">
-                {evidenceSummary.criticalCount}
+                {normalizedSummary.criticalCount ?? 0}
               </div>
               <div className="text-muted-foreground text-sm">Critical</div>
             </div>
@@ -315,7 +341,7 @@ export function ChargebackEvidenceManager({
           </div>
         </CardHeader>
         <CardContent>
-          {evidence.length === 0 ? (
+          {evidenceList.length === 0 ? (
             <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed">
               <FileText className="text-muted-foreground mb-4 h-12 w-12" />
               <h3 className="text-lg font-medium">No Evidence Documents</h3>
@@ -331,7 +357,7 @@ export function ChargebackEvidenceManager({
             </div>
           ) : viewMode === "grid" ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {evidence.map((item) => (
+              {evidenceList.map((item) => (
                 <EvidenceCard
                   key={item._id}
                   evidence={item}
@@ -355,7 +381,7 @@ export function ChargebackEvidenceManager({
             </div>
           ) : (
             <div className="space-y-4">
-              {evidence.map((item) => (
+              {evidenceList.map((item) => (
                 <EvidenceListItem
                   key={item._id}
                   evidence={item}

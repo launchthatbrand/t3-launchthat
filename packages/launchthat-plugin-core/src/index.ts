@@ -220,7 +220,7 @@ export interface PluginPostTypeConfig {
   supports?: PluginPostTypeSupports;
   rewrite?: PluginPostTypeRewrite;
   adminMenu: PluginPostTypeAdminMenu;
-  storageKind?: "posts" | "custom";
+  storageKind?: "posts" | "custom" | "component";
   storageTables?: string[];
   singleView?: PluginPostSingleViewConfig;
   singleViewSlots?: PluginSingleViewSlotDefinition[];

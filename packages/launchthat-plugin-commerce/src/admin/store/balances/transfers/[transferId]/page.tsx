@@ -1,11 +1,5 @@
 "use client";
 
-import type { Id } from "@convex-config/_generated/dataModel";
-import React from "react";
-import { useRouter } from "next/navigation";
-import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
-import { format } from "date-fns";
 import {
   ArrowLeft,
   Calendar,
@@ -15,18 +9,23 @@ import {
   Eye,
   Package,
 } from "lucide-react";
-import { Doc } from "src/lib/types";
-
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import type {
   ColumnDefinition,
   EntityAction,
   FilterConfig,
 } from "@acme/ui/entity-list/types";
+
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Doc } from "src/lib/types";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
-
+import type { Id } from "@convex-config/_generated/dataModel";
+import React from "react";
+import { api } from "@portal/convexspec";
+import { format } from "date-fns";
+import { useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
 import { useStoreRouteSegments } from "../../../StoreRouteContext";
 
 // Types for the transfer details page

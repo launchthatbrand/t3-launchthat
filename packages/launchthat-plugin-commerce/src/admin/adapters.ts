@@ -6,11 +6,17 @@ export const COMMERCE_CHARGEBACK_POST_TYPE = "ecom-chargeback";
 const CHARGEBACK_PREFIX = `custom:${COMMERCE_CHARGEBACK_POST_TYPE}:`;
 export const COMMERCE_ORDER_POST_TYPE = "orders";
 const ORDER_PREFIX = `custom:${COMMERCE_ORDER_POST_TYPE}:`;
+export const COMMERCE_PRODUCT_POST_TYPE = "products";
+export const COMMERCE_BALANCE_POST_TYPE = "ecom-balance";
 
 export const isCommerceChargebackSlug = (slug?: string | null) =>
   (slug ?? "").toLowerCase() === COMMERCE_CHARGEBACK_POST_TYPE;
 export const isCommerceOrderSlug = (slug?: string | null) =>
   (slug ?? "").toLowerCase() === COMMERCE_ORDER_POST_TYPE;
+export const isCommerceProductSlug = (slug?: string | null) =>
+  (slug ?? "").toLowerCase() === COMMERCE_PRODUCT_POST_TYPE;
+export const isCommerceBalanceSlug = (slug?: string | null) =>
+  (slug ?? "").toLowerCase() === COMMERCE_BALANCE_POST_TYPE;
 
 export const encodeChargebackPostId = (
   recordId: Id<"chargebacks"> | string,
@@ -41,6 +47,9 @@ export const mapChargebackToPost = (
   record: Doc<"chargebacks">,
 ): Doc<"posts"> => {
   const syntheticId = encodeChargebackPostId(record._id);
+  const customerInfo = record.customerInfo as
+    | { customerId?: Id<"users"> }
+    | undefined;
   return {
     _id: syntheticId,
     _creationTime: record._creationTime,
@@ -53,7 +62,7 @@ export const mapChargebackToPost = (
     createdAt: record.receivedDate,
     updatedAt:
       record.resolvedDate ?? record.chargebackDate ?? record.receivedDate,
-    authorId: record.customerInfo.customerId ?? undefined,
+    authorId: customerInfo?.customerId ?? undefined,
     meta: {
       chargebackId: record.chargebackId,
       orderId: record.orderId,
@@ -92,8 +101,11 @@ export const ensureOrderSyntheticId = (
 
 export const mapOrderToPost = (record: Doc<"orders">): Doc<"posts"> => {
   const syntheticId = encodeOrderPostId(record._id);
+  const customerInfo = record.customerInfo as
+    | { firstName?: string; lastName?: string }
+    | undefined;
   const customerName =
-    `${record.customerInfo.firstName} ${record.customerInfo.lastName}`.trim();
+    `${customerInfo?.firstName ?? ""} ${customerInfo?.lastName ?? ""}`.trim();
   const summaryLines = [
     `Customer: ${customerName || "N/A"}`,
     `Email: ${record.email}`,

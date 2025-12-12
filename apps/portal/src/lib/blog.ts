@@ -3,18 +3,17 @@ import { useCallback, useMemo } from "react";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 
+import type { CommerceComponentPostId } from "~/lib/postTypes/customAdapters";
 import { useTenant } from "~/context/TenantContext";
 import {
-  COMMERCE_CHARGEBACK_POST_TYPE,
-  COMMERCE_ORDER_POST_TYPE,
-  decodeChargebackPostId,
-  decodeOrderPostId,
-  isCommerceChargebackSlug,
-  isCommerceOrderSlug,
-  mapChargebackToPost,
-  mapOrderToPost,
+  adaptCommercePostToPortal,
+  decodeCommerceSyntheticId,
+  encodeCommerceSyntheticId,
+  isCommercePostSlug,
 } from "~/lib/postTypes/customAdapters";
 import { getTenantOrganizationId } from "./tenant-fetcher";
+
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 
 // Posts Types - extend with more post metadata
 export interface PostFilter {
@@ -55,9 +54,13 @@ export interface UpdatePostArgs {
 export interface SearchPostArgs {
   searchTerm: string;
   limit?: number;
+  postTypeSlug?: string;
 }
 
-const EMPTY_QUERY_ARGS = {} as const;
+const toCommerceOrganizationId = (
+  organizationId?: Id<"organizations"> | null,
+): string | undefined =>
+  organizationId ? (organizationId as unknown as string) : undefined;
 
 /**
  * Custom hooks for posts
@@ -66,61 +69,59 @@ const EMPTY_QUERY_ARGS = {} as const;
 // Query hooks
 export function useGetAllPosts(filters?: PostFilter) {
   const tenant = useTenant();
+  const tenantOrganizationId = getTenantOrganizationId(tenant);
   const args = useMemo(() => {
     const params: {
       organizationId?: Id<"organizations">;
       filters?: PostFilter;
     } = {};
-    const organizationId = getTenantOrganizationId(tenant);
-    if (organizationId) {
-      params.organizationId = organizationId;
+    if (tenantOrganizationId) {
+      params.organizationId = tenantOrganizationId;
     }
     if (filters) {
       params.filters = filters;
     }
     return params;
-  }, [tenant, filters]);
+  }, [tenantOrganizationId, filters]);
   const targetSlug = filters?.postTypeSlug?.toLowerCase();
-  const isChargebackType = targetSlug === COMMERCE_CHARGEBACK_POST_TYPE;
-  const isOrderType = targetSlug === COMMERCE_ORDER_POST_TYPE;
-  const chargebacksResult = useQuery(
-    api.ecommerce.chargebacks.queries.getChargebacks,
-    isChargebackType ? EMPTY_QUERY_ARGS : "skip",
-  );
-  const ordersResult = useQuery(
-    api.ecommerce.orders.queries.listOrders,
-    isOrderType ? EMPTY_QUERY_ARGS : "skip",
+  const isCommerceType = targetSlug ? isCommercePostSlug(targetSlug) : false;
+  const commerceArgs = useMemo(() => {
+    if (!isCommerceType || !targetSlug) {
+      return "skip" as const;
+    }
+    const payload: {
+      organizationId?: string;
+      filters?: PostFilter;
+    } = {};
+    const orgIdString = toCommerceOrganizationId(tenantOrganizationId);
+    if (orgIdString) {
+      payload.organizationId = orgIdString;
+    }
+    payload.filters = {
+      ...filters,
+      postTypeSlug: targetSlug,
+    };
+    return payload;
+  }, [filters, isCommerceType, targetSlug, tenantOrganizationId]);
+  const commercePostsResult = useQuery(
+    api.commercePosts.getAllPosts,
+    commerceArgs,
   );
   const postsResult = useQuery(
     api.core.posts.queries.getAllPosts,
-    isChargebackType || isOrderType ? "skip" : args,
+    isCommerceType ? "skip" : args,
   );
   const posts = useMemo(() => {
-    if (isChargebackType) {
-      return (chargebacksResult ?? []).map((record: Doc<"chargebacks">) =>
-        mapChargebackToPost(record),
-      );
-    }
-    if (isOrderType) {
-      return (ordersResult ?? []).map((record: Doc<"orders">) =>
-        mapOrderToPost(record),
-      );
+    if (isCommerceType) {
+      return (commercePostsResult ?? []).map(adaptCommercePostToPortal);
     }
     return postsResult ?? [];
-  }, [
-    chargebacksResult,
-    isChargebackType,
-    isOrderType,
-    ordersResult,
-    postsResult,
-  ]);
+  }, [commercePostsResult, isCommerceType, postsResult]);
   return {
     posts,
-    isLoading: isChargebackType
-      ? chargebacksResult === undefined
-      : isOrderType
-        ? ordersResult === undefined
-        : postsResult === undefined,
+    isLoading: isCommerceType
+      ? commercePostsResult === undefined
+      : postsResult === undefined,
   };
 }
 
@@ -129,40 +130,31 @@ export function useGetPostById(
 ): Doc<"posts"> | null | undefined {
   const tenant = useTenant();
   const organizationId = getTenantOrganizationId(tenant);
-  const chargebackId = id ? decodeChargebackPostId(id) : null;
-  const orderId = id ? decodeOrderPostId(id) : null;
-  const chargebackResult: Doc<"chargebacks"> | null | undefined = useQuery(
-    api.ecommerce.chargebacks.queries.getChargeback,
-    chargebackId ? ({ chargebackId } as const) : "skip",
-  );
-  const orderResult: Doc<"orders"> | null | undefined = useQuery(
-    api.ecommerce.orders.queries.getOrder,
-    orderId ? ({ orderId } as const) : "skip",
+  const commerceInfo = id ? decodeCommerceSyntheticId(id) : null;
+  const commercePostResult = useQuery(
+    api.commercePosts.getPostById,
+    commerceInfo
+      ? ({
+          id: commerceInfo.componentId,
+          organizationId: toCommerceOrganizationId(organizationId),
+        } as const)
+      : "skip",
   );
   const postArgs = useMemo(() => {
-    if (!id || chargebackId || orderId) {
+    if (!id || commerceInfo) {
       return "skip" as const;
     }
     return organizationId ? { id, organizationId } : { id };
-  }, [chargebackId, id, orderId, organizationId]);
+  }, [commerceInfo, id, organizationId]);
   const postResult = useQuery(api.core.posts.queries.getPostById, postArgs);
-  if (chargebackId) {
-    if (chargebackResult === undefined) {
+  if (commerceInfo) {
+    if (commercePostResult === undefined) {
       return undefined;
     }
-    if (chargebackResult === null) {
+    if (commercePostResult === null) {
       return null;
     }
-    return mapChargebackToPost(chargebackResult);
-  }
-  if (orderId) {
-    if (orderResult === undefined) {
-      return undefined;
-    }
-    if (orderResult === null) {
-      return null;
-    }
-    return mapOrderToPost(orderResult);
+    return adaptCommercePostToPortal(commercePostResult);
   }
   return postResult;
 }
@@ -170,135 +162,299 @@ export function useGetPostById(
 export function useGetPostBySlug(slug: string | undefined) {
   const tenant = useTenant();
   const organizationId = getTenantOrganizationId(tenant);
-  return useQuery(
-    api.core.posts.queries.getPostBySlug,
-    slug ? (organizationId ? { slug, organizationId } : { slug }) : "skip",
+  const normalizedSlug = slug?.toLowerCase();
+  const isCommerce = normalizedSlug
+    ? isCommercePostSlug(normalizedSlug)
+    : false;
+  const commerceResult = useQuery(
+    api.commercePosts.getPostBySlug,
+    slug && isCommerce
+      ? (() => {
+          const orgIdString = toCommerceOrganizationId(organizationId);
+          return orgIdString
+            ? { slug: normalizedSlug ?? slug, organizationId: orgIdString }
+            : { slug: normalizedSlug ?? slug };
+        })()
+      : "skip",
   );
+  const portalResult = useQuery(
+    api.core.posts.queries.getPostBySlug,
+    slug && !isCommerce
+      ? organizationId
+        ? { slug, organizationId }
+        : { slug }
+      : "skip",
+  );
+  return useMemo(() => {
+    if (isCommerce) {
+      if (commerceResult === undefined || commerceResult === null) {
+        return commerceResult;
+      }
+      return adaptCommercePostToPortal(commerceResult);
+    }
+    return portalResult;
+  }, [commerceResult, isCommerce, portalResult]);
 }
 
 export function useSearchPosts(args: SearchPostArgs) {
   const tenant = useTenant();
+  const tenantOrganizationId = getTenantOrganizationId(tenant);
   const params = useMemo(() => {
-    const organizationId = getTenantOrganizationId(tenant);
-    if (organizationId) {
-      return { ...args, organizationId };
+    if (tenantOrganizationId) {
+      return { ...args, organizationId: tenantOrganizationId };
     }
     return args;
-  }, [args, tenant]);
-
-  return useQuery(api.core.posts.queries.searchPosts, params);
+  }, [args, tenantOrganizationId]);
+  const targetSlug = args.postTypeSlug?.toLowerCase();
+  const isCommerceType = targetSlug ? isCommercePostSlug(targetSlug) : false;
+  const commerceArgs = useMemo(() => {
+    if (!isCommerceType) {
+      return "skip" as const;
+    }
+    const payload: {
+      searchTerm: string;
+      limit?: number;
+      organizationId?: string;
+      postTypeSlug?: string;
+    } = {
+      searchTerm: args.searchTerm,
+      limit: args.limit,
+      postTypeSlug: targetSlug,
+    };
+    const orgIdString = toCommerceOrganizationId(tenantOrganizationId);
+    if (orgIdString) {
+      payload.organizationId = orgIdString;
+    }
+    return payload;
+  }, [
+    args.limit,
+    args.searchTerm,
+    isCommerceType,
+    targetSlug,
+    tenantOrganizationId,
+  ]);
+  const commerceResults = useQuery(api.commercePosts.searchPosts, commerceArgs);
+  const portalResults = useQuery(
+    api.core.posts.queries.searchPosts,
+    isCommerceType ? "skip" : params,
+  );
+  return useMemo(() => {
+    if (isCommerceType) {
+      return (commerceResults ?? []).map(adaptCommercePostToPortal);
+    }
+    return portalResults;
+  }, [commerceResults, isCommerceType, portalResults]);
 }
 
 export function useGetPostTags() {
   const tenant = useTenant();
   const organizationId = getTenantOrganizationId(tenant);
-  const args = organizationId ? { organizationId } : {};
-  const result = useQuery(api.core.posts.queries.getPostTags, args);
+  const coreArgs = useMemo(
+    () => (organizationId ? { organizationId } : {}),
+    [organizationId],
+  );
+  const commerceArgs = useMemo(() => {
+    const payload: { organizationId?: string } = {};
+    const orgIdString = toCommerceOrganizationId(organizationId);
+    if (orgIdString) {
+      payload.organizationId = orgIdString;
+    }
+    return payload;
+  }, [organizationId]);
+  const coreResult = useQuery(api.core.posts.queries.getPostTags, coreArgs) as
+    | string[]
+    | undefined;
+  const commerceResult = useQuery(
+    api.commercePosts.getPostTags,
+    commerceArgs,
+  ) as string[] | undefined;
+  const tags = useMemo(() => {
+    const tagSet = new Set<string>();
+    (coreResult ?? []).forEach((tag) => tagSet.add(tag));
+    (commerceResult ?? []).forEach((tag) => tagSet.add(tag));
+    return Array.from(tagSet).sort();
+  }, [commerceResult, coreResult]);
   return {
-    tags: result ?? [],
-    isLoading: result === undefined,
+    tags,
+    isLoading: coreResult === undefined || commerceResult === undefined,
   };
 }
 
 export function useGetPostCategories() {
   const tenant = useTenant();
   const organizationId = getTenantOrganizationId(tenant);
-  const args = organizationId ? { organizationId } : {};
-  const result = useQuery(api.core.posts.queries.getPostCategories, args);
-  return result;
+  const coreArgs = useMemo(
+    () => (organizationId ? { organizationId } : {}),
+    [organizationId],
+  );
+  const commerceArgs = useMemo(() => {
+    const payload: { organizationId?: string } = {};
+    const orgIdString = toCommerceOrganizationId(organizationId);
+    if (orgIdString) {
+      payload.organizationId = orgIdString;
+    }
+    return payload;
+  }, [organizationId]);
+  const coreResult = useQuery(
+    api.core.posts.queries.getPostCategories,
+    coreArgs,
+  ) as string[] | undefined;
+  const commerceResult = useQuery(
+    api.commercePosts.getPostCategories,
+    commerceArgs,
+  ) as string[] | undefined;
+  return useMemo(() => {
+    const categories = new Set<string>();
+    (coreResult ?? []).forEach((category) => categories.add(category));
+    (commerceResult ?? []).forEach((category) => categories.add(category));
+    return Array.from(categories).sort();
+  }, [commerceResult, coreResult]);
 }
 
 // Mutation hooks
 export function useCreatePost() {
   const tenant = useTenant();
   const mutate = useMutation(api.core.posts.mutations.createPost);
+  const createCommercePost = useMutation(api.commercePosts.createPost);
   return useCallback<
     (input: CreatePostArgs) => Promise<Id<"posts"> | undefined>
   >(
-    (input) => {
-      if (isCommerceChargebackSlug(input.postTypeSlug)) {
-        throw new Error("Chargebacks must be created via Store → Chargebacks.");
-      }
-      if (isCommerceOrderSlug(input.postTypeSlug)) {
-        throw new Error("Orders must be created via Store → Orders.");
+    async (input) => {
+      const tenantOrganizationId = getTenantOrganizationId(tenant);
+      const organizationId = tenantOrganizationId ?? undefined;
+      const normalizedSlug = input.postTypeSlug?.toLowerCase();
+      if (normalizedSlug && isCommercePostSlug(normalizedSlug)) {
+        const componentId = await createCommercePost({
+          title: input.title,
+          content: input.content,
+          excerpt: input.excerpt,
+          slug: input.slug,
+          status: input.status,
+          category: input.category,
+          tags: input.tags,
+          featuredImage: input.featuredImage,
+          postTypeSlug: normalizedSlug,
+          meta: input.meta ?? undefined,
+          organizationId: toCommerceOrganizationId(tenantOrganizationId),
+        });
+        return encodeCommerceSyntheticId(normalizedSlug, componentId);
       }
       return mutate({
         ...input,
-        organizationId: getTenantOrganizationId(tenant) ?? undefined,
+        organizationId,
       });
     },
-    [mutate, tenant],
+    [createCommercePost, mutate, tenant],
   );
 }
 
 export function useUpdatePost() {
   const updatePost = useMutation(api.core.posts.mutations.updatePost);
-  const updateChargebackDetails = useMutation(
-    api.ecommerce.chargebacks.mutations.updateChargebackDetails,
-  );
+  const updateCommercePost = useMutation(api.commercePosts.updatePost);
   return useCallback(
     async (input: UpdatePostArgs) => {
-      const chargebackId =
-        decodeChargebackPostId(input.id) ??
-        (input.meta?.chargebackId as Id<"chargebacks"> | undefined) ??
-        null;
-      const orderId =
-        decodeOrderPostId(input.id) ??
-        (input.meta?.orderId as Id<"orders"> | undefined) ??
-        null;
-      if (
-        chargebackId ||
-        isCommerceChargebackSlug(input.postTypeSlug ?? undefined)
-      ) {
-        if (!chargebackId) {
-          throw new Error("Invalid chargeback identifier.");
+      const commerceInfo = decodeCommerceSyntheticId(input.id);
+      const normalizedSlug =
+        input.postTypeSlug?.toLowerCase() ?? commerceInfo?.slug;
+      if (normalizedSlug && isCommercePostSlug(normalizedSlug)) {
+        if (!commerceInfo) {
+          throw new Error("Invalid commerce identifier.");
         }
-        await updateChargebackDetails({
-          chargebackId,
-          reasonDescription: input.excerpt ?? undefined,
-          internalNotes: input.content ?? undefined,
+        await updateCommercePost({
+          id: commerceInfo.componentId,
+          title: input.title,
+          content: input.content,
+          excerpt: input.excerpt,
+          slug: input.slug,
+          status: input.status,
+          category: input.category,
+          tags: input.tags,
+          featuredImage: input.featuredImage,
+          meta: input.meta ?? undefined,
         });
         return;
       }
-      if (orderId || isCommerceOrderSlug(input.postTypeSlug ?? undefined)) {
-        throw new Error("Orders must be updated via Store → Orders.");
-      }
       await updatePost(input);
     },
-    [updateChargebackDetails, updatePost],
+    [updateCommercePost, updatePost],
   );
 }
 
 export function useDeletePost() {
   const deletePost = useMutation(api.core.posts.mutations.deletePost);
-  const deleteChargeback = useMutation(
-    api.ecommerce.chargebacks.mutations.deleteChargeback,
-  );
-  const deleteOrder = useMutation(api.ecommerce.orders.mutations.deleteOrder);
+  const deleteCommercePost = useMutation(api.commercePosts.deletePost);
   return useCallback(
     async ({ id }: { id: Id<"posts"> }) => {
-      const chargebackId = decodeChargebackPostId(id);
-      if (chargebackId) {
-        await deleteChargeback({ id: chargebackId });
-        return;
-      }
-      const orderId = decodeOrderPostId(id);
-      if (orderId) {
-        await deleteOrder({ orderId });
+      const commerceInfo = decodeCommerceSyntheticId(id);
+      if (commerceInfo) {
+        await deleteCommercePost({ id: commerceInfo.componentId });
         return;
       }
       await deletePost({ id });
     },
-    [deleteChargeback, deleteOrder, deletePost],
+    [deleteCommercePost, deletePost],
   );
 }
 
 export function useUpdatePostStatus() {
-  return useMutation(api.core.posts.mutations.updatePostStatus);
+  const updatePostStatus = useMutation(
+    api.core.posts.mutations.updatePostStatus,
+  );
+  const updateCommerceStatus = useMutation(api.commercePosts.updatePostStatus);
+  return useCallback<
+    (args: {
+      id: Id<"posts">;
+      status: "published" | "draft" | "archived";
+    }) => Promise<void>
+  >(
+    async (args) => {
+      const commerceInfo = decodeCommerceSyntheticId(args.id);
+      if (commerceInfo) {
+        await updateCommerceStatus({
+          id: commerceInfo.componentId,
+          status: args.status,
+        });
+        return;
+      }
+      await updatePostStatus(args);
+    },
+    [updateCommerceStatus, updatePostStatus],
+  );
 }
 
 export function useBulkUpdatePostStatus() {
-  return useMutation(api.core.posts.mutations.bulkUpdatePostStatus);
+  const bulkUpdate = useMutation(api.core.posts.mutations.bulkUpdatePostStatus);
+  const bulkUpdateCommerce = useMutation(
+    api.commercePosts.bulkUpdatePostStatus,
+  );
+  return useCallback<
+    (args: {
+      ids: Id<"posts">[];
+      status: "published" | "draft" | "archived";
+    }) => Promise<void>
+  >(
+    async (args) => {
+      const commerceIds: CommerceComponentPostId[] = [];
+      const coreIds: Id<"posts">[] = [];
+      args.ids.forEach((postId) => {
+        const info = decodeCommerceSyntheticId(postId);
+        if (info) {
+          commerceIds.push(info.componentId);
+        } else {
+          coreIds.push(postId);
+        }
+      });
+      await Promise.all([
+        commerceIds.length > 0
+          ? bulkUpdateCommerce({ ids: commerceIds, status: args.status })
+          : Promise.resolve(),
+        coreIds.length > 0
+          ? bulkUpdate({ ids: coreIds, status: args.status })
+          : Promise.resolve(),
+      ]);
+    },
+    [bulkUpdate, bulkUpdateCommerce],
+  );
 }
 
 /**

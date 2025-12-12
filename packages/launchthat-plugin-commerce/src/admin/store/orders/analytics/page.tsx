@@ -1,9 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { formatPrice } from "@convex-config/ecommerce/lib";
-import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
 import {
   BarChart,
   Calendar,
@@ -15,8 +11,6 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -33,12 +27,19 @@ import {
 } from "@acme/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
-export default function c() {
+import { Button } from "@acme/ui/button";
+import { api } from "@portal/convexspec";
+import { formatPrice } from "../../../../lib/currency";
+import { useQuery } from "convex/react";
+import { useState } from "react";
+
+export default function OrderAnalyticsPage() {
   const [timeframe, setTimeframe] = useState("30days");
 
-  // We're not implementing real analytics data fetching in this example
-  // In a real application, you'd have a query that gets aggregated data based on timeframe
-  const ordersCount = useQuery(api.ecommerce.orders.queries.getOrdersCount, {});
+  const orders = useQuery(api.commercePosts.getAllPosts, {
+    filters: { postTypeSlug: "orders" },
+  });
+  const ordersCount = orders?.length ?? 0;
 
   // Sample data for the demo
   const sampleData = {

@@ -1,29 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
-import { useAuth } from "@clerk/nextjs";
-import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
 import { Calendar, ListChecks, Plus, Trash2, Truck } from "lucide-react";
-
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import type {
   ColumnDefinition,
   EntityAction,
 } from "@acme/ui/entity-list/types";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { DateTimePicker } from "@acme/ui/date-time-picker";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@acme/ui/dialog";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
+import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import {
   Select,
   SelectContent,
@@ -31,18 +20,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { Separator } from "@acme/ui/separator";
-import { Textarea } from "@acme/ui/textarea";
-import { toast } from "@acme/ui/toast";
+import { getTenantOrganizationId, useTenant } from "@acme/admin-runtime";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type {
-  Doc,
-  Id,
-} from "../../../../../../apps/portal/convex/_generated/dataModel";
 import { AddProductDialog } from "./AddProductDialog";
 import { AddShippingDialog } from "./AddShippingDialog";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { DateTimePicker } from "@acme/ui/date-time-picker";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import Image from "next/image";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import { ORDER_META_KEYS } from "../../constants";
 // import { CalendarEventLink } from "./CalendarEventLink.tsx.old";
 import { OrderAddressSection } from "./OrderAddressSection";
+import { Separator } from "@acme/ui/separator";
+import { Textarea } from "@acme/ui/textarea";
+import { api } from "@portal/convexspec";
+import { decodeCommerceSyntheticId } from "../../../lib/customAdapters";
+import { encodeOrderPostId } from "../../adapters";
+import { toast } from "@acme/ui/toast";
+import { useAuth } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
 
 // Address data interface
 export interface AddressData {
@@ -140,16 +140,20 @@ export type OrderFormComponent =
  * />
  */
 interface OrderFormProps {
-  orderId?: Id<"orders">; // If provided, we're editing an existing order
+  orderId?: Id<"orders"> | Id<"posts"> | string; // Accept legacy or synthetic IDs
+  organizationId?: Id<"organizations"> | string;
   onSubmit: (data: OrderFormData) => Promise<void>;
   onCancel: () => void;
   isSubmitting?: boolean;
   submitButtonText?: string;
   components?: OrderFormComponent[]; // New prop to control which components are shown
+  hideSubmitControls?: boolean;
+  onRegisterBeforeSave?: (handler: () => Promise<void>) => (() => void) | void;
 }
 
 export function OrderForm({
   orderId,
+  organizationId,
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -163,17 +167,108 @@ export function OrderForm({
     "Calendar",
     "LineItems",
   ], // Default to all components
+  hideSubmitControls = false,
+  onRegisterBeforeSave,
 }: OrderFormProps) {
+  const isDev = process.env.NODE_ENV !== "production";
+  const log = useCallback(
+    (...args: unknown[]) => {
+      if (isDev) {
+        console.log("[OrderForm]", ...args);
+      }
+    },
+    [isDev],
+  );
   // Helper function to check if a component should be rendered
   const shouldShowComponent = (component: OrderFormComponent): boolean => {
     return components.includes(component);
   };
 
-  // Fetch existing order if editing
-  const existingOrder = useQuery(
-    api.ecommerce.orders.queries.getOrder,
-    orderId ? { orderId } : "skip",
+  const tenantContext = (() => {
+    try {
+      return useTenant();
+    } catch {
+      return undefined;
+    }
+  })();
+  const fallbackOrganizationId = getTenantOrganizationId(tenantContext);
+  const resolvedOrganizationId =
+    organizationId ??
+    (fallbackOrganizationId
+      ? (fallbackOrganizationId as Id<"organizations">)
+      : undefined);
+  const organizationIdString = resolvedOrganizationId
+    ? (resolvedOrganizationId as unknown as string)
+    : undefined;
+
+  const normalizedOrderId = useMemo<Id<"posts"> | undefined>(() => {
+    if (!orderId) {
+      return undefined;
+    }
+    const raw = orderId as unknown as string;
+    if (raw.startsWith("custom:orders:")) {
+      return orderId as Id<"posts">;
+    }
+    return encodeOrderPostId(orderId as Id<"orders">);
+  }, [orderId]);
+
+  const commerceInfo = useMemo(() => {
+    if (!normalizedOrderId) {
+      return null;
+    }
+    return decodeCommerceSyntheticId(normalizedOrderId);
+  }, [normalizedOrderId]);
+
+  const existingPostMeta = useQuery(
+    api.commercePosts.getPostMeta,
+    commerceInfo
+      ? {
+          postId: commerceInfo.componentId,
+          organizationId: organizationIdString,
+        }
+      : "skip",
   );
+
+  const existingLinkedUserId = useMemo<Id<"users"> | undefined>(() => {
+    if (!existingPostMeta) {
+      return undefined;
+    }
+    const entry = existingPostMeta.find(
+      (meta) => meta.key === ORDER_META_KEYS.userId,
+    );
+    if (!entry) {
+      return undefined;
+    }
+    if (typeof entry.value === "string" && entry.value.length > 0) {
+      return entry.value as Id<"users">;
+    }
+    return undefined;
+  }, [existingPostMeta]);
+
+  const existingOrderPayload = useMemo(() => {
+    if (!existingPostMeta) {
+      return undefined;
+    }
+    const payloadRecord = existingPostMeta.find(
+      (entry) => entry.key === ORDER_META_KEYS.payload,
+    );
+    if (payloadRecord && typeof payloadRecord.value === "string") {
+      try {
+        const parsed = JSON.parse(payloadRecord.value) as OrderFormData & {
+          createdAt?: number | string;
+        };
+        return {
+          ...parsed,
+          createdAt: parsed.createdAt
+            ? new Date(parsed.createdAt)
+            : parsed.createdAt,
+        } as OrderFormData;
+      } catch (error) {
+        console.warn("[OrderForm] Failed to parse order payload", error);
+      }
+    }
+    return null;
+  }, [existingPostMeta]);
 
   // Fetch products for line item selection
   const productsQuery = useQuery(
@@ -229,12 +324,43 @@ export function OrderForm({
     createdAt: undefined, // Initialize createdAt as undefined
     lineItems: [],
   });
+  const latestFormDataRef = useRef(formData);
+  latestFormDataRef.current = formData;
 
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showAddShipping, setShowAddShipping] = useState(false); // New state for shipping dialog
   const [showUserSelector, setShowUserSelector] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [isFormInitialized, setIsFormInitialized] = useState(false); // Flag to prevent form data overwrites
+
+  const submitLatestFormData = useCallback(
+    async (source: "beforeSave" | "formSubmit") => {
+      const snapshot = latestFormDataRef.current;
+      log(
+        source === "beforeSave"
+          ? "Submitting via beforeSave handler"
+          : "Submitting via form submit",
+        { formData: snapshot },
+      );
+      await onSubmit(snapshot);
+    },
+    [log, onSubmit],
+  );
+
+  useEffect(() => {
+    if (!onRegisterBeforeSave) {
+      return;
+    }
+    log("Registering beforeSave handler");
+    const unregister = onRegisterBeforeSave(async () => {
+      log("beforeSave handler invoked");
+      await submitLatestFormData("beforeSave");
+    });
+    return () => {
+      log("Unregistering beforeSave handler");
+      unregister?.();
+    };
+  }, [log, onRegisterBeforeSave, submitLatestFormData]);
 
   // Handle user selection and prefill form data
   const handleUserSelect = (user: Doc<"users">) => {
@@ -276,83 +402,32 @@ export function OrderForm({
 
   // Populate form with existing order data if editing
   useEffect(() => {
-    if (existingOrder && !isFormInitialized) {
-      setFormData({
-        userId: existingOrder.userId,
-        email: existingOrder.email || "",
-        firstName: existingOrder.customerInfo.firstName,
-        lastName: existingOrder.customerInfo.lastName,
-        phone: existingOrder.customerInfo.phone || "",
-        company: existingOrder.customerInfo.company || "",
-        differentShippingAddress: false, // Default assumption
-        billingAddress: {
-          fullName: existingOrder.billingAddress?.fullName || "",
-          addressLine1: existingOrder.billingAddress?.addressLine1 || "",
-          addressLine2: existingOrder.billingAddress?.addressLine2 || "",
-          city: existingOrder.billingAddress?.city || "",
-          stateOrProvince: existingOrder.billingAddress?.stateOrProvince || "",
-          postalCode: existingOrder.billingAddress?.postalCode || "",
-          country: existingOrder.billingAddress?.country || "US",
-          phoneNumber: existingOrder.billingAddress?.phoneNumber || "",
-        },
-        shippingAddress: {
-          fullName: existingOrder.shippingAddress?.fullName || "",
-          addressLine1: existingOrder.shippingAddress?.addressLine1 || "",
-          addressLine2: existingOrder.shippingAddress?.addressLine2 || "",
-          city: existingOrder.shippingAddress?.city || "",
-          stateOrProvince: existingOrder.shippingAddress?.stateOrProvince || "",
-          postalCode: existingOrder.shippingAddress?.postalCode || "",
-          country: existingOrder.shippingAddress?.country || "US",
-          phoneNumber: existingOrder.shippingAddress?.phoneNumber || "",
-        },
-        paymentMethod: existingOrder.paymentMethod || "credit_card",
-        notes: existingOrder.notes || "",
-        createdAt: existingOrder.createdAt
-          ? new Date(existingOrder.createdAt)
-          : undefined, // Populate createdAt as Date
-        lineItems: [
-          // Load product items
-          ...(existingOrder.items?.map((item: any, index: number) => ({
-            id: `${item.productId}-${index}`,
-            type: "product" as const,
-            productId: item.productId,
-            productSnapshot: {
-              name: item.productSnapshot?.name || "Unknown Product",
-              description: item.productSnapshot?.description || "",
-              price: item.productSnapshot?.price || 0,
-              imageUrl: item.productSnapshot?.imageUrl,
-            },
-            quantity: item.quantity || 1,
-            price: item.productSnapshot?.price || 0,
-            lineTotal:
-              item.lineTotal ||
-              item.quantity * (item.productSnapshot?.price || 0),
-            displayName: item.productSnapshot?.name || "Unknown Product",
-            displayDescription: item.productSnapshot?.description || "",
-            displayImageUrl: item.productSnapshot?.imageUrl,
-          })) || []),
-          // Load shipping as a line item if it exists
-          ...(existingOrder.shippingDetails
-            ? [
-                {
-                  id: `shipping-${Date.now()}`,
-                  type: "shipping" as const,
-                  shippingMethod: existingOrder.shippingDetails.method,
-                  shippingDescription:
-                    existingOrder.shippingDetails.description,
-                  quantity: 1,
-                  price: existingOrder.shippingDetails.cost,
-                  lineTotal: existingOrder.shippingDetails.cost,
-                  displayName: existingOrder.shippingDetails.method,
-                  displayDescription: existingOrder.shippingDetails.description,
-                },
-              ]
-            : []),
-        ],
-      });
-      setIsFormInitialized(true); // Mark form as initialized
+    if (!existingOrderPayload || isFormInitialized) {
+      return;
     }
-  }, [existingOrder, isFormInitialized]);
+    const resolvedUserId = existingLinkedUserId ?? existingOrderPayload.userId;
+    setFormData((prev) => ({
+      ...prev,
+      ...existingOrderPayload,
+      userId: resolvedUserId,
+      billingAddress: {
+        ...prev.billingAddress,
+        ...(existingOrderPayload.billingAddress ?? {}),
+      },
+      shippingAddress: {
+        ...prev.shippingAddress,
+        ...(existingOrderPayload.shippingAddress ?? {}),
+      },
+      createdAt:
+        existingOrderPayload.createdAt instanceof Date
+          ? existingOrderPayload.createdAt
+          : existingOrderPayload.createdAt
+            ? new Date(existingOrderPayload.createdAt)
+            : undefined,
+      lineItems: existingOrderPayload.lineItems ?? [],
+    }));
+    setIsFormInitialized(true);
+  }, [existingLinkedUserId, existingOrderPayload, isFormInitialized]);
 
   // Reset form initialization when orderId changes (switching between orders)
   useEffect(() => {
@@ -514,13 +589,9 @@ export function OrderForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (formData.lineItems.length === 0) {
-      toast.error("Please add at least one product to the order");
-      return;
-    }
-
     try {
-      await onSubmit(formData);
+      await submitLatestFormData("formSubmit");
+      log("Submit completed");
     } catch (error) {
       console.error("Error submitting order:", error);
       toast.error("Failed to submit order. Please try again.");
@@ -663,14 +734,21 @@ export function OrderForm({
                       Link to User Account (Optional)
                     </Label>
                     <Select
-                      value={formData.userId || ""}
+                      value={formData.userId ?? "none"}
                       onValueChange={(value) => {
+                        if (value === "none") {
+                          setFormData((prev) => ({
+                            ...prev,
+                            userId: undefined,
+                          }));
+                          return;
+                        }
                         const selectedUser = usersQuery.find(
                           (user: Doc<"users">) => user._id === value,
                         );
                         setFormData((prev) => ({
                           ...prev,
-                          userId: value ? (value as Id<"users">) : undefined,
+                          userId: value as Id<"users">,
                           email: selectedUser?.email || prev.email,
                           firstName: selectedUser?.firstName || prev.firstName,
                           lastName: selectedUser?.lastName || prev.lastName,
@@ -685,6 +763,17 @@ export function OrderForm({
                         <SelectItem value="none" key="no-user">
                           No linked user
                         </SelectItem>
+                        {formData.userId &&
+                          !(usersQuery ?? []).some(
+                            (user: Doc<"users">) =>
+                              user._id === formData.userId,
+                          ) && (
+                            <SelectItem value={formData.userId}>
+                              {formData.firstName || formData.lastName
+                                ? `${formData.firstName} ${formData.lastName}`.trim()
+                                : formData.email || "Linked user"}
+                            </SelectItem>
+                          )}
                         {usersQuery.map((user: Doc<"users">) => (
                           <SelectItem key={user._id} value={user._id}>
                             {user.firstName} {user.lastName} ({user.email})
@@ -758,7 +847,7 @@ export function OrderForm({
         {/* {shouldShowComponent("Calendar") && (
           <CalendarEventLink
             orderId={orderId}
-            currentEventId={existingOrder?.calendarEventId}
+            currentEventId={existingOrderPayload?.calendarEventId}
             onEventLinked={(eventId) => {
               // Update the order with the linked event
               // This would require adding calendarEventId to the order schema and update mutation
@@ -826,19 +915,19 @@ export function OrderForm({
                     )}
 
                     {/* Show tax if available */}
-                    {/* {existingOrder?.tax !== undefined &&
-                      existingOrder?.tax !== null && (
+                    {/* {existingOrderPayload?.tax !== undefined &&
+                      existingOrderPayload?.tax !== null && (
                         <div className="flex justify-between">
                           <span>Tax:</span>
-                          <span>${existingOrder.tax.toFixed(2)}</span>
+                          <span>${existingOrderPayload.tax.toFixed(2)}</span>
                         </div>
                       )} */}
 
                     {/* Show discount if available */}
-                    {/* {existingOrder?.discount && (
+                    {/* {existingOrderPayload?.discount && (
                       <div className="flex justify-between text-green-600">
                         <span>Discount:</span>
-                        <span>-${existingOrder.discount.toFixed(2)}</span>
+                        <span>-${existingOrderPayload.discount.toFixed(2)}</span>
                       </div>
                     )} */}
 
@@ -855,11 +944,13 @@ export function OrderForm({
         )}
 
         {/* Submit Button */}
-        <div className="flex justify-end">
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Processing..." : submitButtonText}
-          </Button>
-        </div>
+        {!hideSubmitControls && (
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Processing..." : submitButtonText}
+            </Button>
+          </div>
+        )}
       </form>
 
       {/* Dialogs - outside the form to prevent nested form submission */}

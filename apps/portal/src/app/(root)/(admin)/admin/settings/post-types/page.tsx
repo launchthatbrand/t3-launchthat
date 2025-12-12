@@ -1,13 +1,16 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@acme/ui/card";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Edit, Loader2, Plus, Trash } from "lucide-react";
+import { toast } from "sonner";
+
+import type { ColumnDefinition } from "@acme/ui/entity-list/types";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Card, CardContent } from "@acme/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +20,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -25,7 +30,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
+import { Switch } from "@acme/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { Textarea } from "@acme/ui/textarea";
+
 import {
   useAddPostTypeField,
   useCreatePostType,
@@ -36,19 +44,6 @@ import {
   useRemovePostTypeField,
   useUpdatePostTypeEntryCounts,
 } from "./_api/postTypes";
-import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import type { ColumnDef } from "@tanstack/react-table";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import Link from "next/link";
-import { Switch } from "@acme/ui/switch";
-import { Textarea } from "@acme/ui/textarea";
-import { toast } from "sonner";
 
 type FieldType =
   | "text"
@@ -74,7 +69,7 @@ const isValidTab = (value: string | null): value is TabValue => {
   return TAB_VALUES.includes(value as TabValue);
 };
 
-interface TaxonomyDefinition {
+interface TaxonomyDefinition extends Record<string, unknown> {
   slug: string;
   name: string;
   description: string;
@@ -527,7 +522,7 @@ export default function PostTypesSettingsPage() {
     });
   };
 
-  const postTypes = postTypesQuery ?? [];
+  const postTypes = postTypesQuery;
 
   const createPostTypeDialog = (
     <Dialog>
@@ -677,34 +672,37 @@ export default function PostTypesSettingsPage() {
     </div>
   );
 
-  const resolveStorageTables = (postType: PostType) => {
-    if (postType.storageTables && postType.storageTables.length > 0) {
-      return postType.storageTables;
+  const resolveStorageTables = (postType: PostType): string[] => {
+    const tables = postType.storageTables ?? [];
+    if (tables.length > 0) {
+      return tables;
     }
-    if (
-      !postType.storageKind ||
-      postType.storageKind === "posts" ||
-      postType.storageKind === null
-    ) {
+    if (!postType.storageKind || postType.storageKind === "posts") {
       return ["posts", "postsMeta"];
+    }
+    if (postType.storageKind === "component") {
+      return ["launchthat_ecommerce.posts", "launchthat_ecommerce.postsMeta"];
     }
     return [];
   };
 
   const postTypeColumns: ColumnDefinition<PostType>[] = [
     {
+      id: "name",
       accessorKey: "name",
       header: "Name",
-      cell: (postType) => <span className="font-medium">{postType.name}</span>,
+      cell: (postType: PostType) => (
+        <span className="font-medium">{postType.name}</span>
+      ),
     },
     {
-      accessorKey: "slug",
+      id: "slug",
       header: "Slug",
     },
     {
-      accessorKey: "description",
+      id: "description",
       header: "Description",
-      cell: (postType) => (
+      cell: (postType: PostType) => (
         <span className="text-muted-foreground line-clamp-1">
           {postType.description ?? "—"}
         </span>
@@ -713,40 +711,49 @@ export default function PostTypesSettingsPage() {
     {
       id: "fieldCount",
       header: <div className="text-center">Fields</div>,
-      cell: (postType) => (
+      cell: (postType: PostType) => (
         <div className="text-center">{postType.fieldCount ?? 0}</div>
       ),
     },
     {
       id: "entryCount",
       header: <div className="text-center">Entries</div>,
-      cell: (postType) => (
+      cell: (postType: PostType) => (
         <div className="text-center">{postType.entryCount ?? 0}</div>
       ),
     },
     {
       id: "type",
       header: <div className="text-center">Type</div>,
-      cell: (postType) => (
-        <div className="text-center">
-          {postType.isBuiltIn ? (
-            <Badge variant="secondary">Built-in</Badge>
-          ) : (
-            <Badge>Custom</Badge>
-          )}
-        </div>
-      ),
+      cell: (postType: PostType) => {
+        console.log("postType", postType);
+        return (
+          <div className="text-center">
+            <Badge variant="outline" className="text-xs font-medium">
+              {postType.storageKind === "component"
+                ? "Component"
+                : postType.storageKind === "custom"
+                  ? "Custom"
+                  : "Posts"}
+            </Badge>
+          </div>
+        );
+      },
     },
     {
       id: "storage",
       header: <div className="text-center">DB</div>,
-      cell: (postType) => {
+      cell: (postType: PostType) => {
         const tables = resolveStorageTables(postType);
         if (!tables.length) {
           return (
             <div className="text-muted-foreground text-center text-sm">—</div>
           );
         }
+        const formatTableLabel = (table: string) =>
+          postType.storageKind === "component"
+            ? table.replace(".", ":")
+            : table;
         return (
           <div className="flex flex-col flex-wrap items-center justify-center gap-1">
             {tables.map((table) => (
@@ -755,7 +762,7 @@ export default function PostTypesSettingsPage() {
                 variant="outline"
                 className="text-xs font-medium"
               >
-                {table}
+                {formatTableLabel(table)}
               </Badge>
             ))}
           </div>
@@ -765,9 +772,7 @@ export default function PostTypesSettingsPage() {
     {
       id: "actions",
       header: <div className="text-right">Actions</div>,
-      enableSorting: false,
-      enableHiding: false,
-      cell: (type) => {
+      cell: (type: PostType) => {
         return (
           <div className="flex justify-end gap-2">
             <Button variant="ghost" size="icon" asChild>
@@ -798,9 +803,10 @@ export default function PostTypesSettingsPage() {
   const taxonomyColumns: ColumnDefinition<TaxonomyDefinition>[] = useMemo(
     () => [
       {
+        id: "taxonomy",
         accessorKey: "name",
         header: "Taxonomy",
-        cell: (taxonomy) => (
+        cell: (taxonomy: TaxonomyDefinition) => (
           <div>
             <div className="font-medium">{taxonomy.name}</div>
             <div className="text-muted-foreground font-mono text-xs">
@@ -810,9 +816,9 @@ export default function PostTypesSettingsPage() {
         ),
       },
       {
-        accessorKey: "hierarchical",
+        id: "structure",
         header: "Structure",
-        cell: (taxonomy) => (
+        cell: (taxonomy: TaxonomyDefinition) => (
           <Badge variant="outline">
             {taxonomy.hierarchical ? "Hierarchical" : "Flat"}
           </Badge>
@@ -821,7 +827,7 @@ export default function PostTypesSettingsPage() {
       {
         id: "assignment",
         header: "Assigned",
-        cell: (taxonomy) => (
+        cell: (taxonomy: TaxonomyDefinition) => (
           <Switch
             checked={assignedTaxonomies.includes(taxonomy.slug)}
             onCheckedChange={(checked) =>
@@ -832,9 +838,10 @@ export default function PostTypesSettingsPage() {
         ),
       },
       {
+        id: "description",
         accessorKey: "description",
         header: "Description",
-        cell: (taxonomy) => (
+        cell: (taxonomy: TaxonomyDefinition) => (
           <p className="text-muted-foreground text-sm">
             {taxonomy.description || "No description"}
           </p>
@@ -961,84 +968,84 @@ export default function PostTypesSettingsPage() {
     ? `Taxonomies for ${selectedTaxonomyPostType.name}`
     : "Taxonomies";
 
-  const fieldColumns: ColumnDef<Doc<"postTypeFields">>[] = useMemo(
+  const fieldColumns: ColumnDefinition<Doc<"postTypeFields">>[] = useMemo(
     () => [
       {
-        accessorKey: "name",
+        id: "name",
         header: "Field",
-        cell: ({ row }) => (
+        cell: (field: Doc<"postTypeFields">) => (
           <div>
-            <div className="font-medium">{row.original.name}</div>
-            {row.original.description ? (
+            <div className="font-medium">{field.name}</div>
+            {field.description ? (
               <div className="text-muted-foreground text-xs">
-                {row.original.description}
+                {field.description}
               </div>
             ) : null}
           </div>
         ),
       },
       {
-        accessorKey: "key",
+        id: "key",
         header: "Meta Key",
-        cell: ({ row }) => (
-          <span className="font-mono text-sm">{row.original.key}</span>
+        cell: (field: Doc<"postTypeFields">) => (
+          <span className="font-mono text-sm">{field.key}</span>
         ),
       },
       {
-        accessorKey: "type",
+        id: "type",
         header: "Type",
-        cell: ({ row }) => (
+        cell: (field: Doc<"postTypeFields">) => (
           <span className="capitalize">
             {FIELD_TYPE_OPTIONS.find(
-              (option) => option.value === (row.original.type as FieldType),
-            )?.label ?? row.original.type}
+              (option) => option.value === (field.type as FieldType),
+            )?.label ?? field.type}
           </span>
         ),
       },
       {
-        accessorKey: "required",
+        id: "required",
         header: "Required",
-        cell: ({ row }) =>
-          row.original.required ? (
+        cell: (field: Doc<"postTypeFields">) =>
+          field.required ? (
             <Badge>Required</Badge>
           ) : (
             <Badge variant="outline">Optional</Badge>
           ),
       },
       {
-        accessorKey: "searchable",
+        id: "searchable",
         header: "Searchable",
-        cell: ({ row }) => (row.original.searchable ? "Yes" : "No"),
+        cell: (field: Doc<"postTypeFields">) =>
+          field.searchable ? "Yes" : "No",
       },
       {
-        accessorKey: "filterable",
+        id: "filterable",
         header: "Filterable",
-        cell: ({ row }) => (row.original.filterable ? "Yes" : "No"),
+        cell: (field: Doc<"postTypeFields">) =>
+          field.filterable ? "Yes" : "No",
       },
       {
-        accessorKey: "isSystem",
+        id: "isSystem",
         header: "Source",
-        cell: ({ row }) => (
-          <Badge variant={row.original.isSystem ? "secondary" : "default"}>
-            {row.original.isSystem ? "System" : "Custom"}
+        cell: (field: Doc<"postTypeFields">) => (
+          <Badge variant={field.isSystem ? "secondary" : "default"}>
+            {field.isSystem ? "System" : "Custom"}
           </Badge>
         ),
       },
       {
         id: "actions",
         header: "Actions",
-        cell: ({ row }) => (
+        cell: (field: Doc<"postTypeFields">) => (
           <div className="flex justify-end gap-2">
             <Button variant="ghost" size="icon" disabled>
               <Edit className="h-4 w-4" />
             </Button>
-            {!row.original.isSystem && (
+            {!field.isSystem && (
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() =>
-                  handleRemoveField(row.original._id, row.original.isSystem)
-                }
+                onClick={() => handleRemoveField(field._id, field.isSystem)}
               >
                 <Trash className="text-destructive h-4 w-4" />
               </Button>

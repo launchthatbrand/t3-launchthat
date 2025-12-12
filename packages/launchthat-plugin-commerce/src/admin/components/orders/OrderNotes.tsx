@@ -47,10 +47,7 @@ import { Label } from "@acme/ui/label";
 import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
 
-import type {
-  Doc,
-  Id,
-} from "../../../../../../apps/portal/convex/_generated/dataModel";
+import type { Doc, Id } from "@convex-config/_generated/dataModel";
 
 // interface OrderNote {
 //   id: string;

@@ -1,6 +1,7 @@
-import { PORTAL_TENANT_SLUG } from "../../constants";
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
+
+import { PORTAL_TENANT_SLUG } from "../../constants";
 
 export const postTypeSupportsValidator = v.object({
   title: v.optional(v.boolean()),
@@ -43,6 +44,7 @@ export const postTypeAdminMenuValidator = v.object({
 export const postTypeStorageKindValidator = v.union(
   v.literal("posts"),
   v.literal("custom"),
+  v.literal("component"),
 );
 
 export const postTypeStorageTablesValidator = v.array(v.string());

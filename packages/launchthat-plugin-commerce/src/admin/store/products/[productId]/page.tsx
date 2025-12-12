@@ -1,34 +1,33 @@
 "use client";
 
-import type { Doc, Id } from "@convex-config/_generated/dataModel";
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { api } from "@portal/convexspec";
-import { useMutation, useQuery } from "convex/react";
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
-
-import { Badge } from "@acme/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Label } from "@acme/ui/label";
-import { Separator } from "@acme/ui/separator";
-import { Switch } from "@acme/ui/switch";
-
-import type { ProductImage } from "../_components/FeaturedImagesUpload";
-import type { ProductFormData } from "../_components/ProductFormContent";
-import { ProductFormContent } from "../_components/ProductFormContent";
-import { ProductSettings } from "../_components/ProductSettings";
-import { usePluginTabs } from "../../../../lib/hooks";
 import {
   AdminLayoutContent,
   AdminLayoutMain,
   AdminLayoutSidebar,
   useAdminLayout,
 } from "../../../ui/AdminLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import {
   MediaTabContent,
   SEOTabContent,
 } from "../../../ui/AdminSinglePostLayout";
+import React, { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+
+import { Badge } from "@acme/ui/badge";
+import { Label } from "@acme/ui/label";
+import { Loader2 } from "lucide-react";
+import { ProductFormContent } from "../_components/ProductFormContent";
+import type { ProductFormData } from "../_components/ProductFormContent";
+import type { ProductImage } from "../_components/FeaturedImagesUpload";
+import { ProductSettings } from "../_components/ProductSettings";
+import { Separator } from "@acme/ui/separator";
+import { Switch } from "@acme/ui/switch";
+import { api } from "@portal/convexspec";
+import { toast } from "sonner";
+import { usePluginTabs } from "../../../../lib/hooks";
+import { useRouter } from "next/navigation";
 import { useStoreRouteSegments } from "../../StoreRouteContext";
 
 // Helper function to generate slug from product name

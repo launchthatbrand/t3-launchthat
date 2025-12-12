@@ -3741,7 +3741,7 @@ export type PublicApiType = {
               withFront?: boolean;
             };
             slug: string;
-            storageKind?: "posts" | "custom";
+            storageKind?: "posts" | "custom" | "component";
             storageTables?: Array<string>;
             supports?: {
               attachments?: boolean;
@@ -3796,7 +3796,7 @@ export type PublicApiType = {
                 singleSlug?: string;
                 withFront?: boolean;
               };
-              storageKind?: "posts" | "custom";
+              storageKind?: "posts" | "custom" | "component";
               storageTables?: Array<string>;
               supports?: {
                 attachments?: boolean;
@@ -3861,7 +3861,7 @@ export type PublicApiType = {
                 withFront?: boolean;
               };
               slug?: string;
-              storageKind?: "posts" | "custom";
+              storageKind?: "posts" | "custom" | "component";
               storageTables?: Array<string>;
               supports?: {
                 attachments?: boolean;
@@ -3994,7 +3994,7 @@ export type PublicApiType = {
               withFront?: boolean;
             };
             slug: string;
-            storageKind?: "posts" | "custom";
+            storageKind?: "posts" | "custom" | "component";
             storageTables?: Array<string>;
             supports?: {
               attachments?: boolean;
@@ -4059,7 +4059,7 @@ export type PublicApiType = {
               withFront?: boolean;
             };
             slug: string;
-            storageKind?: "posts" | "custom";
+            storageKind?: "posts" | "custom" | "component";
             storageTables?: Array<string>;
             supports?: {
               attachments?: boolean;
@@ -4124,7 +4124,7 @@ export type PublicApiType = {
               withFront?: boolean;
             };
             slug: string;
-            storageKind?: "posts" | "custom";
+            storageKind?: "posts" | "custom" | "component";
             storageTables?: Array<string>;
             supports?: {
               attachments?: boolean;
@@ -6733,6 +6733,184 @@ export type PublicApiType = {
         >;
       };
     };
+  };
+  commercePosts: {
+    getAllPosts: FunctionReference<
+      "query",
+      "public",
+      {
+        filters?: {
+          authorId?: string;
+          category?: string;
+          limit?: number;
+          postTypeSlug?: string;
+          status?: "published" | "draft" | "archived";
+        };
+        organizationId?: string;
+      },
+      Array<{
+        _creationTime: number;
+        _id: string;
+        authorId?: string;
+        category?: string;
+        content?: string;
+        createdAt: number;
+        excerpt?: string;
+        featuredImageUrl?: string;
+        organizationId?: string;
+        postTypeSlug: string;
+        slug: string;
+        status: string;
+        tags?: Array<string>;
+        title: string;
+        updatedAt?: number;
+      }>
+    >;
+    getPostById: FunctionReference<
+      "query",
+      "public",
+      { id: string; organizationId?: string },
+      {
+        _creationTime: number;
+        _id: string;
+        authorId?: string;
+        category?: string;
+        content?: string;
+        createdAt: number;
+        excerpt?: string;
+        featuredImageUrl?: string;
+        organizationId?: string;
+        postTypeSlug: string;
+        slug: string;
+        status: string;
+        tags?: Array<string>;
+        title: string;
+        updatedAt?: number;
+      } | null
+    >;
+    getPostBySlug: FunctionReference<
+      "query",
+      "public",
+      { organizationId?: string; slug: string },
+      {
+        _creationTime: number;
+        _id: string;
+        authorId?: string;
+        category?: string;
+        content?: string;
+        createdAt: number;
+        excerpt?: string;
+        featuredImageUrl?: string;
+        organizationId?: string;
+        postTypeSlug: string;
+        slug: string;
+        status: string;
+        tags?: Array<string>;
+        title: string;
+        updatedAt?: number;
+      } | null
+    >;
+    getPostMeta: FunctionReference<
+      "query",
+      "public",
+      { organizationId?: string; postId: string },
+      Array<{
+        _creationTime: number;
+        _id: string;
+        createdAt: number;
+        key: string;
+        postId: string;
+        updatedAt?: number;
+        value?: string | number | boolean | null;
+      }>
+    >;
+    searchPosts: FunctionReference<
+      "query",
+      "public",
+      {
+        limit?: number;
+        organizationId?: string;
+        postTypeSlug?: string;
+        searchTerm: string;
+      },
+      Array<{
+        _creationTime: number;
+        _id: string;
+        authorId?: string;
+        category?: string;
+        content?: string;
+        createdAt: number;
+        excerpt?: string;
+        featuredImageUrl?: string;
+        organizationId?: string;
+        postTypeSlug: string;
+        slug: string;
+        status: string;
+        tags?: Array<string>;
+        title: string;
+        updatedAt?: number;
+      }>
+    >;
+    getPostTags: FunctionReference<
+      "query",
+      "public",
+      { organizationId?: string; postTypeSlug?: string },
+      Array<string>
+    >;
+    getPostCategories: FunctionReference<
+      "query",
+      "public",
+      { organizationId?: string; postTypeSlug?: string },
+      Array<string>
+    >;
+    createPost: FunctionReference<
+      "mutation",
+      "public",
+      {
+        category?: string;
+        content?: string;
+        excerpt?: string;
+        featuredImage?: string;
+        meta?: Record<string, string | number | boolean | null>;
+        organizationId?: string;
+        postTypeSlug: string;
+        slug: string;
+        status: "published" | "draft" | "archived";
+        tags?: Array<string>;
+        title: string;
+      },
+      string
+    >;
+    updatePost: FunctionReference<
+      "mutation",
+      "public",
+      {
+        category?: string;
+        content?: string;
+        excerpt?: string;
+        featuredImage?: string;
+        id: string;
+        meta?: Record<string, string | number | boolean | null>;
+        slug?: string;
+        status?: "published" | "draft" | "archived";
+        tags?: Array<string>;
+        title?: string;
+      },
+      string
+    >;
+    deletePost: FunctionReference<"mutation", "public", { id: string }, null>;
+    updatePostStatus: FunctionReference<
+      "mutation",
+      "public",
+      { id: string; status: "published" | "draft" | "archived" },
+      string
+    >;
+    bulkUpdatePostStatus: FunctionReference<
+      "mutation",
+      "public",
+      { ids: Array<string>; status: "published" | "draft" | "archived" },
+      Array<string>
+    >;
   };
 };
 export type InternalApiType = {};

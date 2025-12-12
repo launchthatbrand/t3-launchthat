@@ -13,9 +13,8 @@ import { useSearchParams } from "next/navigation";
 
 import { useGetPostById } from "~/lib/blog";
 import {
-  COMMERCE_CHARGEBACK_POST_TYPE,
-  COMMERCE_ORDER_POST_TYPE,
-  ensureChargebackSyntheticId,
+  isCommercePostSlug,
+  normalizeCommercePostId,
 } from "~/lib/postTypes/customAdapters";
 import { usePostTypeBySlug } from "../settings/post-types/_api/postTypes";
 
@@ -56,22 +55,16 @@ const AdminPostProviderInner = ({
   const postType = usePostTypeBySlug(slugHint);
   const resolvedSlug = slugHint;
   const normalizedSlug = resolvedSlug.toLowerCase();
-  const isChargebackType = normalizedSlug === COMMERCE_CHARGEBACK_POST_TYPE;
-  const isOrderType = normalizedSlug === COMMERCE_ORDER_POST_TYPE;
+  const isCommerceType = isCommercePostSlug(normalizedSlug);
   const normalizedPostId = useMemo<Id<"posts"> | undefined>(() => {
     if (!postIdParam || postIdParam === "new") {
       return undefined;
     }
-    if (isChargebackType) {
-      return ensureChargebackSyntheticId(postIdParam);
-    }
-    if (isOrderType) {
-      return postIdParam.startsWith(`custom:${COMMERCE_ORDER_POST_TYPE}:`)
-        ? (postIdParam as Id<"posts">)
-        : (`custom:${COMMERCE_ORDER_POST_TYPE}:${postIdParam}` as Id<"posts">);
+    if (isCommerceType) {
+      return normalizeCommercePostId(normalizedSlug, postIdParam);
     }
     return isConvexId ? (postIdParam as Id<"posts">) : undefined;
-  }, [isChargebackType, isOrderType, isConvexId, postIdParam]);
+  }, [isCommerceType, isConvexId, normalizedSlug, postIdParam]);
   const post = useGetPostById(normalizedPostId);
   const slugFromPost =
     post && typeof post.postTypeSlug === "string"

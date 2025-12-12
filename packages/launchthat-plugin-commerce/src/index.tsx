@@ -91,6 +91,11 @@ export const works: Artwork[] = [
   },
 ];
 
+const COMMERCE_COMPONENT_TABLES = [
+  "launchthat_ecommerce.posts",
+  "launchthat_ecommerce.postsMeta",
+];
+
 const getValidTabValue = (value: string | undefined, tabs: CommerceTab[]) => {
   if (!value) return undefined;
   return tabs.some((tab) => tab.value === value) ? value : undefined;
@@ -341,6 +346,8 @@ export const createCommercePluginDefinition = (): PluginDefinition => ({
         position: 40,
         parent: "plugin:commerce",
       },
+      storageKind: "component",
+      storageTables: COMMERCE_COMPONENT_TABLES,
       adminArchiveView: {
         showSidebar: false,
       },
@@ -371,8 +378,8 @@ export const createCommercePluginDefinition = (): PluginDefinition => ({
         position: 41,
         parent: "plugin:commerce",
       },
-      storageKind: "custom",
-      storageTables: ["orders"],
+      storageKind: "component",
+      storageTables: COMMERCE_COMPONENT_TABLES,
       adminArchiveView: {
         showSidebar: false,
       },
@@ -395,8 +402,8 @@ export const createCommercePluginDefinition = (): PluginDefinition => ({
         position: 45,
         parent: "plugin:commerce",
       },
-      storageKind: "custom",
-      storageTables: ["plans"],
+      storageKind: "component",
+      storageTables: COMMERCE_COMPONENT_TABLES,
       adminArchiveView: {
         showSidebar: false,
       },
@@ -419,8 +426,8 @@ export const createCommercePluginDefinition = (): PluginDefinition => ({
         position: 46,
         parent: "plugin:commerce",
       },
-      storageKind: "custom",
-      storageTables: ["coupons"],
+      storageKind: "component",
+      storageTables: COMMERCE_COMPONENT_TABLES,
       adminArchiveView: {
         showSidebar: false,
       },
@@ -443,8 +450,8 @@ export const createCommercePluginDefinition = (): PluginDefinition => ({
         position: 47,
         parent: "plugin:commerce",
       },
-      storageKind: "custom",
-      storageTables: ["chargebacks"],
+      storageKind: "component",
+      storageTables: COMMERCE_COMPONENT_TABLES,
       adminArchiveView: {
         showSidebar: false,
       },
@@ -467,8 +474,8 @@ export const createCommercePluginDefinition = (): PluginDefinition => ({
         position: 48,
         parent: "plugin:commerce",
       },
-      storageKind: "custom",
-      storageTables: ["balances"],
+      storageKind: "component",
+      storageTables: COMMERCE_COMPONENT_TABLES,
       adminArchiveView: {
         showSidebar: false,
       },
@@ -491,8 +498,8 @@ export const createCommercePluginDefinition = (): PluginDefinition => ({
         position: 49,
         parent: "plugin:commerce",
       },
-      storageKind: "custom",
-      storageTables: ["transfers"],
+      storageKind: "component",
+      storageTables: COMMERCE_COMPONENT_TABLES,
       adminArchiveView: {
         showSidebar: false,
       },
@@ -515,8 +522,8 @@ export const createCommercePluginDefinition = (): PluginDefinition => ({
         position: 50,
         parent: "plugin:commerce",
       },
-      storageKind: "custom",
-      storageTables: ["chargebackEvidence"],
+      storageKind: "component",
+      storageTables: COMMERCE_COMPONENT_TABLES,
       adminArchiveView: {
         showSidebar: false,
       },

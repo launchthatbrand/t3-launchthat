@@ -1,8 +1,5 @@
 "use client";
 
-import type { Doc } from "@convex-config/_generated/dataModel";
-import React from "react";
-
 import {
   Card,
   CardContent,
@@ -10,8 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Checkbox } from "@acme/ui/checkbox";
-import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -19,6 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
+
+import { Checkbox } from "@acme/ui/checkbox";
+import type { Doc } from "@convex-config/_generated/dataModel";
+import { Label } from "@acme/ui/label";
+import React from "react";
 
 interface ProductSettingsProps {
   product: Doc<"products">;

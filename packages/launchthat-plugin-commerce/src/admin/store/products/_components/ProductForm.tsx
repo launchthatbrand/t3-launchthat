@@ -1,9 +1,5 @@
 "use client";
 
-import type { Id } from "@convex-config/_generated/dataModel";
-import React, { useEffect, useState } from "react";
-
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -11,9 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Checkbox } from "@acme/ui/checkbox";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -21,10 +15,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { Textarea } from "@acme/ui/textarea";
 
-import type { ProductImage } from "./FeaturedImagesUpload";
+import { Button } from "@acme/ui/button";
+import { Checkbox } from "@acme/ui/checkbox";
 import { FeaturedImagesUpload } from "./FeaturedImagesUpload";
+import type { Id } from "@convex-config/_generated/dataModel";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import type { ProductImage } from "./FeaturedImagesUpload";
+import { Textarea } from "@acme/ui/textarea";
 
 // Define product data interfaces
 export interface ProductFormData {
@@ -69,6 +68,7 @@ interface ProductFormProps {
   onSubmit: (data: ProductFormData) => Promise<void>;
   isSubmitting: boolean;
   submitButtonText?: string;
+  onRegisterBeforeSave?: (handler: () => Promise<void>) => (() => void) | void;
 }
 
 export default function ProductForm({
@@ -76,6 +76,7 @@ export default function ProductForm({
   onSubmit,
   isSubmitting,
   submitButtonText = "Save Product",
+  onRegisterBeforeSave,
 }: ProductFormProps) {
   // Form state
   const [formData, setFormData] = useState({
@@ -99,6 +100,34 @@ export default function ProductForm({
 
   // Featured images state
   const [featuredImages, setFeaturedImages] = useState<ProductImage[]>([]);
+
+  const latestStateRef = useRef({
+    formState: {
+      name: "",
+      description: "",
+      shortDescription: "",
+      price: 0,
+      sku: "",
+      status: "draft" as "draft" | "active" | "archived",
+      isVisible: false,
+      isDigital: false,
+      hasVariants: false,
+      taxable: true,
+      isFeatured: false,
+      stockStatus: "in_stock" as "in_stock" | "out_of_stock",
+      manageInventory: false,
+      stockQuantity: 0,
+      inStock: true,
+    },
+    images: [] as ProductImage[],
+  });
+
+  useEffect(() => {
+    latestStateRef.current = {
+      formState: formData,
+      images: featuredImages,
+    };
+  }, [formData, featuredImages]);
 
   // Load initial data if provided
   useEffect(() => {
@@ -197,52 +226,68 @@ export default function ProductForm({
     );
   };
 
+  const submitLatestFormData = useCallback(
+    async (source: "formSubmit" | "beforeSave") => {
+      const snapshot = latestStateRef.current;
+      const currentFormData = snapshot.formState;
+      const currentFeaturedImages = snapshot.images;
+
+      if (!["draft", "active", "archived"].includes(currentFormData.status)) {
+        if (source === "formSubmit") {
+          alert("Please select a valid status");
+        }
+        return;
+      }
+
+      const price = parseFloat(currentFormData.price.toString());
+      let inventoryLevel: number | undefined;
+
+      if (currentFormData.isDigital) {
+        inventoryLevel = undefined;
+      } else {
+        inventoryLevel = currentFormData.stockQuantity
+          ? parseInt(currentFormData.stockQuantity.toString()) || undefined
+          : undefined;
+      }
+
+      await onSubmit({
+        name: currentFormData.name,
+        description: currentFormData.description,
+        shortDescription: currentFormData.shortDescription || undefined,
+        basePrice: price,
+        sku: currentFormData.sku,
+        stockStatus: currentFormData.stockStatus,
+        inventoryLevel,
+        status: currentFormData.status,
+        isVisible: currentFormData.isVisible,
+        isDigital: currentFormData.isDigital,
+        hasVariants: currentFormData.hasVariants,
+        images: currentFeaturedImages,
+        featuredImages: currentFeaturedImages,
+        taxable: currentFormData.taxable,
+        isFeatured: currentFormData.isFeatured,
+        tags: initialData?.tags ?? [],
+        metaTitle: initialData?.metaTitle,
+        metaDescription: initialData?.metaDescription,
+        metaKeywords: initialData?.metaKeywords,
+      });
+    },
+    [initialData, onSubmit],
+  );
+
+  useEffect(() => {
+    if (!onRegisterBeforeSave) {
+      return;
+    }
+    return onRegisterBeforeSave(async () => {
+      await submitLatestFormData("beforeSave");
+    });
+  }, [onRegisterBeforeSave, submitLatestFormData]);
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Ensure we have a valid status
-    if (!["draft", "active", "archived"].includes(formData.status)) {
-      alert("Please select a valid status");
-      return;
-    }
-
-    // Use price directly (supports decimals like 0.13, 9.99, 999)
-    const price = parseFloat(formData.price.toString());
-
-    // Calculate inventory level based on stockQuantity
-    let inventoryLevel: number | undefined;
-
-    if (formData.isDigital) {
-      // Digital products don't need inventory tracking
-      inventoryLevel = undefined;
-    } else {
-      // Use stockQuantity if provided, otherwise undefined (unlimited)
-      inventoryLevel = formData.stockQuantity
-        ? parseInt(formData.stockQuantity.toString()) || undefined
-        : undefined;
-    }
-
-    await onSubmit({
-      name: formData.name,
-      description: formData.description,
-      shortDescription: formData.shortDescription || undefined,
-      basePrice: price,
-      sku: formData.sku,
-      stockStatus: formData.stockStatus,
-      inventoryLevel,
-      status: formData.status,
-      isVisible: formData.isVisible,
-      isDigital: formData.isDigital,
-      hasVariants: formData.hasVariants,
-      images: featuredImages, // Map featuredImages to images for backend compatibility
-      taxable: formData.taxable,
-      isFeatured: formData.isFeatured,
-      tags: initialData?.tags ?? [],
-      metaTitle: initialData?.metaTitle,
-      metaDescription: initialData?.metaDescription,
-      metaKeywords: initialData?.metaKeywords,
-    });
+    await submitLatestFormData("formSubmit");
   };
 
   return (

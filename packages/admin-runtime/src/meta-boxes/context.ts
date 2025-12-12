@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export interface MetaBoxVisibilityConfig {
   showGeneralPanel?: boolean;
   showCustomFieldsPanel?: boolean;
@@ -29,6 +31,13 @@ export interface AdminMetaBoxContext<
   };
   visibility?: MetaBoxVisibilityConfig;
   registerBeforeSave?: (handler: () => Promise<void> | void) => () => void;
+  registerMetaPayloadCollector?: (
+    collector: () => Record<string, unknown> | null | undefined,
+  ) => () => void;
+  getMetaValue?: (key: string) => unknown;
+  setMetaValue?: (key: string, value: unknown) => void;
+  enqueueScript?: (node: ReactNode) => () => void;
+  enqueueStyle?: (node: ReactNode) => () => void;
   // Allow hosts to tack on arbitrary values without losing type safety.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;

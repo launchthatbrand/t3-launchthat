@@ -14,7 +14,7 @@ import {
   Input,
 } from "@acme/ui";
 
-import type { Id } from "../../../../../../apps/portal/convex/_generated/dataModel";
+import type { Id } from "@convex-config/_generated/dataModel";
 
 // Product type for the dialog
 interface Product {
