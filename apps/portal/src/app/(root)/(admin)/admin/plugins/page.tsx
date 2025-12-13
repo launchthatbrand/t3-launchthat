@@ -1,22 +1,5 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useTransition,
-} from "react";
-import Link from "next/link";
-import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
-import { toast } from "sonner";
-
-import type { ColumnDefinition } from "@acme/ui/entity-list/types";
 import {
   Accordion,
   AccordionContent,
@@ -33,8 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@acme/ui/alert-dialog";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -43,22 +24,40 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import { Separator } from "@acme/ui/separator";
-
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type {
   PluginDefinition,
   PluginPostTypeConfig,
 } from "~/lib/plugins/types";
-import { useTenant } from "~/context/TenantContext";
-import { pluginDefinitions } from "~/lib/plugins/definitions";
-import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import {
   useCreatePostType,
   useDisablePostTypeAccess,
   useEnsurePostTypeAccess,
   usePostTypes,
 } from "../settings/post-types/_api/postTypes";
+import { useMutation, useQuery } from "convex/react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import type { ColumnDefinition } from "@acme/ui/entity-list/types";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import Link from "next/link";
+import { Separator } from "@acme/ui/separator";
+import { api } from "@/convex/_generated/api";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
+import { toast } from "sonner";
+import { useTenant } from "~/context/TenantContext";
 
 const isPostTypeEnabledForTenant = (
   postType: Doc<"postTypes">,
@@ -200,6 +199,9 @@ export default function PluginsPage() {
       startTransition(async () => {
         try {
           type CreatePostTypeArgs = Parameters<typeof createPostType>[0];
+          // Universally sync plugin post types to match the plugin definition:
+          // 1) ensure the post type exists (create if missing)
+          // 2) apply the definition payload on enable (including adminMenu.enabled, storageKind, metaBoxes, etc.)
           for (const type of plugin.postTypes) {
             try {
               const result = await ensurePostTypeAccess(type);
@@ -208,6 +210,9 @@ export default function PluginsPage() {
                 pluginId: plugin.id,
                 slug: type.slug,
                 result,
+                adminMenu: type.adminMenu,
+                storageKind: type.storageKind,
+                storageTables: type.storageTables,
               });
             } catch (error: unknown) {
               const normalizedError = normalizeError(error);
@@ -220,6 +225,9 @@ export default function PluginsPage() {
                   pluginId: plugin.id,
                   slug: type.slug,
                   created,
+                  adminMenu: type.adminMenu,
+                  storageKind: type.storageKind,
+                  storageTables: type.storageTables,
                 });
               } else {
                 throw normalizedError;

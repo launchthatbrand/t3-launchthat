@@ -1,17 +1,20 @@
 "use client";
 
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import type { ReactNode } from "react";
-import { useCallback, useMemo } from "react";
-import Link from "next/link";
-import { useDeletePost, useGetAllPosts } from "@/lib/blog";
-import { formatDistanceToNow } from "date-fns";
-import { Eye, Info, Plus, Sparkles, Trash2 } from "lucide-react";
-
-import type { ColumnDefinition } from "@acme/ui/entity-list";
-import type { EntityAction } from "@acme/ui/entity-list/types";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
+import {
+  ADMIN_ARCHIVE_CONTENT_AFTER,
+  ADMIN_ARCHIVE_CONTENT_BEFORE,
+  ADMIN_ARCHIVE_CONTENT_SUPPRESS,
+  ADMIN_ARCHIVE_HEADER_AFTER,
+  ADMIN_ARCHIVE_HEADER_BEFORE,
+  ADMIN_ARCHIVE_HEADER_SUPPRESS,
+} from "~/lib/plugins/hookSlots";
+import {
+  AdminLayout,
+  AdminLayoutContent,
+  AdminLayoutHeader,
+  AdminLayoutMain,
+  AdminLayoutSidebar,
+} from "~/components/admin/AdminLayout";
 import {
   Card,
   CardContent,
@@ -19,7 +22,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { EntityList } from "@acme/ui/entity-list";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { Eye, Info, Plus, Sparkles, Trash2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -28,20 +32,23 @@ import {
   SelectValue,
 } from "@acme/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-import { toast } from "@acme/ui/toast";
+import { useCallback, useMemo } from "react";
+import { useDeletePost, useGetAllPosts } from "@/lib/blog";
 
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import type { ColumnDefinition } from "@acme/ui/entity-list";
+import type { EntityAction } from "@acme/ui/entity-list/types";
+import { EntityList } from "@acme/ui/entity-list";
+import Link from "next/link";
 import type { PermalinkSettings } from "./permalink";
-import {
-  AdminLayout,
-  AdminLayoutContent,
-  AdminLayoutHeader,
-  AdminLayoutMain,
-  AdminLayoutSidebar,
-} from "~/components/admin/AdminLayout";
-import { useApplyFilters } from "~/lib/hooks";
-import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
-import { buildPermalink } from "./permalink";
 import { PlaceholderState } from "./PlaceholderState";
+import type { ReactNode } from "react";
+import { buildPermalink } from "./permalink";
+import { formatDistanceToNow } from "date-fns";
+import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
+import { toast } from "@acme/ui/toast";
+import { useApplyFilters } from "~/lib/hooks";
 
 type PostDoc = Doc<"posts">;
 type PostTypeDoc = Doc<"postTypes">;
@@ -97,6 +104,7 @@ export interface GenericArchiveViewProps {
   renderLayout?: boolean;
   withSidebar?: boolean;
   pluginMenus?: Record<string, PluginMenuItem[]>;
+  organizationId?: Id<"organizations">;
 }
 
 export function GenericArchiveView({
@@ -110,6 +118,7 @@ export function GenericArchiveView({
   renderLayout = true,
   withSidebar = true,
   pluginMenus,
+  organizationId,
 }: GenericArchiveViewProps) {
   const label = postType?.name ?? slug.replace(/-/g, " ");
   const description =
@@ -121,11 +130,9 @@ export function GenericArchiveView({
   const postsQuery = useGetAllPosts(
     shouldLoadPosts ? { postTypeSlug: normalizedSlug } : undefined,
   );
-  const posts = postsQuery.posts;
+  const posts = (postsQuery.posts ?? []) as ArchiveRow[];
   const postsLoading = postsQuery.isLoading;
-  const rows: ArchiveRow[] = shouldLoadPosts
-    ? (posts as ArchiveRow[])
-    : FALLBACK_ROWS;
+  const rows: ArchiveRow[] = shouldLoadPosts ? posts : FALLBACK_ROWS;
   const tableLoading = shouldLoadPosts ? postsLoading : isLoading;
   const displayRows = useMemo<ArchiveDisplayRow[]>(() => {
     return rows.map((row) => {
@@ -262,39 +269,77 @@ export function GenericArchiveView({
     return actions;
   }, [handleDeleteLesson, slug]);
 
-  const archiveHookContext = useMemo(
+  const archiveHookContext = useMemo<{
+    postType: string;
+    postTypeDefinition: PostTypeDoc | null;
+    layout: "default" | "content-only";
+    pluginMenus?: Record<string, PluginMenuItem[]>;
+    organizationId?: Id<"organizations">;
+  }>(
     () => ({
       postType: slug,
       postTypeDefinition: postType,
-      layout: renderLayout ? ("default" as const) : ("content-only" as const),
+      layout: renderLayout ? "default" : "content-only",
       pluginMenus,
+      organizationId,
     }),
-    [pluginMenus, postType, renderLayout, slug],
+    [pluginMenus, postType, renderLayout, slug, organizationId],
   );
 
   const headerBefore = useApplyFilters<ReactNode[]>(
-    "admin.archive.header.before",
+    ADMIN_ARCHIVE_HEADER_BEFORE,
     [],
     archiveHookContext,
   );
   const headerAfter = useApplyFilters<ReactNode[]>(
-    "admin.archive.header.after",
+    ADMIN_ARCHIVE_HEADER_AFTER,
+    [],
+    archiveHookContext,
+  );
+  const suppressContent = useApplyFilters<boolean>(
+    ADMIN_ARCHIVE_CONTENT_SUPPRESS,
+    false,
+    archiveHookContext,
+  );
+  const suppressHeader = useApplyFilters<boolean>(
+    ADMIN_ARCHIVE_HEADER_SUPPRESS,
+    false,
+    archiveHookContext,
+  );
+  const contentBefore = useApplyFilters<ReactNode[]>(
+    ADMIN_ARCHIVE_CONTENT_BEFORE,
+    [],
+    archiveHookContext,
+  );
+  const contentAfter = useApplyFilters<ReactNode[]>(
+    ADMIN_ARCHIVE_CONTENT_AFTER,
     [],
     archiveHookContext,
   );
 
-  const renderInjectedHeaderContent = useCallback(
-    (items: ReactNode[], slot: "before" | "after") => {
+  const renderInjectedItems = useCallback(
+    (
+      items: ReactNode[],
+      slot:
+        | "admin.archive.header.before"
+        | "admin.archive.header.after"
+        | "admin.archive.content.before"
+        | "admin.archive.content.after",
+    ) => {
       if (items.length === 0) {
         return null;
       }
       return (
         <div
-          className="space-y-2"
-          data-hook-slot={`admin.archive.header.${slot}`}
+          className={`space-y-2 ${
+            slot === "admin.archive.content.after" ? "flex flex-1" : ""
+          }`}
+          data-hook-slot={slot}
         >
           {items.map((node, index) => (
-            <div key={`admin-archive-header-${slot}-${index}`}>{node}</div>
+            <div className="flex flex-1" key={`${slot}-${index}`}>
+              {node}
+            </div>
           ))}
         </div>
       );
@@ -306,7 +351,7 @@ export function GenericArchiveView({
     <div className="container space-y-6 py-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Select value={slug} onValueChange={onPostTypeChange}>
-          <SelectTrigger className="w-[240px]">
+          <SelectTrigger className="w-60">
             <SelectValue placeholder="Select post type" />
           </SelectTrigger>
           <SelectContent>
@@ -367,18 +412,31 @@ export function GenericArchiveView({
     </div>
   );
 
-  const headerBeforeContent = renderInjectedHeaderContent(
+  const headerBeforeContent = renderInjectedItems(
     headerBefore,
-    "before",
+    "admin.archive.header.before",
   );
-  const headerAfterContent = renderInjectedHeaderContent(headerAfter, "after");
+  const headerAfterContent = renderInjectedItems(
+    headerAfter,
+    "admin.archive.header.after",
+  );
+  const contentBeforeNodes = renderInjectedItems(
+    contentBefore,
+    "admin.archive.content.before",
+  );
+  const contentAfterNodes = renderInjectedItems(
+    contentAfter,
+    "admin.archive.content.after",
+  );
 
   const contentWithHooks = (
     <>
       {headerBeforeContent}
-      {renderLayout ? <AdminLayoutHeader /> : null}
+      {renderLayout && !suppressHeader ? <AdminLayoutHeader /> : null}
       {headerAfterContent}
-      {mainContent}
+      {contentBeforeNodes}
+      {suppressContent ? null : mainContent}
+      {contentAfterNodes}
     </>
   );
 
@@ -392,8 +450,13 @@ export function GenericArchiveView({
       description={description}
       pathname={`/admin/edit?post_type=${slug}`}
     >
-      <AdminLayoutContent withSidebar={withSidebar}>
-        <AdminLayoutMain>{contentWithHooks}</AdminLayoutMain>
+      <AdminLayoutContent
+        className="flex flex-1 flex-col"
+        withSidebar={withSidebar}
+      >
+        <AdminLayoutMain className="flex flex-1 flex-col">
+          {contentWithHooks}
+        </AdminLayoutMain>
         {withSidebar ? (
           <AdminLayoutSidebar className="border-l p-4">
             <DefaultArchiveSidebar />

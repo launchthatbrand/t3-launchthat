@@ -1,29 +1,28 @@
 "use client";
 
-import type { GenericId as Id } from "convex/values";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-
-import { Button } from "@acme/ui/button";
-import { AppSidebar } from "@acme/ui/layout/app-sidebar";
+import type {
+  ContactDoc,
+  ConversationSummary,
+} from "./components/ConversationInspector";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@acme/ui/sidebar";
 import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type {
-  ContactDoc,
-  ConversationSummary,
-} from "./components/ConversationInspector";
+import { AppSidebar } from "@acme/ui/layout/app-sidebar";
+import { ArticlesView } from "./views/ArticlesView";
+import { Button } from "@acme/ui/button";
 import { ConversationLeftSidebar } from "./components/ConversationLeftSidebar";
 import { ConversationRightSidebar } from "./components/ConversationRightSidebar";
-import { useSupportConversations } from "./hooks/useSupportConversations";
-import { ArticlesView } from "./views/ArticlesView";
-import { TestView } from "./views/ConversationsView";
 import { DashboardView } from "./views/DashboardView";
+import type { GenericId as Id } from "convex/values";
+import Link from "next/link";
 import { SettingsView } from "./views/SettingsView";
+import { TestView } from "./views/ConversationsView";
+import { useSupportConversations } from "./hooks/useSupportConversations";
 
 type NavHrefBuilder = (slug: string) => string;
 
@@ -167,7 +166,7 @@ export function SupportSystem({
           } as React.CSSProperties
         }
       >
-        <header className="flex h-12 shrink-0 items-center justify-end gap-2 border-b px-4">
+        {/* <header className="flex h-12 shrink-0 items-center justify-end gap-2 border-b px-4">
           <div className="w-full">
             <Tabs>
               <TabsList className="h-auto rounded-none">
@@ -197,7 +196,7 @@ export function SupportSystem({
             </Tabs>
           </div>
           <SidebarTrigger className="-mr-1 rotate-180" />
-        </header>
+        </header> */}
         <div className="relative flex w-full flex-1">
           {routeKey === "conversations" && (
             <ConversationLeftSidebar

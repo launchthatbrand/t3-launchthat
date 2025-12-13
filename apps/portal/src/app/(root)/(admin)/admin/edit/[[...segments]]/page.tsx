@@ -298,6 +298,7 @@ function AdminEditPageBody() {
           renderLayout={renderLayout}
           withSidebar={options?.withSidebar ?? true}
           pluginMenus={pluginMenus}
+          organizationId={organizationId ?? undefined}
         />
       );
     },
@@ -310,6 +311,7 @@ function AdminEditPageBody() {
       pluginMenus,
       postTypes,
       resolvedSlug,
+      organizationId,
     ],
   );
 

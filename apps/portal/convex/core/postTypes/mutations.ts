@@ -808,6 +808,14 @@ export const enableForOrganization = mutation({
         );
       }
     } else if (args.definition) {
+      console.log("[postTypes.enableForOrganization] sync definition", {
+        slug: args.slug,
+        org: resolvedOrgId,
+        hasAdminMenu: Boolean(args.definition.adminMenu),
+        adminMenu: args.definition.adminMenu,
+        storageKind: args.definition.storageKind,
+        storageTables: args.definition.storageTables,
+      });
       const desiredStorageKind = args.definition.storageKind ?? "posts";
       const desiredStorageTables =
         args.definition.storageTables ??
@@ -815,50 +823,60 @@ export const enableForOrganization = mutation({
           ? [...DEFAULT_POST_STORAGE_TABLES]
           : []);
       const desiredMetaBoxes = args.definition.metaBoxes;
-      const storageKindNeedsUpdate =
-        (postType.storageKind ?? "posts") !== desiredStorageKind;
-      const storageTablesNeedsUpdate = !storageTablesEqual(
-        postType.storageTables,
-        desiredStorageTables,
-      );
-      const metaBoxesNeedUpdate =
-        desiredMetaBoxes !== undefined &&
-        !metaBoxesEqual(postType.metaBoxes, desiredMetaBoxes);
+      const desiredAdminMenu = args.definition.adminMenu;
+      const desiredSupports = args.definition.supports;
+      const desiredRewrite = args.definition.rewrite;
+      const desiredEnableApi = args.definition.enableApi ?? postType.enableApi;
+      const desiredIncludeTimestamps =
+        args.definition.includeTimestamps ?? postType.includeTimestamps;
+      const desiredEnableVersioning =
+        args.definition.enableVersioning ?? postType.enableVersioning;
 
-      if (
-        storageKindNeedsUpdate ||
-        storageTablesNeedsUpdate ||
-        metaBoxesNeedUpdate
-      ) {
-        const timestamp = Date.now();
-        await ctx.db.patch(postType._id, {
-          ...(storageKindNeedsUpdate
-            ? {
-                storageKind: desiredStorageKind,
-                storageTables: desiredStorageTables,
-              }
-            : {}),
-          ...(storageTablesNeedsUpdate && !storageKindNeedsUpdate
-            ? { storageTables: desiredStorageTables }
-            : {}),
-          ...(metaBoxesNeedUpdate ? { metaBoxes: desiredMetaBoxes } : {}),
-          updatedAt: timestamp,
-        });
-        postType = {
-          ...postType,
-          ...(storageKindNeedsUpdate
-            ? {
-                storageKind: desiredStorageKind,
-                storageTables: desiredStorageTables,
-              }
-            : {}),
-          ...(storageTablesNeedsUpdate && !storageKindNeedsUpdate
-            ? { storageTables: desiredStorageTables }
-            : {}),
-          ...(metaBoxesNeedUpdate ? { metaBoxes: desiredMetaBoxes } : {}),
-          updatedAt: timestamp,
-        };
-      }
+      // Force-sync all definition-backed fields on enable to match plugin JSON.
+      const timestamp = Date.now();
+      await ctx.db.patch(postType._id, {
+        storageKind: desiredStorageKind,
+        storageTables: desiredStorageTables,
+        ...(desiredMetaBoxes !== undefined
+          ? { metaBoxes: desiredMetaBoxes }
+          : {}),
+        ...(desiredAdminMenu !== undefined
+          ? { adminMenu: desiredAdminMenu }
+          : {}),
+        ...(desiredSupports !== undefined ? { supports: desiredSupports } : {}),
+        ...(desiredRewrite !== undefined ? { rewrite: desiredRewrite } : {}),
+        enableApi: desiredEnableApi,
+        includeTimestamps: desiredIncludeTimestamps,
+        enableVersioning: desiredEnableVersioning,
+        updatedAt: timestamp,
+      });
+      console.log(
+        "[postTypes.enableForOrganization] applied definition patch",
+        {
+          slug: args.slug,
+          org: resolvedOrgId,
+          adminMenu: desiredAdminMenu,
+          storageKind: desiredStorageKind,
+          storageTables: desiredStorageTables,
+        },
+      );
+      postType = {
+        ...postType,
+        storageKind: desiredStorageKind,
+        storageTables: desiredStorageTables,
+        ...(desiredMetaBoxes !== undefined
+          ? { metaBoxes: desiredMetaBoxes }
+          : {}),
+        ...(desiredAdminMenu !== undefined
+          ? { adminMenu: desiredAdminMenu }
+          : {}),
+        ...(desiredSupports !== undefined ? { supports: desiredSupports } : {}),
+        ...(desiredRewrite !== undefined ? { rewrite: desiredRewrite } : {}),
+        enableApi: desiredEnableApi,
+        includeTimestamps: desiredIncludeTimestamps,
+        enableVersioning: desiredEnableVersioning,
+        updatedAt: timestamp,
+      };
     }
 
     if (

@@ -9,7 +9,10 @@
       "launchthat-plugin-core": ["../launchthat-plugin-core/src/index"],
       "@acme/ui": ["../ui/src/index"],
       "@acme/ui/*": ["../ui/src/*"],
-      "@portal/convexspec": ["../../apps/portal/convexspec.ts"]
+      "@portal/convexspec": ["../../apps/portal/convexspec.ts"],
+      "@convex-config/_generated/dataModel": [
+        "../../apps/portal/convex/_generated/dataModel"
+      ]
     }
   },
   "include": ["src"],

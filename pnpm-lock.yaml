@@ -2567,6 +2567,9 @@ importers:
 
   packages/launchthat-plugin-support:
     dependencies:
+      '@acme/admin-runtime':
+        specifier: workspace:*
+        version: link:../admin-runtime
       '@acme/ui':
         specifier: workspace:*
         version: link:../ui

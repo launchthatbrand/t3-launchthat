@@ -1,21 +1,20 @@
+import type { MenuItemInput, MenuSectionRef } from "~/lib/adminMenu";
+import {
+  SOCIAL_FEED_FRONTEND_PROVIDER_ID,
+  configureSocialFeedPlugin,
+  socialFeedPlugin,
+} from "launchthat-plugin-socialfeed";
+
+import type { PluginDefinition } from "./types";
+import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
+import { adminMenuRegistry } from "~/lib/adminMenu";
 import { calendarPlugin } from "launchthat-plugin-calendar";
 import { cmsPlugin } from "launchthat-plugin-cms";
 import { createCommercePluginDefinition } from "launchthat-plugin-commerce";
+import { createSupportPluginDefinition } from "launchthat-plugin-support";
 import { lmsPlugin } from "launchthat-plugin-lms";
-import {
-  configureSocialFeedPlugin,
-  SOCIAL_FEED_FRONTEND_PROVIDER_ID,
-  socialFeedPlugin,
-} from "launchthat-plugin-socialfeed";
-import { supportPlugin as baseSupportPlugin } from "launchthat-plugin-support";
 import { tasksPlugin } from "launchthat-plugin-tasks";
 import { vimeoPlugin } from "launchthat-plugin-vimeo";
-
-import type { PluginDefinition } from "./types";
-import type { MenuItemInput, MenuSectionRef } from "~/lib/adminMenu";
-import { adminMenuRegistry } from "~/lib/adminMenu";
-import { SupportPluginPage } from "~/plugins/settings/support/SupportPluginPage";
-import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
 
 const commercePlugin = createCommercePluginDefinition();
 
@@ -25,42 +24,7 @@ configureSocialFeedPlugin({
   },
 });
 
-const supportPlugin: PluginDefinition = {
-  ...baseSupportPlugin,
-  settingsPages: [
-    ...(baseSupportPlugin.settingsPages ?? []),
-    {
-      id: "support-dashboard",
-      slug: "dashboard",
-      label: "Dashboard",
-      description: "See key metrics and quick links for support operations.",
-      render: (props) => <SupportPluginPage {...props} page="dashboard" />,
-    },
-    {
-      id: "support-conversations",
-      slug: "conversations",
-      label: "Conversations",
-      description: "Monitor and reply to support conversations.",
-      render: (props) => <SupportPluginPage {...props} page="conversations" />,
-    },
-    {
-      id: "support-helpdesk-articles",
-      slug: "helpdesk-articles",
-      label: "Helpdesk Articles",
-      description: "Manage the content surfaced inside the support widget.",
-      render: (props) => (
-        <SupportPluginPage {...props} page="helpdesk-articles" />
-      ),
-    },
-    {
-      id: "support-settings",
-      slug: "settings",
-      label: "Support Settings",
-      description: "Configure support chat preferences.",
-      render: (props) => <SupportPluginPage {...props} page="settings" />,
-    },
-  ],
-};
+const supportPlugin = createSupportPluginDefinition();
 
 export const pluginDefinitions: PluginDefinition[] = [
   cmsPlugin,
