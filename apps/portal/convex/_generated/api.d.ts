@@ -8,7 +8,6 @@
  * @module
  */
 
-import type * as commercePosts from "../commercePosts.js";
 import type * as constants from "../constants.js";
 import type * as core_accessControl_helpers from "../core/accessControl/helpers.js";
 import type * as core_accessControl_mutations from "../core/accessControl/mutations.js";
@@ -151,6 +150,12 @@ import type * as plugins_calendar_events_orders from "../plugins/calendar/events
 import type * as plugins_calendar_events_queries from "../plugins/calendar/events/queries.js";
 import type * as plugins_calendar_helpers from "../plugins/calendar/helpers.js";
 import type * as plugins_calendar_queries from "../plugins/calendar/queries.js";
+import type * as plugins_commerce_mutations from "../plugins/commerce/mutations.js";
+import type * as plugins_commerce_queries from "../plugins/commerce/queries.js";
+import type * as plugins_entity_mutations from "../plugins/entity/mutations.js";
+import type * as plugins_entity_queries from "../plugins/entity/queries.js";
+import type * as plugins_entity_resolvers from "../plugins/entity/resolvers.js";
+import type * as plugins_entity_types from "../plugins/entity/types.js";
 import type * as plugins_lms_actions from "../plugins/lms/actions.js";
 import type * as plugins_lms_helpers from "../plugins/lms/helpers.js";
 import type * as plugins_lms_mutations from "../plugins/lms/mutations.js";
@@ -204,7 +209,6 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
-  commercePosts: typeof commercePosts;
   constants: typeof constants;
   "core/accessControl/helpers": typeof core_accessControl_helpers;
   "core/accessControl/mutations": typeof core_accessControl_mutations;
@@ -347,6 +351,12 @@ declare const fullApi: ApiFromModules<{
   "plugins/calendar/events/queries": typeof plugins_calendar_events_queries;
   "plugins/calendar/helpers": typeof plugins_calendar_helpers;
   "plugins/calendar/queries": typeof plugins_calendar_queries;
+  "plugins/commerce/mutations": typeof plugins_commerce_mutations;
+  "plugins/commerce/queries": typeof plugins_commerce_queries;
+  "plugins/entity/mutations": typeof plugins_entity_mutations;
+  "plugins/entity/queries": typeof plugins_entity_queries;
+  "plugins/entity/resolvers": typeof plugins_entity_resolvers;
+  "plugins/entity/types": typeof plugins_entity_types;
   "plugins/lms/actions": typeof plugins_lms_actions;
   "plugins/lms/helpers": typeof plugins_lms_helpers;
   "plugins/lms/mutations": typeof plugins_lms_mutations;

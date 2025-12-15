@@ -1,12 +1,21 @@
 "use client";
 
-import { COMMERCE_BALANCE_POST_TYPE, isCommerceBalanceSlug } from "../adapters";
+import type { Doc } from "@convex-config/_generated/dataModel";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@portal/convexspec";
+import { useMutation } from "convex/react";
+
+import type { AdminMetaBoxContext } from "@acme/admin-runtime";
 import {
   MetaBoxFieldset,
   MetaBoxTable,
   MetaBoxTableRow,
   registerMetaBoxHook,
 } from "@acme/admin-runtime";
+import { Button } from "@acme/ui/button";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -14,23 +23,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
+import { Textarea } from "@acme/ui/textarea";
+import { toast } from "@acme/ui/toast";
+
 import {
   decodeCommerceSyntheticId,
   encodeCommerceSyntheticId,
 } from "../../lib/customAdapters";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import type { AdminMetaBoxContext } from "@acme/admin-runtime";
+import { COMMERCE_BALANCE_POST_TYPE, isCommerceBalanceSlug } from "../adapters";
 import { BALANCE_META_KEYS } from "../constants";
-import { Button } from "@acme/ui/button";
-import type { Doc } from "@convex-config/_generated/dataModel";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import { Textarea } from "@acme/ui/textarea";
-import { api } from "@portal/convexspec";
-import { toast } from "@acme/ui/toast";
-import { useMutation } from "convex/react";
-import { useRouter } from "next/navigation";
 
 type CommerceAdminContext = AdminMetaBoxContext<Doc<"posts">, Doc<"postTypes">>;
 
@@ -155,8 +156,12 @@ const buildContent = (state: BalanceFormState) => {
 const BalanceMetaBox = ({ context }: { context: CommerceAdminContext }) => {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const createCommercePost = useMutation(api.commercePosts.createPost);
-  const updateCommercePost = useMutation(api.commercePosts.updatePost);
+  const createCommercePost = useMutation(
+    api.plugins.commerce.mutations.createPost,
+  );
+  const updateCommercePost = useMutation(
+    api.plugins.commerce.mutations.updatePost,
+  );
 
   const commerceInfo = useMemo(() => {
     if (!context.post?._id) {

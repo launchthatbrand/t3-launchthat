@@ -1,18 +1,31 @@
 "use client";
 
+import type { Doc, Id } from "@convex-config/_generated/dataModel";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import { useAuth } from "@clerk/nextjs";
+import { api } from "@portal/convexspec";
+import { useQuery } from "convex/react";
 import { Calendar, ListChecks, Plus, Trash2, Truck } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+
 import type {
   ColumnDefinition,
   EntityAction,
 } from "@acme/ui/entity-list/types";
+import { getTenantOrganizationId, useTenant } from "@acme/admin-runtime";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { DateTimePicker } from "@acme/ui/date-time-picker";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@acme/ui/dialog";
-import type { Doc, Id } from "@convex-config/_generated/dataModel";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -20,29 +33,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { getTenantOrganizationId, useTenant } from "@acme/admin-runtime";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import { AddProductDialog } from "./AddProductDialog";
-import { AddShippingDialog } from "./AddShippingDialog";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { DateTimePicker } from "@acme/ui/date-time-picker";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import Image from "next/image";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import { ORDER_META_KEYS } from "../../constants";
-// import { CalendarEventLink } from "./CalendarEventLink.tsx.old";
-import { OrderAddressSection } from "./OrderAddressSection";
 import { Separator } from "@acme/ui/separator";
 import { Textarea } from "@acme/ui/textarea";
-import { api } from "@portal/convexspec";
+import { toast } from "@acme/ui/toast";
+
 import { decodeCommerceSyntheticId } from "../../../lib/customAdapters";
 import { encodeOrderPostId } from "../../adapters";
-import { toast } from "@acme/ui/toast";
-import { useAuth } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
+import { ORDER_META_KEYS } from "../../constants";
+import { AddProductDialog } from "./AddProductDialog";
+import { AddShippingDialog } from "./AddShippingDialog";
+// import { CalendarEventLink } from "./CalendarEventLink.tsx.old";
+import { OrderAddressSection } from "./OrderAddressSection";
 
 // Address data interface
 export interface AddressData {
@@ -220,7 +221,7 @@ export function OrderForm({
   }, [normalizedOrderId]);
 
   const existingPostMeta = useQuery(
-    api.commercePosts.getPostMeta,
+    api.plugins.commerce.queries.getPostMeta,
     commerceInfo
       ? {
           postId: commerceInfo.componentId,

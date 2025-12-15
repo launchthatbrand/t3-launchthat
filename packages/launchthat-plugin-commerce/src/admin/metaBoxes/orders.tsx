@@ -1,7 +1,13 @@
 "use client";
 
-import { COMMERCE_ORDER_POST_TYPE, ensureOrderSyntheticId } from "../adapters";
 import type { Doc, Id } from "@convex-config/_generated/dataModel";
+import type { ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@portal/convexspec";
+import { useMutation } from "convex/react";
+
+import type { AdminMetaBoxContext } from "@acme/admin-runtime";
 import {
   MetaBoxColumns,
   MetaBoxFieldset,
@@ -9,18 +15,13 @@ import {
   MetaBoxTableRow,
   registerMetaBoxHook,
 } from "@acme/admin-runtime";
-import { useCallback, useEffect, useMemo, useState } from "react";
-
-import type { AdminMetaBoxContext } from "@acme/admin-runtime";
-import type { ChangeEvent } from "react";
-import { ORDER_META_KEYS } from "../constants";
-import { OrderForm } from "../components/orders/OrderForm";
 import { Textarea } from "@acme/ui/textarea";
-import { api } from "@portal/convexspec";
-import { decodeCommerceSyntheticId } from "../../lib/customAdapters";
 import { toast } from "@acme/ui/toast";
-import { useMutation } from "convex/react";
-import { useRouter } from "next/navigation";
+
+import { decodeCommerceSyntheticId } from "../../lib/customAdapters";
+import { COMMERCE_ORDER_POST_TYPE, ensureOrderSyntheticId } from "../adapters";
+import { OrderForm } from "../components/orders/OrderForm";
+import { ORDER_META_KEYS } from "../constants";
 
 interface CommerceOrderAddress {
   fullName: string;
@@ -221,8 +222,12 @@ const CommerceOrderGeneralMetaBox = ({
   );
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const createCommercePost = useMutation(api.commercePosts.createPost);
-  const updateCommercePost = useMutation(api.commercePosts.updatePost);
+  const createCommercePost = useMutation(
+    api.plugins.commerce.mutations.createPost,
+  );
+  const updateCommercePost = useMutation(
+    api.plugins.commerce.mutations.updatePost,
+  );
 
   const commerceInfo = useMemo(() => {
     if (!context.post?._id) {

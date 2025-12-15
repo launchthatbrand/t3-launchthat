@@ -1,6 +1,6 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-assignment */
 import "./metaBoxes/attachments";
 import "./metaBoxes/general";
 import "./metaBoxes/content";
@@ -101,10 +101,7 @@ import {
   wrapWithPluginProviders,
 } from "~/lib/plugins/helpers";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
-import {
-  adaptCommercePostMetaToPortal,
-  decodeCommerceSyntheticId,
-} from "~/lib/postTypes/customAdapters";
+import { adaptCommercePostMetaToPortal } from "~/lib/postTypes/customAdapters";
 import { getCanonicalPostPath } from "~/lib/postTypes/routing";
 import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
 import { useMetaBoxState } from "../_state/useMetaBoxState";
@@ -446,18 +443,13 @@ export function AdminSinglePostView({
 
   const commerceMetaArgs =
     post?._id && isComponentStorage && normalizedSlug !== "helpdeskarticles"
-      ? (() => {
-          const decoded = decodeCommerceSyntheticId(post._id);
-          return decoded
-            ? ({
-                postId: decoded.componentId,
-                organizationId: commerceOrganizationId,
-              } as const)
-            : ("skip" as const);
-        })()
+      ? ({
+          postId: post._id as unknown as string,
+          organizationId: commerceOrganizationId,
+        } as const)
       : "skip";
   const commerceMetaResult = useQuery(
-    api.commercePosts.getPostMeta,
+    api.plugins.commerce.queries.getPostMeta,
     commerceMetaArgs,
   ) as CommerceComponentPostMeta[] | null | undefined;
   const postMeta = useMemo(() => {
@@ -486,6 +478,7 @@ export function AdminSinglePostView({
   }, [
     commerceMetaResult,
     isComponentStorage,
+    supportMetaResult,
     normalizedSlug,
     post?.postTypeSlug,
     standardMetaResult,
@@ -1678,11 +1671,14 @@ export function AdminSinglePostView({
     canSaveRecord,
     content,
     createPost,
+    createSupportPost,
     excerpt,
     isComponentStorage,
     isCustomStorage,
     isNewRecord,
     log,
+    normalizedSlug,
+    organizationId,
     post,
     postStatus,
     router,
@@ -1694,6 +1690,7 @@ export function AdminSinglePostView({
     storageKind,
     title,
     updatePost,
+    updateSupportPost,
   ]);
 
   const renderSaveButton = useCallback(

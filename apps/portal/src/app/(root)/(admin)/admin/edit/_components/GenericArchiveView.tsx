@@ -1,20 +1,19 @@
 "use client";
 
-import {
-  ADMIN_ARCHIVE_CONTENT_AFTER,
-  ADMIN_ARCHIVE_CONTENT_BEFORE,
-  ADMIN_ARCHIVE_CONTENT_SUPPRESS,
-  ADMIN_ARCHIVE_HEADER_AFTER,
-  ADMIN_ARCHIVE_HEADER_BEFORE,
-  ADMIN_ARCHIVE_HEADER_SUPPRESS,
-} from "~/lib/plugins/hookSlots";
-import {
-  AdminLayout,
-  AdminLayoutContent,
-  AdminLayoutHeader,
-  AdminLayoutMain,
-  AdminLayoutSidebar,
-} from "~/components/admin/AdminLayout";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { ReactNode } from "react";
+import { useCallback, useMemo } from "react";
+import Link from "next/link";
+import { api } from "@/convex/_generated/api";
+import { useDeletePost, useGetAllPosts } from "@/lib/blog";
+import { useQuery } from "convex/react";
+import { formatDistanceToNow } from "date-fns";
+import { Eye, Info, Plus, Sparkles, Trash2 } from "lucide-react";
+
+import type { ColumnDefinition } from "@acme/ui/entity-list";
+import type { EntityAction } from "@acme/ui/entity-list/types";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -22,8 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import { Eye, Info, Plus, Sparkles, Trash2 } from "lucide-react";
+import { EntityList } from "@acme/ui/entity-list";
 import {
   Select,
   SelectContent,
@@ -32,25 +30,28 @@ import {
   SelectValue,
 } from "@acme/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-import { useCallback, useMemo } from "react";
-import { useDeletePost, useGetAllPosts } from "@/lib/blog";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import type { ColumnDefinition } from "@acme/ui/entity-list";
-import type { EntityAction } from "@acme/ui/entity-list/types";
-import { EntityList } from "@acme/ui/entity-list";
-import Link from "next/link";
-import type { PermalinkSettings } from "./permalink";
-import { PlaceholderState } from "./PlaceholderState";
-import type { ReactNode } from "react";
-import { api } from "@/convex/_generated/api";
-import { buildPermalink } from "./permalink";
-import { formatDistanceToNow } from "date-fns";
-import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import { toast } from "@acme/ui/toast";
+
+import type { PermalinkSettings } from "./permalink";
+import {
+  AdminLayout,
+  AdminLayoutContent,
+  AdminLayoutHeader,
+  AdminLayoutMain,
+  AdminLayoutSidebar,
+} from "~/components/admin/AdminLayout";
 import { useApplyFilters } from "~/lib/hooks";
-import { useQuery } from "convex/react";
+import {
+  ADMIN_ARCHIVE_CONTENT_AFTER,
+  ADMIN_ARCHIVE_CONTENT_BEFORE,
+  ADMIN_ARCHIVE_CONTENT_SUPPRESS,
+  ADMIN_ARCHIVE_HEADER_AFTER,
+  ADMIN_ARCHIVE_HEADER_BEFORE,
+  ADMIN_ARCHIVE_HEADER_SUPPRESS,
+} from "~/lib/plugins/hookSlots";
+import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
+import { buildPermalink } from "./permalink";
+import { PlaceholderState } from "./PlaceholderState";
 
 type PostDoc = Doc<"posts">;
 type PostTypeDoc = Doc<"postTypes">;
@@ -280,6 +281,7 @@ export function GenericArchiveView({
       try {
         await deletePost({
           id: item.id as Id<"posts">,
+          postTypeSlug: slug,
         });
         toast.success("Lesson deleted.");
       } catch (error) {

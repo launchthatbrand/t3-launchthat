@@ -2,28 +2,25 @@
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
-  Suspense,
   createContext,
+  Suspense,
   useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
-import { getTenantOrganizationId, useTenant } from "@acme/admin-runtime";
-import {
-  isCommercePostSlug,
-  normalizeCommercePostId,
-} from "~/lib/postTypes/customAdapters";
-import { useGetHelpdeskArticleById, useGetPostById } from "~/lib/blog";
-
-import { usePostTypeBySlug } from "../settings/post-types/_api/postTypes";
 import { useSearchParams } from "next/navigation";
+
+import { getTenantOrganizationId, useTenant } from "@acme/admin-runtime";
+
+import { useGetPostById } from "~/lib/blog";
+import { usePostTypeBySlug } from "../settings/post-types/_api/postTypes";
 
 type AdminPostViewMode = "archive" | "single";
 
 interface AdminPostContextValue {
   viewMode: AdminPostViewMode;
-  postId?: Id<"posts">;
+  postId?: Id<"posts"> | string;
   post?: Doc<"posts"> | null;
   postTypeSlug?: string;
   postType?: Doc<"postTypes"> | null;
@@ -47,8 +44,6 @@ const AdminPostProviderInner = ({
   const tenant = useTenant();
   const _organizationId = getTenantOrganizationId(tenant);
 
-  const isConvexId =
-    postIdParam !== undefined && /^[a-z0-9]{16,}$/i.test(postIdParam);
   const isNewRecord = postIdParam === "new";
 
   const loweredQuerySlug = queryPostTypeParam?.toLowerCase().trim();
@@ -58,19 +53,14 @@ const AdminPostProviderInner = ({
   const postType = usePostTypeBySlug(slugHint);
   const resolvedSlug = slugHint;
   const normalizedSlug = resolvedSlug.toLowerCase();
-  const isCommerceType = isCommercePostSlug(normalizedSlug);
-  const normalizedPostId = useMemo<Id<"posts"> | undefined>(() => {
+  const normalizedPostId = useMemo<Id<"posts"> | string | undefined>(() => {
     if (!postIdParam || postIdParam === "new") {
       return undefined;
     }
-    if (isCommerceType) {
-      return normalizeCommercePostId(normalizedSlug, postIdParam);
-    }
-    return isConvexId ? (postIdParam as Id<"posts">) : undefined;
-  }, [isCommerceType, isConvexId, normalizedSlug, postIdParam]);
+    return postIdParam;
+  }, [postIdParam]);
   const post = useGetPostById(normalizedPostId, normalizedSlug);
-  const helpdeskPost = useGetHelpdeskArticleById(normalizedPostId);
-  const postLike = post ?? helpdeskPost;
+  const postLike = post;
   const slugFromPost =
     typeof postLike?.postTypeSlug === "string"
       ? postLike.postTypeSlug.toLowerCase()
@@ -103,23 +93,15 @@ const AdminPostProviderInner = ({
     return {
       viewMode,
       postId: normalizedPostId,
-      post: helpdeskPost ?? post ?? null,
+      post: post ?? null,
       postTypeSlug: resolvedSlug,
       postType,
       isNewRecord,
       isLoading:
-        (normalizedPostId
-          ? helpdeskPost === undefined && post === undefined
-          : false) || postType === undefined,
+        (normalizedPostId ? post === undefined : false) ||
+        postType === undefined,
     };
-  }, [
-    isNewRecord,
-    normalizedPostId,
-    postType,
-    post,
-    helpdeskPost,
-    resolvedSlug,
-  ]);
+  }, [isNewRecord, normalizedPostId, postType, post, resolvedSlug]);
 
   return (
     <AdminPostContext.Provider value={value}>

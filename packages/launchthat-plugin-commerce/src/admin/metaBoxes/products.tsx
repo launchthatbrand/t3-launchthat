@@ -1,6 +1,15 @@
 "use client";
 
-import { COMMERCE_PRODUCT_POST_TYPE, isCommerceProductSlug } from "../adapters";
+import type { Doc } from "@convex-config/_generated/dataModel";
+import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@portal/convexspec";
+import { useMutation } from "convex/react";
+
+import type { AdminMetaBoxContext } from "@acme/admin-runtime";
+import { registerMetaBoxHook } from "@acme/admin-runtime";
+import { toast } from "@acme/ui/toast";
+
 import type {
   ProductData,
   ProductFormData,
@@ -9,17 +18,9 @@ import {
   decodeCommerceSyntheticId,
   encodeCommerceSyntheticId,
 } from "../../lib/customAdapters";
-import { useCallback, useMemo, useState } from "react";
-
-import type { AdminMetaBoxContext } from "@acme/admin-runtime";
-import type { Doc } from "@convex-config/_generated/dataModel";
+import { COMMERCE_PRODUCT_POST_TYPE, isCommerceProductSlug } from "../adapters";
 import { PRODUCT_META_KEYS } from "../constants";
 import ProductForm from "../store/products/_components/ProductForm";
-import { api } from "@portal/convexspec";
-import { registerMetaBoxHook } from "@acme/admin-runtime";
-import { toast } from "@acme/ui/toast";
-import { useMutation } from "convex/react";
-import { useRouter } from "next/navigation";
 
 type CommerceAdminContext = AdminMetaBoxContext<Doc<"posts">, Doc<"postTypes">>;
 
@@ -133,8 +134,12 @@ const CommerceProductMetaBox = ({
 }) => {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const createCommercePost = useMutation(api.commercePosts.createPost);
-  const updateCommercePost = useMutation(api.commercePosts.updatePost);
+  const createCommercePost = useMutation(
+    api.plugins.commerce.mutations.createPost,
+  );
+  const updateCommercePost = useMutation(
+    api.plugins.commerce.mutations.updatePost,
+  );
 
   const commerceInfo = useMemo(() => {
     if (!context.post?._id) {

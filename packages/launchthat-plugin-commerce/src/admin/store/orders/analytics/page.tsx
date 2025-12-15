@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+import { api } from "@portal/convexspec";
+import { useQuery } from "convex/react";
 import {
   BarChart,
   Calendar,
@@ -11,6 +14,8 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -27,16 +32,12 @@ import {
 } from "@acme/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
-import { Button } from "@acme/ui/button";
-import { api } from "@portal/convexspec";
 import { formatPrice } from "../../../../lib/currency";
-import { useQuery } from "convex/react";
-import { useState } from "react";
 
 export default function OrderAnalyticsPage() {
   const [timeframe, setTimeframe] = useState("30days");
 
-  const orders = useQuery(api.commercePosts.getAllPosts, {
+  const orders = useQuery(api.plugins.commerce.queries.getAllPosts, {
     filters: { postTypeSlug: "orders" },
   });
   const ordersCount = orders?.length ?? 0;
