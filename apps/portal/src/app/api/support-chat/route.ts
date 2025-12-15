@@ -1,27 +1,16 @@
 import type { Id } from "@/convex/_generated/dataModel";
+import { LMS_QUIZ_ASSISTANT_EXPERIENCE_ID } from "launchthat-plugin-support/assistant";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { api } from "@/convex/_generated/api";
 import { formatDataStreamPart } from "@ai-sdk/ui-utils";
-import { LMS_QUIZ_ASSISTANT_EXPERIENCE_ID } from "launchthat-plugin-support/assistant";
-
 import { getConvex } from "~/lib/convex";
 import { resolveSupportOrganizationId } from "~/lib/support/resolveOrganizationId";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/await-thenable */
-
-interface HelpdeskArticleSummary {
-  entryId: Id<"posts">;
-  title?: string | null;
-  content?: string | null;
-  excerpt?: string | null;
-  slug?: string | null;
-  updatedAt?: number | null;
-}
 
 interface SupportMessage {
   id?: string;
@@ -103,15 +92,11 @@ export async function POST(req: Request) {
     const sessionId =
       parsed.sessionId ??
       `support-${organizationId}-${crypto.randomUUID().slice(0, 8)}`;
-    const contactId = parsed.contactId
-      ? (parsed.contactId as Id<"contacts">)
-      : undefined;
+    const contactId = parsed.contactId ?? undefined;
     const contactEmail = parsed.contactEmail;
     const contactName = parsed.contactName;
-    const experienceId =
-      (parsed.experienceId as string | undefined) ?? "support";
-    const experienceContext =
-      (parsed.experienceContext as Record<string, unknown>) ?? {};
+    const experienceId = parsed.experienceId ?? "support";
+    const experienceContext = parsed.experienceContext ?? {};
 
     const userMessages = parsed.messages.filter(
       (message: SupportMessage) => message.role === "user",
@@ -143,7 +128,7 @@ export async function POST(req: Request) {
       },
     );
 
-    const isManualMode = conversationMode.mode === "manual";
+    const isManualMode = conversationMode === "manual";
 
     if (isManualMode) {
       const fallbackMessage =
@@ -156,7 +141,6 @@ export async function POST(req: Request) {
         contactId,
         contactEmail,
         contactName,
-        source: "agent",
       });
       return streamTextResponse(fallbackMessage);
     }
@@ -166,40 +150,14 @@ export async function POST(req: Request) {
         convex,
         organizationId,
         sessionId,
-        contactId,
+        contactId: contactId as Id<"contacts"> | undefined,
         contactEmail,
         contactName,
         experienceContext,
       });
     }
 
-    const articleMatch =
-      latestUserMessage.length > 0
-        ? await convex.query(api.plugins.support.queries.matchHelpdeskArticle, {
-            organizationId,
-            question: latestUserMessage,
-          })
-        : null;
-
-    if (articleMatch) {
-      console.log("[support-chat] matched helpdesk article", {
-        organizationId,
-        entryId: articleMatch.entryId,
-        slug: articleMatch.slug,
-      });
-      await convex.mutation(api.plugins.support.mutations.recordMessage, {
-        organizationId,
-        sessionId,
-        role: "assistant",
-        content: articleMatch.content,
-        contactId,
-        contactEmail,
-        contactName,
-        source: "agent",
-      });
-      return streamTextResponse(articleMatch.content);
-    }
-
+    // TODO: add component-native helpdesk matching; currently skip to agent reply.
     const agentResult = await convex.action(
       api.plugins.support.agent.generateAgentReply,
       {
@@ -211,6 +169,18 @@ export async function POST(req: Request) {
         contactName,
       },
     );
+
+    if (agentResult?.text) {
+      await convex.mutation(api.plugins.support.mutations.recordMessage, {
+        organizationId,
+        sessionId,
+        role: "assistant",
+        content: agentResult.text,
+        contactId,
+        contactEmail,
+        contactName,
+      });
+    }
 
     return streamTextResponse(agentResult?.text ?? "");
   } catch (error) {
@@ -248,29 +218,8 @@ export async function GET(req: NextRequest) {
     }
 
     if (view === "helpdesk") {
-      const limitParam = searchParams.get("limit");
-      const limit =
-        limitParam && !Number.isNaN(Number(limitParam))
-          ? Math.max(1, Math.min(25, Number(limitParam)))
-          : 6;
-
-      const articles = (await convex.query(
-        api.plugins.support.queries.listHelpdeskArticles,
-        {
-          organizationId,
-          limit,
-        },
-      )) as HelpdeskArticleSummary[];
-
-      const normalized = articles.map((article) => ({
-        id: article.entryId,
-        title: article.title ?? "Untitled article",
-        summary: buildSummary(article.excerpt ?? "", article.content ?? ""),
-        updatedAt: formatRelativeTime(article.updatedAt ?? Date.now()),
-        slug: article.slug ?? undefined,
-      }));
-
-      return NextResponse.json({ articles: normalized });
+      // Component-based helpdesk listing not yet implemented; return empty.
+      return NextResponse.json({ articles: [] });
     }
 
     const sessionId = searchParams.get("sessionId");
@@ -319,37 +268,6 @@ function streamTextResponse(content = "") {
   });
 }
 
-function buildSummary(excerpt: string, content: string) {
-  const candidate = excerpt.trim().length > 0 ? excerpt : stripMarkup(content);
-  if (!candidate) {
-    return "Open this article to read the full answer.";
-  }
-  return candidate.length > 180 ? `${candidate.slice(0, 177)}…` : candidate;
-}
-
-function stripMarkup(value: string) {
-  return value
-    .replace(/<[^>]*>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function formatRelativeTime(timestamp?: number | null) {
-  if (!timestamp) {
-    return "just now";
-  }
-  const deltaMs = Date.now() - timestamp;
-  if (deltaMs < 60_000) return "just now";
-  if (deltaMs < 3_600_000) {
-    return `${Math.round(deltaMs / 60_000)}m ago`;
-  }
-  if (deltaMs < 86_400_000) {
-    return `${Math.round(deltaMs / 3_600_000)}h ago`;
-  }
-  const days = Math.round(deltaMs / 86_400_000);
-  return `${days}d ago`;
-}
-
 interface QuizExperienceArgs {
   convex: ReturnType<typeof getConvex>;
   organizationId: Id<"organizations">;
@@ -385,7 +303,7 @@ async function handleQuizAssistantExperience(
         lessonId: lessonIdRaw as Id<"posts">,
         questionCount:
           typeof args.experienceContext.questionCount === "number"
-            ? (args.experienceContext.questionCount as number)
+            ? args.experienceContext.questionCount
             : undefined,
       },
     );
@@ -415,6 +333,5 @@ async function recordAssistantMessage(
     contactId: args.contactId,
     contactEmail: args.contactEmail,
     contactName: args.contactName,
-    source: "agent",
   });
 }

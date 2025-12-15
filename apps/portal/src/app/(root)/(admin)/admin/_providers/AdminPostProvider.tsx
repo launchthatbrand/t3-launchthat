@@ -2,21 +2,22 @@
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
-  createContext,
   Suspense,
+  createContext,
   useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
-import { useSearchParams } from "next/navigation";
-
-import { useGetPostById } from "~/lib/blog";
+import { getTenantOrganizationId, useTenant } from "@acme/admin-runtime";
 import {
   isCommercePostSlug,
   normalizeCommercePostId,
 } from "~/lib/postTypes/customAdapters";
+import { useGetHelpdeskArticleById, useGetPostById } from "~/lib/blog";
+
 import { usePostTypeBySlug } from "../settings/post-types/_api/postTypes";
+import { useSearchParams } from "next/navigation";
 
 type AdminPostViewMode = "archive" | "single";
 
@@ -43,6 +44,8 @@ const AdminPostProviderInner = ({
   const searchParams = useSearchParams();
   const postIdParam = searchParams.get("post_id") ?? undefined;
   const queryPostTypeParam = searchParams.get("post_type") ?? undefined;
+  const tenant = useTenant();
+  const _organizationId = getTenantOrganizationId(tenant);
 
   const isConvexId =
     postIdParam !== undefined && /^[a-z0-9]{16,}$/i.test(postIdParam);
@@ -65,10 +68,12 @@ const AdminPostProviderInner = ({
     }
     return isConvexId ? (postIdParam as Id<"posts">) : undefined;
   }, [isCommerceType, isConvexId, normalizedSlug, postIdParam]);
-  const post = useGetPostById(normalizedPostId);
+  const post = useGetPostById(normalizedPostId, normalizedSlug);
+  const helpdeskPost = useGetHelpdeskArticleById(normalizedPostId);
+  const postLike = post ?? helpdeskPost;
   const slugFromPost =
-    post && typeof post.postTypeSlug === "string"
-      ? post.postTypeSlug.toLowerCase()
+    typeof postLike?.postTypeSlug === "string"
+      ? postLike.postTypeSlug.toLowerCase()
       : undefined;
 
   useEffect(() => {
@@ -98,15 +103,23 @@ const AdminPostProviderInner = ({
     return {
       viewMode,
       postId: normalizedPostId,
-      post: post ?? null,
+      post: helpdeskPost ?? post ?? null,
       postTypeSlug: resolvedSlug,
       postType,
       isNewRecord,
       isLoading:
-        (normalizedPostId ? post === undefined : false) ||
-        postType === undefined,
+        (normalizedPostId
+          ? helpdeskPost === undefined && post === undefined
+          : false) || postType === undefined,
     };
-  }, [isNewRecord, normalizedPostId, postType, post, resolvedSlug]);
+  }, [
+    isNewRecord,
+    normalizedPostId,
+    postType,
+    post,
+    helpdeskPost,
+    resolvedSlug,
+  ]);
 
   return (
     <AdminPostContext.Provider value={value}>

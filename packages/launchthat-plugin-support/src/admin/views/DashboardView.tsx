@@ -1,18 +1,11 @@
 "use client";
 
-import type { GenericId as Id } from "convex/values";
-import Link from "next/link";
-import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
 import {
   Activity,
   ArrowRight,
   MessageSquareText,
   NotebookPen,
 } from "lucide-react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -21,7 +14,13 @@ import {
   CardTitle,
 } from "@acme/ui/card";
 
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import type { GenericId as Id } from "convex/values";
+import Link from "next/link";
 import { SUPPORT_COPY } from "../constants/supportCopy";
+import { api } from "@portal/convexspec";
+import { useQuery } from "convex/react";
 
 interface ConversationSummary {
   sessionId: string;
@@ -46,22 +45,17 @@ export function DashboardView({
   tenantName,
   buildNavHref,
 }: DashboardViewProps) {
-  const helpdeskArticles = (useQuery(api.core.posts.queries.getAllPosts, {
+  // TODO: replace with support-owned knowledge fetch; portal posts are not available here.
+  const helpdeskArticles = [] as ArticleSummary[];
+  const conversations = useQuery(api.plugins.support.queries.listConversations, {
     organizationId,
-    filters: {
-      postTypeSlug: "helpdeskarticles",
-      status: "published",
-      limit: 200,
-    },
-  }) ?? []) as ArticleSummary[];
-  const conversations = (useQuery(
-    api.plugins.support.queries.listConversations,
-    { organizationId, limit: 50 },
-  ) ?? []) as ConversationSummary[];
+    limit: 50,
+  }) as unknown as ConversationSummary[] | undefined;
+  const safeConversations = conversations ?? [];
 
   const totalArticles = helpdeskArticles.length;
-  const activeConversations = conversations.length;
-  const openConversations = conversations.filter(
+  const activeConversations = safeConversations.length;
+  const openConversations = safeConversations.filter(
     (conversation) => conversation.lastRole === "user",
   ).length;
 
@@ -136,8 +130,8 @@ export function DashboardView({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {conversations.length > 0 ? (
-              conversations.slice(0, 5).map((conversation) => (
+            {safeConversations.length > 0 ? (
+              safeConversations.slice(0, 5).map((conversation) => (
                 <div
                   key={conversation.sessionId}
                   className="flex items-start justify-between rounded-md border p-3 text-sm"

@@ -1,16 +1,15 @@
 "use client";
 
-import type { GenericId as Id } from "convex/values";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@portal/convexspec";
-import { useMutation } from "convex/react";
-import { Loader2, SendHorizontal } from "lucide-react";
-
-import { Editor } from "@acme/ui-lexical/components/editor-x/editor";
-import { Button } from "@acme/ui/button";
-import { toast } from "@acme/ui/toast";
-
 import type { ContactDoc, ConversationSummary } from "./ConversationInspector";
+import { Loader2, SendHorizontal } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { Button } from "@acme/ui/button";
+import { Editor } from "@acme/ui-lexical/components/editor-x/editor";
+import type { GenericId as Id } from "convex/values";
+import { api } from "@portal/convexspec";
+import { toast } from "@acme/ui/toast";
+import { useMutation } from "convex/react";
 
 interface ConversationComposerProps {
   organizationId: Id<"organizations">;
@@ -25,9 +24,7 @@ export function ConversationComposer({
   conversation,
   contact,
 }: ConversationComposerProps) {
-  const recordMessage = useMutation(
-    api.plugins.support.mutations.recordMessage,
-  );
+  const recordMessage = useMutation(api.plugins.support.mutations.recordMessage);
   const setAgentPresence = useMutation(
     api.plugins.support.mutations.setAgentPresence,
   );
@@ -60,9 +57,11 @@ export function ConversationComposer({
       lastPresenceStatusRef.current = status;
       lastPresenceUpdateRef.current = now;
       void setAgentPresence({
-        organizationId,
+        organizationId: organizationId as unknown as string,
         sessionId,
         status,
+        agentUserId: "agent",
+        agentName: contactName ?? "Agent",
       });
     },
     [organizationId, sessionId, setAgentPresence],
@@ -125,7 +124,6 @@ export function ConversationComposer({
           conversation.origin === "email" ? "email_outbound" : "chat",
         htmlBody,
         textBody: plainText,
-        source: "admin",
       });
 
       setHasContent(false);

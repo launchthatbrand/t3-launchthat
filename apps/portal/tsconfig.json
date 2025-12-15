@@ -46,6 +46,9 @@
       ],
       "launchthat-plugin-support": [
         "../../packages/launchthat-plugin-support/src/index"
+      ],
+      "launchthat-plugin-support/*": [
+        "../../packages/launchthat-plugin-support/src/*"
       ]
     },
     "plugins": [{ "name": "next" }]

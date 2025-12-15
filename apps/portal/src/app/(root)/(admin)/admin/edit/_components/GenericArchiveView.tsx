@@ -44,11 +44,13 @@ import Link from "next/link";
 import type { PermalinkSettings } from "./permalink";
 import { PlaceholderState } from "./PlaceholderState";
 import type { ReactNode } from "react";
+import { api } from "@/convex/_generated/api";
 import { buildPermalink } from "./permalink";
 import { formatDistanceToNow } from "date-fns";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import { toast } from "@acme/ui/toast";
 import { useApplyFilters } from "~/lib/hooks";
+import { useQuery } from "convex/react";
 
 type PostDoc = Doc<"posts">;
 type PostTypeDoc = Doc<"postTypes">;
@@ -124,14 +126,66 @@ export function GenericArchiveView({
   const description =
     postType?.description ?? "Manage structured entries for this post type.";
   const normalizedSlug = slug.toLowerCase();
+  const isComponentHelpdesk =
+    postType?.storageKind === "component" &&
+    normalizedSlug === "helpdeskarticles";
+
   const shouldLoadPosts = postType
     ? true
     : isBuiltInPostTypeSlug(normalizedSlug);
+
+  const componentPosts =
+    (useQuery(
+      api.plugins.support.queries.listSupportPosts,
+      isComponentHelpdesk && organizationId
+        ? {
+            organizationId,
+            filters: { postTypeSlug: normalizedSlug, limit: 200 },
+          }
+        : "skip",
+    ) as
+      | {
+          _id: string;
+          _creationTime: number;
+          title?: string | null;
+          content?: string | null;
+          excerpt?: string | null;
+          slug: string;
+          status: "draft" | "published" | "archived";
+          postTypeSlug?: string | null;
+          authorId?: string | null;
+          createdAt: number;
+          updatedAt?: number | null;
+        }[]
+      | null) ?? null;
+
   const postsQuery = useGetAllPosts(
-    shouldLoadPosts ? { postTypeSlug: normalizedSlug } : undefined,
+    !isComponentHelpdesk && shouldLoadPosts
+      ? { postTypeSlug: normalizedSlug }
+      : undefined,
   );
-  const posts = (postsQuery.posts ?? []) as ArchiveRow[];
-  const postsLoading = postsQuery.isLoading;
+
+  const posts = isComponentHelpdesk
+    ? ((componentPosts ?? []).map((item) => ({
+        _id: item._id as unknown as Id<"posts">,
+        _creationTime: item._creationTime,
+        title: item.title ?? "Untitled",
+        content: item.content ?? undefined,
+        excerpt: item.excerpt ?? undefined,
+        slug: item.slug,
+        status: item.status,
+        authorId: item.authorId ?? undefined,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt ?? item._creationTime,
+        postTypeSlug: (item.postTypeSlug ?? normalizedSlug) as string,
+        organizationId: organizationId ?? undefined,
+      })) as ArchiveRow[])
+    : ((postsQuery.posts ?? []) as ArchiveRow[]);
+
+  const postsLoading = isComponentHelpdesk
+    ? componentPosts === null
+    : postsQuery.isLoading;
+
   const rows: ArchiveRow[] = shouldLoadPosts ? posts : FALLBACK_ROWS;
   const tableLoading = shouldLoadPosts ? postsLoading : isLoading;
   const displayRows = useMemo<ArchiveDisplayRow[]>(() => {

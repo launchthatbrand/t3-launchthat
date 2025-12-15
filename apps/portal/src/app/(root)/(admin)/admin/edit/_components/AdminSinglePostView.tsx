@@ -27,7 +27,7 @@ import {
   useCreatePost,
   useUpdatePost,
 } from "@/lib/blog";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 
 import type { MetaBoxLocation, RegisteredMetaBox } from "@acme/admin-runtime";
@@ -329,6 +329,13 @@ export function AdminSinglePostView({
   const [isSaving, setIsSaving] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const createSupportPost = useMutation(
+    api.plugins.support.mutations.createSupportPost,
+  );
+  const updateSupportPost = useMutation(
+    api.plugins.support.mutations.updateSupportPost,
+  );
+
   const normalizedSlug = slug.toLowerCase();
   type StorageKind = "posts" | "custom" | "component";
   const storageKind: StorageKind =
@@ -423,8 +430,22 @@ export function AdminSinglePostView({
     api.core.posts.queries.getPostMeta,
     standardMetaArgs,
   ) as Doc<"postsMeta">[] | undefined;
+
+  const supportMetaArgs =
+    post?._id && isComponentStorage && normalizedSlug === "helpdeskarticles"
+      ? ({
+          postId: post._id,
+          organizationId,
+          postTypeSlug: normalizedSlug,
+        } as const)
+      : "skip";
+  const supportMetaResult = useQuery(
+    api.core.posts.queries.getPostMeta,
+    supportMetaArgs,
+  ) as Doc<"postsMeta">[] | null | undefined;
+
   const commerceMetaArgs =
-    post?._id && isComponentStorage
+    post?._id && isComponentStorage && normalizedSlug !== "helpdeskarticles"
       ? (() => {
           const decoded = decodeCommerceSyntheticId(post._id);
           return decoded
@@ -441,6 +462,15 @@ export function AdminSinglePostView({
   ) as CommerceComponentPostMeta[] | null | undefined;
   const postMeta = useMemo(() => {
     if (isComponentStorage) {
+      if (normalizedSlug === "helpdeskarticles") {
+        if (supportMetaResult === undefined) {
+          return undefined;
+        }
+        if (supportMetaResult === null) {
+          return [] as Doc<"postsMeta">[];
+        }
+        return supportMetaResult ?? [];
+      }
       if (commerceMetaResult === undefined) {
         return undefined;
       }
@@ -1530,6 +1560,59 @@ export function AdminSinglePostView({
         log("Running beforeSave handler", handler.name ?? "anonymous");
         await handler();
       }
+      if (isComponentStorage && normalizedSlug === "helpdeskarticles") {
+        log("Component storage detected, saving via support component posts", {
+          storageKind,
+          normalizedSlug,
+        });
+        const metaPayload = buildMetaPayload();
+        const metaEntries = Object.entries(metaPayload).map(([key, value]) => ({
+          key,
+          value,
+        }));
+        const manualSlug = slugValue.trim();
+        const baseSlug =
+          manualSlug || generateSlugFromTitle(normalizedTitle) || "";
+        const normalizedSlugValue =
+          generateSlugFromTitle(baseSlug) || `post-${Date.now()}`;
+        setSlugValue(normalizedSlugValue);
+        const status = postStatus;
+
+        if (isNewRecord) {
+          const newId = await createSupportPost({
+            organizationId: organizationId as unknown as string,
+            postTypeSlug: normalizedSlug,
+            title: normalizedTitle,
+            content,
+            excerpt,
+            slug: normalizedSlugValue,
+            status,
+            meta: metaEntries,
+          });
+          setSaveError(null);
+          router.replace(
+            `/admin/edit?post_type=${slug}&post_id=${newId as string}`,
+          );
+          return;
+        }
+
+        if (post?._id) {
+          await updateSupportPost({
+            id: post._id as unknown as string,
+            organizationId: organizationId as unknown as string,
+            postTypeSlug: normalizedSlug,
+            title: normalizedTitle,
+            content,
+            excerpt,
+            slug: normalizedSlugValue,
+            status,
+            meta: metaEntries,
+          });
+          setSaveError(null);
+        }
+        return;
+      }
+
       if (isCustomStorage || isComponentStorage) {
         log("External storage detected, skipping core save", { storageKind });
         setSaveError(null);
@@ -1540,9 +1623,9 @@ export function AdminSinglePostView({
       const manualSlug = slugValue.trim();
       const baseSlug =
         manualSlug || generateSlugFromTitle(normalizedTitle) || "";
-      const normalizedSlug =
+      const normalizedSlugValueCore =
         generateSlugFromTitle(baseSlug) || `post-${Date.now()}`;
-      setSlugValue(normalizedSlug);
+      setSlugValue(normalizedSlugValueCore);
       const status = postStatus;
 
       if (isNewRecord) {
@@ -1555,7 +1638,7 @@ export function AdminSinglePostView({
           title: normalizedTitle,
           content,
           excerpt,
-          slug: normalizedSlug,
+          slug: normalizedSlugValueCore,
           status,
           postTypeSlug: slug,
           ...(hasMetaEntries ? { meta: metaPayload } : {}),
@@ -1578,7 +1661,7 @@ export function AdminSinglePostView({
           excerpt,
           status,
           postTypeSlug: slug,
-          slug: normalizedSlug,
+          slug: normalizedSlugValueCore,
           ...(hasMetaEntries ? { meta: metaPayload } : {}),
         });
         setSaveError(null);

@@ -19,6 +19,10 @@
     "./assistant/openai": {
       "types": "./src/assistant/openai.ts",
       "default": "./src/assistant/openai.ts"
+    },
+    "./convex/component": {
+      "types": "./dist/convex/component/index.d.ts",
+      "default": "./src/convex/component/index.ts"
     }
   },
   "license": "MIT",

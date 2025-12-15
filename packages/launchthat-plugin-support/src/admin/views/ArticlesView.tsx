@@ -1,17 +1,16 @@
 "use client";
 
-import type { GenericId as Id } from "convex/values";
-import { useMemo } from "react";
-import Link from "next/link";
-import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
-import { formatDistanceToNow } from "date-fns";
-import { FilePlus2 } from "lucide-react";
-
-import type { ColumnDefinition } from "@acme/ui/entity-list";
 import { Button } from "@acme/ui/button";
 import { Card } from "@acme/ui/card";
+import type { ColumnDefinition } from "@acme/ui/entity-list";
 import { EntityList } from "@acme/ui/entity-list";
+import { FilePlus2 } from "lucide-react";
+import type { GenericId as Id } from "convex/values";
+import Link from "next/link";
+import { api } from "@portal/convexspec";
+import { formatDistanceToNow } from "date-fns";
+import { useMemo } from "react";
+import { useQuery } from "convex/react";
 
 const HELP_DESK_POST_TYPE_SLUG = "helpdeskarticles";
 
@@ -30,9 +29,9 @@ interface ArticlesViewProps {
 }
 
 export const ArticlesView = ({ organizationId }: ArticlesViewProps) => {
-  const queryResult = useQuery(api.core.posts.queries.getAllPosts, {
+  const queryResult = useQuery(api.plugins.support.queries.listHelpdeskArticles, {
     organizationId,
-    filters: { postTypeSlug: HELP_DESK_POST_TYPE_SLUG },
+    limit: 100,
   }) as SupportArticle[] | undefined;
   const isLoading = queryResult === undefined;
 
@@ -42,7 +41,7 @@ export const ArticlesView = ({ organizationId }: ArticlesViewProps) => {
         id: article._id,
         title: article.title || "Untitled article",
         status: article.status ?? "draft",
-        updatedAt: article.updatedAt ?? article.createdAt ?? Date.now(),
+        updatedAt: (article as any).updatedAt ?? (article as any).createdAt ?? Date.now(),
       })),
     [queryResult],
   );

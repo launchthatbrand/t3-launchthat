@@ -4,7 +4,6 @@ import type { GenericId as Id } from "convex/values";
 import type { ChangeEvent, FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import usePresence from "@convex-dev/presence/react";
 import { api } from "@portal/convexspec";
 import { useMutation, useQuery } from "convex/react";
 import { Loader2, MessageCircle } from "lucide-react";
@@ -84,10 +83,11 @@ const defaultContactForm: ContactFormState = {
   company: "",
 };
 
-type PresenceEntry =
-  NonNullable<ReturnType<typeof usePresence>> extends Array<infer Entry>
-    ? Entry
-    : never;
+type PresenceEntry = {
+  userId: string;
+  online?: boolean;
+  data?: Record<string, unknown>;
+};
 
 export function SupportChatWidget({
   organizationId,
@@ -131,7 +131,6 @@ function SupportChatWidgetInner({
     organizationId,
   );
   const { initialMessages, isBootstrapped } = useSupportChatHistory(
-    apiPath,
     organizationId,
     sessionId,
   );
@@ -191,11 +190,6 @@ function ChatSurface({
   helpdeskArticles,
   defaultContact,
 }: ChatSurfaceProps) {
-  const supportsDirectConvex = useMemo(
-    () => isConvexId(organizationId),
-    [organizationId],
-  );
-
   const normalizedContactId = useMemo(
     () =>
       contact?.contactId && isConvexId(contact.contactId)
@@ -352,7 +346,7 @@ function ChatSurface({
   const liveMessages =
     (useQuery(
       api.plugins.support.queries.listMessages,
-      organizationId && sessionId && supportsDirectConvex
+      organizationId && sessionId
         ? {
             organizationId: organizationId as Id<"organizations">,
             sessionId,
@@ -433,20 +427,25 @@ function ChatSurface({
     return undefined;
   }, [liveMessages]);
 
+  type AgentPresenceResult = {
+    agentUserId?: string;
+    agentName?: string;
+    status?: "typing" | "idle";
+  };
   const agentPresence = useQuery(
     api.plugins.support.queries.getAgentPresence,
-    organizationId && sessionId && supportsDirectConvex
+    organizationId && sessionId
       ? {
           organizationId: organizationId as Id<"organizations">,
           sessionId,
         }
       : "skip",
-  );
+  ) as AgentPresenceResult | null | undefined;
 
-  const resolvedAgentName =
-    agentPresence?.agentName ??
-    presenceState.find((entry) => entry.online && entry.data?.role === "agent")
-      ?.data?.name ??
+  const resolvedAgentName: string =
+    (agentPresence?.agentName as string | undefined) ??
+    (presenceState.find((entry) => entry.online && entry.data?.role === "agent")
+      ?.data?.name as string | undefined) ??
     lastAssistantAgentName ??
     "Support agent";
 
@@ -454,7 +453,7 @@ function ChatSurface({
 
   const conversationMode = useQuery(
     api.plugins.support.queries.getConversationMode,
-    organizationId && sessionId && supportsDirectConvex
+    organizationId && sessionId
       ? {
           organizationId: organizationId as Id<"organizations">,
           sessionId,
@@ -462,8 +461,7 @@ function ChatSurface({
       : "skip",
   );
 
-  const isManualMode =
-    supportsDirectConvex && conversationMode?.mode === "manual";
+  const isManualMode = conversationMode === "manual";
 
   const presenceRoomId =
     organizationId && sessionId
@@ -545,24 +543,22 @@ function ChatSurface({
       setInput("");
       setIsManualSending(true);
       try {
-        if (supportsDirectConvex) {
-          const insertedId = await recordMessage({
-            organizationId: organizationId as Id<"organizations">,
-            sessionId,
-            role: "user",
-            content,
-            contactId: normalizedContactId,
-            contactName: contact?.fullName,
-            contactEmail: contact?.email,
-          });
-          setMessages((prev) =>
-            prev.map((message) =>
-              message.id === optimisticId
-                ? { ...message, id: String(insertedId) }
-                : message,
-            ),
-          );
-        }
+        const insertedId = await recordMessage({
+          organizationId: organizationId as Id<"organizations">,
+          sessionId,
+          role: "user",
+          content,
+          contactId: normalizedContactId,
+          contactName: contact?.fullName,
+          contactEmail: contact?.email,
+        });
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === optimisticId
+              ? { ...message, id: String(insertedId) }
+              : message,
+          ),
+        );
       } catch (manualError) {
         console.error("[support-chat] manual send failed", manualError);
       } finally {
@@ -758,21 +754,11 @@ const ConversationPresenceBridge = ({
   metadata,
   onChange,
 }: PresenceBridgeProps) => {
-  const presenceState = usePresence(api.presence, roomId, userId, 15000) ?? [];
-  const updateMetadata = useMutation(api.presence.updateRoomUser);
+  const presenceState: PresenceEntry[] = [];
 
   useEffect(() => {
     onChange(presenceState);
   }, [onChange, presenceState]);
-
-  useEffect(() => {
-    if (!metadata) {
-      return;
-    }
-    void updateMetadata({ roomId, userId, data: metadata }).catch(() => {
-      // Metadata is optional for presence display; ignore failures.
-    });
-  }, [metadata, roomId, updateMetadata, userId]);
 
   return null;
 };

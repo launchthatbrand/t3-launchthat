@@ -1,7 +1,6 @@
 import type { FunctionReference } from "convex/server";
 import type { GenericId as Id } from "convex/values";
 import * as React from "react";
-import usePresence from "@convex-dev/presence/react";
 import { api } from "@portal/convexspec";
 import { useMutation } from "convex/react";
 import {
@@ -41,6 +40,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarRail,
+  SidebarTrigger,
 } from "@acme/ui/sidebar";
 import { toast } from "@acme/ui/toast";
 
@@ -104,23 +104,30 @@ type PresenceMetadata = {
   imageUrl?: string;
 };
 
-type PresenceApi = Parameters<typeof usePresence>[0] & {
-  updateRoomUser: FunctionReference<
-    "mutation",
-    "public",
-    {
-      roomId: string;
-      userId: string;
-      data?: Record<string, unknown>;
-    },
-    null
-  >;
+type PresenceEntry = {
+  userId: string;
+  online?: boolean;
+  name?: string;
+  data?: unknown;
 };
 
-type PresenceEntry =
-  NonNullable<ReturnType<typeof usePresence>> extends Array<infer Entry>
-    ? Entry
-    : never;
+// type PresenceApi = Parameters<typeof usePresence>[0] & {
+//   updateRoomUser: FunctionReference<
+//     "mutation",
+//     "public",
+//     {
+//       roomId: string;
+//       userId: string;
+//       data?: Record<string, unknown>;
+//     },
+//     null
+//   >;
+// };
+
+// type PresenceEntry =
+//   NonNullable<ReturnType<typeof usePresence>> extends Array<infer Entry>
+//     ? Entry
+//     : never;
 
 export function ConversationRightSidebar({
   conversation,
@@ -415,6 +422,7 @@ export function ConversationRightSidebar({
         </Accordion>
       </SidebarContent>
       <SidebarRail />
+      <SidebarTrigger className="absolute top-4 -left-10 rotate-180" />
     </Sidebar>
   );
 }
@@ -428,33 +436,7 @@ const ConversationPresenceCard = ({
   roomId,
   currentAgent,
 }: PresenceCardProps) => {
-  const updatePresenceMetadata = useMutation(api.presence.updateRoomUser);
-  const presenceState =
-    usePresence(api.presence, roomId, currentAgent.id, 15000) ?? [];
-
-  React.useEffect(() => {
-    if (!currentAgent.name && !currentAgent.imageUrl) {
-      return;
-    }
-
-    void updatePresenceMetadata({
-      roomId,
-      userId: currentAgent.id,
-      data: {
-        role: "agent",
-        name: currentAgent.name,
-        imageUrl: currentAgent.imageUrl,
-      },
-    }).catch(() => {
-      // Presence metadata is optional; ignore failures so the heartbeat keeps working.
-    });
-  }, [
-    currentAgent.id,
-    currentAgent.imageUrl,
-    currentAgent.name,
-    roomId,
-    updatePresenceMetadata,
-  ]);
+  const presenceState: PresenceEntry[] = [];
 
   const onlineAgents = presenceState.filter(
     (agent: PresenceEntry) =>

@@ -127,6 +127,7 @@ export function useGetAllPosts(filters?: PostFilter) {
 
 export function useGetPostById(
   id: Id<"posts"> | undefined,
+  postTypeSlug?: string,
 ): Doc<"posts"> | null | undefined {
   const tenant = useTenant();
   const organizationId = getTenantOrganizationId(tenant);
@@ -144,8 +145,13 @@ export function useGetPostById(
     if (!id || commerceInfo) {
       return "skip" as const;
     }
-    return organizationId ? { id, organizationId } : { id };
-  }, [commerceInfo, id, organizationId]);
+    if (organizationId) {
+      return postTypeSlug
+        ? { id, organizationId, postTypeSlug }
+        : { id, organizationId };
+    }
+    return postTypeSlug ? { id, postTypeSlug } : { id };
+  }, [commerceInfo, id, organizationId, postTypeSlug]);
   const postResult = useQuery(api.core.posts.queries.getPostById, postArgs);
   if (commerceInfo) {
     if (commercePostResult === undefined) {
@@ -157,6 +163,45 @@ export function useGetPostById(
     return adaptCommercePostToPortal(commercePostResult);
   }
   return postResult;
+}
+
+export function useGetHelpdeskArticleById(
+  id: Id<"posts"> | undefined,
+): Doc<"posts"> | null | undefined {
+  const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant);
+
+  const args = useMemo(() => {
+    if (!id) {
+      return "skip" as const;
+    }
+    if (!organizationId) {
+      return "skip" as const;
+    }
+    return { id: id as unknown as string, organizationId };
+  }, [id, organizationId]);
+
+  const result = useQuery(
+    api.plugins.support.queries.getHelpdeskArticleById,
+    args,
+  );
+  if (result === undefined) return undefined;
+  if (result === null) return null;
+  return {
+    _id: result._id as unknown as Id<"posts">,
+    _creationTime: result._creationTime,
+    organizationId: result.organizationId as unknown as Id<"organizations">,
+    title: result.title,
+    content: result.content ?? undefined,
+    excerpt: result.excerpt ?? undefined,
+    slug: result.slug,
+    status: result.status,
+    postTypeSlug: "helpdeskarticles",
+    authorId: result.authorId as Id<"users"> | undefined,
+    createdAt: result.createdAt,
+    updatedAt: result.updatedAt,
+    tags: result.tags ?? undefined,
+  } as unknown as Doc<"posts">;
 }
 
 export function useGetPostBySlug(slug: string | undefined) {
@@ -261,17 +306,15 @@ export function useGetPostTags() {
     }
     return payload;
   }, [organizationId]);
-  const coreResult = useQuery(api.core.posts.queries.getPostTags, coreArgs) as
-    | string[]
-    | undefined;
+  const coreResult = useQuery(api.core.posts.queries.getPostTags, coreArgs);
   const commerceResult = useQuery(
     api.commercePosts.getPostTags,
     commerceArgs,
   ) as string[] | undefined;
   const tags = useMemo(() => {
     const tagSet = new Set<string>();
-    (coreResult ?? []).forEach((tag) => tagSet.add(tag));
-    (commerceResult ?? []).forEach((tag) => tagSet.add(tag));
+    (coreResult ?? []).forEach((tag: string) => tagSet.add(tag));
+    (commerceResult ?? []).forEach((tag: string) => tagSet.add(tag));
     return Array.from(tagSet).sort();
   }, [commerceResult, coreResult]);
   return {

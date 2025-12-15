@@ -1,17 +1,16 @@
 "use client";
 
-import type { GenericId as Id } from "convex/values";
-import { useEffect, useMemo, useRef } from "react";
-import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
-
-import { cn } from "@acme/ui";
-
 import type {
   ContactDoc,
   ConversationSummary,
 } from "../components/ConversationInspector";
+import { useEffect, useMemo, useRef } from "react";
+
 import { ConversationComposer } from "../components/Composer";
+import type { GenericId as Id } from "convex/values";
+import { api } from "@portal/convexspec";
+import { cn } from "@acme/ui";
+import { useQuery } from "convex/react";
 import { useSupportContact } from "../hooks/useSupportContact";
 
 type SupportMessage = {
@@ -152,7 +151,7 @@ export function TestView({
           </div>
         </div>
 
-        <div className="bg-card/95 border-border/80 supports-[backdrop-filter]:bg-card/75 sticky bottom-0 border-t p-2 shadow-2xl backdrop-blur">
+        <div className="bg-card/95 border-border/80 supports-backdrop-filter:bg-card/75 sticky bottom-0 border-t p-2 shadow-2xl backdrop-blur">
           {selectedConversation ? (
             <ConversationComposer
               organizationId={organizationId}

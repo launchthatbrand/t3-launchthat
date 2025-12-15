@@ -164,6 +164,7 @@ import type * as plugins_support_agent from "../plugins/support/agent.js";
 import type * as plugins_support_helpers from "../plugins/support/helpers.js";
 import type * as plugins_support_http from "../plugins/support/http.js";
 import type * as plugins_support_mutations from "../plugins/support/mutations.js";
+import type * as plugins_support_options from "../plugins/support/options.js";
 import type * as plugins_support_queries from "../plugins/support/queries.js";
 import type * as plugins_support_rag from "../plugins/support/rag.js";
 import type * as presence from "../presence.js";
@@ -359,6 +360,7 @@ declare const fullApi: ApiFromModules<{
   "plugins/support/helpers": typeof plugins_support_helpers;
   "plugins/support/http": typeof plugins_support_http;
   "plugins/support/mutations": typeof plugins_support_mutations;
+  "plugins/support/options": typeof plugins_support_options;
   "plugins/support/queries": typeof plugins_support_queries;
   "plugins/support/rag": typeof plugins_support_rag;
   presence: typeof presence;
@@ -3861,6 +3863,118 @@ export declare const components: {
           any
         >;
       };
+    };
+  };
+  launchthat_support: {
+    mutations: {
+      createSupportPost: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          authorId?: string;
+          content?: string;
+          excerpt?: string;
+          meta?: Array<{
+            key: string;
+            value?: string | number | boolean | null;
+          }>;
+          organizationId: string;
+          parentId?: string;
+          parentTypeSlug?: string;
+          postTypeSlug: string;
+          slug: string;
+          status: "published" | "draft" | "archived";
+          tags?: Array<string>;
+          title: string;
+        },
+        any
+      >;
+      updateSupportPost: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          authorId?: string;
+          content?: string;
+          excerpt?: string;
+          id: string;
+          meta?: Array<{
+            key: string;
+            value?: string | number | boolean | null;
+          }>;
+          organizationId: string;
+          parentId?: string;
+          parentTypeSlug?: string;
+          postTypeSlug: string;
+          slug: string;
+          status: "published" | "draft" | "archived";
+          tags?: Array<string>;
+          title: string;
+        },
+        any
+      >;
+      upsertSupportOption: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          key: string;
+          organizationId: string;
+          value?: string | number | boolean | null;
+        },
+        any
+      >;
+      upsertSupportPostMeta: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          entries: Array<{
+            key: string;
+            value?: string | number | boolean | null;
+          }>;
+          organizationId: string;
+          postId: string;
+        },
+        any
+      >;
+    };
+    queries: {
+      getSupportOption: FunctionReference<
+        "query",
+        "internal",
+        { key: string; organizationId: string },
+        any
+      >;
+      getSupportPostById: FunctionReference<
+        "query",
+        "internal",
+        { id: string; organizationId?: string },
+        any
+      >;
+      getSupportPostMeta: FunctionReference<
+        "query",
+        "internal",
+        { organizationId?: string; postId: string },
+        any
+      >;
+      listSupportOptions: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string },
+        any
+      >;
+      listSupportPosts: FunctionReference<
+        "query",
+        "internal",
+        {
+          filters?: {
+            limit?: number;
+            parentId?: string;
+            postTypeSlug?: string;
+            status?: "published" | "draft" | "archived";
+          };
+          organizationId: string;
+        },
+        any
+      >;
     };
   };
 };

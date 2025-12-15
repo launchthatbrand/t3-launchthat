@@ -7,16 +7,18 @@ import { v } from "convex/values";
 
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { QueryCtx } from "../../_generated/server";
+import type { TemplateCategory } from "./templates";
+import { api } from "../../_generated/api";
 import { query } from "../../_generated/server";
+import { isAdmin } from "../../lib/permissions/hasPermission";
+import { getScopedPostTypeBySlug } from "../postTypes/lib/contentTypes";
 import {
-  TEMPLATE_META_KEYS,
-  TEMPLATE_POST_TYPE_SLUG,
   buildTemplatePageIdentifier,
   requiresTargetPostType,
+  TEMPLATE_META_KEYS,
+  TEMPLATE_POST_TYPE_SLUG,
   templateCategoryValidator,
-  type TemplateCategory,
 } from "./templates";
-import { isAdmin } from "../../lib/permissions/hasPermission";
 
 /**
  * Get all posts with optional filtering
@@ -102,18 +104,71 @@ export const getAllPosts = query({
 /**
  * Get a post by ID
  */
+interface HelpdeskArticle {
+  _id: Id<"posts">;
+  _creationTime: number;
+  organizationId: Id<"organizations">;
+  title: string;
+  content?: string | null;
+  excerpt?: string | null;
+  slug: string;
+  status: "draft" | "published" | "archived";
+  tags?: string[];
+  createdAt: number;
+  updatedAt: number;
+  postTypeSlug: string;
+}
+
 export const getPostById = query({
   args: {
-    id: v.id("posts"),
+    id: v.string(),
     organizationId: v.optional(v.id("organizations")),
+    postTypeSlug: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    const post = await ctx.db.get(args.id);
+  returns: v.any(),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<Doc<"posts"> | HelpdeskArticle | null> => {
+    const requestedOrg = args.organizationId ?? undefined;
+    const postTypeSlug = args.postTypeSlug ?? undefined;
+
+    const postType: Doc<"postTypes"> | null = postTypeSlug
+      ? await getScopedPostTypeBySlug(ctx, postTypeSlug, requestedOrg)
+      : null;
+    const storageKind = postType?.storageKind;
+    const storageTables = postType?.storageTables ?? [];
+    const isSupportComponent =
+      storageKind === "component" &&
+      storageTables.some((table) => table.includes("launchthat_support:posts"));
+
+    if (isSupportComponent) {
+      if (!requestedOrg) {
+        return null;
+      }
+      const record = await ctx.runQuery(
+        api.plugins.support.queries.getSupportPostById,
+        {
+          id: args.id as Id<"posts">,
+          organizationId: requestedOrg as Id<"organizations">,
+        },
+      );
+      return record
+        ? {
+            ...record,
+            _id: args.id as Id<"posts">,
+            postTypeSlug: record.postTypeSlug ?? postTypeSlug ?? "",
+            organizationId: requestedOrg,
+          }
+        : null;
+    }
+
+    const postId = args.id as Id<"posts">;
+    const post = await ctx.db.get(postId);
     if (!post) {
       return null;
     }
 
-    const requestedOrg = args.organizationId ?? undefined;
     const postOrg = post.organizationId ?? undefined;
     if (requestedOrg !== postOrg) {
       return null;
@@ -125,15 +180,45 @@ export const getPostById = query({
 
 export const getPostMeta = query({
   args: {
-    postId: v.id("posts"),
+    postId: v.string(),
     organizationId: v.optional(v.id("organizations")),
+    postTypeSlug: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const post = await ctx.db.get(args.postId);
+    const postId = args.postId as Id<"posts">;
+    const requestedOrg = args.organizationId ?? undefined;
+    const postType: Doc<"postTypes"> | null = args.postTypeSlug
+      ? await getScopedPostTypeBySlug(ctx, args.postTypeSlug, requestedOrg)
+      : null;
+    const storageKind = postType?.storageKind;
+    const storageTables = postType?.storageTables ?? [];
+    const isSupportComponent =
+      storageKind === "component" &&
+      storageTables.some((table) => table.includes("launchthat_support:posts"));
+
+    if (isSupportComponent) {
+      const meta = await ctx.runQuery(
+        api.plugins.support.queries.getSupportPostMeta,
+        {
+          postId,
+          organizationId: requestedOrg as Id<"organizations"> | undefined,
+        },
+      );
+      return meta as {
+        _id: Id<"postsMeta">;
+        _creationTime: number;
+        postId: Id<"posts">;
+        key: string;
+        value: string | number | boolean | null | undefined;
+        createdAt: number;
+        updatedAt?: number;
+      }[];
+    }
+
+    const post = await ctx.db.get(postId);
     if (!post) {
       return [];
     }
-    const requestedOrg = args.organizationId ?? undefined;
     const postOrg = post.organizationId ?? undefined;
     if (requestedOrg !== postOrg) {
       return [];
@@ -141,7 +226,7 @@ export const getPostMeta = query({
 
     return await ctx.db
       .query("postsMeta")
-      .withIndex("by_post", (q) => q.eq("postId", args.postId))
+      .withIndex("by_post", (q) => q.eq("postId", postId))
       .collect();
   },
 });
@@ -257,13 +342,14 @@ export const getPostCategories = query({
   },
 });
 
-type TemplateMeta = {
+interface TemplateMeta {
   templateCategory: TemplateCategory;
   targetPostType: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   loopContext: unknown | null;
   pageIdentifier: string;
   puckData: string | null;
-};
+}
 
 type TemplateRecord = Doc<"posts"> & TemplateMeta;
 
@@ -280,9 +366,9 @@ const loadTemplateMeta = async (
   metaEntries.forEach((entry) => metaMap.set(entry.key, entry.value ?? null));
 
   const rawCategory = metaMap.get(TEMPLATE_META_KEYS.category);
-  const category = (typeof rawCategory === "string"
-    ? rawCategory
-    : "single") as TemplateCategory;
+  const category = (
+    typeof rawCategory === "string" ? rawCategory : "single"
+  ) as TemplateCategory;
 
   const targetPostTypeRaw = metaMap.get(TEMPLATE_META_KEYS.targetPostType);
   const targetPostType =
@@ -291,7 +377,7 @@ const loadTemplateMeta = async (
       : null;
 
   const loopContextRaw = metaMap.get(TEMPLATE_META_KEYS.loopContext);
-  let loopContext: unknown | null = null;
+  let loopContext: unknown = null;
   if (typeof loopContextRaw === "string" && loopContextRaw.length > 0) {
     try {
       loopContext = JSON.parse(loopContextRaw);
@@ -326,10 +412,7 @@ const loadTemplateMeta = async (
   };
 };
 
-const hydrateTemplateRecord = async (
-  ctx: QueryCtx,
-  post: Doc<"posts">,
-) => {
+const hydrateTemplateRecord = async (ctx: QueryCtx, post: Doc<"posts">) => {
   const meta = await loadTemplateMeta(ctx, post);
   const createdAt = post.createdAt ?? post._creationTime;
   const updatedAt = post.updatedAt ?? createdAt;
@@ -350,10 +433,9 @@ const collectTemplatesForScope = async (
     return await ctx.db
       .query("posts")
       .withIndex("by_organization_postTypeSlug", (q) =>
-        q.eq("organizationId", organizationId).eq(
-          "postTypeSlug",
-          TEMPLATE_POST_TYPE_SLUG,
-        ),
+        q
+          .eq("organizationId", organizationId)
+          .eq("postTypeSlug", TEMPLATE_POST_TYPE_SLUG),
       )
       .collect();
   }
@@ -375,10 +457,7 @@ const findTemplateForScope = async (
     targetPostType: string | null;
   },
 ) => {
-  const candidates = await collectTemplatesForScope(
-    ctx,
-    opts.organizationId,
-  );
+  const candidates = await collectTemplatesForScope(ctx, opts.organizationId);
 
   for (const candidate of candidates) {
     const meta = await loadTemplateMeta(ctx, candidate);

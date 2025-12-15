@@ -13,7 +13,10 @@ export const useSupportConversations = (
 ) => {
   const conversations = useQuery(
     api.plugins.support.queries.listConversations,
-    { organizationId, limit },
+    {
+      organizationId,
+      limit,
+    },
   ) as ConversationSummary[] | undefined;
 
   return useMemo(

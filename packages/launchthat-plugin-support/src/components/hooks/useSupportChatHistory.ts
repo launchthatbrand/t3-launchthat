@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { api } from "@portal/convexspec";
+import { useQuery } from "convex/react";
 
 export interface ChatHistoryMessage {
   id: string;
@@ -12,62 +14,31 @@ interface UseSupportChatHistoryResult {
 }
 
 export const useSupportChatHistory = (
-  apiPath: string,
   organizationId: string,
   sessionId: string,
 ): UseSupportChatHistoryResult => {
-  const [initialMessages, setInitialMessages] = useState<ChatHistoryMessage[]>(
-    [],
+  const messages = useQuery(
+    api.plugins.support.queries.listMessages,
+    organizationId && sessionId
+      ? {
+          organizationId,
+          sessionId,
+        }
+      : "skip",
   );
-  const [isBootstrapped, setIsBootstrapped] = useState(false);
 
-  useEffect(() => {
-    if (!sessionId || typeof window === "undefined") {
-      return;
+  const initialMessages = useMemo<ChatHistoryMessage[]>(() => {
+    if (!messages) {
+      return [];
     }
-    let cancelled = false;
-    async function loadHistory() {
-      setIsBootstrapped(false);
-      try {
-        const url = new URL(apiPath, window.location.origin);
-        url.searchParams.set("organizationId", organizationId);
-        url.searchParams.set("sessionId", sessionId);
-        const response = await fetch(url.toString(), { method: "GET" });
-        if (!response.ok) {
-          throw new Error("Failed to load chat history");
-        }
-        const data: {
-          messages: Array<{
-            _id: string;
-            role: "user" | "assistant";
-            content: string;
-          }>;
-        } = await response.json();
-        if (!cancelled) {
-          const normalized =
-            data.messages?.map((message) => ({
-              id: message._id,
-              role: message.role,
-              content: message.content,
-            })) ?? [];
-          setInitialMessages(normalized);
-        }
-      } catch (error) {
-        console.error("[support-chat] failed to load history", error);
-        if (!cancelled) {
-          setInitialMessages([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsBootstrapped(true);
-        }
-      }
-    }
-    void loadHistory();
-    return () => {
-      cancelled = true;
-    };
-  }, [apiPath, organizationId, sessionId]);
+    return messages.map((message: { _id: any; role: any; content: any }) => ({
+      id: message._id,
+      role: message.role,
+      content: message.content,
+    }));
+  }, [messages]);
+
+  const isBootstrapped = messages !== undefined;
 
   return { initialMessages, isBootstrapped };
 };

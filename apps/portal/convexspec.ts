@@ -2766,13 +2766,21 @@ export type PublicApiType = {
         getPostById: FunctionReference<
           "query",
           "public",
-          { id: Id<"posts">; organizationId?: Id<"organizations"> },
+          {
+            id: string;
+            organizationId?: Id<"organizations">;
+            postTypeSlug?: string;
+          },
           any
         >;
         getPostMeta: FunctionReference<
           "query",
           "public",
-          { organizationId?: Id<"organizations">; postId: Id<"posts"> },
+          {
+            organizationId?: Id<"organizations">;
+            postId: string;
+            postTypeSlug?: string;
+          },
           any
         >;
         getPostBySlug: FunctionReference<
@@ -5486,226 +5494,132 @@ export type PublicApiType = {
     };
     support: {
       queries: {
-        getAgentPresence: FunctionReference<
+        listSupportPosts: FunctionReference<
           "query",
           "public",
           {
-            organizationId: Id<"organizations"> | "portal-root";
-            sessionId: string;
+            filters?: {
+              limit?: number;
+              parentId?: Id<"posts">;
+              postTypeSlug?: string;
+              status?: "published" | "draft" | "archived";
+            };
+            organizationId: string;
           },
-          { agentName?: string; status: "typing" | "idle"; updatedAt: number }
+          any
         >;
-        getConversationMode: FunctionReference<
+        getSupportPostById: FunctionReference<
           "query",
           "public",
-          {
-            organizationId: Id<"organizations"> | "portal-root";
-            sessionId: string;
-          },
-          { mode: "agent" | "manual" }
+          { id: Id<"posts">; organizationId?: string },
+          any
         >;
-        getEmailSettings: FunctionReference<
+        getSupportPostMeta: FunctionReference<
           "query",
           "public",
-          { organizationId: Id<"organizations"> | "portal-root" },
-          {
-            allowEmailIntake: boolean;
-            customDomain?: string;
-            defaultAlias: string;
-            dnsRecords?: Array<{ host: string; type: string; value: string }>;
-            isCustomDomainConnected: boolean;
-            lastSyncedAt?: number;
-            resendDomainId?: string;
-            verificationStatus:
-              | "unverified"
-              | "pending"
-              | "verified"
-              | "failed";
-          }
+          { organizationId?: string; postId: Id<"posts"> },
+          any
         >;
         listConversations: FunctionReference<
           "query",
           "public",
-          {
-            limit?: number;
-            organizationId: Id<"organizations"> | "portal-root";
-          },
+          { limit?: number; organizationId: string },
           Array<{
             agentThreadId?: string;
             assignedAgentId?: string;
             assignedAgentName?: string;
             contactEmail?: string;
-            contactId?: Id<"contacts">;
+            contactId?: string;
             contactName?: string;
-            firstAt: number;
-            lastAt: number;
-            lastMessage: string;
-            lastRole: "user" | "assistant";
+            firstAt?: number;
+            lastAt?: number;
+            lastMessage?: string;
+            lastRole?: "user" | "assistant";
             mode?: "agent" | "manual";
-            origin: "chat" | "email";
+            origin?: "chat" | "email";
+            postId: string;
             sessionId: string;
             status?: "open" | "snoozed" | "closed";
-            totalMessages: number;
-          }>
-        >;
-        listHelpdeskArticles: FunctionReference<
-          "query",
-          "public",
-          {
-            limit?: number;
-            organizationId: Id<"organizations"> | "portal-root";
-            query?: string;
-          },
-          Array<{
-            content: string;
-            entryId: Id<"posts">;
-            excerpt?: string;
-            slug?: string;
-            source?: string;
-            tags?: Array<string>;
-            title: string;
-            type?: string;
-            updatedAt: number;
+            totalMessages?: number;
           }>
         >;
         listMessages: FunctionReference<
           "query",
           "public",
-          {
-            organizationId: Id<"organizations"> | "portal-root";
-            sessionId: string;
-          },
+          { organizationId: string; sessionId: string },
           Array<{
-            _id: Id<"supportMessages">;
+            _creationTime: number;
+            _id: string;
             agentName?: string;
             agentUserId?: string;
+            attachments?: Array<string>;
             contactEmail?: string;
-            contactId?: Id<"contacts">;
+            contactId?: string;
             contactName?: string;
             content: string;
             createdAt: number;
+            emailMessageId?: string;
             htmlBody?: string;
+            inReplyToId?: string;
             messageType?: "chat" | "email_inbound" | "email_outbound";
-            role: "user" | "assistant";
-            subject?: string;
-            textBody?: string;
-          }>
-        >;
-        listRagSources: FunctionReference<
-          "query",
-          "public",
-          { organizationId: Id<"organizations"> | "portal-root" },
-          Array<{
-            _id: Id<"supportRagSources">;
-            createdAt: number;
-            displayName?: string;
-            fields: Array<"title" | "excerpt" | "content">;
-            includeTags: boolean;
-            isEnabled: boolean;
-            lastIndexedAt?: number;
-            metaFieldKeys?: Array<string>;
-            postTypeSlug: string;
-            sourceType: string;
-            updatedAt: number;
-          }>
-        >;
-        matchHelpdeskArticle: FunctionReference<
-          "query",
-          "public",
-          {
-            organizationId: Id<"organizations"> | "portal-root";
-            question: string;
-          },
-          {
-            content: string;
-            entryId: Id<"posts">;
-            slug?: string;
-            title: string;
-          } | null
-        >;
-      };
-      mutations: {
-        recordMessage: FunctionReference<
-          "mutation",
-          "public",
-          {
-            contactEmail?: string;
-            contactId?: Id<"contacts">;
-            contactName?: string;
-            content: string;
-            htmlBody?: string;
-            messageType?: "chat" | "email_inbound" | "email_outbound";
-            organizationId: Id<"organizations"> | "portal-root";
+            organizationId: string;
             role: "user" | "assistant";
             sessionId: string;
             source?: "agent" | "admin" | "system";
             subject?: string;
             textBody?: string;
-          },
-          any
+          }>
         >;
-        setAgentPresence: FunctionReference<
-          "mutation",
+        getAgentPresence: FunctionReference<
+          "query",
           "public",
+          { organizationId: string; sessionId: string },
           {
-            organizationId: Id<"organizations"> | "portal-root";
+            _creationTime: number;
+            _id: string;
+            agentName?: string;
+            agentUserId?: string;
+            organizationId: string;
             sessionId: string;
-            status: "typing" | "idle";
-          },
+            status?: "typing" | "idle";
+            updatedAt?: number;
+          } | null
+        >;
+        getConversationMode: FunctionReference<
+          "query",
+          "public",
+          { organizationId: string; sessionId: string },
+          "agent" | "manual"
+        >;
+        listHelpdeskArticles: FunctionReference<
+          "query",
+          "public",
+          { limit?: number; organizationId: string },
           any
         >;
-        setConversationMode: FunctionReference<
-          "mutation",
+        getHelpdeskArticleById: FunctionReference<
+          "query",
           "public",
-          {
-            mode: "agent" | "manual";
-            organizationId: Id<"organizations"> | "portal-root";
-            sessionId: string;
-          },
+          { id: string; organizationId: string },
           any
         >;
-        saveRagSourceConfig: FunctionReference<
-          "mutation",
+        listRagSources: FunctionReference<
+          "query",
           "public",
-          {
-            displayName?: string;
-            fields: Array<"title" | "excerpt" | "content">;
-            includeTags?: boolean;
-            isEnabled?: boolean;
-            metaFieldKeys?: Array<string>;
-            organizationId: Id<"organizations"> | "portal-root";
-            postTypeSlug: string;
-            sourceId?: Id<"supportRagSources">;
-          },
+          { organizationId: string },
           any
         >;
-        deleteRagSourceConfig: FunctionReference<
-          "mutation",
+        getEmailSettings: FunctionReference<
+          "query",
           "public",
-          {
-            organizationId: Id<"organizations"> | "portal-root";
-            sourceId: Id<"supportRagSources">;
-          },
+          { organizationId: string },
           any
         >;
-        saveEmailSettings: FunctionReference<
-          "mutation",
+        getSupportOption: FunctionReference<
+          "query",
           "public",
-          {
-            allowEmailIntake?: boolean;
-            customDomain?: string | null;
-            organizationId: Id<"organizations"> | "portal-root";
-          },
-          any
-        >;
-        beginDomainVerification: FunctionReference<
-          "mutation",
-          "public",
-          {
-            domain: string;
-            organizationId: Id<"organizations"> | "portal-root";
-          },
-          any
+          { key: string; organizationId: string },
+          string | number | boolean | null
         >;
       };
       agent: {
@@ -5738,6 +5652,164 @@ export type PublicApiType = {
             source?: string;
             title: string;
           }>
+        >;
+      };
+      mutations: {
+        createSupportPost: FunctionReference<
+          "mutation",
+          "public",
+          {
+            authorId?: string;
+            content?: string;
+            excerpt?: string;
+            meta?: Array<{
+              key: string;
+              value?: string | number | boolean | null;
+            }>;
+            organizationId: string;
+            parentId?: Id<"posts">;
+            parentTypeSlug?: string;
+            postTypeSlug: string;
+            slug: string;
+            status: "published" | "draft" | "archived";
+            tags?: Array<string>;
+            title: string;
+          },
+          any
+        >;
+        updateSupportPost: FunctionReference<
+          "mutation",
+          "public",
+          {
+            authorId?: string;
+            content?: string;
+            excerpt?: string;
+            id: Id<"posts">;
+            meta?: Array<{
+              key: string;
+              value?: string | number | boolean | null;
+            }>;
+            organizationId: string;
+            parentId?: Id<"posts">;
+            parentTypeSlug?: string;
+            postTypeSlug: string;
+            slug: string;
+            status: "published" | "draft" | "archived";
+            tags?: Array<string>;
+            title: string;
+          },
+          any
+        >;
+        upsertSupportPostMeta: FunctionReference<
+          "mutation",
+          "public",
+          {
+            entries: Array<{
+              key: string;
+              value?: string | number | boolean | null;
+            }>;
+            organizationId: string;
+            postId: Id<"posts">;
+          },
+          any
+        >;
+        recordMessage: FunctionReference<
+          "mutation",
+          "public",
+          {
+            contactEmail?: string;
+            contactId?: string;
+            contactName?: string;
+            content: string;
+            htmlBody?: string;
+            messageType?: "chat" | "email_inbound" | "email_outbound";
+            organizationId: string;
+            role: "user" | "assistant";
+            sessionId: string;
+            source?: "agent" | "admin" | "system";
+            subject?: string;
+            textBody?: string;
+          },
+          null
+        >;
+        setAgentPresence: FunctionReference<
+          "mutation",
+          "public",
+          {
+            agentName?: string;
+            agentUserId: string;
+            organizationId: string;
+            sessionId: string;
+            status: "typing" | "idle";
+          },
+          null
+        >;
+        setConversationMode: FunctionReference<
+          "mutation",
+          "public",
+          {
+            mode: "agent" | "manual";
+            organizationId: string;
+            sessionId: string;
+          },
+          null
+        >;
+        saveEmailSettings: FunctionReference<
+          "mutation",
+          "public",
+          {
+            allowEmailIntake?: boolean;
+            customDomain?: string | null;
+            defaultAlias?: string;
+            organizationId: string;
+          },
+          any
+        >;
+        beginDomainVerification: FunctionReference<
+          "mutation",
+          "public",
+          { customDomain: string; organizationId: string },
+          any
+        >;
+        saveRagSourceConfig: FunctionReference<
+          "mutation",
+          "public",
+          {
+            additionalMetaKeys?: string;
+            displayName?: string;
+            fields?: Array<string>;
+            includeTags?: boolean;
+            isEnabled?: boolean;
+            metaFieldKeys?: Array<string>;
+            organizationId: string;
+            postTypeSlug: string;
+            sourceId?: Id<"posts">;
+          },
+          any
+        >;
+        deleteRagSourceConfig: FunctionReference<
+          "mutation",
+          "public",
+          { organizationId: string; sourceId: Id<"posts"> },
+          any
+        >;
+      };
+      options: {
+        getSupportOption: FunctionReference<
+          "query",
+          "public",
+          { key: string; organizationId: string },
+          string | number | boolean | null
+        >;
+        saveSupportOption: FunctionReference<
+          "mutation",
+          "public",
+          {
+            key: string;
+            organizationId: string;
+            value?: string | number | boolean | null;
+          },
+          null
         >;
       };
     };

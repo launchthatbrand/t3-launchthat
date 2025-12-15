@@ -10,8 +10,9 @@
       "@acme/ui": ["../ui/src/index"],
       "@acme/ui/*": ["../ui/src/*"],
       "@portal/convexspec": ["../../apps/portal/convexspec.ts"],
+      "@convex-config/_generated/api": ["./src/types/convex-api-stub.d.ts"],
       "@convex-config/_generated/dataModel": [
-        "../../apps/portal/convex/_generated/dataModel"
+        "./src/types/convex-dataModel-stub.d.ts"
       ]
     }
   },

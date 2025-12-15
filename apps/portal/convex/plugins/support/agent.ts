@@ -30,14 +30,15 @@ const BASE_INSTRUCTIONS = [
 const KNOWN_MISSING_KEY_MESSAGE =
   "Support assistant is not fully configured yet (missing OpenAI API key). Add one in Support → Settings → AI Assistant.";
 
+const SUPPORT_MODEL_ID = "gpt-4.1-mini";
+
 const createSupportAgent = (apiKey: string) => {
   const openai = createOpenAI({ apiKey });
   return new Agent(components.agent, {
     name: "LaunchThat Support Assistant",
-    description:
-      "An AI helper that answers customer questions using LaunchThat data.",
     instructions: BASE_INSTRUCTIONS,
-    languageModel: openai.chat("gpt-4o-mini"),
+    // Use a v2-compatible OpenAI model ID (AI SDK 5 requires v2 spec names)
+    languageModel: openai.chat(SUPPORT_MODEL_ID),
   });
 };
 
@@ -183,10 +184,10 @@ export const generateAgentReply = action({
       supportAgent,
     );
 
-    let knowledgeEntries: Array<{
+    let knowledgeEntries: {
       title: string;
       content: string;
-    }> = [];
+    }[] = [];
 
     try {
       knowledgeEntries = await ctx.runAction(
@@ -219,13 +220,19 @@ export const generateAgentReply = action({
       })),
     );
 
+    let text = "";
     const { thread } = await supportAgent.continueThread(ctx, { threadId });
-    const result = await thread.generateText({
-      system: [BASE_INSTRUCTIONS, knowledgeContext].join("\n\n"),
-      messages: [{ role: "user", content: trimmedPrompt }],
-    });
-
-    const text = result.text ?? "";
+    try {
+      const result = await thread.generateText({
+        system: [BASE_INSTRUCTIONS, knowledgeContext].join("\n\n"),
+        messages: [{ role: "user", content: trimmedPrompt }],
+      });
+      text = result.text ?? "";
+    } catch (modelError) {
+      console.error("[support-agent] model error", modelError);
+      text =
+        "Support assistant is not fully configured yet (model unavailable). Please contact an administrator.";
+    }
 
     if (text.trim()) {
       await ctx.runMutation(

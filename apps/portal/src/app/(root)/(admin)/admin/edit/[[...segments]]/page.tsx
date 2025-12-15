@@ -3,25 +3,10 @@
 
 import "@/lib/plugins/vimeo/configureClient";
 
-import type { Doc } from "@/convex/_generated/dataModel";
-import type { ReactNode } from "react";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
-
-import { Button } from "@acme/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@acme/ui/card";
-
-import type { PluginMenuItem } from "../_components/GenericArchiveView";
-import type { PermalinkSettings } from "../_components/permalink";
+  ADMIN_PLUGIN_SETTINGS_HEADER_AFTER,
+  ADMIN_PLUGIN_SETTINGS_HEADER_BEFORE,
+} from "~/lib/plugins/hookSlots";
 import {
   AdminLayout,
   AdminLayoutContent,
@@ -29,33 +14,47 @@ import {
   AdminLayoutMain,
   AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
-import { useTenant } from "~/context/TenantContext";
-import { useAdminMenuSections } from "~/lib/adminMenu/useAdminMenuSections";
-import { useApplyFilters } from "~/lib/hooks/react";
-import { pluginDefinitions } from "~/lib/plugins/definitions";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@acme/ui/card";
+import {
+  DefaultArchiveSidebar,
+  GenericArchiveView,
+} from "../_components/GenericArchiveView";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  defaultPermalinkSettings,
+  isPermalinkSettingsValue,
+} from "../_components/permalink";
 import {
   getPluginArchiveViewForSlug,
   getPluginSingleViewForSlug,
   wrapWithPluginProviders,
 } from "~/lib/plugins/helpers";
-import {
-  ADMIN_PLUGIN_SETTINGS_HEADER_AFTER,
-  ADMIN_PLUGIN_SETTINGS_HEADER_BEFORE,
-} from "~/lib/plugins/hookSlots";
-import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { useRouter, useSearchParams } from "next/navigation";
+
 import { AdminSinglePostView } from "../_components/AdminSinglePostView";
 import { AttachmentsArchiveView } from "../_components/AttachmentsArchiveView";
-import {
-  DefaultArchiveSidebar,
-  GenericArchiveView,
-} from "../_components/GenericArchiveView";
-import {
-  defaultPermalinkSettings,
-  isPermalinkSettingsValue,
-} from "../_components/permalink";
+import { Button } from "@acme/ui/button";
+import type { Doc } from "@/convex/_generated/dataModel";
+import Link from "next/link";
+import type { PermalinkSettings } from "../_components/permalink";
 import { PlaceholderState } from "../_components/PlaceholderState";
+import type { PluginMenuItem } from "../_components/GenericArchiveView";
+import type { ReactNode } from "react";
 import { TaxonomyTermsView } from "../_components/TaxonomyTermsView";
+import { api } from "@/convex/_generated/api";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
+import { useAdminMenuSections } from "~/lib/adminMenu/useAdminMenuSections";
 import { useAdminPostContext } from "../../_providers/AdminPostProvider";
+import { useApplyFilters } from "~/lib/hooks/react";
+import { useQuery } from "convex/react";
+import { useTenant } from "~/context/TenantContext";
 
 const DEFAULT_POST_TYPE = "course";
 const PERMALINK_OPTION_KEY = "permalink_settings";

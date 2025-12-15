@@ -3,7 +3,7 @@ import type { PluginDefinition } from "launchthat-plugin-core";
 import { ReactNode } from "react";
 import Link from "next/link";
 
-import { Tabs, TabsList, TabsTrigger } from "@acme/ui";
+import { SidebarTrigger, Tabs, TabsList, TabsTrigger } from "@acme/ui";
 import { ScrollArea, ScrollBar } from "@acme/ui/scroll-area";
 
 import { registerSupportAdminMetaBoxes } from "./admin/metaBoxes";
@@ -64,6 +64,11 @@ const POST_TYPE_TO_TAB: Record<string, string> = {
   supportthreads: "supportthreads",
   supportragsources: "supportragsources",
 };
+
+const SUPPORT_POST_TABLES = [
+  "launchthat_support.posts",
+  "launchthat_support.postsMeta",
+] as const;
 
 interface SupportArchiveHeaderProps {
   activeTab?: string;
@@ -128,7 +133,7 @@ export const SupportArchiveHeader = ({
     //     ))}
     //   </TabsList>
     // </Tabs>
-    <div className="bg-muted flex w-full flex-col gap-6">
+    <div className="bg-muted flex w-full items-center justify-between gap-6">
       <Tabs value={resolvedValue}>
         {/* <ScrollArea className="w-full rounded-md border whitespace-nowrap">
          
@@ -313,6 +318,17 @@ const suppressSupportContent = (value: unknown, context?: unknown): boolean => {
   return Boolean(value);
 };
 
+// const suppressHelpdeskContent = (
+//   value: unknown,
+//   context?: unknown,
+// ): boolean => {
+//   const ctx = context as { postType?: string } | undefined;
+//   if (ctx?.postType === "helpdeskarticles") {
+//     return true;
+//   }
+//   return Boolean(value);
+// };
+
 const injectSupportArchiveContentBefore = (
   value: unknown,
   context?: unknown,
@@ -373,6 +389,32 @@ const injectSupportArchiveContent = (
     />,
   ];
 };
+
+// const injectHelpdeskArchiveContent = (
+//   value: unknown,
+//   context?: unknown,
+// ): ReactNode[] => {
+//   const nodes = Array.isArray(value) ? [...(value as ReactNode[])] : [];
+//   const ctx = context as
+//     | {
+//         postType?: string;
+//         organizationId?: string;
+//         pluginMenus?: SupportPluginMenuMap;
+//       }
+//     | undefined;
+
+//   if (ctx?.postType !== "helpdeskarticles") {
+//     return nodes;
+//   }
+
+//   return [
+//     ...nodes,
+//     <ArticlesView
+//       key="support-archive-helpdesk-articles"
+//       organizationId={(ctx?.organizationId ?? "unknown") as Id<"organizations">}
+//     />,
+//   ];
+// };
 
 const buildSupportNavHref = (slug: string) => {
   switch (slug) {
@@ -438,8 +480,8 @@ const supportPluginDefinition: PluginDefinition = {
         icon: "BookOpen",
         position: 61,
       },
-      storageKind: "posts",
-      storageTables: ["posts", "postsMeta"],
+      storageKind: "component",
+      storageTables: [...SUPPORT_POST_TABLES],
       metaBoxes: [
         {
           id: "helpdesk-trigger-meta",
@@ -505,8 +547,8 @@ const supportPluginDefinition: PluginDefinition = {
         position: 62,
         parent: "plugin:support",
       },
-      storageKind: "posts",
-      storageTables: ["posts", "postsMeta"],
+      storageKind: "component",
+      storageTables: [...SUPPORT_POST_TABLES],
       singleView: {
         basePath: "/admin/edit",
         defaultTab: "edit",
@@ -542,8 +584,8 @@ const supportPluginDefinition: PluginDefinition = {
       adminMenu: {
         enabled: false,
       },
-      storageKind: "custom",
-      storageTables: ["supportMessages"],
+      storageKind: "component",
+      storageTables: [...SUPPORT_POST_TABLES],
     },
     {
       name: "Support RAG Sources",
@@ -558,8 +600,63 @@ const supportPluginDefinition: PluginDefinition = {
       adminMenu: {
         enabled: false,
       },
-      storageKind: "custom",
-      storageTables: ["supportRagSources"],
+      storageKind: "component",
+      storageTables: [...SUPPORT_POST_TABLES],
+    },
+    {
+      name: "Support Presence",
+      slug: "supportpresence",
+      description: "Agent presence records for conversations.",
+      isPublic: false,
+      includeTimestamps: true,
+      enableApi: true,
+      supports: {
+        title: true,
+        customFields: true,
+        postMeta: true,
+      },
+      adminMenu: {
+        enabled: false,
+      },
+      storageKind: "component",
+      storageTables: [...SUPPORT_POST_TABLES],
+    },
+    {
+      name: "Support Email Settings",
+      slug: "supportemailsettings",
+      description: "Email intake and DNS configuration for support.",
+      isPublic: false,
+      includeTimestamps: true,
+      enableApi: true,
+      supports: {
+        title: true,
+        customFields: true,
+        postMeta: true,
+      },
+      adminMenu: {
+        enabled: false,
+      },
+      storageKind: "component",
+      storageTables: [...SUPPORT_POST_TABLES],
+    },
+    {
+      name: "Support Canned Responses",
+      slug: "supportcannedresponses",
+      description: "Reusable canned responses for agents.",
+      isPublic: false,
+      includeTimestamps: true,
+      enableApi: true,
+      supports: {
+        title: true,
+        editor: true,
+        customFields: true,
+        postMeta: true,
+      },
+      adminMenu: {
+        enabled: false,
+      },
+      storageKind: "component",
+      storageTables: [...SUPPORT_POST_TABLES],
     },
   ],
   settingsPages: [
@@ -641,6 +738,12 @@ const supportPluginDefinition: PluginDefinition = {
         acceptedArgs: 2,
         callback: suppressSupportContent,
       },
+      // {
+      //   hook: "admin.archive.content.suppress",
+      //   priority: 10,
+      //   acceptedArgs: 2,
+      //   callback: suppressHelpdeskContent,
+      // },
       {
         hook: "admin.archive.content.before",
         priority: 5,
@@ -653,6 +756,12 @@ const supportPluginDefinition: PluginDefinition = {
         acceptedArgs: 2,
         callback: injectSupportArchiveContent,
       },
+      // {
+      //   hook: "admin.archive.content.after",
+      //   priority: 10,
+      //   acceptedArgs: 2,
+      //   callback: injectHelpdeskArchiveContent,
+      // },
       {
         hook: "admin.plugin.settings.header.before",
         priority: 10,
