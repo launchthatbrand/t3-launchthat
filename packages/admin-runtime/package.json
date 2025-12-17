@@ -26,6 +26,8 @@
   "peerDependencies": {
     "react": "catalog:react19"
   },
-  "prettier": "@acme/prettier-config"
+  "prettier": "@acme/prettier-config",
+  "dependencies": {
+    "dev": "^0.1.3"
+  }
 }
-

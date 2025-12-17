@@ -39,6 +39,7 @@
     "@acme/ui": "workspace:*",
     "@hookform/resolvers": "catalog:",
     "convex": "^1.23.0",
+    "dev": "^0.1.3",
     "launchthat-plugin-core": "workspace:*",
     "react-hook-form": "catalog:",
     "zod": "catalog:"

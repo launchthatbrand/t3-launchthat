@@ -41,6 +41,7 @@
   "dependencies": {
     "@acme/ui": "workspace:*",
     "@hookform/resolvers": "catalog:",
+    "dev": "^0.1.3",
     "launchthat-plugin-core": "workspace:*",
     "react-hook-form": "catalog:",
     "zod": "catalog:"

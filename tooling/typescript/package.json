@@ -3,5 +3,8 @@
   "private": true,
   "files": [
     "*.json"
-  ]
+  ],
+  "dependencies": {
+    "dev": "^0.1.3"
+  }
 }

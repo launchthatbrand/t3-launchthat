@@ -12,10 +12,16 @@ import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
 import { LmsCourseProvider } from "launchthat-plugin-lms";
 
+import "~/lib/pageTemplates";
 import type { PluginFrontendSingleSlotRegistration } from "~/lib/plugins/helpers";
 import { EditorViewer } from "~/components/blocks/editor-x/viewer";
 import { FrontendContentFilterHost } from "~/components/frontend/FrontendContentFilterHost";
 import { parseLexicalSerializedState } from "~/lib/editor/lexical";
+import {
+  DEFAULT_PAGE_TEMPLATE_SLUG,
+  getPageTemplate,
+  PAGE_TEMPLATE_ACCESS_OPTION_KEY,
+} from "~/lib/pageTemplates/registry";
 import { findPostTypeBySlug } from "~/lib/plugins/frontend";
 import { wrapWithFrontendProviders } from "~/lib/plugins/frontendProviders";
 import {
@@ -151,6 +157,21 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     typeof puckMetaEntry?.value === "string" ? puckMetaEntry.value : null,
   );
 
+  const pageTemplateAccessOption =
+    post.postTypeSlug === "pages"
+      ? await fetchQuery(api.core.options.get, {
+          orgId: organizationId ?? undefined,
+          type: "site",
+          metaKey: PAGE_TEMPLATE_ACCESS_OPTION_KEY,
+        })
+      : null;
+  const allowedPageTemplates =
+    pageTemplateAccessOption &&
+    typeof pageTemplateAccessOption.metaValue === "object" &&
+    Array.isArray((pageTemplateAccessOption.metaValue as any).allowed)
+      ? ((pageTemplateAccessOption.metaValue as any).allowed as string[])
+      : undefined;
+
   const pluginMatch: PluginMatch = post.postTypeSlug
     ? findPostTypeBySlug(post.postTypeSlug)
     : null;
@@ -213,6 +234,39 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       </PortalConvexProvider>
     );
   };
+
+  const pageTemplateSlug =
+    (postMetaMap.get("page_template") as string | undefined) ??
+    DEFAULT_PAGE_TEMPLATE_SLUG;
+  if (post.postTypeSlug === "pages") {
+    const allowedSet =
+      allowedPageTemplates && allowedPageTemplates.length > 0
+        ? new Set<string>([
+            ...allowedPageTemplates,
+            DEFAULT_PAGE_TEMPLATE_SLUG,
+            pageTemplateSlug,
+          ])
+        : null;
+    const effectiveSlug =
+      allowedSet && !allowedSet.has(pageTemplateSlug)
+        ? DEFAULT_PAGE_TEMPLATE_SLUG
+        : pageTemplateSlug;
+    const pageTemplate = getPageTemplate(effectiveSlug, organizationId);
+    if (
+      pageTemplate &&
+      pageTemplate.slug !== DEFAULT_PAGE_TEMPLATE_SLUG &&
+      pageTemplate.render
+    ) {
+      return wrapWithLmsProviderIfNeeded(
+        pageTemplate.render({
+          post,
+          postType,
+          meta: postMetaObject,
+          organizationId,
+        }),
+      );
+    }
+  }
 
   const pluginSingle = pluginMatch?.postType.frontend?.single;
   if (pluginMatch && pluginSingle?.render) {

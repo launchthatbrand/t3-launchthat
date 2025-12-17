@@ -8,6 +8,7 @@ import "./metaBoxes/customFields";
 import "./metaBoxes/actions";
 import "./metaBoxes/metadata";
 import "./metaBoxes/vimeo";
+import "~/lib/pageTemplates";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { SerializedEditorState } from "lexical";
@@ -40,7 +41,7 @@ import {
 } from "@acme/ui/accordion";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent } from "@acme/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import {
@@ -90,6 +91,11 @@ import {
   createLexicalStateFromPlainText,
   parseLexicalSerializedState,
 } from "~/lib/editor/lexical";
+import {
+  DEFAULT_PAGE_TEMPLATE_SLUG,
+  listPageTemplates,
+  PAGE_TEMPLATE_ACCESS_OPTION_KEY,
+} from "~/lib/pageTemplates/registry";
 import { findPostTypeBySlug } from "~/lib/plugins/frontend";
 import {
   getFrontendProvidersForPostType,
@@ -498,6 +504,34 @@ export function AdminSinglePostView({
   const [customFieldValues, setCustomFieldValues] = useState<
     Record<string, CustomFieldValue>
   >({});
+  const pageTemplateAccessOption = useQuery(
+    api.core.options.get,
+    organizationId
+      ? ({
+          orgId: organizationId,
+          type: "site",
+          metaKey: PAGE_TEMPLATE_ACCESS_OPTION_KEY,
+        } as const)
+      : "skip",
+  ) as Doc<"options"> | null | undefined;
+  const allowedPageTemplateSlugs = useMemo<string[] | undefined>(() => {
+    const value = pageTemplateAccessOption?.metaValue;
+    if (value && typeof value === "object" && Array.isArray(value.allowed)) {
+      return value.allowed as string[];
+    }
+    return undefined;
+  }, [pageTemplateAccessOption]);
+  const availablePageTemplates = useMemo(() => {
+    const templates = listPageTemplates(organizationId as string | undefined);
+    if (!allowedPageTemplateSlugs || allowedPageTemplateSlugs.length === 0) {
+      return templates;
+    }
+    const allowed = new Set<string>([
+      ...allowedPageTemplateSlugs,
+      DEFAULT_PAGE_TEMPLATE_SLUG,
+    ]);
+    return templates.filter((template) => allowed.has(template.slug));
+  }, [allowedPageTemplateSlugs, organizationId]);
   const getMetaValue = useCallback(
     (key: string) => customFieldValues[key],
     [customFieldValues],
@@ -525,6 +559,15 @@ export function AdminSinglePostView({
       return { ...prev, [key]: normalizedValue };
     });
   }, []);
+
+  useEffect(() => {
+    if (slug === "pages") {
+      const current = getMetaValue("page_template");
+      if (current === undefined) {
+        setMetaValue("page_template", DEFAULT_PAGE_TEMPLATE_SLUG);
+      }
+    }
+  }, [getMetaValue, setMetaValue, slug]);
   const {
     context: attachmentsContext,
     serializedValue: attachmentsSerializedValue,
@@ -1404,6 +1447,16 @@ export function AdminSinglePostView({
       }
     }
 
+    // Persist page template selection for pages even though it's not part of schema fields
+    if (slug === "pages") {
+      const selectedTemplate = customFieldValues["page_template"];
+      if (typeof selectedTemplate === "string" && selectedTemplate.trim()) {
+        payload.page_template = selectedTemplate;
+      } else if (postMetaMap.page_template !== undefined) {
+        payload.page_template = DEFAULT_PAGE_TEMPLATE_SLUG;
+      }
+    }
+
     if (shouldTrackVimeoMeta) {
       if (resolvedVimeoMeta?.videoId) {
         payload.vimeoVideoId = resolvedVimeoMeta.videoId;
@@ -1962,9 +2015,39 @@ export function AdminSinglePostView({
     const sidebarTopSlots = renderPluginSlots("sidebarTop");
     const sidebarBottomSlots = renderPluginSlots("sidebarBottom");
 
+    const pageTemplateSelect =
+      slug === "pages" ? (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Page Template</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Select
+              value={
+                (getMetaValue("page_template") as string) ??
+                DEFAULT_PAGE_TEMPLATE_SLUG
+              }
+              onValueChange={(value) => setMetaValue("page_template", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select template" />
+              </SelectTrigger>
+              <SelectContent>
+                {availablePageTemplates.map((template) => (
+                  <SelectItem key={template.slug} value={template.slug}>
+                    {template.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+      ) : null;
+
     return (
       <div className="space-y-4">
         {sidebarTopSlots}
+        {pageTemplateSelect}
         {renderMetaBoxList(resolvedMetaBoxes, "sidebar")}
         {sidebarBottomSlots}
       </div>

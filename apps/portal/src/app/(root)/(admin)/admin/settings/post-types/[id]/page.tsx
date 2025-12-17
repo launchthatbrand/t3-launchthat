@@ -1,9 +1,9 @@
 "use client";
 
+import type { Id } from "@/convex/_generated/dataModel";
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import type { Id } from "@/convex/_generated/dataModel";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -217,7 +217,7 @@ export default function ContentTypeDetailPage() {
     return (
       <div className="container py-6">
         <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
+          <CardContent className="text-muted-foreground py-12 text-center">
             Invalid post type ID.
           </CardContent>
         </Card>
@@ -228,7 +228,7 @@ export default function ContentTypeDetailPage() {
   if (contentType === undefined) {
     return (
       <div className="container flex min-h-[60vh] items-center justify-center">
-        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+        <div className="text-muted-foreground flex flex-col items-center gap-2">
           <Loader2 className="h-6 w-6 animate-spin" />
           <span>Loading post type…</span>
         </div>
@@ -241,7 +241,7 @@ export default function ContentTypeDetailPage() {
       <div className="container py-6">
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="mb-4 text-muted-foreground">
+            <p className="text-muted-foreground mb-4">
               Content type not found or no longer exists.
             </p>
             <Button
@@ -271,12 +271,10 @@ export default function ContentTypeDetailPage() {
     const resolvedSingleSlug =
       normalizedSingleSlug && normalizedSingleSlug.length > 0
         ? normalizedSingleSlug
-        : undefined;
+        : "";
     const adminMenuSlug = values.adminMenu.slug?.trim();
     const resolvedAdminMenuSlug =
-      adminMenuSlug && adminMenuSlug.length > 0
-        ? adminMenuSlug
-        : values.slug;
+      adminMenuSlug && adminMenuSlug.length > 0 ? adminMenuSlug : values.slug;
     const adminMenuLabel = values.adminMenu.label?.trim();
     const resolvedAdminMenuLabel =
       adminMenuLabel && adminMenuLabel.length > 0
@@ -619,7 +617,7 @@ export default function ContentTypeDetailPage() {
                   )}
                 />
               </div>
-              <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
+              <div className="bg-muted text-muted-foreground rounded-md p-3 text-xs">
                 <p>
                   Archive URL: <strong>{previewPaths.archive}</strong>
                 </p>
@@ -764,7 +762,7 @@ export default function ContentTypeDetailPage() {
                 />
               </div>
               {!adminMenuEnabled && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   Enable the admin menu to inject this post type into the
                   sidebar automatically.
                 </p>

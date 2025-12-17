@@ -181,10 +181,6 @@ export const navItems: CoreNavItem[] = [
         url: "/admin/settings/templates",
       },
       {
-        title: "Marketing Tags",
-        url: "/admin/settings/marketing-tags",
-      },
-      {
         title: "Menus",
         url: "/admin/settings/menus",
       },
@@ -193,12 +189,16 @@ export const navItems: CoreNavItem[] = [
         url: "/admin/settings/roles",
       },
       {
-        title: "Plans",
-        url: "/admin/store/plans",
-      },
-      {
         title: "Organizations",
         url: "/admin/settings/organizations",
+      },
+      {
+        title: "Permalinks",
+        url: "/admin/settings/permalinks",
+      },
+      {
+        title: "Page Templates",
+        url: "/admin/settings/page-templates",
       },
     ],
   },

@@ -1,6 +1,5 @@
 // import { AppSidebar } from "./AppSidebar";
 import { cn } from "../lib/utils";
-
 import { SidebarInset, SidebarProvider } from "../sidebar";
 import { AppSidebar } from "./app-sidebar";
 import AppHeader from "./AppHeader";
@@ -33,14 +32,16 @@ export default function StandardLayout(props: {
     >
       {props.sidebar}
       {/* <AppSidebar sidebar={props.sidebar} /> */}
-      <SidebarInset>
+      <SidebarInset className="max-w-[calc(100%-5rem)]">
         <AppHeader
           appName={props.appName}
           sidebarToggle={sidebarToggle}
           className=""
           rightSlot={props.headerRightSlot}
         />
+        {/* <div className="relative w-full max-w-full overflow-x-hidden"> */}
         {props.children}
+        {/* </div> */}
       </SidebarInset>
     </SidebarProvider>
   );
