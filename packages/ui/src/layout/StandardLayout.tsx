@@ -32,7 +32,7 @@ export default function StandardLayout(props: {
     >
       {props.sidebar}
       {/* <AppSidebar sidebar={props.sidebar} /> */}
-      <SidebarInset className="max-w-[calc(100%-5rem)]">
+      <SidebarInset>
         <AppHeader
           appName={props.appName}
           sidebarToggle={sidebarToggle}

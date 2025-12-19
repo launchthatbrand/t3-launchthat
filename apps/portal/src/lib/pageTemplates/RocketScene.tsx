@@ -142,31 +142,27 @@ const ShootingStars: React.FC<{ count?: number }> = ({ count = 6 }) => {
   );
 };
 
-export const RocketScene: React.FC = () => {
+const TrackingSpotlight: React.FC<{
+  target: THREE_NS.Vector3;
+}> = ({ target }) => {
+  const spotlightRef = useRef<THREE_NS.SpotLight>(null);
+  const targetRef = useRef<THREE_NS.Object3D>(new THREE_NS.Object3D());
+
+  useFrame(() => {
+    const light = spotlightRef.current;
+    const tgt = targetRef.current;
+    if (!light || !tgt) return;
+    tgt.position.lerp(target, 0.25);
+    tgt.updateMatrixWorld();
+    light.target = tgt;
+    light.target.updateMatrixWorld();
+  });
+
   return (
-    <Canvas
-      dpr={[1.5, 2]}
-      linear
-      shadows
-      camera={{ position: [0, 0, 16], fov: 75 }}
-      gl={{
-        antialias: true,
-        toneMapping: THREE_NS.ACESFilmicToneMapping,
-        toneMappingExposure: 1.2,
-      }}
-    >
-      {/* Background color */}
-      <color attach="background" args={["#272730"]} />
-
-      {/* Fog for depth */}
-      <fog attach="fog" args={["#272730", 16, 30]} />
-
-      {/* Lighting */}
-      <ambientLight intensity={0.75 * Math.PI} />
-
-      {/* Spotlight highlighting the rocket */}
+    <>
       <PerspectiveCamera makeDefault position={[0, 0, 20]} fov={75}>
         <spotLight
+          ref={spotlightRef}
           castShadow
           intensity={2.25 * Math.PI}
           decay={0}
@@ -177,41 +173,82 @@ export const RocketScene: React.FC = () => {
           shadow-bias={-0.0001}
         />
       </PerspectiveCamera>
+      {/* Ensure the spotlight target is part of the scene graph */}
+      <primitive object={targetRef.current} />
+    </>
+  );
+};
 
-      {/* Camera controls - reduced auto-rotate speed */}
-      <OrbitControls
-        autoRotate
-        autoRotateSpeed={0.1}
-        enablePan={false}
-        enableZoom={false}
-        maxPolarAngle={Math.PI / 2}
-        minPolarAngle={Math.PI / 2}
-      />
+export const RocketScene: React.FC = () => {
+  const rocketTarget = React.useMemo(() => new THREE_NS.Vector3(12, -3, 0), []);
 
-      {/* 3D Model */}
-      <Suspense
-        fallback={
-          <mesh position={[12, -3, 0]}>
-            <sphereGeometry args={[2, 32, 32]} />
-            <meshStandardMaterial color="#4444ff" wireframe />
-          </mesh>
-        }
+  return (
+    <div className="absolute inset-0 h-full w-full">
+      <Canvas
+        dpr={[1.5, 2]}
+        linear
+        shadows
+        className="!absolute !inset-0 block !h-full !w-full"
+        style={{
+          width: "100%",
+          height: "100%",
+          position: "absolute",
+          inset: 0,
+        }}
+        camera={{ position: [0, 0, 16], fov: 75 }}
+        gl={{
+          antialias: true,
+          toneMapping: THREE_NS.ACESFilmicToneMapping,
+          toneMappingExposure: 1.2,
+        }}
       >
-        <RocketModel url="/scene.glb" />
-      </Suspense>
+        {/* Background color */}
+        <color attach="background" args={["#272730"]} />
 
-      {/* Stars background */}
-      <Stars radius={500} depth={50} count={1000} factor={10} />
+        {/* Fog for depth */}
+        <fog attach="fog" args={["#272730", 16, 30]} />
 
-      {/* Shooting stars */}
-      <ShootingStars count={6} />
+        {/* Lighting */}
+        <ambientLight intensity={0.75 * Math.PI} />
 
-      {/* Post-processing effects */}
-      <Suspense fallback={null}>
-        <EffectComposer>
-          <Bloom mipmapBlur luminanceThreshold={1} intensity={1.5} />
-        </EffectComposer>
-      </Suspense>
-    </Canvas>
+        {/* Spotlight highlighting the rocket */}
+        <TrackingSpotlight target={rocketTarget} />
+
+        {/* Camera controls - reduced auto-rotate speed */}
+        <OrbitControls
+          autoRotate
+          autoRotateSpeed={0.1}
+          enablePan={false}
+          enableZoom={false}
+          maxPolarAngle={Math.PI / 2}
+          minPolarAngle={Math.PI / 2}
+        />
+
+        {/* 3D Model */}
+        <Suspense
+          fallback={
+            <mesh position={[12, -3, 0]}>
+              <sphereGeometry args={[2, 32, 32]} />
+              <meshStandardMaterial color="#4444ff" wireframe />
+            </mesh>
+          }
+        >
+          <RocketModel url="/scene.glb" />
+        </Suspense>
+
+        {/* Stars background */}
+        <Stars radius={500} depth={50} count={1000} factor={10} />
+
+        {/* Shooting stars */}
+        <ShootingStars count={6} />
+
+        {/* Post-processing effects */}
+        <Suspense fallback={null}>
+          <EffectComposer>
+            <Bloom mipmapBlur luminanceThreshold={1} intensity={1.5} />
+          </EffectComposer>
+        </Suspense>
+      </Canvas>
+    </div>
   );
 };

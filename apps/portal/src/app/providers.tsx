@@ -1,24 +1,25 @@
 /* eslint-disable react-compiler/react-compiler */
 "use client";
 
-import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
-import { PORTAL_TENANT_ID, PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
-import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
-
-import { ContentProtectionProvider } from "~/components/access/ContentProtectionProvider";
-import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { ConvexReactClient } from "convex/react";
-import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
+import type { TenantSummary } from "@/lib/tenant-fetcher";
 // Import Clerk provider and hook
 import React from "react";
-import { SessionProvider } from "convex-helpers/react/sessions";
-import { SupportChatWidget } from "launchthat-plugin-support";
-import { TenantProvider } from "~/context/TenantContext";
-import type { TenantSummary } from "@/lib/tenant-fetcher";
-import { Toaster } from "@acme/ui/toast";
-import { env } from "~/env";
-import { useLocalStorage } from "usehooks-ts";
 import { usePathname } from "next/navigation";
+import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
+import { SessionProvider } from "convex-helpers/react/sessions";
+import { ConvexReactClient } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { SupportChatWidget } from "launchthat-plugin-support";
+import { useLocalStorage } from "usehooks-ts";
+
+import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
+import { Toaster } from "@acme/ui/toast";
+
+import { ContentProtectionProvider } from "~/components/access/ContentProtectionProvider";
+import { TenantProvider } from "~/context/TenantContext";
+import { env } from "~/env";
+import { PORTAL_TENANT_ID, PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
+import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
 
 // Import the correct Convex provider for Clerk integration
 
@@ -64,7 +65,7 @@ export function Providers({ children, tenant }: ProvidersProps) {
                     isAdminRoute={isAdminRoute}
                   />
                 ) : null}
-                <div className="absolute right-4 bottom-4">
+                <div className="fixed right-4 bottom-20">
                   <ThemeToggle />
                 </div>
                 <Toaster />
