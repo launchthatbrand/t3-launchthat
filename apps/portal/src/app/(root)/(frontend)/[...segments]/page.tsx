@@ -1,4 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
+import "~/lib/pageTemplates";
+
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { Data as PuckData } from "@measured/puck";
 import type { FrontendFilterContext } from "launchthat-plugin-core/frontendFilters";
@@ -12,9 +14,9 @@ import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
 import { LmsCourseProvider } from "launchthat-plugin-lms";
 
-import "~/lib/pageTemplates";
 import type { PluginFrontendSingleSlotRegistration } from "~/lib/plugins/helpers";
 import { EditorViewer } from "~/components/blocks/editor-x/viewer";
+import { PostCommentsSection } from "~/components/comments/PostCommentsSection";
 import { FrontendContentFilterHost } from "~/components/frontend/FrontendContentFilterHost";
 import { parseLexicalSerializedState } from "~/lib/editor/lexical";
 import {
@@ -138,10 +140,11 @@ export default async function FrontendCatchAllPage(props: PageProps) {
   }
 
   const postMetaResult: Doc<"postsMeta">[] | null = await fetchQuery(
-    api.core.posts.queries.getPostMeta,
+    api.core.posts.postMeta.getPostMeta,
     {
       postId: post._id,
       ...(organizationId ? { organizationId } : {}),
+      postTypeSlug: post.postTypeSlug ?? undefined,
     },
   );
   const postMeta = postMetaResult ?? [];
@@ -165,12 +168,9 @@ export default async function FrontendCatchAllPage(props: PageProps) {
           metaKey: PAGE_TEMPLATE_ACCESS_OPTION_KEY,
         })
       : null;
-  const allowedPageTemplates =
-    pageTemplateAccessOption &&
-    typeof pageTemplateAccessOption.metaValue === "object" &&
-    Array.isArray((pageTemplateAccessOption.metaValue as any).allowed)
-      ? ((pageTemplateAccessOption.metaValue as any).allowed as string[])
-      : undefined;
+  const allowedPageTemplates = extractAllowedPageTemplates(
+    pageTemplateAccessOption?.metaValue,
+  );
 
   const pluginMatch: PluginMatch = post.postTypeSlug
     ? findPostTypeBySlug(post.postTypeSlug)
@@ -285,8 +285,14 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     post.postTypeSlug && pluginMatch
       ? getPluginFrontendSingleSlotsForSlug(post.postTypeSlug)
       : [];
+  const disabledSlotIds = resolveDisabledFrontendSlotIds(postType);
+  const filteredSlotRegistrations = disabledSlotIds.length
+    ? frontendSlotRegistrations.filter(
+        (registration) => !disabledSlotIds.includes(registration.slot.id),
+      )
+    : frontendSlotRegistrations;
   const pluginSlotNodes = buildFrontendSlotNodes({
-    registrations: frontendSlotRegistrations,
+    registrations: filteredSlotRegistrations,
     post,
     postType,
     organizationId,
@@ -538,6 +544,18 @@ function PostDetail({
     post,
     postMeta,
   });
+  const supportsComments = resolveSupportFlag(postType?.supports, "comments");
+  const frontendVisibility = readFrontendVisibility(postType);
+  const showCustomFields = resolveFrontendVisibilityFlag(
+    frontendVisibility,
+    "showCustomFields",
+    true,
+  );
+  const showComments = resolveFrontendVisibilityFlag(
+    frontendVisibility,
+    "showComments",
+    true,
+  );
   const hasPuckContent = Boolean(puckData?.content?.length);
   const lexicalContent = parseLexicalSerializedState(post.content ?? null);
 
@@ -592,7 +610,7 @@ function PostDetail({
             <div className="space-y-4">{pluginSlots.afterContent}</div>
           )}
 
-          {customFieldEntries.length > 0 ? (
+          {showCustomFields && customFieldEntries.length > 0 ? (
             <section className="bg-card rounded-lg border p-6">
               <h2 className="text-foreground text-xl font-semibold">
                 Custom Fields
@@ -608,6 +626,13 @@ function PostDetail({
                 ))}
               </dl>
             </section>
+          ) : null}
+
+          {supportsComments && showComments ? (
+            <PostCommentsSection
+              postId={post._id}
+              organizationId={post.organizationId ?? null}
+            />
           ) : null}
         </article>
         {hasSidebar && (
@@ -692,6 +717,80 @@ function resolveContextLabel(post: Doc<"posts">, postType: PostTypeDoc | null) {
     }
   }
   return "Post";
+}
+
+function resolveSupportFlag(
+  supports: Doc<"postTypes">["supports"] | undefined,
+  key: string,
+) {
+  if (!supports) {
+    return false;
+  }
+  const record = supports as Record<string, unknown>;
+  return record[key] === true;
+}
+
+function extractAllowedPageTemplates(metaValue: unknown): string[] | undefined {
+  if (!metaValue || typeof metaValue !== "object") {
+    return undefined;
+  }
+  if (!("allowed" in metaValue)) {
+    return undefined;
+  }
+  const allowed = (metaValue as { allowed?: unknown }).allowed;
+  if (!Array.isArray(allowed)) {
+    return undefined;
+  }
+  const strings = allowed.filter(
+    (value): value is string => typeof value === "string",
+  );
+  return strings.length > 0 ? strings : undefined;
+}
+
+function resolveFrontendVisibilityFlag(
+  visibility: ReturnType<typeof readFrontendVisibility>,
+  key: "showCustomFields" | "showComments",
+  fallback: boolean,
+) {
+  if (!visibility) {
+    return fallback;
+  }
+  const record = visibility as Record<string, unknown>;
+  if (record[key] === true) {
+    return true;
+  }
+  if (record[key] === false) {
+    return false;
+  }
+  return fallback;
+}
+
+function resolveDisabledFrontendSlotIds(
+  postType: Doc<"postTypes"> | null,
+): string[] {
+  const visibility = readFrontendVisibility(postType);
+  const raw = visibility?.disabledSingleSlotIds;
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw.filter((value): value is string => typeof value === "string");
+}
+
+function readFrontendVisibility(postType: Doc<"postTypes"> | null): {
+  showCustomFields?: boolean;
+  showComments?: boolean;
+  disabledSingleSlotIds?: unknown;
+} | null {
+  const raw = (postType as unknown as { frontendVisibility?: unknown })
+    ?.frontendVisibility;
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  return raw as {
+    showCustomFields?: boolean;
+    showComments?: boolean;
+    disabledSingleSlotIds?: unknown;
+  };
 }
 
 function PostMetaSummary({

@@ -22,6 +22,7 @@ import {
 } from "./lib/contentTypes";
 import {
   postTypeAdminMenuValidator,
+  postTypeFrontendVisibilityValidator,
   postTypeMetaBoxValidator,
   postTypeRewriteValidator,
   postTypeStorageKindValidator,
@@ -1032,6 +1033,7 @@ export const update = mutation({
       storageKind: v.optional(postTypeStorageKindValidator),
       storageTables: v.optional(postTypeStorageTablesValidator),
       metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
+      frontendVisibility: v.optional(postTypeFrontendVisibilityValidator),
     }),
   },
   handler: async (ctx, args) => {

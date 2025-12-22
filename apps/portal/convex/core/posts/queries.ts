@@ -109,8 +109,8 @@ interface HelpdeskArticle {
   _creationTime: number;
   organizationId: Id<"organizations">;
   title: string;
-  content?: string | null;
-  excerpt?: string | null;
+  content?: string;
+  excerpt?: string;
   slug: string;
   status: "draft" | "published" | "archived";
   tags?: string[];

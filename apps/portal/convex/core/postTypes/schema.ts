@@ -143,6 +143,12 @@ export const postTypeMetaBoxValidator = v.object({
   rendererKey: v.optional(v.string()),
 });
 
+export const postTypeFrontendVisibilityValidator = v.object({
+  showCustomFields: v.optional(v.boolean()),
+  showComments: v.optional(v.boolean()),
+  disabledSingleSlotIds: v.optional(v.array(v.string())),
+});
+
 const enabledOrgIdValidator = v.union(
   v.id("organizations"),
   v.literal(PORTAL_TENANT_SLUG),
@@ -171,6 +177,7 @@ export const postTypesTable = defineTable({
   storageKind: v.optional(postTypeStorageKindValidator),
   storageTables: v.optional(postTypeStorageTablesValidator),
   metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
+  frontendVisibility: v.optional(postTypeFrontendVisibilityValidator),
 
   // Stats and Metadata
   fieldCount: v.optional(v.number()), // Number of fields (denormalized for performance)

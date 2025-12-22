@@ -67,6 +67,12 @@ const adminMenuSchema = z.object({
     .transform((value) => (value?.length ? value : undefined)),
 });
 
+const frontendVisibilitySchema = z.object({
+  showCustomFields: z.boolean(),
+  showComments: z.boolean(),
+  disabledSingleSlotIds: z.array(z.string()),
+});
+
 const contentTypeFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   slug: z.string().min(1, "Slug is required"),
@@ -83,6 +89,7 @@ const contentTypeFormSchema = z.object({
   ),
   rewrite: rewriteSchema,
   adminMenu: adminMenuSchema,
+  frontendVisibility: frontendVisibilitySchema,
 });
 
 type ContentTypeFormValues = z.infer<typeof contentTypeFormSchema>;
@@ -136,6 +143,12 @@ const defaultAdminMenu: ContentTypeFormValues["adminMenu"] = {
   position: undefined,
 };
 
+const defaultFrontendVisibility: ContentTypeFormValues["frontendVisibility"] = {
+  showCustomFields: true,
+  showComments: true,
+  disabledSingleSlotIds: [],
+};
+
 export default function ContentTypeDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -157,6 +170,7 @@ export default function ContentTypeDetailPage() {
       supports: defaultSupports,
       rewrite: defaultRewrite,
       adminMenu: defaultAdminMenu,
+      frontendVisibility: defaultFrontendVisibility,
     },
   });
 
@@ -171,6 +185,17 @@ export default function ContentTypeDetailPage() {
         includeTimestamps: contentType.includeTimestamps ?? true,
         enableVersioning: contentType.enableVersioning ?? false,
         supports: normalizeSupports(contentType.supports ?? undefined),
+          frontendVisibility: {
+            ...defaultFrontendVisibility,
+            ...(contentType.frontendVisibility ?? {}),
+            disabledSingleSlotIds: Array.isArray(
+              (contentType.frontendVisibility as { disabledSingleSlotIds?: unknown })
+                ?.disabledSingleSlotIds,
+            )
+              ? ((contentType.frontendVisibility as { disabledSingleSlotIds: string[] })
+                  .disabledSingleSlotIds ?? [])
+              : [],
+          },
         rewrite: {
           ...defaultRewrite,
           ...(contentType.rewrite ?? {}),
@@ -195,6 +220,7 @@ export default function ContentTypeDetailPage() {
 
   const isSaving = form.formState.isSubmitting;
   const adminMenuEnabled = form.watch("adminMenu.enabled");
+  const supportsComments = form.watch("supports.comments");
   const rewriteValues = form.watch(
     "rewrite",
   ) as ContentTypeFormValues["rewrite"];
@@ -299,6 +325,13 @@ export default function ContentTypeDetailPage() {
         includeTimestamps: values.includeTimestamps,
         enableVersioning: values.enableVersioning,
         supports: supportsPayload,
+        frontendVisibility: {
+          showCustomFields: values.frontendVisibility.showCustomFields,
+          showComments: supportsPayload.comments
+            ? values.frontendVisibility.showComments
+            : false,
+          disabledSingleSlotIds: values.frontendVisibility.disabledSingleSlotIds,
+        },
         rewrite: {
           ...values.rewrite,
           archiveSlug: resolvedArchiveSlug,
@@ -516,6 +549,88 @@ export default function ContentTypeDetailPage() {
                   )}
                 />
               ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Frontend</CardTitle>
+              <CardDescription>
+                Control which built-in sections appear on the public single page
+                for this post type.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="frontendVisibility.showCustomFields"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-md border p-3">
+                      <FormLabel className="text-sm">
+                        Show Custom Fields section
+                      </FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="frontendVisibility.showComments"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-md border p-3">
+                      <FormLabel className="text-sm">Show Comments</FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={!supportsComments}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <Separator />
+
+              <FormField
+                control={form.control}
+                name="frontendVisibility.disabledSingleSlotIds"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Disable plugin slot IDs (one per line)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        value={field.value.join("\n")}
+                        onChange={(e) => {
+                          const ids = e.target.value
+                            .split("\n")
+                            .map((v) => v.trim())
+                            .filter((v) => v.length > 0);
+                          field.onChange(ids);
+                        }}
+                        rows={4}
+                        placeholder={[
+                          "Example (LMS):",
+                          "lms-frontend-lessons-progress-slot",
+                          "lms-frontend-lessons-completion-slot",
+                        ].join("\n")}
+                      />
+                    </FormControl>
+                    <p className="text-muted-foreground text-sm">
+                      Use this to hide plugin-injected panels like LMS course
+                      progress/completion for this post type.
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
 

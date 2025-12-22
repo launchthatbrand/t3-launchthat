@@ -1,6 +1,7 @@
 import { PORTAL_TENANT_ID, PORTAL_TENANT_SLUG } from "../../constants";
 import {
   postTypeAdminMenuValidator,
+  postTypeFrontendVisibilityValidator,
   postTypeMetaBoxValidator,
   postTypeRewriteValidator,
   postTypeStorageKindValidator,
@@ -71,6 +72,7 @@ export const list = query({
       storageKind: v.optional(postTypeStorageKindValidator),
       storageTables: v.optional(postTypeStorageTablesValidator),
       metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
+      frontendVisibility: v.optional(postTypeFrontendVisibilityValidator),
     }),
   ),
   handler: async (ctx, args) => {
@@ -167,6 +169,7 @@ export const get = query({
       storageKind: v.optional(postTypeStorageKindValidator),
       storageTables: v.optional(postTypeStorageTablesValidator),
       metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
+      frontendVisibility: v.optional(postTypeFrontendVisibilityValidator),
     }),
     v.null(),
   ),
@@ -235,6 +238,7 @@ export const getBySlug = query({
       storageKind: v.optional(postTypeStorageKindValidator),
       storageTables: v.optional(postTypeStorageTablesValidator),
       metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
+      frontendVisibility: v.optional(postTypeFrontendVisibilityValidator),
     }),
     v.null(),
   ),
