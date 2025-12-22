@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
+import { components } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import type {
@@ -35,13 +36,17 @@ export async function getPostMetaMap(
   ctx: Ctx,
   postId: Id<"posts">,
 ): Promise<Map<string, MetaValue>> {
-  const metaEntries = await ctx.db
-    .query("postsMeta")
-    .withIndex("by_post", (q) => q.eq("postId", postId))
-    .collect();
+  const metaEntries = await ctx.runQuery(
+    components.launchthat_lms.posts.queries.getPostMetaInternal,
+    {
+      postId: postId as unknown as string,
+    },
+  );
 
   return new Map(
-    metaEntries.map((entry) => [entry.key, entry.value ?? null] as const),
+    (metaEntries ?? []).map(
+      (entry: any) => [entry.key, (entry.value ?? null) as MetaValue] as const,
+    ),
   );
 }
 
@@ -51,23 +56,14 @@ export async function setPostMetaValue(
   key: string,
   value: MetaValue,
 ): Promise<void> {
-  const existing = await ctx.db
-    .query("postsMeta")
-    .withIndex("by_post_and_key", (q) => q.eq("postId", postId).eq("key", key))
-    .unique();
-
-  const timestamp = Date.now();
-  if (existing) {
-    await ctx.db.patch(existing._id, { value, updatedAt: timestamp });
-    return;
-  }
-
-  await ctx.db.insert("postsMeta", {
-    postId,
-    key,
-    value,
-    createdAt: timestamp,
-    updatedAt: timestamp,
+  await ctx.runMutation(components.launchthat_lms.posts.mutations.updatePost, {
+    id: postId as unknown as string,
+    meta: {
+      [key]:
+        value === undefined
+          ? null
+          : (value as string | number | boolean | null),
+    },
   });
 }
 
@@ -76,14 +72,10 @@ export async function deletePostMetaValue(
   postId: Id<"posts">,
   key: string,
 ): Promise<void> {
-  const existing = await ctx.db
-    .query("postsMeta")
-    .withIndex("by_post_and_key", (q) => q.eq("postId", postId).eq("key", key))
-    .unique();
-
-  if (existing) {
-    await ctx.db.delete(existing._id);
-  }
+  await ctx.runMutation(components.launchthat_lms.posts.mutations.deletePostMetaKey, {
+    postId: postId as unknown as string,
+    key,
+  });
 }
 
 export function parseCourseStructureMeta(value: MetaValue): Id<"posts">[] {
@@ -227,11 +219,14 @@ export async function loadQuizQuestionById(
   ctx: Ctx,
   questionId: Id<"posts">,
 ): Promise<StoredQuizQuestion | null> {
-  const post = await ctx.db.get(questionId);
+  const post = await ctx.runQuery(components.launchthat_lms.posts.queries.getPostById, {
+    id: questionId as unknown as string,
+    organizationId: undefined,
+  });
   if (!post || post.postTypeSlug !== "lms-quiz-question") {
     return null;
   }
-  return buildQuizQuestionFromPost(ctx, post);
+  return buildQuizQuestionFromPost(ctx, post as any);
 }
 
 export async function fetchQuizQuestionsForQuiz(
@@ -239,23 +234,13 @@ export async function fetchQuizQuestionsForQuiz(
   quizId: Id<"posts">,
   organizationId?: Id<"organizations">,
 ): Promise<StoredQuizQuestion[]> {
-  let queryBuilder = ctx.db
-    .query("posts")
-    .withIndex("by_postTypeSlug", (q) =>
-      q.eq("postTypeSlug", "lms-quiz-question"),
-    );
-
-  if (organizationId) {
-    queryBuilder = queryBuilder.filter((q) =>
-      q.eq(q.field("organizationId"), organizationId),
-    );
-  } else {
-    queryBuilder = queryBuilder.filter((q) =>
-      q.eq(q.field("organizationId"), undefined),
-    );
-  }
-
-  const posts = await queryBuilder.collect();
+  const posts = (await ctx.runQuery(
+    components.launchthat_lms.posts.queries.getAllPosts,
+    {
+      organizationId: organizationId ? String(organizationId) : undefined,
+      filters: { postTypeSlug: "lms-quiz-question" },
+    },
+  )) as any[];
   const questions: StoredQuizQuestion[] = [];
   for (const post of posts) {
     const meta = await getPostMetaMap(ctx, post._id);

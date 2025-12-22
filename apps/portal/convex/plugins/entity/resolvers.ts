@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-definitions */
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import type {
@@ -18,6 +18,14 @@ const COMMERCE_SLUGS = new Set<string>([
   "ecom-balance",
   "ecom-transfer",
   "ecom-chargeback-evidence",
+]);
+
+const LMS_SLUGS = new Set<string>([
+  "courses",
+  "lessons",
+  "topics",
+  "quizzes",
+  "lms-quiz-question",
 ]);
 
 const SUPPORT_SLUGS = new Set<string>(["helpdeskarticles"]);
@@ -81,6 +89,23 @@ const adaptPortalPost = (post: Doc<"posts">): EntityRecord => ({
 });
 
 const adaptCommercePost = (record: any): EntityRecord => ({
+  id: record._id,
+  postTypeSlug: record.postTypeSlug ?? "",
+  title: record.title ?? null,
+  content: record.content ?? null,
+  excerpt: record.excerpt ?? null,
+  slug: record.slug ?? null,
+  status: normalizeStatus(record.status),
+  category: record.category ?? null,
+  tags: record.tags ?? null,
+  featuredImageUrl: record.featuredImageUrl ?? null,
+  organizationId: record.organizationId ?? null,
+  authorId: record.authorId ?? null,
+  createdAt: record.createdAt ?? record._creationTime ?? null,
+  updatedAt: record.updatedAt ?? record._creationTime ?? null,
+});
+
+const adaptLmsPost = (record: any): EntityRecord => ({
   id: record._id,
   postTypeSlug: record.postTypeSlug ?? "",
   title: record.title ?? null,
@@ -244,6 +269,70 @@ const commerceResolver: Resolver = {
   },
 };
 
+const lmsResolver: Resolver = {
+  read: async (ctx, { id, organizationId }) => {
+    const result = await ctx.runQuery(
+      api.plugins.lms.posts.queries.getPostById,
+      {
+        id,
+        organizationId,
+      },
+    );
+    return result ? adaptLmsPost(result) : null;
+  },
+  list: async (ctx, { filters, postTypeSlug, organizationId }) => {
+    const payload: Record<string, unknown> = {
+      organizationId,
+    };
+    if (filters) {
+      payload.filters = { ...filters, postTypeSlug };
+    } else {
+      payload.filters = { postTypeSlug };
+    }
+    const results =
+      (await ctx.runQuery(
+        api.plugins.lms.posts.queries.getAllPosts,
+        payload as any,
+      )) ?? [];
+    return results.map(adaptLmsPost);
+  },
+  create: async (ctx, { data, postTypeSlug }) => {
+    const id = await ctx.runMutation(
+      api.plugins.lms.posts.mutations.createPost,
+      {
+        ...data,
+        postTypeSlug,
+        organizationId: data.organizationId,
+      },
+    );
+    const created = await ctx.runQuery(
+      api.plugins.lms.posts.queries.getPostById,
+      {
+        id,
+        organizationId: data.organizationId,
+      },
+    );
+    return adaptLmsPost(created);
+  },
+  update: async (ctx, { id, data }) => {
+    await ctx.runMutation(api.plugins.lms.posts.mutations.updatePost, {
+      id,
+      ...data,
+    });
+    const updated = await ctx.runQuery(
+      api.plugins.lms.posts.queries.getPostById,
+      {
+        id,
+        organizationId: data.organizationId,
+      },
+    );
+    return updated ? adaptLmsPost(updated) : null;
+  },
+  remove: async (ctx, { id }) => {
+    await ctx.runMutation(api.plugins.lms.posts.mutations.deletePost, { id });
+  },
+};
+
 const supportResolver: Resolver = {
   read: async (ctx, { id, organizationId }) => {
     if (!organizationId) return null;
@@ -269,13 +358,13 @@ const supportResolver: Resolver = {
       })) ?? [];
     return results.map(adaptSupportPost);
   },
-  create: async () => {
+  create: () => {
     throw new Error("Helpdesk creation is not supported through entity router");
   },
-  update: async () => {
+  update: () => {
     throw new Error("Helpdesk update is not supported through entity router");
   },
-  remove: async () => {
+  remove: () => {
     throw new Error("Helpdesk delete is not supported through entity router");
   },
 };
@@ -284,6 +373,9 @@ const getResolver = (postTypeSlug: string): Resolver => {
   const normalized = postTypeSlug.toLowerCase();
   if (COMMERCE_SLUGS.has(normalized)) {
     return commerceResolver;
+  }
+  if (LMS_SLUGS.has(normalized)) {
+    return lmsResolver;
   }
   if (SUPPORT_SLUGS.has(normalized)) {
     return supportResolver;

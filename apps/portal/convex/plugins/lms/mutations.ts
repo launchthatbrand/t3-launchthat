@@ -2,8 +2,12 @@ import { v } from "convex/values";
 
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
-import { internal } from "../../_generated/api";
-import { mutation } from "../../_generated/server";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any */
+import {
+  api as generatedApi,
+  components as generatedComponents,
+} from "../../_generated/api";
+import { mutation as baseMutation } from "../../_generated/server";
 import { PORTAL_TENANT_SLUG } from "../../constants";
 import { getAuthenticatedUserDocIdByToken } from "../../core/lib/permissions";
 import {
@@ -18,16 +22,26 @@ import {
   setPostMetaValue,
 } from "./helpers";
 
+const api = generatedApi as any;
+const components = generatedComponents as any;
+const mutation = baseMutation as any;
+
 const ensureCourseAndLesson = async (
   ctx: MutationCtx,
   courseId: Id<"posts">,
   lessonId: Id<"posts">,
 ) => {
-  const course = await ctx.db.get(courseId);
+  const course = await ctx.runQuery(
+    components.launchthat_lms.posts.queries.getPostByIdInternal,
+    { id: courseId as unknown as string },
+  );
   if (!course || course.postTypeSlug !== "courses") {
     throw new Error("Course not found");
   }
-  const lesson = await ctx.db.get(lessonId);
+  const lesson = await ctx.runQuery(
+    components.launchthat_lms.posts.queries.getPostByIdInternal,
+    { id: lessonId as unknown as string },
+  );
   if (!lesson || lesson.postTypeSlug !== "lessons") {
     throw new Error("Lesson not found");
   }
@@ -41,10 +55,9 @@ const ensureCourseAndLesson = async (
   return { course, lesson };
 };
 
-type PostMetaMap = Awaited<ReturnType<typeof getPostMetaMap>>;
+type PostMetaMap = Map<string, unknown>;
 
 const getMetaString = (map: PostMetaMap, key: string): string | null => {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const rawValue = map.get(key);
   if (typeof rawValue === "string" && rawValue.length > 0) {
     return rawValue;
@@ -52,23 +65,23 @@ const getMetaString = (map: PostMetaMap, key: string): string | null => {
   return null;
 };
 
-const vimeoVideoInput = v.object({
+const vimeoVideoInput: any = v.object({
   videoId: v.string(),
   title: v.string(),
   description: v.optional(v.string()),
   embedUrl: v.optional(v.string()),
   thumbnailUrl: v.optional(v.string()),
 });
-const postStatusValidator = v.optional(
+const postStatusValidator: any = v.optional(
   v.union(v.literal("draft"), v.literal("published")),
 );
 
-const quizQuestionOptionInput = v.object({
+const quizQuestionOptionInput: any = v.object({
   id: v.string(),
   label: v.string(),
 });
 
-const quizQuestionTypeValidator = v.union(
+const quizQuestionTypeValidator: any = v.union(
   v.literal("singleChoice"),
   v.literal("multipleChoice"),
   v.literal("shortText"),
@@ -89,10 +102,10 @@ const quizQuestionOptionValidator: any = v.object({
 });
 
 const quizQuestionValidator: any = v.object({
-  _id: v.id("posts"),
+  _id: v.string(),
   title: v.string(),
   prompt: v.string(),
-  quizId: v.id("posts"),
+  quizId: v.string(),
   questionType: quizQuestionTypeValidator,
   options: v.array(quizQuestionOptionValidator),
   correctOptionIds: v.array(v.string()),
@@ -100,15 +113,15 @@ const quizQuestionValidator: any = v.object({
   order: v.number(),
 });
 
-const quizAttemptResponseInput = v.object({
-  questionId: v.id("posts"),
+const quizAttemptResponseInput: any = v.object({
+  questionId: v.string(),
   questionType: quizQuestionTypeValidator,
   selectedOptionIds: v.optional(v.array(v.string())),
   answerText: v.optional(v.string()),
 });
 
-const quizAttemptSummaryValidator = v.object({
-  _id: v.id("quizAttempts"),
+const quizAttemptSummaryValidator: any = v.object({
+  _id: v.string(),
   scorePercent: v.number(),
   totalQuestions: v.number(),
   gradedQuestions: v.number(),
@@ -117,49 +130,46 @@ const quizAttemptSummaryValidator = v.object({
   durationMs: v.optional(v.number()),
 });
 
-export const ensureQuizQuestionPostType = mutation({
+export const ensureQuizQuestionPostType: any = mutation({
   args: {
     organizationId: v.optional(v.id("organizations")),
   },
   returns: v.object({
     success: v.boolean(),
   }),
-  handler: async (ctx, args) => {
-    await ctx.runMutation(
-      internal.core.postTypes.mutations.enableForOrganization,
-      {
-        slug: "lms-quiz-question",
-        organizationId: args.organizationId ?? PORTAL_TENANT_SLUG,
-        definition: {
-          name: "Quiz Questions",
-          description: "Individual quiz questions managed through the builder.",
-          isPublic: false,
-          enableApi: false,
-          includeTimestamps: true,
-          supports: {
-            title: true,
-            editor: true,
-            customFields: true,
-          },
-          rewrite: {
-            hasArchive: false,
-            withFront: true,
-            feeds: false,
-            pages: false,
-          },
-          adminMenu: {
-            enabled: true,
-            label: "Quiz Questions",
-            slug: "lms-quiz-question",
-            parent: "lms",
-            icon: "HelpCircle",
-            position: 34,
-          },
-          storageKind: "posts",
-          storageTables: ["posts", "postsMeta"],
+  handler: async (ctx: any, args: any) => {
+    await ctx.runMutation(api.core.postTypes.mutations.enableForOrganization, {
+      slug: "lms-quiz-question",
+      organizationId: args.organizationId ?? PORTAL_TENANT_SLUG,
+      definition: {
+        name: "Quiz Questions",
+        description: "Individual quiz questions managed through the builder.",
+        isPublic: false,
+        enableApi: false,
+        includeTimestamps: true,
+        supports: {
+          title: true,
+          editor: true,
+          customFields: true,
         },
+        rewrite: {
+          hasArchive: false,
+          withFront: true,
+          feeds: false,
+          pages: false,
+        },
+        adminMenu: {
+          enabled: true,
+          label: "Quiz Questions",
+          slug: "lms-quiz-question",
+          parent: "lms",
+          icon: "HelpCircle",
+          position: 34,
+        },
+        storageKind: "component",
+        storageTables: ["launchthat_lms:posts", "launchthat_lms:postsMeta"],
       },
-    );
+    });
 
     return { success: true };
   },
@@ -193,7 +203,7 @@ const extractNumericVideoId = (video: {
 }) => {
   const directMatch = video.videoId.match(/\d+/g);
   if (directMatch?.length) {
-    return directMatch[directMatch.length - 1] ?? video.videoId;
+    return directMatch[directMatch.length - 1] as unknown as string;
   }
   if (video.embedUrl) {
     try {
@@ -318,12 +328,13 @@ const getCourseProgressDoc = async (
   userId: Id<"users">,
   courseId: Id<"posts">,
 ) => {
-  return ctx.db
-    .query("courseProgress")
-    .withIndex("by_user_course", (q) =>
-      q.eq("userId", userId).eq("courseId", courseId),
-    )
-    .unique();
+  return await ctx.runQuery(
+    components.launchthat_lms.progress.queries.getCourseProgressByUserCourse,
+    {
+      userId: String(userId),
+      courseId: String(courseId),
+    },
+  );
 };
 
 const createCourseProgressDoc = async (
@@ -332,21 +343,17 @@ const createCourseProgressDoc = async (
   courseId: Id<"posts">,
   organizationId: Id<"organizations"> | undefined,
 ) => {
-  const timestamp = Date.now();
-  const progressId = await ctx.db.insert("courseProgress", {
-    organizationId,
-    userId,
-    courseId,
-    completedLessonIds: [],
-    completedTopicIds: [],
-    startedAt: timestamp,
-    updatedAt: timestamp,
-  });
-  const created = await ctx.db.get(progressId);
-  if (!created) {
-    throw new Error("Failed to create course progress document");
-  }
-  return created;
+  return await ctx.runMutation(
+    components.launchthat_lms.progress.mutations.upsertCourseProgress,
+    {
+      userId: String(userId),
+      courseId: String(courseId),
+      organizationId: organizationId ? String(organizationId) : undefined,
+      completedLessonIds: [],
+      completedTopicIds: [],
+      startedAt: Date.now(),
+    },
+  );
 };
 
 const ensureCourseProgressDoc = async (
@@ -367,7 +374,10 @@ const resolveCourseContextFromLesson = async (
   lessonId: Id<"posts">,
   explicitCourseId?: Id<"posts">,
 ) => {
-  const lesson = await ctx.db.get(lessonId);
+  const lesson = await ctx.runQuery(
+    components.launchthat_lms.posts.queries.getPostByIdInternal,
+    { id: lessonId as unknown as string },
+  );
   if (!lesson || lesson.postTypeSlug !== "lessons") {
     throw new Error("Lesson not found");
   }
@@ -378,7 +388,10 @@ const resolveCourseContextFromLesson = async (
   if (!courseId) {
     throw new Error("Lesson is not attached to a course");
   }
-  const course = await ctx.db.get(courseId);
+  const course = await ctx.runQuery(
+    components.launchthat_lms.posts.queries.getPostByIdInternal,
+    { id: courseId as unknown as string },
+  );
   if (!course || course.postTypeSlug !== "courses") {
     throw new Error("Course not found");
   }
@@ -395,7 +408,10 @@ const resolveCourseContextFromTopic = async (
   explicitLessonId?: Id<"posts">,
   explicitCourseId?: Id<"posts">,
 ) => {
-  const topic = await ctx.db.get(topicId);
+  const topic = await ctx.runQuery(
+    components.launchthat_lms.posts.queries.getPostByIdInternal,
+    { id: topicId as unknown as string },
+  );
   if (!topic || topic.postTypeSlug !== "topics") {
     throw new Error("Topic not found");
   }
@@ -425,7 +441,9 @@ const attachLessonToCourseInternal = async (
   const { course } = await ensureCourseAndLesson(ctx, courseId, lessonId);
 
   const courseMeta = await getPostMetaMap(ctx, course._id);
-  const structure = parseCourseStructureMeta(courseMeta.get("courseStructure"));
+  const structure = parseCourseStructureMeta(
+    courseMeta.get("courseStructure") ?? null,
+  );
   if (!structure.includes(lessonId)) {
     structure.push(lessonId);
     await setPostMetaValue(
@@ -451,37 +469,44 @@ const attachLessonToCourseInternal = async (
   );
 };
 
-export const addLessonToCourse = mutation({
+export const addLessonToCourse: any = mutation({
   args: {
-    courseId: v.id("posts"),
-    lessonId: v.id("posts"),
+    courseId: v.string(),
+    lessonId: v.string(),
   },
   returns: v.object({
     success: v.boolean(),
   }),
-  handler: async (ctx, args) => {
-    await attachLessonToCourseInternal(ctx, args.courseId, args.lessonId);
+  handler: async (ctx: any, args: any) => {
+    await attachLessonToCourseInternal(
+      ctx,
+      args.courseId as unknown as Id<"posts">,
+      args.lessonId as unknown as Id<"posts">,
+    );
     return { success: true };
   },
 });
 
-export const removeLessonFromCourseStructure = mutation({
+export const removeLessonFromCourseStructure: any = mutation({
   args: {
-    courseId: v.id("posts"),
-    lessonId: v.id("posts"),
+    courseId: v.string(),
+    lessonId: v.string(),
   },
   returns: v.object({
     success: v.boolean(),
   }),
-  handler: async (ctx, args) => {
-    const course = await ctx.db.get(args.courseId);
+  handler: async (ctx: any, args: any) => {
+    const course = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: args.courseId as unknown as string },
+    );
     if (!course || course.postTypeSlug !== "courses") {
       throw new Error("Course not found");
     }
 
     const courseMeta = await getPostMetaMap(ctx, course._id);
     const structure = parseCourseStructureMeta(
-      courseMeta.get("courseStructure"),
+      courseMeta.get("courseStructure") ?? null,
     );
     const filtered = structure.filter((id) => id !== args.lessonId);
     await setPostMetaValue(
@@ -491,23 +516,38 @@ export const removeLessonFromCourseStructure = mutation({
       serializeCourseStructureMeta(filtered),
     );
 
-    await deletePostMetaValue(ctx, args.lessonId, "courseId");
-    await deletePostMetaValue(ctx, args.lessonId, "courseOrder");
-    await deletePostMetaValue(ctx, args.lessonId, "courseSlug");
+    await deletePostMetaValue(
+      ctx,
+      args.lessonId as unknown as Id<"posts">,
+      "courseId",
+    );
+    await deletePostMetaValue(
+      ctx,
+      args.lessonId as unknown as Id<"posts">,
+      "courseOrder",
+    );
+    await deletePostMetaValue(
+      ctx,
+      args.lessonId as unknown as Id<"posts">,
+      "courseSlug",
+    );
     return { success: true };
   },
 });
 
-export const reorderLessonsInCourse = mutation({
+export const reorderLessonsInCourse: any = mutation({
   args: {
-    courseId: v.id("posts"),
-    orderedLessonIds: v.array(v.id("posts")),
+    courseId: v.string(),
+    orderedLessonIds: v.array(v.string()),
   },
   returns: v.object({
     success: v.boolean(),
   }),
-  handler: async (ctx, args) => {
-    const course = await ctx.db.get(args.courseId);
+  handler: async (ctx: any, args: any) => {
+    const course = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: args.courseId as unknown as string },
+    );
     if (!course || course.postTypeSlug !== "courses") {
       throw new Error("Course not found");
     }
@@ -516,12 +556,19 @@ export const reorderLessonsInCourse = mutation({
       ctx,
       course._id,
       "courseStructure",
-      serializeCourseStructureMeta(args.orderedLessonIds),
+      serializeCourseStructureMeta(
+        args.orderedLessonIds as unknown as Id<"posts">[],
+      ),
     );
 
     await Promise.all(
-      args.orderedLessonIds.map((lessonId, index) =>
-        setPostMetaValue(ctx, lessonId, "courseOrder", index),
+      args.orderedLessonIds.map((lessonId: string, index: number) =>
+        setPostMetaValue(
+          ctx,
+          lessonId as unknown as Id<"posts">,
+          "courseOrder",
+          index,
+        ),
       ),
     );
 
@@ -529,21 +576,27 @@ export const reorderLessonsInCourse = mutation({
   },
 });
 
-export const attachTopicToLesson = mutation({
+export const attachTopicToLesson: any = mutation({
   args: {
-    lessonId: v.id("posts"),
-    topicId: v.id("posts"),
+    lessonId: v.string(),
+    topicId: v.string(),
     order: v.optional(v.number()),
   },
   returns: v.object({
     success: v.boolean(),
   }),
-  handler: async (ctx, args) => {
-    const lesson = await ctx.db.get(args.lessonId);
+  handler: async (ctx: any, args: any) => {
+    const lesson = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: args.lessonId as unknown as string },
+    );
     if (!lesson || lesson.postTypeSlug !== "lessons") {
       throw new Error("Lesson not found");
     }
-    const topic = await ctx.db.get(args.topicId);
+    const topic = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: args.topicId as unknown as string },
+    );
     if (!topic || topic.postTypeSlug !== "topics") {
       throw new Error("Topic not found");
     }
@@ -554,24 +607,35 @@ export const attachTopicToLesson = mutation({
       throw new Error("Lesson and topic must belong to the same organization");
     }
 
-    await setPostMetaValue(ctx, args.topicId, "lessonId", args.lessonId);
     await setPostMetaValue(
       ctx,
-      args.topicId,
+      args.topicId as unknown as Id<"posts">,
+      "lessonId",
+      args.lessonId as unknown as Id<"posts">,
+    );
+    await setPostMetaValue(
+      ctx,
+      args.topicId as unknown as Id<"posts">,
       "lessonSlug",
       lesson.slug ?? lesson._id,
     );
-    const lessonMeta: PostMetaMap = await getPostMetaMap(ctx, args.lessonId);
+    const lessonMeta: PostMetaMap = await getPostMetaMap(
+      ctx,
+      args.lessonId as unknown as Id<"posts">,
+    );
     let courseSlugValue = getMetaString(lessonMeta, "courseSlug");
     if (!courseSlugValue) {
       const courseIdMeta = getMetaString(lessonMeta, "courseId");
       if (courseIdMeta) {
-        const parentCourse = await ctx.db.get(courseIdMeta as Id<"posts">);
+        const parentCourse = await ctx.runQuery(
+          components.launchthat_lms.posts.queries.getPostByIdInternal,
+          { id: courseIdMeta },
+        );
         if (parentCourse) {
           courseSlugValue = parentCourse.slug ?? parentCourse._id;
           await setPostMetaValue(
             ctx,
-            args.lessonId,
+            args.lessonId as unknown as Id<"posts">,
             "courseSlug",
             courseSlugValue,
           );
@@ -579,71 +643,96 @@ export const attachTopicToLesson = mutation({
       }
     }
     if (courseSlugValue) {
-      await setPostMetaValue(ctx, args.topicId, "courseSlug", courseSlugValue);
+      await setPostMetaValue(
+        ctx,
+        args.topicId as unknown as Id<"posts">,
+        "courseSlug",
+        courseSlugValue,
+      );
     }
     if (typeof args.order === "number") {
-      await setPostMetaValue(ctx, args.topicId, "order", args.order);
+      await setPostMetaValue(
+        ctx,
+        args.topicId as unknown as Id<"posts">,
+        "order",
+        args.order,
+      );
     }
     return { success: true };
   },
 });
 
-export const removeTopicFromLesson = mutation({
+export const removeTopicFromLesson: any = mutation({
   args: {
-    topicId: v.id("posts"),
+    topicId: v.string(),
   },
   returns: v.object({
     success: v.boolean(),
   }),
-  handler: async (ctx, args) => {
-    await deletePostMetaValue(ctx, args.topicId, "lessonId");
-    await deletePostMetaValue(ctx, args.topicId, "order");
-    await deletePostMetaValue(ctx, args.topicId, "lessonSlug");
-    await deletePostMetaValue(ctx, args.topicId, "courseSlug");
+  handler: async (ctx: any, args: any) => {
+    const topicId = args.topicId as unknown as Id<"posts">;
+    await deletePostMetaValue(ctx, topicId, "lessonId");
+    await deletePostMetaValue(ctx, topicId, "order");
+    await deletePostMetaValue(ctx, topicId, "lessonSlug");
+    await deletePostMetaValue(ctx, topicId, "courseSlug");
     return { success: true };
   },
 });
 
-export const reorderTopicsInLesson = mutation({
+export const reorderTopicsInLesson: any = mutation({
   args: {
-    lessonId: v.id("posts"),
-    orderedTopicIds: v.array(v.id("posts")),
+    lessonId: v.string(),
+    orderedTopicIds: v.array(v.string()),
   },
   returns: v.object({
     success: v.boolean(),
   }),
-  handler: async (ctx, args) => {
-    const lesson = await ctx.db.get(args.lessonId);
+  handler: async (ctx: any, args: any) => {
+    const lesson = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: args.lessonId as unknown as string },
+    );
     if (!lesson || lesson.postTypeSlug !== "lessons") {
       throw new Error("Lesson not found");
     }
 
     await Promise.all(
-      args.orderedTopicIds.map((topicId, index) =>
-        setPostMetaValue(ctx, topicId, "order", index),
+      args.orderedTopicIds.map((topicId: string, index: number) =>
+        setPostMetaValue(
+          ctx,
+          topicId as unknown as Id<"posts">,
+          "order",
+          index,
+        ),
       ),
     );
     return { success: true };
   },
 });
 
-export const attachQuizToLesson = mutation({
+export const attachQuizToLesson: any = mutation({
   args: {
-    lessonId: v.id("posts"),
-    quizId: v.id("posts"),
+    lessonId: v.string(),
+    quizId: v.string(),
     order: v.optional(v.number()),
     isFinal: v.optional(v.boolean()),
-    topicId: v.optional(v.id("posts")),
+    topicId: v.optional(v.string()),
   },
   returns: v.object({
     success: v.boolean(),
   }),
-  handler: async (ctx, args) => {
-    const lesson = await ctx.db.get(args.lessonId);
+  handler: async (ctx: MutationCtx, args: any) => {
+    const lesson = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: args.lessonId as unknown as string },
+    );
     if (!lesson || lesson.postTypeSlug !== "lessons") {
       throw new Error("Lesson not found");
     }
-    const quiz = await ctx.db.get(args.quizId);
+    const quiz = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: args.quizId as unknown as string },
+    );
     if (!quiz || quiz.postTypeSlug !== "quizzes") {
       throw new Error("Quiz not found");
     }
@@ -654,29 +743,43 @@ export const attachQuizToLesson = mutation({
       throw new Error("Lesson and quiz must belong to the same organization");
     }
 
-    await setPostMetaValue(ctx, args.quizId, "lessonId", args.lessonId);
     await setPostMetaValue(
       ctx,
-      args.quizId,
+      args.quizId as unknown as Id<"posts">,
+      "lessonId",
+      args.lessonId as unknown as Id<"posts">,
+    );
+    await setPostMetaValue(
+      ctx,
+      args.quizId as unknown as Id<"posts">,
       "lessonSlug",
       lesson.slug ?? lesson._id,
     );
-    const lessonMeta: PostMetaMap = await getPostMetaMap(ctx, args.lessonId);
+    const lessonMeta: PostMetaMap = await getPostMetaMap(
+      ctx,
+      args.lessonId as unknown as Id<"posts">,
+    );
     let lessonCourseSlug = getMetaString(lessonMeta, "courseSlug");
     const lessonCourseIdMeta = getMetaString(lessonMeta, "courseId");
     if (lessonCourseIdMeta) {
-      await setPostMetaValue(ctx, args.quizId, "courseId", lessonCourseIdMeta);
+      await setPostMetaValue(
+        ctx,
+        args.quizId as unknown as Id<"posts">,
+        "courseId",
+        lessonCourseIdMeta,
+      );
     }
     if (!lessonCourseSlug) {
       if (lessonCourseIdMeta) {
-        const parentCourse = await ctx.db.get(
-          lessonCourseIdMeta as Id<"posts">,
+        const parentCourse = await ctx.runQuery(
+          components.launchthat_lms.posts.queries.getPostByIdInternal,
+          { id: lessonCourseIdMeta },
         );
         if (parentCourse) {
           lessonCourseSlug = parentCourse.slug ?? parentCourse._id;
           await setPostMetaValue(
             ctx,
-            args.lessonId,
+            args.lessonId as unknown as Id<"posts">,
             "courseSlug",
             lessonCourseSlug,
           );
@@ -684,54 +787,81 @@ export const attachQuizToLesson = mutation({
       }
     }
     if (lessonCourseSlug) {
-      await setPostMetaValue(ctx, args.quizId, "courseSlug", lessonCourseSlug);
+      await setPostMetaValue(
+        ctx,
+        args.quizId as unknown as Id<"posts">,
+        "courseSlug",
+        lessonCourseSlug,
+      );
     }
     if (typeof args.order === "number") {
-      await setPostMetaValue(ctx, args.quizId, "order", args.order);
+      await setPostMetaValue(
+        ctx,
+        args.quizId as unknown as Id<"posts">,
+        "order",
+        args.order,
+      );
     }
     if (typeof args.isFinal === "boolean") {
-      await setPostMetaValue(ctx, args.quizId, "isFinal", args.isFinal);
+      await setPostMetaValue(
+        ctx,
+        args.quizId as unknown as Id<"posts">,
+        "isFinal",
+        args.isFinal,
+      );
     }
     if (args.topicId) {
-      await setPostMetaValue(ctx, args.quizId, "topicId", args.topicId);
+      await setPostMetaValue(
+        ctx,
+        args.quizId as unknown as Id<"posts">,
+        "topicId",
+        args.topicId as unknown as Id<"posts">,
+      );
     }
     return { success: true };
   },
 });
 
-export const removeQuizFromLesson = mutation({
+export const removeQuizFromLesson: any = mutation({
   args: {
-    quizId: v.id("posts"),
+    quizId: v.string(),
   },
   returns: v.object({
     success: v.boolean(),
   }),
-  handler: async (ctx, args) => {
-    await deletePostMetaValue(ctx, args.quizId, "lessonId");
-    await deletePostMetaValue(ctx, args.quizId, "order");
-    await deletePostMetaValue(ctx, args.quizId, "isFinal");
-    await deletePostMetaValue(ctx, args.quizId, "lessonSlug");
-    await deletePostMetaValue(ctx, args.quizId, "courseSlug");
-    await deletePostMetaValue(ctx, args.quizId, "courseId");
+  handler: async (ctx: any, args: any) => {
+    const quizId = args.quizId as unknown as Id<"posts">;
+    await deletePostMetaValue(ctx, quizId, "lessonId");
+    await deletePostMetaValue(ctx, quizId, "order");
+    await deletePostMetaValue(ctx, quizId, "isFinal");
+    await deletePostMetaValue(ctx, quizId, "lessonSlug");
+    await deletePostMetaValue(ctx, quizId, "courseSlug");
+    await deletePostMetaValue(ctx, quizId, "courseId");
     return { success: true };
   },
 });
 
-export const attachFinalQuizToCourse = mutation({
+export const attachFinalQuizToCourse: any = mutation({
   args: {
-    courseId: v.id("posts"),
-    quizId: v.id("posts"),
+    courseId: v.string(),
+    quizId: v.string(),
     order: v.optional(v.number()),
   },
   returns: v.object({
     success: v.boolean(),
   }),
-  handler: async (ctx, args) => {
-    const course = await ctx.db.get(args.courseId);
+  handler: async (ctx: any, args: any) => {
+    const course = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: args.courseId as unknown as string },
+    );
     if (!course || course.postTypeSlug !== "courses") {
       throw new Error("Course not found");
     }
-    const quiz = await ctx.db.get(args.quizId);
+    const quiz = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: args.quizId as unknown as string },
+    );
     if (!quiz || quiz.postTypeSlug !== "quizzes") {
       throw new Error("Quiz not found");
     }
@@ -746,58 +876,76 @@ export const attachFinalQuizToCourse = mutation({
     await deletePostMetaValue(ctx, args.quizId, "topicId");
     await deletePostMetaValue(ctx, args.quizId, "lessonSlug");
 
-    await setPostMetaValue(ctx, args.quizId, "courseId", args.courseId);
     await setPostMetaValue(
       ctx,
-      args.quizId,
+      args.quizId as unknown as Id<"posts">,
+      "courseId",
+      args.courseId,
+    );
+    await setPostMetaValue(
+      ctx,
+      args.quizId as unknown as Id<"posts">,
       "courseSlug",
       course.slug ?? course._id,
     );
     if (typeof args.order === "number") {
-      await setPostMetaValue(ctx, args.quizId, "order", args.order);
+      await setPostMetaValue(
+        ctx,
+        args.quizId as unknown as Id<"posts">,
+        "order",
+        args.order,
+      );
     }
-    await setPostMetaValue(ctx, args.quizId, "isFinal", true);
+    await setPostMetaValue(
+      ctx,
+      args.quizId as unknown as Id<"posts">,
+      "isFinal",
+      true,
+    );
     return { success: true };
   },
 });
 
-export const removeFinalQuizFromCourse = mutation({
+export const removeFinalQuizFromCourse: any = mutation({
   args: {
-    quizId: v.id("posts"),
+    quizId: v.string(),
   },
   returns: v.object({
     success: v.boolean(),
   }),
-  handler: async (ctx, args) => {
-    await deletePostMetaValue(ctx, args.quizId, "courseId");
-    await deletePostMetaValue(ctx, args.quizId, "courseSlug");
-    await deletePostMetaValue(ctx, args.quizId, "order");
-    await deletePostMetaValue(ctx, args.quizId, "isFinal");
+  handler: async (ctx: any, args: any) => {
+    const quizId = args.quizId as unknown as Id<"posts">;
+    await deletePostMetaValue(ctx, quizId, "courseId");
+    await deletePostMetaValue(ctx, quizId, "courseSlug");
+    await deletePostMetaValue(ctx, quizId, "order");
+    await deletePostMetaValue(ctx, quizId, "isFinal");
     return { success: true };
   },
 });
 
-export const createLessonFromVimeo = mutation({
+export const createLessonFromVimeo: any = mutation({
   args: {
-    courseId: v.id("posts"),
+    courseId: v.string(),
     organizationId: v.optional(v.id("organizations")),
     video: vimeoVideoInput,
     status: postStatusValidator,
   },
   returns: v.object({
-    lessonId: v.id("posts"),
+    lessonId: v.string(),
   }),
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const normalizedEmbedUrl = normalizeVimeoEmbedUrl(args.video);
     const status = args.status ?? "draft";
     const lessonId = await ctx.runMutation(
-      internal.core.posts.mutations.createPost,
+      components.launchthat_lms.posts.mutations.createPost,
       {
         title: args.video.title,
         slug: buildSlug("lesson", args.video.title, args.video.videoId),
         status,
         postTypeSlug: "lessons",
-        organizationId: args.organizationId,
+        organizationId: args.organizationId
+          ? String(args.organizationId)
+          : undefined,
         content: createLexicalStateWithVimeoEmbed({
           ...args.video,
           embedUrl: normalizedEmbedUrl,
@@ -810,32 +958,38 @@ export const createLessonFromVimeo = mutation({
         },
       },
     );
-    await attachLessonToCourseInternal(ctx, args.courseId, lessonId);
-    return { lessonId };
+    await attachLessonToCourseInternal(
+      ctx,
+      args.courseId as unknown as Id<"posts">,
+      lessonId as unknown as Id<"posts">,
+    );
+    return { lessonId: String(lessonId) };
   },
 });
 
-export const createTopicFromVimeo = mutation({
+export const createTopicFromVimeo: any = mutation({
   args: {
-    lessonId: v.id("posts"),
+    lessonId: v.string(),
     organizationId: v.optional(v.id("organizations")),
     video: vimeoVideoInput,
     status: postStatusValidator,
   },
   returns: v.object({
-    topicId: v.id("posts"),
+    topicId: v.string(),
   }),
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const normalizedEmbedUrl = normalizeVimeoEmbedUrl(args.video);
     const status = args.status ?? "draft";
     const topicId = await ctx.runMutation(
-      internal.core.posts.mutations.createPost,
+      components.launchthat_lms.posts.mutations.createPost,
       {
         title: args.video.title,
         slug: buildSlug("topic", args.video.title, args.video.videoId),
         status,
         postTypeSlug: "topics",
-        organizationId: args.organizationId,
+        organizationId: args.organizationId
+          ? String(args.organizationId)
+          : undefined,
         content: createLexicalStateWithVimeoEmbed({
           ...args.video,
           embedUrl: normalizedEmbedUrl,
@@ -848,40 +1002,42 @@ export const createTopicFromVimeo = mutation({
         },
       },
     );
-    await ctx.runMutation(internal.plugins.lms.mutations.attachTopicToLesson, {
+    await ctx.runMutation(api.plugins.lms.mutations.attachTopicToLesson, {
       lessonId: args.lessonId,
-      topicId,
+      topicId: topicId as unknown as Id<"posts">,
       order: 0,
     });
-    return { topicId };
+    return { topicId: String(topicId) };
   },
 });
 
-export const createQuizFromVimeo = mutation({
+export const createQuizFromVimeo: any = mutation({
   args: {
-    targetLessonId: v.optional(v.id("posts")),
-    targetTopicId: v.optional(v.id("posts")),
+    targetLessonId: v.optional(v.string()),
+    targetTopicId: v.optional(v.string()),
     organizationId: v.optional(v.id("organizations")),
     video: vimeoVideoInput,
     status: postStatusValidator,
   },
   returns: v.object({
-    quizId: v.id("posts"),
+    quizId: v.string(),
   }),
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     if (!args.targetLessonId) {
       throw new Error("targetLessonId is required when creating quizzes");
     }
     const normalizedEmbedUrl = normalizeVimeoEmbedUrl(args.video);
     const status = args.status ?? "draft";
     const quizId = await ctx.runMutation(
-      internal.core.posts.mutations.createPost,
+      components.launchthat_lms.posts.mutations.createPost,
       {
         title: args.video.title,
         slug: buildSlug("quiz", args.video.title, args.video.videoId),
         status,
         postTypeSlug: "quizzes",
-        organizationId: args.organizationId,
+        organizationId: args.organizationId
+          ? String(args.organizationId)
+          : undefined,
         meta: {
           vimeoVideoId: args.video.videoId,
           vimeoEmbedUrl: normalizedEmbedUrl,
@@ -890,35 +1046,38 @@ export const createQuizFromVimeo = mutation({
         },
       },
     );
-    await ctx.runMutation(internal.plugins.lms.mutations.attachQuizToLesson, {
+    await ctx.runMutation(api.plugins.lms.mutations.attachQuizToLesson, {
       lessonId: args.targetLessonId,
-      quizId,
+      quizId: quizId as unknown as Id<"posts">,
       order: 0,
       isFinal: false,
       topicId: args.targetTopicId,
     });
-    return { quizId };
+    return { quizId: String(quizId) };
   },
 });
 
-export const createQuizQuestion = mutation({
+export const createQuizQuestion: any = mutation({
   args: {
-    quizId: v.id("posts"),
+    quizId: v.string(),
     organizationId: v.optional(v.id("organizations")),
     question: quizQuestionInputValidator,
   },
   returns: v.object({
     question: quizQuestionValidator,
   }),
-  handler: async (ctx, args) => {
-    const quiz = await ctx.db.get(args.quizId);
+  handler: async (ctx: any, args: any) => {
+    const quiz = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: args.quizId as unknown as string },
+    );
     if (!quiz || quiz.postTypeSlug !== "quizzes") {
       throw new Error("Quiz not found");
     }
     const quizOrganizationId = quiz.organizationId ?? undefined;
     if (
       args.organizationId &&
-      quizOrganizationId !== (args.organizationId ?? undefined)
+      quizOrganizationId !== String(args.organizationId ?? "")
     ) {
       throw new Error("Quiz does not belong to this organization");
     }
@@ -935,7 +1094,7 @@ export const createQuizQuestion = mutation({
 
     const slug = buildEntitySlug("quiz-question", args.question.prompt);
     const questionId = await ctx.runMutation(
-      internal.core.posts.mutations.createPost,
+      components.launchthat_lms.posts.mutations.createPost,
       {
         title: args.question.prompt,
         slug,
@@ -952,11 +1111,14 @@ export const createQuizQuestion = mutation({
     );
     await Promise.all(
       Object.entries(metaPayload).map(([key, value]) =>
-        setPostMetaValue(ctx, questionId, key, value),
+        setPostMetaValue(ctx, questionId as unknown as Id<"posts">, key, value),
       ),
     );
 
-    const question = await loadQuizQuestionById(ctx, questionId);
+    const question = await loadQuizQuestionById(
+      ctx,
+      questionId as unknown as Id<"posts">,
+    );
     if (!question) {
       throw new Error("Unable to load newly created question");
     }
@@ -964,38 +1126,52 @@ export const createQuizQuestion = mutation({
   },
 });
 
-export const updateQuizQuestion = mutation({
+export const updateQuizQuestion: any = mutation({
   args: {
-    quizId: v.id("posts"),
-    questionId: v.id("posts"),
+    quizId: v.string(),
+    questionId: v.string(),
     question: quizQuestionInputValidator,
   },
   returns: v.object({
     question: quizQuestionValidator,
   }),
-  handler: async (ctx, args) => {
-    const existingQuestion = await loadQuizQuestionById(ctx, args.questionId);
+  handler: async (ctx: any, args: any) => {
+    const existingQuestion = await loadQuizQuestionById(
+      ctx,
+      args.questionId as unknown as Id<"posts">,
+    );
     if (!existingQuestion || existingQuestion.quizId !== args.quizId) {
       throw new Error("Quiz question not found");
     }
 
-    await ctx.runMutation(internal.core.posts.mutations.updatePost, {
-      id: args.questionId,
-      title: args.question.prompt,
-    });
+    await ctx.runMutation(
+      components.launchthat_lms.posts.mutations.updatePost,
+      {
+        id: args.questionId as unknown as string,
+        title: args.question.prompt,
+      },
+    );
 
     const metaPayload = buildQuizQuestionMetaPayload(
-      args.quizId,
+      args.quizId as unknown as Id<"posts">,
       args.question,
       existingQuestion.order,
     );
     await Promise.all(
       Object.entries(metaPayload).map(([key, value]) =>
-        setPostMetaValue(ctx, args.questionId, key, value),
+        setPostMetaValue(
+          ctx,
+          args.questionId as unknown as Id<"posts">,
+          key,
+          value,
+        ),
       ),
     );
 
-    const refreshed = await loadQuizQuestionById(ctx, args.questionId);
+    const refreshed = await loadQuizQuestionById(
+      ctx,
+      args.questionId as unknown as Id<"posts">,
+    );
     if (!refreshed) {
       throw new Error("Unable to reload quiz question");
     }
@@ -1003,37 +1179,46 @@ export const updateQuizQuestion = mutation({
   },
 });
 
-export const deleteQuizQuestion = mutation({
+export const deleteQuizQuestion: any = mutation({
   args: {
-    quizId: v.id("posts"),
-    questionId: v.id("posts"),
+    quizId: v.string(),
+    questionId: v.string(),
   },
   returns: v.object({
     success: v.boolean(),
   }),
-  handler: async (ctx, args) => {
-    const existingQuestion = await loadQuizQuestionById(ctx, args.questionId);
+  handler: async (ctx: any, args: any) => {
+    const existingQuestion = await loadQuizQuestionById(
+      ctx,
+      args.questionId as unknown as Id<"posts">,
+    );
     if (!existingQuestion || existingQuestion.quizId !== args.quizId) {
       throw new Error("Quiz question not found");
     }
 
-    await ctx.runMutation(internal.core.posts.mutations.deletePost, {
-      id: args.questionId,
-    });
+    await ctx.runMutation(
+      components.launchthat_lms.posts.mutations.deletePost,
+      {
+        id: args.questionId as unknown as string,
+      },
+    );
     return { success: true };
   },
 });
 
-export const reorderQuizQuestions = mutation({
+export const reorderQuizQuestions: any = mutation({
   args: {
-    quizId: v.id("posts"),
-    orderedQuestionIds: v.array(v.id("posts")),
+    quizId: v.string(),
+    orderedQuestionIds: v.array(v.string()),
   },
   returns: v.object({
     success: v.boolean(),
   }),
-  handler: async (ctx, args) => {
-    const questions = await fetchQuizQuestionsForQuiz(ctx, args.quizId);
+  handler: async (ctx: any, args: any) => {
+    const questions = await fetchQuizQuestionsForQuiz(
+      ctx,
+      args.quizId as unknown as Id<"posts">,
+    );
     if (questions.length !== args.orderedQuestionIds.length) {
       throw new Error("Question order mismatch");
     }
@@ -1046,8 +1231,13 @@ export const reorderQuizQuestions = mutation({
     }
 
     await Promise.all(
-      args.orderedQuestionIds.map((questionId, index) =>
-        setPostMetaValue(ctx, questionId, QUIZ_QUESTION_META_KEYS.order, index),
+      args.orderedQuestionIds.map((questionId: string, index: number) =>
+        setPostMetaValue(
+          ctx,
+          questionId as unknown as Id<"posts">,
+          QUIZ_QUESTION_META_KEYS.order,
+          index,
+        ),
       ),
     );
 
@@ -1055,20 +1245,23 @@ export const reorderQuizQuestions = mutation({
   },
 });
 
-export const submitQuizAttempt = mutation({
+export const submitQuizAttempt: any = mutation({
   args: {
-    quizId: v.id("posts"),
-    courseId: v.optional(v.id("posts")),
-    lessonId: v.optional(v.id("posts")),
+    quizId: v.string(),
+    courseId: v.optional(v.string()),
+    lessonId: v.optional(v.string()),
     durationMs: v.optional(v.number()),
     responses: v.array(quizAttemptResponseInput),
   },
   returns: v.object({
     attempt: quizAttemptSummaryValidator,
   }),
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const userId = await getAuthenticatedUserDocIdByToken(ctx);
-    const quiz = await ctx.db.get(args.quizId);
+    const quiz = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: args.quizId as unknown as string },
+    );
     if (!quiz || quiz.postTypeSlug !== "quizzes") {
       throw new Error("Quiz not found");
     }
@@ -1096,8 +1289,9 @@ export const submitQuizAttempt = mutation({
       throw new Error("All questions must be answered before submission");
     }
 
-    const responseMap = new Map(
-      args.responses.map((response) => [response.questionId, response]),
+    const responses = args.responses as any[];
+    const responseMap = new Map<string, any>(
+      responses.map((response: any) => [String(response.questionId), response]),
     );
 
     let correctCount = 0;
@@ -1111,13 +1305,15 @@ export const submitQuizAttempt = mutation({
     }[] = [];
 
     for (const question of questions) {
-      const response = responseMap.get(question._id);
+      const response = responseMap.get(String(question._id));
       if (!response) {
         throw new Error("All questions must be answered before submission");
       }
 
       if (question.questionType === "singleChoice") {
-        const selection = response.selectedOptionIds?.[0];
+        const selection = (
+          response.selectedOptionIds as string[] | undefined
+        )?.[0];
         if (!selection) {
           throw new Error("Please select an answer for every question");
         }
@@ -1140,7 +1336,7 @@ export const submitQuizAttempt = mutation({
 
       if (question.questionType === "multipleChoice") {
         const selections = Array.from(
-          new Set(response.selectedOptionIds ?? []),
+          new Set((response.selectedOptionIds as string[] | undefined) ?? []),
         );
         if (selections.length === 0) {
           throw new Error("Please select at least one option per question");
@@ -1163,7 +1359,7 @@ export const submitQuizAttempt = mutation({
         continue;
       }
 
-      const answerText = response.answerText?.trim();
+      const answerText = (response.answerText as string | undefined)?.trim();
       if (!answerText) {
         throw new Error("Please provide a response for every question");
       }
@@ -1180,23 +1376,32 @@ export const submitQuizAttempt = mutation({
         ? Math.round((correctCount / gradedQuestions) * 10000) / 100
         : 0;
 
-    const attemptId = await ctx.db.insert("quizAttempts", {
-      quizId: args.quizId,
-      userId,
-      organizationId: quiz.organizationId ?? undefined,
-      courseId: resolvedCourseId,
-      lessonId: resolvedLessonId,
-      responses: normalizedResponses,
-      totalQuestions: questions.length,
-      gradedQuestions,
-      correctCount,
-      scorePercent,
-      durationMs: args.durationMs,
-      completedAt,
-    });
+    const attempt = await ctx.runMutation(
+      components.launchthat_lms.progress.mutations.insertQuizAttempt,
+      {
+        quizId: String(args.quizId),
+        userId: String(userId),
+        organizationId:
+          typeof quiz.organizationId === "string"
+            ? quiz.organizationId
+            : undefined,
+        courseId: resolvedCourseId ? String(resolvedCourseId) : undefined,
+        lessonId: resolvedLessonId ? String(resolvedLessonId) : undefined,
+        responses: normalizedResponses.map((response) => ({
+          ...response,
+          questionId: String(response.questionId),
+        })),
+        totalQuestions: questions.length,
+        gradedQuestions,
+        correctCount,
+        scorePercent,
+        durationMs: args.durationMs,
+        completedAt,
+      },
+    );
 
     const attemptSummary = {
-      _id: attemptId,
+      _id: String(attempt?._id),
       scorePercent,
       totalQuestions: questions.length,
       gradedQuestions,
@@ -1209,21 +1414,21 @@ export const submitQuizAttempt = mutation({
   },
 });
 
-export const setLessonCompletionStatus = mutation({
+export const setLessonCompletionStatus: any = mutation({
   args: {
-    lessonId: v.id("posts"),
-    courseId: v.optional(v.id("posts")),
+    lessonId: v.string(),
+    courseId: v.optional(v.string()),
     completed: v.boolean(),
   },
   returns: v.object({
-    completedLessonIds: v.array(v.id("posts")),
+    completedLessonIds: v.array(v.string()),
   }),
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const userId = await getAuthenticatedUserDocIdByToken(ctx);
     const { courseId, organizationId } = await resolveCourseContextFromLesson(
       ctx,
-      args.lessonId,
-      args.courseId ?? undefined,
+      args.lessonId as unknown as Id<"posts">,
+      (args.courseId ?? undefined) as unknown as Id<"posts"> | undefined,
     );
     const progress = await ensureCourseProgressDoc(
       ctx,
@@ -1233,41 +1438,50 @@ export const setLessonCompletionStatus = mutation({
     );
     const completedSet = new Set(progress.completedLessonIds);
     if (args.completed) {
-      completedSet.add(args.lessonId);
+      completedSet.add(args.lessonId as unknown as Id<"posts">);
     } else {
-      completedSet.delete(args.lessonId);
+      completedSet.delete(args.lessonId as unknown as Id<"posts">);
     }
-    const completedLessonIds = Array.from(completedSet);
-    await ctx.db.patch(progress._id, {
-      completedLessonIds,
-      updatedAt: Date.now(),
-      lastAccessedAt: Date.now(),
-      lastAccessedId: args.lessonId,
-      lastAccessedType: "lesson",
-    });
-    return { completedLessonIds };
+    const completedLessonIds = Array.from(completedSet) as Id<"posts">[];
+    await ctx.runMutation(
+      components.launchthat_lms.progress.mutations.upsertCourseProgress,
+      {
+        userId: String(userId),
+        courseId: String(courseId),
+        organizationId: organizationId ? String(organizationId) : undefined,
+        completedLessonIds: completedLessonIds.map(String),
+        completedTopicIds: (progress.completedTopicIds ?? []).map(String),
+        lastAccessedAt: Date.now(),
+        lastAccessedId: String(args.lessonId),
+        lastAccessedType: "lesson",
+      },
+    );
+    return { completedLessonIds: completedLessonIds.map(String) };
   },
 });
 
-export const setTopicCompletionStatus = mutation({
+export const setTopicCompletionStatus: any = mutation({
   args: {
-    topicId: v.id("posts"),
-    lessonId: v.optional(v.id("posts")),
-    courseId: v.optional(v.id("posts")),
+    topicId: v.string(),
+    lessonId: v.optional(v.string()),
+    courseId: v.optional(v.string()),
     completed: v.boolean(),
   },
   returns: v.object({
-    completedTopicIds: v.array(v.id("posts")),
+    completedTopicIds: v.array(v.string()),
   }),
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const userId = await getAuthenticatedUserDocIdByToken(ctx);
-    const { lessonId, courseId, organizationId } =
-      await resolveCourseContextFromTopic(
-        ctx,
-        args.topicId,
-        args.lessonId ?? undefined,
-        args.courseId ?? undefined,
-      );
+    const {
+      lessonId: _lessonId,
+      courseId,
+      organizationId,
+    } = await resolveCourseContextFromTopic(
+      ctx,
+      args.topicId as unknown as Id<"posts">,
+      (args.lessonId ?? undefined) as unknown as Id<"posts"> | undefined,
+      (args.courseId ?? undefined) as unknown as Id<"posts"> | undefined,
+    );
     const progress = await ensureCourseProgressDoc(
       ctx,
       userId,
@@ -1276,18 +1490,24 @@ export const setTopicCompletionStatus = mutation({
     );
     const topicSet = new Set(progress.completedTopicIds);
     if (args.completed) {
-      topicSet.add(args.topicId);
+      topicSet.add(args.topicId as unknown as Id<"posts">);
     } else {
-      topicSet.delete(args.topicId);
+      topicSet.delete(args.topicId as unknown as Id<"posts">);
     }
-    const completedTopicIds = Array.from(topicSet);
-    await ctx.db.patch(progress._id, {
-      completedTopicIds,
-      updatedAt: Date.now(),
-      lastAccessedAt: Date.now(),
-      lastAccessedId: args.topicId,
-      lastAccessedType: "topic",
-    });
-    return { completedTopicIds };
+    const completedTopicIds = Array.from(topicSet) as Id<"posts">[];
+    await ctx.runMutation(
+      components.launchthat_lms.progress.mutations.upsertCourseProgress,
+      {
+        userId: String(userId),
+        courseId: String(courseId),
+        organizationId: organizationId ? String(organizationId) : undefined,
+        completedLessonIds: (progress.completedLessonIds ?? []).map(String),
+        completedTopicIds: completedTopicIds.map(String),
+        lastAccessedAt: Date.now(),
+        lastAccessedId: String(args.topicId),
+        lastAccessedType: "topic",
+      },
+    );
+    return { completedTopicIds: completedTopicIds.map(String) };
   },
 });

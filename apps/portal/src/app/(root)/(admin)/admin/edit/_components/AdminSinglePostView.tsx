@@ -164,6 +164,25 @@ const normalizeFieldOptions = (
   return null;
 };
 
+const LMS_COMPONENT_SLUGS = new Set([
+  "courses",
+  "lessons",
+  "topics",
+  "quizzes",
+  "lms-quiz-question",
+]);
+
+const COMMERCE_COMPONENT_SLUGS = new Set([
+  "products",
+  "orders",
+  "plans",
+  "ecom-coupon",
+  "ecom-chargeback",
+  "ecom-balance",
+  "ecom-transfer",
+  "ecom-chargeback-evidence",
+]);
+
 const formatCustomFieldLabel = (key: string) =>
   key.replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 
@@ -448,7 +467,7 @@ export function AdminSinglePostView({
   ) as Doc<"postsMeta">[] | null | undefined;
 
   const commerceMetaArgs =
-    post?._id && isComponentStorage && normalizedSlug !== "helpdeskarticles"
+    post?._id && isComponentStorage && COMMERCE_COMPONENT_SLUGS.has(normalizedSlug)
       ? ({
           postId: post._id as unknown as string,
           organizationId: commerceOrganizationId,
@@ -457,6 +476,18 @@ export function AdminSinglePostView({
   const commerceMetaResult = useQuery(
     api.plugins.commerce.queries.getPostMeta,
     commerceMetaArgs,
+  ) as CommerceComponentPostMeta[] | null | undefined;
+
+  const lmsMetaArgs =
+    post?._id && isComponentStorage && LMS_COMPONENT_SLUGS.has(normalizedSlug)
+      ? ({
+          postId: post._id as unknown as string,
+          organizationId: commerceOrganizationId,
+        } as const)
+      : "skip";
+  const lmsMetaResult = useQuery(
+    api.plugins.lms.posts.queries.getPostMeta,
+    lmsMetaArgs,
   ) as CommerceComponentPostMeta[] | null | undefined;
   const postMeta = useMemo(() => {
     if (isComponentStorage) {
@@ -469,6 +500,32 @@ export function AdminSinglePostView({
         }
         return supportMetaResult ?? [];
       }
+      if (COMMERCE_COMPONENT_SLUGS.has(normalizedSlug)) {
+        if (commerceMetaResult === undefined) {
+          return undefined;
+        }
+        if (commerceMetaResult === null) {
+          return [] as Doc<"postsMeta">[];
+        }
+        const slugSource = post?.postTypeSlug ?? normalizedSlug;
+        return commerceMetaResult.map((entry) =>
+          adaptCommercePostMetaToPortal(entry, slugSource),
+        );
+      }
+
+      if (LMS_COMPONENT_SLUGS.has(normalizedSlug)) {
+        if (lmsMetaResult === undefined) {
+          return undefined;
+        }
+        if (lmsMetaResult === null) {
+          return [] as Doc<"postsMeta">[];
+        }
+        const slugSource = post?.postTypeSlug ?? normalizedSlug;
+        return lmsMetaResult.map((entry) =>
+          adaptCommercePostMetaToPortal(entry, slugSource),
+        );
+      }
+
       if (commerceMetaResult === undefined) {
         return undefined;
       }
@@ -483,6 +540,7 @@ export function AdminSinglePostView({
     return standardMetaResult ?? undefined;
   }, [
     commerceMetaResult,
+    lmsMetaResult,
     isComponentStorage,
     supportMetaResult,
     normalizedSlug,
@@ -1594,7 +1652,7 @@ export function AdminSinglePostView({
     }
 
     const normalizedTitle = title.trim();
-    const requiresTitle = storageKind === "posts";
+    const requiresTitle = storageKind === "posts" || isComponentStorage;
     if (requiresTitle && !normalizedTitle) {
       setSaveError("Title is required.");
       return;
@@ -1659,8 +1717,11 @@ export function AdminSinglePostView({
         return;
       }
 
-      if (isCustomStorage || isComponentStorage) {
-        log("External storage detected, skipping core save", { storageKind });
+      if (isCustomStorage) {
+        log("External storage detected, skipping core save", {
+          storageKind,
+          normalizedSlug,
+        });
         setSaveError(null);
         return;
       }

@@ -9,7 +9,7 @@ const quizQuestionTypeLiteral = v.union(
 );
 
 export const quizAttemptResponseValidator = v.object({
-  questionId: v.id("posts"),
+  questionId: v.string(),
   questionType: quizQuestionTypeLiteral,
   selectedOptionIds: v.optional(v.array(v.string())),
   answerText: v.optional(v.string()),
@@ -17,30 +17,28 @@ export const quizAttemptResponseValidator = v.object({
 });
 
 export const courseProgressTable = defineTable({
-  organizationId: v.optional(v.id("organizations")),
-  userId: v.id("users"),
-  courseId: v.id("posts"),
-  completedLessonIds: v.array(v.id("posts")),
-  completedTopicIds: v.array(v.id("posts")),
+  organizationId: v.optional(v.string()),
+  userId: v.string(),
+  courseId: v.string(),
+  completedLessonIds: v.array(v.string()),
+  completedTopicIds: v.array(v.string()),
   startedAt: v.optional(v.number()),
   completedAt: v.optional(v.number()),
   updatedAt: v.number(),
   lastAccessedAt: v.optional(v.number()),
-  lastAccessedId: v.optional(v.id("posts")),
-  lastAccessedType: v.optional(
-    v.union(v.literal("lesson"), v.literal("topic")),
-  ),
+  lastAccessedId: v.optional(v.string()),
+  lastAccessedType: v.optional(v.union(v.literal("lesson"), v.literal("topic"))),
 })
   .index("by_user", ["userId"])
   .index("by_course", ["courseId"])
   .index("by_user_course", ["userId", "courseId"]);
 
 export const quizAttemptsTable = defineTable({
-  quizId: v.id("posts"),
-  userId: v.id("users"),
-  organizationId: v.optional(v.id("organizations")),
-  courseId: v.optional(v.id("posts")),
-  lessonId: v.optional(v.id("posts")),
+  quizId: v.string(),
+  userId: v.string(),
+  organizationId: v.optional(v.string()),
+  courseId: v.optional(v.string()),
+  lessonId: v.optional(v.string()),
   responses: v.array(quizAttemptResponseValidator),
   totalQuestions: v.number(),
   gradedQuestions: v.number(),
@@ -57,3 +55,5 @@ export const progressSchema = {
   courseProgress: courseProgressTable,
   quizAttempts: quizAttemptsTable,
 };
+
+

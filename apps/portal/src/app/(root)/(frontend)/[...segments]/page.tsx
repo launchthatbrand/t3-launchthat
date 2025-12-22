@@ -1,6 +1,6 @@
 import "~/lib/pageTemplates";
 
-/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { Data as PuckData } from "@measured/puck";
 import type { FrontendFilterContext } from "launchthat-plugin-core/frontendFilters";
@@ -78,14 +78,30 @@ export default async function FrontendCatchAllPage(props: PageProps) {
         </main>
       );
     }
-    const posts = await fetchQuery(api.core.posts.queries.getAllPosts, {
-      ...(organizationId ? { organizationId } : {}),
-      filters: {
-        status: "published",
-        postTypeSlug: archiveContext.postType.slug,
-        limit: 50,
-      },
-    });
+    const archiveSlug = archiveContext.postType.slug?.toLowerCase() ?? "";
+    const isLmsComponentArchive =
+      LMS_POST_TYPE_SLUGS.has(archiveSlug) ||
+      (archiveContext.postType.storageKind === "component" &&
+        (archiveContext.postType.storageTables ?? []).some((table) =>
+          table.includes("launchthat_lms:posts"),
+        ));
+    const posts = isLmsComponentArchive
+      ? await fetchQuery(api.plugins.lms.posts.queries.getAllPosts, {
+          organizationId: organizationId ?? undefined,
+          filters: {
+            status: "published",
+            postTypeSlug: archiveContext.postType.slug,
+            limit: 50,
+          },
+        })
+      : await fetchQuery(api.core.posts.queries.getAllPosts, {
+          ...(organizationId ? { organizationId } : {}),
+          filters: {
+            status: "published",
+            postTypeSlug: archiveContext.postType.slug,
+            limit: 50,
+          },
+        });
     const pluginMatch = findPostTypeBySlug(archiveContext.postType.slug);
     const pluginArchive = pluginMatch?.postType.frontend?.archive;
     if (pluginMatch && pluginArchive?.render) {
@@ -103,16 +119,56 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     notFound();
   }
 
-  let post = await fetchQuery(api.core.posts.queries.getPostBySlug, {
-    slug,
-    ...(organizationId ? { organizationId } : {}),
-  });
+  const inferredLmsType = inferLmsPostTypeSlugFromSegments(segments);
+  let isLmsComponentPost = false;
+
+  // If the URL shape clearly indicates an LMS route (e.g. /course/.../lesson/...),
+  // prefer resolving from the LMS component to avoid stale core `posts` collisions.
+  let post = inferredLmsType
+    ? await fetchQuery(api.plugins.lms.posts.queries.getPostBySlug, {
+        slug,
+        organizationId: organizationId ?? undefined,
+      })
+    : null;
+  isLmsComponentPost = Boolean(post);
+
+  if (!post && inferredLmsType && isConvexId(slug)) {
+    post = await fetchQuery(api.plugins.lms.posts.queries.getPostById, {
+      id: slug,
+      organizationId: organizationId ?? undefined,
+    });
+    isLmsComponentPost = Boolean(post);
+  }
+
+  if (!post) {
+    post = await fetchQuery(api.core.posts.queries.getPostBySlug, {
+      slug,
+      ...(organizationId ? { organizationId } : {}),
+    });
+  }
 
   if (!post && isConvexId(slug)) {
     post = await fetchQuery(api.core.posts.queries.getPostById, {
       id: slug as Id<"posts">,
       ...(organizationId ? { organizationId } : {}),
     });
+  }
+
+  // Fallback: if it wasn't an obvious LMS route, still try LMS component after core.
+  if (!post) {
+    post = await fetchQuery(api.plugins.lms.posts.queries.getPostBySlug, {
+      slug,
+      organizationId: organizationId ?? undefined,
+    });
+    isLmsComponentPost = Boolean(post);
+  }
+
+  if (!post && isConvexId(slug)) {
+    post = await fetchQuery(api.plugins.lms.posts.queries.getPostById, {
+      id: slug,
+      organizationId: organizationId ?? undefined,
+    });
+    isLmsComponentPost = Boolean(post);
   }
 
   console.log("[FrontendCatchAllPage] Post:", post);
@@ -140,16 +196,21 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     postFields = fieldResult ?? [];
   }
 
-  const postMetaResult: Doc<"postsMeta">[] | null = await fetchQuery(
-    api.core.posts.postMeta.getPostMeta,
-    {
-      postId: post._id,
-      ...(organizationId ? { organizationId } : {}),
-      postTypeSlug: post.postTypeSlug ?? undefined,
-    },
-  );
-  const postMeta = postMetaResult ?? [];
-  const postMetaMap = buildPostMetaMap(postMeta);
+  const postMetaResult: unknown = isLmsComponentPost
+    ? await fetchQuery(api.plugins.lms.posts.queries.getPostMeta, {
+        postId: post._id as unknown as string,
+        organizationId: organizationId ?? undefined,
+      })
+    : await fetchQuery(api.core.posts.postMeta.getPostMeta, {
+        postId: post._id,
+        ...(organizationId ? { organizationId } : {}),
+        postTypeSlug: post.postTypeSlug ?? undefined,
+      });
+  const postMeta = (postMetaResult ?? []) as {
+    key: string;
+    value?: string | number | boolean | null;
+  }[];
+  const postMetaMap = buildPostMetaMap(postMeta as unknown as PostMetaDoc[]);
   const postMetaObject = Object.fromEntries(postMetaMap.entries()) as Record<
     string,
     PostMetaValue
@@ -321,7 +382,7 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       post={post}
       postType={postType}
       fields={postFields}
-      postMeta={postMeta}
+      postMeta={postMeta as unknown as Doc<"postsMeta">[]}
       puckData={puckData}
       pluginSlots={pluginSlotNodes}
       contentFilterIds={contentFilterIds}
@@ -344,6 +405,32 @@ function deriveSlugFromSegments(segments: string[]): string | null {
     }
   }
   return null;
+}
+
+function inferLmsPostTypeSlugFromSegments(
+  segments: string[],
+): "courses" | "lessons" | "topics" | "quizzes" | null {
+  // LMS permalink shapes (examples):
+  // - /course/:courseSlug
+  // - /course/:courseSlug/lesson/:lessonSlug
+  // - /course/:courseSlug/lesson/:lessonSlug/topic/:topicSlug
+  // - /course/:courseSlug/lesson/:lessonSlug/topic/:topicSlug/quiz/:quizSlug
+  // Only infer LMS types when route is under `/course/...`
+  if (segments[0]?.toLowerCase() !== "course") {
+    return null;
+  }
+
+  const lowered = segments.map((segment) => segment.toLowerCase());
+  if (lowered.includes("quiz")) {
+    return "quizzes";
+  }
+  if (lowered.includes("topic")) {
+    return "topics";
+  }
+  if (lowered.includes("lesson")) {
+    return "lessons";
+  }
+  return "courses";
 }
 
 function isConvexId(value: string): boolean {
@@ -781,7 +868,9 @@ function resolveDisabledFrontendSlotIds(
   if (!Array.isArray(raw)) {
     return [];
   }
-  return raw.filter((value): value is string => typeof value === "string");
+  return raw.filter((value): value is string => typeof value === "string") as
+    | string[]
+    | [];
 }
 
 function readFrontendVisibility(postType: Doc<"postTypes"> | null): {

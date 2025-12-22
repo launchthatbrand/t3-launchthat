@@ -2828,6 +2828,26 @@ export type PublicApiType = {
           any
         >;
       };
+      postMeta: {
+        getPostMeta: FunctionReference<
+          "query",
+          "public",
+          {
+            organizationId?: Id<"organizations">;
+            postId: string;
+            postTypeSlug?: string;
+          },
+          Array<{
+            _creationTime: number;
+            _id: Id<"postsMeta">;
+            createdAt: number;
+            key: string;
+            postId: Id<"posts">;
+            updatedAt?: number;
+            value?: string | number | boolean | null;
+          }>
+        >;
+      };
     };
     categories: {
       mutations: {
@@ -3847,6 +3867,11 @@ export type PublicApiType = {
               description?: string;
               enableApi?: boolean;
               enableVersioning?: boolean;
+              frontendVisibility?: {
+                disabledSingleSlotIds?: Array<string>;
+                showComments?: boolean;
+                showCustomFields?: boolean;
+              };
               includeTimestamps?: boolean;
               isPublic?: boolean;
               metaBoxes?: Array<{
@@ -3978,6 +4003,11 @@ export type PublicApiType = {
             enabledOrganizationIds?: Array<Id<"organizations"> | "portal-root">;
             entryCount?: number;
             fieldCount?: number;
+            frontendVisibility?: {
+              disabledSingleSlotIds?: Array<string>;
+              showComments?: boolean;
+              showCustomFields?: boolean;
+            };
             includeTimestamps?: boolean;
             isBuiltIn: boolean;
             isPublic: boolean;
@@ -4043,6 +4073,11 @@ export type PublicApiType = {
             enabledOrganizationIds?: Array<Id<"organizations"> | "portal-root">;
             entryCount?: number;
             fieldCount?: number;
+            frontendVisibility?: {
+              disabledSingleSlotIds?: Array<string>;
+              showComments?: boolean;
+              showCustomFields?: boolean;
+            };
             includeTimestamps?: boolean;
             isBuiltIn: boolean;
             isPublic: boolean;
@@ -4108,6 +4143,11 @@ export type PublicApiType = {
             enabledOrganizationIds?: Array<Id<"organizations"> | "portal-root">;
             entryCount?: number;
             fieldCount?: number;
+            frontendVisibility?: {
+              disabledSingleSlotIds?: Array<string>;
+              showComments?: boolean;
+              showCustomFields?: boolean;
+            };
             includeTimestamps?: boolean;
             isBuiltIn: boolean;
             isPublic: boolean;
@@ -5058,24 +5098,19 @@ export type PublicApiType = {
           "query",
           "public",
           { organizationId?: Id<"organizations"> },
-          Array<{
-            _id: Id<"posts">;
-            slug?: string;
-            status?: string;
-            title: string;
-          }>
+          Array<{ _id: string; slug?: string; status?: string; title: string }>
         >;
         getCourseStructureWithItems: FunctionReference<
           "query",
           "public",
           {
-            courseId?: Id<"posts">;
+            courseId?: string;
             courseSlug?: string;
             organizationId?: Id<"organizations">;
           },
           {
             attachedLessons: Array<{
-              _id: Id<"posts">;
+              _id: string;
               content?: string;
               excerpt?: string;
               order?: number;
@@ -5084,28 +5119,28 @@ export type PublicApiType = {
               title: string;
             }>;
             attachedQuizzes: Array<{
-              _id: Id<"posts">;
+              _id: string;
               content?: string;
               excerpt?: string;
               isFinal?: boolean;
-              lessonId?: Id<"posts">;
+              lessonId?: string;
               order?: number;
               slug?: string;
               title: string;
-              topicId?: Id<"posts">;
+              topicId?: string;
             }>;
             attachedTopics: Array<{
-              _id: Id<"posts">;
+              _id: string;
               content?: string;
               excerpt?: string;
-              lessonId?: Id<"posts">;
+              lessonId?: string;
               order?: number;
               slug?: string;
               title: string;
             }>;
             course: {
-              _id: Id<"posts">;
-              courseStructure: Array<{ lessonId: Id<"posts"> }>;
+              _id: string;
+              courseStructure: Array<{ lessonId: string }>;
               slug?: string;
               status?: string;
               title: string;
@@ -5115,14 +5150,14 @@ export type PublicApiType = {
         getCourseProgressForViewer: FunctionReference<
           "query",
           "public",
-          { courseId: Id<"posts">; organizationId?: Id<"organizations"> },
+          { courseId: string; organizationId?: Id<"organizations"> },
           {
             completedAt?: number;
-            completedLessonIds: Array<Id<"posts">>;
-            completedTopicIds: Array<Id<"posts">>;
-            courseId: Id<"posts">;
+            completedLessonIds: Array<string>;
+            completedTopicIds: Array<string>;
+            courseId: string;
             lastAccessedAt?: number;
-            lastAccessedId?: Id<"posts">;
+            lastAccessedId?: string;
             lastAccessedType?: "lesson" | "topic";
             startedAt?: number;
             updatedAt?: number;
@@ -5132,9 +5167,9 @@ export type PublicApiType = {
         getAvailableLessons: FunctionReference<
           "query",
           "public",
-          { courseId: Id<"posts">; organizationId?: Id<"organizations"> },
+          { courseId: string; organizationId?: Id<"organizations"> },
           Array<{
-            _id: Id<"posts">;
+            _id: string;
             content?: string;
             excerpt?: string;
             order?: number;
@@ -5148,10 +5183,10 @@ export type PublicApiType = {
           "public",
           { organizationId?: Id<"organizations"> },
           Array<{
-            _id: Id<"posts">;
+            _id: string;
             content?: string;
             excerpt?: string;
-            lessonId?: Id<"posts">;
+            lessonId?: string;
             order?: number;
             slug?: string;
             title: string;
@@ -5162,15 +5197,15 @@ export type PublicApiType = {
           "public",
           { organizationId?: Id<"organizations"> },
           Array<{
-            _id: Id<"posts">;
+            _id: string;
             content?: string;
             excerpt?: string;
             isFinal?: boolean;
-            lessonId?: Id<"posts">;
+            lessonId?: string;
             order?: number;
             slug?: string;
             title: string;
-            topicId?: Id<"posts">;
+            topicId?: string;
           }>
         >;
         getQuizBuilderState: FunctionReference<
@@ -5179,7 +5214,7 @@ export type PublicApiType = {
           { organizationId?: Id<"organizations">; quizId: Id<"posts"> },
           {
             questions: Array<{
-              _id: Id<"posts">;
+              _id: string;
               answerText?: string | null;
               correctOptionIds: Array<string>;
               options: Array<{ id: string; label: string }>;
@@ -5190,7 +5225,7 @@ export type PublicApiType = {
                 | "multipleChoice"
                 | "shortText"
                 | "longText";
-              quizId: Id<"posts">;
+              quizId: string;
               title: string;
             }>;
             quiz: {
@@ -5206,7 +5241,7 @@ export type PublicApiType = {
           "public",
           { quizId: Id<"posts"> },
           Array<{
-            _id: Id<"quizAttempts">;
+            _id: string;
             completedAt: number;
             correctCount: number;
             durationMs?: number;
@@ -5226,37 +5261,37 @@ export type PublicApiType = {
         addLessonToCourse: FunctionReference<
           "mutation",
           "public",
-          { courseId: Id<"posts">; lessonId: Id<"posts"> },
+          { courseId: string; lessonId: string },
           { success: boolean }
         >;
         removeLessonFromCourseStructure: FunctionReference<
           "mutation",
           "public",
-          { courseId: Id<"posts">; lessonId: Id<"posts"> },
+          { courseId: string; lessonId: string },
           { success: boolean }
         >;
         reorderLessonsInCourse: FunctionReference<
           "mutation",
           "public",
-          { courseId: Id<"posts">; orderedLessonIds: Array<Id<"posts">> },
+          { courseId: string; orderedLessonIds: Array<string> },
           { success: boolean }
         >;
         attachTopicToLesson: FunctionReference<
           "mutation",
           "public",
-          { lessonId: Id<"posts">; order?: number; topicId: Id<"posts"> },
+          { lessonId: string; order?: number; topicId: string },
           { success: boolean }
         >;
         removeTopicFromLesson: FunctionReference<
           "mutation",
           "public",
-          { topicId: Id<"posts"> },
+          { topicId: string },
           { success: boolean }
         >;
         reorderTopicsInLesson: FunctionReference<
           "mutation",
           "public",
-          { lessonId: Id<"posts">; orderedTopicIds: Array<Id<"posts">> },
+          { lessonId: string; orderedTopicIds: Array<string> },
           { success: boolean }
         >;
         attachQuizToLesson: FunctionReference<
@@ -5264,36 +5299,36 @@ export type PublicApiType = {
           "public",
           {
             isFinal?: boolean;
-            lessonId: Id<"posts">;
+            lessonId: string;
             order?: number;
-            quizId: Id<"posts">;
-            topicId?: Id<"posts">;
+            quizId: string;
+            topicId?: string;
           },
           { success: boolean }
         >;
         removeQuizFromLesson: FunctionReference<
           "mutation",
           "public",
-          { quizId: Id<"posts"> },
+          { quizId: string },
           { success: boolean }
         >;
         attachFinalQuizToCourse: FunctionReference<
           "mutation",
           "public",
-          { courseId: Id<"posts">; order?: number; quizId: Id<"posts"> },
+          { courseId: string; order?: number; quizId: string },
           { success: boolean }
         >;
         removeFinalQuizFromCourse: FunctionReference<
           "mutation",
           "public",
-          { quizId: Id<"posts"> },
+          { quizId: string },
           { success: boolean }
         >;
         createLessonFromVimeo: FunctionReference<
           "mutation",
           "public",
           {
-            courseId: Id<"posts">;
+            courseId: string;
             organizationId?: Id<"organizations">;
             status?: "draft" | "published";
             video: {
@@ -5304,13 +5339,13 @@ export type PublicApiType = {
               videoId: string;
             };
           },
-          { lessonId: Id<"posts"> }
+          { lessonId: string }
         >;
         createTopicFromVimeo: FunctionReference<
           "mutation",
           "public",
           {
-            lessonId: Id<"posts">;
+            lessonId: string;
             organizationId?: Id<"organizations">;
             status?: "draft" | "published";
             video: {
@@ -5321,7 +5356,7 @@ export type PublicApiType = {
               videoId: string;
             };
           },
-          { topicId: Id<"posts"> }
+          { topicId: string }
         >;
         createQuizFromVimeo: FunctionReference<
           "mutation",
@@ -5329,8 +5364,8 @@ export type PublicApiType = {
           {
             organizationId?: Id<"organizations">;
             status?: "draft" | "published";
-            targetLessonId?: Id<"posts">;
-            targetTopicId?: Id<"posts">;
+            targetLessonId?: string;
+            targetTopicId?: string;
             video: {
               description?: string;
               embedUrl?: string;
@@ -5339,7 +5374,7 @@ export type PublicApiType = {
               videoId: string;
             };
           },
-          { quizId: Id<"posts"> }
+          { quizId: string }
         >;
         createQuizQuestion: FunctionReference<
           "mutation",
@@ -5357,11 +5392,11 @@ export type PublicApiType = {
                 | "shortText"
                 | "longText";
             };
-            quizId: Id<"posts">;
+            quizId: string;
           },
           {
             question: {
-              _id: Id<"posts">;
+              _id: string;
               answerText?: string | null;
               correctOptionIds: Array<string>;
               options: Array<{ id: string; label: string }>;
@@ -5372,7 +5407,7 @@ export type PublicApiType = {
                 | "multipleChoice"
                 | "shortText"
                 | "longText";
-              quizId: Id<"posts">;
+              quizId: string;
               title: string;
             };
           }
@@ -5392,12 +5427,12 @@ export type PublicApiType = {
                 | "shortText"
                 | "longText";
             };
-            questionId: Id<"posts">;
-            quizId: Id<"posts">;
+            questionId: string;
+            quizId: string;
           },
           {
             question: {
-              _id: Id<"posts">;
+              _id: string;
               answerText?: string | null;
               correctOptionIds: Array<string>;
               options: Array<{ id: string; label: string }>;
@@ -5408,7 +5443,7 @@ export type PublicApiType = {
                 | "multipleChoice"
                 | "shortText"
                 | "longText";
-              quizId: Id<"posts">;
+              quizId: string;
               title: string;
             };
           }
@@ -5416,26 +5451,26 @@ export type PublicApiType = {
         deleteQuizQuestion: FunctionReference<
           "mutation",
           "public",
-          { questionId: Id<"posts">; quizId: Id<"posts"> },
+          { questionId: string; quizId: string },
           { success: boolean }
         >;
         reorderQuizQuestions: FunctionReference<
           "mutation",
           "public",
-          { orderedQuestionIds: Array<Id<"posts">>; quizId: Id<"posts"> },
+          { orderedQuestionIds: Array<string>; quizId: string },
           { success: boolean }
         >;
         submitQuizAttempt: FunctionReference<
           "mutation",
           "public",
           {
-            courseId?: Id<"posts">;
+            courseId?: string;
             durationMs?: number;
-            lessonId?: Id<"posts">;
-            quizId: Id<"posts">;
+            lessonId?: string;
+            quizId: string;
             responses: Array<{
               answerText?: string;
-              questionId: Id<"posts">;
+              questionId: string;
               questionType:
                 | "singleChoice"
                 | "multipleChoice"
@@ -5446,7 +5481,7 @@ export type PublicApiType = {
           },
           {
             attempt: {
-              _id: Id<"quizAttempts">;
+              _id: string;
               completedAt: number;
               correctCount: number;
               durationMs?: number;
@@ -5459,19 +5494,19 @@ export type PublicApiType = {
         setLessonCompletionStatus: FunctionReference<
           "mutation",
           "public",
-          { completed: boolean; courseId?: Id<"posts">; lessonId: Id<"posts"> },
-          { completedLessonIds: Array<Id<"posts">> }
+          { completed: boolean; courseId?: string; lessonId: string },
+          { completedLessonIds: Array<string> }
         >;
         setTopicCompletionStatus: FunctionReference<
           "mutation",
           "public",
           {
             completed: boolean;
-            courseId?: Id<"posts">;
-            lessonId?: Id<"posts">;
-            topicId: Id<"posts">;
+            courseId?: string;
+            lessonId?: string;
+            topicId: string;
           },
-          { completedTopicIds: Array<Id<"posts">> }
+          { completedTopicIds: Array<string> }
         >;
       };
       actions: {
@@ -5490,6 +5525,121 @@ export type PublicApiType = {
             quizTitle: string;
           }
         >;
+      };
+      posts: {
+        queries: {
+          getAllPosts: FunctionReference<
+            "query",
+            "public",
+            {
+              filters?: {
+                authorId?: string;
+                category?: string;
+                limit?: number;
+                postTypeSlug?: string;
+                status?: "published" | "draft" | "archived";
+              };
+              organizationId?: string;
+            },
+            any
+          >;
+          getPostById: FunctionReference<
+            "query",
+            "public",
+            { id: string; organizationId?: string },
+            any
+          >;
+          getPostBySlug: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string; slug: string },
+            any
+          >;
+          getPostMeta: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string; postId: string },
+            any
+          >;
+          searchPosts: FunctionReference<
+            "query",
+            "public",
+            {
+              limit?: number;
+              organizationId?: string;
+              postTypeSlug?: string;
+              searchTerm: string;
+            },
+            any
+          >;
+          getPostTags: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string; postTypeSlug?: string },
+            any
+          >;
+          getPostCategories: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string; postTypeSlug?: string },
+            any
+          >;
+        };
+        mutations: {
+          createPost: FunctionReference<
+            "mutation",
+            "public",
+            {
+              category?: string;
+              content?: string;
+              excerpt?: string;
+              featuredImage?: string;
+              meta?: Record<string, string | number | boolean | null>;
+              organizationId?: string;
+              postTypeSlug: string;
+              slug: string;
+              status: "published" | "draft" | "archived";
+              tags?: Array<string>;
+              title: string;
+            },
+            string
+          >;
+          updatePost: FunctionReference<
+            "mutation",
+            "public",
+            {
+              category?: string;
+              content?: string;
+              excerpt?: string;
+              featuredImage?: string;
+              id: string;
+              meta?: Record<string, string | number | boolean | null>;
+              slug?: string;
+              status?: "published" | "draft" | "archived";
+              tags?: Array<string>;
+              title?: string;
+            },
+            string
+          >;
+          deletePost: FunctionReference<
+            "mutation",
+            "public",
+            { id: string },
+            null
+          >;
+          updatePostStatus: FunctionReference<
+            "mutation",
+            "public",
+            { id: string; status: "published" | "draft" | "archived" },
+            string
+          >;
+          bulkUpdatePostStatus: FunctionReference<
+            "mutation",
+            "public",
+            { ids: Array<string>; status: "published" | "draft" | "archived" },
+            Array<string>
+          >;
+        };
       };
     };
     support: {
@@ -6059,7 +6209,7 @@ export type PublicApiType = {
             moduleType?: "blog" | "course" | "group" | "event";
             visibility: "public" | "private" | "group";
           },
-          Id<"feedItems">
+          any
         >;
         updatePost: FunctionReference<
           "mutation",
@@ -6067,17 +6217,17 @@ export type PublicApiType = {
           {
             content?: string;
             mediaUrls?: Array<string>;
-            postId: Id<"feedItems">;
+            postId: string;
             userId: Id<"users">;
             visibility?: "public" | "private" | "group";
           },
-          boolean
+          any
         >;
         deletePost: FunctionReference<
           "mutation",
           "public",
-          { postId: Id<"feedItems">; userId: Id<"users"> },
-          boolean
+          { postId: string; userId: Id<"users"> },
+          any
         >;
         shareContent: FunctionReference<
           "mutation",
@@ -6087,16 +6237,16 @@ export type PublicApiType = {
             creatorId: Id<"users">;
             moduleId?: string;
             moduleType?: "blog" | "course" | "group" | "event";
-            originalContentId: Id<"feedItems">;
+            originalContentId: string;
             visibility: "public" | "private" | "group";
           },
-          Id<"feedItems">
+          any
         >;
         addReaction: FunctionReference<
           "mutation",
           "public",
           {
-            feedItemId: Id<"feedItems">;
+            feedItemId: string;
             reactionType:
               | "like"
               | "love"
@@ -6106,31 +6256,52 @@ export type PublicApiType = {
               | "curious";
             userId: Id<"users">;
           },
-          Id<"reactions">
+          any
         >;
         addComment: FunctionReference<
           "mutation",
           "public",
           {
             content: string;
-            feedItemId: Id<"feedItems">;
+            feedItemId?: string;
             mediaUrls?: Array<string>;
-            parentCommentId?: Id<"comments">;
-            userId: Id<"users">;
+            parentCommentId?: string;
+            parentId?: string;
+            parentType?:
+              | "feedItem"
+              | "course"
+              | "lesson"
+              | "topic"
+              | "quiz"
+              | "post"
+              | "download"
+              | "helpdeskArticle";
           },
-          Id<"comments">
+          any
+        >;
+        updateComment: FunctionReference<
+          "mutation",
+          "public",
+          { commentId: string; content: string },
+          any
+        >;
+        deleteComment: FunctionReference<
+          "mutation",
+          "public",
+          { commentId: string },
+          any
         >;
         followTopic: FunctionReference<
           "mutation",
           "public",
-          { topicId: Id<"hashtags">; userId: Id<"users"> },
-          boolean
+          { topicId: string; userId: Id<"users"> },
+          any
         >;
         unfollowTopic: FunctionReference<
           "mutation",
           "public",
-          { topicId: Id<"hashtags">; userId: Id<"users"> },
-          boolean
+          { topicId: string; userId: Id<"users"> },
+          any
         >;
         createOrUpdateTopic: FunctionReference<
           "mutation",
@@ -6141,35 +6312,35 @@ export type PublicApiType = {
             description?: string;
             tag: string;
           },
-          Id<"hashtags">
+          any
         >;
         markRecommendationAsSeen: FunctionReference<
           "mutation",
           "public",
-          { contentId: Id<"feedItems">; userId: Id<"users"> },
-          boolean
+          { contentId: string; userId: Id<"users"> },
+          any
         >;
         markRecommendationAsInteracted: FunctionReference<
           "mutation",
           "public",
           {
-            contentId: Id<"feedItems">;
+            contentId: string;
             reaction?: "like" | "dislike" | "neutral";
             userId: Id<"users">;
           },
-          boolean
+          any
         >;
         generateUserRecommendations: FunctionReference<
           "mutation",
           "public",
           { limit?: number; userId: Id<"users"> },
-          boolean
+          any
         >;
         updatePostTrendingMetrics: FunctionReference<
           "mutation",
           "public",
-          { contentId: Id<"feedItems"> },
-          boolean
+          { contentId: string },
+          any
         >;
       };
       queries: {
@@ -6186,28 +6357,7 @@ export type PublicApiType = {
               numItems: number;
             };
           },
-          {
-            continueCursor: string | null;
-            isDone: boolean;
-            page: Array<{
-              _creationTime: number;
-              _id: Id<"feedItems">;
-              commentsCount: number;
-              content: string;
-              contentType: "post" | "share" | "comment";
-              creator: { _id: Id<"users">; image?: string; name: string };
-              creatorId: Id<"users">;
-              hashtags?: Array<string>;
-              mediaUrls?: Array<string>;
-              mentionedUserIds?: Array<Id<"users">>;
-              mentions?: Array<string>;
-              moduleId?: string;
-              moduleType?: "blog" | "course" | "group" | "event";
-              originalContentId?: Id<"feedItems">;
-              reactionsCount: number;
-              visibility: "public" | "private" | "group";
-            }>;
-          }
+          any
         >;
         getPersonalizedFeed: FunctionReference<
           "query",
@@ -6223,34 +6373,13 @@ export type PublicApiType = {
             };
             userId: Id<"users">;
           },
-          {
-            continueCursor: string | null;
-            isDone: boolean;
-            page: Array<{
-              _creationTime: number;
-              _id: Id<"feedItems">;
-              commentsCount: number;
-              content: string;
-              contentType: "post" | "share" | "comment";
-              creator: { _id: Id<"users">; image?: string; name: string };
-              creatorId: Id<"users">;
-              hashtags?: Array<string>;
-              mediaUrls?: Array<string>;
-              mentionedUserIds?: Array<Id<"users">>;
-              mentions?: Array<string>;
-              moduleId?: string;
-              moduleType?: "blog" | "course" | "group" | "event";
-              originalContentId?: Id<"feedItems">;
-              reactionsCount: number;
-              visibility: "public" | "private" | "group";
-            }>;
-          }
+          any
         >;
         getGroupFeed: FunctionReference<
           "query",
           "public",
           {
-            groupId: Id<"posts">;
+            groupId: string;
             paginationOpts: {
               cursor: string | null;
               endCursor?: string | null;
@@ -6260,28 +6389,7 @@ export type PublicApiType = {
               numItems: number;
             };
           },
-          {
-            continueCursor: string | null;
-            isDone: boolean;
-            page: Array<{
-              _creationTime: number;
-              _id: Id<"feedItems">;
-              commentsCount: number;
-              content: string;
-              contentType: "post" | "share" | "comment";
-              creator: { _id: Id<"users">; image?: string; name: string };
-              creatorId: Id<"users">;
-              hashtags?: Array<string>;
-              mediaUrls?: Array<string>;
-              mentionedUserIds?: Array<Id<"users">>;
-              mentions?: Array<string>;
-              moduleId?: string;
-              moduleType?: "blog" | "course" | "group" | "event";
-              originalContentId?: Id<"feedItems">;
-              reactionsCount: number;
-              visibility: "public" | "private" | "group";
-            }>;
-          }
+          any
         >;
         getUserProfileFeed: FunctionReference<
           "query",
@@ -6298,51 +6406,13 @@ export type PublicApiType = {
             profileId: Id<"users">;
             viewerId?: Id<"users">;
           },
-          {
-            continueCursor: string | null;
-            isDone: boolean;
-            page: Array<{
-              _creationTime: number;
-              _id: Id<"feedItems">;
-              commentsCount: number;
-              content: string;
-              contentType: "post" | "share" | "comment";
-              creator: { _id: Id<"users">; image?: string; name: string };
-              creatorId: Id<"users">;
-              hashtags?: Array<string>;
-              mediaUrls?: Array<string>;
-              mentionedUserIds?: Array<Id<"users">>;
-              mentions?: Array<string>;
-              moduleId?: string;
-              moduleType?: "blog" | "course" | "group" | "event";
-              originalContentId?: Id<"feedItems">;
-              reactionsCount: number;
-              visibility: "public" | "private" | "group";
-            }>;
-          }
+          any
         >;
         getFeedItem: FunctionReference<
           "query",
           "public",
-          { feedItemId: Id<"feedItems"> },
-          null | {
-            _creationTime: number;
-            _id: Id<"feedItems">;
-            commentsCount: number;
-            content: string;
-            contentType: "post" | "share" | "comment";
-            creator: { _id: Id<"users">; image?: string; name: string };
-            creatorId: Id<"users">;
-            hashtags?: Array<string>;
-            mediaUrls?: Array<string>;
-            mentionedUserIds?: Array<Id<"users">>;
-            mentions?: Array<string>;
-            moduleId?: string;
-            moduleType?: "blog" | "course" | "group" | "event";
-            originalContentId?: Id<"feedItems">;
-            reactionsCount: number;
-            visibility: "public" | "private" | "group";
-          }
+          { feedItemId: string },
+          any
         >;
         getHashtagFeed: FunctionReference<
           "query",
@@ -6358,44 +6428,7 @@ export type PublicApiType = {
             };
             tag: string;
           },
-          {
-            feedItems: {
-              continueCursor: string | null;
-              isDone: boolean;
-              page: Array<{
-                _creationTime: number;
-                _id: Id<"feedItems">;
-                commentsCount: number;
-                content: string;
-                contentType: "post" | "share" | "comment";
-                creator: { _id: Id<"users">; image?: string; name: string };
-                creatorId: Id<"users">;
-                hashtags?: Array<string>;
-                mediaUrls?: Array<string>;
-                mentionedUserIds?: Array<Id<"users">>;
-                mentions?: Array<string>;
-                moduleId?: string;
-                moduleType?: "blog" | "course" | "group" | "event";
-                originalContentId?: Id<"feedItems">;
-                reactionsCount: number;
-                visibility: "public" | "private" | "group";
-              }>;
-            };
-            hashtag: null | {
-              _creationTime: number;
-              _id: Id<"hashtags">;
-              category?: string;
-              coverImage?: string;
-              description?: string;
-              followerCount?: number;
-              isBlocked?: boolean;
-              isTopic?: boolean;
-              lastUsed: number;
-              relatedTags?: Array<string>;
-              tag: string;
-              usageCount: number;
-            };
-          }
+          any
         >;
         getComments: FunctionReference<
           "query",
@@ -6409,35 +6442,11 @@ export type PublicApiType = {
               maximumRowsRead?: number;
               numItems: number;
             };
-            parentId: Id<"feedItems"> | Id<"posts">;
+            parentId: string;
             parentType: "feedItem" | "post" | "download" | "helpdeskArticle";
             sortOrder?: "newest" | "oldest";
           },
-          {
-            continueCursor: string | null;
-            isDone: boolean;
-            page: Array<{
-              _creationTime: number;
-              _id: Id<"comments">;
-              content: string;
-              mediaUrls?: Array<string>;
-              parentCommentId?: Id<"comments">;
-              parentId: Id<"feedItems"> | Id<"posts">;
-              parentType:
-                | "feedItem"
-                | "course"
-                | "lesson"
-                | "topic"
-                | "quiz"
-                | "post"
-                | "download"
-                | "helpdeskArticle";
-              repliesCount: number;
-              updatedAt?: number;
-              user: { _id: Id<"users">; image?: string; name: string };
-              userId: Id<"users">;
-            }>;
-          }
+          any
         >;
         getReplies: FunctionReference<
           "query",
@@ -6451,39 +6460,32 @@ export type PublicApiType = {
               maximumRowsRead?: number;
               numItems: number;
             };
-            parentCommentId: Id<"comments">;
+            parentCommentId: string;
           },
+          any
+        >;
+        getCommentThreadForParent: FunctionReference<
+          "query",
+          "public",
           {
-            continueCursor: string | null;
-            isDone: boolean;
-            page: Array<{
-              _creationTime: number;
-              _id: Id<"comments">;
-              content: string;
-              mediaUrls?: Array<string>;
-              parentCommentId?: Id<"comments">;
-              parentId: Id<"feedItems"> | Id<"posts">;
-              parentType:
-                | "feedItem"
-                | "course"
-                | "lesson"
-                | "topic"
-                | "quiz"
-                | "post"
-                | "download"
-                | "helpdeskArticle";
-              repliesCount: number;
-              updatedAt?: number;
-              user: { _id: Id<"users">; image?: string; name: string };
-              userId: Id<"users">;
-            }>;
-          }
+            parentId: string;
+            parentType:
+              | "feedItem"
+              | "course"
+              | "lesson"
+              | "topic"
+              | "quiz"
+              | "post"
+              | "download"
+              | "helpdeskArticle";
+          },
+          any
         >;
         searchUsersForMentions: FunctionReference<
           "query",
           "public",
           { limit?: number; query: string },
-          Array<{ _id: Id<"users">; image?: string; name: string }>
+          any
         >;
         getRecommendedContent: FunctionReference<
           "query",
@@ -6499,28 +6501,7 @@ export type PublicApiType = {
             };
             userId: Id<"users">;
           },
-          {
-            continueCursor: string | null;
-            isDone: boolean;
-            page: Array<{
-              _creationTime: number;
-              _id: Id<"feedItems">;
-              commentsCount: number;
-              content: string;
-              contentType: "post" | "share" | "comment";
-              creator: { _id: Id<"users">; image?: string; name: string };
-              creatorId: Id<"users">;
-              hashtags?: Array<string>;
-              mediaUrls?: Array<string>;
-              mentionedUserIds?: Array<Id<"users">>;
-              mentions?: Array<string>;
-              moduleId?: string;
-              moduleType?: "blog" | "course" | "group" | "event";
-              originalContentId?: Id<"feedItems">;
-              reactionsCount: number;
-              visibility: "public" | "private" | "group";
-            }>;
-          }
+          any
         >;
         getTopics: FunctionReference<
           "query",
@@ -6537,20 +6518,7 @@ export type PublicApiType = {
             };
             query?: string;
           },
-          Array<{
-            _creationTime: number;
-            _id: Id<"hashtags">;
-            category?: string;
-            coverImage?: string;
-            description?: string;
-            followerCount?: number;
-            isBlocked?: boolean;
-            isTopic?: boolean;
-            lastUsed: number;
-            relatedTags?: Array<string>;
-            tag: string;
-            usageCount: number;
-          }>
+          any
         >;
         getUserFollowedTopics: FunctionReference<
           "query",
@@ -6566,83 +6534,31 @@ export type PublicApiType = {
             };
             userId: Id<"users">;
           },
-          Array<{
-            _creationTime: number;
-            _id: Id<"hashtags">;
-            category?: string;
-            coverImage?: string;
-            description?: string;
-            followerCount?: number;
-            isBlocked?: boolean;
-            isTopic?: boolean;
-            lastUsed: number;
-            relatedTags?: Array<string>;
-            tag: string;
-            usageCount: number;
-          }>
+          any
         >;
         getTopicSuggestions: FunctionReference<
           "query",
           "public",
           { limit?: number; userId: Id<"users"> },
-          Array<{
-            _creationTime: number;
-            _id: Id<"hashtags">;
-            category?: string;
-            coverImage?: string;
-            description?: string;
-            followerCount?: number;
-            isBlocked?: boolean;
-            isTopic?: boolean;
-            lastUsed: number;
-            relatedTags?: Array<string>;
-            tag: string;
-            usageCount: number;
-          }>
+          any
         >;
         getTopic: FunctionReference<
           "query",
           "public",
-          { topicId: Id<"hashtags"> },
-          {
-            _creationTime: number;
-            _id: Id<"hashtags">;
-            category?: string;
-            coverImage?: string;
-            description?: string;
-            followerCount?: number;
-            isBlocked?: boolean;
-            isTopic?: boolean;
-            lastUsed: number;
-            relatedTags?: Array<string>;
-            tag: string;
-            usageCount: number;
-          } | null
+          { topicId: string },
+          any
         >;
         checkTopicFollow: FunctionReference<
           "query",
           "public",
-          { topicId: Id<"hashtags">; userId: Id<"users"> },
-          boolean
+          { topicId: string; userId: Id<"users"> },
+          any
         >;
         getRecommendedHashtags: FunctionReference<
           "query",
           "public",
           { limit: number; userId: Id<"users"> },
-          Array<{
-            _creationTime: number;
-            _id: Id<"hashtags">;
-            category?: string;
-            coverImage?: string;
-            description?: string;
-            followerCount?: number;
-            isBlocked?: boolean;
-            isTopic?: boolean;
-            lastUsed: number;
-            relatedTags?: Array<string>;
-            tag: string;
-            usageCount: number;
-          }>
+          any
         >;
       };
     };
@@ -6661,81 +6577,25 @@ export type PublicApiType = {
             };
             organizationId?: string;
           },
-          Array<{
-            _creationTime: number;
-            _id: string;
-            authorId?: string;
-            category?: string;
-            content?: string;
-            createdAt: number;
-            excerpt?: string;
-            featuredImageUrl?: string;
-            organizationId?: string;
-            postTypeSlug: string;
-            slug: string;
-            status: string;
-            tags?: Array<string>;
-            title: string;
-            updatedAt?: number;
-          }>
+          any
         >;
         getPostById: FunctionReference<
           "query",
           "public",
           { id: string; organizationId?: string },
-          {
-            _creationTime: number;
-            _id: string;
-            authorId?: string;
-            category?: string;
-            content?: string;
-            createdAt: number;
-            excerpt?: string;
-            featuredImageUrl?: string;
-            organizationId?: string;
-            postTypeSlug: string;
-            slug: string;
-            status: string;
-            tags?: Array<string>;
-            title: string;
-            updatedAt?: number;
-          } | null
+          any
         >;
         getPostBySlug: FunctionReference<
           "query",
           "public",
           { organizationId?: string; slug: string },
-          {
-            _creationTime: number;
-            _id: string;
-            authorId?: string;
-            category?: string;
-            content?: string;
-            createdAt: number;
-            excerpt?: string;
-            featuredImageUrl?: string;
-            organizationId?: string;
-            postTypeSlug: string;
-            slug: string;
-            status: string;
-            tags?: Array<string>;
-            title: string;
-            updatedAt?: number;
-          } | null
+          any
         >;
         getPostMeta: FunctionReference<
           "query",
           "public",
           { organizationId?: string; postId: string },
-          Array<{
-            _creationTime: number;
-            _id: string;
-            createdAt: number;
-            key: string;
-            postId: string;
-            updatedAt?: number;
-            value?: string | number | boolean | null;
-          }>
+          any
         >;
         searchPosts: FunctionReference<
           "query",
@@ -6746,35 +6606,19 @@ export type PublicApiType = {
             postTypeSlug?: string;
             searchTerm: string;
           },
-          Array<{
-            _creationTime: number;
-            _id: string;
-            authorId?: string;
-            category?: string;
-            content?: string;
-            createdAt: number;
-            excerpt?: string;
-            featuredImageUrl?: string;
-            organizationId?: string;
-            postTypeSlug: string;
-            slug: string;
-            status: string;
-            tags?: Array<string>;
-            title: string;
-            updatedAt?: number;
-          }>
+          any
         >;
         getPostTags: FunctionReference<
           "query",
           "public",
           { organizationId?: string; postTypeSlug?: string },
-          Array<string>
+          any
         >;
         getPostCategories: FunctionReference<
           "query",
           "public",
           { organizationId?: string; postTypeSlug?: string },
-          Array<string>
+          any
         >;
       };
       mutations: {
@@ -6830,6 +6674,51 @@ export type PublicApiType = {
           "public",
           { ids: Array<string>; status: "published" | "draft" | "archived" },
           Array<string>
+        >;
+      };
+    };
+    entity: {
+      queries: {
+        readEntity: FunctionReference<
+          "query",
+          "public",
+          { id: string; organizationId?: string; postTypeSlug: string },
+          any
+        >;
+        listEntities: FunctionReference<
+          "query",
+          "public",
+          {
+            filters?: {
+              authorId?: string;
+              category?: string;
+              limit?: number;
+              status?: "published" | "draft" | "archived";
+            };
+            organizationId?: string;
+            postTypeSlug: string;
+          },
+          any
+        >;
+      };
+      mutations: {
+        saveEntity: FunctionReference<
+          "mutation",
+          "public",
+          { data: any; postTypeSlug: string },
+          any
+        >;
+        updateEntity: FunctionReference<
+          "mutation",
+          "public",
+          { data: any; id: string; postTypeSlug: string },
+          any
+        >;
+        deleteEntity: FunctionReference<
+          "mutation",
+          "public",
+          { id: string; postTypeSlug: string },
+          any
         >;
       };
     };
@@ -6917,24 +6806,6 @@ export type PublicApiType = {
           },
           any
         >;
-        checkContentAccess: FunctionReference<
-          "query",
-          "public",
-          {
-            contentId: string;
-            contentType:
-              | "course"
-              | "lesson"
-              | "topic"
-              | "download"
-              | "product"
-              | "quiz";
-            parentContentId?: string;
-            parentContentType?: "course" | "lesson";
-            userId: Id<"users">;
-          },
-          any
-        >;
       };
       mutations: {
         saveContentAccessRules: FunctionReference<
@@ -6949,13 +6820,13 @@ export type PublicApiType = {
               | "download"
               | "product"
               | "quiz";
-            excludedTags: any;
+            excludedTags: { mode: "all" | "some"; tagIds: Array<string> };
             isActive?: boolean;
             isPublic?: boolean;
             priority?: number;
-            requiredTags: any;
+            requiredTags: { mode: "all" | "some"; tagIds: Array<string> };
           },
-          Id<"contentAccessRules">
+          any
         >;
         clearContentAccessRules: FunctionReference<
           "mutation",
@@ -6969,24 +6840,6 @@ export type PublicApiType = {
               | "download"
               | "product"
               | "quiz";
-          },
-          boolean
-        >;
-        logContentAccess: FunctionReference<
-          "mutation",
-          "public",
-          {
-            accessGranted: boolean;
-            contentId: string;
-            contentType:
-              | "course"
-              | "lesson"
-              | "topic"
-              | "download"
-              | "product"
-              | "quiz";
-            reason?: string;
-            userId: Id<"users">;
           },
           any
         >;

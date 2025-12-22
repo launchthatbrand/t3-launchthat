@@ -73,6 +73,8 @@ const buildFrontendProgressSlot = (slug: string) => ({
   ),
 });
 
+const LMS_COMPONENT_TABLES = ["launchthat_lms:posts", "launchthat_lms:postsMeta"];
+
 export const createLmsPluginDefinition = ({
   CourseBuilderTab,
   CourseMembersTab,
@@ -99,6 +101,8 @@ export const createLmsPluginDefinition = ({
       isPublic: true,
       includeTimestamps: true,
       enableApi: true,
+      storageKind: "component",
+      storageTables: LMS_COMPONENT_TABLES,
       supports: {
         title: true,
         editor: true,
@@ -210,6 +214,8 @@ export const createLmsPluginDefinition = ({
       isPublic: true,
       includeTimestamps: true,
       enableApi: true,
+      storageKind: "component",
+      storageTables: LMS_COMPONENT_TABLES,
       supports: {
         title: true,
         editor: true,
@@ -258,6 +264,8 @@ export const createLmsPluginDefinition = ({
       isPublic: false,
       includeTimestamps: true,
       enableApi: true,
+      storageKind: "component",
+      storageTables: LMS_COMPONENT_TABLES,
       supports: {
         title: true,
         editor: true,
@@ -304,6 +312,8 @@ export const createLmsPluginDefinition = ({
       isPublic: false,
       includeTimestamps: true,
       enableApi: true,
+      storageKind: "component",
+      storageTables: LMS_COMPONENT_TABLES,
       supports: {
         title: true,
         editor: true,
@@ -370,6 +380,8 @@ export const createLmsPluginDefinition = ({
       isPublic: false,
       includeTimestamps: true,
       enableApi: false,
+      storageKind: "component",
+      storageTables: LMS_COMPONENT_TABLES,
       supports: {
         title: true,
         editor: true,

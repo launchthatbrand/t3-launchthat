@@ -160,6 +160,8 @@ import type * as plugins_entity_types from "../plugins/entity/types.js";
 import type * as plugins_lms_actions from "../plugins/lms/actions.js";
 import type * as plugins_lms_helpers from "../plugins/lms/helpers.js";
 import type * as plugins_lms_mutations from "../plugins/lms/mutations.js";
+import type * as plugins_lms_posts_mutations from "../plugins/lms/posts/mutations.js";
+import type * as plugins_lms_posts_queries from "../plugins/lms/posts/queries.js";
 import type * as plugins_lms_queries from "../plugins/lms/queries.js";
 import type * as plugins_socialfeed_crons from "../plugins/socialfeed/crons.js";
 import type * as plugins_socialfeed_lib_recommendationEngine from "../plugins/socialfeed/lib/recommendationEngine.js";
@@ -362,6 +364,8 @@ declare const fullApi: ApiFromModules<{
   "plugins/lms/actions": typeof plugins_lms_actions;
   "plugins/lms/helpers": typeof plugins_lms_helpers;
   "plugins/lms/mutations": typeof plugins_lms_mutations;
+  "plugins/lms/posts/mutations": typeof plugins_lms_posts_mutations;
+  "plugins/lms/posts/queries": typeof plugins_lms_posts_queries;
   "plugins/lms/queries": typeof plugins_lms_queries;
   "plugins/socialfeed/crons": typeof plugins_socialfeed_crons;
   "plugins/socialfeed/lib/recommendationEngine": typeof plugins_socialfeed_lib_recommendationEngine;
@@ -4658,6 +4662,275 @@ export declare const components: {
         { limit?: number; query: string },
         Array<{ _id: string; image?: string; name: string }>
       >;
+    };
+  };
+  launchthat_lms: {
+    contentAccess: {
+      mutations: {
+        clearContentAccessRules: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            contentId: string;
+            contentType:
+              | "course"
+              | "lesson"
+              | "topic"
+              | "download"
+              | "product"
+              | "quiz";
+          },
+          boolean
+        >;
+        saveContentAccessRules: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            contentId: string;
+            contentType:
+              | "course"
+              | "lesson"
+              | "topic"
+              | "download"
+              | "product"
+              | "quiz";
+            excludedTags: { mode: "all" | "some"; tagIds: Array<string> };
+            isActive?: boolean;
+            isPublic?: boolean;
+            priority?: number;
+            requiredTags: { mode: "all" | "some"; tagIds: Array<string> };
+          },
+          string
+        >;
+      };
+      queries: {
+        getContentAccessRules: FunctionReference<
+          "query",
+          "internal",
+          {
+            contentId: string;
+            contentType:
+              | "course"
+              | "lesson"
+              | "topic"
+              | "download"
+              | "product"
+              | "quiz";
+          },
+          {
+            contentId: string;
+            contentType:
+              | "course"
+              | "lesson"
+              | "topic"
+              | "download"
+              | "product"
+              | "quiz";
+            excludedTags: { mode: "all" | "some"; tagIds: Array<string> };
+            isActive?: boolean;
+            isPublic?: boolean;
+            priority?: number;
+            requiredTags: { mode: "all" | "some"; tagIds: Array<string> };
+          } | null
+        >;
+      };
+    };
+    posts: {
+      mutations: {
+        bulkUpdatePostStatus: FunctionReference<
+          "mutation",
+          "internal",
+          { ids: Array<string>; status: "published" | "draft" | "archived" },
+          Array<string>
+        >;
+        createPost: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            category?: string;
+            content?: string;
+            excerpt?: string;
+            featuredImage?: string;
+            meta?: Record<string, string | number | boolean | null>;
+            organizationId?: string;
+            postTypeSlug: string;
+            slug: string;
+            status: "published" | "draft" | "archived";
+            tags?: Array<string>;
+            title: string;
+          },
+          string
+        >;
+        deletePost: FunctionReference<
+          "mutation",
+          "internal",
+          { id: string },
+          null
+        >;
+        deletePostMetaKey: FunctionReference<
+          "mutation",
+          "internal",
+          { key: string; postId: string },
+          null
+        >;
+        updatePost: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            category?: string;
+            content?: string;
+            excerpt?: string;
+            featuredImage?: string;
+            id: string;
+            meta?: Record<string, string | number | boolean | null>;
+            slug?: string;
+            status?: "published" | "draft" | "archived";
+            tags?: Array<string>;
+            title?: string;
+          },
+          string
+        >;
+        updatePostStatus: FunctionReference<
+          "mutation",
+          "internal",
+          { id: string; status: "published" | "draft" | "archived" },
+          string
+        >;
+      };
+      queries: {
+        getAllPosts: FunctionReference<
+          "query",
+          "internal",
+          {
+            filters?: {
+              authorId?: string;
+              category?: string;
+              limit?: number;
+              postTypeSlug?: string;
+              status?: "published" | "draft" | "archived";
+            };
+            organizationId?: string;
+          },
+          any
+        >;
+        getPostById: FunctionReference<
+          "query",
+          "internal",
+          { id: string; organizationId?: string },
+          any
+        >;
+        getPostByIdInternal: FunctionReference<
+          "query",
+          "internal",
+          { id: string },
+          any
+        >;
+        getPostBySlug: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; slug: string },
+          any
+        >;
+        getPostCategories: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; postTypeSlug?: string },
+          any
+        >;
+        getPostMeta: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; postId: string },
+          any
+        >;
+        getPostMetaInternal: FunctionReference<
+          "query",
+          "internal",
+          { postId: string },
+          any
+        >;
+        getPostTags: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; postTypeSlug?: string },
+          any
+        >;
+        searchPosts: FunctionReference<
+          "query",
+          "internal",
+          {
+            limit?: number;
+            organizationId?: string;
+            postTypeSlug?: string;
+            searchTerm: string;
+          },
+          any
+        >;
+      };
+    };
+    progress: {
+      mutations: {
+        insertQuizAttempt: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            completedAt: number;
+            correctCount: number;
+            courseId?: string;
+            durationMs?: number;
+            gradedQuestions: number;
+            lessonId?: string;
+            organizationId?: string;
+            quizId: string;
+            responses: Array<{
+              answerText?: string;
+              isCorrect?: boolean;
+              questionId: string;
+              questionType:
+                | "singleChoice"
+                | "multipleChoice"
+                | "shortText"
+                | "longText";
+              selectedOptionIds?: Array<string>;
+            }>;
+            scorePercent: number;
+            totalQuestions: number;
+            userId: string;
+          },
+          any
+        >;
+        upsertCourseProgress: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            completedAt?: number;
+            completedLessonIds?: Array<string>;
+            completedTopicIds?: Array<string>;
+            courseId: string;
+            lastAccessedAt?: number;
+            lastAccessedId?: string;
+            lastAccessedType?: "lesson" | "topic";
+            organizationId?: string;
+            startedAt?: number;
+            userId: string;
+          },
+          any
+        >;
+      };
+      queries: {
+        getCourseProgressByUserCourse: FunctionReference<
+          "query",
+          "internal",
+          { courseId: string; userId: string },
+          any
+        >;
+        listQuizAttemptsByUserAndQuiz: FunctionReference<
+          "query",
+          "internal",
+          { quizId: string; userId: string },
+          any
+        >;
+      };
     };
   };
 };

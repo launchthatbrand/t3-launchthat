@@ -1,16 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-generic-constructors */
 import { v } from "convex/values";
 
 import type { Id } from "../../_generated/dataModel";
 import type { QueryCtx } from "../../_generated/server";
-import type {
-  LmsBuilderLesson,
-  LmsBuilderQuiz,
-  LmsBuilderTopic,
-  LmsCourseBuilderData,
-  LmsCourseStructureItem,
-  QuizQuestion,
-} from "../../../../../packages/launchthat-plugin-lms/src/types";
+import { components as generatedComponents } from "../../_generated/api";
 import { query } from "../../_generated/server";
 import { getAuthenticatedUserDocIdByToken } from "../../core/lib/permissions";
 import {
@@ -19,8 +12,10 @@ import {
   parseCourseStructureMeta,
 } from "./helpers";
 
-const builderLessonValidator = v.object({
-  _id: v.id("posts"),
+const components = generatedComponents as any;
+
+const builderLessonValidator: any = v.object({
+  _id: v.string(),
   title: v.string(),
   content: v.optional(v.string()),
   excerpt: v.optional(v.string()),
@@ -29,24 +24,24 @@ const builderLessonValidator = v.object({
   slug: v.optional(v.string()),
 });
 
-const builderTopicValidator = v.object({
-  _id: v.id("posts"),
+const builderTopicValidator: any = v.object({
+  _id: v.string(),
   title: v.string(),
   excerpt: v.optional(v.string()),
   content: v.optional(v.string()),
   slug: v.optional(v.string()),
-  lessonId: v.optional(v.id("posts")),
+  lessonId: v.optional(v.string()),
   order: v.optional(v.number()),
 });
 
-const builderQuizValidator = v.object({
-  _id: v.id("posts"),
+const builderQuizValidator: any = v.object({
+  _id: v.string(),
   title: v.string(),
   excerpt: v.optional(v.string()),
   content: v.optional(v.string()),
   slug: v.optional(v.string()),
-  lessonId: v.optional(v.id("posts")),
-  topicId: v.optional(v.id("posts")),
+  lessonId: v.optional(v.string()),
+  topicId: v.optional(v.string()),
   order: v.optional(v.number()),
   isFinal: v.optional(v.boolean()),
 });
@@ -57,10 +52,10 @@ const quizQuestionOptionValidator: any = v.object({
 });
 
 const quizQuestionValidator: any = v.object({
-  _id: v.id("posts"),
+  _id: v.string(),
   title: v.string(),
   prompt: v.string(),
-  quizId: v.id("posts"),
+  quizId: v.string(),
   questionType: v.union(
     v.literal("singleChoice"),
     v.literal("multipleChoice"),
@@ -73,8 +68,8 @@ const quizQuestionValidator: any = v.object({
   order: v.number(),
 });
 
-const quizAttemptSummaryValidator = v.object({
-  _id: v.id("quizAttempts"),
+const quizAttemptSummaryValidator: any = v.object({
+  _id: v.string(),
   scorePercent: v.number(),
   totalQuestions: v.number(),
   gradedQuestions: v.number(),
@@ -83,14 +78,14 @@ const quizAttemptSummaryValidator = v.object({
   durationMs: v.optional(v.number()),
 });
 
-const courseStructureValidator = v.array(
+const courseStructureValidator: any = v.array(
   v.object({
-    lessonId: v.id("posts"),
+    lessonId: v.string(),
   }),
 );
 
-const courseSummaryValidator = v.object({
-  _id: v.id("posts"),
+const courseSummaryValidator: any = v.object({
+  _id: v.string(),
   title: v.string(),
   slug: v.optional(v.string()),
   status: v.optional(v.string()),
@@ -101,40 +96,34 @@ export const listCourses = query({
     organizationId: v.optional(v.id("organizations")),
   },
   returns: v.array(courseSummaryValidator),
-  handler: async (ctx, args) => {
-    let queryBuilder = ctx.db
-      .query("posts")
-      .withIndex("by_postTypeSlug", (q) => q.eq("postTypeSlug", "courses"));
-
-    if (args.organizationId) {
-      queryBuilder = queryBuilder.filter((q) =>
-        q.eq(q.field("organizationId"), args.organizationId),
-      );
-    } else {
-      queryBuilder = queryBuilder.filter((q) =>
-        q.eq(q.field("organizationId"), undefined),
-      );
-    }
-
-    const courses = await queryBuilder.collect();
-    return courses.map((course) => ({
-      _id: course._id,
-      title: course.title ?? "Untitled course",
-      slug: course.slug ?? undefined,
-      status: course.status ?? undefined,
+  handler: async (ctx: any, args: any) => {
+    const courses = (await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getAllPosts,
+      {
+        organizationId: args.organizationId
+          ? String(args.organizationId)
+          : undefined,
+        filters: { postTypeSlug: "courses", limit: 200 },
+      },
+    )) as any[];
+    return (courses ?? []).map((course) => ({
+      _id: String(course._id),
+      title: (course.title ?? "Untitled course") as string,
+      slug: (course.slug ?? undefined) as string | undefined,
+      status: (course.status ?? undefined) as string | undefined,
     }));
   },
 });
 
 export const getCourseStructureWithItems = query({
   args: {
-    courseId: v.optional(v.id("posts")),
+    courseId: v.optional(v.string()),
     courseSlug: v.optional(v.string()),
     organizationId: v.optional(v.id("organizations")),
   },
   returns: v.object({
     course: v.object({
-      _id: v.id("posts"),
+      _id: v.string(),
       slug: v.optional(v.string()),
       title: v.string(),
       status: v.optional(v.string()),
@@ -144,12 +133,13 @@ export const getCourseStructureWithItems = query({
     attachedTopics: v.array(builderTopicValidator),
     attachedQuizzes: v.array(builderQuizValidator),
   }),
-  handler: async (ctx, args): Promise<LmsCourseBuilderData> => {
+  handler: async (ctx: any, args: any): Promise<any> => {
     if (!args.courseId && !args.courseSlug) {
       throw new Error("courseId or courseSlug is required");
     }
 
     const course = await resolveCourse(ctx, args);
+    console.log("[getCourseStructureWithItems] Course:", course);
     const organizationId = course.organizationId ?? undefined;
     if (
       args.organizationId &&
@@ -160,7 +150,7 @@ export const getCourseStructureWithItems = query({
 
     const courseMeta = await getPostMetaMap(ctx, course._id);
     const structureIds = parseCourseStructureMeta(
-      courseMeta.get("courseStructure"),
+      courseMeta.get("courseStructure") ?? null,
     );
 
     const attachedLessons = await fetchLessonsForCourse(
@@ -185,9 +175,7 @@ export const getCourseStructureWithItems = query({
       course._id,
     );
 
-    const structure: LmsCourseStructureItem[] = structureIds.map(
-      (lessonId) => ({ lessonId }),
-    );
+    const structure: any[] = structureIds.map((lessonId) => ({ lessonId }));
 
     return {
       course: {
@@ -206,38 +194,39 @@ export const getCourseStructureWithItems = query({
 
 export const getCourseProgressForViewer = query({
   args: {
-    courseId: v.id("posts"),
+    courseId: v.string(),
     organizationId: v.optional(v.id("organizations")),
   },
   returns: v.union(
     v.object({
-      courseId: v.id("posts"),
+      courseId: v.string(),
       userId: v.id("users"),
-      completedLessonIds: v.array(v.id("posts")),
-      completedTopicIds: v.array(v.id("posts")),
+      completedLessonIds: v.array(v.string()),
+      completedTopicIds: v.array(v.string()),
       startedAt: v.optional(v.number()),
       completedAt: v.optional(v.number()),
       updatedAt: v.optional(v.number()),
       lastAccessedAt: v.optional(v.number()),
-      lastAccessedId: v.optional(v.id("posts")),
+      lastAccessedId: v.optional(v.string()),
       lastAccessedType: v.optional(
         v.union(v.literal("lesson"), v.literal("topic")),
       ),
     }),
     v.null(),
   ),
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       return null;
     }
     const userId = await getAuthenticatedUserDocIdByToken(ctx);
-    const progress = await ctx.db
-      .query("courseProgress")
-      .withIndex("by_user_course", (q) =>
-        q.eq("userId", userId).eq("courseId", args.courseId),
-      )
-      .unique();
+    const progress = await ctx.runQuery(
+      components.launchthat_lms.progress.queries.getCourseProgressByUserCourse,
+      {
+        userId: String(userId),
+        courseId: String(args.courseId),
+      },
+    );
     if (!progress) {
       return {
         courseId: args.courseId,
@@ -255,44 +244,66 @@ export const getCourseProgressForViewer = query({
     if (
       args.organizationId &&
       progress.organizationId &&
-      progress.organizationId !== args.organizationId
+      progress.organizationId !== String(args.organizationId)
     ) {
       return null;
     }
     return {
-      courseId: progress.courseId,
-      userId: progress.userId,
-      completedLessonIds: progress.completedLessonIds,
-      completedTopicIds: progress.completedTopicIds,
-      startedAt: progress.startedAt,
-      completedAt: progress.completedAt,
-      updatedAt: progress.updatedAt,
-      lastAccessedAt: progress.lastAccessedAt,
-      lastAccessedId: progress.lastAccessedId,
-      lastAccessedType: progress.lastAccessedType,
+      courseId: progress.courseId as Id<"posts">,
+      userId,
+      completedLessonIds: (progress.completedLessonIds ?? []) as Id<"posts">[],
+      completedTopicIds: (progress.completedTopicIds ?? []) as Id<"posts">[],
+      startedAt: progress.startedAt ?? undefined,
+      completedAt: progress.completedAt ?? undefined,
+      updatedAt: progress.updatedAt ?? undefined,
+      lastAccessedAt: progress.lastAccessedAt ?? undefined,
+      lastAccessedId: progress.lastAccessedId as Id<"posts"> | undefined,
+      lastAccessedType: progress.lastAccessedType ?? undefined,
     };
   },
 });
 
 const resolveCourse = async (
   ctx: QueryCtx,
-  args: { courseId?: Id<"posts">; courseSlug?: string },
+  args: {
+    courseId?: string;
+    courseSlug?: string;
+    organizationId?: Id<"organizations">;
+  },
 ) => {
   if (args.courseId) {
-    const course = await ctx.db.get(args.courseId);
-    if (course && course.postTypeSlug === "courses") {
-      return course;
+    try {
+      const course = await ctx.runQuery(
+        components.launchthat_lms.posts.queries.getPostByIdInternal,
+        { id: args.courseId as unknown as string },
+      );
+      if (course && course.postTypeSlug === "courses") {
+        return course;
+      }
+    } catch (error) {
+      // If the caller passed an ID from a different table (e.g. contentAccessRules),
+      // ignore and fall back to slug-based resolution.
+      console.warn(
+        "Failed to resolve course by courseId, falling back to slug",
+        {
+          courseId: args.courseId,
+          error,
+        },
+      );
     }
   }
 
   if (args.courseSlug) {
-    const course = await ctx.db
-      .query("posts")
-      .withIndex("by_slug", (q) => q.eq("slug", args.courseSlug as string))
-      .first();
-    if (course && course.postTypeSlug === "courses") {
-      return course;
-    }
+    const course = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostBySlug,
+      {
+        slug: args.courseSlug,
+        organizationId: args.organizationId
+          ? String(args.organizationId)
+          : undefined,
+      },
+    );
+    if (course && course.postTypeSlug === "courses") return course;
   }
 
   throw new Error("Course not found");
@@ -300,25 +311,28 @@ const resolveCourse = async (
 
 export const getAvailableLessons = query({
   args: {
-    courseId: v.id("posts"),
+    courseId: v.string(),
     organizationId: v.optional(v.id("organizations")),
   },
   returns: v.array(builderLessonValidator),
-  handler: async (ctx, args) => {
-    const course = await ctx.db.get(args.courseId);
+  handler: async (ctx: any, args: any) => {
+    const course = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: args.courseId as unknown as string },
+    );
     if (!course || course.postTypeSlug !== "courses") {
       throw new Error("Course not found");
     }
     const organizationId = course.organizationId ?? undefined;
     if (
       args.organizationId &&
-      organizationId !== (args.organizationId ?? undefined)
+      organizationId !== String(args.organizationId ?? "")
     ) {
       throw new Error("Course does not belong to this organization");
     }
 
     const lessons = await fetchLessonsByType(ctx, "lessons", organizationId);
-    const available: LmsBuilderLesson[] = [];
+    const available: any[] = [];
     for (const lesson of lessons) {
       const meta = await getPostMetaMap(ctx, lesson._id);
       const metaCourseId = meta.get("courseId");
@@ -339,7 +353,7 @@ export const getAvailableTopics = query({
     organizationId: v.optional(v.id("organizations")),
   },
   returns: v.array(builderTopicValidator),
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const topics = await fetchTopicsByType(
       ctx,
       new Set<Id<"posts">>(),
@@ -354,7 +368,7 @@ export const getAvailableQuizzes = query({
     organizationId: v.optional(v.id("organizations")),
   },
   returns: v.array(builderQuizValidator),
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const quizzes = await fetchQuizzesByType(
       ctx,
       new Set<Id<"posts">>(),
@@ -379,20 +393,23 @@ export const getQuizBuilderState = query({
     }),
     questions: v.array(quizQuestionValidator),
   }),
-  handler: async (ctx, args) => {
-    const quiz = await ctx.db.get(args.quizId);
+  handler: async (ctx: any, args: any) => {
+    const quiz = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: args.quizId as unknown as string },
+    );
     if (!quiz || quiz.postTypeSlug !== "quizzes") {
       throw new Error("Quiz not found");
     }
     const quizOrganizationId = quiz.organizationId ?? undefined;
     if (
       args.organizationId &&
-      quizOrganizationId !== (args.organizationId ?? undefined)
+      quizOrganizationId !== String(args.organizationId ?? "")
     ) {
       throw new Error("Quiz does not belong to this organization");
     }
 
-    const questions: QuizQuestion[] = await fetchQuizQuestionsForQuiz(
+    const questions: any[] = await fetchQuizQuestionsForQuiz(
       ctx,
       args.quizId,
       quizOrganizationId,
@@ -415,30 +432,33 @@ export const getQuizAttemptsForViewer = query({
     quizId: v.id("posts"),
   },
   returns: v.array(quizAttemptSummaryValidator),
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       return [];
     }
 
     const userId = await getAuthenticatedUserDocIdByToken(ctx);
-    const attempts = await ctx.db
-      .query("quizAttempts")
-      .withIndex("by_quiz_user", (q) =>
-        q.eq("quizId", args.quizId).eq("userId", userId),
-      )
-      .order("desc")
-      .take(10);
+    const attempts = (await ctx.runQuery(
+      components.launchthat_lms.progress.queries.listQuizAttemptsByUserAndQuiz,
+      {
+        userId: String(userId),
+        quizId: String(args.quizId),
+      },
+    )) as any[];
 
-    return attempts.map((attempt) => ({
-      _id: attempt._id,
-      scorePercent: attempt.scorePercent,
-      totalQuestions: attempt.totalQuestions,
-      gradedQuestions: attempt.gradedQuestions,
-      correctCount: attempt.correctCount,
-      completedAt: attempt.completedAt,
-      durationMs: attempt.durationMs ?? undefined,
-    }));
+    return (attempts ?? [])
+      .sort((a: any, b: any) => (b.completedAt ?? 0) - (a.completedAt ?? 0))
+      .slice(0, 10)
+      .map((attempt) => ({
+        _id: String(attempt._id),
+        scorePercent: attempt.scorePercent as number,
+        totalQuestions: attempt.totalQuestions as number,
+        gradedQuestions: attempt.gradedQuestions as number,
+        correctCount: attempt.correctCount as number,
+        completedAt: attempt.completedAt as number,
+        durationMs: (attempt.durationMs ?? undefined) as number | undefined,
+      }));
   },
 });
 
@@ -446,31 +466,23 @@ async function fetchLessonsByType(
   ctx: QueryCtx,
   postTypeSlug: string,
   organizationId: Id<"organizations"> | undefined,
-): Promise<LmsBuilderLesson[]> {
-  let queryBuilder = ctx.db
-    .query("posts")
-    .withIndex("by_postTypeSlug", (q) => q.eq("postTypeSlug", postTypeSlug));
-
-  if (organizationId) {
-    queryBuilder = queryBuilder.filter((q) =>
-      q.eq(q.field("organizationId"), organizationId),
-    );
-  } else {
-    queryBuilder = queryBuilder.filter((q) =>
-      q.eq(q.field("organizationId"), undefined),
-    );
-  }
-
-  const posts = await queryBuilder.collect();
-  const lessons: LmsBuilderLesson[] = [];
+): Promise<any[]> {
+  const posts = (await ctx.runQuery(
+    components.launchthat_lms.posts.queries.getAllPosts,
+    {
+      organizationId: organizationId ? String(organizationId) : undefined,
+      filters: { postTypeSlug },
+    },
+  )) as any[];
+  const lessons: any[] = [];
   for (const post of posts) {
     lessons.push({
-      _id: post._id,
-      title: post.title,
-      content: post.content ?? undefined,
-      excerpt: post.excerpt ?? undefined,
-      status: post.status ?? undefined,
-      slug: post.slug ?? undefined,
+      _id: post._id as Id<"posts">,
+      title: (post.title ?? "Untitled") as string,
+      content: (post.content ?? undefined) as string | undefined,
+      excerpt: (post.excerpt ?? undefined) as string | undefined,
+      status: (post.status ?? undefined) as string | undefined,
+      slug: (post.slug ?? undefined) as string | undefined,
       order: undefined,
     });
   }
@@ -482,9 +494,9 @@ async function fetchLessonsForCourse(
   courseId: Id<"posts">,
   organizationId: Id<"organizations"> | undefined,
   structureIds: Id<"posts">[],
-): Promise<LmsBuilderLesson[]> {
+): Promise<any[]> {
   const lessons = await fetchLessonsByType(ctx, "lessons", organizationId);
-  const attached: LmsBuilderLesson[] = [];
+  const attached: any[] = [];
   for (const lesson of lessons) {
     const meta = await getPostMetaMap(ctx, lesson._id);
     const metaCourseId = meta.get("courseId");
@@ -517,7 +529,7 @@ async function fetchTopicsForLessons(
   ctx: QueryCtx,
   lessonIds: Set<Id<"posts">>,
   organizationId: Id<"organizations"> | undefined,
-): Promise<LmsBuilderTopic[]> {
+): Promise<any[]> {
   if (lessonIds.size === 0) {
     return [];
   }
@@ -528,23 +540,15 @@ async function fetchTopicsByType(
   ctx: QueryCtx,
   lessonIds: Set<Id<"posts">>,
   organizationId: Id<"organizations"> | undefined,
-): Promise<LmsBuilderTopic[]> {
-  let queryBuilder = ctx.db
-    .query("posts")
-    .withIndex("by_postTypeSlug", (q) => q.eq("postTypeSlug", "topics"));
-
-  if (organizationId) {
-    queryBuilder = queryBuilder.filter((q) =>
-      q.eq(q.field("organizationId"), organizationId),
-    );
-  } else {
-    queryBuilder = queryBuilder.filter((q) =>
-      q.eq(q.field("organizationId"), undefined),
-    );
-  }
-
-  const topics = await queryBuilder.collect();
-  const attached: LmsBuilderTopic[] = [];
+): Promise<any[]> {
+  const topics = (await ctx.runQuery(
+    components.launchthat_lms.posts.queries.getAllPosts,
+    {
+      organizationId: organizationId ? String(organizationId) : undefined,
+      filters: { postTypeSlug: "topics" },
+    },
+  )) as any[];
+  const attached: any[] = [];
   for (const topic of topics) {
     const meta = await getPostMetaMap(ctx, topic._id);
     const lessonId = meta.get("lessonId");
@@ -554,11 +558,11 @@ async function fetchTopicsByType(
       (lessonIds.size === 0 || lessonIds.has(lessonId as Id<"posts">))
     ) {
       attached.push({
-        _id: topic._id,
-        title: topic.title,
-        excerpt: topic.excerpt ?? undefined,
-        content: topic.content ?? undefined,
-        slug: topic.slug ?? undefined,
+        _id: topic._id as Id<"posts">,
+        title: (topic.title ?? "Untitled") as string,
+        excerpt: (topic.excerpt ?? undefined) as string | undefined,
+        content: (topic.content ?? undefined) as string | undefined,
+        slug: (topic.slug ?? undefined) as string | undefined,
         lessonId: lessonId as Id<"posts">,
         order:
           typeof meta.get("order") === "number"
@@ -567,11 +571,11 @@ async function fetchTopicsByType(
       });
     } else if (lessonIds.size === 0 && !lessonId) {
       attached.push({
-        _id: topic._id,
-        title: topic.title,
-        excerpt: topic.excerpt ?? undefined,
-        content: topic.content ?? undefined,
-        slug: topic.slug ?? undefined,
+        _id: topic._id as Id<"posts">,
+        title: (topic.title ?? "Untitled") as string,
+        excerpt: (topic.excerpt ?? undefined) as string | undefined,
+        content: (topic.content ?? undefined) as string | undefined,
+        slug: (topic.slug ?? undefined) as string | undefined,
         lessonId: undefined,
         order: undefined,
       });
@@ -585,7 +589,7 @@ async function fetchQuizzesForLessons(
   lessonIds: Set<Id<"posts">>,
   organizationId: Id<"organizations"> | undefined,
   courseId?: Id<"posts">,
-): Promise<LmsBuilderQuiz[]> {
+): Promise<any[]> {
   if (lessonIds.size === 0) {
     return [];
   }
@@ -597,23 +601,15 @@ async function fetchQuizzesByType(
   lessonIds: Set<Id<"posts">>,
   organizationId: Id<"organizations"> | undefined,
   courseId?: Id<"posts">,
-): Promise<LmsBuilderQuiz[]> {
-  let queryBuilder = ctx.db
-    .query("posts")
-    .withIndex("by_postTypeSlug", (q) => q.eq("postTypeSlug", "quizzes"));
-
-  if (organizationId) {
-    queryBuilder = queryBuilder.filter((q) =>
-      q.eq(q.field("organizationId"), organizationId),
-    );
-  } else {
-    queryBuilder = queryBuilder.filter((q) =>
-      q.eq(q.field("organizationId"), undefined),
-    );
-  }
-
-  const quizzes = await queryBuilder.collect();
-  const attached: LmsBuilderQuiz[] = [];
+): Promise<any[]> {
+  const quizzes = (await ctx.runQuery(
+    components.launchthat_lms.posts.queries.getAllPosts,
+    {
+      organizationId: organizationId ? String(organizationId) : undefined,
+      filters: { postTypeSlug: "quizzes" },
+    },
+  )) as any[];
+  const attached: any[] = [];
   for (const quiz of quizzes) {
     const meta = await getPostMetaMap(ctx, quiz._id);
     const lessonId = meta.get("lessonId");
@@ -628,11 +624,11 @@ async function fetchQuizzesByType(
 
     if (lessonMatches || courseMatches) {
       attached.push({
-        _id: quiz._id,
-        title: quiz.title,
-        excerpt: quiz.excerpt ?? undefined,
-        content: quiz.content ?? undefined,
-        slug: quiz.slug ?? undefined,
+        _id: quiz._id as Id<"posts">,
+        title: (quiz.title ?? "Untitled") as string,
+        excerpt: (quiz.excerpt ?? undefined) as string | undefined,
+        content: (quiz.content ?? undefined) as string | undefined,
+        slug: (quiz.slug ?? undefined) as string | undefined,
         lessonId:
           typeof lessonId === "string" ? (lessonId as Id<"posts">) : undefined,
         topicId:

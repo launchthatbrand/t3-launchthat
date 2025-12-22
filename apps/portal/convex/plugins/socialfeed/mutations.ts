@@ -253,7 +253,7 @@ export const unfollowTopic = mutation({
     return await ctx.runMutation(socialfeedMutations.unfollowTopic, {
       userId: args.userId as unknown as string,
       topicId: args.topicId as unknown as Id<"hashtags">,
-    });
+      });
   },
 });
 

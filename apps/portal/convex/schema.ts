@@ -5,7 +5,6 @@ import { coreSchema } from "./core/schema";
 import { usersSchema } from "./core/users/schema";
 import { ecommerceSchema } from "./ecommerce/schema";
 import { integrationsSchema } from "./integrations/schema";
-import { lmsSchema } from "./lms/schema";
 // Add integrations schema
 // import { integrationsSchema } from "./integrations/schema";
 import { notificationsSchema } from "./notifications/schema";
@@ -30,9 +29,6 @@ export default defineSchema({
   // Social Feed tables
   // NOTE: socialfeed tables now live inside the mounted `launchthat_socialfeed` Convex Component
   // and are no longer part of the portal's main schema.
-
-  // LMS tables
-  ...lmsSchema,
 
   // Users tables
   ...usersSchema,

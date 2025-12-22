@@ -233,7 +233,11 @@ export default function CourseSidebar() {
         </SidebarMenuButton>
       </SidebarGroup>
 
-      <CourseNav courseId={courseId} courseSlug={slugOrId} />
+      <CourseNav
+        courseId={courseId}
+        courseSlug={slugOrId}
+        organizationId={activeOrganizationId}
+      />
     </Sidebar>
   );
 }

@@ -18,15 +18,15 @@ export const contentAccessRulesTable = defineTable({
   priority: v.optional(v.number()),
   requiredTags: v.object({
     mode: v.union(v.literal("all"), v.literal("some")),
-    tagIds: v.array(v.id("marketingTags")),
+    tagIds: v.array(v.string()),
   }),
   excludedTags: v.object({
     mode: v.union(v.literal("all"), v.literal("some")),
-    tagIds: v.array(v.id("marketingTags")),
+    tagIds: v.array(v.string()),
   }),
   createdAt: v.optional(v.number()),
   updatedAt: v.optional(v.number()),
-  createdBy: v.optional(v.id("users")),
+  createdBy: v.optional(v.string()),
 })
   .index("by_content", ["contentType", "contentId"])
   .index("by_contentType", ["contentType"])
@@ -34,14 +34,16 @@ export const contentAccessRulesTable = defineTable({
   .index("by_priority", ["priority"]);
 
 export const contentAccessLogTable = defineTable({
-  userId: v.id("users"),
+  userId: v.string(),
   contentType: contentTypeValidator,
   contentId: v.string(),
   accessGranted: v.boolean(),
   reason: v.optional(v.string()),
-  userTags: v.optional(v.array(v.id("marketingTags"))),
+  userTags: v.optional(v.array(v.string())),
   accessedAt: v.number(),
 })
   .index("by_user", ["userId"])
   .index("by_content", ["contentType", "contentId"])
   .index("by_time", ["accessedAt"]);
+
+

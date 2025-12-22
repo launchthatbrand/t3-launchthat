@@ -162,6 +162,7 @@ export function LmsCourseProvider({
     : undefined;
 
   const courseId = deriveCourseId(resolvedPostTypeSlug, postRecord, metaRecord);
+  console.log("[LmsCourseProvider] Course ID:", courseId);
   const courseSlug = deriveCourseSlug(
     resolvedPostTypeSlug,
     postRecord,

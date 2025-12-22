@@ -23,17 +23,17 @@ export function PostCommentsSection(props: PostCommentsSectionProps) {
 
 function PostCommentsSectionInner({ postId }: PostCommentsSectionProps) {
   return (
-    <section className="relative overflow-hidden rounded-lg bg-transparent p-px">
+    <section className="relative overflow-hidden rounded-2xl bg-transparent p-px shadow-sm">
       <div
-        className="pointer-events-none absolute inset-0"
-        style={{ borderRadius: "calc(var(--radius) * 1.5)" }}
+        className="pointer-events-none absolute inset-0 rounded-2xl"
+        // style={{ borderRadius: "calc(var(--radius) * 4)" }}
       >
         <MovingBorder duration={10000} rx="18" ry="18">
           <div className="h-20 w-20 bg-[radial-gradient(#0ea5e9_40%,transparent_60%)] opacity-[0.7]" />
         </MovingBorder>
       </div>
 
-      <div className="bg-card relative overflow-hidden rounded-lg border p-6">
+      <div className="bg-card relative overflow-hidden rounded-2xl border p-6">
         <div className="pointer-events-none relative z-10">
           <div className="pointer-events-auto">
             <CommentThread postId={postId} postType="post" initialExpanded />

@@ -1,6 +1,10 @@
-import { ConvexError, v } from "convex/values";
+import { v } from "convex/values";
 
+import { components } from "../../_generated/api";
 import { mutation } from "../../_generated/server";
+
+const lmsContentAccessMutations =
+  components.launchthat_lms.contentAccess.mutations;
 
 const contentTypeValidator = v.union(
   v.literal("course"),
@@ -11,6 +15,11 @@ const contentTypeValidator = v.union(
   v.literal("quiz"),
 );
 
+const tagRuleValidator = v.object({
+  mode: v.union(v.literal("all"), v.literal("some")),
+  tagIds: v.array(v.string()),
+});
+
 export const saveContentAccessRules = mutation({
   args: {
     contentType: contentTypeValidator,
@@ -18,59 +27,12 @@ export const saveContentAccessRules = mutation({
     isPublic: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
     priority: v.optional(v.number()),
-    requiredTags: v.any(),
-    excludedTags: v.any(),
+    requiredTags: tagRuleValidator,
+    excludedTags: tagRuleValidator,
   },
-  returns: v.id("contentAccessRules"),
+  returns: v.any(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .first();
-
-    if (!user) {
-      throw new ConvexError("User not found");
-    }
-
-    const now = Date.now();
-    const existing = await ctx.db
-      .query("contentAccessRules")
-      .withIndex("by_content", (q) =>
-        q.eq("contentType", args.contentType).eq("contentId", args.contentId),
-      )
-      .first();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        isPublic: args.isPublic,
-        isActive: args.isActive ?? true,
-        priority: args.priority ?? 1,
-        requiredTags: args.requiredTags,
-        excludedTags: args.excludedTags,
-        updatedAt: now,
-      });
-      return existing._id;
-    }
-
-    return await ctx.db.insert("contentAccessRules", {
-      contentType: args.contentType,
-      contentId: args.contentId,
-      isPublic: args.isPublic,
-      isActive: args.isActive ?? true,
-      priority: args.priority ?? 1,
-      requiredTags: args.requiredTags,
-      excludedTags: args.excludedTags,
-      createdAt: now,
-      updatedAt: now,
-      createdBy: user._id,
-    });
+    return await ctx.runMutation(lmsContentAccessMutations.saveContentAccessRules, args);
   },
 });
 
@@ -79,40 +41,10 @@ export const clearContentAccessRules = mutation({
     contentType: contentTypeValidator,
     contentId: v.string(),
   },
-  returns: v.boolean(),
+  returns: v.any(),
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("contentAccessRules")
-      .withIndex("by_content", (q) =>
-        q.eq("contentType", args.contentType).eq("contentId", args.contentId),
-      )
-      .first();
-
-    if (existing) {
-      await ctx.db.delete(existing._id);
-      return true;
-    }
-    return false;
+    return await ctx.runMutation(lmsContentAccessMutations.clearContentAccessRules, args);
   },
 });
 
-export const logContentAccess = mutation({
-  args: {
-    userId: v.id("users"),
-    contentType: contentTypeValidator,
-    contentId: v.string(),
-    accessGranted: v.boolean(),
-    reason: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("contentAccessLog", {
-      userId: args.userId,
-      contentType: args.contentType,
-      contentId: args.contentId,
-      accessGranted: args.accessGranted,
-      reason: args.reason,
-      accessedAt: Date.now(),
-      userTags: [],
-    });
-  },
-});
+
