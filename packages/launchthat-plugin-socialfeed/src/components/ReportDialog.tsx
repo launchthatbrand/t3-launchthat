@@ -105,7 +105,6 @@ export function ReportDialog({
       // This is a temporary placeholder that uses the comment system
       // In a real implementation, this would call a dedicated reporting API
       await reportContent({
-        userId: userId as Id<"users">,
         feedItemId: contentId as Id<"feedItems">,
         content: `REPORT: ${category} - ${description}`,
       });
