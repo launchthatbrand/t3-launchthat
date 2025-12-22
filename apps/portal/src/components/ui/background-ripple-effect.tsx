@@ -1,34 +1,42 @@
 "use client";
+
 import React, { useMemo, useRef, useState } from "react";
+
 import { cn } from "~/lib/utils";
 
 export const BackgroundRippleEffect = ({
   rows = 8,
   cols = 27,
   cellSize = 56,
+  interactive = true,
+  className,
 }: {
   rows?: number;
   cols?: number;
   cellSize?: number;
+  interactive?: boolean;
+  className?: string;
 }) => {
   const [clickedCell, setClickedCell] = useState<{
     row: number;
     col: number;
   } | null>(null);
   const [rippleKey, setRippleKey] = useState(0);
-  const ref = useRef<any>(null);
+  const ref = useRef<HTMLDivElement | null>(null);
 
   return (
     <div
       ref={ref}
       className={cn(
         "absolute inset-0 h-full w-full",
+        !interactive && "pointer-events-none",
         "[--cell-border-color:var(--color-neutral-300)] [--cell-fill-color:var(--color-neutral-100)] [--cell-shadow-color:var(--color-neutral-500)]",
         "dark:[--cell-border-color:var(--color-neutral-700)] dark:[--cell-fill-color:var(--color-neutral-900)] dark:[--cell-shadow-color:var(--color-neutral-800)]",
+        className,
       )}
     >
       <div className="relative h-auto w-auto overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 z-[2] h-full w-full overflow-hidden" />
+        <div className="pointer-events-none absolute inset-0 h-full w-full overflow-hidden" />
         <DivGrid
           key={`base-${rippleKey}`}
           className="mask-radial-from-20% mask-radial-at-top opacity-600"
@@ -38,18 +46,22 @@ export const BackgroundRippleEffect = ({
           borderColor="var(--cell-border-color)"
           fillColor="var(--cell-fill-color)"
           clickedCell={clickedCell}
-          onCellClick={(row, col) => {
-            setClickedCell({ row, col });
-            setRippleKey((k) => k + 1);
-          }}
-          interactive
+          onCellClick={
+            interactive
+              ? (row, col) => {
+                  setClickedCell({ row, col });
+                  setRippleKey((k) => k + 1);
+                }
+              : undefined
+          }
+          interactive={interactive}
         />
       </div>
     </div>
   );
 };
 
-type DivGridProps = {
+interface DivGridProps {
   className?: string;
   rows: number;
   cols: number;
@@ -59,7 +71,7 @@ type DivGridProps = {
   clickedCell: { row: number; col: number } | null;
   onCellClick?: (row: number, col: number) => void;
   interactive?: boolean;
-};
+}
 
 type CellStyle = React.CSSProperties & {
   ["--delay"]?: string;
@@ -74,7 +86,7 @@ const DivGrid = ({
   borderColor = "#3f3f46",
   fillColor = "rgba(14,165,233,0.3)",
   clickedCell = null,
-  onCellClick = () => {},
+  onCellClick,
   interactive = true,
 }: DivGridProps) => {
   const cells = useMemo(
@@ -92,7 +104,7 @@ const DivGrid = ({
   };
 
   return (
-    <div className={cn("relative z-[3]", className)} style={gridStyle}>
+    <div className={cn("relative z-3", className)} style={gridStyle}>
       {cells.map((idx) => {
         const rowIdx = Math.floor(idx / cols);
         const colIdx = idx % cols;
@@ -114,7 +126,7 @@ const DivGrid = ({
             key={idx}
             className={cn(
               "cell relative border-[0.5px] opacity-40 transition-opacity duration-150 will-change-transform hover:opacity-80 dark:shadow-[0px_0px_40px_1px_var(--cell-shadow-color)_inset]",
-              clickedCell && "animate-cell-ripple [animation-fill-mode:none]",
+              clickedCell && "animate-cell-ripple fill-mode-[none]",
               !interactive && "pointer-events-none",
             )}
             style={{

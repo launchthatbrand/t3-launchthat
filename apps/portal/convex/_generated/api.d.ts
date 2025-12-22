@@ -16,8 +16,6 @@ import type * as core_accessControl_types from "../core/accessControl/types.js";
 import type * as core_auditLog_queries from "../core/auditLog/queries.js";
 import type * as core_categories_mutations from "../core/categories/mutations.js";
 import type * as core_categories_queries from "../core/categories/queries.js";
-import type * as core_comments_mutations from "../core/comments/mutations.js";
-import type * as core_comments_queries from "../core/comments/queries.js";
 import type * as core_crm_contacts_mutations from "../core/crm/contacts/mutations.js";
 import type * as core_crm_contacts_queries from "../core/crm/contacts/queries.js";
 import type * as core_crm_queries from "../core/crm/queries.js";
@@ -220,8 +218,6 @@ declare const fullApi: ApiFromModules<{
   "core/auditLog/queries": typeof core_auditLog_queries;
   "core/categories/mutations": typeof core_categories_mutations;
   "core/categories/queries": typeof core_categories_queries;
-  "core/comments/mutations": typeof core_comments_mutations;
-  "core/comments/queries": typeof core_comments_queries;
   "core/crm/contacts/mutations": typeof core_crm_contacts_mutations;
   "core/crm/contacts/queries": typeof core_crm_contacts_queries;
   "core/crm/queries": typeof core_crm_queries;
@@ -3990,6 +3986,677 @@ export declare const components: {
           organizationId: string;
         },
         any
+      >;
+    };
+  };
+  launchthat_socialfeed: {
+    mutations: {
+      addComment: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          content: string;
+          feedItemId?: string;
+          mediaUrls?: Array<string>;
+          parentCommentId?: string;
+          parentId?: string;
+          parentType?:
+            | "feedItem"
+            | "course"
+            | "lesson"
+            | "topic"
+            | "quiz"
+            | "post"
+            | "download"
+            | "helpdeskArticle";
+          userId: string;
+        },
+        string
+      >;
+      addReaction: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          feedItemId: string;
+          reactionType:
+            | "like"
+            | "love"
+            | "celebrate"
+            | "support"
+            | "insightful"
+            | "curious";
+          userId: string;
+        },
+        string
+      >;
+      createOrUpdateTopic: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          category?: string;
+          coverImage?: string;
+          description?: string;
+          tag: string;
+        },
+        string
+      >;
+      createPost: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          content: string;
+          creatorId: string;
+          mediaUrls?: Array<string>;
+          moduleId?: string;
+          moduleType?: "blog" | "course" | "group" | "event";
+          visibility: "public" | "private" | "group";
+        },
+        string
+      >;
+      deleteComment: FunctionReference<
+        "mutation",
+        "internal",
+        { asAdmin?: boolean; commentId: string; userId: string },
+        boolean
+      >;
+      deletePost: FunctionReference<
+        "mutation",
+        "internal",
+        { postId: string; userId: string },
+        boolean
+      >;
+      followTopic: FunctionReference<
+        "mutation",
+        "internal",
+        { topicId: string; userId: string },
+        boolean
+      >;
+      generateUserRecommendations: FunctionReference<
+        "mutation",
+        "internal",
+        { limit?: number; userId: string },
+        boolean
+      >;
+      markRecommendationAsInteracted: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          contentId: string;
+          reaction?: "like" | "dislike" | "neutral";
+          userId: string;
+        },
+        boolean
+      >;
+      markRecommendationAsSeen: FunctionReference<
+        "mutation",
+        "internal",
+        { contentId: string; userId: string },
+        boolean
+      >;
+      shareContent: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          content?: string;
+          creatorId: string;
+          moduleId?: string;
+          moduleType?: "blog" | "course" | "group" | "event";
+          originalContentId: string;
+          visibility: "public" | "private" | "group";
+        },
+        string
+      >;
+      unfollowTopic: FunctionReference<
+        "mutation",
+        "internal",
+        { topicId: string; userId: string },
+        boolean
+      >;
+      updateComment: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          asAdmin?: boolean;
+          commentId: string;
+          content: string;
+          userId: string;
+        },
+        boolean
+      >;
+      updatePost: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          content?: string;
+          mediaUrls?: Array<string>;
+          postId: string;
+          userId: string;
+          visibility?: "public" | "private" | "group";
+        },
+        boolean
+      >;
+      updatePostTrendingMetrics: FunctionReference<
+        "mutation",
+        "internal",
+        { contentId: string },
+        boolean
+      >;
+    };
+    queries: {
+      checkTopicFollow: FunctionReference<
+        "query",
+        "internal",
+        { topicId: string; userId: string },
+        boolean
+      >;
+      getAllCommentsForParent: FunctionReference<
+        "query",
+        "internal",
+        {
+          parentId: string;
+          parentType:
+            | "feedItem"
+            | "course"
+            | "lesson"
+            | "topic"
+            | "quiz"
+            | "post"
+            | "download"
+            | "helpdeskArticle";
+        },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          content: string;
+          hashtags?: Array<string>;
+          mediaUrls?: Array<string>;
+          mentionedUserIds?: Array<string>;
+          mentions?: Array<string>;
+          parentCommentId?: string;
+          parentId: string;
+          parentType:
+            | "feedItem"
+            | "course"
+            | "lesson"
+            | "topic"
+            | "quiz"
+            | "post"
+            | "download"
+            | "helpdeskArticle";
+          updatedAt?: number;
+          userId: string;
+        }>
+      >;
+      getComments: FunctionReference<
+        "query",
+        "internal",
+        {
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          parentId: string;
+          parentType: "feedItem" | "post" | "download" | "helpdeskArticle";
+          sortOrder?: "newest" | "oldest";
+        },
+        {
+          continueCursor: string | null;
+          isDone: boolean;
+          page: Array<{
+            _creationTime: number;
+            _id: string;
+            content: string;
+            hashtags?: Array<string>;
+            mediaUrls?: Array<string>;
+            mentionedUserIds?: Array<string>;
+            mentions?: Array<string>;
+            parentCommentId?: string;
+            parentId: string;
+            parentType:
+              | "feedItem"
+              | "course"
+              | "lesson"
+              | "topic"
+              | "quiz"
+              | "post"
+              | "download"
+              | "helpdeskArticle";
+            repliesCount: number;
+            updatedAt?: number;
+            user: { _id: string; image?: string; name: string };
+            userId: string;
+          }>;
+        }
+      >;
+      getFeedItem: FunctionReference<
+        "query",
+        "internal",
+        { feedItemId: string },
+        null | {
+          _creationTime: number;
+          _id: string;
+          commentsCount: number;
+          content: string;
+          contentType: "post" | "share" | "comment";
+          creator: { _id: string; image?: string; name: string };
+          creatorId: string;
+          hashtags?: Array<string>;
+          mediaUrls?: Array<string>;
+          mentionedUserIds?: Array<string>;
+          mentions?: Array<string>;
+          moduleId?: string;
+          moduleType?: "blog" | "course" | "group" | "event";
+          originalContentId?: string;
+          reactionsCount: number;
+          visibility: "public" | "private" | "group";
+        }
+      >;
+      getGroupFeed: FunctionReference<
+        "query",
+        "internal",
+        {
+          groupId: string;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        {
+          continueCursor: string | null;
+          isDone: boolean;
+          page: Array<{
+            _creationTime: number;
+            _id: string;
+            commentsCount: number;
+            content: string;
+            contentType: "post" | "share" | "comment";
+            creator: { _id: string; image?: string; name: string };
+            creatorId: string;
+            hashtags?: Array<string>;
+            mediaUrls?: Array<string>;
+            mentionedUserIds?: Array<string>;
+            mentions?: Array<string>;
+            moduleId?: string;
+            moduleType?: "blog" | "course" | "group" | "event";
+            originalContentId?: string;
+            reactionsCount: number;
+            visibility: "public" | "private" | "group";
+          }>;
+        }
+      >;
+      getHashtagFeed: FunctionReference<
+        "query",
+        "internal",
+        {
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          tag: string;
+        },
+        {
+          feedItems: {
+            continueCursor: string | null;
+            isDone: boolean;
+            page: Array<{
+              _creationTime: number;
+              _id: string;
+              commentsCount: number;
+              content: string;
+              contentType: "post" | "share" | "comment";
+              creator: { _id: string; image?: string; name: string };
+              creatorId: string;
+              hashtags?: Array<string>;
+              mediaUrls?: Array<string>;
+              mentionedUserIds?: Array<string>;
+              mentions?: Array<string>;
+              moduleId?: string;
+              moduleType?: "blog" | "course" | "group" | "event";
+              originalContentId?: string;
+              reactionsCount: number;
+              visibility: "public" | "private" | "group";
+            }>;
+          };
+          hashtag: null | {
+            _creationTime: number;
+            _id: string;
+            category?: string;
+            coverImage?: string;
+            description?: string;
+            followerCount?: number;
+            isBlocked?: boolean;
+            isTopic?: boolean;
+            lastUsed: number;
+            relatedTags?: Array<string>;
+            tag: string;
+            usageCount: number;
+          };
+        }
+      >;
+      getPersonalizedFeed: FunctionReference<
+        "query",
+        "internal",
+        {
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          userId: string;
+        },
+        {
+          continueCursor: string | null;
+          isDone: boolean;
+          page: Array<{
+            _creationTime: number;
+            _id: string;
+            commentsCount: number;
+            content: string;
+            contentType: "post" | "share" | "comment";
+            creator: { _id: string; image?: string; name: string };
+            creatorId: string;
+            hashtags?: Array<string>;
+            mediaUrls?: Array<string>;
+            mentionedUserIds?: Array<string>;
+            mentions?: Array<string>;
+            moduleId?: string;
+            moduleType?: "blog" | "course" | "group" | "event";
+            originalContentId?: string;
+            reactionsCount: number;
+            visibility: "public" | "private" | "group";
+          }>;
+        }
+      >;
+      getRecommendedContent: FunctionReference<
+        "query",
+        "internal",
+        {
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          userId: string;
+        },
+        {
+          continueCursor: string | null;
+          isDone: boolean;
+          page: Array<{
+            _creationTime: number;
+            _id: string;
+            commentsCount: number;
+            content: string;
+            contentType: "post" | "share" | "comment";
+            creator: { _id: string; image?: string; name: string };
+            creatorId: string;
+            hashtags?: Array<string>;
+            mediaUrls?: Array<string>;
+            mentionedUserIds?: Array<string>;
+            mentions?: Array<string>;
+            moduleId?: string;
+            moduleType?: "blog" | "course" | "group" | "event";
+            originalContentId?: string;
+            reactionsCount: number;
+            visibility: "public" | "private" | "group";
+          }>;
+        }
+      >;
+      getRecommendedHashtags: FunctionReference<
+        "query",
+        "internal",
+        { limit: number; userId: string },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          category?: string;
+          coverImage?: string;
+          description?: string;
+          followerCount?: number;
+          isBlocked?: boolean;
+          isTopic?: boolean;
+          lastUsed: number;
+          relatedTags?: Array<string>;
+          tag: string;
+          usageCount: number;
+        }>
+      >;
+      getReplies: FunctionReference<
+        "query",
+        "internal",
+        {
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          parentCommentId: string;
+        },
+        {
+          continueCursor: string | null;
+          isDone: boolean;
+          page: Array<{
+            _creationTime: number;
+            _id: string;
+            content: string;
+            hashtags?: Array<string>;
+            mediaUrls?: Array<string>;
+            mentionedUserIds?: Array<string>;
+            mentions?: Array<string>;
+            parentCommentId?: string;
+            parentId: string;
+            parentType:
+              | "feedItem"
+              | "course"
+              | "lesson"
+              | "topic"
+              | "quiz"
+              | "post"
+              | "download"
+              | "helpdeskArticle";
+            repliesCount: number;
+            updatedAt?: number;
+            user: { _id: string; image?: string; name: string };
+            userId: string;
+          }>;
+        }
+      >;
+      getTopic: FunctionReference<
+        "query",
+        "internal",
+        { topicId: string },
+        {
+          _creationTime: number;
+          _id: string;
+          category?: string;
+          coverImage?: string;
+          description?: string;
+          followerCount?: number;
+          isBlocked?: boolean;
+          isTopic?: boolean;
+          lastUsed: number;
+          relatedTags?: Array<string>;
+          tag: string;
+          usageCount: number;
+        } | null
+      >;
+      getTopicSuggestions: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; userId: string },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          category?: string;
+          coverImage?: string;
+          description?: string;
+          followerCount?: number;
+          isBlocked?: boolean;
+          isTopic?: boolean;
+          lastUsed: number;
+          relatedTags?: Array<string>;
+          tag: string;
+          usageCount: number;
+        }>
+      >;
+      getTopics: FunctionReference<
+        "query",
+        "internal",
+        {
+          category?: string;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          query?: string;
+        },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          category?: string;
+          coverImage?: string;
+          description?: string;
+          followerCount?: number;
+          isBlocked?: boolean;
+          isTopic?: boolean;
+          lastUsed: number;
+          relatedTags?: Array<string>;
+          tag: string;
+          usageCount: number;
+        }>
+      >;
+      getUniversalFeed: FunctionReference<
+        "query",
+        "internal",
+        {
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        {
+          continueCursor: string | null;
+          isDone: boolean;
+          page: Array<{
+            _creationTime: number;
+            _id: string;
+            commentsCount: number;
+            content: string;
+            contentType: "post" | "share" | "comment";
+            creator: { _id: string; image?: string; name: string };
+            creatorId: string;
+            hashtags?: Array<string>;
+            mediaUrls?: Array<string>;
+            mentionedUserIds?: Array<string>;
+            mentions?: Array<string>;
+            moduleId?: string;
+            moduleType?: "blog" | "course" | "group" | "event";
+            originalContentId?: string;
+            reactionsCount: number;
+            visibility: "public" | "private" | "group";
+          }>;
+        }
+      >;
+      getUserFollowedTopics: FunctionReference<
+        "query",
+        "internal",
+        {
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          userId: string;
+        },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          category?: string;
+          coverImage?: string;
+          description?: string;
+          followerCount?: number;
+          isBlocked?: boolean;
+          isTopic?: boolean;
+          lastUsed: number;
+          relatedTags?: Array<string>;
+          tag: string;
+          usageCount: number;
+        }>
+      >;
+      getUserProfileFeed: FunctionReference<
+        "query",
+        "internal",
+        {
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          profileId: string;
+          viewerId?: string;
+        },
+        {
+          continueCursor: string | null;
+          isDone: boolean;
+          page: Array<{
+            _creationTime: number;
+            _id: string;
+            commentsCount: number;
+            content: string;
+            contentType: "post" | "share" | "comment";
+            creator: { _id: string; image?: string; name: string };
+            creatorId: string;
+            hashtags?: Array<string>;
+            mediaUrls?: Array<string>;
+            mentionedUserIds?: Array<string>;
+            mentions?: Array<string>;
+            moduleId?: string;
+            moduleType?: "blog" | "course" | "group" | "event";
+            originalContentId?: string;
+            reactionsCount: number;
+            visibility: "public" | "private" | "group";
+          }>;
+        }
+      >;
+      searchUsersForMentions: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; query: string },
+        Array<{ _id: string; image?: string; name: string }>
       >;
     };
   };

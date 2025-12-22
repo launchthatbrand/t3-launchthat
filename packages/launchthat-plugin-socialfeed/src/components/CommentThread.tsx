@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import {
   AlertCircle,
@@ -40,7 +40,6 @@ import {
   TooltipTrigger,
 } from "@acme/ui/tooltip";
 
-import type { Id } from "../lib/types";
 import {
   useSocialFeedApi,
   useSocialFeedAuth,
@@ -52,16 +51,8 @@ import {
 type SortOption = "newest" | "oldest" | "popular";
 
 export interface CommentThreadProps {
-  postId:
-    | Id<"feedItems">
-    | Id<"courses">
-    | Id<"lessons">
-    | Id<"topics">
-    | Id<"quizzes">
-    | Id<"posts">
-    | Id<"downloads">
-    | Id<"helpdeskArticles">;
-  postType:
+  postId: string;
+  postType?:
     | "feedItem"
     | "course"
     | "lesson"
@@ -76,17 +67,9 @@ export interface CommentThreadProps {
 }
 
 interface Comment {
-  _id: Id<"comments">;
+  _id: string;
   _creationTime: number;
-  parentId:
-    | Id<"feedItems">
-    | Id<"courses">
-    | Id<"lessons">
-    | Id<"topics">
-    | Id<"quizzes">
-    | Id<"posts">
-    | Id<"downloads">
-    | Id<"helpdeskArticles">;
+  parentId: string;
   parentType:
     | "feedItem"
     | "course"
@@ -96,13 +79,13 @@ interface Comment {
     | "post"
     | "download"
     | "helpdeskArticle";
-  userId: Id<"users">;
+  userId: string;
   content: string;
-  parentCommentId?: Id<"comments">;
+  parentCommentId?: string;
   mediaUrls?: string[];
   updatedAt?: number;
   user: {
-    _id: Id<"users">;
+    _id: string;
     name: string;
     image?: string;
   };
@@ -119,7 +102,7 @@ type PaginatedReplies = PaginatedComments;
 
 export function CommentThread({
   postId,
-  postType,
+  postType = "feedItem",
   onCommentAdded,
   className = "",
   initialExpanded = false,
@@ -133,28 +116,17 @@ export function CommentThread({
   const [expandedComments, setExpandedComments] = useState<Set<string>>(
     new Set(),
   );
-  const [editingComment, setEditingComment] = useState<Id<"comments"> | null>(
-    null,
-  );
+  const [editingComment, setEditingComment] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [mentionSearch, setMentionSearch] = useState("");
   const [mentionResults, setMentionResults] = useState<
-    Array<{ id: Id<"users">; name: string; image?: string }>
+    Array<{ id: string; name: string; image?: string }>
   >([]);
   const [showMentionDropdown, setShowMentionDropdown] = useState(false);
-  const [replyingTo, setReplyingTo] = useState<Id<"comments"> | null>(null);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [viewCount, setViewCount] = useState(5); // Initial number of comments to show
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-
-  // Pagination
-  const [cursor, setCursor] = useState<string | null>(null);
-  const hasMore = useRef(true);
-
-  // Query comments with pagination
-  const paginationOpts = cursor
-    ? { cursor, numItems: viewCount }
-    : { numItems: viewCount, cursor: null as string | null };
 
   // Get comments based on sort option
   const commentsResponse = useSocialFeedQuery(
@@ -163,14 +135,32 @@ export function CommentThread({
       ? {
           parentId: postId,
           parentType: postType,
-          paginationOpts,
+          paginationOpts: {
+            numItems: viewCount,
+            cursor: null as string | null,
+          },
+          sortOrder: sortOption === "oldest" ? "oldest" : "newest",
         }
       : "skip",
   ) as Comment[] | PaginatedComments | undefined;
 
-  const comments: Comment[] = Array.isArray(commentsResponse)
+  const hasMore = useMemo(() => {
+    if (!commentsResponse) return false;
+    if (Array.isArray(commentsResponse)) return false;
+    return !commentsResponse.isDone;
+  }, [commentsResponse]);
+
+  const rawComments: Comment[] = Array.isArray(commentsResponse)
     ? commentsResponse
     : (commentsResponse?.page ?? []);
+  const comments: Comment[] = useMemo(() => {
+    if (sortOption !== "popular") return rawComments;
+    return [...rawComments].sort((a, b) => {
+      const byReplies = (b.repliesCount ?? 0) - (a.repliesCount ?? 0);
+      if (byReplies !== 0) return byReplies;
+      return b._creationTime - a._creationTime;
+    });
+  }, [rawComments, sortOption]);
 
   // Mutations
   const addComment = useSocialFeedMutation(
@@ -192,27 +182,15 @@ export function CommentThread({
   // Handle sort change
   const handleSortChange = (option: SortOption) => {
     setSortOption(option);
-    // Reset pagination when sorting changes
-    setCursor(null);
-    hasMore.current = true;
     setViewCount(5);
   };
 
   // Handle load more comments
   const handleLoadMore = async () => {
-    if (!hasMore.current || isLoadingMore) return;
+    if (isLoadingMore) return;
 
     setIsLoadingMore(true);
     setViewCount((prev) => prev + 5);
-
-    // Update cursor for next page if we have comments
-    if (comments.length > 0) {
-      const lastComment = comments[comments.length - 1];
-      setCursor(lastComment?._id ?? null);
-    } else {
-      hasMore.current = false;
-    }
-
     setIsLoadingMore(false);
   };
 
@@ -233,7 +211,6 @@ export function CommentThread({
       setIsSubmittingComment(true);
 
       await addComment({
-        userId: userId as Id<"users">,
         parentId: postId,
         parentType: postType,
         content: commentText.trim(),
@@ -253,7 +230,7 @@ export function CommentThread({
   };
 
   // Handle reply submission
-  const handleSubmitReply = async (parentCommentId: Id<"comments">) => {
+  const handleSubmitReply = async (parentCommentId: string) => {
     if (!userId) {
       toast.error("Please sign in to reply");
       return;
@@ -265,7 +242,6 @@ export function CommentThread({
 
     try {
       await addComment({
-        userId: userId as Id<"users">,
         parentId: postId,
         parentType: postType,
         content: replyText.trim(),
@@ -290,7 +266,7 @@ export function CommentThread({
   };
 
   // Handle edit comment
-  const handleEditComment = async (commentId: Id<"comments">) => {
+  const handleEditComment = async (commentId: string) => {
     if (!userId) {
       toast.error("Please sign in to edit");
       return;
@@ -303,7 +279,6 @@ export function CommentThread({
     try {
       await updateComment({
         commentId,
-        userId: userId as Id<"users">,
         content: editText.trim(),
       });
 
@@ -317,7 +292,7 @@ export function CommentThread({
   };
 
   // Handle delete comment
-  const handleDeleteComment = async (commentId: Id<"comments">) => {
+  const handleDeleteComment = async (commentId: string) => {
     if (!userId) {
       toast.error("Please sign in to delete");
       return;
@@ -330,7 +305,6 @@ export function CommentThread({
     try {
       await deleteComment({
         commentId,
-        userId: userId as Id<"users">,
       });
 
       toast.success("Comment deleted");
@@ -356,28 +330,6 @@ export function CommentThread({
     return expandedComments.has(commentId);
   };
 
-  // Get replies for a comment
-  const getReplies = (parentCommentId: Id<"comments">) => {
-    const isExpanded = isCommentExpanded(parentCommentId.toString());
-    if (!isExpanded) return [];
-
-    // Get replies for this comment using a separate query
-    const repliesResponse = useSocialFeedQuery(
-      socialfeedApi?.queries?.getCommentReplies,
-      socialfeedApi
-        ? {
-            parentCommentId,
-            feedItemId: postId,
-            paginationOpts: { numItems: 10, cursor: null },
-          }
-        : "skip",
-    ) as Comment[] | PaginatedReplies | undefined;
-
-    return Array.isArray(repliesResponse)
-      ? repliesResponse
-      : (repliesResponse?.page ?? []);
-  };
-
   // Handle mention searching
   const handleMentionSearch = (text: string) => {
     const mentionMatch = text.match(/@(\w*)$/);
@@ -398,7 +350,7 @@ export function CommentThread({
   };
 
   // Insert mention into comment text
-  const insertMention = (user: { id: Id<"users">; name: string }) => {
+  const insertMention = (user: { id: string; name: string }) => {
     const mentionText = `@${user.name} `;
     const newText = commentText.replace(/@\w*$/, mentionText);
     setCommentText(newText);
@@ -411,40 +363,17 @@ export function CommentThread({
   };
 
   // Handle reactions on comments
-  const handleCommentReaction = async (
-    commentId: Id<"comments">,
-    isLiked: boolean,
-  ) => {
-    if (!userId) {
-      toast.error("Please sign in to react");
-      return;
-    }
-
-    try {
-      if (isLiked) {
-        // Remove reaction
-        await removeReaction({
-          userId: userId as Id<"users">,
-          feedItemId: commentId, // Using commentId as the target
-        });
-      } else {
-        // Add reaction
-        await addReaction({
-          userId: userId as Id<"users">,
-          feedItemId: commentId, // Using commentId as the target
-          reactionType: "like",
-        });
-      }
-    } catch (error) {
-      console.error("Error toggling reaction:", error);
-      toast.error("Failed to update reaction");
-    }
+  const handleCommentReaction = async (commentId: string, isLiked: boolean) => {
+    toast.info("Reactions are coming soon");
+    void commentId;
+    void isLiked;
   };
 
   // Report comment
-  const handleReportComment = (commentId: Id<"comments">) => {
+  const handleReportComment = (commentId: string) => {
     toast.info("Report functionality coming soon");
     // This would typically open a report modal or form
+    void commentId;
   };
 
   // Render a single comment item with its replies
@@ -453,9 +382,6 @@ export function CommentThread({
     const isReplying = replyingTo === comment._id;
     const canEdit = userId === comment.userId;
     const isExpanded = isCommentExpanded(comment._id.toString());
-
-    // Get replies if expanded
-    const replies = isExpanded ? getReplies(comment._id) : [];
 
     return (
       <div key={comment._id} className={`${depth > 0 ? "ml-6" : ""}`}>
@@ -690,11 +616,13 @@ export function CommentThread({
             )}
 
             {/* Nested replies */}
-            {isExpanded && replies.length > 0 && (
-              <div className="border-muted mt-3 space-y-4 border-l-2 pl-3">
-                {replies.map((reply) => renderComment(reply, depth + 1))}
-              </div>
-            )}
+            {isExpanded ? (
+              <CommentReplies
+                parentCommentId={comment._id}
+                depth={depth}
+                renderComment={renderComment}
+              />
+            ) : null}
           </div>
         </div>
       </div>
@@ -790,7 +718,7 @@ export function CommentThread({
           {comments.map((comment) => renderComment(comment))}
 
           {/* Load more button */}
-          {hasMore.current && (
+          {hasMore && (
             <div className="flex justify-center pt-2">
               <Button
                 variant="outline"
@@ -816,6 +744,42 @@ export function CommentThread({
           <p className="mt-2">No comments yet. Be the first to comment!</p>
         </div>
       )}
+    </div>
+  );
+}
+
+function CommentReplies({
+  parentCommentId,
+  depth,
+  renderComment,
+}: {
+  parentCommentId: string;
+  depth: number;
+  renderComment: (comment: Comment, depth: number) => React.ReactNode;
+}) {
+  const socialfeedApi = useSocialFeedApi<any>();
+
+  const repliesResponse = useSocialFeedQuery(
+    socialfeedApi?.queries?.getReplies,
+    socialfeedApi
+      ? {
+          parentCommentId,
+          paginationOpts: { numItems: 10, cursor: null as string | null },
+        }
+      : "skip",
+  ) as Comment[] | PaginatedReplies | undefined;
+
+  const replies: Comment[] = Array.isArray(repliesResponse)
+    ? repliesResponse
+    : (repliesResponse?.page ?? []);
+
+  if (replies.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="border-muted mt-3 space-y-4 border-l-2 pl-3">
+      {replies.map((reply) => renderComment(reply, depth + 1))}
     </div>
   );
 }

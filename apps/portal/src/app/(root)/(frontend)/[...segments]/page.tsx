@@ -18,6 +18,7 @@ import type { PluginFrontendSingleSlotRegistration } from "~/lib/plugins/helpers
 import { EditorViewer } from "~/components/blocks/editor-x/viewer";
 import { PostCommentsSection } from "~/components/comments/PostCommentsSection";
 import { FrontendContentFilterHost } from "~/components/frontend/FrontendContentFilterHost";
+import { BackgroundRippleEffect } from "~/components/ui/background-ripple-effect";
 import { parseLexicalSerializedState } from "~/lib/editor/lexical";
 import {
   DEFAULT_PAGE_TEMPLATE_SLUG,
@@ -571,80 +572,87 @@ function PostDetail({
     pluginSlots.sidebarTop.length > 0 || pluginSlots.sidebarBottom.length > 0;
 
   return (
-    <main className="container mx-auto max-w-6xl space-y-6 py-10">
-      {pluginSlots.beforeContent.length > 0 && (
-        <div className="space-y-4">{pluginSlots.beforeContent}</div>
-      )}
-      <div
-        className={cn(
-          "gap-8",
-          hasSidebar ? "grid lg:grid-cols-[minmax(0,1fr)_320px]" : "space-y-6",
+    <main className="relative">
+      <BackgroundRippleEffect interactive={true} className="z-10 opacity-80" />
+      <div className="relative container mx-auto max-w-6xl space-y-6 overflow-hidden py-10">
+        {pluginSlots.beforeContent.length > 0 && (
+          <div className="z-20 space-y-4">{pluginSlots.beforeContent}</div>
         )}
-      >
-        <article className="space-y-6">
-          <header className="space-y-3">
-            <p className="text-muted-foreground text-sm tracking-wide uppercase">
-              {contextLabel}
-            </p>
-            <h1 className="text-4xl font-bold">{post.title}</h1>
-            {post.excerpt && (
-              <p className="text-muted-foreground text-lg">{post.excerpt}</p>
-            )}
-            <PostMetaSummary post={post} postType={postType} />
-            {pluginSlots.header.length > 0 && (
-              <div className="space-y-3">{pluginSlots.header}</div>
-            )}
-          </header>
-          <FilteredContent
-            lexicalContent={lexicalContent}
-            rawContent={post.content ?? null}
-            contextLabel={contextLabel}
-            filterIds={contentFilterIds}
-            filterContext={{
-              postTypeSlug: post.postTypeSlug ?? "",
-              postId: post._id,
-              postMeta: postMetaObject,
-            }}
-          />
-          {pluginSlots.afterContent.length > 0 && (
-            <div className="space-y-4">{pluginSlots.afterContent}</div>
+        <div
+          className={cn(
+            "relative z-20 gap-8",
+            hasSidebar
+              ? "grid lg:grid-cols-[minmax(0,1fr)_320px]"
+              : "space-y-6",
           )}
-
-          {showCustomFields && customFieldEntries.length > 0 ? (
-            <section className="bg-card rounded-lg border p-6">
-              <h2 className="text-foreground text-xl font-semibold">
-                Custom Fields
-              </h2>
-              <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                {customFieldEntries?.map((entry) => (
-                  <div key={entry.key} className="space-y-1">
-                    <dt className="text-muted-foreground text-sm font-medium">
-                      {entry.label}
-                    </dt>
-                    <dd className="text-foreground text-base">{entry.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          ) : null}
-
-          {supportsComments && showComments ? (
-            <PostCommentsSection
-              postId={post._id}
-              organizationId={post.organizationId ?? null}
+        >
+          <article className="space-y-6">
+            <header className="space-y-3">
+              <p className="text-muted-foreground text-sm tracking-wide uppercase">
+                {contextLabel}
+              </p>
+              <h1 className="text-4xl font-bold">{post.title}</h1>
+              {post.excerpt && (
+                <p className="text-muted-foreground text-lg">{post.excerpt}</p>
+              )}
+              <PostMetaSummary post={post} postType={postType} />
+              {pluginSlots.header.length > 0 && (
+                <div className="space-y-3">{pluginSlots.header}</div>
+              )}
+            </header>
+            <FilteredContent
+              lexicalContent={lexicalContent}
+              rawContent={post.content ?? null}
+              contextLabel={contextLabel}
+              filterIds={contentFilterIds}
+              filterContext={{
+                postTypeSlug: post.postTypeSlug ?? "",
+                postId: post._id,
+                postMeta: postMetaObject,
+              }}
             />
-          ) : null}
-        </article>
-        {hasSidebar && (
-          <aside className="space-y-4">
-            {pluginSlots.sidebarTop.length > 0 && (
-              <div className="space-y-4">{pluginSlots.sidebarTop}</div>
+            {pluginSlots.afterContent.length > 0 && (
+              <div className="space-y-4">{pluginSlots.afterContent}</div>
             )}
-            {pluginSlots.sidebarBottom.length > 0 && (
-              <div className="space-y-4">{pluginSlots.sidebarBottom}</div>
-            )}
-          </aside>
-        )}
+
+            {showCustomFields && customFieldEntries.length > 0 ? (
+              <section className="bg-card rounded-lg border p-6">
+                <h2 className="text-foreground text-xl font-semibold">
+                  Custom Fields
+                </h2>
+                <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+                  {customFieldEntries?.map((entry) => (
+                    <div key={entry.key} className="space-y-1">
+                      <dt className="text-muted-foreground text-sm font-medium">
+                        {entry.label}
+                      </dt>
+                      <dd className="text-foreground text-base">
+                        {entry.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            ) : null}
+
+            {supportsComments && showComments ? (
+              <PostCommentsSection
+                postId={post._id}
+                organizationId={post.organizationId ?? null}
+              />
+            ) : null}
+          </article>
+          {hasSidebar && (
+            <aside className="space-y-4">
+              {pluginSlots.sidebarTop.length > 0 && (
+                <div className="space-y-4">{pluginSlots.sidebarTop}</div>
+              )}
+              {pluginSlots.sidebarBottom.length > 0 && (
+                <div className="space-y-4">{pluginSlots.sidebarBottom}</div>
+              )}
+            </aside>
+          )}
+        </div>
       </div>
     </main>
   );

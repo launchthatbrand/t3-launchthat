@@ -9,7 +9,6 @@ import { lmsSchema } from "./lms/schema";
 // Add integrations schema
 // import { integrationsSchema } from "./integrations/schema";
 import { notificationsSchema } from "./notifications/schema";
-import { socialFeedSchema } from "./plugins/socialfeed/schema";
 // import { supportSchema } from "./plugins/support/schema";
 import { tasksSchema } from "./tasks/schema";
 import { vimeoSchema } from "./vimeo/schema";
@@ -29,7 +28,8 @@ export default defineSchema({
   ...notificationsSchema,
 
   // Social Feed tables
-  ...socialFeedSchema,
+  // NOTE: socialfeed tables now live inside the mounted `launchthat_socialfeed` Convex Component
+  // and are no longer part of the portal's main schema.
 
   // LMS tables
   ...lmsSchema,
