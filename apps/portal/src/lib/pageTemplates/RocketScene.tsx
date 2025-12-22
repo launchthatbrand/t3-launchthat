@@ -1,13 +1,7 @@
 "use client";
 
 import React, { Suspense, useRef } from "react";
-import {
-  OrbitControls,
-  PerspectiveCamera,
-  Stars,
-  Trail,
-  useGLTF,
-} from "@react-three/drei";
+import { OrbitControls, Stars, Trail, useGLTF } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import * as THREE_NS from "three";
@@ -148,10 +142,11 @@ const TrackingSpotlight: React.FC<{
   const spotlightRef = useRef<THREE_NS.SpotLight>(null);
   const targetRef = useRef<THREE_NS.Object3D>(new THREE_NS.Object3D());
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   useFrame(() => {
     const light = spotlightRef.current;
     const tgt = targetRef.current;
-    if (!light || !tgt) return;
+    if (!light) return;
     tgt.position.lerp(target, 0.25);
     tgt.updateMatrixWorld();
     light.target = tgt;
@@ -160,19 +155,18 @@ const TrackingSpotlight: React.FC<{
 
   return (
     <>
-      <PerspectiveCamera makeDefault position={[0, 0, 20]} fov={75}>
-        <spotLight
-          ref={spotlightRef}
-          castShadow
-          intensity={2.25 * Math.PI}
-          decay={0}
-          angle={0.2}
-          penumbra={1}
-          position={[-25, 20, -15]}
-          shadow-mapSize={[1024, 1024]}
-          shadow-bias={-0.0001}
-        />
-      </PerspectiveCamera>
+      {/* World-space spotlight (not parented to the camera). */}
+      <spotLight
+        ref={spotlightRef}
+        castShadow
+        intensity={2.25 * Math.PI}
+        decay={0}
+        angle={0.25}
+        penumbra={1}
+        position={[-25, 20, -15]}
+        shadow-mapSize={[1024, 1024]}
+        shadow-bias={-0.0001}
+      />
       {/* Ensure the spotlight target is part of the scene graph */}
       <primitive object={targetRef.current} />
     </>
@@ -181,6 +175,19 @@ const TrackingSpotlight: React.FC<{
 
 export const RocketScene: React.FC = () => {
   const rocketTarget = React.useMemo(() => new THREE_NS.Vector3(12, -3, 0), []);
+  const controlsRef = useRef<unknown>(null);
+
+  // Make sure OrbitControls orbits the rocket, not the world origin.
+  React.useEffect(() => {
+    const controls = controlsRef.current as {
+      target?: THREE_NS.Vector3;
+      update?: () => void;
+    } | null;
+
+    if (!controls?.target) return;
+    controls.target.copy(rocketTarget);
+    controls.update?.();
+  }, [rocketTarget]);
 
   return (
     <div className="absolute inset-0 h-full w-full">
@@ -216,6 +223,7 @@ export const RocketScene: React.FC = () => {
 
         {/* Camera controls - reduced auto-rotate speed */}
         <OrbitControls
+          ref={controlsRef}
           autoRotate
           autoRotateSpeed={0.1}
           enablePan={false}

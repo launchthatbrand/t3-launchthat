@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -11,21 +10,31 @@ export const LayoutTextFlip = ({
   words = ["Landing Pages", "Component Blocks", "Page Sections", "3D Shaders"],
   duration = 3000,
   className,
+  activeIndex,
 }: {
-  text: string;
-  words: string[];
+  text?: string;
+  words?: string[];
   duration?: number;
   className?: string;
+  /** When provided, the flip is controlled (no interval). */
+  activeIndex?: number;
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
+    if (typeof activeIndex === "number") {
+      setCurrentIndex(activeIndex);
+    }
+  }, [activeIndex]);
+
+  useEffect(() => {
+    if (typeof activeIndex === "number") return;
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => (prevIndex + 1) % words.length);
     }, duration);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [activeIndex, duration, words.length]);
 
   return (
     <>
@@ -60,7 +69,7 @@ export const LayoutTextFlip = ({
             }}
             className={cn("inline-block whitespace-nowrap", className)}
           >
-            {words[currentIndex]}
+            {words[currentIndex] ?? ""}
           </motion.span>
         </AnimatePresence>
       </motion.span>

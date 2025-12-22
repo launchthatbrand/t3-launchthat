@@ -36,7 +36,7 @@ export default function StandardLayout(props: {
         <AppHeader
           appName={props.appName}
           sidebarToggle={sidebarToggle}
-          className=""
+          className="sticky top-0 z-50 bg-white"
           rightSlot={props.headerRightSlot}
         />
         {/* <div className="relative w-full max-w-full overflow-x-hidden"> */}

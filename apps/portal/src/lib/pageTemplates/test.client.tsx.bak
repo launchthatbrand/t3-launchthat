@@ -1,0 +1,466 @@
+"use client";
+
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  motion,
+  useMotionValueEvent,
+  useScroll,
+  useTransform,
+} from "framer-motion";
+import { ReactLenis } from "lenis/react";
+
+import type { PageTemplateContext } from "./registry";
+import { Section1Rocket } from "./testSections/Section1Rocket";
+import { Section2Timeline } from "./testSections/Section2Timeline";
+import {
+  section3Cards,
+  Section3Horizontal,
+} from "./testSections/Section3Horizontal";
+import { Section4Overlay } from "./testSections/Section4Overlay";
+import { Section5Thanks } from "./testSections/Section5Thanks";
+
+interface WindowSize {
+  width: number;
+  height: number;
+}
+
+const useWindowSize = (): { size: WindowSize } => {
+  const [size, setSize] = useState<WindowSize>({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const updateSize = () => {
+      setSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
+
+  return { size };
+};
+
+export const TestHeroTemplate = ({
+  post: _post,
+  meta: _meta,
+}: PageTemplateContext) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLDivElement>(null);
+  const section2ScrollViewportRef = useRef<HTMLDivElement>(null);
+  const section2ScrollContentRef = useRef<HTMLDivElement>(null);
+  const section3ViewportRef = useRef<HTMLDivElement>(null);
+  const section3RowRef = useRef<HTMLDivElement>(null);
+  const section4MeasureRef = useRef<HTMLDivElement>(null);
+  const section5MeasureRef = useRef<HTMLDivElement>(null);
+  const { size } = useWindowSize();
+
+  const { scrollY } = useScroll();
+
+  const [containerTop, setContainerTop] = useState(0);
+  const [measuredTitleHeight, setMeasuredTitleHeight] = useState(0);
+  const [section2ScrollMax, setSection2ScrollMax] = useState(0);
+  const [section3XMax, setSection3XMax] = useState(0);
+  const [section4Top, setSection4Top] = useState(0);
+  const [section4Height, setSection4Height] = useState(0);
+  const [section5Top, setSection5Top] = useState(0);
+  const [section5Height, setSection5Height] = useState(0);
+
+  useEffect(() => {
+    const updateContainerTop = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setContainerTop(window.scrollY + rect.top);
+    };
+
+    updateContainerTop();
+    window.addEventListener("resize", updateContainerTop);
+    return () => window.removeEventListener("resize", updateContainerTop);
+  }, []);
+
+  useEffect(() => {
+    const el = section5MeasureRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      setSection5Top(window.scrollY + rect.top);
+      setSection5Height(rect.height);
+    };
+
+    update();
+    window.addEventListener("resize", update);
+
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+
+    return () => {
+      window.removeEventListener("resize", update);
+      ro.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const el = section4MeasureRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      setSection4Top(window.scrollY + rect.top);
+      setSection4Height(rect.height);
+    };
+
+    update();
+    window.addEventListener("resize", update);
+
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+
+    return () => {
+      window.removeEventListener("resize", update);
+      ro.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+
+    const update = () => setMeasuredTitleHeight(el.offsetHeight);
+    update();
+
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+
+    return () => ro.disconnect();
+  }, []);
+
+  const viewportHeight = size.height || 800;
+  const titleHeight = measuredTitleHeight || 240;
+  const cardPadding = 80;
+  const spacerHeight = 208; // matches h-52
+
+  const section2ScrollHeight = Math.max(
+    viewportHeight * 2,
+    viewportHeight + section2ScrollMax,
+  );
+  // Keep the timeline scrolling for most of Section 2, and only reserve a small tail
+  // for transition (shrink) so it doesn't start "too early".
+  const section2ScrollEndAt = 0.4;
+
+  // Scroll track height for Section 3. Keep it tight so Section 4 arrives soon after
+  // the last horizontal card is reached.
+  const section3ScrollHeight = section3Cards.length * viewportHeight;
+
+  // Measure how far the section 2 timeline can scroll.
+  useEffect(() => {
+    const el = section2ScrollViewportRef.current;
+    const contentEl = section2ScrollContentRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const max = Math.max(0, el.scrollHeight - el.clientHeight);
+      setSection2ScrollMax(max);
+    };
+
+    update();
+    window.addEventListener("resize", update);
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    if (contentEl) ro.observe(contentEl);
+
+    return () => {
+      window.removeEventListener("resize", update);
+      ro.disconnect();
+    };
+  }, []);
+
+  // Measure the actual horizontal distance needed (contentWidth - viewportWidth).
+  useEffect(() => {
+    const viewportEl = section3ViewportRef.current;
+    const rowEl = section3RowRef.current;
+    if (!viewportEl || !rowEl) return;
+
+    const update = () => {
+      const viewportWidth = viewportEl.clientWidth;
+      const contentWidth = rowEl.scrollWidth;
+      setSection3XMax(Math.max(0, contentWidth - viewportWidth));
+    };
+
+    update();
+
+    const ro = new ResizeObserver(update);
+    ro.observe(viewportEl);
+    ro.observe(rowEl);
+    window.addEventListener("resize", update);
+
+    return () => {
+      window.removeEventListener("resize", update);
+      ro.disconnect();
+    };
+  }, []);
+
+  const section3XEnd = -section3XMax;
+  // Finish horizontal travel earlier to leave more runway
+  // for the shrink transition before Section 4.
+  const section3XEndAt = 0.75;
+
+  const timeline: [number, number][] = useMemo(() => {
+    const cardTimeline: [number, number][] = [];
+
+    // Sections are mostly 1 viewport tall, except:
+    // - section 2: longer scroll track for the timeline
+    // - section 3: longer scroll track for horizontal cards
+    const heights: number[] = [
+      viewportHeight, // Section 1
+      section2ScrollHeight, // Section 2 (timeline scroll)
+      section3ScrollHeight, // Section 3 (horizontal scroll)
+      viewportHeight, // Section 4
+      viewportHeight, // Section 5
+    ];
+
+    let y = containerTop + titleHeight + cardPadding;
+    // IMPORTANT:
+    // - We only render `h-52` spacers after sections 1, 4, and 5.
+    // - Sections 2 and 3 already have their "extra scroll runway" implemented via the
+    //   variable-height divs right after their sticky containers, so adding another
+    //   `spacerHeight` here would delay downstream timings (slide/shrink start points).
+    const spacersAfter: number[] = [
+      spacerHeight, // after section 1: <div className="h-52" />
+      0, // after section 2: variable height div already accounts for the runway
+      0, // after section 3: variable height div already accounts for the runway
+      spacerHeight, // after section 4: <div className="h-52" />
+      spacerHeight, // after section 5: <div className="h-52" />
+    ];
+
+    for (let i = 0; i < heights.length; i += 1) {
+      const height = heights[i] ?? 0;
+      const start = y;
+      const end = y + height;
+      cardTimeline.push([start, end]);
+      y = end + (spacersAfter[i] ?? 0);
+    }
+
+    return [[containerTop, containerTop + titleHeight], ...cardTimeline];
+  }, [
+    containerTop,
+    titleHeight,
+    viewportHeight,
+    section2ScrollHeight,
+    section3ScrollHeight,
+  ]);
+
+  // NOTE: Keep these as explicit hook calls (no loops/maps) to satisfy Rules of Hooks.
+  const t0: [number, number] = timeline[0] ?? [0, 1];
+  const t1: [number, number] = timeline[1] ?? [0, 1];
+  const t2: [number, number] = timeline[2] ?? [0, 1];
+  const t3: [number, number] = timeline[3] ?? [0, 1];
+  const t4: [number, number] = timeline[4] ?? [0, 1];
+  const t5: [number, number] = timeline[5] ?? [0, 1];
+
+  const section2ScrollEndY = t2[0] + (t2[1] - t2[0]) * section2ScrollEndAt;
+  const section2TimelineProgress = useTransform(
+    scrollY,
+    [t2[0], section2ScrollEndY],
+    [0, 1],
+    { clamp: true },
+  );
+  const [section2Bg, setSection2Bg] = useState<string>("#ffffff");
+
+  const getSection2Bg = (p: number): string => {
+    if (p < 1 / 3) return "#ffffff";
+    if (p < 2 / 3) return "#fef3c7";
+    return "#dbeafe";
+  };
+
+  // Discrete background targets, but we animate between them (fade) in Section2Timeline.
+  useMotionValueEvent(section2TimelineProgress, "change", (p) => {
+    const next = getSection2Bg(p);
+    setSection2Bg((prev) => (prev === next ? prev : next));
+  });
+
+  // Drive section 3 horizontal x from the GLOBAL scroll range for section 3 (t3),
+  // so the card stays pinned like other sections (not constrained by a shorter wrapper).
+  const section3XEndScrollY = t3[0] + (t3[1] - t3[0]) * section3XEndAt;
+  const section3X = useTransform(
+    scrollY,
+    [t3[0], section3XEndScrollY, t3[1]],
+    [0, section3XEnd, section3XEnd],
+  );
+
+  // Shrink should be uniform (x + y).
+  const scale0 = useTransform(scrollY, t0, [1, 0.8]);
+  const opacity0 = useTransform(scrollY, t0, [1, 0]);
+  // Section 1 should not shrink/fade.
+  const scale1 = useTransform(scrollY, [t1[0], t1[1]], [1, 1]);
+  const opacity1 = useTransform(scrollY, [t1[0], t1[1]], [1, 1]);
+  // Section 2 should scroll through the whole timeline BEFORE it starts to shrink.
+  const scale2 = useTransform(
+    scrollY,
+    [t2[0], section2ScrollEndY, t2[0] + (t2[1] - t2[0]) * 0.97, t2[1]],
+    [1, 1, 0.9, 0.9],
+  );
+  const opacity2 = useTransform(
+    scrollY,
+    [t2[0], section2ScrollEndY, t2[0] + (t2[1] - t2[0]) * 0.97, t2[1]],
+    [1, 1, 1, 1],
+  );
+  // Section 3 behavior:
+  // - pinned while we scroll horizontally (no shrinking)
+  // - only shrink/fade near the end as Section 4 begins to arrive
+  const t3Hold = t3[0] + (t3[1] - t3[0]) * 0.75;
+  // IMPORTANT: if we shrink right up to t3[1], the sticky container is about to
+  // unpin, which makes it look like it's shrinking while sliding upward.
+  // So we finish the shrink a bit BEFORE the end and clamp the end state.
+  const t3ShrinkEnd = t3[0] + (t3[1] - t3[0]) * 0.92;
+  const scale3 = useTransform(
+    scrollY,
+    [t3[0], t3Hold, t3ShrinkEnd, t3[1]],
+    [1, 1, 0.9, 0.9],
+  );
+  const opacity3 = useTransform(
+    scrollY,
+    [t3[0], t3Hold, t3ShrinkEnd, t3[1]],
+    [1, 1, 1, 1],
+  );
+  const scale4 = useTransform(scrollY, t4, [1, 0.9]);
+  const opacity4 = useTransform(scrollY, t4, [1, 1]);
+  // Last section should not shrink/fade.
+  const scale5 = useTransform(scrollY, [t5[0], t5[1]], [1, 1]);
+  const opacity5 = useTransform(scrollY, [t5[0], t5[1]], [1, 1]);
+
+  // Drive text animations off the section scroll ranges (works even inside sticky sections).
+  const section4Progress = useTransform(
+    scrollY,
+    [section4Top - viewportHeight, section4Top, section4Top + section4Height],
+    [0, 0.8, 1],
+  );
+  // Section 5: reveal as the section scrolls into view.
+  // - start revealing before it pins
+  // - be ~50% revealed when it hits the top
+  // - finish revealing as you scroll further while pinned
+  const section5Progress = useTransform(
+    scrollY,
+    [section5Top - viewportHeight, section5Top, section5Top + section5Height],
+    [0, 0.8, 1],
+  );
+
+  // Sync the section 2 timeline scroll with the window scroll.
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    const el = section2ScrollViewportRef.current;
+    if (!el || section2ScrollMax <= 0) return;
+    const denom = Math.max(1, section2ScrollEndY - t2[0]);
+    const p = Math.min(1, Math.max(0, (latest - t2[0]) / denom));
+    el.scrollTop = p * section2ScrollMax;
+  });
+
+  const animation = [
+    { scale: scale0, opacity: opacity0 },
+    { scale: scale1, opacity: opacity1 },
+    { scale: scale2, opacity: opacity2 },
+    { scale: scale3, opacity: opacity3 },
+    { scale: scale4, opacity: opacity4 },
+    { scale: scale5, opacity: opacity5 },
+  ];
+
+  return (
+    <ReactLenis root>
+      <div ref={containerRef} className="min-h-screen bg-black text-white">
+        <style jsx global>{`
+          @import url("https://api.fontshare.com/v2/css?f[]=switzer@1&display=swap");
+          .font-switzer {
+            font-family:
+              "Switzer",
+              system-ui,
+              -apple-system,
+              "Segoe UI",
+              sans-serif;
+          }
+        `}</style>
+
+        {/* Spacer only (used for timeline math / top offset measurement) */}
+        <div ref={titleRef} className="h-0" />
+
+        {/* Section 1 */}
+        <motion.div
+          className="sticky top-0 h-dvh p-5"
+          style={{
+            scale: animation[1]?.scale,
+            opacity: animation[1]?.opacity,
+          }}
+        >
+          <Section1Rocket heading="Section One" />
+        </motion.div>
+        <div className="h-52" />
+
+        {/* Section 2 */}
+        <motion.div
+          className="sticky top-0 h-dvh p-5"
+          style={{
+            scale: animation[2]?.scale,
+            opacity: animation[2]?.opacity,
+          }}
+        >
+          <Section2Timeline
+            backgroundColor={section2Bg}
+            scrollViewportRef={section2ScrollViewportRef}
+            scrollContentRef={section2ScrollContentRef}
+          />
+        </motion.div>
+        <div
+          style={{ height: Math.max(0, section2ScrollHeight - viewportHeight) }}
+        />
+
+        {/* Section 3 */}
+        <motion.div
+          className="sticky top-0 h-dvh overflow-hidden p-5"
+          style={{
+            scale: animation[3]?.scale,
+            opacity: animation[3]?.opacity,
+          }}
+        >
+          <Section3Horizontal
+            x={section3X}
+            viewportRef={section3ViewportRef}
+            rowRef={section3RowRef}
+          />
+        </motion.div>
+        <div
+          style={{ height: Math.max(0, section3ScrollHeight - viewportHeight) }}
+        />
+
+        {/* Section 4 */}
+        <motion.div
+          ref={section4MeasureRef}
+          className="sticky top-0 h-dvh p-5"
+          style={{
+            scale: animation[4]?.scale,
+            opacity: animation[4]?.opacity,
+          }}
+        >
+          <Section4Overlay
+            heading="Section Four"
+            bgColor="#ef4444"
+            progress={section4Progress}
+          />
+        </motion.div>
+        <div className="h-52" />
+
+        {/* Section 5 */}
+        <motion.div
+          ref={section5MeasureRef}
+          className="sticky top-0 h-dvh p-5"
+          style={{
+            scale: animation[5]?.scale,
+            opacity: animation[5]?.opacity,
+          }}
+        >
+          <Section5Thanks progress={section5Progress} />
+        </motion.div>
+        <div className="h-52" />
+
+        <div className="h-dvh" />
+      </div>
+    </ReactLenis>
+  );
+};
