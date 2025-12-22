@@ -160,10 +160,7 @@ export function CourseProgress({
   );
 }
 
-function getSegmentTitle(
-  lessonId: Id<"posts"> | undefined,
-  segments: LessonSegment[],
-): string | null {
+function getSegmentTitle(lessonId: string | undefined, segments: LessonSegment[]) {
   if (!lessonId) return null;
   const segment = segments.find((entry) => entry.lessonId === lessonId);
   return segment?.title ?? null;

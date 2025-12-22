@@ -13,6 +13,7 @@ import type {
   LmsBuilderQuiz,
   LmsBuilderTopic,
   LmsCourseBuilderData,
+  LmsPostId,
 } from "../types";
 import {
   buildCourseSettingsOptionKey,
@@ -27,10 +28,10 @@ import {
 } from "../lib/progressUtils";
 
 type CourseProgressRecord = {
-  completedLessonIds: Id<"posts">[];
-  completedTopicIds: Id<"posts">[];
-  courseId: Id<"posts">;
-  lastAccessedId?: Id<"posts">;
+  completedLessonIds: LmsPostId[];
+  completedTopicIds: LmsPostId[];
+  courseId: LmsPostId;
+  lastAccessedId?: LmsPostId;
   lastAccessedType?: "lesson" | "topic";
   lastAccessedAt?: number;
   startedAt?: number;
@@ -42,33 +43,33 @@ type CourseProgressRecord = {
 export type CourseNavEntry =
   | {
       type: "lesson";
-      id: Id<"posts">;
+      id: LmsPostId;
       slug?: string;
       title: string;
     }
   | {
       type: "topic";
-      id: Id<"posts">;
+      id: LmsPostId;
       slug?: string;
       title: string;
-      lessonId?: Id<"posts">;
+      lessonId?: LmsPostId;
       lessonSlug?: string;
     }
   | {
       type: "quiz";
-      id: Id<"posts">;
+      id: LmsPostId;
       slug?: string;
       title: string;
       isFinal?: boolean;
     };
 
 export interface LessonSegment {
-  lessonId: Id<"posts">;
+  lessonId: LmsPostId;
   lessonSlug?: string;
   title: string;
   completed: boolean;
   topics: Array<{
-    id: Id<"posts">;
+    id: LmsPostId;
     title: string;
     completed: boolean;
     slug?: string;
@@ -77,13 +78,13 @@ export interface LessonSegment {
 
 export interface LmsCourseContextValue {
   postTypeSlug?: string;
-  courseId?: Id<"posts">;
+  courseId?: LmsPostId;
   courseSlug?: string;
-  lessonId?: Id<"posts">;
+  lessonId?: LmsPostId;
   lessonSlug?: string;
-  topicId?: Id<"posts">;
+  topicId?: LmsPostId;
   topicSlug?: string;
-  quizId?: Id<"posts">;
+  quizId?: LmsPostId;
   quizSlug?: string;
   organizationId?: Id<"organizations">;
   courseStructure?: LmsCourseBuilderData | null;
@@ -99,9 +100,9 @@ export interface LmsCourseContextValue {
   currentEntry: CourseNavEntry | null;
   previousEntry: CourseNavEntry | null;
   nextEntry: CourseNavEntry | null;
-  completedLessonIds: Set<Id<"posts">>;
-  completedTopicIds: Set<Id<"posts">>;
-  activeLessonId?: Id<"posts">;
+  completedLessonIds: Set<LmsPostId>;
+  completedTopicIds: Set<LmsPostId>;
+  activeLessonId?: LmsPostId;
 }
 
 const LmsCourseContext = createContext<LmsCourseContextValue | null>(null);
@@ -120,7 +121,7 @@ interface LmsCourseProviderProps {
 
 type CourseStructureArgs =
   | {
-      courseId: Id<"posts">;
+      courseId: LmsPostId;
       organizationId?: Id<"organizations">;
     }
   | {
@@ -131,7 +132,7 @@ type CourseStructureArgs =
 
 type CourseProgressArgs =
   | {
-      courseId: Id<"posts">;
+      courseId: LmsPostId;
       organizationId?: Id<"organizations">;
     }
   | "skip";
@@ -217,12 +218,12 @@ export function LmsCourseProvider({
   const courseStructure = (rawCourseStructure ??
     null) as LmsCourseBuilderData | null;
 
-  const resolvedCourseId = useMemo<Id<"posts"> | undefined>(() => {
+  const resolvedCourseId = useMemo<LmsPostId | undefined>(() => {
     if (courseId) {
       return courseId;
     }
     const structureCourseId = courseStructure?.course?._id;
-    return structureCourseId ? (structureCourseId as Id<"posts">) : undefined;
+    return structureCourseId ?? undefined;
   }, [courseId, courseStructure]);
 
   const resolvedCourseSlug = useMemo<string | undefined>(() => {
@@ -293,7 +294,7 @@ export function LmsCourseProvider({
     if (!courseStructure?.attachedLessons) {
       return [];
     }
-    const topicMap = new Map<Id<"posts">, LmsBuilderTopic[]>();
+    const topicMap = new Map<LmsPostId, LmsBuilderTopic[]>();
     (courseStructure.attachedTopics ?? []).forEach((topic) => {
       if (!topic.lessonId) {
         return;
@@ -323,7 +324,7 @@ export function LmsCourseProvider({
       return [];
     }
     const entries: CourseNavEntry[] = [];
-    const topicMap = new Map<Id<"posts">, LmsBuilderTopic[]>();
+    const topicMap = new Map<LmsPostId, LmsBuilderTopic[]>();
     (courseStructure.attachedTopics ?? []).forEach((topic) => {
       if (!topic.lessonId) return;
       const list = topicMap.get(topic.lessonId) ?? [];

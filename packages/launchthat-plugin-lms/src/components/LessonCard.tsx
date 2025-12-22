@@ -11,6 +11,7 @@ import type {
   LmsBuilderLesson,
   LmsBuilderQuiz,
   LmsBuilderTopic,
+  LmsPostId,
 } from "../types";
 
 import { Badge } from "@acme/ui/badge";
@@ -26,10 +27,10 @@ interface LessonCardProps {
   topics: LmsBuilderTopic[];
   quizzes: LmsBuilderQuiz[];
   topicSortOrder: "alphabetical" | "date";
-  onToggleSortOrder: (lessonId: Id<"posts">) => void;
-  onRemoveLesson: (lessonId: Id<"posts">) => void;
-  onRemoveTopic: (topicId: Id<"posts">) => void;
-  onRemoveQuiz: (quizId: Id<"posts">) => void;
+  onToggleSortOrder: (lessonId: LmsPostId) => void;
+  onRemoveLesson: (lessonId: LmsPostId) => void;
+  onRemoveTopic: (topicId: LmsPostId) => void;
+  onRemoveQuiz: (quizId: LmsPostId) => void;
 }
 
 export const LessonCard = ({
@@ -80,7 +81,7 @@ export const LessonCard = ({
                 title="Topics"
                 items={topics}
                 emptyMessage="Drag or create topics here"
-                lessonId={lesson._id}
+                lessonId={lesson._id as unknown as Id<"posts">}
                 dropzoneType="topicDropzone"
                 renderItem={(topic) => (
                   <div className="flex items-center justify-between">
@@ -101,7 +102,7 @@ export const LessonCard = ({
                 title="Quizzes"
                 items={quizzes}
                 emptyMessage="Drag or create quizzes here"
-                lessonId={lesson._id}
+                lessonId={lesson._id as unknown as Id<"posts">}
                 dropzoneType="quizDropzone"
                 renderItem={(quiz) => (
                   <div className="flex items-center justify-between">

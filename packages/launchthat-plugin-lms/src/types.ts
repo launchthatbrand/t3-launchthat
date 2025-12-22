@@ -2,12 +2,16 @@ import type { Id } from "./lib/convexId";
 
 export type MetaValue = string | number | boolean | null;
 
+// LMS content is stored in Convex component-scoped tables (e.g. `launchthat_lms:posts`),
+// so IDs are plain strings (they are not compatible with app-scoped `GenericId<"posts">`).
+export type LmsPostId = string;
+
 export interface LmsCourseStructureItem {
-  lessonId: Id<"posts">;
+  lessonId: LmsPostId;
 }
 
 export interface LmsBuilderLesson {
-  _id: Id<"posts">;
+  _id: LmsPostId;
   title: string;
   content?: string;
   excerpt?: string;
@@ -17,30 +21,30 @@ export interface LmsBuilderLesson {
 }
 
 export interface LmsBuilderTopic {
-  _id: Id<"posts">;
+  _id: LmsPostId;
   title: string;
   excerpt?: string;
   content?: string;
   slug?: string;
-  lessonId?: Id<"posts">;
+  lessonId?: LmsPostId;
   order?: number;
 }
 
 export interface LmsBuilderQuiz {
-  _id: Id<"posts">;
+  _id: LmsPostId;
   title: string;
   excerpt?: string;
   content?: string;
   slug?: string;
-  lessonId?: Id<"posts">;
-  topicId?: Id<"posts">;
+  lessonId?: LmsPostId;
+  topicId?: LmsPostId;
   order?: number;
   isFinal?: boolean;
 }
 
 export interface LmsCourseBuilderData {
   course: {
-    _id: Id<"posts">;
+    _id: LmsPostId;
     slug?: string;
     title: string;
     excerpt?: string;
@@ -79,10 +83,10 @@ export interface QuizQuestionOption {
 }
 
 export interface QuizQuestion {
-  _id: Id<"posts">;
+  _id: LmsPostId;
   title: string;
   prompt: string;
-  quizId: Id<"posts">;
+  quizId: LmsPostId;
   questionType: QuizQuestionType;
   options: QuizQuestionOption[];
   correctOptionIds: string[];
@@ -91,7 +95,7 @@ export interface QuizQuestion {
 }
 
 export interface QuizAttemptSummary {
-  _id: Id<"quizAttempts">;
+  _id: string;
   scorePercent: number;
   totalQuestions: number;
   gradedQuestions: number;

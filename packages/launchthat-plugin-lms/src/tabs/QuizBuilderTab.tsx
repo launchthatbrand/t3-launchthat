@@ -44,6 +44,7 @@ import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
 
 import type { Id } from "../lib/convexId";
+import type { LmsPostId } from "../types";
 import type {
   QuizQuestion,
   QuizQuestionInput,
@@ -81,14 +82,14 @@ export const QuizBuilderTab = ({
 
   return (
     <QuizBuilderScreen
-      quizId={postId as Id<"posts">}
+      quizId={postId as LmsPostId}
       organizationId={normalizedOrganizationId}
     />
   );
 };
 
 interface QuizBuilderScreenProps {
-  quizId: Id<"posts">;
+  quizId: LmsPostId;
   organizationId?: Id<"organizations">;
 }
 
@@ -98,7 +99,7 @@ interface QuestionFormState {
   options: QuizQuestionOption[];
   correctOptionIds: string[];
   answerText: string;
-  questionId?: Id<"posts">;
+  questionId?: LmsPostId;
 }
 
 const QUESTION_TYPE_LABELS: Record<QuizQuestionType, string> = {
@@ -172,7 +173,7 @@ const QuizBuilderScreen = ({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
-  const [pendingDeleteId, setPendingDeleteId] = useState<Id<"posts"> | null>(
+  const [pendingDeleteId, setPendingDeleteId] = useState<LmsPostId | null>(
     null,
   );
 

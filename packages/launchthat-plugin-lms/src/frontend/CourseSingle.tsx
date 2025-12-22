@@ -15,13 +15,14 @@ import type {
   LmsBuilderQuiz,
   LmsBuilderTopic,
   LmsCourseBuilderData,
+  LmsPostId,
 } from "../types";
 import type { StructuredLessonEntry } from "./components/CourseStructure";
 import { CourseStructure } from "./components/CourseStructure";
 import { HeroStat } from "./components/HeroStat";
 
 interface CourseSingleProps {
-  courseId: Id<"posts">;
+  courseId: LmsPostId;
   courseSlug?: string | null;
   organizationId?: Id<"organizations">;
 }
@@ -149,21 +150,21 @@ export function CourseSingle({
 
   if (isMissing) {
     return (
-      <div className="container py-16 text-center text-muted-foreground">
+      <div className="text-muted-foreground container py-16 text-center">
         Course not found.
       </div>
     );
   }
 
   return (
-    <div className="space-y-10 bg-gradient-to-b from-muted/50 via-transparent to-transparent py-10">
+    <div className="from-muted/50 space-y-10 bg-linear-to-b via-transparent to-transparent py-10">
       <div className="container space-y-6">
-        <header className="rounded-3xl bg-background/90 p-8 shadow-sm">
+        <header className="bg-background/90 rounded-3xl p-8 shadow-sm">
           <div className="flex flex-wrap items-center gap-3">
             <Badge variant="secondary" className="rounded-full">
               Course
             </Badge>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-muted-foreground text-sm">
               Updated recently
             </span>
           </div>
@@ -171,7 +172,7 @@ export function CourseSingle({
             {course.title}
           </h1>
           {course.excerpt && (
-            <p className="mt-3 text-lg text-muted-foreground">
+            <p className="text-muted-foreground mt-3 text-lg">
               {course.excerpt}
             </p>
           )}
@@ -196,7 +197,7 @@ export function CourseSingle({
 
         {structuredLessons.length === 0 ? (
           <Card>
-            <CardContent className="py-10 text-center text-muted-foreground">
+            <CardContent className="text-muted-foreground py-10 text-center">
               This course does not have any lessons yet.
             </CardContent>
           </Card>
@@ -204,7 +205,7 @@ export function CourseSingle({
           <section className="space-y-4">
             <div className="space-y-2">
               <h2 className="text-2xl font-semibold">Course outline</h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Lessons display their topics and quizzes following the structure
                 you defined in the course builder.
               </p>

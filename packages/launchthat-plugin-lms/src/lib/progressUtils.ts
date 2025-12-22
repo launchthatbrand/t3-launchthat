@@ -1,8 +1,8 @@
-import type { Id } from "../lib/convexId";
+import type { LmsPostId } from "../types";
 
-export function coercePostId(value: unknown): Id<"posts"> | undefined {
+export function coercePostId(value: unknown): LmsPostId | undefined {
   return typeof value === "string" && value.length > 0
-    ? (value as Id<"posts">)
+    ? (value as LmsPostId)
     : undefined;
 }
 
@@ -14,7 +14,7 @@ export function deriveCourseId(
   postTypeSlug: string,
   post: Record<string, unknown>,
   meta: Record<string, unknown>,
-): Id<"posts"> | undefined {
+): LmsPostId | undefined {
   if (postTypeSlug === "courses") {
     return coercePostId(post._id);
   }
@@ -40,7 +40,7 @@ export function deriveLessonId(
   postTypeSlug: string,
   post: Record<string, unknown>,
   meta: Record<string, unknown>,
-): Id<"posts"> | undefined {
+): LmsPostId | undefined {
   if (postTypeSlug === "lessons") {
     return coercePostId(post._id);
   }

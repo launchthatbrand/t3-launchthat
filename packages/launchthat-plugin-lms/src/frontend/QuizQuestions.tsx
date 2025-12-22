@@ -16,6 +16,7 @@ import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
 
 import type { Id } from "../lib/convexId";
+import type { LmsPostId } from "../types";
 import type { QuizAttemptSummary, QuizQuestion } from "../types";
 import { useLmsCourseContext } from "../providers/LmsCourseProvider";
 
@@ -58,7 +59,7 @@ export function QuizQuestions(props: QuizQuestionsProps = {}) {
     props &&
     props.post &&
     typeof (props.post as { _id?: unknown })._id === "string"
-      ? ((props.post as { _id: string })._id as Id<"posts">)
+      ? ((props.post as { _id: string })._id as LmsPostId)
       : undefined;
   const organizationIdFromProps =
     props &&
@@ -74,7 +75,7 @@ export function QuizQuestions(props: QuizQuestionsProps = {}) {
     api.plugins.lms.queries.getQuizBuilderState,
     quizId
       ? ({ quizId, organizationId } as {
-          quizId: Id<"posts">;
+          quizId: LmsPostId;
           organizationId?: Id<"organizations">;
         })
       : "skip",
@@ -155,7 +156,7 @@ export function QuizQuestions(props: QuizQuestionsProps = {}) {
     : false;
 
   const handleAnswerChange = (
-    questionId: Id<"posts">,
+    questionId: LmsPostId,
     payload: AnswerPayload,
   ) => {
     setAnswerMap((prev) => ({
@@ -381,7 +382,7 @@ const QuizQuestionsSkeleton = () => (
 interface QuestionSlideProps {
   question: QuizQuestion;
   answer?: AnswerPayload;
-  onAnswerChange: (questionId: Id<"posts">, payload: AnswerPayload) => void;
+  onAnswerChange: (questionId: LmsPostId, payload: AnswerPayload) => void;
 }
 
 const QuestionSlide = ({

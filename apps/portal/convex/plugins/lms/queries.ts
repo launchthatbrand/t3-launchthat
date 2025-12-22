@@ -381,12 +381,12 @@ export const getAvailableQuizzes = query({
 
 export const getQuizBuilderState = query({
   args: {
-    quizId: v.id("posts"),
+    quizId: v.string(),
     organizationId: v.optional(v.id("organizations")),
   },
   returns: v.object({
     quiz: v.object({
-      _id: v.id("posts"),
+      _id: v.string(),
       title: v.string(),
       slug: v.optional(v.string()),
       status: v.optional(v.string()),
@@ -429,7 +429,7 @@ export const getQuizBuilderState = query({
 
 export const getQuizAttemptsForViewer = query({
   args: {
-    quizId: v.id("posts"),
+    quizId: v.string(),
   },
   returns: v.array(quizAttemptSummaryValidator),
   handler: async (ctx: any, args: any) => {

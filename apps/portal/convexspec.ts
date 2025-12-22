@@ -5211,7 +5211,7 @@ export type PublicApiType = {
         getQuizBuilderState: FunctionReference<
           "query",
           "public",
-          { organizationId?: Id<"organizations">; quizId: Id<"posts"> },
+          { organizationId?: Id<"organizations">; quizId: string },
           {
             questions: Array<{
               _id: string;
@@ -5229,7 +5229,7 @@ export type PublicApiType = {
               title: string;
             }>;
             quiz: {
-              _id: Id<"posts">;
+              _id: string;
               slug?: string;
               status?: string;
               title: string;
@@ -5239,7 +5239,7 @@ export type PublicApiType = {
         getQuizAttemptsForViewer: FunctionReference<
           "query",
           "public",
-          { quizId: Id<"posts"> },
+          { quizId: string },
           Array<{
             _id: string;
             completedAt: number;
