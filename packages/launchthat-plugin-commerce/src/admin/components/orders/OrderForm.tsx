@@ -235,7 +235,8 @@ export function OrderForm({
       return undefined;
     }
     const entry = existingPostMeta.find(
-      (meta) => meta.key === ORDER_META_KEYS.userId,
+      (meta: { key: string; value?: unknown }) =>
+        meta.key === ORDER_META_KEYS.userId,
     );
     if (!entry) {
       return undefined;
@@ -251,7 +252,8 @@ export function OrderForm({
       return undefined;
     }
     const payloadRecord = existingPostMeta.find(
-      (entry) => entry.key === ORDER_META_KEYS.payload,
+      (entry: { key: string; value?: unknown }) =>
+        entry.key === ORDER_META_KEYS.payload,
     );
     if (payloadRecord && typeof payloadRecord.value === "string") {
       try {
