@@ -1489,19 +1489,60 @@ export const setTopicCompletionStatus: any = mutation({
       organizationId,
     );
     const topicSet = new Set(progress.completedTopicIds);
+    const lessonSet = new Set(progress.completedLessonIds);
     if (args.completed) {
       topicSet.add(args.topicId as unknown as Id<"posts">);
     } else {
       topicSet.delete(args.topicId as unknown as Id<"posts">);
     }
     const completedTopicIds = Array.from(topicSet) as Id<"posts">[];
+
+    // Auto-mark lesson completion based on topics within the lesson.
+    // - If ALL topics in the lesson are completed => mark lesson complete
+    // - If ANY topic becomes incomplete => mark lesson incomplete
+    if (_lessonId && typeof _lessonId === "string") {
+      const topics = (await ctx.runQuery(
+        components.launchthat_lms.posts.queries.getAllPosts,
+        {
+          organizationId: organizationId ? String(organizationId) : undefined,
+          filters: { postTypeSlug: "topics" },
+        },
+      )) as any[];
+
+      const attachedTopicIds: string[] = [];
+      await Promise.all(
+        topics.map(async (topic: any) => {
+          const meta = await getPostMetaMap(
+            ctx,
+            topic._id as unknown as Id<"posts">,
+          );
+          const lessonIdValue = meta.get("lessonId");
+          if (lessonIdValue === String(_lessonId)) {
+            attachedTopicIds.push(String(topic._id));
+          }
+        }),
+      );
+
+      if (attachedTopicIds.length > 0) {
+        const allTopicsCompleted = attachedTopicIds.every((topicId) =>
+          topicSet.has(topicId as unknown as Id<"posts">),
+        );
+        if (allTopicsCompleted) {
+          lessonSet.add(_lessonId as unknown as Id<"posts">);
+        } else {
+          lessonSet.delete(_lessonId as unknown as Id<"posts">);
+        }
+      }
+    }
+
+    const completedLessonIds = Array.from(lessonSet) as Id<"posts">[];
     await ctx.runMutation(
       components.launchthat_lms.progress.mutations.upsertCourseProgress,
       {
         userId: String(userId),
         courseId: String(courseId),
         organizationId: organizationId ? String(organizationId) : undefined,
-        completedLessonIds: (progress.completedLessonIds ?? []).map(String),
+        completedLessonIds: completedLessonIds.map(String),
         completedTopicIds: completedTopicIds.map(String),
         lastAccessedAt: Date.now(),
         lastAccessedId: String(args.topicId),

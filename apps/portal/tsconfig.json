@@ -54,5 +54,5 @@
     "plugins": [{ "name": "next" }]
   },
   "include": [".", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "temp-debug", "temp-*.js", "temp-*.ts", "temp-*.mjs"]
 }

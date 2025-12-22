@@ -69,7 +69,7 @@ export interface GeneralMetaBoxData {
   slugValue: string;
   setSlugValue: (value: string) => void;
   slugPreviewUrl: string | null;
-  supportsPostsTable: boolean;
+  supportsSlugEditing: boolean;
   editorKey: string;
   derivedEditorState?: SerializedEditorState;
   setContent: (value: string) => void;
@@ -98,7 +98,7 @@ export interface SidebarActionsMetaBoxData {
   handleDuplicate: (event?: React.MouseEvent) => void;
   isDuplicating: boolean;
   isSaving: boolean;
-  supportsPostsTable: boolean;
+  canDuplicateRecord: boolean;
   canSaveRecord: boolean;
   puckEditorHref: string | null;
   isNewRecord: boolean;

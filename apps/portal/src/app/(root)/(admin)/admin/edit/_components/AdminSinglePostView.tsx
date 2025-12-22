@@ -346,7 +346,7 @@ export function AdminSinglePostView({
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? "");
   const [content, setContent] = useState(post?.content ?? "");
   const [postStatus, setPostStatus] = useState<AdminPostStatus>(
-    (post?.status as AdminPostStatus) ?? "draft",
+    (post?.status as AdminPostStatus) ?? (isNewRecord ? "published" : "draft"),
   );
   const [isSaving, setIsSaving] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
@@ -370,6 +370,9 @@ export function AdminSinglePostView({
     storageKind === "posts" && (!!postType || isBuiltInPostTypeSlug(slug));
   const canSaveRecord =
     supportsPostsTable || isCustomStorage || isComponentStorage;
+  const supportsSlugEditing = supportsPostsTable || isComponentStorage;
+  const canDuplicateRecord =
+    canSaveRecord && !isNewRecord && Boolean(post?._id) && !isCustomStorage;
   const supportsAttachments =
     supportsPostsTable &&
     (resolveSupportFlag(postType?.supports, "attachments") ||
@@ -806,7 +809,7 @@ export function AdminSinglePostView({
       slugValue,
       setSlugValue,
       slugPreviewUrl,
-      supportsPostsTable,
+      supportsSlugEditing,
       editorKey,
       derivedEditorState,
       setContent,
@@ -827,7 +830,7 @@ export function AdminSinglePostView({
       setTitle,
       slugPreviewUrl,
       slugValue,
-      supportsPostsTable,
+      supportsSlugEditing,
       title,
     ],
   );
@@ -1617,7 +1620,7 @@ export function AdminSinglePostView({
       setSlugValue("");
       setExcerpt("");
       setContent("");
-      setPostStatus("draft");
+      setPostStatus("published");
     }
   }, [isNewRecord, post]);
 
@@ -1822,16 +1825,17 @@ export function AdminSinglePostView({
           </>
         ) : (
           <>
-            <Save className="mr-2 h-4 w-4" /> Save Changes
+            <Save className="mr-2 h-4 w-4" />
+            {isNewRecord ? "Publish" : "Update"}
           </>
         )}
       </Button>
     ),
-    [canSaveRecord, handleSave, isSaving],
+    [canSaveRecord, handleSave, isNewRecord, isSaving],
   );
 
   const handleDuplicate = useCallback(async () => {
-    if (!supportsPostsTable || !post?._id || isNewRecord) {
+    if (!canDuplicateRecord || !post?._id) {
       return;
     }
     setIsDuplicating(true);
@@ -1873,6 +1877,7 @@ export function AdminSinglePostView({
       setIsDuplicating(false);
     }
   }, [
+    canDuplicateRecord,
     buildMetaPayload,
     content,
     createPost,
@@ -1886,7 +1891,6 @@ export function AdminSinglePostView({
     router,
     slug,
     slugValue,
-    supportsPostsTable,
     title,
   ]);
 
@@ -1896,7 +1900,7 @@ export function AdminSinglePostView({
       handleDuplicate,
       isDuplicating,
       isSaving,
-      supportsPostsTable,
+      canDuplicateRecord,
       puckEditorHref,
       isNewRecord,
       canSaveRecord,
@@ -1906,6 +1910,7 @@ export function AdminSinglePostView({
     }),
     [
       canSaveRecord,
+      canDuplicateRecord,
       handleDuplicate,
       isDuplicating,
       isNewRecord,
@@ -1913,7 +1918,6 @@ export function AdminSinglePostView({
       puckEditorHref,
       postStatus,
       renderSaveButton,
-      supportsPostsTable,
       statusOptions,
       setPostStatus,
     ],

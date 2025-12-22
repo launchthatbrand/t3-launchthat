@@ -40,6 +40,14 @@ export const LinearProgressContentGate = ({ children }: Props) => {
 
   if (isLinearBlocked) {
     blockingMessage = blockingLessonTitle ?? "the previous lesson";
+  } else if (requiresLinearProgression && postTypeSlug === "topics") {
+    // For topics, enforce "complete topics in order within a lesson".
+    // We intentionally DO NOT block the first topic in a lesson based on the lesson itself.
+    if (previousEntry?.type === "topic") {
+      blockingMessage = completedTopicIds.has(previousEntry.id)
+        ? null
+        : (previousEntry.title ?? "the previous topic");
+    }
   } else if (requiresLinearProgression && postTypeSlug === "quizzes") {
     if (previousEntry?.type === "lesson") {
       blockingMessage = completedLessonIds.has(previousEntry.id)

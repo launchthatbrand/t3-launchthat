@@ -17,7 +17,7 @@ const GeneralMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
   const {
     title,
     setTitle,
-    supportsPostsTable,
+    supportsSlugEditing,
     slugValue,
     setSlugValue,
     slugPreviewUrl,
@@ -45,7 +45,7 @@ const GeneralMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
           placeholder="Add a descriptive title"
         />
       </div>
-      {supportsPostsTable && (
+      {supportsSlugEditing && (
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <Label htmlFor="post-slug">Frontend Slug</Label>

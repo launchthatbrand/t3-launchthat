@@ -14,6 +14,28 @@ import type { LmsBuilderQuiz, LmsBuilderTopic } from "../types";
 
 type ChildNavItem = { title: string; url: string };
 
+const sortByOrderThenTitle = <
+  T extends { order?: number | null; title?: string | null },
+>(
+  a: T,
+  b: T,
+) => {
+  const aOrder =
+    typeof a.order === "number" && Number.isFinite(a.order)
+      ? a.order
+      : Number.MAX_SAFE_INTEGER;
+  const bOrder =
+    typeof b.order === "number" && Number.isFinite(b.order)
+      ? b.order
+      : Number.MAX_SAFE_INTEGER;
+  if (aOrder !== bOrder) {
+    return aOrder - bOrder;
+  }
+  const aTitle = (a.title ?? "").toLowerCase();
+  const bTitle = (b.title ?? "").toLowerCase();
+  return aTitle.localeCompare(bTitle);
+};
+
 type CourseStructureArgs =
   | {
       courseId: Id<"posts">;
@@ -92,6 +114,7 @@ export function CourseNav({
       const topics = attachedTopics.filter(
         (topic) => topic.lessonId === lesson._id,
       );
+      topics.sort(sortByOrderThenTitle);
 
       topics.forEach((topic) => {
         childItems.push({
@@ -102,6 +125,7 @@ export function CourseNav({
         const topicQuizzes = attachedQuizzes.filter(
           (quiz) => quiz.topicId === topic._id,
         );
+        topicQuizzes.sort(sortByOrderThenTitle);
 
         topicQuizzes.forEach((quiz) => {
           childItems.push({
@@ -114,6 +138,7 @@ export function CourseNav({
       const lessonQuizzes = attachedQuizzes.filter(
         (quiz) => quiz.lessonId === lesson._id && !quiz.topicId,
       );
+      lessonQuizzes.sort(sortByOrderThenTitle);
 
       lessonQuizzes.forEach((quiz) => {
         childItems.push({

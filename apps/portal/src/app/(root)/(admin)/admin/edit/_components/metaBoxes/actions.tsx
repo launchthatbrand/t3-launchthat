@@ -28,7 +28,7 @@ const ActionsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
     handleDuplicate,
     isDuplicating,
     isSaving,
-    supportsPostsTable,
+    canDuplicateRecord,
     puckEditorHref,
     isNewRecord,
     canSaveRecord,
@@ -98,7 +98,7 @@ const ActionsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
             variant="outline"
             className="w-full gap-2"
             disabled={
-              isDuplicating || isSaving || isNewRecord || !supportsPostsTable
+              isDuplicating || isSaving || isNewRecord || !canDuplicateRecord
             }
             onClick={(event) => {
               event.stopPropagation();
