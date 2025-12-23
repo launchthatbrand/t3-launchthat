@@ -1,27 +1,14 @@
 "use client";
 
-import {
-  AdminLayout,
-  AdminLayoutContent,
-  AdminLayoutHeader,
-  AdminLayoutMain,
-  AdminLayoutSidebar,
-} from "~/components/admin/AdminLayout";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@acme/ui/card";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@acme/ui/select";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import { api } from "@/convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
+import { formatDistanceToNow } from "date-fns";
+import { Sparkles, Trash2, Upload } from "lucide-react";
+
+import type { ColumnDefinition } from "@acme/ui/entity-list/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,17 +19,38 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@acme/ui/alert-dialog";
-import { Sparkles, Trash2, Upload } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import type { ColumnDefinition } from "@acme/ui/entity-list/types";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@acme/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@acme/ui/dialog";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
-import Image from "next/image";
-import { api } from "@/convex/_generated/api";
-import { formatDistanceToNow } from "date-fns";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@acme/ui/select";
+
+import {
+  AdminLayout,
+  AdminLayoutContent,
+  AdminLayoutHeader,
+  AdminLayoutMain,
+  AdminLayoutSidebar,
+} from "~/components/admin/AdminLayout";
 
 type PostTypeDoc = Doc<"postTypes">;
 type MediaItemDoc = Doc<"mediaItems"> & { url?: string | null };
@@ -77,10 +85,17 @@ export function AttachmentsArchiveView({
   const [deleteTarget, setDeleteTarget] = useState<MediaItemDoc | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewMediaId, setPreviewMediaId] = useState<string | null>(null);
+  const [previewImageFailed, setPreviewImageFailed] = useState(false);
+
   const mediaResponse = useQuery(api.core.media.queries.listMediaItemsWithUrl, {
     paginationOpts: { numItems: 60, cursor: null },
   });
-  const mediaItems: MediaItemDoc[] = mediaResponse?.page ?? [];
+  const mediaItems = useMemo<MediaItemDoc[]>(
+    () => mediaResponse?.page ?? [],
+    [mediaResponse?.page],
+  );
   const isLoading = mediaResponse === undefined;
 
   const handleUploadClick = useCallback(() => {
@@ -99,7 +114,9 @@ export function AttachmentsArchiveView({
           const uploadUrl = await generateUploadUrl();
           const uploadResponse = await fetch(uploadUrl, {
             method: "POST",
-            headers: { "Content-Type": file.type || "application/octet-stream" },
+            headers: {
+              "Content-Type": file.type || "application/octet-stream",
+            },
             body: file,
           });
           if (!uploadResponse.ok) {
@@ -130,12 +147,82 @@ export function AttachmentsArchiveView({
     [generateUploadUrl, saveMedia],
   );
 
-  const headerDescription = useMemo(
-    () =>
-      description ??
-      "Upload high-resolution assets for the best results. Attachments automatically land in your WordPress-style media library.",
-    [description],
-  );
+  const headerDescription = useMemo(() => {
+    if (typeof description === "string" && description.trim().length > 0) {
+      return description;
+    }
+    return "Upload high-resolution assets for the best results. Attachments automatically land in your WordPress-style media library.";
+  }, [description]);
+
+  const previewIndex = useMemo(() => {
+    if (!previewMediaId) return -1;
+    return mediaItems.findIndex((item) => String(item._id) === previewMediaId);
+  }, [mediaItems, previewMediaId]);
+
+  const previewItem = previewIndex >= 0 ? mediaItems[previewIndex] : null;
+
+  useEffect(() => {
+    // Reset preview error state whenever the selected item changes.
+    setPreviewImageFailed(false);
+  }, [previewMediaId]);
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    if (!previewMediaId) return;
+    const exists = mediaItems.some(
+      (item) => String(item._id) === previewMediaId,
+    );
+    if (!exists) {
+      setPreviewOpen(false);
+      setPreviewMediaId(null);
+    }
+  }, [mediaItems, previewMediaId, previewOpen]);
+
+  const openPreviewForItem = useCallback((item: MediaItemDoc) => {
+    setPreviewMediaId(String(item._id));
+    setPreviewOpen(true);
+  }, []);
+
+  const closePreview = useCallback(() => {
+    setPreviewOpen(false);
+  }, []);
+
+  const handlePreviewPrevious = useCallback(() => {
+    if (mediaItems.length === 0) return;
+    const current = previewIndex >= 0 ? previewIndex : 0;
+    const nextIndex = (current - 1 + mediaItems.length) % mediaItems.length;
+    setPreviewMediaId(String(mediaItems[nextIndex]?._id));
+  }, [mediaItems, previewIndex]);
+
+  const handlePreviewNext = useCallback(() => {
+    if (mediaItems.length === 0) return;
+    const current = previewIndex >= 0 ? previewIndex : 0;
+    const nextIndex = (current + 1) % mediaItems.length;
+    setPreviewMediaId(String(mediaItems[nextIndex]?._id));
+  }, [mediaItems, previewIndex]);
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        handlePreviewPrevious();
+        return;
+      }
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        handlePreviewNext();
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closePreview();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [closePreview, handlePreviewNext, handlePreviewPrevious, previewOpen]);
+
   const columns = useMemo<ColumnDefinition<MediaItemDoc>[]>(
     () => [
       {
@@ -179,7 +266,10 @@ export function AttachmentsArchiveView({
               variant="ghost"
               size="icon"
               className="text-destructive hover:text-destructive"
-              onClick={() => setDeleteTarget(item)}
+              onClick={(event) => {
+                event.stopPropagation();
+                setDeleteTarget(item);
+              }}
               title="Delete attachment"
             >
               <Trash2 className="h-4 w-4" />
@@ -196,7 +286,7 @@ export function AttachmentsArchiveView({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Select value={slug} onValueChange={onPostTypeChange}>
-          <SelectTrigger className="w-[240px]">
+          <SelectTrigger className="w-60">
             <SelectValue placeholder="Select post type" />
           </SelectTrigger>
           <SelectContent>
@@ -247,6 +337,7 @@ export function AttachmentsArchiveView({
             defaultViewMode="grid"
             enableSearch
             gridColumns={{ sm: 2, md: 3, lg: 4 }}
+            onRowClick={openPreviewForItem}
             emptyState={
               <div className="text-muted-foreground flex h-48 flex-col items-center justify-center text-center">
                 <Sparkles className="mb-2 h-6 w-6" />
@@ -291,7 +382,10 @@ export function AttachmentsArchiveView({
                       variant="ghost"
                       size="icon"
                       className="text-destructive hover:text-destructive"
-                      onClick={() => setDeleteTarget(item)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setDeleteTarget(item);
+                      }}
                       title="Delete attachment"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -305,6 +399,184 @@ export function AttachmentsArchiveView({
         </CardContent>
       </Card>
 
+      <Dialog
+        open={previewOpen}
+        onOpenChange={(open) => {
+          setPreviewOpen(open);
+          if (!open) {
+            setPreviewMediaId(null);
+          }
+        }}
+      >
+        <DialogContent className="h-[96vh] w-[96vw] max-w-6xl! p-0">
+          <div className="flex h-full flex-col">
+            <DialogHeader className="border-b px-6 py-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <DialogTitle className="truncate">
+                    {previewItem?.title ?? "Attachment"}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {previewItem ? (
+                      <>
+                        {previewItem.status ?? "draft"} ·{" "}
+                        {formatDistanceToNow(previewItem._creationTime, {
+                          addSuffix: true,
+                        })}{" "}
+                        {previewIndex >= 0
+                          ? `· ${previewIndex + 1} / ${mediaItems.length}`
+                          : null}
+                      </>
+                    ) : (
+                      "Select an attachment to preview."
+                    )}
+                  </DialogDescription>
+                </div>
+
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePreviewPrevious}
+                    disabled={mediaItems.length <= 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePreviewNext}
+                    disabled={mediaItems.length <= 1}
+                  >
+                    Next
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={closePreview}
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="bg-muted/30 relative flex min-h-0 flex-1 items-center justify-center">
+              <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center px-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  className="pointer-events-auto h-10 w-10 rounded-full"
+                  onClick={handlePreviewPrevious}
+                  disabled={mediaItems.length <= 1}
+                  aria-label="Previous attachment"
+                >
+                  ‹
+                </Button>
+              </div>
+              <div className="pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center px-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  className="pointer-events-auto h-10 w-10 rounded-full"
+                  onClick={handlePreviewNext}
+                  disabled={mediaItems.length <= 1}
+                  aria-label="Next attachment"
+                >
+                  ›
+                </Button>
+              </div>
+
+              <div className="bg-background relative mx-4 flex h-full w-full items-center justify-center overflow-hidden rounded-2xl border shadow-sm">
+                {previewItem?.url && !previewImageFailed ? (
+                  <div className="flex h-full w-full items-center justify-center p-6">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={previewItem.url}
+                      alt={previewItem.title ?? "Attachment preview"}
+                      className="max-h-full max-w-full object-contain"
+                      loading="eager"
+                      referrerPolicy="no-referrer"
+                      onError={() => setPreviewImageFailed(true)}
+                    />
+                  </div>
+                ) : previewItem?.url ? (
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-6 text-center">
+                    <p className="text-sm font-medium">Preview not available</p>
+                    <p className="text-muted-foreground text-sm">
+                      Open this file in a new tab to view it.
+                    </p>
+                    <Button asChild variant="outline" size="sm">
+                      <a
+                        href={previewItem.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open file
+                      </a>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground flex h-full w-full items-center justify-center text-sm">
+                    No URL available.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-background border-t px-6 py-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">Media Library</p>
+                <Badge variant="outline" className="text-xs">
+                  {mediaItems.length}
+                </Badge>
+              </div>
+              <div className="mt-3 overflow-x-auto pb-2">
+                <div className="flex gap-3">
+                  {mediaItems.map((item) => {
+                    const isActive = String(item._id) === previewMediaId;
+                    return (
+                      <button
+                        key={item._id}
+                        type="button"
+                        onClick={() => openPreviewForItem(item)}
+                        className={[
+                          "group overflow-hidden rounded-xl border text-left transition",
+                          isActive
+                            ? "ring-primary ring-2"
+                            : "hover:border-primary",
+                        ].join(" ")}
+                      >
+                        <div className="bg-muted relative h-20 w-32">
+                          {item.url ? (
+                            <Image
+                              src={item.url}
+                              alt={item.title ?? "Attachment"}
+                              fill
+                              sizes="128px"
+                              className="object-cover transition group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="text-muted-foreground flex h-full items-center justify-center text-xs">
+                              No preview
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => (open ? null : setDeleteTarget(null))}
@@ -313,8 +585,8 @@ export function AttachmentsArchiveView({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete attachment?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the attachment and its underlying file
-              from storage. This action can’t be undone.
+              This will permanently delete the attachment and its underlying
+              file from storage. This action can’t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
