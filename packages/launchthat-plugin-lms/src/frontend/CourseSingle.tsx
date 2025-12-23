@@ -19,7 +19,6 @@ import type {
 } from "../types";
 import type { StructuredLessonEntry } from "./components/CourseStructure";
 import { CourseStructure } from "./components/CourseStructure";
-import { HeroStat } from "./components/HeroStat";
 
 interface CourseSingleProps {
   courseId: LmsPostId;
@@ -49,6 +48,7 @@ export function CourseSingle({
     title: "Course",
     excerpt: "",
     status: undefined,
+    firstAttachmentUrl: undefined,
     courseStructure: [],
   };
 
@@ -158,40 +158,65 @@ export function CourseSingle({
 
   return (
     <div className="from-muted/50 space-y-10 bg-linear-to-b via-transparent to-transparent py-10">
-      <div className="container space-y-6">
+      <div className="container space-y-20">
         <header className="bg-background/90 rounded-3xl p-8 shadow-sm">
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="secondary" className="rounded-full">
-              Course
-            </Badge>
-            <span className="text-muted-foreground text-sm">
-              Updated recently
-            </span>
-          </div>
-          <h1 className="mt-4 text-4xl font-bold tracking-tight">
-            {course.title}
-          </h1>
-          {course.excerpt && (
-            <p className="text-muted-foreground mt-3 text-lg">
-              {course.excerpt}
-            </p>
-          )}
-          <div className="relative mt-6 grid gap-4 md:grid-cols-3">
-            <HeroStat
-              label="Lessons"
-              value={lessons.length}
-              icon={<Layers className="size-5" />}
-            />
-            <HeroStat
-              label="Topics"
-              value={totalTopics}
-              icon={<PlayCircle className="size-5" />}
-            />
-            <HeroStat
-              label="Quizzes"
-              value={totalQuizzes}
-              icon={<ClipboardList className="size-5" />}
-            />
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge variant="secondary" className="rounded-full">
+                  Course
+                </Badge>
+                <span className="text-muted-foreground text-sm">
+                  Updated recently
+                </span>
+              </div>
+              <h1 className="mt-4 text-4xl font-bold tracking-tight">
+                {course.title}
+              </h1>
+              {course.excerpt && (
+                <p className="text-muted-foreground mt-3 text-lg">
+                  {course.excerpt}
+                </p>
+              )}
+
+              <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                  <Layers className="size-4" aria-hidden="true" />
+                  <span className="text-foreground font-medium tabular-nums">
+                    {lessons.length}
+                  </span>
+                  <span>Lessons</span>
+                </div>
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                  <PlayCircle className="size-4" aria-hidden="true" />
+                  <span className="text-foreground font-medium tabular-nums">
+                    {totalTopics}
+                  </span>
+                  <span>Topics</span>
+                </div>
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                  <ClipboardList className="size-4" aria-hidden="true" />
+                  <span className="text-foreground font-medium tabular-nums">
+                    {totalQuizzes}
+                  </span>
+                  <span>Quizzes</span>
+                </div>
+              </div>
+            </div>
+
+            {course.firstAttachmentUrl ? (
+              <div className="bg-muted/40 relative overflow-hidden rounded-2xl border">
+                <div className="aspect-16/10 w-full">
+                  <img
+                    src={course.firstAttachmentUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
         </header>
 
@@ -202,7 +227,7 @@ export function CourseSingle({
             </CardContent>
           </Card>
         ) : (
-          <section className="space-y-4">
+          <section className="container space-y-4">
             <div className="space-y-2">
               <h2 className="text-2xl font-semibold">Course outline</h2>
               <p className="text-muted-foreground text-sm">

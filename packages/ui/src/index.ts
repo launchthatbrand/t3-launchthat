@@ -42,3 +42,4 @@ export * from "./theme";
 export * from "./toast";
 export * from "./entity-list";
 export * from "./json-view";
+export * from "./animated-tooltip";

@@ -104,7 +104,8 @@ export function FrontendLessonCompletionCallout({
   const isCompleted = isLessonCompleted || isTopicCompleted;
   const isAuthenticatedProgress = courseProgress !== null;
 
-  const attachedCertificates = courseContext?.courseStructure?.attachedCertificates ?? [];
+  const attachedCertificates =
+    courseContext?.courseStructure?.attachedCertificates ?? [];
   const resolvedCertificate = useMemo(() => {
     const structure = courseContext?.courseStructure;
     if (!structure) return null;
@@ -118,21 +119,33 @@ export function FrontendLessonCompletionCallout({
       return findById(structure.course.certificateId);
     }
     if (postTypeSlug === "lessons" && lessonId) {
-      const lesson = (structure.attachedLessons ?? []).find((l) => l._id === lessonId);
+      const lesson = (structure.attachedLessons ?? []).find(
+        (l) => l._id === lessonId,
+      );
       return findById(lesson?.certificateId);
     }
     if (postTypeSlug === "topics" && topicId) {
-      const topic = (structure.attachedTopics ?? []).find((t) => t._id === topicId);
+      const topic = (structure.attachedTopics ?? []).find(
+        (t) => t._id === topicId,
+      );
       return findById(topic?.certificateId);
     }
     return null;
-  }, [attachedCertificates, courseContext?.courseStructure, lessonId, postTypeSlug, topicId]);
+  }, [
+    attachedCertificates,
+    courseContext?.courseStructure,
+    lessonId,
+    postTypeSlug,
+    topicId,
+  ]);
 
   const isCourseCompleted = useMemo(() => {
     if (postTypeSlug !== "courses") return false;
     const segments = courseContext?.segments ?? [];
     if (!segments.length) return false;
-    return segments.every((segment) => completedLessonIds.has(segment.lessonId));
+    return segments.every((segment) =>
+      completedLessonIds.has(segment.lessonId),
+    );
   }, [completedLessonIds, courseContext?.segments, postTypeSlug]);
 
   const isCertificateUnlocked =
@@ -242,7 +255,7 @@ export function FrontendLessonCompletionCallout({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Badge variant="outline" className="text-xs tracking-wide uppercase">
-            Course progress
+            Course completion
           </Badge>
           <p className="text-foreground mt-1 text-sm font-medium">
             {config.description}
@@ -252,14 +265,15 @@ export function FrontendLessonCompletionCallout({
           onClick={handleComplete}
           disabled={buttonDisabled}
           variant={isCompleted ? "secondary" : "default"}
-          className="shrink-0"
+          size={"lg"}
+          className="h-12 w-full shrink-0"
         >
           <CheckCircle2 className="mr-2 h-4 w-4" />
           {isCompleted ? `Mark ${config.noun} incomplete` : config.cta}
         </Button>
       </div>
       {resolvedCertificate ? (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed bg-muted/20 p-3">
+        <div className="bg-muted/20 mt-3 hidden flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed p-3 md:flex">
           <div>
             <p className="text-sm font-medium">
               Certificate: {resolvedCertificate.title ?? "Untitled certificate"}
@@ -293,7 +307,7 @@ export function FrontendLessonCompletionCallout({
         <p className="text-destructive mt-3 text-sm">{linearBlockMessage}</p>
       ) : null}
 
-      <div className="bg-muted/30 mt-4 grid gap-3 rounded-xl border p-3 sm:grid-cols-2">
+      <div className="bg-muted/30 mt-4 grid grid-cols-2 gap-3 rounded-xl border p-3">
         <NavLink
           direction="Previous"
           href={previousHref}

@@ -61,6 +61,7 @@ export interface LmsCourseBuilderData {
     excerpt?: string;
     status?: string;
     certificateId?: LmsPostId;
+    firstAttachmentUrl?: string;
     courseStructure: LmsCourseStructureItem[];
   };
   attachedLessons: LmsBuilderLesson[];

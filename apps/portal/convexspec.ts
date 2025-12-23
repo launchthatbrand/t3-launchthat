@@ -5201,6 +5201,7 @@ export type PublicApiType = {
               _id: string;
               certificateId?: string;
               courseStructure: Array<{ lessonId: string }>;
+              firstAttachmentUrl?: string;
               slug?: string;
               status?: string;
               title: string;

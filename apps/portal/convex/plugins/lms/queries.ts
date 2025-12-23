@@ -368,6 +368,7 @@ export const getCourseStructureWithItems = query({
       title: v.string(),
       status: v.optional(v.string()),
       certificateId: v.optional(v.string()),
+      firstAttachmentUrl: v.optional(v.string()),
       courseStructure: courseStructureValidator,
     }),
     attachedLessons: v.array(builderLessonValidator),
@@ -395,6 +396,9 @@ export const getCourseStructureWithItems = query({
       typeof courseMeta.get(CERTIFICATE_META_KEY) === "string"
         ? (courseMeta.get(CERTIFICATE_META_KEY) as string)
         : undefined;
+    const firstAttachmentUrl = parseFirstAttachmentUrl(
+      courseMeta.get("__core_attachments"),
+    );
     const structureIds = parseCourseStructureMeta(
       courseMeta.get("courseStructure") ?? null,
     );
@@ -465,6 +469,7 @@ export const getCourseStructureWithItems = query({
         title: course.title,
         status: course.status ?? undefined,
         certificateId: courseCertificateId,
+        firstAttachmentUrl,
         courseStructure: structure,
       },
       attachedLessons,

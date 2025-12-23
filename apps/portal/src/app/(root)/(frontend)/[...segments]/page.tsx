@@ -775,20 +775,25 @@ const hasRenderableLexicalContent = (
 
   // Treat the common "empty editor" payload as no content:
   // root -> single paragraph -> no text children
-  const hasAnyText = (node: unknown): boolean => {
+  const hasAnyRenderableNode = (node: unknown): boolean => {
     if (!node || typeof node !== "object") return false;
+    const type = (node as { type?: unknown }).type;
+    // If there's any non-paragraph node (oembed, image, hr, etc) we treat it as content.
+    if (typeof type === "string" && type !== "paragraph") {
+      return true;
+    }
     const maybeText = (node as { text?: unknown }).text;
     if (typeof maybeText === "string" && maybeText.trim().length > 0) {
       return true;
     }
     const nested = (node as { children?: unknown }).children;
     if (Array.isArray(nested)) {
-      return nested.some(hasAnyText);
+      return nested.some(hasAnyRenderableNode);
     }
     return false;
   };
 
-  return children.some(hasAnyText);
+  return children.some(hasAnyRenderableNode);
 };
 
 interface FilteredContentProps {

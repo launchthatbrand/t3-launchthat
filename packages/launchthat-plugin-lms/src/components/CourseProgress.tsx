@@ -5,12 +5,9 @@ import { api } from "@portal/convexspec";
 import { useQuery } from "convex/react";
 import { CheckCircle2 } from "lucide-react";
 
+import { AnimatedTooltip } from "@acme/ui/animated-tooltip";
 import { Badge } from "@acme/ui/badge";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@acme/ui/hover-card";
+import { DottedGlowBackground } from "@acme/ui/components/ui/dotted-glow-background";
 
 import type { Id } from "../lib/convexId";
 import type { LessonSegment } from "../providers/LmsCourseProvider";
@@ -110,7 +107,21 @@ export function CourseProgress({
   }>;
 
   return (
-    <div className="bg-card/80 rounded-2xl border p-4 shadow-sm">
+    <div className="bg-card/80 relative rounded-2xl border p-4 shadow-sm">
+      <DottedGlowBackground
+        className="pointer-events-none mask-radial-to-90% mask-radial-at-center"
+        opacity={0.7}
+        gap={10}
+        radius={1.6}
+        colorLightVar="--color-neutral-500"
+        glowColorLightVar="--color-neutral-600"
+        colorDarkVar="--color-neutral-500"
+        glowColorDarkVar="--color-sky-800"
+        backgroundOpacity={0}
+        speedMin={0.3}
+        speedMax={1.6}
+        speedScale={1}
+      />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Badge variant="outline" className="text-xs tracking-wide uppercase">
@@ -127,55 +138,61 @@ export function CourseProgress({
         </span>
       </div>
       {totalLessons > 0 ? (
-        <div className="bg-muted/40 mt-3 flex gap-2 rounded-2xl border p-2">
-          {segments.map((segment) => {
-            const isActive = activeLessonId === segment.lessonId;
-            return (
-              <HoverCard key={segment.lessonId} openDelay={75}>
-                <HoverCardTrigger asChild>
-                  <button
-                    type="button"
-                    aria-pressed={segment.completed}
-                    className={[
-                      "relative flex-1 overflow-hidden rounded-xl border transition-all",
-                      segment.completed
-                        ? "border-primary/40 bg-green-100"
-                        : "border-border/50 bg-background/70",
-                      isActive ? "ring-primary/70 ring-2" : "ring-transparent",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  >
-                    <span className="relative flex h-6 items-center justify-center text-[0]"></span>
-                  </button>
-                </HoverCardTrigger>
-                <HoverCardContent className="max-w-xs bg-white">
-                  <p className="text-foreground text-sm font-medium">
-                    {segment.title}
-                  </p>
-                  <p className="text-muted-foreground text-xs">
-                    {segment.completed ? "Completed" : "Incomplete"}
-                  </p>
-                  {segment.topics.length > 0 ? (
-                    <p className="text-muted-foreground text-xs">
-                      {segment.topics.filter((topic) => topic.completed).length}
-                      /{segment.topics.length} topics
-                    </p>
-                  ) : null}
-                </HoverCardContent>
-              </HoverCard>
-            );
-          })}
+        <div className="relative mt-3 flex gap-2 rounded-2xl border bg-white p-2">
+          <AnimatedTooltip
+            itemWrapperClassName="group relative flex-1"
+            tooltipClassName="absolute -top-20 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center justify-center rounded-md bg-black px-4 py-2 text-xs shadow-xl"
+            items={segments.map((segment) => {
+              const topicsCompleted = segment.topics.filter(
+                (topic) => topic.completed,
+              ).length;
+              const topicsLabel =
+                segment.topics.length > 0
+                  ? ` · ${topicsCompleted}/${segment.topics.length} topics`
+                  : "";
+
+              return {
+                id: segment.lessonId,
+                name: segment.title,
+                designation: `${segment.completed ? "Completed" : "Incomplete"}${topicsLabel}`,
+              };
+            })}
+            renderTrigger={(item) => {
+              const segment = segments.find(
+                (entry) => entry.lessonId === String(item.id),
+              );
+              const isActive =
+                segment && activeLessonId === String(segment.lessonId);
+              const isCompleted = segment?.completed ?? false;
+              return (
+                <button
+                  type="button"
+                  aria-pressed={isCompleted}
+                  className={[
+                    "relative w-full flex-1 overflow-hidden rounded-xl border transition-all",
+                    isCompleted
+                      ? "border-primary/40 bg-green-100"
+                      : "border-border/50 bg-background/70",
+                    isActive ? "ring-primary/70 ring-2" : "ring-transparent",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  <span className="relative flex h-3 items-center justify-center text-[0] md:h-4"></span>
+                </button>
+              );
+            }}
+          />
         </div>
       ) : null}
-      {activeLessonTitle ? (
+      {/* {activeLessonTitle ? (
         <p className="text-muted-foreground mt-2 text-xs">
           Now viewing:{" "}
           <span className="text-foreground font-medium">
             {activeLessonTitle}
           </span>
         </p>
-      ) : null}
+      ) : null} */}
       {activeLessonTitle &&
       activeLessonBadges !== undefined &&
       activeLessonBadgeList.length > 0 ? (
