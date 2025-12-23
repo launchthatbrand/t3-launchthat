@@ -7,6 +7,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@acme/ui/accordion";
+import { Button } from "@acme/ui/button";
+import { Input } from "@acme/ui/input";
 
 import type { VimeoVideoItem } from "../CourseBuilder";
 import type { SidebarItemRenderer } from "../types/callbacks";
@@ -26,6 +28,10 @@ interface SidebarProps {
   renderSidebarItem?: SidebarItemRenderer<SidebarItem>;
   vimeoVideos?: VimeoVideoItem[];
   isLoadingVimeoVideos?: boolean;
+  vimeoSearch?: string;
+  onVimeoSearchChange?: (value: string) => void;
+  hasMoreVimeoVideos?: boolean;
+  onLoadMoreVimeoVideos?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -36,11 +42,16 @@ const Sidebar: React.FC<SidebarProps> = ({
   renderSidebarItem,
   vimeoVideos,
   isLoadingVimeoVideos,
+  vimeoSearch,
+  onVimeoSearchChange,
+  hasMoreVimeoVideos,
+  onLoadMoreVimeoVideos,
 }) => {
   const renderVimeoSection = (
     label: string,
     baseType: "lesson" | "topic" | "quiz",
     emptyLabel: string,
+    showControls: boolean,
   ) => {
     if (!vimeoVideos || vimeoVideos.length === 0) {
       if (isLoadingVimeoVideos) {
@@ -80,6 +91,17 @@ const Sidebar: React.FC<SidebarProps> = ({
             )}
           </DraggableItem>
         ))}
+        {showControls && hasMoreVimeoVideos && onLoadMoreVimeoVideos ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2 w-full"
+            onClick={onLoadMoreVimeoVideos}
+          >
+            Load more Vimeo videos
+          </Button>
+        ) : null}
       </>
     );
   };
@@ -87,6 +109,20 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div className="bg-muted/10 w-64 shrink-0 overflow-y-auto border-r p-4">
       <h2 className="mb-4 text-lg font-semibold">Available Items</h2>
+
+      {onVimeoSearchChange ? (
+        <div className="mb-3 space-y-1">
+          <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
+            Search Vimeo
+          </p>
+          <Input
+            value={vimeoSearch ?? ""}
+            onChange={(e) => onVimeoSearchChange(e.target.value)}
+            placeholder="Search videos…"
+            className="h-9"
+          />
+        </div>
+      ) : null}
 
       <Accordion
         type="multiple"
@@ -131,7 +167,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </DraggableItem>
               ),
             )}
-            {renderVimeoSection("Vimeo videos", "lesson", "No Vimeo videos")}
+            {renderVimeoSection(
+              "Vimeo videos",
+              "lesson",
+              "No Vimeo videos",
+              true,
+            )}
           </AccordionContent>
         </AccordionItem>
 
@@ -167,7 +208,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </DraggableItem>
               ),
             )}
-            {renderVimeoSection("Vimeo videos", "topic", "No Vimeo videos")}
+            {renderVimeoSection("Vimeo videos", "topic", "No Vimeo videos", false)}
           </AccordionContent>
         </AccordionItem>
 
@@ -203,7 +244,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </DraggableItem>
               ),
             )}
-            {renderVimeoSection("Vimeo videos", "quiz", "No Vimeo videos")}
+            {renderVimeoSection("Vimeo videos", "quiz", "No Vimeo videos", false)}
           </AccordionContent>
         </AccordionItem>
 

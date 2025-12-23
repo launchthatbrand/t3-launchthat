@@ -37,9 +37,9 @@ export const CourseBuilderScreen = ({
   const lmsQueries = api.plugins.lms.queries as any;
   const lmsMutations = api.plugins.lms.mutations as any;
 
+  const [vimeoSearch, setVimeoSearch] = useState("");
+  const [vimeoCursor, setVimeoCursor] = useState<string | null>(null);
   const [vimeoVideos, setVimeoVideos] = useState<NormalizedVimeoVideo[]>([]);
-  const [isLoadingVimeoVideos, setIsLoadingVimeoVideos] = useState(false);
-  const [hasAttemptedVimeoFetch, setHasAttemptedVimeoFetch] = useState(false);
 
   const courseData = useQuery(
     lmsQueries.getCourseStructureWithItems,
@@ -147,7 +147,7 @@ export const CourseBuilderScreen = ({
   const createQuizFromVimeo = useMutation(
     lmsMutations.createQuizFromVimeo,
   );
-  const fetchVimeoVideos = useAction(api.vimeo.actions.getCachedVimeoVideos);
+  const startVimeoSync = useMutation(api.vimeo.mutations.startVimeoSync);
   const vimeoEnabledOption = useQuery(
     api.core.options.get,
     organizationId
@@ -515,40 +515,111 @@ export const CourseBuilderScreen = ({
     [removeFinalQuizFromCourse],
   );
 
+  const createThumbnailAttachment = useAction(
+    api.plugins.lms.actions.createVideoThumbnailAttachment,
+  ) as (args: {
+    sourceUrl: string;
+    organizationId?: Id<"organizations">;
+  }) => Promise<{
+    mediaItemId: Id<"mediaItems">;
+    url: string;
+    title?: string;
+    mimeType?: string;
+    width?: number;
+    height?: number;
+  }>;
+
+  const updateLmsPost = useMutation(
+    api.plugins.lms.posts.mutations.updatePost as any,
+  ) as (args: {
+    id: string;
+    meta?: Record<string, string | number | boolean | null>;
+  }) => Promise<void>;
+
+  const handleAutoAttachVimeoThumbnail = useCallback(
+    async (postId: string, video: VimeoVideoItem) => {
+      if (!organizationId) return;
+
+      // Prefer the public Vimeo page URL for oEmbed.
+      const sourceUrl = `https://vimeo.com/${video.videoId}`;
+
+      try {
+        const result = await createThumbnailAttachment({
+          sourceUrl,
+          organizationId: organizationId ?? undefined,
+        });
+
+        const attachmentEntry = {
+          mediaItemId: result.mediaItemId,
+          url: result.url,
+          title: result.title ?? undefined,
+          mimeType: result.mimeType ?? undefined,
+          width: result.width ?? undefined,
+          height: result.height ?? undefined,
+        };
+
+        // Mimic the Lexical oEmbed auto-thumbnail behavior:
+        // - Only auto-set attachments for Vimeo-created posts (builder flow).
+        // - Record the source URL for idempotency / "safe overwrite" semantics elsewhere.
+        await updateLmsPost({
+          id: postId,
+          meta: {
+            __core_attachments: JSON.stringify([attachmentEntry]),
+            lmsAutoThumbnailSourceUrl: sourceUrl,
+          },
+        });
+      } catch (error) {
+        // Thumbnail creation is a best-effort enhancement; don't block course building.
+        console.error("[CourseBuilder] Failed to auto-attach Vimeo thumbnail", {
+          postId,
+          videoId: video.videoId,
+          error,
+        });
+      }
+    },
+    [createThumbnailAttachment, organizationId, updateLmsPost],
+  );
+
   const handleCreateLessonFromVimeo = useCallback(
     async (video: VimeoVideoItem) => {
       if (!courseId || !organizationId) return;
       try {
-        await createLessonFromVimeo({
+        const result = await createLessonFromVimeo({
           courseId: courseId as Id<"posts">,
           organizationId: organizationId as Id<"organizations">,
           video,
         });
+        if (result?.lessonId) {
+          await handleAutoAttachVimeoThumbnail(result.lessonId, video);
+        }
         toast.success("Lesson created from Vimeo video.");
       } catch (error) {
         console.error(error);
         toast.error("Failed to create lesson from Vimeo video.");
       }
     },
-    [courseId, createLessonFromVimeo, organizationId],
+    [courseId, createLessonFromVimeo, handleAutoAttachVimeoThumbnail, organizationId],
   );
 
   const handleCreateTopicFromVimeo = useCallback(
     async (lessonId: string, video: VimeoVideoItem) => {
       if (!organizationId) return;
       try {
-        await createTopicFromVimeo({
+        const result = await createTopicFromVimeo({
           lessonId: lessonId as Id<"posts">,
           organizationId: organizationId as Id<"organizations">,
           video,
         });
+        if (result?.topicId) {
+          await handleAutoAttachVimeoThumbnail(result.topicId, video);
+        }
         toast.success("Topic created from Vimeo video.");
       } catch (error) {
         console.error(error);
         toast.error("Failed to create topic from Vimeo video.");
       }
     },
-    [createTopicFromVimeo, organizationId],
+    [createTopicFromVimeo, handleAutoAttachVimeoThumbnail, organizationId],
   );
 
   const handleCreateQuizFromVimeo = useCallback(
@@ -558,7 +629,7 @@ export const CourseBuilderScreen = ({
     ) => {
       if (!organizationId) return;
       try {
-        await createQuizFromVimeo({
+        const result = await createQuizFromVimeo({
           targetLessonId: context.lessonId
             ? (context.lessonId as Id<"posts">)
             : undefined,
@@ -568,66 +639,104 @@ export const CourseBuilderScreen = ({
           organizationId: organizationId as Id<"organizations">,
           video,
         });
+        if (result?.quizId) {
+          await handleAutoAttachVimeoThumbnail(result.quizId, video);
+        }
         toast.success("Quiz created from Vimeo video.");
       } catch (error) {
         console.error(error);
         toast.error("Failed to create quiz from Vimeo video.");
       }
     },
-    [createQuizFromVimeo, organizationId],
+    [createQuizFromVimeo, handleAutoAttachVimeoThumbnail, organizationId],
   );
 
   const isVimeoEnabled = Boolean(vimeoEnabledOption?.metaValue);
+  const vimeoSyncStatus = useQuery(
+    api.vimeo.syncState.getVimeoSyncStatus,
+    isVimeoEnabled && organizationId
+      ? ({ organizationId: organizationId as Id<"organizations"> } as const)
+      : "skip",
+  );
+
+  const shouldLoadVimeo = Boolean(isVimeoEnabled && organizationId);
+  const vimeoPage = useQuery(
+    api.vimeo.queries.listVideos,
+    shouldLoadVimeo
+      ? ({
+          organizationId: organizationId as Id<"organizations">,
+          paginationOpts: { cursor: vimeoCursor, numItems: 60 },
+          search: vimeoSearch.trim().length > 0 ? vimeoSearch.trim() : undefined,
+        } as const)
+      : "skip",
+  );
+
+  const isLoadingVimeoVideos = shouldLoadVimeo && vimeoPage === undefined;
+  const hasMoreVimeoVideos = Boolean(
+    vimeoPage && !vimeoPage.isDone && vimeoPage.continueCursor,
+  );
 
   useEffect(() => {
-    const shouldLoadVimeo = isVimeoEnabled && Boolean(organizationId);
-    if (!shouldLoadVimeo || hasAttemptedVimeoFetch) {
+    // Reset pagination when search changes.
+    setVimeoCursor(null);
+    setVimeoVideos([]);
+  }, [vimeoSearch]);
+
+  useEffect(() => {
+    if (!shouldLoadVimeo) {
+      setVimeoVideos([]);
       return;
     }
+
+    if (!vimeoPage) {
+      return;
+    }
+
+    const normalized = (vimeoPage.page ?? []).map((row) => ({
+      videoId: row.videoId,
+      title: row.title,
+      description: row.description ?? undefined,
+      embedUrl: row.embedUrl ?? undefined,
+      thumbnailUrl: row.thumbnailUrl ?? undefined,
+    })) as NormalizedVimeoVideo[];
+
+    setVimeoVideos((prev) => {
+      if (!vimeoCursor) {
+        return normalized;
+      }
+      const seen = new Set(prev.map((v) => v.videoId));
+      const merged = [...prev];
+      for (const next of normalized) {
+        if (!seen.has(next.videoId)) {
+          merged.push(next);
+          seen.add(next.videoId);
+        }
+      }
+      return merged;
+    });
+  }, [shouldLoadVimeo, vimeoCursor, vimeoPage]);
+
+  const handleLoadMoreVimeo = useCallback(() => {
+    if (!vimeoPage || vimeoPage.isDone) return;
+    const next = vimeoPage.continueCursor;
+    if (!next) return;
+    setVimeoCursor(next);
+  }, [vimeoPage]);
+
+  const handleStartVimeoSync = useCallback(async () => {
     if (!organizationId) return;
-    setHasAttemptedVimeoFetch(true);
-    setIsLoadingVimeoVideos(true);
-    fetchVimeoVideos({ ownerId: organizationId })
-      .then((response) => {
-        const dataArray: unknown[] =
-          (response as { data?: unknown[] })?.data ?? [];
-        const normalized = dataArray
-          .map((item) => {
-            const record = item as {
-              uri?: string;
-              name?: string;
-              description?: string;
-              link?: string;
-              pictures?: { sizes?: Array<{ link?: string }> };
-            };
-            const fallbackId =
-              record.uri?.split("/").pop() ?? record.uri ?? record.name;
-            if (!fallbackId || !record.name) return null;
-            return {
-              videoId: fallbackId,
-              title: record.name,
-              description: record.description ?? undefined,
-              embedUrl: record.link ?? undefined,
-              thumbnailUrl: record.pictures?.sizes?.[0]?.link ?? undefined,
-            };
-          })
-          .filter(Boolean) as NormalizedVimeoVideo[];
-        setVimeoVideos(normalized);
-      })
-      .catch((error) => {
-        console.error("Failed to load Vimeo videos", error);
-        setVimeoVideos([]);
-      })
-      .finally(() => {
-        setIsLoadingVimeoVideos(false);
+    try {
+      const result = await startVimeoSync({
+        organizationId: organizationId as Id<"organizations">,
       });
-  }, [
-    fetchVimeoVideos,
-    hasAttemptedVimeoFetch,
-    organizationId,
-    isVimeoEnabled,
-    vimeoEnabledOption,
-  ]);
+      toast.success("Vimeo sync started", {
+        description: `Workflow ${result.workflowId.slice(0, 8)}…`,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to start Vimeo sync.");
+    }
+  }, [organizationId, startVimeoSync]);
 
   if (!courseId) {
     return (
@@ -675,6 +784,12 @@ export const CourseBuilderScreen = ({
         onRemoveFinalQuiz={handleRemoveFinalQuiz}
         availableVimeoVideos={isVimeoEnabled ? vimeoVideos : undefined}
         isLoadingVimeoVideos={isVimeoEnabled ? isLoadingVimeoVideos : undefined}
+        vimeoSearch={isVimeoEnabled ? vimeoSearch : undefined}
+        onVimeoSearchChange={isVimeoEnabled ? setVimeoSearch : undefined}
+        hasMoreVimeoVideos={isVimeoEnabled ? hasMoreVimeoVideos : undefined}
+        onLoadMoreVimeoVideos={isVimeoEnabled ? handleLoadMoreVimeo : undefined}
+        vimeoSyncStatus={isVimeoEnabled ? vimeoSyncStatus ?? null : undefined}
+        onStartVimeoSync={isVimeoEnabled ? handleStartVimeoSync : undefined}
         onCreateLessonFromVimeo={handleCreateLessonFromVimeo}
         onCreateTopicFromVimeo={handleCreateTopicFromVimeo}
         onCreateQuizFromVimeo={handleCreateQuizFromVimeo}

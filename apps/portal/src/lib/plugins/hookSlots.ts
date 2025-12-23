@@ -9,3 +9,7 @@ export const ADMIN_PLUGIN_SETTINGS_HEADER_BEFORE =
   "admin.plugin.settings.header.before";
 export const ADMIN_PLUGIN_SETTINGS_HEADER_AFTER =
   "admin.plugin.settings.header.after";
+
+// Attachments (media library) archive extension points
+export const ADMIN_ATTACHMENTS_ARCHIVE_TABS_FILTER =
+  "admin.attachments.archive.tabs.filter";

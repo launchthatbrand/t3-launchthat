@@ -165,15 +165,15 @@ export function CommentSection({ postId, groupId }: CommentSectionProps) {
               speed={0.08}
               animating={!(!commentText.trim() || isLoading)}
             >
-              <Button
-                size="sm"
-                onClick={handleSubmitComment}
-                disabled={!commentText.trim() || isLoading}
+            <Button
+              size="sm"
+              onClick={handleSubmitComment}
+              disabled={!commentText.trim() || isLoading}
                 className="rounded-full border border-border/60 bg-background/70 font-semibold text-foreground hover:bg-background"
-              >
-                {isLoading ? <Spinner size="sm" className="mr-2" /> : null}
-                Post Comment
-              </Button>
+            >
+              {isLoading ? <Spinner size="sm" className="mr-2" /> : null}
+              Post Comment
+            </Button>
             </NoiseBackground>
           </div>
         </div>

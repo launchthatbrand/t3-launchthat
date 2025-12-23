@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-/* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 "use client";
 
-import type { Doc } from "@/convex/_generated/dataModel";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api } from "@convex-config/_generated/api";
+import { api } from "@/convex/_generated/api";
 import { useAction, useMutation, useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
@@ -18,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import { Progress } from "@acme/ui/progress";
 import { Separator } from "@acme/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
@@ -90,7 +90,14 @@ export default function MediaSettingsPage() {
   const removeConnection = useMutation(
     api.integrations.connections.mutations.remove,
   );
-  const triggerVimeoSync = useMutation(api.vimeo.mutations.triggerSync);
+  const startVimeoSync = useMutation(api.vimeo.mutations.startVimeoSync);
+
+  const vimeoSyncStatus = useQuery(
+    api.vimeo.syncState.getVimeoSyncStatus,
+    organizationId
+      ? ({ organizationId } as { organizationId: Id<"organizations"> })
+      : "skip",
+  );
 
   const handleTabChange = useCallback(
     (value: string) => {
@@ -204,7 +211,7 @@ export default function MediaSettingsPage() {
           throw new Error("Vimeo response missing access token.");
         }
 
-        const connectionId = await Promise.resolve(
+        const _connectionId = await Promise.resolve(
           upsertConnection({
             nodeType: "vimeo",
             name: `${tenant?.name ?? "Portal"} Vimeo`,
@@ -214,10 +221,16 @@ export default function MediaSettingsPage() {
           }),
         );
 
-        try {
-          await Promise.resolve(triggerVimeoSync({ connectionId }));
-        } catch (syncError) {
-          console.error("Failed to queue Vimeo sync", syncError);
+        if (organizationId) {
+          try {
+            await Promise.resolve(
+              startVimeoSync({
+                organizationId: organizationId as Id<"organizations">,
+              }),
+            );
+          } catch (syncError) {
+            console.error("Failed to start Vimeo sync", syncError);
+          }
         }
 
         setExchangeMessage("Vimeo connection saved successfully.");
@@ -237,8 +250,9 @@ export default function MediaSettingsPage() {
     ownerKey,
     searchParamsString,
     tenant?.name,
-    triggerVimeoSync,
     upsertConnection,
+    startVimeoSync,
+    organizationId,
   ]);
 
   const convexBaseUrl = env.NEXT_PUBLIC_CONVEX_URL;
@@ -271,6 +285,40 @@ export default function MediaSettingsPage() {
       setIsDisconnecting(false);
     }
   }, [activeConnection, removeConnection]);
+
+  const [isStartingSync, setIsStartingSync] = useState(false);
+  const handleStartSync = useCallback(
+    async (restart: boolean) => {
+      if (!organizationId) {
+        setExchangeError(
+          "No organization detected. Switch to an organization to sync Vimeo videos.",
+        );
+        return;
+      }
+      setIsStartingSync(true);
+      setExchangeError(null);
+      try {
+        await Promise.resolve(
+          startVimeoSync({
+            organizationId: organizationId as Id<"organizations">,
+            restart,
+          }),
+        );
+        setExchangeMessage(
+          restart ? "Vimeo sync restarted." : "Vimeo sync started.",
+        );
+      } catch (error) {
+        setExchangeError(
+          error instanceof Error
+            ? error.message
+            : "Failed to start Vimeo sync.",
+        );
+      } finally {
+        setIsStartingSync(false);
+      }
+    },
+    [organizationId, startVimeoSync],
+  );
 
   return (
     <AdminLayout
@@ -389,6 +437,133 @@ export default function MediaSettingsPage() {
                           {exchangeError}
                         </p>
                       )}
+                      <Separator />
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="font-medium">Vimeo sync</p>
+                            <p className="text-muted-foreground text-sm">
+                              Sync Vimeo video metadata into Convex for fast
+                              search/browse. Runs in the background and reports
+                              progress.
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => void handleStartSync(false)}
+                              disabled={
+                                !isConnected ||
+                                isStartingSync ||
+                                vimeoSyncStatus?.status === "running"
+                              }
+                            >
+                              {vimeoSyncStatus?.status === "running"
+                                ? "Syncing…"
+                                : "Start sync"}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={() => void handleStartSync(true)}
+                              disabled={!isConnected || isStartingSync}
+                            >
+                              Resync from start
+                            </Button>
+                          </div>
+                        </div>
+
+                        {!isConnected ? (
+                          <p className="text-muted-foreground text-sm">
+                            Connect Vimeo first to enable syncing.
+                          </p>
+                        ) : organizationId ? null : (
+                          <p className="text-muted-foreground text-sm">
+                            Switch to an organization to view sync status.
+                          </p>
+                        )}
+
+                        {isConnected && organizationId ? (
+                          <div className="rounded-lg border p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="space-y-1">
+                                <p className="text-sm font-medium">
+                                  Status:{" "}
+                                  <span className="font-mono">
+                                    {vimeoSyncStatus?.status ?? "idle"}
+                                  </span>
+                                </p>
+                                <p className="text-muted-foreground text-xs">
+                                  {vimeoSyncStatus?.status === "running"
+                                    ? `Fetching page ${vimeoSyncStatus.nextPage} (page size ${vimeoSyncStatus.perPage})`
+                                    : vimeoSyncStatus?.status === "done"
+                                      ? "Sync completed."
+                                      : vimeoSyncStatus?.status === "error"
+                                        ? "Sync failed."
+                                        : "Not currently syncing."}
+                                </p>
+                              </div>
+                              <div className="text-muted-foreground text-xs">
+                                <div>
+                                  Pages:{" "}
+                                  <span className="font-mono">
+                                    {vimeoSyncStatus?.pagesFetched ?? 0}
+                                  </span>
+                                </div>
+                                <div>
+                                  Videos:{" "}
+                                  <span className="font-mono">
+                                    {vimeoSyncStatus?.syncedCount ?? 0}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mt-3 space-y-2">
+                              <Progress
+                                value={
+                                  vimeoSyncStatus?.status === "running"
+                                    ? 50
+                                    : vimeoSyncStatus?.status === "done"
+                                      ? 100
+                                      : 0
+                                }
+                              />
+                              <div className="text-muted-foreground flex flex-wrap justify-between gap-2 text-xs">
+                                <span>
+                                  Started:{" "}
+                                  <span className="font-mono">
+                                    {typeof vimeoSyncStatus?.startedAt ===
+                                    "number"
+                                      ? new Date(
+                                          vimeoSyncStatus.startedAt,
+                                        ).toLocaleString()
+                                      : "—"}
+                                  </span>
+                                </span>
+                                <span>
+                                  Finished:{" "}
+                                  <span className="font-mono">
+                                    {typeof vimeoSyncStatus?.finishedAt ===
+                                    "number"
+                                      ? new Date(
+                                          vimeoSyncStatus.finishedAt,
+                                        ).toLocaleString()
+                                      : "—"}
+                                  </span>
+                                </span>
+                              </div>
+                              {vimeoSyncStatus?.status === "error" &&
+                              vimeoSyncStatus.lastError ? (
+                                <p className="text-destructive text-xs">
+                                  {vimeoSyncStatus.lastError}
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
                       <Separator />
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>

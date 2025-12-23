@@ -182,10 +182,10 @@ export function CourseProgress({
                 />
               </div>
             </NoiseBackground>
-          </div>
-          <span className="text-muted-foreground text-sm font-semibold">
-            {percentComplete}%
-          </span>
+        </div>
+        <span className="text-muted-foreground text-sm font-semibold">
+          {percentComplete}%
+        </span>
         </div>
       </div>
       {totalLessons > 0 ? (
@@ -215,23 +215,23 @@ export function CourseProgress({
               const isActive =
                 segment && activeLessonId === String(segment.lessonId);
               const isCompleted = segment?.completed ?? false;
-              return (
-                <button
-                  type="button"
+            return (
+                  <button
+                    type="button"
                   aria-pressed={isCompleted}
-                  className={[
+                    className={[
                     "relative w-full flex-1 overflow-hidden rounded-xl border transition-all",
                     isCompleted
-                      ? "border-primary/40 bg-green-100"
-                      : "border-border/50 bg-background/70",
-                    isActive ? "ring-primary/70 ring-2" : "ring-transparent",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
+                        ? "border-primary/40 bg-green-100"
+                        : "border-border/50 bg-background/70",
+                      isActive ? "ring-primary/70 ring-2" : "ring-transparent",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
                   <span className="relative flex h-3 items-center justify-center text-[0] md:h-4"></span>
-                </button>
-              );
+                  </button>
+            );
             }}
           />
         </div>
@@ -256,7 +256,7 @@ export function CourseProgress({
                   loading="lazy"
                   referrerPolicy="no-referrer"
                 />
-              </span>
+          </span>
             ) : (
               <Badge
                 key={badge.badgeId}

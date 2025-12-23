@@ -59,31 +59,31 @@ export function EntityListHeader({
 
               if (mode === "list") {
                 return (
-                  <Button
+              <Button
                     key="list"
-                    variant={viewMode === "list" ? "default" : "ghost"}
-                    size="sm"
+                variant={viewMode === "list" ? "default" : "ghost"}
+                size="sm"
                     className={shapeClass}
-                    onClick={() => onViewModeChange("list")}
-                  >
-                    <List className="h-4 w-4" />
-                    <span className="sr-only">List view</span>
-                  </Button>
+                onClick={() => onViewModeChange("list")}
+              >
+                <List className="h-4 w-4" />
+                <span className="sr-only">List view</span>
+              </Button>
                 );
               }
 
               if (mode === "grid") {
                 return (
-                  <Button
+              <Button
                     key="grid"
-                    variant={viewMode === "grid" ? "default" : "ghost"}
-                    size="sm"
+                variant={viewMode === "grid" ? "default" : "ghost"}
+                size="sm"
                     className={shapeClass}
-                    onClick={() => onViewModeChange("grid")}
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                    <span className="sr-only">Grid view</span>
-                  </Button>
+                onClick={() => onViewModeChange("grid")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                <span className="sr-only">Grid view</span>
+              </Button>
                 );
               }
 

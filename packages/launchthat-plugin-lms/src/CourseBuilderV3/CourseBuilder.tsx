@@ -160,6 +160,23 @@ export interface CourseBuilderProps {
   ) => Promise<void>;
   availableVimeoVideos?: VimeoVideoItem[];
   isLoadingVimeoVideos?: boolean;
+  vimeoSearch?: string;
+  onVimeoSearchChange?: (value: string) => void;
+  hasMoreVimeoVideos?: boolean;
+  onLoadMoreVimeoVideos?: () => void;
+  vimeoSyncStatus?: {
+    status: "idle" | "running" | "error" | "done";
+    nextPage: number;
+    perPage: number;
+    syncedCount: number;
+    pagesFetched: number;
+    workflowId?: string;
+    lastError?: string;
+    startedAt?: number;
+    finishedAt?: number;
+    updatedAt: number;
+  } | null;
+  onStartVimeoSync?: () => void;
 }
 
 // Default no-op async function for callbacks
@@ -217,6 +234,12 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
   onReorderTopicQuizzes = noopAsyncWithArgs,
   availableVimeoVideos,
   isLoadingVimeoVideos,
+  vimeoSearch,
+  onVimeoSearchChange,
+  hasMoreVimeoVideos,
+  onLoadMoreVimeoVideos,
+  vimeoSyncStatus,
+  onStartVimeoSync,
 }) => {
   // 1. Get state and actions from the store
   const {
@@ -447,7 +470,11 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
       onDragCancel={handleDragCancel}
     >
       <div className="flex h-full w-full flex-col">
-        <TopBar onLogStructure={handleLogStructure} />
+        <TopBar
+          onLogStructure={handleLogStructure}
+          vimeoSyncStatus={vimeoSyncStatus}
+          onStartVimeoSync={onStartVimeoSync}
+        />
 
         <div className="flex grow flex-row overflow-hidden">
           <Sidebar
@@ -458,6 +485,10 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
             renderSidebarItem={renderSidebarItem}
             vimeoVideos={availableVimeoVideos}
             isLoadingVimeoVideos={isLoadingVimeoVideos}
+            vimeoSearch={vimeoSearch}
+            onVimeoSearchChange={onVimeoSearchChange}
+            hasMoreVimeoVideos={hasMoreVimeoVideos}
+            onLoadMoreVimeoVideos={onLoadMoreVimeoVideos}
           />
           <MainContent
             // Pass the unified items array

@@ -197,10 +197,10 @@ export function CourseStructure({
             <div className="space-y-4">
               {items.map((item) => {
                 const quizzesByTopic = groupQuizzesByTopic(item.quizzes);
-                const lessonLevelQuizzes =
-                  quizzesByTopic.get(LESSON_LEVEL_QUIZ_KEY) ?? [];
+            const lessonLevelQuizzes =
+              quizzesByTopic.get(LESSON_LEVEL_QUIZ_KEY) ?? [];
 
-                return (
+            return (
                   <Card key={item.id} className="rounded-3xl">
                     <CardContent className="space-y-4 p-5">
                       {item.imageUrl ? (
@@ -215,21 +215,21 @@ export function CourseStructure({
                         </div>
                       ) : null}
                       <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Lesson
-                          </p>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Lesson
+                    </p>
                           <h3 className="text-lg font-semibold">{item.title}</h3>
                           {item.excerpt ? (
                             <p className="line-clamp-3 text-sm text-muted-foreground">
                               {item.excerpt}
-                            </p>
+                      </p>
                           ) : null}
-                        </div>
+                  </div>
                         <Button size="sm" asChild>
                           <Link href={item.path}>View lesson</Link>
                         </Button>
-                      </div>
+                  </div>
 
                       <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
                         <Badge variant="outline">{item.topicsCount} topics</Badge>
@@ -273,7 +273,7 @@ export function CourseStructure({
                                   >
                                     <Link href={topicPath}>Open</Link>
                                   </Button>
-                                </div>
+                    </div>
 
                                 {topicQuizzes.length > 0 ? (
                                   <div className="mt-3 space-y-2">
@@ -301,7 +301,7 @@ export function CourseStructure({
                                     </div>
                                   </div>
                                 ) : null}
-                              </div>
+                    </div>
                             );
                           })}
 
@@ -322,18 +322,18 @@ export function CourseStructure({
                                       className="w-full justify-between"
                                     >
                                       <Link href={quizPath}>{quiz.title}</Link>
-                                    </Button>
+                    </Button>
                                   );
                                 })}
                               </div>
                             </div>
                           ) : null}
                         </div>
-                      </div>
+                  </div>
                     </CardContent>
                   </Card>
-                );
-              })}
+            );
+          })}
             </div>
           )}
           emptyState={

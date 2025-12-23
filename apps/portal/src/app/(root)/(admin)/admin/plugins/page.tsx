@@ -372,7 +372,7 @@ export default function PluginsPage() {
         header: "Missing Post Types",
         cell: (item: PluginRow) =>
           item.missingSlugs.length ? (
-            <span className="text-muted-foreground max-w-[200px]! overflow-scroll text-sm">
+            <span className="text-muted-foreground block max-w-[200px] overflow-x-auto text-sm whitespace-nowrap">
               {item.missingSlugs.join(", ")}
             </span>
           ) : (

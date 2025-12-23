@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use node";
 
 import { v } from "convex/values";
@@ -10,6 +11,15 @@ import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
 import { components, internal } from "../_generated/api";
 import { action, internalAction } from "../_generated/server";
+
+const vAny = v as any;
+
+// Convex function reference types can get extremely deep in larger apps.
+// Casting here keeps TS snappy and avoids "Type instantiation is excessively deep" errors.
+const internalAny = internal as any;
+const componentsAny = components as any;
+const actionAny = action as any;
+const internalActionAny = internalAction as any;
 
 interface VimeoApiVideo {
   uri: string; // e.g. "/videos/123456"
@@ -21,6 +31,15 @@ interface VimeoApiVideo {
     sizes?: { width: number; link: string }[];
   };
 }
+
+const vimeoUpsertVideoValidator = vAny.object({
+  videoId: vAny.string(),
+  title: vAny.string(),
+  description: vAny.optional(vAny.string()),
+  embedUrl: vAny.string(),
+  thumbnailUrl: vAny.optional(vAny.string()),
+  publishedAt: vAny.number(),
+});
 
 interface VimeoTextTrack {
   uri: string;
@@ -37,7 +56,8 @@ const resolveVimeoAccessToken = async (
   ownerId: Id<"organizations"> | string,
 ) => {
   const connection = await ctx.runQuery(
-    internal.integrations.connections.queries.getConnectionByNodeTypeAndOwner,
+    internalAny.integrations.connections.queries
+      .getConnectionByNodeTypeAndOwner,
     { nodeType: "vimeo", ownerId },
   );
 
@@ -48,7 +68,7 @@ const resolveVimeoAccessToken = async (
   }
 
   const decrypted = await ctx.runAction(
-    internal.integrations.connections.cryptoActions.getDecryptedSecrets,
+    internalAny.integrations.connections.cryptoActions.getDecryptedSecrets,
     {
       connectionId: connection._id,
     },
@@ -131,13 +151,19 @@ const convertWebVttToPlainText = (raw: string) => {
   return filtered.join("\n");
 };
 
-export const syncVimeoVideos = internalAction({
+export const syncVimeoVideos = internalActionAny({
   args: {
-    connectionId: v.id("connections"),
+    connectionId: vAny.id("connections"),
   },
-  handler: async (ctx, args) => {
+  returns: vAny.object({
+    syncedCount: vAny.number(),
+    pagesFetched: vAny.number(),
+    startedAt: vAny.number(),
+    finishedAt: vAny.number(),
+  }),
+  handler: async (ctx: any, args: any) => {
     const connection = await ctx.runQuery(
-      internal.integrations.connections.queries.get,
+      internalAny.integrations.connections.queries.get,
       {
         id: args.connectionId,
       },
@@ -148,7 +174,7 @@ export const syncVimeoVideos = internalAction({
     }
 
     const decrypted = await ctx.runAction(
-      internal.integrations.connections.cryptoActions.getDecryptedSecrets,
+      internalAny.integrations.connections.cryptoActions.getDecryptedSecrets,
       {
         connectionId: args.connectionId,
       },
@@ -163,101 +189,249 @@ export const syncVimeoVideos = internalAction({
       throw new Error("Access token missing in credentials");
     }
 
-    // Fetch videos from Vimeo
-    const response = await fetch(
-      "https://api.vimeo.com/me/videos?fields=uri,name,description,link,created_time,pictures.sizes&page=1&per_page=100",
-      {
+    const startedAt = Date.now();
+    const now = startedAt;
+
+    const perPage = 100;
+    const maxPages = 250; // safety guard (25k videos)
+    let page = 1;
+    let pagesFetched = 0;
+    let syncedCount = 0;
+
+    while (page <= maxPages) {
+      const url = new URL("https://api.vimeo.com/me/videos");
+      url.search = new URLSearchParams({
+        fields: "uri,name,description,link,created_time,pictures.sizes",
+        page: String(page),
+        per_page: String(perPage),
+      }).toString();
+
+      const response = await fetch(url.toString(), {
         headers: {
           Authorization: `bearer ${accessToken}`,
           Accept: "application/vnd.vimeo.*+json;version=3.4",
         },
-      },
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(
+          `Failed to fetch Vimeo videos (page=${page}): ${response.status} ${text}`,
+        );
+      }
+
+      const data = (await response.json()) as { data?: VimeoApiVideo[] };
+      const videos: VimeoApiVideo[] = data.data ?? [];
+
+      pagesFetched += 1;
+      if (videos.length === 0) {
+        break;
+      }
+
+      for (const video of videos) {
+        const videoId = video.uri.replace("/videos/", "");
+        const thumbnailUrl =
+          video.pictures?.sizes?.[video.pictures.sizes.length - 1]?.link ??
+          video.pictures?.sizes?.[0]?.link;
+
+        const existing = await ctx.runQuery(
+          internalAny.vimeo.queries.getVideoByExternalId,
+          {
+            connectionId: args.connectionId,
+            videoId,
+          },
+        );
+
+        if (existing) {
+          await ctx.runMutation(internalAny.vimeo.mutations.updateVideo, {
+            id: existing._id,
+            title: video.name,
+            description: video.description ?? undefined,
+            embedUrl: video.link,
+            thumbnailUrl: thumbnailUrl ?? undefined,
+            publishedAt: new Date(video.created_time).getTime(),
+            updatedAt: now,
+          });
+        } else {
+          await ctx.runMutation(internalAny.vimeo.mutations.createVideo, {
+            videoId,
+            title: video.name,
+            description: video.description ?? undefined,
+            embedUrl: video.link,
+            thumbnailUrl: thumbnailUrl ?? undefined,
+            publishedAt: new Date(video.created_time).getTime(),
+            connectionId: args.connectionId,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+
+        syncedCount += 1;
+      }
+
+      // Small throttle to be polite to the Vimeo API.
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      page += 1;
+    }
+
+    const finishedAt = Date.now();
+    return { syncedCount, pagesFetched, startedAt, finishedAt };
+  },
+});
+
+export const fetchVimeoVideosPage = internalActionAny({
+  args: {
+    connectionId: vAny.id("connections"),
+    page: vAny.number(),
+    perPage: vAny.number(),
+  },
+  returns: vAny.object({
+    videos: vAny.array(vimeoUpsertVideoValidator),
+    page: vAny.number(),
+    perPage: vAny.number(),
+  }),
+  handler: async (ctx: any, args: any) => {
+    const connection = await ctx.runQuery(
+      internalAny.integrations.connections.queries.get,
+      { id: args.connectionId },
     );
+
+    if (!connection) {
+      throw new Error("Connection not found");
+    }
+
+    const decrypted = await ctx.runAction(
+      internalAny.integrations.connections.cryptoActions.getDecryptedSecrets,
+      { connectionId: args.connectionId },
+    );
+
+    const accessToken =
+      decrypted?.credentials?.accessToken ??
+      decrypted?.credentials?.access_token ??
+      decrypted?.credentials?.token;
+
+    if (!accessToken) {
+      throw new Error("Access token missing in credentials");
+    }
+
+    const url = new URL("https://api.vimeo.com/me/videos");
+    url.search = new URLSearchParams({
+      fields: "uri,name,description,link,created_time,pictures.sizes",
+      page: String(args.page),
+      per_page: String(args.perPage),
+    }).toString();
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        Authorization: `bearer ${accessToken}`,
+        Accept: "application/vnd.vimeo.*+json;version=3.4",
+      },
+    });
 
     if (!response.ok) {
       const text = await response.text();
       throw new Error(
-        `Failed to fetch Vimeo videos: ${response.status} ${text}`,
+        `Failed to fetch Vimeo videos (page=${args.page}): ${response.status} ${text}`,
       );
     }
 
-    const data = (await response.json()) as { data: VimeoApiVideo[] };
-
-    const now = Date.now();
-
-    for (const video of data.data) {
+    const data = (await response.json()) as { data?: VimeoApiVideo[] };
+    const videos = (data.data ?? []).map((video) => {
       const videoId = video.uri.replace("/videos/", "");
+      const thumbnailUrl =
+        video.pictures?.sizes?.[video.pictures.sizes.length - 1]?.link ??
+        video.pictures?.sizes?.[0]?.link ??
+        undefined;
 
-      // Build thumbnail URL (choose first size)
-      const thumbnailUrl = video.pictures?.sizes?.[0]?.link;
+      return {
+        videoId,
+        title: video.name,
+        description: video.description ?? undefined,
+        embedUrl: video.link,
+        thumbnailUrl,
+        publishedAt: new Date(video.created_time).getTime(),
+      };
+    });
 
-      // Upsert video in Convex
-      // First, try to find existing entry by videoId
-      const existing = await ctx.runQuery(
-        internal.vimeo.queries.getVideoByExternalId,
-        {
-          videoId,
-        },
-      );
-
-      if (existing) {
-        await ctx.runMutation(internal.vimeo.mutations.updateVideo, {
-          id: existing._id,
-          title: video.name,
-          description: video.description ?? undefined,
-          embedUrl: video.link,
-          thumbnailUrl: thumbnailUrl ?? undefined,
-          publishedAt: new Date(video.created_time).getTime(),
-          updatedAt: now,
-        });
-      } else {
-        await ctx.runMutation(internal.vimeo.mutations.createVideo, {
-          videoId,
-          title: video.name,
-          description: video.description ?? undefined,
-          embedUrl: video.link,
-          thumbnailUrl: thumbnailUrl ?? undefined,
-          publishedAt: new Date(video.created_time).getTime(),
-          connectionId: args.connectionId,
-          createdAt: now,
-          updatedAt: now,
-        });
-      }
-    }
+    return { videos, page: args.page, perPage: args.perPage };
   },
 });
 
 // Internal action to iterate over all Vimeo connections and sync
-export const syncAllConnections = internalAction({
+export const syncAllConnections = internalActionAny({
   args: {},
-  handler: async (ctx) => {
+  returns: vAny.null(),
+  handler: async (ctx: any) => {
     const connections = await ctx.runQuery(
-      internal.integrations.connections.queries.list,
+      internalAny.integrations.connections.queries.list,
       { nodeType: "vimeo" },
     );
 
     for (const conn of connections) {
-      await ctx.runAction(internal.vimeo.actions.syncVimeoVideos, {
+      await ctx.runAction(internalAny.vimeo.actions.syncVimeoVideos, {
         connectionId: conn._id,
       });
     }
+    return null;
   },
 });
 
-export const listFolders = action({
-  args: { connectionId: v.id("connections") },
-  returns: v.array(v.object({ id: v.string(), name: v.string() })),
-  handler: async (ctx, args) => {
+export const refreshVimeoLibrary = actionAny({
+  args: {
+    ownerId: vAny.union(
+      vAny.id("organizations"),
+      vAny.id("users"),
+      vAny.string(),
+    ),
+  },
+  returns: vAny.object({
+    syncedCount: vAny.number(),
+    pagesFetched: vAny.number(),
+    startedAt: vAny.number(),
+    finishedAt: vAny.number(),
+  }),
+  handler: async (
+    ctx: ActionCtx,
+    args: { ownerId: Id<"organizations"> | Id<"users"> | string },
+  ) => {
+    const connection = await ctx.runQuery(
+      internalAny.integrations.connections.queries
+        .getConnectionByNodeTypeAndOwner,
+      { nodeType: "vimeo", ownerId: args.ownerId },
+    );
+
+    if (!connection) {
+      throw new Error("No Vimeo connection found for this owner.");
+    }
+
+    const result = await ctx.runAction(
+      internalAny.vimeo.actions.syncVimeoVideos,
+      {
+        connectionId: connection._id,
+      },
+    );
+
+    return result;
+  },
+});
+
+export const listFolders = actionAny({
+  args: { connectionId: vAny.id("connections") },
+  returns: vAny.array(vAny.object({ id: vAny.string(), name: vAny.string() })),
+  handler: async (
+    ctx: ActionCtx,
+    args: { connectionId: Id<"connections"> },
+  ) => {
     // Fetch connection
     const connection = await ctx.runQuery(
-      internal.integrations.connections.queries.get,
+      internalAny.integrations.connections.queries.get,
       { id: args.connectionId },
     );
 
     if (!connection) throw new Error("Connection not found");
 
     const decrypted = await ctx.runAction(
-      internal.integrations.connections.cryptoActions.getDecryptedSecrets,
+      internalAny.integrations.connections.cryptoActions.getDecryptedSecrets,
       { connectionId: args.connectionId },
     );
     const token =
@@ -275,7 +449,7 @@ export const listFolders = action({
 
     if (!res.ok) throw new Error(`Vimeo API error ${res.status}`);
     const json = (await res.json()) as {
-      data?: Array<{ uri: string; name: string }>;
+      data?: { uri: string; name: string }[];
     };
 
     const folders =
@@ -288,13 +462,15 @@ export const listFolders = action({
 });
 
 // Internal action: fetches from Vimeo API
-export const fetchVimeoVideos = internalAction({
+export const fetchVimeoVideos = internalActionAny({
   args: {
-    ownerId: v.union(v.id("users"), v.string()),
+    ownerId: vAny.union(vAny.id("users"), vAny.string()),
   },
-  handler: async (ctx, args) => {
+  returns: vAny.any(),
+  handler: async (ctx: any, args: any) => {
     const connection = await ctx.runQuery(
-      internal.integrations.connections.queries.getConnectionByNodeTypeAndOwner,
+      internalAny.integrations.connections.queries
+        .getConnectionByNodeTypeAndOwner,
       { nodeType: "vimeo", ownerId: args.ownerId },
     );
 
@@ -303,7 +479,7 @@ export const fetchVimeoVideos = internalAction({
     }
 
     const decrypted = await ctx.runAction(
-      internal.integrations.connections.cryptoActions.getDecryptedSecrets,
+      internalAny.integrations.connections.cryptoActions.getDecryptedSecrets,
       { connectionId: connection._id },
     );
 
@@ -339,54 +515,58 @@ export const fetchVimeoVideos = internalAction({
 const VIMEO_CACHE_NAME = "vimeo-fetch-v1";
 const VIMEO_CACHE_TTL = 1000 * 60 * 5;
 
-export const getCachedVimeoVideos = action({
+export const getCachedVimeoVideos = actionAny({
   args: {
-    ownerId: v.union(v.id("users"), v.string()),
+    ownerId: vAny.union(vAny.id("users"), vAny.string()),
   },
-  handler: async (ctx, args) => {
-    const cached = await ctx.runQuery(components.actionCache.lib.get, {
+  returns: vAny.any(),
+  handler: async (ctx: any, args: any) => {
+    const cached = await ctx.runQuery(componentsAny.actionCache.lib.get, {
       name: VIMEO_CACHE_NAME,
       args,
       ttl: VIMEO_CACHE_TTL,
     });
 
-    if (cached?.kind === "hit") {
+    if (cached && cached.kind === "hit") {
       return cached.value;
     }
 
     const freshValue = await ctx.runAction(
-      internal.vimeo.actions.fetchVimeoVideos,
+      internalAny.vimeo.actions.fetchVimeoVideos,
       args,
     );
 
-    await ctx.runMutation(components.actionCache.lib.put, {
+    await ctx.runMutation(componentsAny.actionCache.lib.put, {
       name: VIMEO_CACHE_NAME,
       args,
       ttl: VIMEO_CACHE_TTL,
       value: freshValue,
-      expiredEntry: cached?.expiredEntry,
+      expiredEntry: cached ? cached.expiredEntry : undefined,
     });
 
     return freshValue;
   },
 });
 
-export const fetchTranscript = action({
+export const fetchTranscript = actionAny({
   args: {
-    ownerId: v.union(v.id("organizations"), v.string()),
-    videoId: v.string(),
+    ownerId: vAny.union(vAny.id("organizations"), vAny.string()),
+    videoId: vAny.string(),
   },
-  returns: v.object({
-    transcript: v.string(),
-    rawVtt: v.string(),
-    track: v.object({
-      id: v.string(),
-      label: v.optional(v.string()),
-      language: v.optional(v.string()),
-      type: v.optional(v.string()),
+  returns: vAny.object({
+    transcript: vAny.string(),
+    rawVtt: vAny.string(),
+    track: vAny.object({
+      id: vAny.string(),
+      label: vAny.optional(vAny.string()),
+      language: vAny.optional(vAny.string()),
+      type: vAny.optional(vAny.string()),
     }),
   }),
-  handler: async (ctx, args) => {
+  handler: async (
+    ctx: ActionCtx,
+    args: { ownerId: Id<"organizations"> | string; videoId: string },
+  ) => {
     const { accessToken } = await resolveVimeoAccessToken(ctx, args.ownerId);
 
     const textTracksResponse = await fetch(
@@ -447,8 +627,7 @@ export const fetchTranscript = action({
       track.type ??
       "Text Track";
 
-    const trackId =
-      track.uri?.split("/").filter(Boolean).pop() ?? track.uri ?? args.videoId;
+    const trackId = track.uri.split("/").filter(Boolean).pop() ?? args.videoId;
 
     return {
       transcript: plainText.length > 0 ? plainText : rawTranscript,

@@ -2256,6 +2256,17 @@ export type PublicApiType = {
   };
   vimeo: {
     actions: {
+      refreshVimeoLibrary: FunctionReference<
+        "action",
+        "public",
+        { ownerId: Id<"organizations"> | Id<"users"> | string },
+        {
+          finishedAt: number;
+          pagesFetched: number;
+          startedAt: number;
+          syncedCount: number;
+        }
+      >;
       listFolders: FunctionReference<
         "action",
         "public",
@@ -2315,6 +2326,29 @@ export type PublicApiType = {
         },
         Id<"vimeoVideos">
       >;
+      upsertVideosPage: FunctionReference<
+        "mutation",
+        "public",
+        {
+          connectionId: Id<"connections">;
+          now: number;
+          videos: Array<{
+            description?: string;
+            embedUrl: string;
+            publishedAt: number;
+            thumbnailUrl?: string;
+            title: string;
+            videoId: string;
+          }>;
+        },
+        { inserted: number; updated: number }
+      >;
+      startVimeoSync: FunctionReference<
+        "mutation",
+        "public",
+        { organizationId: Id<"organizations">; restart?: boolean },
+        { connectionId: Id<"connections">; workflowId: string }
+      >;
       triggerSync: FunctionReference<
         "mutation",
         "public",
@@ -2326,21 +2360,36 @@ export type PublicApiType = {
       listVideos: FunctionReference<
         "query",
         "public",
-        { connectionId?: Id<"connections"> },
-        Array<{
-          _id: Id<"vimeoVideos">;
-          description?: string;
-          embedUrl: string;
-          publishedAt: number;
-          thumbnailUrl?: string;
-          title: string;
-          videoId: string;
-        }>
+        {
+          organizationId: Id<"organizations">;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          search?: string;
+        },
+        {
+          continueCursor: string | null;
+          isDone: boolean;
+          page: Array<{
+            _id: Id<"vimeoVideos">;
+            description?: string;
+            embedUrl: string;
+            publishedAt: number;
+            thumbnailUrl?: string;
+            title: string;
+            videoId: string;
+          }>;
+        }
       >;
       getVideoByExternalId: FunctionReference<
         "query",
         "public",
-        { videoId: string },
+        { connectionId: Id<"connections">; videoId: string },
         null | {
           _id: Id<"vimeoVideos">;
           connectionId: Id<"connections">;
@@ -2349,6 +2398,27 @@ export type PublicApiType = {
           thumbnailUrl?: string;
           title: string;
           videoId: string;
+        }
+      >;
+    };
+    syncState: {
+      getVimeoSyncStatus: FunctionReference<
+        "query",
+        "public",
+        { organizationId: Id<"organizations"> },
+        null | {
+          _id: Id<"vimeoSyncState">;
+          connectionId: Id<"connections">;
+          finishedAt?: number;
+          lastError?: string;
+          nextPage: number;
+          pagesFetched: number;
+          perPage: number;
+          startedAt?: number;
+          status: "idle" | "running" | "error" | "done";
+          syncedCount: number;
+          updatedAt: number;
+          workflowId?: string;
         }
       >;
     };

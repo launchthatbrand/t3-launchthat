@@ -3,6 +3,7 @@
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { formatDistanceToNow } from "date-fns";
@@ -43,6 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 import {
   AdminLayout,
@@ -51,9 +53,27 @@ import {
   AdminLayoutMain,
   AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
+import { useTenant } from "~/context/TenantContext";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { useApplyFilters } from "~/lib/hooks";
+import { ADMIN_ATTACHMENTS_ARCHIVE_TABS_FILTER } from "~/lib/plugins/hookSlots";
 
 type PostTypeDoc = Doc<"postTypes">;
 type MediaItemDoc = Doc<"mediaItems"> & { url?: string | null };
+// NOTE: Vimeo tab rendering is provided by the Vimeo plugin via hooks.
+
+interface AttachmentsArchiveTabContext extends Record<string, unknown> {
+  postTypeSlug: string;
+  organizationId?: Id<"organizations">;
+}
+
+interface AttachmentsArchiveTab {
+  id: string;
+  label: string;
+  order?: number;
+  condition?: (ctx: AttachmentsArchiveTabContext) => boolean;
+  component: React.ComponentType<AttachmentsArchiveTabContext>;
+}
 
 export interface AttachmentsArchiveViewProps {
   slug: string;
@@ -70,6 +90,23 @@ export function AttachmentsArchiveView({
   onPostTypeChange,
   renderLayout = true,
 }: AttachmentsArchiveViewProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant) ?? undefined;
+
+  const vimeoOption = useQuery(
+    api.core.options.get,
+    organizationId
+      ? ({
+          orgId: organizationId,
+          type: "site",
+          metaKey: "plugin_vimeo_enabled",
+        } as const)
+      : "skip",
+  );
+  const isVimeoEnabled = Boolean(vimeoOption?.metaValue);
+
   const label = postType?.name ?? "Attachments";
   const description =
     postType?.description ??
@@ -88,6 +125,29 @@ export function AttachmentsArchiveView({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewMediaId, setPreviewMediaId] = useState<string | null>(null);
   const [previewImageFailed, setPreviewImageFailed] = useState(false);
+
+  const searchParamsString = searchParams.toString();
+  const activeTab = useMemo(() => {
+    const params = new URLSearchParams(searchParamsString);
+    const requested = params.get("tab") ?? "library";
+    if (requested === "vimeo" && !isVimeoEnabled) {
+      return "library";
+    }
+    return requested;
+  }, [isVimeoEnabled, searchParamsString]);
+
+  const handleTabChange = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(searchParamsString);
+      if (value === "library") {
+        params.delete("tab");
+      } else {
+        params.set("tab", value);
+      }
+      router.replace(`/admin/edit?${params.toString()}`);
+    },
+    [router, searchParamsString],
+  );
 
   const mediaResponse = useQuery(api.core.media.queries.listMediaItemsWithUrl, {
     paginationOpts: { numItems: 60, cursor: null },
@@ -282,7 +342,7 @@ export function AttachmentsArchiveView({
     [],
   );
 
-  const libraryBody = (
+  const libraryPanel = (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Select value={slug} onValueChange={onPostTypeChange}>
@@ -612,6 +672,78 @@ export function AttachmentsArchiveView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+
+  const tabContext = useMemo<AttachmentsArchiveTabContext>(
+    () => ({
+      postTypeSlug: slug,
+      organizationId,
+    }),
+    [organizationId, slug],
+  );
+
+  const pluginTabs = useApplyFilters<AttachmentsArchiveTab[]>(
+    ADMIN_ATTACHMENTS_ARCHIVE_TABS_FILTER,
+    [],
+    tabContext,
+  );
+
+  const tabs = useMemo(() => {
+    const base: { id: string; label: string; order: number }[] = [
+      { id: "library", label: "Library", order: 0 },
+    ];
+    const extras = pluginTabs
+      .filter((t) => {
+        if (t.id === "vimeo" && !isVimeoEnabled) return false;
+        return !t.condition || t.condition(tabContext);
+      })
+      .map((t) => ({
+        id: t.id,
+        label: t.label,
+        order: t.order ?? 10,
+      }));
+    return [...base, ...extras].sort((a, b) => a.order - b.order);
+  }, [isVimeoEnabled, pluginTabs, tabContext]);
+
+  const activePluginTab = useMemo(() => {
+    if (activeTab === "library") return null;
+    return pluginTabs.find((t) => t.id === activeTab) ?? null;
+  }, [activeTab, pluginTabs]);
+
+  const pluginPanel =
+    activePluginTab?.component ? (
+      <activePluginTab.component {...tabContext} />
+    ) : (
+      <Card>
+        <CardHeader>
+          <CardTitle>Tab not available</CardTitle>
+          <CardDescription>
+            This tab is not registered or cannot be rendered.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+
+  const libraryBody = (
+    <div className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList>
+          {tabs.map((t) => (
+            <TabsTrigger key={t.id} value={t.id}>
+              {t.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent value="library" className="mt-6">
+          {libraryPanel}
+        </TabsContent>
+        {tabs.some((t) => t.id === activeTab) && activeTab !== "library" ? (
+          <TabsContent value={activeTab} className="mt-6">
+            {pluginPanel}
+          </TabsContent>
+        ) : null}
+      </Tabs>
     </div>
   );
 
