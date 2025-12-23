@@ -19,13 +19,19 @@ export type AnimatedTooltipItem = {
 export const AnimatedTooltip = ({
   items,
   renderTrigger,
+  renderTooltipContent,
   itemWrapperClassName = "group relative -mr-4",
   tooltipClassName = "absolute -top-16 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center justify-center rounded-md bg-black px-4 py-2 text-xs shadow-xl",
+  maxRotateDeg = 4,
+  maxTranslatePx = 20,
 }: {
   items: AnimatedTooltipItem[];
   renderTrigger?: (item: AnimatedTooltipItem) => React.ReactNode;
+  renderTooltipContent?: (item: AnimatedTooltipItem) => React.ReactNode;
   itemWrapperClassName?: string;
   tooltipClassName?: string;
+  maxRotateDeg?: number;
+  maxTranslatePx?: number;
 }) => {
   const [hoveredId, setHoveredId] = useState<string | number | null>(null);
   const springConfig = { stiffness: 100, damping: 15 };
@@ -33,11 +39,11 @@ export const AnimatedTooltip = ({
   const animationFrameRef = useRef<number | null>(null);
 
   const rotate = useSpring(
-    useTransform(x, [-100, 100], [-45, 45]),
+    useTransform(x, [-100, 100], [-maxRotateDeg, maxRotateDeg]),
     springConfig,
   );
   const translateX = useSpring(
-    useTransform(x, [-100, 100], [-50, 50]),
+    useTransform(x, [-100, 100], [-maxTranslatePx, maxTranslatePx]),
     springConfig,
   );
 
@@ -46,9 +52,15 @@ export const AnimatedTooltip = ({
       cancelAnimationFrame(animationFrameRef.current);
     }
 
+    // React may null out synthetic event fields after the handler returns.
+    // Capture the values we need before the rAF callback runs.
+    const targetEl = event.currentTarget as HTMLElement | null;
+    const clientX = event.clientX;
+    if (!targetEl) return;
+
     animationFrameRef.current = requestAnimationFrame(() => {
-      const rect = event.currentTarget.getBoundingClientRect();
-      const offsetX = event.clientX - rect.left;
+      const rect = targetEl.getBoundingClientRect();
+      const offsetX = clientX - rect.left;
       x.set(offsetX - rect.width / 2);
     });
   };
@@ -84,14 +96,22 @@ export const AnimatedTooltip = ({
                 }}
                 className={tooltipClassName}
               >
-                <div className="absolute inset-x-10 -bottom-px z-30 h-px w-[20%] bg-gradient-to-r from-transparent via-emerald-500 to-transparent" />
-                <div className="absolute -bottom-px left-10 z-30 h-px w-[40%] bg-gradient-to-r from-transparent via-sky-500 to-transparent" />
-                <div className="relative z-30 text-base font-bold text-white">
-                  {item.name}
-                </div>
-                {item.designation ? (
-                  <div className="text-xs text-white">{item.designation}</div>
-                ) : null}
+                {renderTooltipContent ? (
+                  renderTooltipContent(item)
+                ) : (
+                  <>
+                    <div className="absolute inset-x-10 -bottom-px z-30 h-px w-[20%] bg-gradient-to-r from-transparent via-emerald-500 to-transparent" />
+                    <div className="absolute -bottom-px left-10 z-30 h-px w-[40%] bg-gradient-to-r from-transparent via-sky-500 to-transparent" />
+                    <div className="relative z-30 text-base font-bold text-white">
+                      {item.name}
+                    </div>
+                    {item.designation ? (
+                      <div className="text-xs text-white">
+                        {item.designation}
+                      </div>
+                    ) : null}
+                  </>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

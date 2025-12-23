@@ -24,6 +24,7 @@ import {
 } from "@acme/ui/dropdown-menu";
 import { Spinner } from "@acme/ui/spinner";
 import { Textarea } from "@acme/ui/textarea";
+import { NoiseBackground } from "@acme/ui/noise-background";
 
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -153,14 +154,27 @@ export function CommentSection({ postId, groupId }: CommentSectionProps) {
             className="min-h-[80px] resize-none"
           />
           <div className="flex justify-end">
-            <Button
-              size="sm"
-              onClick={handleSubmitComment}
-              disabled={!commentText.trim() || isLoading}
+            <NoiseBackground
+              containerClassName="w-fit rounded-full p-1"
+              gradientColors={[
+                "rgb(255, 100, 150)",
+                "rgb(100, 150, 255)",
+                "rgb(255, 200, 100)",
+              ]}
+              noiseIntensity={0.18}
+              speed={0.08}
+              animating={!(!commentText.trim() || isLoading)}
             >
-              {isLoading ? <Spinner size="sm" className="mr-2" /> : null}
-              Post Comment
-            </Button>
+              <Button
+                size="sm"
+                onClick={handleSubmitComment}
+                disabled={!commentText.trim() || isLoading}
+                className="rounded-full border border-border/60 bg-background/70 font-semibold text-foreground hover:bg-background"
+              >
+                {isLoading ? <Spinner size="sm" className="mr-2" /> : null}
+                Post Comment
+              </Button>
+            </NoiseBackground>
           </div>
         </div>
       </div>

@@ -5,10 +5,11 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { api } from "@portal/convexspec";
 import { useMutation } from "convex/react";
-import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
+import { NoiseBackground } from "@acme/ui/noise-background";
 import { toast } from "@acme/ui/toast";
 
 import type { Id } from "../lib/convexId";
@@ -31,7 +32,7 @@ const LABEL_MAP: Record<
   },
   topics: {
     noun: "topic",
-    description: "Log topic-level progress without leaving the page.",
+    description: "",
     cta: "Complete topic",
   },
   quizzes: {
@@ -161,17 +162,6 @@ export function FrontendLessonCompletionCallout({
     ? `/certificate/${resolvedCertificate.slug ?? resolvedCertificate._id}`
     : null;
 
-  const previousHref = useMemo(
-    () => buildEntryHref(previousEntry, resolvedCourseSlug),
-    [resolvedCourseSlug, previousEntry],
-  );
-  const nextHref = useMemo(
-    () => buildEntryHref(nextEntry, resolvedCourseSlug),
-    [resolvedCourseSlug, nextEntry],
-  );
-  const previousLabel = buildEntryLabel(previousEntry);
-  const nextLabel = buildEntryLabel(nextEntry);
-
   const linearBlockMessage = isLinearBlocked
     ? `Complete ${blockingLessonTitle ?? "the previous lesson"} to continue.`
     : null;
@@ -261,16 +251,35 @@ export function FrontendLessonCompletionCallout({
             {config.description}
           </p>
         </div>
-        <Button
-          onClick={handleComplete}
-          disabled={buttonDisabled}
-          variant={isCompleted ? "secondary" : "default"}
-          size={"lg"}
-          className="h-12 w-full shrink-0"
+        <NoiseBackground
+          containerClassName="w-full rounded-full p-1"
+          gradientColors={[
+            "rgb(255, 100, 150)",
+            "rgb(100, 150, 255)",
+            "rgb(255, 200, 100)",
+          ]}
+          noiseIntensity={0.18}
+          speed={0.08}
+          animating={!buttonDisabled}
         >
-          <CheckCircle2 className="mr-2 h-4 w-4" />
-          {isCompleted ? `Mark ${config.noun} incomplete` : config.cta}
-        </Button>
+          <Button
+            onClick={handleComplete}
+            disabled={buttonDisabled}
+            variant={isCompleted ? "secondary" : "default"}
+            size={"lg"}
+            className={[
+              "h-12 w-full shrink-0 rounded-full border text-base font-semibold transition",
+              isCompleted
+                ? "bg-background/70 text-foreground border-border/60 hover:bg-background"
+                : "bg-background/70 text-foreground border-border/60 hover:bg-background",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <CheckCircle2 className="mr-2 h-4 w-4" />
+            {isCompleted ? `Mark ${config.noun} incomplete` : config.cta}
+          </Button>
+        </NoiseBackground>
       </div>
       {resolvedCertificate ? (
         <div className="bg-muted/20 mt-3 hidden flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed p-3 md:flex">
@@ -306,90 +315,6 @@ export function FrontendLessonCompletionCallout({
       {linearBlockMessage ? (
         <p className="text-destructive mt-3 text-sm">{linearBlockMessage}</p>
       ) : null}
-
-      <div className="bg-muted/30 mt-4 grid grid-cols-2 gap-3 rounded-xl border p-3">
-        <NavLink
-          direction="Previous"
-          href={previousHref}
-          label={previousLabel}
-        />
-        <NavLink direction="Next" href={nextHref} label={nextLabel} />
-      </div>
     </div>
   );
-}
-
-function NavLink({
-  direction,
-  href,
-  label,
-}: {
-  direction: "Previous" | "Next";
-  href: string | null;
-  label: string | null;
-}) {
-  if (!href || !label) {
-    return (
-      <div className="border-border/60 bg-background/40 rounded-lg border border-dashed p-3">
-        <p className="text-muted-foreground text-xs">{direction}</p>
-        <p className="text-muted-foreground font-medium">None available</p>
-      </div>
-    );
-  }
-  return (
-    <Link
-      href={href}
-      className="bg-background hover:border-primary/60 rounded-lg border p-3 transition hover:shadow-sm"
-    >
-      <p className="text-muted-foreground text-xs">{direction}</p>
-      <p className="text-foreground font-semibold">{label}</p>
-      <div className="text-muted-foreground mt-2 flex items-center text-xs">
-        {direction === "Previous" ? (
-          <ArrowLeft className="mr-1 h-3 w-3" />
-        ) : (
-          <ArrowRight className="mr-1 h-3 w-3" />
-        )}
-        <span>{direction === "Previous" ? "Go back" : "Go forward"}</span>
-      </div>
-    </Link>
-  );
-}
-
-function buildEntryHref(
-  entry: CourseNavEntry | null,
-  courseSlug: string,
-): string | null {
-  if (!entry) {
-    return null;
-  }
-  if (entry.type === "quiz") {
-    const quizSlug =
-      typeof entry.slug === "string" && entry.slug.length > 0
-        ? entry.slug
-        : (entry.id as string);
-    return `/course/${courseSlug}/quiz/${quizSlug}`;
-  }
-  if (entry.type === "lesson") {
-    const lessonSlug =
-      typeof entry.slug === "string" && entry.slug.length > 0
-        ? entry.slug
-        : (entry.id as string);
-    return `/course/${courseSlug}/lesson/${lessonSlug}`;
-  }
-  const lessonSlug = entry.lessonSlug;
-  if (!lessonSlug) {
-    return null;
-  }
-  const topicSlug =
-    typeof entry.slug === "string" && entry.slug.length > 0
-      ? entry.slug
-      : (entry.id as string);
-  return `/course/${courseSlug}/lesson/${lessonSlug}/topic/${topicSlug}`;
-}
-
-function buildEntryLabel(entry: CourseNavEntry | null) {
-  if (!entry) {
-    return null;
-  }
-  return entry.title;
 }

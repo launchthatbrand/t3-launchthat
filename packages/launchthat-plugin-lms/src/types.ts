@@ -19,6 +19,7 @@ export interface LmsBuilderLesson {
   order?: number;
   slug?: string;
   certificateId?: LmsPostId;
+  firstAttachmentUrl?: string;
 }
 
 export interface LmsBuilderTopic {
@@ -30,6 +31,7 @@ export interface LmsBuilderTopic {
   lessonId?: LmsPostId;
   order?: number;
   certificateId?: LmsPostId;
+  firstAttachmentUrl?: string;
 }
 
 export interface LmsBuilderQuiz {
@@ -42,6 +44,7 @@ export interface LmsBuilderQuiz {
   topicId?: LmsPostId;
   order?: number;
   isFinal?: boolean;
+  firstAttachmentUrl?: string;
 }
 
 export interface LmsBuilderCertificate {

@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@acme/ui/avatar";
+import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import {
   DropdownMenu,
@@ -31,6 +32,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@acme/ui/hover-card";
+import { NoiseBackground } from "@acme/ui/noise-background";
 import { Skeleton } from "@acme/ui/skeleton";
 import { Textarea } from "@acme/ui/textarea";
 import {
@@ -633,8 +635,15 @@ export function CommentThread({
     <div className={`space-y-4 ${className}`}>
       {/* Comment sort options */}
       <div className="flex items-center justify-between border-b pb-2">
-        <div className="text-sm font-medium">
-          Comments {comments.length > 0 && `(${comments.length})`}
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs tracking-wide uppercase">
+            Comments
+          </Badge>
+          {comments.length > 0 ? (
+            <span className="text-muted-foreground text-xs">
+              ({comments.length})
+            </span>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-2">
@@ -700,13 +709,30 @@ export function CommentThread({
             )}
 
             <div className="mt-2 flex justify-end">
-              <Button
-                type="submit"
-                size="sm"
-                disabled={!commentText.trim() || isSubmittingComment || !userId}
+              <NoiseBackground
+                containerClassName="w-fit rounded-full p-1"
+                gradientColors={[
+                  "rgb(255, 100, 150)",
+                  "rgb(100, 150, 255)",
+                  "rgb(255, 200, 100)",
+                ]}
+                noiseIntensity={0.18}
+                speed={0.08}
+                animating={
+                  !(!commentText.trim() || isSubmittingComment || !userId)
+                }
               >
-                {isSubmittingComment ? "Posting..." : "Post Comment"}
-              </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={
+                    !commentText.trim() || isSubmittingComment || !userId
+                  }
+                  className="border-border/60 bg-background/70 text-foreground hover:bg-background rounded-full border font-semibold"
+                >
+                  {isSubmittingComment ? "Posting..." : "Post Comment"}
+                </Button>
+              </NoiseBackground>
             </div>
           </div>
         </div>
