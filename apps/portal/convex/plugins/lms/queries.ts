@@ -14,6 +14,8 @@ import {
 
 const components = generatedComponents as any;
 
+const CERTIFICATE_META_KEY = "certificateId";
+
 const builderLessonValidator: any = v.object({
   _id: v.string(),
   title: v.string(),
@@ -22,6 +24,7 @@ const builderLessonValidator: any = v.object({
   status: v.optional(v.string()),
   order: v.optional(v.number()),
   slug: v.optional(v.string()),
+  certificateId: v.optional(v.string()),
 });
 
 const builderTopicValidator: any = v.object({
@@ -32,6 +35,7 @@ const builderTopicValidator: any = v.object({
   slug: v.optional(v.string()),
   lessonId: v.optional(v.string()),
   order: v.optional(v.number()),
+  certificateId: v.optional(v.string()),
 });
 
 const builderQuizValidator: any = v.object({
@@ -44,6 +48,15 @@ const builderQuizValidator: any = v.object({
   topicId: v.optional(v.string()),
   order: v.optional(v.number()),
   isFinal: v.optional(v.boolean()),
+});
+
+const builderCertificateValidator: any = v.object({
+  _id: v.string(),
+  title: v.string(),
+  excerpt: v.optional(v.string()),
+  content: v.optional(v.string()),
+  slug: v.optional(v.string()),
+  status: v.optional(v.string()),
 });
 
 const quizQuestionOptionValidator: any = v.object({
@@ -115,6 +128,33 @@ export const listCourses = query({
   },
 });
 
+export const listCertificates = query({
+  args: {
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.array(builderCertificateValidator),
+  handler: async (ctx: any, args: any) => {
+    const certs = (await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getAllPosts,
+      {
+        organizationId: args.organizationId
+          ? String(args.organizationId)
+          : undefined,
+        filters: { postTypeSlug: "certificates", limit: 200 },
+      },
+    )) as any[];
+
+    return (certs ?? []).map((cert) => ({
+      _id: String(cert._id),
+      title: (cert.title ?? "Untitled certificate") as string,
+      excerpt: (cert.excerpt ?? undefined) as string | undefined,
+      content: (cert.content ?? undefined) as string | undefined,
+      slug: (cert.slug ?? undefined) as string | undefined,
+      status: (cert.status ?? undefined) as string | undefined,
+    }));
+  },
+});
+
 export const getCourseStructureWithItems = query({
   args: {
     courseId: v.optional(v.string()),
@@ -127,11 +167,13 @@ export const getCourseStructureWithItems = query({
       slug: v.optional(v.string()),
       title: v.string(),
       status: v.optional(v.string()),
+      certificateId: v.optional(v.string()),
       courseStructure: courseStructureValidator,
     }),
     attachedLessons: v.array(builderLessonValidator),
     attachedTopics: v.array(builderTopicValidator),
     attachedQuizzes: v.array(builderQuizValidator),
+    attachedCertificates: v.array(builderCertificateValidator),
   }),
   handler: async (ctx: any, args: any): Promise<any> => {
     if (!args.courseId && !args.courseSlug) {
@@ -149,6 +191,10 @@ export const getCourseStructureWithItems = query({
     }
 
     const courseMeta = await getPostMetaMap(ctx, course._id);
+    const courseCertificateId =
+      typeof courseMeta.get(CERTIFICATE_META_KEY) === "string"
+        ? (courseMeta.get(CERTIFICATE_META_KEY) as string)
+        : undefined;
     const structureIds = parseCourseStructureMeta(
       courseMeta.get("courseStructure") ?? null,
     );
@@ -175,6 +221,41 @@ export const getCourseStructureWithItems = query({
       course._id,
     );
 
+    const certificateIdSet = new Set<string>();
+    if (courseCertificateId) {
+      certificateIdSet.add(courseCertificateId);
+    }
+    attachedLessons.forEach((lesson) => {
+      if (lesson.certificateId) certificateIdSet.add(String(lesson.certificateId));
+    });
+    attachedTopics.forEach((topic) => {
+      if (topic.certificateId) certificateIdSet.add(String(topic.certificateId));
+    });
+
+    const certificates = certificateIdSet.size
+      ? (((await ctx.runQuery(
+          components.launchthat_lms.posts.queries.getAllPosts,
+          {
+            organizationId: organizationId ? String(organizationId) : undefined,
+            filters: { postTypeSlug: "certificates", limit: 200 },
+          },
+        )) as any[]) ?? [])
+      : [];
+    const certificatesById = new Map<string, any>(
+      certificates.map((cert) => [String(cert._id), cert] as const),
+    );
+    const attachedCertificates = Array.from(certificateIdSet)
+      .map((id) => certificatesById.get(id))
+      .filter(Boolean)
+      .map((cert) => ({
+        _id: String(cert._id),
+        title: (cert.title ?? "Untitled certificate") as string,
+        excerpt: (cert.excerpt ?? undefined) as string | undefined,
+        content: (cert.content ?? undefined) as string | undefined,
+        slug: (cert.slug ?? undefined) as string | undefined,
+        status: (cert.status ?? undefined) as string | undefined,
+      }));
+
     const structure: any[] = structureIds.map((lessonId) => ({ lessonId }));
 
     return {
@@ -183,11 +264,13 @@ export const getCourseStructureWithItems = query({
         slug: course.slug ?? undefined,
         title: course.title,
         status: course.status ?? undefined,
+        certificateId: courseCertificateId,
         courseStructure: structure,
       },
       attachedLessons,
       attachedTopics,
       attachedQuizzes,
+      attachedCertificates,
     };
   },
 });
@@ -501,12 +584,17 @@ async function fetchLessonsForCourse(
     const meta = await getPostMetaMap(ctx, lesson._id);
     const metaCourseId = meta.get("courseId");
     if (metaCourseId === courseId) {
+      const certificateId =
+        typeof meta.get(CERTIFICATE_META_KEY) === "string"
+          ? (meta.get(CERTIFICATE_META_KEY) as string)
+          : undefined;
       attached.push({
         ...lesson,
         order:
           typeof meta.get("courseOrder") === "number"
             ? (meta.get("courseOrder") as number)
             : undefined,
+        certificateId,
       });
     }
   }
@@ -552,6 +640,10 @@ async function fetchTopicsByType(
   for (const topic of topics) {
     const meta = await getPostMetaMap(ctx, topic._id);
     const lessonId = meta.get("lessonId");
+    const certificateId =
+      typeof meta.get(CERTIFICATE_META_KEY) === "string"
+        ? (meta.get(CERTIFICATE_META_KEY) as string)
+        : undefined;
     if (
       lessonId &&
       typeof lessonId === "string" &&
@@ -568,6 +660,7 @@ async function fetchTopicsByType(
           typeof meta.get("order") === "number"
             ? (meta.get("order") as number)
             : undefined,
+        certificateId,
       });
     } else if (lessonIds.size === 0 && !lessonId) {
       attached.push({
@@ -578,6 +671,7 @@ async function fetchTopicsByType(
         slug: (topic.slug ?? undefined) as string | undefined,
         lessonId: undefined,
         order: undefined,
+        certificateId,
       });
     }
   }

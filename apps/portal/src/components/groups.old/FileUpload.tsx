@@ -47,10 +47,6 @@ export function FileUpload({ onFileUploaded }: FileUploadProps) {
       // Determine file type
       const fileType = getFileType(file);
 
-      // Create a FormData object and append the file
-      const formData = new FormData();
-      formData.append("file", file);
-
       // Simulate upload progress (this is just for UI feedback)
       const progressInterval = setInterval(() => {
         setUploadProgress((prev) => {
@@ -65,7 +61,8 @@ export function FileUpload({ onFileUploaded }: FileUploadProps) {
       // Upload the file to Convex
       const response = await fetch(uploadUrl, {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
       });
 
       if (!response.ok) {

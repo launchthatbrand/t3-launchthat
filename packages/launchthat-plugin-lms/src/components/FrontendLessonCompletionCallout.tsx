@@ -104,6 +104,50 @@ export function FrontendLessonCompletionCallout({
   const isCompleted = isLessonCompleted || isTopicCompleted;
   const isAuthenticatedProgress = courseProgress !== null;
 
+  const attachedCertificates = courseContext?.courseStructure?.attachedCertificates ?? [];
+  const resolvedCertificate = useMemo(() => {
+    const structure = courseContext?.courseStructure;
+    if (!structure) return null;
+
+    const findById = (id: string | undefined) => {
+      if (!id) return null;
+      return attachedCertificates.find((cert) => cert._id === id) ?? null;
+    };
+
+    if (postTypeSlug === "courses") {
+      return findById(structure.course.certificateId);
+    }
+    if (postTypeSlug === "lessons" && lessonId) {
+      const lesson = (structure.attachedLessons ?? []).find((l) => l._id === lessonId);
+      return findById(lesson?.certificateId);
+    }
+    if (postTypeSlug === "topics" && topicId) {
+      const topic = (structure.attachedTopics ?? []).find((t) => t._id === topicId);
+      return findById(topic?.certificateId);
+    }
+    return null;
+  }, [attachedCertificates, courseContext?.courseStructure, lessonId, postTypeSlug, topicId]);
+
+  const isCourseCompleted = useMemo(() => {
+    if (postTypeSlug !== "courses") return false;
+    const segments = courseContext?.segments ?? [];
+    if (!segments.length) return false;
+    return segments.every((segment) => completedLessonIds.has(segment.lessonId));
+  }, [completedLessonIds, courseContext?.segments, postTypeSlug]);
+
+  const isCertificateUnlocked =
+    postTypeSlug === "courses"
+      ? isCourseCompleted
+      : postTypeSlug === "lessons"
+        ? isLessonCompleted
+        : postTypeSlug === "topics"
+          ? isTopicCompleted
+          : false;
+
+  const certificateHref = resolvedCertificate
+    ? `/certificate/${resolvedCertificate.slug ?? resolvedCertificate._id}`
+    : null;
+
   const previousHref = useMemo(
     () => buildEntryHref(previousEntry, resolvedCourseSlug),
     [resolvedCourseSlug, previousEntry],
@@ -214,6 +258,32 @@ export function FrontendLessonCompletionCallout({
           {isCompleted ? `Mark ${config.noun} incomplete` : config.cta}
         </Button>
       </div>
+      {resolvedCertificate ? (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed bg-muted/20 p-3">
+          <div>
+            <p className="text-sm font-medium">
+              Certificate: {resolvedCertificate.title ?? "Untitled certificate"}
+            </p>
+            <p className="text-muted-foreground text-xs">
+              {isCertificateUnlocked
+                ? "Unlocked"
+                : "Complete this section to unlock your certificate."}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!certificateHref || !isCertificateUnlocked}
+            asChild={Boolean(certificateHref && isCertificateUnlocked)}
+          >
+            {certificateHref && isCertificateUnlocked ? (
+              <Link href={certificateHref}>View certificate</Link>
+            ) : (
+              <span>View certificate</span>
+            )}
+          </Button>
+        </div>
+      ) : null}
       {!isAuthenticatedProgress ? (
         <p className="text-muted-foreground mt-3 text-xs">
           Sign in to track your personal progress for this course.

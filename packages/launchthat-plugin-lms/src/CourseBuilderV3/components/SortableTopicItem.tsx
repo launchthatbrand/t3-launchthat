@@ -28,6 +28,8 @@ interface SortableTopicItemProps {
   activeItem: Active | null;
   onRemoveTopic?: (lessonId: string, topicId: string) => void;
   onRemoveQuiz?: (topicId: string, quizId: string) => void;
+  topicCertificateTitle?: string | null;
+  onClearTopicCertificate?: (topicId: string) => void;
 }
 
 const SortableTopicItem: React.FC<SortableTopicItemProps> = ({
@@ -36,6 +38,8 @@ const SortableTopicItem: React.FC<SortableTopicItemProps> = ({
   activeItem,
   onRemoveTopic,
   onRemoveQuiz,
+  topicCertificateTitle,
+  onClearTopicCertificate,
 }) => {
   const {
     attributes,
@@ -190,11 +194,44 @@ const SortableTopicItem: React.FC<SortableTopicItemProps> = ({
           <Dropzone
             id={`topic-${topic.id}-quiz-dropzone`}
             kind="topic-quiz"
-            acceptedTypes={["quiz"]}
+            acceptedTypes={["quiz", "certificate"]}
             data={{ topicId: topic.id }}
             className="mt-2 min-h-[50px]"
-            enabledText="Drop Quizzes here"
+            enabledText="Drop Quizzes or Certificates here"
           />
+          <div className="bg-muted/10 mt-3 rounded-md border p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-[11px]">
+                  Topic certificate
+                </Badge>
+                <span className="text-muted-foreground text-xs">
+                  {topicCertificateTitle
+                    ? `Attached: ${topicCertificateTitle}`
+                    : "None attached"}
+                </span>
+              </div>
+              {topicCertificateTitle && onClearTopicCertificate ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onClearTopicCertificate(topic.id);
+                  }}
+                  aria-label="Remove topic certificate"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              ) : null}
+            </div>
+            <p className="text-muted-foreground mt-2 text-xs">
+              Drag a certificate onto the topic dropzone above to attach it. It
+              will always be placed at the end of the topic.
+            </p>
+          </div>
         </AccordionContent>
       </AccordionItem>
     </div>

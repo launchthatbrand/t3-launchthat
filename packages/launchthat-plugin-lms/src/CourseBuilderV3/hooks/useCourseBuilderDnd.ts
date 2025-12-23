@@ -22,6 +22,9 @@ interface UseCourseBuilderDndProps {
   addTopicToLesson: (lessonId: string, topic: TopicItem) => void;
   addQuizToTopic: (topicId: string, quiz: QuizItem) => void;
   addQuizToLesson: (lessonId: string, quiz: QuizItem) => void;
+  setCourseCertificateId: (certificateId: string | null) => void;
+  setLessonCertificateId: (lessonId: string, certificateId: string | null) => void;
+  setTopicCertificateId: (topicId: string, certificateId: string | null) => void;
   reorderQuizzesInTopic: (
     topicId: string,
     activeId: string,
@@ -49,6 +52,9 @@ interface UseCourseBuilderDndProps {
   onReorderLessonQuizzes?: CourseBuilderProps["onReorderLessonQuizzes"];
   onReorderTopicQuizzes?: CourseBuilderProps["onReorderTopicQuizzes"];
   onAddQuiz?: CourseBuilderProps["onAddQuiz"];
+  onSetCourseCertificate?: CourseBuilderProps["onSetCourseCertificate"];
+  onSetLessonCertificate?: CourseBuilderProps["onSetLessonCertificate"];
+  onSetTopicCertificate?: CourseBuilderProps["onSetTopicCertificate"];
   onCreateLessonFromVimeo?: (video: VimeoVideoItem) => Promise<void>;
   onCreateTopicFromVimeo?: (
     lessonId: string,
@@ -93,6 +99,9 @@ export const useCourseBuilderDnd = ({
   addTopicToLesson,
   addQuizToTopic,
   addQuizToLesson,
+  setCourseCertificateId,
+  setLessonCertificateId,
+  setTopicCertificateId,
   reorderQuizzesInTopic,
   addMainContentItem,
   reorderMainContentItems,
@@ -108,6 +117,9 @@ export const useCourseBuilderDnd = ({
   onReorderLessonQuizzes,
   onReorderTopicQuizzes,
   onAddQuiz,
+  onSetCourseCertificate,
+  onSetLessonCertificate,
+  onSetTopicCertificate,
   onCreateLessonFromVimeo,
   onCreateTopicFromVimeo,
   onCreateQuizFromVimeo,
@@ -163,6 +175,13 @@ export const useCourseBuilderDnd = ({
     if (overKind) {
       switch (overKind) {
         case "main-content-root": {
+          if (currentActiveType === "certificate") {
+            if (!courseId) break;
+            if (isVimeoItem) break;
+            await onSetCourseCertificate?.(courseId, currentActiveId);
+            setCourseCertificateId(currentActiveId);
+            break;
+          }
           if (currentActiveType === "lesson") {
             if (isVimeoItem && activeData?.vimeoVideo) {
               if (onCreateLessonFromVimeo) {
@@ -228,6 +247,12 @@ export const useCourseBuilderDnd = ({
         case "lesson-content": {
           if (!overData.lessonId) break;
           const targetLessonId = overData.lessonId;
+          if (currentActiveType === "certificate") {
+            if (isVimeoItem) break;
+            await onSetLessonCertificate?.(targetLessonId, currentActiveId);
+            setLessonCertificateId(targetLessonId, currentActiveId);
+            break;
+          }
           if (currentActiveType === "topic") {
             if (
               isVimeoItem &&
@@ -299,6 +324,12 @@ export const useCourseBuilderDnd = ({
           break;
         }
         case "topic-quiz": {
+          if (currentActiveType === "certificate" && overData.topicId) {
+            if (isVimeoItem) break;
+            await onSetTopicCertificate?.(overData.topicId, currentActiveId);
+            setTopicCertificateId(overData.topicId, currentActiveId);
+            break;
+          }
           if (currentActiveType === "quiz" && overData.topicId) {
             if (
               isVimeoItem &&

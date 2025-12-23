@@ -26,6 +26,8 @@ const api = generatedApi as any;
 const components = generatedComponents as any;
 const mutation = baseMutation as any;
 
+const CERTIFICATE_META_KEY = "certificateId";
+
 const ensureCourseAndLesson = async (
   ctx: MutationCtx,
   courseId: Id<"posts">,
@@ -54,6 +56,136 @@ const ensureCourseAndLesson = async (
 
   return { course, lesson };
 };
+
+const ensureLmsPostById = async (
+  ctx: MutationCtx,
+  id: string,
+  expectedType: string,
+) => {
+  const post = await ctx.runQuery(
+    components.launchthat_lms.posts.queries.getPostByIdInternal,
+    { id: id as unknown as string },
+  );
+  if (!post || post.postTypeSlug !== expectedType) {
+    throw new Error(`${expectedType.replace(/^\w/, (c) => c.toUpperCase())} not found`);
+  }
+  return post as { _id: string; postTypeSlug: string; organizationId?: string | null };
+};
+
+const ensureCertificateForOrg = async (
+  ctx: MutationCtx,
+  certificateId: string,
+  organizationId: string | undefined,
+) => {
+  const certificate = await ensureLmsPostById(ctx, certificateId, "certificates");
+  const certOrg = certificate.organizationId ?? undefined;
+  if (certOrg !== (organizationId ?? undefined)) {
+    throw new Error("Certificate must belong to the same organization");
+  }
+  return certificate;
+};
+
+export const setCourseCertificate: any = mutation({
+  args: {
+    courseId: v.string(),
+    certificateId: v.optional(v.union(v.string(), v.null())),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx: any, args: any) => {
+    const course = await ensureLmsPostById(ctx, args.courseId, "courses");
+    const organizationId = course.organizationId ?? undefined;
+    const certificateId =
+      typeof args.certificateId === "string" && args.certificateId.length > 0
+        ? args.certificateId
+        : null;
+
+    if (certificateId) {
+      await ensureCertificateForOrg(ctx, certificateId, organizationId);
+      await setPostMetaValue(
+        ctx,
+        args.courseId as unknown as Id<"posts">,
+        CERTIFICATE_META_KEY,
+        certificateId,
+      );
+    } else {
+      await deletePostMetaValue(
+        ctx,
+        args.courseId as unknown as Id<"posts">,
+        CERTIFICATE_META_KEY,
+      );
+    }
+
+    return { success: true };
+  },
+});
+
+export const setLessonCertificate: any = mutation({
+  args: {
+    lessonId: v.string(),
+    certificateId: v.optional(v.union(v.string(), v.null())),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx: any, args: any) => {
+    const lesson = await ensureLmsPostById(ctx, args.lessonId, "lessons");
+    const organizationId = lesson.organizationId ?? undefined;
+    const certificateId =
+      typeof args.certificateId === "string" && args.certificateId.length > 0
+        ? args.certificateId
+        : null;
+
+    if (certificateId) {
+      await ensureCertificateForOrg(ctx, certificateId, organizationId);
+      await setPostMetaValue(
+        ctx,
+        args.lessonId as unknown as Id<"posts">,
+        CERTIFICATE_META_KEY,
+        certificateId,
+      );
+    } else {
+      await deletePostMetaValue(
+        ctx,
+        args.lessonId as unknown as Id<"posts">,
+        CERTIFICATE_META_KEY,
+      );
+    }
+
+    return { success: true };
+  },
+});
+
+export const setTopicCertificate: any = mutation({
+  args: {
+    topicId: v.string(),
+    certificateId: v.optional(v.union(v.string(), v.null())),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx: any, args: any) => {
+    const topic = await ensureLmsPostById(ctx, args.topicId, "topics");
+    const organizationId = topic.organizationId ?? undefined;
+    const certificateId =
+      typeof args.certificateId === "string" && args.certificateId.length > 0
+        ? args.certificateId
+        : null;
+
+    if (certificateId) {
+      await ensureCertificateForOrg(ctx, certificateId, organizationId);
+      await setPostMetaValue(
+        ctx,
+        args.topicId as unknown as Id<"posts">,
+        CERTIFICATE_META_KEY,
+        certificateId,
+      );
+    } else {
+      await deletePostMetaValue(
+        ctx,
+        args.topicId as unknown as Id<"posts">,
+        CERTIFICATE_META_KEY,
+      );
+    }
+
+    return { success: true };
+  },
+});
 
 type PostMetaMap = Map<string, unknown>;
 

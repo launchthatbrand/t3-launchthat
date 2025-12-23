@@ -10,13 +10,19 @@ import {
 
 import type { VimeoVideoItem } from "../CourseBuilder";
 import type { SidebarItemRenderer } from "../types/callbacks";
-import type { LessonItem, QuizItem, TopicItem } from "../types/content";
+import type {
+  CertificateItem,
+  LessonItem,
+  QuizItem,
+  TopicItem,
+} from "../types/content";
 import type { SidebarItem } from "../types/navigation";
 
 interface SidebarProps {
   availableLessons: LessonItem[];
   availableTopics: TopicItem[];
   availableQuizzes: QuizItem[];
+  availableCertificates: CertificateItem[];
   renderSidebarItem?: SidebarItemRenderer<SidebarItem>;
   vimeoVideos?: VimeoVideoItem[];
   isLoadingVimeoVideos?: boolean;
@@ -26,6 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   availableLessons,
   availableTopics,
   availableQuizzes,
+  availableCertificates,
   renderSidebarItem,
   vimeoVideos,
   isLoadingVimeoVideos,
@@ -88,6 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           "available-lessons",
           "available-topics",
           "available-quizzes",
+          "available-certificates",
         ]}
         className="w-full"
       >
@@ -196,6 +204,39 @@ const Sidebar: React.FC<SidebarProps> = ({
               ),
             )}
             {renderVimeoSection("Vimeo videos", "quiz", "No Vimeo videos")}
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Available Certificates Section */}
+        <AccordionItem value="available-certificates" className="border-b-0">
+          <AccordionTrigger className="py-2 text-sm font-medium hover:no-underline">
+            Certificates ({availableCertificates?.length})
+          </AccordionTrigger>
+          <AccordionContent className="pt-1 pb-3">
+            {availableCertificates?.length === 0 && (
+              <p className="text-muted-foreground text-xs">
+                No certificates available.
+              </p>
+            )}
+            {availableCertificates?.map((certificate) => (
+              <DraggableItem
+                key={certificate.id}
+                id={certificate.id}
+                type="certificate"
+                className="bg-card mb-1 rounded border p-2 text-xs shadow-sm"
+                data={{ label: certificate.title }}
+              >
+                {certificate.title}
+              </DraggableItem>
+            ))}
+            <div className="mt-2">
+              <a
+                href="/admin/edit?post_type=certificates&post_id=new"
+                className="text-xs font-medium underline underline-offset-4"
+              >
+                Create certificate
+              </a>
+            </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>

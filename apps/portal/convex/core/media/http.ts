@@ -2,9 +2,46 @@ import type { Id } from "../../_generated/dataModel";
 import { api } from "../../_generated/api";
 import { httpAction } from "../../_generated/server";
 
+const pickFirstBlobFromFormData = (formData: FormData): Blob | null => {
+  // Prefer common keys, but fall back to first Blob/File in the form data.
+  const preferredKeys = ["file", "files", "upload", "media", "image"];
+  for (const key of preferredKeys) {
+    const value = formData.get(key);
+    if (value instanceof Blob) return value;
+  }
+  for (const [, value] of formData.entries()) {
+    if (value instanceof Blob) return value;
+  }
+  return null;
+};
+
 // POST /uploadMedia
 export const uploadMediaPost = httpAction(async (ctx, request) => {
-  const blob = await request.blob();
+  const contentType = request.headers.get("content-type") ?? "";
+
+  // Many admin upload forms submit multipart/form-data. `request.blob()` would
+  // capture the entire multipart payload (boundaries + metadata), corrupting
+  // the stored file. Parse formData and store the actual file blob instead.
+  let blob: Blob;
+  if (contentType.toLowerCase().includes("multipart/form-data")) {
+    const formData = await request.formData();
+    const fileBlob = pickFirstBlobFromFormData(formData);
+    if (!fileBlob) {
+      return new Response(JSON.stringify({ error: "No file found in upload" }), {
+        status: 400,
+        headers: new Headers({
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+          Vary: "origin",
+        }),
+      });
+    }
+    blob = fileBlob;
+  } else {
+    // Fallback for raw binary uploads
+    blob = await request.blob();
+  }
+
   const storageId = await ctx.storage.store(blob);
 
   const url = new URL(request.url);

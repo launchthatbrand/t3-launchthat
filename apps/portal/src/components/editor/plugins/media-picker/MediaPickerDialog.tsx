@@ -315,11 +315,10 @@ function MediaPickerLibraryPanel({
       try {
         for (const file of Array.from(files)) {
           const uploadUrl = await generateUploadUrl();
-          const formData = new FormData();
-          formData.append("file", file);
           const uploadResponse = await fetch(uploadUrl, {
             method: "POST",
-            body: formData,
+            headers: { "Content-Type": file.type || "application/octet-stream" },
+            body: file,
           });
           if (!uploadResponse.ok) {
             throw new Error("Failed to upload file.");

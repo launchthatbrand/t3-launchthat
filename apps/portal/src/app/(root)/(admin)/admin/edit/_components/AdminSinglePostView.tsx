@@ -470,7 +470,9 @@ export function AdminSinglePostView({
   ) as Doc<"postsMeta">[] | null | undefined;
 
   const commerceMetaArgs =
-    post?._id && isComponentStorage && COMMERCE_COMPONENT_SLUGS.has(normalizedSlug)
+    post?._id &&
+    isComponentStorage &&
+    COMMERCE_COMPONENT_SLUGS.has(normalizedSlug)
       ? ({
           postId: post._id as unknown as string,
           organizationId: commerceOrganizationId,
@@ -2048,7 +2050,7 @@ export function AdminSinglePostView({
     const afterContentSlots = renderPluginSlots("afterMainContent");
 
     return (
-      <div className="space-y-6">
+      <div className="container space-y-6 py-6">
         {saveError && <p className="text-destructive text-sm">{saveError}</p>}
         {renderMetaBoxList(resolvedMetaBoxes, "main")}
         {afterContentSlots}
@@ -2188,7 +2190,7 @@ export function AdminSinglePostView({
           <AdminLayoutContent withSidebar={showSidebar}>
             <AdminLayoutMain>
               <AdminLayoutHeader customTabs={layoutTabs} />
-              <div className="container py-6">
+              <div className="">
                 {activeTabDefinition?.usesDefaultEditor ? (
                   renderDefaultContent(defaultTabOptions)
                 ) : activeTabDefinition?.render ? (

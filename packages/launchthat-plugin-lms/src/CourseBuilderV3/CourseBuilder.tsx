@@ -18,7 +18,12 @@ import type {
 } from "./types/callbacks";
 // Import types needed for props and mapping
 // Remove unused store types (Lesson, Quiz, Topic)
-import type { LessonItem, QuizItem, TopicItem } from "./types/content";
+import type {
+  CertificateItem,
+  LessonItem,
+  QuizItem,
+  TopicItem,
+} from "./types/content";
 import type { SidebarItem } from "./types/navigation";
 // Restore CourseStructure for props
 import type { CourseStructure } from "./types/structure";
@@ -102,6 +107,18 @@ export interface CourseBuilderProps {
     courseId: string,
     order: number,
   ) => Promise<void>;
+  onSetCourseCertificate?: (
+    courseId: string,
+    certificateId: string | null,
+  ) => Promise<void>;
+  onSetLessonCertificate?: (
+    lessonId: string,
+    certificateId: string | null,
+  ) => Promise<void>;
+  onSetTopicCertificate?: (
+    topicId: string,
+    certificateId: string | null,
+  ) => Promise<void>;
   onCreateLessonFromVimeo?: (video: VimeoVideoItem) => Promise<void>;
   onCreateTopicFromVimeo?: (
     lessonId: string,
@@ -178,6 +195,9 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
   onAttachTopic: _onAttachTopic = noopAsyncWithArgs,
   onAttachQuizToTopic: _onAttachQuizToTopic = noopAsyncWithArgs,
   onAttachQuizToFinal: _onAttachQuizToFinal = noopAsyncWithArgs,
+  onSetCourseCertificate,
+  onSetLessonCertificate,
+  onSetTopicCertificate,
   onCreateLessonFromVimeo,
   onCreateTopicFromVimeo,
   onCreateQuizFromVimeo,
@@ -204,6 +224,13 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
     availableLessons: storeAvailableLessons,
     availableTopics: storeAvailableTopics,
     availableQuizzes: storeAvailableQuizzes,
+    availableCertificates: storeAvailableCertificates,
+    courseCertificateId,
+    lessonCertificateIds,
+    topicCertificateIds,
+    setCourseCertificateId,
+    setLessonCertificateId,
+    setTopicCertificateId,
     addTopicToLesson,
     addQuizToTopic,
     addQuizToLesson,
@@ -240,6 +267,34 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
     type: "quiz",
   }));
 
+  const availableCertificates: CertificateItem[] =
+    storeAvailableCertificates.map((c) => ({
+      ...c,
+      type: "certificate",
+    }));
+
+  const certificateTitleById = React.useMemo(() => {
+    return new Map<string, string>(
+      availableCertificates.map((cert) => [cert.id, cert.title] as const),
+    );
+  }, [availableCertificates]);
+
+  const getLessonCertificateTitle = React.useCallback(
+    (lessonId: string) => {
+      const id = lessonCertificateIds[lessonId];
+      return id ? (certificateTitleById.get(id) ?? null) : null;
+    },
+    [certificateTitleById, lessonCertificateIds],
+  );
+
+  const getTopicCertificateTitle = React.useCallback(
+    (topicId: string) => {
+      const id = topicCertificateIds[topicId];
+      return id ? (certificateTitleById.get(id) ?? null) : null;
+    },
+    [certificateTitleById, topicCertificateIds],
+  );
+
   // 2. Initialize the DND hook with correct actions
   const { activeItem, handleDragStart, handleDragEnd, handleDragCancel } =
     useCourseBuilderDnd({
@@ -247,6 +302,9 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
       addTopicToLesson,
       addQuizToTopic,
       addQuizToLesson,
+      setCourseCertificateId,
+      setLessonCertificateId,
+      setTopicCertificateId,
       reorderQuizzesInTopic,
       addMainContentItem,
       reorderMainContentItems,
@@ -265,6 +323,9 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
       onAttachQuizToTopic: _onAttachQuizToTopic,
       onAttachQuizToFinal: _onAttachQuizToFinal,
       onAddQuiz: _onAddQuiz,
+      onSetCourseCertificate,
+      onSetLessonCertificate,
+      onSetTopicCertificate,
       onCreateLessonFromVimeo,
       onCreateTopicFromVimeo,
       onCreateQuizFromVimeo,
@@ -341,6 +402,41 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
     [_onRemoveFinalQuiz, removeFinalQuiz],
   );
 
+  const handleClearCourseCertificate = React.useCallback(async () => {
+    const resolvedCourseId = _courseStructure?.id;
+    if (!resolvedCourseId) return;
+    try {
+      await onSetCourseCertificate?.(resolvedCourseId, null);
+      setCourseCertificateId(null);
+    } catch (error) {
+      console.error("Failed to clear course certificate", error);
+    }
+  }, [_courseStructure?.id, onSetCourseCertificate, setCourseCertificateId]);
+
+  const handleClearLessonCertificate = React.useCallback(
+    async (lessonId: string) => {
+      try {
+        await onSetLessonCertificate?.(lessonId, null);
+        setLessonCertificateId(lessonId, null);
+      } catch (error) {
+        console.error("Failed to clear lesson certificate", error);
+      }
+    },
+    [onSetLessonCertificate, setLessonCertificateId],
+  );
+
+  const handleClearTopicCertificate = React.useCallback(
+    async (topicId: string) => {
+      try {
+        await onSetTopicCertificate?.(topicId, null);
+        setTopicCertificateId(topicId, null);
+      } catch (error) {
+        console.error("Failed to clear topic certificate", error);
+      }
+    },
+    [onSetTopicCertificate, setTopicCertificateId],
+  );
+
   // 5. Render the component structure
   return (
     <DndContext
@@ -358,6 +454,7 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
             availableLessons={availableLessons}
             availableTopics={availableTopics}
             availableQuizzes={availableQuizzes}
+            availableCertificates={availableCertificates}
             renderSidebarItem={renderSidebarItem}
             vimeoVideos={availableVimeoVideos}
             isLoadingVimeoVideos={isLoadingVimeoVideos}
@@ -371,6 +468,16 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
             onRemoveLessonQuiz={handleRemoveLessonQuiz}
             onRemoveTopicQuiz={handleRemoveTopicQuiz}
             onRemoveFinalQuiz={handleRemoveFinalQuiz}
+            courseCertificateTitle={
+              courseCertificateId
+                ? (certificateTitleById.get(courseCertificateId) ?? null)
+                : null
+            }
+            onClearCourseCertificate={handleClearCourseCertificate}
+            getLessonCertificateTitle={getLessonCertificateTitle}
+            getTopicCertificateTitle={getTopicCertificateTitle}
+            onClearLessonCertificate={handleClearLessonCertificate}
+            onClearTopicCertificate={handleClearTopicCertificate}
           />
         </div>
       </div>
@@ -384,6 +491,7 @@ const CourseBuilder: React.FC<CourseBuilderProps> = ({
           availableLessons={availableLessons}
           availableTopics={availableTopics}
           availableQuizzes={availableQuizzes}
+          availableCertificates={availableCertificates}
         />
       </DragOverlay>
     </DndContext>

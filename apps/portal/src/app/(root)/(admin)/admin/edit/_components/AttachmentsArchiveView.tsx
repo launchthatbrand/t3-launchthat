@@ -22,7 +22,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { Sparkles, Upload } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@acme/ui/alert-dialog";
+import { Sparkles, Trash2, Upload } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 
@@ -63,6 +73,9 @@ export function AttachmentsArchiveView({
     api.core.media.mutations.generateUploadUrl,
   );
   const saveMedia = useMutation(api.core.media.mutations.saveMedia);
+  const deleteMedia = useMutation(api.core.media.mutations.deleteMedia);
+  const [deleteTarget, setDeleteTarget] = useState<MediaItemDoc | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const mediaResponse = useQuery(api.core.media.queries.listMediaItemsWithUrl, {
     paginationOpts: { numItems: 60, cursor: null },
@@ -84,11 +97,10 @@ export function AttachmentsArchiveView({
       try {
         for (const file of Array.from(files)) {
           const uploadUrl = await generateUploadUrl();
-          const formData = new FormData();
-          formData.append("file", file);
           const uploadResponse = await fetch(uploadUrl, {
             method: "POST",
-            body: formData,
+            headers: { "Content-Type": file.type || "application/octet-stream" },
+            body: file,
           });
           if (!uploadResponse.ok) {
             throw new Error("Failed to upload file.");
@@ -155,6 +167,25 @@ export function AttachmentsArchiveView({
               addSuffix: true,
             })}
           </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: "",
+        cell: (item: MediaItemDoc) => (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setDeleteTarget(item)}
+              title="Delete attachment"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="sr-only">Delete</span>
+            </Button>
+          </div>
         ),
       },
     ],
@@ -241,18 +272,31 @@ export function AttachmentsArchiveView({
                       </div>
                     )}
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">
-                      {item.title ?? "Untitled"}
-                    </p>
-                    <div className="text-muted-foreground flex items-center justify-between text-xs">
-                      <span>{item.status ?? "draft"}</span>
-                      <span>
-                        {formatDistanceToNow(item._creationTime, {
-                          addSuffix: true,
-                        })}
-                      </span>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">
+                        {item.title ?? "Untitled"}
+                      </p>
+                      <div className="text-muted-foreground flex items-center justify-between text-xs">
+                        <span>{item.status ?? "draft"}</span>
+                        <span>
+                          {formatDistanceToNow(item._creationTime, {
+                            addSuffix: true,
+                          })}
+                        </span>
+                      </div>
                     </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setDeleteTarget(item)}
+                      title="Delete attachment"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Delete</span>
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -260,6 +304,42 @@ export function AttachmentsArchiveView({
           />
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => (open ? null : setDeleteTarget(null))}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete attachment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the attachment and its underlying file
+              from storage. This action can’t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!deleteTarget || isDeleting}
+              onClick={async () => {
+                if (!deleteTarget) return;
+                try {
+                  setIsDeleting(true);
+                  await deleteMedia({ id: deleteTarget._id });
+                } catch (err) {
+                  console.error(err);
+                } finally {
+                  setIsDeleting(false);
+                  setDeleteTarget(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 

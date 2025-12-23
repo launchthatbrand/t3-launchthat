@@ -25,6 +25,7 @@ const LMS_SLUGS = new Set<string>([
   "lessons",
   "topics",
   "quizzes",
+  "certificates",
   "lms-quiz-question",
 ]);
 

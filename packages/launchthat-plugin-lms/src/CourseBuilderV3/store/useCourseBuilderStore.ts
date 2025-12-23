@@ -3,7 +3,12 @@
 import type { StateCreator } from "zustand";
 import { create } from "zustand";
 
-import type { LessonItem, QuizItem, TopicItem } from "../types/content";
+import type {
+  CertificateItem,
+  LessonItem,
+  QuizItem,
+  TopicItem,
+} from "../types/content";
 
 export interface Quiz {
   id: string;
@@ -31,6 +36,14 @@ export interface Lesson {
   editUrl?: string;
 }
 
+export interface Certificate {
+  id: string;
+  title: string;
+  type: "certificate";
+  viewUrl?: string;
+  editUrl?: string;
+}
+
 const isLesson = (item: Lesson | Quiz): item is Lesson =>
   item.type === "lesson";
 
@@ -43,6 +56,11 @@ export interface CourseBuilderState {
   availableLessons: LessonItem[];
   availableTopics: TopicItem[];
   availableQuizzes: QuizItem[];
+  availableCertificates: CertificateItem[];
+
+  courseCertificateId: string | null;
+  lessonCertificateIds: Record<string, string | null>;
+  topicCertificateIds: Record<string, string | null>;
 
   // Keep nested topic actions
   addQuizToTopic: (topicId: string, quiz: Quiz) => void;
@@ -76,6 +94,10 @@ export interface CourseBuilderState {
   addMainContentItem: (item: LessonItem | QuizItem) => void;
   reorderMainContentItems: (activeId: string, overId: string) => void;
 
+  setCourseCertificateId: (certificateId: string | null) => void;
+  setLessonCertificateId: (lessonId: string, certificateId: string | null) => void;
+  setTopicCertificateId: (topicId: string, certificateId: string | null) => void;
+
   reset: () => void;
   initialize: (state: Partial<CourseBuilderState>) => void;
 }
@@ -106,6 +128,11 @@ const courseBuilderStore: StateCreator<CourseBuilderState> = (set) => {
     availableLessons: [],
     availableTopics: [],
     availableQuizzes: [],
+    availableCertificates: [],
+
+    courseCertificateId: null,
+    lessonCertificateIds: {},
+    topicCertificateIds: {},
 
     initialize: (state: Partial<CourseBuilderState>) =>
       set(() => ({
@@ -113,6 +140,32 @@ const courseBuilderStore: StateCreator<CourseBuilderState> = (set) => {
         availableLessons: state.availableLessons ?? [],
         availableTopics: state.availableTopics ?? [],
         availableQuizzes: state.availableQuizzes ?? [],
+        availableCertificates: state.availableCertificates ?? [],
+
+        courseCertificateId: state.courseCertificateId ?? null,
+        lessonCertificateIds: state.lessonCertificateIds ?? {},
+        topicCertificateIds: state.topicCertificateIds ?? {},
+      })),
+
+    setCourseCertificateId: (certificateId) =>
+      set((state) => ({ ...state, courseCertificateId: certificateId })),
+
+    setLessonCertificateId: (lessonId, certificateId) =>
+      set((state) => ({
+        ...state,
+        lessonCertificateIds: {
+          ...state.lessonCertificateIds,
+          [lessonId]: certificateId,
+        },
+      })),
+
+    setTopicCertificateId: (topicId, certificateId) =>
+      set((state) => ({
+        ...state,
+        topicCertificateIds: {
+          ...state.topicCertificateIds,
+          [topicId]: certificateId,
+        },
       })),
 
     addTopicToLesson: (lessonId, topic) =>
@@ -511,6 +564,10 @@ const courseBuilderStore: StateCreator<CourseBuilderState> = (set) => {
         availableLessons: [],
         availableTopics: [],
         availableQuizzes: [],
+        availableCertificates: [],
+        courseCertificateId: null,
+        lessonCertificateIds: {},
+        topicCertificateIds: {},
       })),
   };
   return store;

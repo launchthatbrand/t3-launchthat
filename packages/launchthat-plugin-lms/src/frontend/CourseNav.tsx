@@ -10,7 +10,7 @@ import type { NavItem } from "@acme/ui/general/nav-main";
 import { NavMain } from "@acme/ui/general/nav-main";
 
 import type { Id } from "../lib/convexId";
-import type { LmsBuilderQuiz, LmsBuilderTopic } from "../types";
+import type { LmsBuilderCertificate, LmsBuilderQuiz, LmsBuilderTopic } from "../types";
 
 type ChildNavItem = { title: string; url: string };
 
@@ -80,7 +80,7 @@ export function CourseNav({
   const courseStructure = useQuery(
     api.plugins.lms.queries.getCourseStructureWithItems,
     courseStructureArgs === "skip" ? "skip" : (courseStructureArgs as any),
-  );
+  ) as any;
 
   const navSections = useMemo(() => {
     if (!courseStructure || courseStructure === null) {
@@ -101,13 +101,24 @@ export function CourseNav({
     })();
 
     const baseUrl = `/course/${derivedSlug}`;
+    const buildCertificateSegment = (certificate: { _id: string; slug?: string | null }) =>
+      certificate.slug ?? certificate._id;
 
-    const attachedTopics = (courseStructure.attachedTopics ??
-      []) as LmsBuilderTopic[];
-    const attachedQuizzes = (courseStructure.attachedQuizzes ??
-      []) as LmsBuilderQuiz[];
+    const attachedTopics = (courseStructure.attachedTopics ?? []) as
+      | LmsBuilderTopic[]
+      | any[];
+    const attachedQuizzes = (courseStructure.attachedQuizzes ?? []) as
+      | LmsBuilderQuiz[]
+      | any[];
+    const attachedCertificates = (courseStructure.attachedCertificates ?? []) as
+      | LmsBuilderCertificate[]
+      | any[];
+    const certificatesById = new Map(
+      attachedCertificates.map((cert) => [String(cert._id), cert] as const),
+    );
 
-    const sections = courseStructure.attachedLessons.map((lesson) => {
+    const attachedLessons = (courseStructure.attachedLessons ?? []) as any[];
+    const sections = attachedLessons.map((lesson: any) => {
       const lessonUrl = `${baseUrl}/lesson/${lesson.slug ?? lesson._id}`;
       const childItems: ChildNavItem[] = [];
 
@@ -133,6 +144,16 @@ export function CourseNav({
             url: `${lessonUrl}/topic/${topic.slug ?? topic._id}/quiz/${quiz.slug ?? quiz._id}`,
           });
         });
+
+        if (topic.certificateId) {
+          const cert = certificatesById.get(String(topic.certificateId));
+          if (cert) {
+            childItems.push({
+              title: cert.title ?? "Certificate",
+              url: `${lessonUrl}/topic/${topic.slug ?? topic._id}/certificate/${buildCertificateSegment({ _id: cert._id, slug: cert.slug })}`,
+            });
+          }
+        }
       });
 
       const lessonQuizzes = attachedQuizzes.filter(
@@ -146,6 +167,16 @@ export function CourseNav({
           url: `${lessonUrl}/quiz/${quiz.slug ?? quiz._id}`,
         });
       });
+
+      if (lesson.certificateId) {
+        const cert = certificatesById.get(String(lesson.certificateId));
+        if (cert) {
+          childItems.push({
+            title: cert.title ?? "Certificate",
+            url: `${lessonUrl}/certificate/${buildCertificateSegment({ _id: cert._id, slug: cert.slug })}`,
+          });
+        }
+      }
 
       return {
         title: lesson.title ?? "Untitled lesson",
@@ -165,6 +196,18 @@ export function CourseNav({
         items: [],
       });
     });
+
+    if (courseStructure.course?.certificateId) {
+      const cert = certificatesById.get(String(courseStructure.course.certificateId));
+      if (cert) {
+        sections.push({
+          title: cert.title ?? "Certificate",
+          url: `${baseUrl}/certificate/${buildCertificateSegment({ _id: cert._id, slug: cert.slug })}`,
+          icon,
+          items: [],
+        });
+      }
+    }
     return [{ label: "Course Outline", items: sections }];
   }, [courseStructure, courseSlug, icon]);
 

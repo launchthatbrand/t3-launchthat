@@ -1,5 +1,10 @@
 import type { Lesson, Quiz } from "../store/useCourseBuilderStore";
-import type { LessonItem, QuizItem, TopicItem } from "../types/content";
+import type {
+  CertificateItem,
+  LessonItem,
+  QuizItem,
+  TopicItem,
+} from "../types/content";
 
 // Expect Lesson/Quiz union for main items
 import type { Active } from "@dnd-kit/core";
@@ -15,6 +20,7 @@ interface DragOverlayContentProps {
   availableLessons: LessonItem[];
   availableTopics: TopicItem[];
   availableQuizzes: QuizItem[];
+  availableCertificates: CertificateItem[];
 }
 
 const baseClass =
@@ -26,6 +32,7 @@ const typeAccentClasses: Record<string, string> = {
   lesson: "border-blue-500",
   topic: "border-green-500",
   quiz: "border-yellow-500",
+  certificate: "border-purple-500",
 };
 
 const DragOverlayContent: React.FC<DragOverlayContentProps> = ({
@@ -34,6 +41,7 @@ const DragOverlayContent: React.FC<DragOverlayContentProps> = ({
   availableLessons,
   availableTopics,
   availableQuizzes,
+  availableCertificates,
 }) => {
   const resolveItem = React.useCallback(
     (active: Active) => {
@@ -51,6 +59,9 @@ const DragOverlayContent: React.FC<DragOverlayContentProps> = ({
           | OverlaySourceItem
           | undefined) ??
         (availableQuizzes.find((item) => item.id === activeId) as
+          | OverlaySourceItem
+          | undefined) ??
+        (availableCertificates.find((item) => item.id === activeId) as
           | OverlaySourceItem
           | undefined);
 
@@ -78,7 +89,13 @@ const DragOverlayContent: React.FC<DragOverlayContentProps> = ({
         type: displayType,
       };
     },
-    [availableLessons, availableQuizzes, availableTopics, mainContentItems],
+    [
+      availableCertificates,
+      availableLessons,
+      availableQuizzes,
+      availableTopics,
+      mainContentItems,
+    ],
   );
 
   const fallback = activeItem ? (

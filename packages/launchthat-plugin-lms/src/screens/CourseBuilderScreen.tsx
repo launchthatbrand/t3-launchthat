@@ -9,6 +9,7 @@ import { toast } from "@acme/ui/toast";
 import type { VimeoVideoItem } from "../CourseBuilderV3/CourseBuilder";
 import type { Id } from "../lib/convexId";
 import type {
+  LmsBuilderCertificate,
   LmsBuilderLesson,
   LmsBuilderQuiz,
   LmsBuilderTopic,
@@ -33,12 +34,15 @@ export const CourseBuilderScreen = ({
   courseId,
   organizationId,
 }: CourseBuilderScreenProps) => {
+  const lmsQueries = api.plugins.lms.queries as any;
+  const lmsMutations = api.plugins.lms.mutations as any;
+
   const [vimeoVideos, setVimeoVideos] = useState<NormalizedVimeoVideo[]>([]);
   const [isLoadingVimeoVideos, setIsLoadingVimeoVideos] = useState(false);
   const [hasAttemptedVimeoFetch, setHasAttemptedVimeoFetch] = useState(false);
 
   const courseData = useQuery(
-    api.plugins.lms.queries.getCourseStructureWithItems,
+    lmsQueries.getCourseStructureWithItems,
     courseId
       ? ({
           courseId,
@@ -51,7 +55,7 @@ export const CourseBuilderScreen = ({
   ) as LmsCourseBuilderData | null | undefined;
 
   const availableLessons = useQuery(
-    api.plugins.lms.queries.getAvailableLessons,
+    lmsQueries.getAvailableLessons,
     courseId
       ? ({
           courseId,
@@ -64,7 +68,7 @@ export const CourseBuilderScreen = ({
   ) as LmsBuilderLesson[] | undefined;
 
   const availableTopics = useQuery(
-    api.plugins.lms.queries.getAvailableTopics,
+    lmsQueries.getAvailableTopics,
     courseId
       ? ({
           organizationId: organizationId ?? undefined,
@@ -75,7 +79,7 @@ export const CourseBuilderScreen = ({
   ) as LmsBuilderTopic[] | undefined;
 
   const availableQuizzes = useQuery(
-    api.plugins.lms.queries.getAvailableQuizzes,
+    lmsQueries.getAvailableQuizzes,
     courseId
       ? ({
           organizationId: organizationId ?? undefined,
@@ -85,44 +89,63 @@ export const CourseBuilderScreen = ({
       : "skip",
   ) as LmsBuilderQuiz[] | undefined;
 
+  const availableCertificates = useQuery(
+    lmsQueries.listCertificates,
+    organizationId
+      ? ({
+          organizationId: organizationId ?? undefined,
+        } as { organizationId?: Id<"organizations"> })
+      : "skip",
+  ) as LmsBuilderCertificate[] | undefined;
+
   const addLessonToCourse = useMutation(
-    api.plugins.lms.mutations.addLessonToCourse,
+    lmsMutations.addLessonToCourse,
   );
   const reorderLessonsInCourse = useMutation(
-    api.plugins.lms.mutations.reorderLessonsInCourse,
+    lmsMutations.reorderLessonsInCourse,
   );
   const attachTopicToLesson = useMutation(
-    api.plugins.lms.mutations.attachTopicToLesson,
+    lmsMutations.attachTopicToLesson,
   );
   const reorderTopicsInLesson = useMutation(
-    api.plugins.lms.mutations.reorderTopicsInLesson,
+    lmsMutations.reorderTopicsInLesson,
   );
   const attachQuizToLesson = useMutation(
-    api.plugins.lms.mutations.attachQuizToLesson,
+    lmsMutations.attachQuizToLesson,
   );
   const attachFinalQuizToCourse = useMutation(
-    api.plugins.lms.mutations.attachFinalQuizToCourse,
+    lmsMutations.attachFinalQuizToCourse,
   );
   const removeLessonFromCourse = useMutation(
-    api.plugins.lms.mutations.removeLessonFromCourseStructure,
+    lmsMutations.removeLessonFromCourseStructure,
   );
   const removeTopicFromLesson = useMutation(
-    api.plugins.lms.mutations.removeTopicFromLesson,
+    lmsMutations.removeTopicFromLesson,
   );
   const removeQuizFromLesson = useMutation(
-    api.plugins.lms.mutations.removeQuizFromLesson,
+    lmsMutations.removeQuizFromLesson,
   );
   const removeFinalQuizFromCourse = useMutation(
-    api.plugins.lms.mutations.removeFinalQuizFromCourse,
+    lmsMutations.removeFinalQuizFromCourse,
   );
   const createLessonFromVimeo = useMutation(
-    api.plugins.lms.mutations.createLessonFromVimeo,
+    lmsMutations.createLessonFromVimeo,
+  );
+
+  const setCourseCertificate = useMutation(
+    lmsMutations.setCourseCertificate,
+  );
+  const setLessonCertificate = useMutation(
+    lmsMutations.setLessonCertificate,
+  );
+  const setTopicCertificate = useMutation(
+    lmsMutations.setTopicCertificate,
   );
   const createTopicFromVimeo = useMutation(
-    api.plugins.lms.mutations.createTopicFromVimeo,
+    lmsMutations.createTopicFromVimeo,
   );
   const createQuizFromVimeo = useMutation(
-    api.plugins.lms.mutations.createQuizFromVimeo,
+    lmsMutations.createQuizFromVimeo,
   );
   const fetchVimeoVideos = useAction(api.vimeo.actions.getCachedVimeoVideos);
   const vimeoEnabledOption = useQuery(
@@ -284,13 +307,45 @@ export const CourseBuilderScreen = ({
       editUrl: buildEditUrl("quizzes", quiz._id),
     });
 
+    const normalizeCertificate = (certificate: LmsBuilderCertificate) => ({
+      id: certificate._id,
+      title: certificate.title ?? "Untitled certificate",
+      type: "certificate" as const,
+      editUrl: buildEditUrl("certificates", certificate._id),
+    });
+
+    const lessonCertificateIds: Record<string, string | null> = Object.fromEntries(
+      (courseData.attachedLessons ?? []).map((lesson) => [
+        lesson._id,
+        lesson.certificateId ?? null,
+      ]),
+    );
+
+    const topicCertificateIds: Record<string, string | null> = Object.fromEntries(
+      (courseData.attachedTopics ?? []).map((topic) => [
+        topic._id,
+        topic.certificateId ?? null,
+      ]),
+    );
+
     return {
       mainContentItems: [...lessonItems, ...finalQuizzes],
       availableLessons: (availableLessons ?? []).map(normalizeLesson),
       availableTopics: (availableTopics ?? []).map(normalizeTopic),
       availableQuizzes: (availableQuizzes ?? []).map(normalizeQuiz),
+      availableCertificates: (availableCertificates ?? []).map(normalizeCertificate),
+
+      courseCertificateId: courseData.course.certificateId ?? null,
+      lessonCertificateIds,
+      topicCertificateIds,
     };
-  }, [courseData, availableLessons, availableTopics, availableQuizzes]);
+  }, [
+    courseData,
+    availableLessons,
+    availableTopics,
+    availableQuizzes,
+    availableCertificates,
+  ]);
 
   const handleAttachLesson = useCallback(
     async (lessonId: string, _course?: string, _order?: number) => {
@@ -587,7 +642,8 @@ export const CourseBuilderScreen = ({
     builderInitialState === undefined ||
     availableLessons === undefined ||
     availableTopics === undefined ||
-    availableQuizzes === undefined
+    availableQuizzes === undefined ||
+    availableCertificates === undefined
   ) {
     return <div>Loading course data…</div>;
   }
@@ -597,30 +653,44 @@ export const CourseBuilderScreen = ({
   }
 
   return (
-    <CourseBuilder
-      courseStructure={{
-        id: courseData.course._id,
-        title: courseData.course.title ?? "Course",
-        modules: [],
-      }}
-      initialState={builderInitialState}
-      onAttachLesson={handleAttachLesson}
-      onAttachTopic={(topicId: string, lessonId: string) =>
-        handleAttachTopic(topicId, lessonId)
-      }
-      onAttachQuizToLesson={handleAttachQuizToLesson}
-      onAttachQuizToFinal={handleAttachFinalQuiz}
-      onReorderLessons={handleReorderLessons}
-      onReorderLessonTopics={handleReorderLessonTopics}
-      onRemoveLesson={handleRemoveLesson}
-      onRemoveTopic={handleRemoveTopic}
-      onRemoveQuiz={handleRemoveQuiz}
-      onRemoveFinalQuiz={handleRemoveFinalQuiz}
-      availableVimeoVideos={isVimeoEnabled ? vimeoVideos : undefined}
-      isLoadingVimeoVideos={isVimeoEnabled ? isLoadingVimeoVideos : undefined}
-      onCreateLessonFromVimeo={handleCreateLessonFromVimeo}
-      onCreateTopicFromVimeo={handleCreateTopicFromVimeo}
-      onCreateQuizFromVimeo={handleCreateQuizFromVimeo}
-    />
+    <div className="space-y-6">
+      <CourseBuilder
+        courseStructure={{
+          id: courseData.course._id,
+          title: courseData.course.title ?? "Course",
+          modules: [],
+        }}
+        initialState={builderInitialState}
+        onAttachLesson={handleAttachLesson}
+        onAttachTopic={(topicId: string, lessonId: string) =>
+          handleAttachTopic(topicId, lessonId)
+        }
+        onAttachQuizToLesson={handleAttachQuizToLesson}
+        onAttachQuizToFinal={handleAttachFinalQuiz}
+        onReorderLessons={handleReorderLessons}
+        onReorderLessonTopics={handleReorderLessonTopics}
+        onRemoveLesson={handleRemoveLesson}
+        onRemoveTopic={handleRemoveTopic}
+        onRemoveQuiz={handleRemoveQuiz}
+        onRemoveFinalQuiz={handleRemoveFinalQuiz}
+        availableVimeoVideos={isVimeoEnabled ? vimeoVideos : undefined}
+        isLoadingVimeoVideos={isVimeoEnabled ? isLoadingVimeoVideos : undefined}
+        onCreateLessonFromVimeo={handleCreateLessonFromVimeo}
+        onCreateTopicFromVimeo={handleCreateTopicFromVimeo}
+        onCreateQuizFromVimeo={handleCreateQuizFromVimeo}
+        onSetCourseCertificate={async (resolvedCourseId, certificateId) => {
+          await setCourseCertificate({
+            courseId: resolvedCourseId,
+            certificateId,
+          });
+        }}
+        onSetLessonCertificate={async (lessonId, certificateId) => {
+          await setLessonCertificate({ lessonId, certificateId });
+        }}
+        onSetTopicCertificate={async (topicId, certificateId) => {
+          await setTopicCertificate({ topicId, certificateId });
+        }}
+      />
+    </div>
   );
 };

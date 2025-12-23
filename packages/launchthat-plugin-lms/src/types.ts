@@ -18,6 +18,7 @@ export interface LmsBuilderLesson {
   status?: string;
   order?: number;
   slug?: string;
+  certificateId?: LmsPostId;
 }
 
 export interface LmsBuilderTopic {
@@ -28,6 +29,7 @@ export interface LmsBuilderTopic {
   slug?: string;
   lessonId?: LmsPostId;
   order?: number;
+  certificateId?: LmsPostId;
 }
 
 export interface LmsBuilderQuiz {
@@ -42,6 +44,15 @@ export interface LmsBuilderQuiz {
   isFinal?: boolean;
 }
 
+export interface LmsBuilderCertificate {
+  _id: LmsPostId;
+  title: string;
+  excerpt?: string;
+  content?: string;
+  slug?: string;
+  status?: string;
+}
+
 export interface LmsCourseBuilderData {
   course: {
     _id: LmsPostId;
@@ -49,11 +60,13 @@ export interface LmsCourseBuilderData {
     title: string;
     excerpt?: string;
     status?: string;
+    certificateId?: LmsPostId;
     courseStructure: LmsCourseStructureItem[];
   };
   attachedLessons: LmsBuilderLesson[];
   attachedTopics: LmsBuilderTopic[];
   attachedQuizzes: LmsBuilderQuiz[];
+  attachedCertificates?: LmsBuilderCertificate[];
 }
 
 export type QuizQuestionType =

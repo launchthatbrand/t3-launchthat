@@ -9,7 +9,7 @@ export interface ContentItemBase {
   /** Display title for the item */
   title: string;
   /** Type of the content item */
-  type: "lesson" | "topic" | "quiz";
+  type: "lesson" | "topic" | "quiz" | "certificate";
   /** Optional: Additional metadata for extensibility */
   [key: string]: unknown;
 }
@@ -45,4 +45,12 @@ export interface QuizItem extends ContentItemBase {
   questions?: unknown[];
   /** Optional: Maximum score for the quiz */
   maxScore?: number;
+}
+
+/**
+ * Represents a certificate template/definition that can be attached to the end
+ * of a course, lesson, or topic.
+ */
+export interface CertificateItem extends ContentItemBase {
+  type: "certificate";
 }

@@ -38,6 +38,10 @@ interface SortableLessonItemProps {
   onRemoveTopic?: (lessonId: string, topicId: string) => void;
   onRemoveLessonQuiz?: (lessonId: string, quizId: string) => void;
   onRemoveTopicQuiz?: (topicId: string, quizId: string) => void;
+  lessonCertificateTitle?: string | null;
+  onClearLessonCertificate?: (lessonId: string) => void;
+  getTopicCertificateTitle?: (topicId: string) => string | null;
+  onClearTopicCertificate?: (topicId: string) => void;
 }
 
 const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
@@ -47,6 +51,10 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
   onRemoveTopic,
   onRemoveLessonQuiz,
   onRemoveTopicQuiz,
+  lessonCertificateTitle,
+  onClearLessonCertificate,
+  getTopicCertificateTitle,
+  onClearTopicCertificate,
 }) => {
   const {
     attributes,
@@ -166,6 +174,12 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
                       activeItem={activeItem}
                       onRemoveTopic={onRemoveTopic}
                       onRemoveQuiz={onRemoveTopicQuiz}
+                      topicCertificateTitle={
+                        getTopicCertificateTitle
+                          ? getTopicCertificateTitle(item.id)
+                          : null
+                      }
+                      onClearTopicCertificate={onClearTopicCertificate}
                     />
                   );
                 } else {
@@ -192,11 +206,44 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
           <Dropzone
             id={`lesson-${lesson.id}-content-dropzone`}
             kind="lesson-content"
-            acceptedTypes={["topic", "quiz"]}
+            acceptedTypes={["topic", "quiz", "certificate"]}
             data={{ lessonId: lesson.id }}
             className="my-2 ml-4 min-h-[70px]"
-            enabledText="Drop Topics or Quizzes here"
+            enabledText="Drop Topics, Quizzes, or Certificates here"
           />
+          <div className="bg-muted/10 ml-4 rounded-md border p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-[11px]">
+                  Lesson certificate
+                </Badge>
+                <span className="text-muted-foreground text-xs">
+                  {lessonCertificateTitle
+                    ? `Attached: ${lessonCertificateTitle}`
+                    : "None attached"}
+                </span>
+              </div>
+              {lessonCertificateTitle && onClearLessonCertificate ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onClearLessonCertificate(lesson.id);
+                  }}
+                  aria-label="Remove lesson certificate"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              ) : null}
+            </div>
+            <p className="text-muted-foreground mt-2 text-xs">
+              Drag a certificate onto the lesson dropzone above to attach it. It
+              will always be placed at the end of the lesson.
+            </p>
+          </div>
 
           {/* Add Buttons below the dropzone, wrapped in Drawers */}
           <div className="mt-4 flex justify-end space-x-2">

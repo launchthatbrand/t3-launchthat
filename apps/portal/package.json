@@ -135,6 +135,7 @@
     "motion": "^12.23.24",
     "next": "catalog:",
     "officegen": "^0.6.5",
+    "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^3.5.141",
     "react": "catalog:react19",
     "react-authorize-net": "^0.6.0",

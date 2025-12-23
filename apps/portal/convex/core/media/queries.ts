@@ -90,6 +90,18 @@ export const getMediaByStorageId = query({
 });
 
 /**
+ * Debug helper: fetch Convex _storage metadata for a file.
+ * Useful for diagnosing cases where a storageId exists but reads return empty bytes.
+ */
+export const getStorageMetadata = query({
+  args: { storageId: v.id("_storage") },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    return await ctx.db.system.get("_storage", args.storageId);
+  },
+});
+
+/**
  * Get media by ID
  */
 export const getMediaById = query({

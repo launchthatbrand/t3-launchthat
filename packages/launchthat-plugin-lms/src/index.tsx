@@ -17,6 +17,7 @@ import { CoursesArchive } from "./frontend/CoursesArchive";
 import { CourseSingle } from "./frontend/CourseSingle";
 import { CourseBuilderScreen } from "./screens/CourseBuilderScreen";
 import { LmsSettingsPage } from "./settings/LmsSettingsPage";
+import { CertificateBuilderTab } from "./tabs/CertificateBuilderTab";
 import { CourseBuilderTab } from "./tabs/CourseBuilderTab";
 import { CourseLinkedProductTab } from "./tabs/CourseLinkedProductTab";
 import { CourseMembersTab } from "./tabs/CourseMembersTab";
@@ -28,6 +29,7 @@ export type { CourseSummary } from "./frontend/CoursesArchive";
 export {
   CourseBuilderScreen,
   CourseBuilderTab,
+  CertificateBuilderTab,
   CourseLinkedProductTab,
   CourseMembersTab,
   CourseSettingsTab,
@@ -47,6 +49,7 @@ export interface LmsPluginComponents {
   CourseLinkedProductTab: ComponentType<PluginSingleViewComponentProps>;
   CourseSettingsTab: ComponentType<PluginSingleViewComponentProps>;
   QuizBuilderTab: ComponentType<PluginSingleViewComponentProps>;
+  CertificateBuilderTab: ComponentType<PluginSingleViewComponentProps>;
 }
 
 // const buildCompletionSlot = (slug: string) => ({
@@ -73,7 +76,10 @@ const buildFrontendProgressSlot = (slug: string) => ({
   ),
 });
 
-const LMS_COMPONENT_TABLES = ["launchthat_lms:posts", "launchthat_lms:postsMeta"];
+const LMS_COMPONENT_TABLES = [
+  "launchthat_lms:posts",
+  "launchthat_lms:postsMeta",
+];
 
 export const createLmsPluginDefinition = ({
   CourseBuilderTab,
@@ -81,6 +87,7 @@ export const createLmsPluginDefinition = ({
   CourseLinkedProductTab,
   CourseSettingsTab,
   QuizBuilderTab,
+  CertificateBuilderTab,
 }: LmsPluginComponents): PluginDefinition => ({
   id: "lms",
   name: "Learning Management System",
@@ -206,6 +213,62 @@ export const createLmsPluginDefinition = ({
         ],
       },
       // singleViewSlots: [buildCompletionSlot("courses")],
+    },
+    {
+      name: "Certificates",
+      slug: "certificates",
+      description:
+        "Course completion certificates issued at the end of a course, lesson, or topic.",
+      isPublic: true,
+      includeTimestamps: true,
+      enableApi: true,
+      storageKind: "component",
+      storageTables: LMS_COMPONENT_TABLES,
+      supports: {
+        title: true,
+        editor: true,
+        excerpt: true,
+        attachments: true,
+        featuredImage: true,
+        customFields: true,
+        revisions: true,
+      },
+      rewrite: {
+        hasArchive: false,
+        singleSlug: "certificate",
+        withFront: true,
+        feeds: false,
+        pages: true,
+      },
+      adminMenu: {
+        enabled: true,
+        label: "Certificates",
+        slug: "certificates",
+        parent: "lms",
+        icon: "Award",
+        position: 55,
+      },
+      singleView: {
+        basePath: "/admin/lms/certificates",
+        defaultTab: "edit",
+        tabs: [
+          {
+            id: "edit",
+            slug: "edit",
+            label: "Edit",
+            description: "Update certificate metadata and content.",
+            usesDefaultEditor: true,
+          },
+          {
+            id: "builder",
+            slug: "builder",
+            label: "Builder",
+            description:
+              "Design a printable certificate by placing dynamic fields on a background.",
+            render: (props) => <CertificateBuilderTab {...props} />,
+          },
+        ],
+      },
     },
     {
       name: "Lessons",
@@ -417,6 +480,7 @@ export const getDefaultLmsComponents = () => ({
   CourseLinkedProductTab,
   CourseSettingsTab,
   QuizBuilderTab,
+  CertificateBuilderTab,
 });
 
 export let lmsPlugin: PluginDefinition = createLmsPluginDefinition(
@@ -429,6 +493,7 @@ type ConfigureLmsPluginArgs = {
   CourseLinkedProductTab?: ComponentType<PluginSingleViewComponentProps>;
   CourseSettingsTab?: ComponentType<PluginSingleViewComponentProps>;
   QuizBuilderTab?: ComponentType<PluginSingleViewComponentProps>;
+  CertificateBuilderTab?: ComponentType<PluginSingleViewComponentProps>;
 };
 
 export const configureLmsPlugin = ({
@@ -437,6 +502,7 @@ export const configureLmsPlugin = ({
   CourseLinkedProductTab: linkedProductOverride,
   CourseSettingsTab: settingsOverride,
   QuizBuilderTab: quizBuilderOverride,
+  CertificateBuilderTab: certificateBuilderOverride,
 }: ConfigureLmsPluginArgs) => {
   lmsPlugin = createLmsPluginDefinition({
     CourseBuilderTab,
@@ -444,6 +510,7 @@ export const configureLmsPlugin = ({
     CourseLinkedProductTab: linkedProductOverride ?? CourseLinkedProductTab,
     CourseSettingsTab: settingsOverride ?? CourseSettingsTab,
     QuizBuilderTab: quizBuilderOverride ?? QuizBuilderTab,
+    CertificateBuilderTab: certificateBuilderOverride ?? CertificateBuilderTab,
   });
 };
 

@@ -1,6 +1,6 @@
 import "~/lib/pageTemplates";
 
-/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { Data as PuckData } from "@measured/puck";
 import type { FrontendFilterContext } from "launchthat-plugin-core/frontendFilters";
@@ -19,7 +19,10 @@ import { EditorViewer } from "~/components/blocks/editor-x/viewer";
 import { PostCommentsSection } from "~/components/comments/PostCommentsSection";
 import { FrontendContentFilterHost } from "~/components/frontend/FrontendContentFilterHost";
 import { BackgroundRippleEffect } from "~/components/ui/background-ripple-effect";
-import { parseLexicalSerializedState } from "~/lib/editor/lexical";
+import {
+  isLexicalSerializedStateString,
+  parseLexicalSerializedState,
+} from "~/lib/editor/lexical";
 import {
   DEFAULT_PAGE_TEMPLATE_SLUG,
   getPageTemplate,
@@ -56,6 +59,7 @@ const LMS_POST_TYPE_SLUGS = new Set([
   "lessons",
   "topics",
   "quizzes",
+  "certificates",
 ]);
 
 export default async function FrontendCatchAllPage(props: PageProps) {
@@ -409,18 +413,24 @@ function deriveSlugFromSegments(segments: string[]): string | null {
 
 function inferLmsPostTypeSlugFromSegments(
   segments: string[],
-): "courses" | "lessons" | "topics" | "quizzes" | null {
+): "courses" | "lessons" | "topics" | "quizzes" | "certificates" | null {
   // LMS permalink shapes (examples):
   // - /course/:courseSlug
   // - /course/:courseSlug/lesson/:lessonSlug
   // - /course/:courseSlug/lesson/:lessonSlug/topic/:topicSlug
   // - /course/:courseSlug/lesson/:lessonSlug/topic/:topicSlug/quiz/:quizSlug
+  // - /course/:courseSlug/certificate/:certificateSlug
+  // - /course/:courseSlug/lesson/:lessonSlug/certificate/:certificateSlug
+  // - /course/:courseSlug/lesson/:lessonSlug/topic/:topicSlug/certificate/:certificateSlug
   // Only infer LMS types when route is under `/course/...`
   if (segments[0]?.toLowerCase() !== "course") {
     return null;
   }
 
   const lowered = segments.map((segment) => segment.toLowerCase());
+  if (lowered.includes("certificate")) {
+    return "certificates";
+  }
   if (lowered.includes("quiz")) {
     return "quizzes";
   }
@@ -646,6 +656,9 @@ function PostDetail({
   );
   const hasPuckContent = Boolean(puckData?.content?.length);
   const lexicalContent = parseLexicalSerializedState(post.content ?? null);
+  const rawContent = isLexicalSerializedStateString(post.content)
+    ? null
+    : (post.content ?? null);
 
   if (hasPuckContent && puckData) {
     return (
@@ -689,8 +702,7 @@ function PostDetail({
             </header>
             <FilteredContent
               lexicalContent={lexicalContent}
-              rawContent={post.content ?? null}
-              contextLabel={contextLabel}
+              rawContent={rawContent}
               filterIds={contentFilterIds}
               filterContext={{
                 postTypeSlug: post.postTypeSlug ?? "",
@@ -747,10 +759,36 @@ function PostDetail({
 
 type LexicalSerializedState = ReturnType<typeof parseLexicalSerializedState>;
 
+const hasRenderableLexicalContent = (
+  state: LexicalSerializedState,
+): state is Exclude<LexicalSerializedState, null> => {
+  if (!state) return false;
+  const root = (state as { root?: unknown }).root;
+  if (!root || typeof root !== "object") return false;
+  const children = (root as { children?: unknown }).children;
+  if (!Array.isArray(children) || children.length === 0) return false;
+
+  // Treat the common "empty editor" payload as no content:
+  // root -> single paragraph -> no text children
+  const hasAnyText = (node: unknown): boolean => {
+    if (!node || typeof node !== "object") return false;
+    const maybeText = (node as { text?: unknown }).text;
+    if (typeof maybeText === "string" && maybeText.trim().length > 0) {
+      return true;
+    }
+    const nested = (node as { children?: unknown }).children;
+    if (Array.isArray(nested)) {
+      return nested.some(hasAnyText);
+    }
+    return false;
+  };
+
+  return children.some(hasAnyText);
+};
+
 interface FilteredContentProps {
   lexicalContent: LexicalSerializedState;
   rawContent: string | null;
-  contextLabel: string;
   filterIds: string[];
   filterContext: FrontendFilterContext;
 }
@@ -758,13 +796,12 @@ interface FilteredContentProps {
 function FilteredContent({
   lexicalContent,
   rawContent,
-  contextLabel,
   filterIds,
   filterContext,
 }: FilteredContentProps) {
   let contentNode: ReactNode;
 
-  if (lexicalContent) {
+  if (hasRenderableLexicalContent(lexicalContent)) {
     contentNode = (
       <EditorViewer
         editorSerializedState={lexicalContent}
@@ -780,8 +817,8 @@ function FilteredContent({
     );
   } else {
     contentNode = (
-      <p className="text-muted-foreground text-sm">
-        This {contextLabel.toLowerCase()} does not have any content yet.
+      <p className="text-muted-foreground flex min-h-32 items-center justify-center rounded-md border border-dashed border-gray-300 p-4 text-center text-sm">
+        No content for this post
       </p>
     );
   }
