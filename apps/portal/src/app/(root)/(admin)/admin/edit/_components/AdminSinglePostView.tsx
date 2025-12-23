@@ -169,6 +169,8 @@ const LMS_COMPONENT_SLUGS = new Set([
   "lessons",
   "topics",
   "quizzes",
+  "certificates",
+  "badges",
   "lms-quiz-question",
 ]);
 
@@ -374,7 +376,7 @@ export function AdminSinglePostView({
   const canDuplicateRecord =
     canSaveRecord && !isNewRecord && Boolean(post?._id) && !isCustomStorage;
   const supportsAttachments =
-    supportsPostsTable &&
+    (supportsPostsTable || isComponentStorage) &&
     (resolveSupportFlag(postType?.supports, "attachments") ||
       resolveSupportFlag(postType?.supports, "featuredImage"));
   const commerceOrganizationId = organizationId
@@ -1320,8 +1322,48 @@ export function AdminSinglePostView({
       if (typeof customRenderer === "function" && pluginMatch) {
         return {
           ...baseMeta,
-          render: () =>
-            customRenderer({
+          render: () => {
+            // IMPORTANT: Treat plugin meta box renderers as React components.
+            // Calling them as plain functions would execute any hooks inside the
+            // renderer within this component's render cycle, violating the Rules
+            // of Hooks and causing hook order mismatches.
+            const CustomRenderer = customRenderer as unknown as React.ComponentType<{
+              context: {
+                pluginId: string;
+                pluginName: string;
+                postTypeSlug: string;
+                organizationId?: string;
+                postId?: string;
+                isNewRecord: boolean;
+                post: Doc<"posts"> | null | undefined;
+                postType: Doc<"postTypes"> | null;
+              };
+              metaBox: {
+                id: string;
+                title: string;
+                description?: string;
+                location: "main" | "sidebar";
+              };
+              fields: {
+                key: string;
+                name: string;
+                description: string | null;
+                type: string;
+                required: boolean;
+                options: EditorCustomField["options"] | null;
+              }[];
+              getValue: (fieldKey: string) => unknown;
+              setValue: (fieldKey: string, value: unknown) => void;
+              renderField: (
+                fieldKey: string,
+                options?: { idSuffix?: string },
+              ) => ReactNode;
+              renderFieldControl: (
+                fieldKey: string,
+                options?: { idSuffix?: string },
+              ) => ReactNode;
+            }>;
+            const rendererProps = {
               context: {
                 pluginId: pluginMatch.plugin.id,
                 pluginName: pluginMatch.plugin.name,
@@ -1346,14 +1388,19 @@ export function AdminSinglePostView({
                 required: field.required ?? false,
                 options: field.options ?? null,
               })),
-              getValue: (fieldKey) => customFieldValues[fieldKey],
-              setValue: (fieldKey, value) =>
+              getValue: (fieldKey: string) => customFieldValues[fieldKey],
+              setValue: (fieldKey: string, value: unknown) =>
                 handleCustomFieldChange(fieldKey, value as CustomFieldValue),
-              renderField: (fieldKey, options) =>
+              renderField: (fieldKey: string, options?: { idSuffix?: string }) =>
                 renderFieldByKey(fieldKey, options),
-              renderFieldControl: (fieldKey, options) =>
-                renderFieldControlByKey(fieldKey, options),
-            }),
+              renderFieldControl: (
+                fieldKey: string,
+                options?: { idSuffix?: string },
+              ) => renderFieldControlByKey(fieldKey, options),
+            };
+
+            return <CustomRenderer {...rendererProps} />;
+          },
         };
       }
 
@@ -1512,7 +1559,7 @@ export function AdminSinglePostView({
 
     // Persist page template selection for pages even though it's not part of schema fields
     if (slug === "pages") {
-      const selectedTemplate = customFieldValues["page_template"];
+      const selectedTemplate = customFieldValues.page_template;
       if (typeof selectedTemplate === "string" && selectedTemplate.trim()) {
         payload.page_template = selectedTemplate;
       } else if (postMetaMap.page_template !== undefined) {
@@ -1570,6 +1617,7 @@ export function AdminSinglePostView({
     postMetaMap,
     resolvedVimeoMeta,
     shouldTrackVimeoMeta,
+    slug,
     sortedCustomFields,
     supportsAttachments,
   ]);
@@ -1885,7 +1933,6 @@ export function AdminSinglePostView({
     createPost,
     excerpt,
     headerLabel,
-    isNewRecord,
     post?._id,
     post?.slug,
     post?.status,

@@ -8,6 +8,20 @@ import { getTenantOrganizationId } from "./tenant-fetcher";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 
+const LMS_COMPONENT_POST_TYPE_SLUGS = new Set<string>([
+  "courses",
+  "lessons",
+  "topics",
+  "quizzes",
+  "certificates",
+  "badges",
+]);
+
+const isLmsComponentPostTypeSlug = (value: string | undefined) => {
+  const normalized = value?.toLowerCase().trim();
+  return normalized ? LMS_COMPONENT_POST_TYPE_SLUGS.has(normalized) : false;
+};
+
 // Posts Types - extend with more post metadata
 export interface PostFilter {
   status?: "published" | "draft" | "archived";
@@ -122,17 +136,42 @@ export function useGetAllPosts(filters?: PostFilter) {
       },
     };
   }, [filters, tenantOrganizationId]);
-  const entities = useQuery(api.plugins.entity.queries.listEntities, args);
-  const posts = useMemo(
-    () =>
-      (entities ?? []).map((entry: unknown): Doc<"posts"> | null | undefined =>
-        adaptEntityToPost(entry as { id: string } | null | undefined),
-      ),
-    [entities],
+  const lmsPosts = useQuery(
+    api.plugins.lms.posts.queries.getAllPosts as any,
+    filters?.postTypeSlug && isLmsComponentPostTypeSlug(filters.postTypeSlug)
+      ? ({
+          organizationId: toOrgString(tenantOrganizationId),
+          filters: {
+            status: filters.status,
+            category: filters.category,
+            authorId: filters.authorId as unknown as string | undefined,
+            postTypeSlug: filters.postTypeSlug.toLowerCase(),
+            limit: filters.limit,
+          },
+        } as const)
+      : ("skip" as const),
   );
+  const entities = useQuery(
+    api.plugins.entity.queries.listEntities,
+    filters?.postTypeSlug && !isLmsComponentPostTypeSlug(filters.postTypeSlug)
+      ? (args as any)
+      : ("skip" as const),
+  );
+
+  const posts = useMemo(() => {
+    if (filters?.postTypeSlug && isLmsComponentPostTypeSlug(filters.postTypeSlug)) {
+      return (lmsPosts ?? []) as Doc<"posts">[];
+    }
+    return (entities ?? []).map((entry: unknown): Doc<"posts"> | null | undefined =>
+      adaptEntityToPost(entry as { id: string } | null | undefined),
+    );
+  }, [entities, filters?.postTypeSlug, lmsPosts]);
   return {
     posts,
-    isLoading: entities === undefined,
+    isLoading:
+      filters?.postTypeSlug && isLmsComponentPostTypeSlug(filters.postTypeSlug)
+        ? lmsPosts === undefined
+        : entities === undefined,
   };
 }
 
@@ -152,7 +191,24 @@ export function useGetPostById(
       organizationId: toOrgString(organizationId),
     };
   }, [id, organizationId, postTypeSlug]);
-  const entity = useQuery(api.plugins.entity.queries.readEntity, args);
+  const lmsPost = useQuery(
+    api.plugins.lms.posts.queries.getPostById as any,
+    id && postTypeSlug && isLmsComponentPostTypeSlug(postTypeSlug)
+      ? ({
+          id: id as string,
+          organizationId: toOrgString(organizationId),
+        } as const)
+      : ("skip" as const),
+  );
+  const entity = useQuery(
+    api.plugins.entity.queries.readEntity,
+    id && postTypeSlug && !isLmsComponentPostTypeSlug(postTypeSlug)
+      ? (args as any)
+      : ("skip" as const),
+  );
+  if (postTypeSlug && isLmsComponentPostTypeSlug(postTypeSlug)) {
+    return lmsPost as any;
+  }
   return adaptEntityToPost(entity);
 }
 
@@ -251,6 +307,7 @@ export function useGetPostCategories() {
 export function useCreatePost() {
   const tenant = useTenant();
   const saveEntity = useMutation(api.plugins.entity.mutations.saveEntity);
+  const lmsCreatePost = useMutation(api.plugins.lms.posts.mutations.createPost as any);
   return useCallback<
     (input: CreatePostArgs) => Promise<Id<"posts"> | undefined>
   >(
@@ -260,6 +317,16 @@ export function useCreatePost() {
       if (!normalizedSlug) {
         throw new Error("postTypeSlug is required for entity creation");
       }
+
+      if (isLmsComponentPostTypeSlug(normalizedSlug)) {
+        const id = await lmsCreatePost({
+          ...input,
+          postTypeSlug: normalizedSlug,
+          organizationId: toOrgString(tenantOrganizationId),
+        });
+        return id as Id<"posts"> | undefined;
+      }
+
       const entity = await saveEntity({
         postTypeSlug: normalizedSlug,
         data: {
@@ -269,18 +336,36 @@ export function useCreatePost() {
       });
       return entity?.id as Id<"posts"> | undefined;
     },
-    [saveEntity, tenant],
+    [lmsCreatePost, saveEntity, tenant],
   );
 }
 
 export function useUpdatePost() {
   const updateEntity = useMutation(api.plugins.entity.mutations.updateEntity);
+  const lmsUpdatePost = useMutation(api.plugins.lms.posts.mutations.updatePost as any);
   return useCallback(
     async (input: UpdatePostArgs) => {
       const normalizedSlug = input.postTypeSlug?.toLowerCase();
       if (!normalizedSlug) {
         throw new Error("postTypeSlug is required for update");
       }
+
+      if (isLmsComponentPostTypeSlug(normalizedSlug)) {
+        await lmsUpdatePost({
+          id: input.id as string,
+          title: input.title,
+          content: input.content,
+          excerpt: input.excerpt,
+          slug: input.slug,
+          status: input.status,
+          category: input.category,
+          tags: input.tags,
+          featuredImage: input.featuredImage,
+          meta: input.meta ?? undefined,
+        });
+        return;
+      }
+
       await updateEntity({
         postTypeSlug: normalizedSlug,
         id: input.id as string,
@@ -297,20 +382,25 @@ export function useUpdatePost() {
         },
       });
     },
-    [updateEntity],
+    [lmsUpdatePost, updateEntity],
   );
 }
 
 export function useDeletePost() {
   const deleteEntity = useMutation(api.plugins.entity.mutations.deleteEntity);
+  const lmsDeletePost = useMutation(api.plugins.lms.posts.mutations.deletePost as any);
   return useCallback(
     async ({ id, postTypeSlug }: { id: Id<"posts">; postTypeSlug: string }) => {
+      if (isLmsComponentPostTypeSlug(postTypeSlug)) {
+        await lmsDeletePost({ id: id as unknown as string });
+        return;
+      }
       await deleteEntity({
         postTypeSlug: postTypeSlug.toLowerCase(),
         id: id as string,
       });
     },
-    [deleteEntity],
+    [deleteEntity, lmsDeletePost],
   );
 }
 

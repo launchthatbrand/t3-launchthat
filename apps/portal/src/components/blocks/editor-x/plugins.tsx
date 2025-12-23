@@ -46,6 +46,10 @@ import { DragDropPastePlugin } from "~/components/editor/plugins/drag-drop-paste
 import { DraggableBlockPlugin } from "~/components/editor/plugins/draggable-block-plugin";
 import { AutoEmbedPlugin } from "~/components/editor/plugins/embeds/auto-embed-plugin";
 import { FigmaPlugin } from "~/components/editor/plugins/embeds/figma-plugin";
+import {
+  isLmsAutoThumbnailEnabledForSlug,
+  LmsAutoThumbnailFromOEmbedPlugin,
+} from "~/components/editor/plugins/embeds/lms-auto-thumbnail-plugin";
 import { OEmbedPlugin } from "~/components/editor/plugins/embeds/oembed-plugin";
 import { TwitterPlugin } from "~/components/editor/plugins/embeds/twitter-plugin";
 import { YouTubePlugin } from "~/components/editor/plugins/embeds/youtube-plugin";
@@ -145,8 +149,49 @@ const maxLength = 15000;
 
 export function Plugins({
   organizationId,
+  postTypeSlug,
+  attachmentsContext,
+  registerMetaPayloadCollectorAction,
+  initialAutoThumbnailUrl,
 }: {
   organizationId?: Id<"organizations">;
+  postTypeSlug?: string | null;
+  attachmentsContext?: {
+    attachments: Array<{
+      mediaItemId: Id<"mediaItems">;
+      url: string;
+      title?: string;
+      alt?: string;
+      mimeType?: string;
+      width?: number;
+      height?: number;
+    }>;
+    setAttachments: (
+      updater: (
+        prev: Array<{
+          mediaItemId: Id<"mediaItems">;
+          url: string;
+          title?: string;
+          alt?: string;
+          mimeType?: string;
+          width?: number;
+          height?: number;
+        }>,
+      ) => Array<{
+        mediaItemId: Id<"mediaItems">;
+        url: string;
+        title?: string;
+        alt?: string;
+        mimeType?: string;
+        width?: number;
+        height?: number;
+      }>,
+    ) => void;
+  };
+  registerMetaPayloadCollectorAction?: (
+    collector: () => Record<string, unknown> | null | undefined,
+  ) => () => void;
+  initialAutoThumbnailUrl?: string;
 }) {
   const [floatingAnchorElem, setFloatingAnchorElem] =
     useState<HTMLDivElement | null>(null);
@@ -273,6 +318,13 @@ export function Plugins({
         <TwitterPlugin />
         <YouTubePlugin />
         <OEmbedPlugin />
+        <LmsAutoThumbnailFromOEmbedPlugin
+          enabled={isLmsAutoThumbnailEnabledForSlug(postTypeSlug)}
+          attachmentsContext={attachmentsContext}
+          registerMetaPayloadCollectorAction={registerMetaPayloadCollectorAction}
+          organizationId={organizationId}
+          initialAutoThumbnailUrl={initialAutoThumbnailUrl}
+        />
 
         <CodeHighlightPlugin />
         <CodeActionMenuPlugin anchorElem={floatingAnchorElem} />

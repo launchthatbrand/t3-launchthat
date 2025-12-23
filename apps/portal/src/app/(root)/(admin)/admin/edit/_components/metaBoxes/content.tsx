@@ -9,7 +9,13 @@ import { Textarea } from "@acme/ui/textarea";
 import type { AdminMetaBoxContext, GeneralMetaBoxData } from "../types";
 import { Editor } from "~/components/blocks/editor-x/editor";
 
-const ContentMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
+const ContentMetaBox = ({
+  data,
+  context,
+}: {
+  data: GeneralMetaBoxData;
+  context: AdminMetaBoxContext;
+}) => {
   const {
     editorKey,
     derivedEditorState,
@@ -19,6 +25,12 @@ const ContentMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
     setExcerpt,
     headerLabel,
   } = data;
+
+  const initialAutoThumbnailUrl =
+    typeof context.customFields?.postMetaMap?.lmsAutoThumbnailSourceUrl ===
+    "string"
+      ? (context.customFields?.postMetaMap?.lmsAutoThumbnailSourceUrl as string)
+      : undefined;
 
   return (
     <>
@@ -31,6 +43,10 @@ const ContentMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
             setContent(JSON.stringify(state));
           }}
           organizationId={organizationId}
+          postTypeSlug={context.slug}
+          attachmentsContext={context.attachmentsContext ?? undefined}
+          registerMetaPayloadCollectorAction={context.registerMetaPayloadCollector}
+          initialAutoThumbnailUrl={initialAutoThumbnailUrl}
         />
       </div>
       <div className="space-y-2">
@@ -60,7 +76,7 @@ const registerContentMetaBox = () =>
       description: `Compose the body and summary for this ${data.headerLabel} entry.`,
       location: "main",
       priority: 10,
-      render: () => <ContentMetaBox data={data} />,
+      render: () => <ContentMetaBox data={data} context={context} />,
     };
   });
 

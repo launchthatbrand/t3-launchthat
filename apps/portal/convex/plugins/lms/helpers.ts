@@ -20,6 +20,8 @@ import {
 
 type Ctx = QueryCtx | MutationCtx;
 
+export const LMS_BADGE_IDS_META_KEY = "lmsBadgeIds";
+
 export interface StoredQuizQuestion {
   _id: Id<"posts">;
   title: string;
@@ -95,6 +97,68 @@ export function parseCourseStructureMeta(value: MetaValue): Id<"posts">[] {
   }
 
   return [];
+}
+
+export function parseBadgeIdsMeta(value: MetaValue | undefined): Id<"posts">[] {
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    const ids = parsed
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter((item) => item.length > 0) as Id<"posts">[];
+    return Array.from(new Set(ids));
+  } catch {
+    return [];
+  }
+}
+
+export async function awardBadgesForSource(
+  ctx: MutationCtx,
+  args: {
+    organizationId?: Id<"organizations">;
+    userId: Id<"users">;
+    badgeIds: Id<"posts">[];
+    sourceType: "course" | "lesson" | "topic" | "quiz";
+    sourceId: Id<"posts">;
+    courseId?: Id<"posts">;
+    awardedAt?: number;
+    metadata?: any;
+  },
+) {
+  const awardedAt = args.awardedAt ?? Date.now();
+  let awardedCount = 0;
+
+  for (const badgeId of args.badgeIds) {
+    const existing = await ctx.db
+      .query("lmsBadgeAwards")
+      .withIndex("by_user_and_badge", (q) =>
+        q.eq("userId", args.userId).eq("badgeId", badgeId),
+      )
+      .first();
+    if (existing) {
+      continue;
+    }
+
+    await ctx.db.insert("lmsBadgeAwards", {
+      organizationId: args.organizationId,
+      userId: args.userId,
+      badgeId,
+      sourceType: args.sourceType,
+      sourceId: args.sourceId,
+      courseId: args.courseId,
+      awardedAt,
+      metadata: args.metadata,
+    });
+    awardedCount += 1;
+  }
+
+  return { awardedCount };
 }
 
 export function serializeCourseStructureMeta(lessonIds: Id<"posts">[]): string {

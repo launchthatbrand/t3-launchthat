@@ -9,9 +9,12 @@ import type { ComponentType } from "react";
 
 import type { CourseSummary } from "./frontend/CoursesArchive";
 import type { Id } from "./lib/convexId";
+import { LmsBadgesMetaBox } from "./admin/metaBoxes/LmsBadgesMetaBox";
+import { LmsQuizPassPercentMetaBox } from "./admin/metaBoxes/LmsQuizPassPercentMetaBox";
 import { AdminLessonCompletionCallout } from "./components/AdminLessonCompletionCallout";
 import { CourseProgress } from "./components/CourseProgress";
 import { FrontendLessonCompletionCallout } from "./components/FrontendLessonCompletionCallout";
+import { CertificateViewer } from "./frontend/CertificateViewer";
 import { CourseNav } from "./frontend/CourseNav";
 import { CoursesArchive } from "./frontend/CoursesArchive";
 import { CourseSingle } from "./frontend/CourseSingle";
@@ -36,6 +39,7 @@ export {
   LmsSettingsPage,
   CoursesArchive,
   CourseSingle,
+  CertificateViewer,
   CourseNav,
 };
 export {
@@ -171,6 +175,20 @@ export const createLmsPluginDefinition = ({
         icon: "GraduationCap",
         position: 30,
       },
+      metaBoxes: [
+        {
+          id: "lms-badges",
+          title: "Badges",
+          description: "Badges earned by completing this course.",
+          location: "sidebar",
+          priority: 35,
+          fieldKeys: [],
+          rendererKey: "lms.badges.assign",
+        },
+      ],
+      metaBoxRenderers: {
+        "lms.badges.assign": LmsBadgesMetaBox,
+      },
       singleView: {
         basePath: "/admin/lms/courses",
         defaultTab: "edit",
@@ -240,6 +258,26 @@ export const createLmsPluginDefinition = ({
         feeds: false,
         pages: true,
       },
+      frontend: {
+        single: {
+          render: ({ post }: PluginFrontendSingleRendererProps) => {
+            const typedPost = post as {
+              _id: string;
+              slug?: string | null;
+              organizationId?: string | null;
+            };
+            return (
+              <CertificateViewer
+                certificateId={typedPost._id as Id<"posts">}
+                certificateSlug={typedPost.slug ?? undefined}
+                organizationId={
+                  typedPost.organizationId as Id<"organizations"> | undefined
+                }
+              />
+            );
+          },
+        },
+      },
       adminMenu: {
         enabled: true,
         label: "Certificates",
@@ -266,6 +304,53 @@ export const createLmsPluginDefinition = ({
             description:
               "Design a printable certificate by placing dynamic fields on a background.",
             render: (props) => <CertificateBuilderTab {...props} />,
+          },
+        ],
+      },
+    },
+    {
+      name: "Badges",
+      slug: "badges",
+      description:
+        "Achievement badges that can be earned by completing LMS content.",
+      isPublic: false,
+      includeTimestamps: true,
+      enableApi: true,
+      storageKind: "component",
+      storageTables: LMS_COMPONENT_TABLES,
+      supports: {
+        title: true,
+        editor: true,
+        excerpt: true,
+        featuredImage: true,
+        customFields: true,
+        revisions: true,
+      },
+      rewrite: {
+        hasArchive: false,
+        singleSlug: "badge",
+        withFront: true,
+        feeds: false,
+        pages: true,
+      },
+      adminMenu: {
+        enabled: true,
+        label: "Badges",
+        slug: "badges",
+        parent: "lms",
+        icon: "BadgeCheck",
+        position: 56,
+      },
+      singleView: {
+        basePath: "/admin/lms/badges",
+        defaultTab: "edit",
+        tabs: [
+          {
+            id: "edit",
+            slug: "edit",
+            label: "Edit",
+            description: "Update badge details and imagery.",
+            usesDefaultEditor: true,
           },
         ],
       },
@@ -318,6 +403,20 @@ export const createLmsPluginDefinition = ({
         icon: "BookOpenCheck",
         position: 31,
       },
+      metaBoxes: [
+        {
+          id: "lms-badges",
+          title: "Badges",
+          description: "Badges earned by completing this lesson.",
+          location: "sidebar",
+          priority: 35,
+          fieldKeys: [],
+          rendererKey: "lms.badges.assign",
+        },
+      ],
+      metaBoxRenderers: {
+        "lms.badges.assign": LmsBadgesMetaBox,
+      },
       // singleViewSlots: [buildCompletionSlot("lessons")],
     },
     {
@@ -365,6 +464,20 @@ export const createLmsPluginDefinition = ({
         parent: "lms",
         icon: "ListChecks",
         position: 32,
+      },
+      metaBoxes: [
+        {
+          id: "lms-badges",
+          title: "Badges",
+          description: "Badges earned by completing this topic.",
+          location: "sidebar",
+          priority: 35,
+          fieldKeys: [],
+          rendererKey: "lms.badges.assign",
+        },
+      ],
+      metaBoxRenderers: {
+        "lms.badges.assign": LmsBadgesMetaBox,
       },
       // singleViewSlots: [buildCompletionSlot("topics")],
     },
@@ -414,6 +527,31 @@ export const createLmsPluginDefinition = ({
         parent: "lms",
         icon: "ClipboardCheck",
         position: 33,
+      },
+      metaBoxes: [
+        {
+          id: "lms-badges",
+          title: "Badges",
+          description: "Badges earned by passing this quiz.",
+          location: "sidebar",
+          priority: 35,
+          fieldKeys: [],
+          rendererKey: "lms.badges.assign",
+        },
+        {
+          id: "lms-quiz-pass-percent",
+          title: "Quiz passing",
+          description:
+            "Configure the minimum percentage required to pass this quiz (used for awarding badges).",
+          location: "sidebar",
+          priority: 36,
+          fieldKeys: [],
+          rendererKey: "lms.quiz.passPercent",
+        },
+      ],
+      metaBoxRenderers: {
+        "lms.badges.assign": LmsBadgesMetaBox,
+        "lms.quiz.passPercent": LmsQuizPassPercentMetaBox,
       },
       singleView: {
         basePath: "/admin/lms/quizzes",

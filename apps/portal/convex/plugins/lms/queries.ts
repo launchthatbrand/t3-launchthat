@@ -10,6 +10,8 @@ import {
   fetchQuizQuestionsForQuiz,
   getPostMetaMap,
   parseCourseStructureMeta,
+  LMS_BADGE_IDS_META_KEY,
+  parseBadgeIdsMeta,
 } from "./helpers";
 
 const components = generatedComponents as any;
@@ -25,6 +27,7 @@ const builderLessonValidator: any = v.object({
   order: v.optional(v.number()),
   slug: v.optional(v.string()),
   certificateId: v.optional(v.string()),
+  firstAttachmentUrl: v.optional(v.string()),
 });
 
 const builderTopicValidator: any = v.object({
@@ -36,6 +39,7 @@ const builderTopicValidator: any = v.object({
   lessonId: v.optional(v.string()),
   order: v.optional(v.number()),
   certificateId: v.optional(v.string()),
+  firstAttachmentUrl: v.optional(v.string()),
 });
 
 const builderQuizValidator: any = v.object({
@@ -48,7 +52,25 @@ const builderQuizValidator: any = v.object({
   topicId: v.optional(v.string()),
   order: v.optional(v.number()),
   isFinal: v.optional(v.boolean()),
+  firstAttachmentUrl: v.optional(v.string()),
 });
+
+const parseFirstAttachmentUrl = (value: unknown): string | undefined => {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) return undefined;
+    const first = parsed[0] as any;
+    if (first && typeof first.url === "string" && first.url.trim().length > 0) {
+      return first.url.trim();
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 const builderCertificateValidator: any = v.object({
   _id: v.string(),
@@ -152,6 +174,184 @@ export const listCertificates = query({
       slug: (cert.slug ?? undefined) as string | undefined,
       status: (cert.status ?? undefined) as string | undefined,
     }));
+  },
+});
+
+export const listCompletedCoursesForCertificateViewer = query({
+  args: {
+    certificateId: v.string(),
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.union(
+    v.null(),
+    v.array(
+      v.object({
+        courseId: v.string(),
+        courseSlug: v.optional(v.string()),
+        courseTitle: v.string(),
+        completedAt: v.number(),
+      }),
+    ),
+  ),
+  handler: async (ctx: any, args: any) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const userId = await getAuthenticatedUserDocIdByToken(ctx);
+    const user = await ctx.db.get(userId);
+    const role = typeof user?.role === "string" ? user.role.toLowerCase() : "";
+    const isAdmin =
+      role === "admin" ||
+      role === "superadmin" ||
+      role === "owner" ||
+      role === "administrator";
+
+    const courses = (await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getAllPosts,
+      {
+        organizationId: args.organizationId ? String(args.organizationId) : undefined,
+        filters: { postTypeSlug: "courses", limit: 200 },
+      },
+    )) as any[];
+
+    const results = await Promise.all(
+      (courses ?? []).map(async (course) => {
+        const organizationId = course.organizationId ?? undefined;
+        if (
+          args.organizationId &&
+          organizationId !== (args.organizationId ?? undefined)
+        ) {
+          return null;
+        }
+
+        const meta = await getPostMetaMap(ctx, course._id);
+        const courseCertificateId =
+          typeof meta.get(CERTIFICATE_META_KEY) === "string"
+            ? (meta.get(CERTIFICATE_META_KEY) as string)
+            : undefined;
+        if (!courseCertificateId || courseCertificateId !== args.certificateId) {
+          return null;
+        }
+
+        let completedAt: number | undefined;
+        if (!isAdmin) {
+          const progress = await ctx.runQuery(
+            components.launchthat_lms.progress.queries.getCourseProgressByUserCourse,
+            { userId: String(userId), courseId: String(course._id) },
+          );
+          completedAt =
+            typeof progress?.completedAt === "number"
+              ? progress.completedAt
+              : undefined;
+          if (!completedAt) return null;
+        } else {
+          // Admins can preview/download certificates without requiring a completion record.
+          completedAt = Date.now();
+        }
+
+        return {
+          courseId: String(course._id),
+          courseSlug: (course.slug ?? undefined) as string | undefined,
+          courseTitle: (course.title ?? "Untitled course") as string,
+          completedAt: completedAt ?? Date.now(),
+        };
+      }),
+    );
+
+    return results
+      .filter((r): r is NonNullable<typeof r> => Boolean(r))
+      .sort((a, b) => b.completedAt - a.completedAt);
+  },
+});
+
+export const getCertificateViewerContext = query({
+  args: {
+    certificateId: v.string(),
+    courseId: v.string(),
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      userName: v.string(),
+      completionDate: v.string(),
+      courseTitle: v.string(),
+      certificateId: v.string(),
+      organizationName: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx: any, args: any) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const userId = await getAuthenticatedUserDocIdByToken(ctx);
+    const user = await ctx.db.get(userId);
+    const role = typeof user?.role === "string" ? user.role.toLowerCase() : "";
+    const isAdmin =
+      role === "admin" ||
+      role === "superadmin" ||
+      role === "owner" ||
+      role === "administrator";
+
+    const course = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      {
+        id: args.courseId,
+      },
+    );
+    if (!course) return null;
+
+    const organizationId = course.organizationId ?? undefined;
+    if (
+      args.organizationId &&
+      organizationId !== (args.organizationId ?? undefined)
+    ) {
+      return null;
+    }
+
+    const courseMeta = await getPostMetaMap(ctx, course._id);
+    const courseCertificateId =
+      typeof courseMeta.get(CERTIFICATE_META_KEY) === "string"
+        ? (courseMeta.get(CERTIFICATE_META_KEY) as string)
+        : undefined;
+    if (!courseCertificateId || courseCertificateId !== args.certificateId) {
+      throw new Error("Course does not use this certificate template.");
+    }
+
+    let completedAt: number | undefined;
+    if (!isAdmin) {
+      const progress = await ctx.runQuery(
+        components.launchthat_lms.progress.queries.getCourseProgressByUserCourse,
+        { userId: String(userId), courseId: String(course._id) },
+      );
+      completedAt =
+        typeof progress?.completedAt === "number"
+          ? progress.completedAt
+          : undefined;
+      if (!completedAt) {
+        throw new Error("Course completion required to view this certificate.");
+      }
+    } else {
+      completedAt = Date.now();
+    }
+
+    const userName =
+      (user?.name && user.name.trim().length > 0
+        ? user.name
+        : `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()) ||
+      user?.email ||
+      "Student";
+
+    const org =
+      args.organizationId ? await ctx.db.get(args.organizationId) : undefined;
+
+    return {
+      userName,
+      completionDate: new Date(completedAt ?? Date.now()).toISOString().slice(0, 10),
+      courseTitle: (course.title ?? "Untitled course") as string,
+      certificateId: args.certificateId,
+      organizationName: (org?.name ?? undefined) as string | undefined,
+    };
   },
 });
 
@@ -343,6 +543,95 @@ export const getCourseProgressForViewer = query({
       lastAccessedId: progress.lastAccessedId as Id<"posts"> | undefined,
       lastAccessedType: progress.lastAccessedType ?? undefined,
     };
+  },
+});
+
+export const getBadgeSummariesForPost = query({
+  args: {
+    postId: v.string(),
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.array(
+    v.object({
+      badgeId: v.string(),
+      title: v.string(),
+      slug: v.optional(v.string()),
+      firstAttachmentUrl: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx: any, args: any) => {
+    const post = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: args.postId as unknown as string },
+    );
+    if (!post) return [];
+
+    if (
+      args.organizationId &&
+      post.organizationId &&
+      String(post.organizationId) !== String(args.organizationId)
+    ) {
+      return [];
+    }
+
+    const meta = await getPostMetaMap(ctx, post._id as Id<"posts">);
+    const badgeIds = parseBadgeIdsMeta(meta.get(LMS_BADGE_IDS_META_KEY));
+    if (badgeIds.length === 0) return [];
+
+    const resolved = await Promise.all(
+      badgeIds.map(async (badgeId) => {
+        const badge = await ctx.runQuery(
+          components.launchthat_lms.posts.queries.getPostByIdInternal,
+          { id: badgeId as unknown as string },
+        );
+        if (!badge || badge.postTypeSlug !== "badges") return null;
+        if (
+          args.organizationId &&
+          badge.organizationId &&
+          String(badge.organizationId) !== String(args.organizationId)
+        ) {
+          return null;
+        }
+        const badgeMeta = await getPostMetaMap(ctx, badge._id as Id<"posts">);
+        const attachmentsValue = badgeMeta.get("__core_attachments");
+        const firstAttachmentUrl = (() => {
+          if (typeof attachmentsValue !== "string") return undefined;
+          const trimmed = attachmentsValue.trim();
+          if (!trimmed) return undefined;
+          try {
+            const parsed = JSON.parse(trimmed) as unknown;
+            if (!Array.isArray(parsed)) return undefined;
+            for (const entry of parsed) {
+              if (
+                typeof entry === "object" &&
+                entry !== null &&
+                typeof (entry as any).url === "string" &&
+                (entry as any).url.trim().length > 0
+              ) {
+                return (entry as any).url.trim() as string;
+              }
+            }
+            return undefined;
+          } catch {
+            return undefined;
+          }
+        })();
+
+        return {
+          badgeId: String(badge._id),
+          title: String(badge.title ?? "Untitled badge"),
+          slug: typeof badge.slug === "string" ? badge.slug : undefined,
+          firstAttachmentUrl,
+        };
+      }),
+    );
+
+    return resolved.filter(Boolean) as Array<{
+      badgeId: string;
+      title: string;
+      slug?: string;
+      firstAttachmentUrl?: string;
+    }>;
   },
 });
 
@@ -588,6 +877,9 @@ async function fetchLessonsForCourse(
         typeof meta.get(CERTIFICATE_META_KEY) === "string"
           ? (meta.get(CERTIFICATE_META_KEY) as string)
           : undefined;
+      const firstAttachmentUrl = parseFirstAttachmentUrl(
+        meta.get("__core_attachments"),
+      );
       attached.push({
         ...lesson,
         order:
@@ -595,6 +887,7 @@ async function fetchLessonsForCourse(
             ? (meta.get("courseOrder") as number)
             : undefined,
         certificateId,
+        firstAttachmentUrl,
       });
     }
   }
@@ -644,6 +937,9 @@ async function fetchTopicsByType(
       typeof meta.get(CERTIFICATE_META_KEY) === "string"
         ? (meta.get(CERTIFICATE_META_KEY) as string)
         : undefined;
+    const firstAttachmentUrl = parseFirstAttachmentUrl(
+      meta.get("__core_attachments"),
+    );
     if (
       lessonId &&
       typeof lessonId === "string" &&
@@ -661,6 +957,7 @@ async function fetchTopicsByType(
             ? (meta.get("order") as number)
             : undefined,
         certificateId,
+        firstAttachmentUrl,
       });
     } else if (lessonIds.size === 0 && !lessonId) {
       attached.push({
@@ -672,6 +969,7 @@ async function fetchTopicsByType(
         lessonId: undefined,
         order: undefined,
         certificateId,
+        firstAttachmentUrl,
       });
     }
   }
@@ -715,6 +1013,9 @@ async function fetchQuizzesByType(
     const courseMatches =
       !courseId ||
       (typeof metaCourseId === "string" && metaCourseId === courseId);
+    const firstAttachmentUrl = parseFirstAttachmentUrl(
+      meta.get("__core_attachments"),
+    );
 
     if (lessonMatches || courseMatches) {
       attached.push({
@@ -735,6 +1036,7 @@ async function fetchQuizzesByType(
           typeof meta.get("isFinal") === "boolean"
             ? (meta.get("isFinal") as boolean)
             : undefined,
+        firstAttachmentUrl,
       });
     }
   }

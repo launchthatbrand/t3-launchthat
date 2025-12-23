@@ -259,7 +259,12 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       ) ?? [];
   const requestedPath = segments.join("/");
 
-  if (customCanonicalPath) {
+  const shouldSkipCanonicalRedirect =
+    post.postTypeSlug === "certificates" &&
+    segments[0]?.toLowerCase() === "course" &&
+    segments.map((s) => s.toLowerCase()).includes("certificate");
+
+  if (!shouldSkipCanonicalRedirect && customCanonicalPath) {
     const normalizedCanonical = normalizePath(customCanonicalPath);
     const normalizedRequested = normalizePath(requestedPath);
     const normalizedAliases = customAliasPaths.map((alias) =>
@@ -270,7 +275,7 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     if (!matchesCanonical && !matchesAlias) {
       redirect(`/${normalizedCanonical}`);
     }
-  } else {
+  } else if (!shouldSkipCanonicalRedirect) {
     const canonicalSegments = getCanonicalPostSegments(post, postType);
     if (canonicalSegments.length > 0) {
       const canonicalPath = canonicalSegments.join("/");

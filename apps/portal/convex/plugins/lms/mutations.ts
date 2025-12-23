@@ -11,11 +11,14 @@ import { mutation as baseMutation } from "../../_generated/server";
 import { PORTAL_TENANT_SLUG } from "../../constants";
 import { getAuthenticatedUserDocIdByToken } from "../../core/lib/permissions";
 import {
+  awardBadgesForSource,
   buildQuizQuestionMetaPayload,
   deletePostMetaValue,
   fetchQuizQuestionsForQuiz,
   getPostMetaMap,
+  LMS_BADGE_IDS_META_KEY,
   loadQuizQuestionById,
+  parseBadgeIdsMeta,
   parseCourseStructureMeta,
   QUIZ_QUESTION_META_KEYS,
   serializeCourseStructureMeta,
@@ -27,6 +30,7 @@ const components = generatedComponents as any;
 const mutation = baseMutation as any;
 
 const CERTIFICATE_META_KEY = "certificateId";
+const QUIZ_PASS_PERCENT_META_KEY = "passPercent";
 
 const ensureCourseAndLesson = async (
   ctx: MutationCtx,
@@ -67,9 +71,15 @@ const ensureLmsPostById = async (
     { id: id as unknown as string },
   );
   if (!post || post.postTypeSlug !== expectedType) {
-    throw new Error(`${expectedType.replace(/^\w/, (c) => c.toUpperCase())} not found`);
+    throw new Error(
+      `${expectedType.replace(/^\w/, (c) => c.toUpperCase())} not found`,
+    );
   }
-  return post as { _id: string; postTypeSlug: string; organizationId?: string | null };
+  return post as {
+    _id: string;
+    postTypeSlug: string;
+    organizationId?: string | null;
+  };
 };
 
 const ensureCertificateForOrg = async (
@@ -77,7 +87,11 @@ const ensureCertificateForOrg = async (
   certificateId: string,
   organizationId: string | undefined,
 ) => {
-  const certificate = await ensureLmsPostById(ctx, certificateId, "certificates");
+  const certificate = await ensureLmsPostById(
+    ctx,
+    certificateId,
+    "certificates",
+  );
   const certOrg = certificate.organizationId ?? undefined;
   if (certOrg !== (organizationId ?? undefined)) {
     throw new Error("Certificate must belong to the same organization");
@@ -193,6 +207,18 @@ const getMetaString = (map: PostMetaMap, key: string): string | null => {
   const rawValue = map.get(key);
   if (typeof rawValue === "string" && rawValue.length > 0) {
     return rawValue;
+  }
+  return null;
+};
+
+const getMetaNumber = (map: PostMetaMap, key: string): number | null => {
+  const rawValue = map.get(key);
+  if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
+    return rawValue;
+  }
+  if (typeof rawValue === "string") {
+    const parsed = Number(rawValue);
+    return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
 };
@@ -1532,6 +1558,32 @@ export const submitQuizAttempt: any = mutation({
       },
     );
 
+    // Award quiz badges on pass (default passPercent=70).
+    const passPercent =
+      getMetaNumber(quizMeta, QUIZ_PASS_PERCENT_META_KEY) ?? 70;
+    const quizBadgeIds = parseBadgeIdsMeta(
+      quizMeta.get(LMS_BADGE_IDS_META_KEY),
+    );
+    const quizOrgId =
+      typeof quiz.organizationId === "string"
+        ? (quiz.organizationId as unknown as Id<"organizations">)
+        : undefined;
+    if (quizBadgeIds.length > 0 && scorePercent >= passPercent) {
+      await awardBadgesForSource(ctx, {
+        organizationId: quizOrgId,
+        userId,
+        badgeIds: quizBadgeIds,
+        sourceType: "quiz",
+        sourceId: args.quizId as unknown as Id<"posts">,
+        courseId: resolvedCourseId as unknown as Id<"posts"> | undefined,
+        metadata: {
+          scorePercent,
+          passPercent,
+          attemptId: String(attempt?._id ?? ""),
+        },
+      });
+    }
+
     const attemptSummary = {
       _id: String(attempt?._id),
       scorePercent,
@@ -1568,6 +1620,18 @@ export const setLessonCompletionStatus: any = mutation({
       courseId,
       organizationId,
     );
+
+    const courseMeta = await getPostMetaMap(ctx, courseId);
+    const requiredLessonIds = parseCourseStructureMeta(
+      courseMeta.get("courseStructure") ?? null,
+    );
+    const wasCourseComplete =
+      requiredLessonIds.length > 0
+        ? requiredLessonIds.every((id) =>
+            (progress.completedLessonIds ?? []).includes(id),
+          )
+        : typeof progress.completedAt === "number";
+
     const completedSet = new Set(progress.completedLessonIds);
     if (args.completed) {
       completedSet.add(args.lessonId as unknown as Id<"posts">);
@@ -1575,6 +1639,13 @@ export const setLessonCompletionStatus: any = mutation({
       completedSet.delete(args.lessonId as unknown as Id<"posts">);
     }
     const completedLessonIds = Array.from(completedSet) as Id<"posts">[];
+
+    const isCourseComplete =
+      requiredLessonIds.length > 0
+        ? requiredLessonIds.every((id) => completedSet.has(id))
+        : completedLessonIds.length > 0;
+    const shouldSetCompletedAt = !wasCourseComplete && isCourseComplete;
+    const completedAt = shouldSetCompletedAt ? Date.now() : undefined;
     await ctx.runMutation(
       components.launchthat_lms.progress.mutations.upsertCourseProgress,
       {
@@ -1586,8 +1657,25 @@ export const setLessonCompletionStatus: any = mutation({
         lastAccessedAt: Date.now(),
         lastAccessedId: String(args.lessonId),
         lastAccessedType: "lesson",
+        ...(completedAt ? { completedAt } : {}),
       },
     );
+
+    if (shouldSetCompletedAt) {
+      const courseBadgeIds = parseBadgeIdsMeta(
+        courseMeta.get(LMS_BADGE_IDS_META_KEY) ?? null,
+      );
+      if (courseBadgeIds.length > 0) {
+        await awardBadgesForSource(ctx, {
+          organizationId: organizationId as Id<"organizations"> | undefined,
+          userId,
+          badgeIds: courseBadgeIds,
+          sourceType: "course",
+          sourceId: courseId,
+          courseId,
+        });
+      }
+    }
     return { completedLessonIds: completedLessonIds.map(String) };
   },
 });
@@ -1622,6 +1710,10 @@ export const setTopicCompletionStatus: any = mutation({
     );
     const topicSet = new Set(progress.completedTopicIds);
     const lessonSet = new Set(progress.completedLessonIds);
+    const wasLessonCompleted =
+      _lessonId && typeof _lessonId === "string"
+        ? lessonSet.has(_lessonId as unknown as Id<"posts">)
+        : false;
     if (args.completed) {
       topicSet.add(args.topicId as unknown as Id<"posts">);
     } else {
@@ -1668,6 +1760,10 @@ export const setTopicCompletionStatus: any = mutation({
     }
 
     const completedLessonIds = Array.from(lessonSet) as Id<"posts">[];
+    const isLessonCompleted =
+      _lessonId && typeof _lessonId === "string"
+        ? lessonSet.has(_lessonId as unknown as Id<"posts">)
+        : false;
     await ctx.runMutation(
       components.launchthat_lms.progress.mutations.upsertCourseProgress,
       {
@@ -1681,6 +1777,53 @@ export const setTopicCompletionStatus: any = mutation({
         lastAccessedType: "topic",
       },
     );
+
+    // Award topic badges when the topic is completed.
+    if (args.completed) {
+      const topicMeta = await getPostMetaMap(
+        ctx,
+        args.topicId as unknown as Id<"posts">,
+      );
+      const topicBadgeIds = parseBadgeIdsMeta(
+        topicMeta.get(LMS_BADGE_IDS_META_KEY) ?? null,
+      );
+      if (topicBadgeIds.length > 0) {
+        await awardBadgesForSource(ctx, {
+          organizationId: organizationId as Id<"organizations"> | undefined,
+          userId,
+          badgeIds: topicBadgeIds,
+          sourceType: "topic",
+          sourceId: args.topicId as unknown as Id<"posts">,
+          courseId,
+        });
+      }
+    }
+
+    // Award lesson badges when a lesson transitions to completed (topic-driven).
+    if (
+      _lessonId &&
+      typeof _lessonId === "string" &&
+      !wasLessonCompleted &&
+      isLessonCompleted
+    ) {
+      const lessonMeta = await getPostMetaMap(
+        ctx,
+        _lessonId as unknown as Id<"posts">,
+      );
+      const lessonBadgeIds = parseBadgeIdsMeta(
+        lessonMeta.get(LMS_BADGE_IDS_META_KEY) ?? null,
+      );
+      if (lessonBadgeIds.length > 0) {
+        await awardBadgesForSource(ctx, {
+          organizationId: organizationId as Id<"organizations"> | undefined,
+          userId,
+          badgeIds: lessonBadgeIds,
+          sourceType: "lesson",
+          sourceId: _lessonId as unknown as Id<"posts">,
+          courseId,
+        });
+      }
+    }
     return { completedTopicIds: completedTopicIds.map(String) };
   },
 });

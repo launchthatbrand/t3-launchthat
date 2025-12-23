@@ -62,6 +62,8 @@ export function EntityList<T extends Record<string, unknown>>({
   enableSearch,
   enableFooter,
   customRender,
+  customViewLabel,
+  customViewRender,
 }: EntityListProps<T>) {
   // State for view mode
   const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
@@ -293,6 +295,7 @@ export function EntityList<T extends Record<string, unknown>>({
       actions={actions}
       isSearching={isSearching || isLoading}
       enableSearch={enableSearch}
+      customViewLabel={customViewLabel}
     />
   );
 
@@ -307,25 +310,31 @@ export function EntityList<T extends Record<string, unknown>>({
     );
   }
 
-  const mainContent = customRender ? (
-    customRender(filteredData)
-  ) : (
-    <EntityListView
-      data={filteredData}
-      columns={columns}
-      gridColumns={gridColumns}
-      viewMode={viewMode}
-      isLoading={isLoading}
-      onRowClick={onRowClick}
-      emptyState={emptyState}
-      entityActions={entityActions}
-      enableFooter={enableFooter}
-      sortConfig={sorting}
-      onSortChange={handleSortChange}
-      selectedId={selectedId}
-      itemRender={itemRender}
-    />
-  );
+  const mainContent = (() => {
+    if (customRender) {
+      return customRender(filteredData);
+    }
+    if (viewMode === "custom") {
+      return customViewRender ? customViewRender(filteredData) : null;
+    }
+    return (
+      <EntityListView
+        data={filteredData}
+        columns={columns}
+        gridColumns={gridColumns}
+        viewMode={viewMode}
+        isLoading={isLoading}
+        onRowClick={onRowClick}
+        emptyState={emptyState}
+        entityActions={entityActions}
+        enableFooter={enableFooter}
+        sortConfig={sorting}
+        onSortChange={handleSortChange}
+        selectedId={selectedId}
+        itemRender={itemRender}
+      />
+    );
+  })();
 
   // Default: render filtered list view
   return (
@@ -333,7 +342,9 @@ export function EntityList<T extends Record<string, unknown>>({
       {headerSection}
       {filterUI}
       {mainContent}
-      {!customRender && pagination && <EntityListPagination {...pagination} />}
+      {viewMode !== "custom" &&
+        !customRender &&
+        pagination && <EntityListPagination {...pagination} />}
     </div>
   );
 }

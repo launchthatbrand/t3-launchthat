@@ -9,6 +9,7 @@ import { integrationsSchema } from "./integrations/schema";
 // import { integrationsSchema } from "./integrations/schema";
 import { notificationsSchema } from "./notifications/schema";
 // import { supportSchema } from "./plugins/support/schema";
+import { lmsSchema } from "./plugins/lms/schema";
 import { tasksSchema } from "./tasks/schema";
 import { vimeoSchema } from "./vimeo/schema";
 
@@ -44,4 +45,7 @@ export default defineSchema({
 
   // Core options (site/store settings)
   ...coreSchema,
+
+  // LMS plugin tables (portal-owned)
+  ...lmsSchema,
 });

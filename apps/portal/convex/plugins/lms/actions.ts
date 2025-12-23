@@ -5,12 +5,12 @@ import {
   buildSupportOpenAiOwnerKey,
   SUPPORT_OPENAI_NODE_TYPE,
 } from "launchthat-plugin-support/assistant/openai";
+import { degrees, PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 import type { Id } from "../../_generated/dataModel";
 import type { MetaValue } from "../../../../../packages/launchthat-plugin-lms/src/types";
 import { api, internal } from "../../_generated/api";
 import { action } from "../../_generated/server";
-import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
 import {
   buildQuizPrompt,
   quizResponseSchema,
@@ -18,7 +18,9 @@ import {
 
 type SupportedPdfImageFormat = "png" | "jpeg";
 
-const detectImageFormat = (bytes: Uint8Array): SupportedPdfImageFormat | "webp" | "svg" | "unknown" => {
+const detectImageFormat = (
+  bytes: Uint8Array,
+): SupportedPdfImageFormat | "webp" | "svg" | "unknown" => {
   if (bytes.length < 12) return "unknown";
 
   // PNG signature: 89 50 4E 47 0D 0A 1A 0A
@@ -57,7 +59,9 @@ const detectImageFormat = (bytes: Uint8Array): SupportedPdfImageFormat | "webp" 
   // SVG/XML (best-effort): starts with '<' after whitespace
   // We only look at a small prefix to avoid decoding huge buffers.
   try {
-    const prefix = new TextDecoder().decode(bytes.slice(0, Math.min(256, bytes.length)));
+    const prefix = new TextDecoder().decode(
+      bytes.slice(0, Math.min(256, bytes.length)),
+    );
     if (prefix.trimStart().startsWith("<")) {
       if (prefix.toLowerCase().includes("<svg")) return "svg";
       return "unknown";
@@ -69,7 +73,11 @@ const detectImageFormat = (bytes: Uint8Array): SupportedPdfImageFormat | "webp" 
   return "unknown";
 };
 
-const indexOfBytes = (haystack: Uint8Array, needle: Uint8Array, from = 0): number => {
+const indexOfBytes = (
+  haystack: Uint8Array,
+  needle: Uint8Array,
+  from = 0,
+): number => {
   if (needle.length === 0) return -1;
   for (let i = Math.max(0, from); i <= haystack.length - needle.length; i++) {
     let ok = true;
@@ -84,7 +92,9 @@ const indexOfBytes = (haystack: Uint8Array, needle: Uint8Array, from = 0): numbe
   return -1;
 };
 
-const tryExtractMultipartSingleFile = (bytes: Uint8Array): Uint8Array | null => {
+const tryExtractMultipartSingleFile = (
+  bytes: Uint8Array,
+): Uint8Array | null => {
   // Handles the common case where we accidentally stored a multipart/form-data payload
   // in Convex Storage (e.g. it starts with "------WebKitFormBoundary...").
   // We extract the first part's raw body and return it.
@@ -118,7 +128,8 @@ const tryExtractMultipartSingleFile = (bytes: Uint8Array): Uint8Array | null => 
   const headersEnd = headersEndCrlf >= 0 ? headersEndCrlf : headersEndLf;
   if (headersEnd < 0) return null;
   const bodyStart =
-    headersEnd + (headersEndCrlf >= 0 ? headerSepCrlf.length : headerSepLf.length);
+    headersEnd +
+    (headersEndCrlf >= 0 ? headerSepCrlf.length : headerSepLf.length);
 
   // Next boundary is preceded by newline + boundaryLine
   const newline = headersEndCrlf >= 0 ? crlf : lf;
@@ -148,10 +159,14 @@ const tryExtractMultipartSingleFile = (bytes: Uint8Array): Uint8Array | null => 
   return bytes.slice(bodyStart, bodyEnd);
 };
 
-const tryExtractEmbeddedImageByMagic = (bytes: Uint8Array): Uint8Array | null => {
+const tryExtractEmbeddedImageByMagic = (
+  bytes: Uint8Array,
+): Uint8Array | null => {
   // Last-resort: find PNG/JPEG magic bytes somewhere inside the payload
   // and slice from there (optionally trimming at the next multipart boundary).
-  const pngSig = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const pngSig = new Uint8Array([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+  ]);
   const jpgSig = new Uint8Array([0xff, 0xd8, 0xff]);
   const pngAt = indexOfBytes(bytes, pngSig, 0);
   const jpgAt = pngAt >= 0 ? -1 : indexOfBytes(bytes, jpgSig, 0);
@@ -161,7 +176,9 @@ const tryExtractEmbeddedImageByMagic = (bytes: Uint8Array): Uint8Array | null =>
   // If the payload looks like multipart, try to trim at the next boundary marker.
   const slice = bytes.slice(start);
   try {
-    const head = new TextDecoder().decode(bytes.slice(0, Math.min(4096, bytes.length)));
+    const head = new TextDecoder().decode(
+      bytes.slice(0, Math.min(4096, bytes.length)),
+    );
     const m = head.match(/^-{2,}([A-Za-z0-9'()+_,.\/:=?-]+)\s*$/m);
     // If we can’t confidently find boundary, just return the remainder.
     if (!m) return slice;
@@ -206,12 +223,17 @@ const getStorageBytes = async (
   const raw = await ctx.storage.get(storageId);
   if (!raw) return null;
 
-  const normalizeToArrayBuffer = async (value: any): Promise<ArrayBuffer | null> => {
+  const normalizeToArrayBuffer = async (
+    value: any,
+  ): Promise<ArrayBuffer | null> => {
     if (!value) return null;
     if (value instanceof ArrayBuffer) return value;
     if (typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView?.(value)) {
       const view = value as ArrayBufferView;
-      return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
+      return view.buffer.slice(
+        view.byteOffset,
+        view.byteOffset + view.byteLength,
+      );
     }
     // Node actions can surface Blob in some environments.
     if (typeof Blob !== "undefined" && value instanceof Blob) {
@@ -280,9 +302,12 @@ const getStorageBytes = async (
     // Still empty: include _storage metadata to diagnose.
     let meta: any = null;
     try {
-      meta = await ctx.runQuery(api.core.media.queries.getStorageMetadata as any, {
-        storageId,
-      });
+      meta = await ctx.runQuery(
+        api.core.media.queries.getStorageMetadata as any,
+        {
+          storageId,
+        },
+      );
     } catch {
       meta = null;
     }
@@ -295,7 +320,11 @@ const getStorageBytes = async (
   return bytes;
 };
 
-const embedPdfImage = async (pdfDoc: PDFDocument, bytes: ArrayBuffer, label: string) => {
+const embedPdfImage = async (
+  pdfDoc: PDFDocument,
+  bytes: ArrayBuffer,
+  label: string,
+) => {
   let uint8 = new Uint8Array(bytes);
   let format = detectImageFormat(uint8);
   const originalLen = uint8.length;
@@ -359,7 +388,9 @@ const embedPdfImage = async (pdfDoc: PDFDocument, bytes: ArrayBuffer, label: str
   // Keep this compact so it’s safe to bubble to the client in dev.
   let containsMultipartMarkers = false;
   try {
-    const head = new TextDecoder().decode(uint8.slice(0, Math.min(4096, uint8.length)));
+    const head = new TextDecoder().decode(
+      uint8.slice(0, Math.min(4096, uint8.length)),
+    );
     containsMultipartMarkers =
       head.includes("Content-Disposition: form-data") ||
       head.includes("WebKitFormBoundary") ||
@@ -367,7 +398,9 @@ const embedPdfImage = async (pdfDoc: PDFDocument, bytes: ArrayBuffer, label: str
   } catch {
     // ignore
   }
-  const pngSig = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const pngSig = new Uint8Array([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+  ]);
   const jpgSig = new Uint8Array([0xff, 0xd8, 0xff]);
   const pngAt = indexOfBytes(uint8, pngSig, 0);
   const jpgAt = pngAt >= 0 ? -1 : indexOfBytes(uint8, jpgSig, 0);
@@ -630,18 +663,24 @@ export const generateCertificatePdf = action({
   },
   returns: v.bytes(),
   handler: async (ctx, args) => {
-    const post: any = await ctx.runQuery(api.plugins.lms.posts.queries.getPostById as any, {
-      id: args.certificateId,
-      organizationId: args.organizationId,
-    });
+    const post: any = await ctx.runQuery(
+      api.plugins.lms.posts.queries.getPostById as any,
+      {
+        id: args.certificateId,
+        organizationId: args.organizationId,
+      },
+    );
     if (!post) {
       throw new Error("Certificate not found");
     }
 
-    const metaEntries: any[] = await ctx.runQuery(api.plugins.lms.posts.queries.getPostMeta as any, {
-      postId: args.certificateId,
-      organizationId: args.organizationId,
-    });
+    const metaEntries: any[] = await ctx.runQuery(
+      api.plugins.lms.posts.queries.getPostMeta as any,
+      {
+        postId: args.certificateId,
+        organizationId: args.organizationId,
+      },
+    );
     const meta = new Map<string, any>();
     metaEntries.forEach((entry) => {
       if (entry?.key) {
@@ -763,6 +802,85 @@ export const generateCertificatePdf = action({
 
     const pdfBytes = await pdfDoc.save();
     return new Uint8Array(pdfBytes).buffer;
+  },
+});
+
+export const createVideoThumbnailAttachment = action({
+  args: {
+    sourceUrl: v.string(),
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.object({
+    mediaItemId: v.id("mediaItems"),
+    url: v.string(),
+    title: v.optional(v.string()),
+    mimeType: v.optional(v.string()),
+    width: v.optional(v.number()),
+    height: v.optional(v.number()),
+  }),
+  handler: async (ctx, args) => {
+    const oEmbedEndpoint = new URL("https://vimeo.com/api/oembed.json");
+    oEmbedEndpoint.searchParams.set("url", args.sourceUrl);
+    oEmbedEndpoint.searchParams.set("format", "json");
+
+    const oembedRes = await fetch(oEmbedEndpoint.toString());
+    if (!oembedRes.ok) {
+      const text = await oembedRes.text().catch(() => "");
+      throw new Error(
+        `Failed to fetch Vimeo oEmbed payload (${oembedRes.status}). ${text}`,
+      );
+    }
+
+    const oembedJson = (await oembedRes.json()) as {
+      title?: string;
+      thumbnail_url?: string;
+    };
+
+    const thumbnailUrl = oembedJson.thumbnail_url;
+    if (!thumbnailUrl) {
+      throw new Error("Vimeo oEmbed payload is missing thumbnail_url");
+    }
+
+    const thumbRes = await fetch(thumbnailUrl);
+    if (!thumbRes.ok) {
+      const text = await thumbRes.text().catch(() => "");
+      throw new Error(
+        `Failed to download Vimeo thumbnail (${thumbRes.status}). ${text}`,
+      );
+    }
+
+    const contentType =
+      thumbRes.headers.get("content-type")?.split(";")[0]?.trim() || undefined;
+    const bytes = await thumbRes.arrayBuffer();
+    const blob = new Blob([bytes], {
+      type: contentType ?? "application/octet-stream",
+    });
+
+    const storageId = await ctx.storage.store(blob);
+
+    const titleBase =
+      (oembedJson.title ?? "").trim().length > 0
+        ? oembedJson.title?.trim()
+        : "Vimeo thumbnail";
+    const title = `${titleBase} (thumbnail)`;
+
+    const mediaItem = await ctx.runMutation(
+      api.core.media.mutations.saveMedia,
+      {
+        storageId: storageId as any,
+        title,
+        status: "published",
+      },
+    );
+
+    return {
+      mediaItemId: mediaItem._id as any,
+      url: mediaItem.url,
+      title: mediaItem.title,
+      mimeType: contentType,
+      width: undefined,
+      height: undefined,
+    };
   },
 });
 

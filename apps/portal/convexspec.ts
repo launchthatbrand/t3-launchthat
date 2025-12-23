@@ -3173,6 +3173,12 @@ export type PublicApiType = {
             url?: string;
           }
         >;
+        getStorageMetadata: FunctionReference<
+          "query",
+          "public",
+          { storageId: Id<"_storage"> },
+          any
+        >;
         getMediaById: FunctionReference<
           "query",
           "public",
@@ -5100,6 +5106,46 @@ export type PublicApiType = {
           { organizationId?: Id<"organizations"> },
           Array<{ _id: string; slug?: string; status?: string; title: string }>
         >;
+        listCertificates: FunctionReference<
+          "query",
+          "public",
+          { organizationId?: Id<"organizations"> },
+          Array<{
+            _id: string;
+            content?: string;
+            excerpt?: string;
+            slug?: string;
+            status?: string;
+            title: string;
+          }>
+        >;
+        listCompletedCoursesForCertificateViewer: FunctionReference<
+          "query",
+          "public",
+          { certificateId: string; organizationId?: Id<"organizations"> },
+          null | Array<{
+            completedAt: number;
+            courseId: string;
+            courseSlug?: string;
+            courseTitle: string;
+          }>
+        >;
+        getCertificateViewerContext: FunctionReference<
+          "query",
+          "public",
+          {
+            certificateId: string;
+            courseId: string;
+            organizationId?: Id<"organizations">;
+          },
+          null | {
+            certificateId: string;
+            completionDate: string;
+            courseTitle: string;
+            organizationName?: string;
+            userName: string;
+          }
+        >;
         getCourseStructureWithItems: FunctionReference<
           "query",
           "public",
@@ -5109,10 +5155,20 @@ export type PublicApiType = {
             organizationId?: Id<"organizations">;
           },
           {
-            attachedLessons: Array<{
+            attachedCertificates: Array<{
               _id: string;
               content?: string;
               excerpt?: string;
+              slug?: string;
+              status?: string;
+              title: string;
+            }>;
+            attachedLessons: Array<{
+              _id: string;
+              certificateId?: string;
+              content?: string;
+              excerpt?: string;
+              firstAttachmentUrl?: string;
               order?: number;
               slug?: string;
               status?: string;
@@ -5122,6 +5178,7 @@ export type PublicApiType = {
               _id: string;
               content?: string;
               excerpt?: string;
+              firstAttachmentUrl?: string;
               isFinal?: boolean;
               lessonId?: string;
               order?: number;
@@ -5131,8 +5188,10 @@ export type PublicApiType = {
             }>;
             attachedTopics: Array<{
               _id: string;
+              certificateId?: string;
               content?: string;
               excerpt?: string;
+              firstAttachmentUrl?: string;
               lessonId?: string;
               order?: number;
               slug?: string;
@@ -5140,6 +5199,7 @@ export type PublicApiType = {
             }>;
             course: {
               _id: string;
+              certificateId?: string;
               courseStructure: Array<{ lessonId: string }>;
               slug?: string;
               status?: string;
@@ -5164,14 +5224,27 @@ export type PublicApiType = {
             userId: Id<"users">;
           } | null
         >;
+        getBadgeSummariesForPost: FunctionReference<
+          "query",
+          "public",
+          { organizationId?: Id<"organizations">; postId: string },
+          Array<{
+            badgeId: string;
+            firstAttachmentUrl?: string;
+            slug?: string;
+            title: string;
+          }>
+        >;
         getAvailableLessons: FunctionReference<
           "query",
           "public",
           { courseId: string; organizationId?: Id<"organizations"> },
           Array<{
             _id: string;
+            certificateId?: string;
             content?: string;
             excerpt?: string;
+            firstAttachmentUrl?: string;
             order?: number;
             slug?: string;
             status?: string;
@@ -5184,8 +5257,10 @@ export type PublicApiType = {
           { organizationId?: Id<"organizations"> },
           Array<{
             _id: string;
+            certificateId?: string;
             content?: string;
             excerpt?: string;
+            firstAttachmentUrl?: string;
             lessonId?: string;
             order?: number;
             slug?: string;
@@ -5200,6 +5275,7 @@ export type PublicApiType = {
             _id: string;
             content?: string;
             excerpt?: string;
+            firstAttachmentUrl?: string;
             isFinal?: boolean;
             lessonId?: string;
             order?: number;
@@ -5252,6 +5328,24 @@ export type PublicApiType = {
         >;
       };
       mutations: {
+        setCourseCertificate: FunctionReference<
+          "mutation",
+          "public",
+          { certificateId?: string | null; courseId: string },
+          { success: boolean }
+        >;
+        setLessonCertificate: FunctionReference<
+          "mutation",
+          "public",
+          { certificateId?: string | null; lessonId: string },
+          { success: boolean }
+        >;
+        setTopicCertificate: FunctionReference<
+          "mutation",
+          "public",
+          { certificateId?: string | null; topicId: string },
+          { success: boolean }
+        >;
         ensureQuizQuestionPostType: FunctionReference<
           "mutation",
           "public",
@@ -5523,6 +5617,30 @@ export type PublicApiType = {
             questionCount: number;
             quizId: Id<"posts">;
             quizTitle: string;
+          }
+        >;
+        generateCertificatePdf: FunctionReference<
+          "action",
+          "public",
+          {
+            certificateId: string;
+            context?: Record<string, string>;
+            organizationId?: string;
+            templateOverride?: any;
+          },
+          ArrayBuffer
+        >;
+        createVideoThumbnailAttachment: FunctionReference<
+          "action",
+          "public",
+          { organizationId?: Id<"organizations">; sourceUrl: string },
+          {
+            height?: number;
+            mediaItemId: Id<"mediaItems">;
+            mimeType?: string;
+            title?: string;
+            url: string;
+            width?: number;
           }
         >;
       };

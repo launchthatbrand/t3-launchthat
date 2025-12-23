@@ -1,6 +1,8 @@
 "use client";
 
 import type { PluginFrontendSingleSlotProps } from "launchthat-plugin-core";
+import { api } from "@portal/convexspec";
+import { useQuery } from "convex/react";
 import { CheckCircle2 } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
@@ -21,6 +23,19 @@ export function CourseProgress({
   postTypeSlug,
 }: PluginFrontendSingleSlotProps) {
   const courseContext = useLmsCourseContext();
+
+  // Always call hooks in a stable order. If we don't have enough context yet,
+  // `useQuery` will be skipped.
+  const activeLessonBadges = useQuery(
+    api.plugins.lms.queries.getBadgeSummariesForPost,
+    courseContext?.activeLessonId
+      ? {
+          postId: String(courseContext.activeLessonId),
+          organizationId: courseContext.organizationId ?? undefined,
+        }
+      : "skip",
+  );
+
   if (!courseContext) {
     return null;
   }
@@ -88,6 +103,11 @@ export function CourseProgress({
   const activeLessonTitle = activeLessonId
     ? getSegmentTitle(activeLessonId, segments)
     : null;
+  const activeLessonBadgeList = (activeLessonBadges ?? []) as Array<{
+    badgeId: string;
+    title: string;
+    firstAttachmentUrl?: string;
+  }>;
 
   return (
     <div className="bg-card/80 rounded-2xl border p-4 shadow-sm">
@@ -156,11 +176,46 @@ export function CourseProgress({
           </span>
         </p>
       ) : null}
+      {activeLessonTitle &&
+      activeLessonBadges !== undefined &&
+      activeLessonBadgeList.length > 0 ? (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground text-xs">Awards:</span>
+          {activeLessonBadgeList.map((badge) =>
+            badge.firstAttachmentUrl ? (
+              <span
+                key={badge.badgeId}
+                className="bg-muted ring-border/60 inline-flex h-6 w-6 items-center justify-center overflow-hidden rounded-full ring-1"
+                title={badge.title}
+              >
+                <img
+                  src={badge.firstAttachmentUrl}
+                  alt={badge.title}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+              </span>
+            ) : (
+              <Badge
+                key={badge.badgeId}
+                variant="secondary"
+                className="text-xs"
+              >
+                {badge.title}
+              </Badge>
+            ),
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function getSegmentTitle(lessonId: string | undefined, segments: LessonSegment[]) {
+function getSegmentTitle(
+  lessonId: string | undefined,
+  segments: LessonSegment[],
+) {
   if (!lessonId) return null;
   const segment = segments.find((entry) => entry.lessonId === lessonId);
   return segment?.title ?? null;

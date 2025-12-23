@@ -6,7 +6,7 @@ import { ReactNode } from "react";
  * - list: Traditional table-like view
  * - grid: Card-based grid layout
  */
-export type ViewMode = "list" | "grid";
+export type ViewMode = "list" | "grid" | "custom";
 
 /**
  * Configuration for a column in the EntityList
@@ -178,6 +178,14 @@ export interface EntityListProps<T extends Record<string, unknown>> {
   /** Custom renderer for replacing the default list/grid view */
   customRender?: (items: T[]) => ReactNode;
 
+  /**
+   * Optional third view mode ("custom") rendered when viewMode === "custom".
+   * This still uses EntityList's search/filter/sort state, but lets callers
+   * provide a bespoke layout.
+   */
+  customViewLabel?: string;
+  customViewRender?: (items: T[]) => ReactNode;
+
   /** Default view mode (default: "list") */
   defaultViewMode?: ViewMode;
 
@@ -254,6 +262,9 @@ export interface EntityListHeaderProps {
 
   /** Whether search is currently in progress */
   isSearching?: boolean;
+
+  /** Optional label for custom view mode toggle */
+  customViewLabel?: string;
 }
 
 /**
