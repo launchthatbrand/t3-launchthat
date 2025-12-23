@@ -1,7 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 import { env } from "~/env";
+
+export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   const { code } = (await req.json()) as { code?: string };
@@ -9,12 +11,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Code is required" }, { status: 400 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const clientId: string = env.NEXT_PUBLIC_VIMEO_CLIENT_ID;
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const clientSecret: string = env.VIMEO_CLIENT_SECRET;
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const redirectUri: string = env.VIMEO_REDIRECT_URI;
+  const redirectUri = `${String(env.NEXT_PUBLIC_CONVEX_HTTP_URL).replace(/\/$/, "")}/api/integrations/vimeo`;
 
   if (!clientId || !clientSecret) {
     return NextResponse.json(
@@ -23,7 +22,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
@@ -44,10 +42,20 @@ export async function POST(req: NextRequest) {
     body: body.toString(),
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const json = await res.json();
+  const raw = await res.text();
+  let json: unknown = null;
+  try {
+    json = raw ? (JSON.parse(raw) as unknown) : null;
+  } catch {
+    json = { raw };
+  }
   if (!res.ok) {
-    console.error("Vimeo token exchange failed", json);
+    console.error("Vimeo token exchange failed", {
+      status: res.status,
+      redirectUri,
+      configuredRedirectUri: env.VIMEO_REDIRECT_URI,
+      body: json,
+    });
     return NextResponse.json(
       { error: "Token exchange failed", details: json },
       { status: 500 },

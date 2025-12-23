@@ -3,7 +3,7 @@
 "use client";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
@@ -31,6 +31,22 @@ import { useTenant } from "~/context/TenantContext";
 import { env } from "~/env";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { MediaSettingsForm } from "./_components/MediaSettingsForm";
+
+type VimeoSyncStatusResult =
+  | {
+      status: "idle" | "running" | "error" | "done";
+      nextPage: number;
+      perPage: number;
+      syncedCount: number;
+      pagesFetched: number;
+      workflowId?: string;
+      lastError?: string;
+      startedAt?: number;
+      finishedAt?: number;
+      updatedAt: number;
+    }
+  | null
+  | undefined;
 
 export default function MediaSettingsPage() {
   const searchParams = useSearchParams();
@@ -68,6 +84,8 @@ export default function MediaSettingsPage() {
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [exchangeMessage, setExchangeMessage] = useState<string | null>(null);
   const [exchangeError, setExchangeError] = useState<string | null>(null);
+  const exchangedCodeRef = useRef<string | null>(null);
+  const inflightCodeRef = useRef<string | null>(null);
 
   const rawConnections = useQuery(
     api.integrations.connections.queries.list,
@@ -97,7 +115,7 @@ export default function MediaSettingsPage() {
     organizationId
       ? ({ organizationId } as { organizationId: Id<"organizations"> })
       : "skip",
-  );
+  ) as VimeoSyncStatusResult;
 
   const handleTabChange = useCallback(
     (value: string) => {
@@ -167,6 +185,16 @@ export default function MediaSettingsPage() {
       return;
     }
 
+    // Vimeo auth codes are single-use and React StrictMode can run effects twice in dev.
+    // Guard against double exchange.
+    if (inflightCodeRef.current === code || exchangedCodeRef.current === code) {
+      return;
+    }
+    inflightCodeRef.current = code;
+
+    // Clear params immediately so we don't re-run this effect on rerender/navigation.
+    clearAuthParams();
+
     const exchangeCode = async () => {
       setIsExchanging(true);
       setExchangeError(null);
@@ -184,14 +212,33 @@ export default function MediaSettingsPage() {
           } catch {
             errorPayload = null;
           }
-          const normalizedError =
-            typeof errorPayload === "object" &&
-            errorPayload !== null &&
-            "error" in errorPayload &&
-            typeof (errorPayload as { error?: string }).error === "string"
-              ? (errorPayload as { error?: string }).error
+          const payloadObj =
+            typeof errorPayload === "object" && errorPayload !== null
+              ? (errorPayload as Record<string, unknown>)
+              : null;
+          const topError =
+            payloadObj && typeof payloadObj.error === "string"
+              ? payloadObj.error
               : "Vimeo authorization exchange failed";
-          throw new Error(normalizedError);
+          const details =
+            payloadObj &&
+            typeof payloadObj.details === "object" &&
+            payloadObj.details
+              ? (payloadObj.details as Record<string, unknown>)
+              : null;
+          const detailsMessage =
+            details &&
+            (typeof details.error_description === "string"
+              ? details.error_description
+              : typeof details.developer_message === "string"
+                ? details.developer_message
+                : typeof details.error === "string"
+                  ? details.error
+                  : null);
+
+          throw new Error(
+            detailsMessage ? `${topError}: ${detailsMessage}` : topError,
+          );
         }
         const payloadRaw: unknown = await response.json();
         const payload =
@@ -234,13 +281,16 @@ export default function MediaSettingsPage() {
         }
 
         setExchangeMessage("Vimeo connection saved successfully.");
+        exchangedCodeRef.current = code;
       } catch (err) {
         setExchangeError(
           err instanceof Error ? err.message : "Unexpected Vimeo error",
         );
       } finally {
         setIsExchanging(false);
-        clearAuthParams();
+        if (inflightCodeRef.current === code) {
+          inflightCodeRef.current = null;
+        }
       }
     };
 
