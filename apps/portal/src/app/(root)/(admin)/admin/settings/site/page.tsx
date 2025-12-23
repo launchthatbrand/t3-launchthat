@@ -34,6 +34,10 @@ import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useTenant } from "~/context/TenantContext";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { OrganizationDomainsCard } from "../organizations/_components/OrganizationDomainsCard";
 
 type FormData = {
   siteName: string;
@@ -57,6 +61,8 @@ type FormData = {
 
 export default function SiteSettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
+  const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant) ?? null;
 
   return (
     <div className="container py-6">
@@ -79,6 +85,7 @@ export default function SiteSettingsPage() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="localization">Localization</TabsTrigger>
+          <TabsTrigger value="domains">Domains</TabsTrigger>
           <TabsTrigger value="advanced">Advanced</TabsTrigger>
         </TabsList>
 
@@ -96,6 +103,28 @@ export default function SiteSettingsPage() {
 
         <TabsContent value="advanced">
           <AdvancedSettings />
+        </TabsContent>
+
+        <TabsContent value="domains">
+          {organizationId ? (
+            <OrganizationDomainsCard
+              organizationId={organizationId as Id<"organizations">}
+            />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Domains</CardTitle>
+                <CardDescription>
+                  Domains are scoped to the current organization.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground text-sm">
+                  No organization is currently selected.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

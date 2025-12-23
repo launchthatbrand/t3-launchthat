@@ -2,7 +2,6 @@
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { OrganizationMember } from "@/convex/core/organizations/types";
-import type { ColumnDef } from "@tanstack/react-table";
 import React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
@@ -22,7 +21,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import type { EntityAction } from "@acme/ui/entity-list/types";
+import type {
+  ColumnDefinition,
+  EntityAction,
+} from "@acme/ui/entity-list/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,11 +56,15 @@ import {
 } from "@acme/ui/select";
 import { Separator } from "@acme/ui/separator";
 
+import { OrganizationDomainsCard } from "../_components/OrganizationDomainsCard";
 import { OrganizationForm } from "../_components/OrganizationForm";
 
 type OrganizationMeta = Doc<"organizations"> & {
   memberCount?: number;
   userRole?: "owner" | "admin" | "editor" | "viewer" | "student";
+  customDomain?: string;
+  customDomainStatus: "unconfigured" | "pending" | "verified" | "error";
+  customDomainRecords?: { type: string; name: string; value: string }[];
 };
 
 const MEMBER_ROLE_OPTIONS = [
@@ -211,31 +217,33 @@ export default function OrganizationDetailPage() {
     [organizationId, removeOrganizationMember],
   );
 
-  const memberList = React.useMemo<OrganizationMember[]>(
-    () => (Array.isArray(members) ? (members as OrganizationMember[]) : []),
+  type MemberRow = OrganizationMember & Record<string, unknown>;
+
+  const memberList = React.useMemo<MemberRow[]>(
+    () =>
+      (Array.isArray(members) ? (members as OrganizationMember[]) : []) as
+        | MemberRow[]
+        | [],
     [members],
   );
-  const memberColumns = React.useMemo<ColumnDef<OrganizationMember>[]>(
+  const memberColumns = React.useMemo<ColumnDefinition<MemberRow>[]>(
     () => [
       {
         id: "name",
         header: "Name",
-        cell: ({ row }) => (
-          <div className="font-medium">
-            {row.original.user.name ?? "Unnamed"}
-          </div>
+        cell: (item: MemberRow) => (
+          <div className="font-medium">{item.user.name ?? "Unnamed"}</div>
         ),
       },
       {
         id: "email",
         header: "Email",
-        cell: ({ row }) => row.original.user.email ?? "—",
+        cell: (item: MemberRow) => item.user.email,
       },
       {
         id: "role",
         header: "Role",
-        cell: ({ row }) => {
-          const member = row.original;
+        cell: (member: MemberRow) => {
           const isOwner = member.role === "owner";
           return (
             <Select
@@ -248,7 +256,7 @@ export default function OrganizationDetailPage() {
               }
               disabled={isOwner || roleUpdatingUserId === member.userId}
             >
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -266,7 +274,7 @@ export default function OrganizationDetailPage() {
     ],
     [handleRoleChange, roleUpdatingUserId],
   );
-  const memberActions = React.useMemo<EntityAction<OrganizationMember>[]>(
+  const memberActions = React.useMemo<EntityAction<MemberRow>[]>(
     () => [
       {
         id: "remove",
@@ -489,6 +497,8 @@ export default function OrganizationDetailPage() {
           </CardContent>
         </Card>
 
+        <OrganizationDomainsCard organizationId={organizationId} />
+
         {/* Metadata */}
         <Card>
           <CardHeader>
@@ -546,7 +556,7 @@ export default function OrganizationDetailPage() {
         <CardContent className="space-y-6">
           <form
             onSubmit={handleAddMember}
-            className="grid gap-4 md:grid-cols-[1fr,_200px,_auto]"
+            className="grid gap-4 md:grid-cols-[1fr,200px,auto]"
           >
             <Input
               type="email"
