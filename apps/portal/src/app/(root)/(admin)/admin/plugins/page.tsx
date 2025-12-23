@@ -1,5 +1,22 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
+import Link from "next/link";
+import { api } from "@/convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
+import { toast } from "sonner";
+
+import type { ColumnDefinition } from "@acme/ui/entity-list/types";
 import {
   Accordion,
   AccordionContent,
@@ -16,6 +33,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@acme/ui/alert-dialog";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -24,40 +43,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import { Separator } from "@acme/ui/separator";
+
 import type {
   PluginDefinition,
   PluginPostTypeConfig,
 } from "~/lib/plugins/types";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useTransition,
-} from "react";
+import { useTenant } from "~/context/TenantContext";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import {
   useCreatePostType,
   useDisablePostTypeAccess,
   useEnsurePostTypeAccess,
   usePostTypes,
 } from "../settings/post-types/_api/postTypes";
-import { useMutation, useQuery } from "convex/react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import type { ColumnDefinition } from "@acme/ui/entity-list/types";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import Link from "next/link";
-import { Separator } from "@acme/ui/separator";
-import { api } from "@/convex/_generated/api";
-import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
-import { pluginDefinitions } from "~/lib/plugins/definitions";
-import { toast } from "sonner";
-import { useTenant } from "~/context/TenantContext";
 
 const isPostTypeEnabledForTenant = (
   postType: Doc<"postTypes">,
@@ -371,7 +372,7 @@ export default function PluginsPage() {
         header: "Missing Post Types",
         cell: (item: PluginRow) =>
           item.missingSlugs.length ? (
-            <span className="text-muted-foreground text-sm">
+            <span className="text-muted-foreground max-w-[200px]! overflow-scroll text-sm">
               {item.missingSlugs.join(", ")}
             </span>
           ) : (

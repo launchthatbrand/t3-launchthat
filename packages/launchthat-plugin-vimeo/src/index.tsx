@@ -1,6 +1,5 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
 
-import { VimeoLibrary } from "./admin/VimeoLibrary";
 import { configureVimeoPlugin } from "./config";
 
 const buildVimeoFieldDefinitions = () => [
@@ -34,61 +33,15 @@ export const vimeoPlugin: PluginDefinition = {
   name: "Vimeo",
   description: "Surface videos from your Vimeo workspace inside the media hub.",
   longDescription:
-    "Adds a Vimeo tab to the media library so editors can browse external video assets alongside native uploads.",
+    "Adds Vimeo integration settings for your media system and enriches LMS embeds with Vimeo metadata.",
   features: [
-    "Archive tab dedicated to Vimeo content",
-    "Quick access link underneath the Media nav item",
     "Mocked data layer ready for a Vimeo API integration",
+    "Captures Vimeo embed metadata (ID, embed URL, thumbnail URL) on supported LMS content",
   ],
-  postTypes: [
-    {
-      name: "Attachments",
-      slug: "attachments",
-      description: "Media files uploaded to the media library.",
-      isPublic: false,
-      supports: {
-        title: true,
-        attachments: true,
-        featuredImage: true,
-        customFields: true,
-        postMeta: true,
-      },
-      rewrite: {
-        hasArchive: false,
-        singleSlug: "attachment",
-      },
-      adminMenu: {
-        enabled: false,
-      },
-      storageKind: "posts",
-      storageTables: ["posts", "postsMeta"],
-      adminArchiveView: {
-        defaultTab: "edit",
-        tabs: [
-          {
-            id: "edit",
-            slug: "edit",
-            label: "Edit",
-            description: "Upload and manage attachments.",
-            usesDefaultArchive: true,
-          },
-          {
-            id: "vimeo",
-            slug: "vimeo",
-            label: "Vimeo",
-            description:
-              "Browse the mock Vimeo library (replace with Vimeo API data later).",
-            render: ({ organizationId, mediaPickerContext }) => (
-              <VimeoLibrary
-                organizationId={organizationId}
-                pickerContext={mediaPickerContext}
-              />
-            ),
-          },
-        ],
-      },
-    },
-  ],
+  // IMPORTANT:
+  // Attachments are a built-in Portal post type. This plugin must NOT register/override it,
+  // otherwise it can accidentally disable the Attachments admin menu.
+  postTypes: [],
   fieldRegistrations: [
     {
       postTypeSlug: "lessons",
@@ -108,15 +61,9 @@ export const vimeoPlugin: PluginDefinition = {
     optionType: "site",
     defaultEnabled: false,
   },
-  adminMenus: [
-    {
-      label: "Vimeo",
-      slug: "edit?post_type=attachments&tab=vimeo",
-      icon: "Video",
-      position: 31,
-      parentPostTypeSlug: "attachments",
-    },
-  ],
+  // Vimeo is surfaced as a tab under Media settings (Portal-owned route),
+  // not as a new admin menu item underneath Attachments.
+  adminMenus: [],
 };
 
 export default vimeoPlugin;
