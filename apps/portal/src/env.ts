@@ -1,7 +1,8 @@
-import { authEnv } from "../../../packages/auth/env";
 import { createEnv } from "@t3-oss/env-nextjs";
 import { vercel } from "@t3-oss/env-nextjs/presets-zod";
 import { z } from "zod";
+
+import { authEnv } from "../../../packages/auth/env";
 
 export const env = createEnv({
   extends: [authEnv(), vercel()],
@@ -33,6 +34,7 @@ export const env = createEnv({
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
     NEXT_PUBLIC_AUTHORIZENET_CLIENTKEY: z.string().min(1),
     NEXT_PUBLIC_CONVEX_URL: z.string().url(),
+    NEXT_PUBLIC_CONVEX_HTTP_URL: z.string().url(),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().min(1),
     NEXT_PUBLIC_VIMEO_CLIENT_ID: z.string().min(1),

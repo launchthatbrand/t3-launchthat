@@ -255,7 +255,7 @@ export default function MediaSettingsPage() {
     organizationId,
   ]);
 
-  const convexBaseUrl = env.NEXT_PUBLIC_CONVEX_URL;
+  const convexBaseUrl = env.NEXT_PUBLIC_CONVEX_HTTP_URL;
 
   const handleStartVimeoOAuth = useCallback(() => {
     if (typeof window === "undefined") return;
