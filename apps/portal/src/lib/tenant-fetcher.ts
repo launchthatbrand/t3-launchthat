@@ -88,6 +88,54 @@ export async function fetchTenantBySlug(
   return summary;
 }
 
+export async function fetchTenantByCustomDomain(
+  hostname: string | null,
+): Promise<TenantSummary | null> {
+  const normalizedHost = (hostname ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/^www\./, "");
+  if (!normalizedHost) return null;
+
+  const cacheKey = `domain:${normalizedHost}`;
+  const cached = tenantCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.tenant;
+  }
+
+  const tenant = await getConvexClient()
+    .query(api.core.organizations.queries.getByCustomDomain, {
+      hostname: normalizedHost,
+    })
+    .catch((error) => {
+      console.error("[tenant-fetcher] failed to load tenant by domain", {
+        hostname: normalizedHost,
+        error,
+      });
+      return null;
+    });
+
+  if (!tenant) {
+    tenantCache.delete(cacheKey);
+    return null;
+  }
+
+  const summary: TenantSummary = {
+    _id: tenant._id,
+    slug: tenant.slug,
+    name: tenant.name,
+    planId: tenant.planId ?? null,
+    customDomain: tenant.customDomain ?? null,
+  };
+
+  tenantCache.set(cacheKey, {
+    tenant: summary,
+    expiresAt: Date.now() + TENANT_CACHE_TTL_MS,
+  });
+
+  return summary;
+}
+
 export function clearTenantCache(slug?: string) {
   if (slug) {
     tenantCache.delete(slug.toLowerCase());

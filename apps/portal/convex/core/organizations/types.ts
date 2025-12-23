@@ -38,6 +38,26 @@ export const organizationValidator = v.object({
   logo: v.optional(v.string()),
   primaryColor: v.optional(v.string()),
   customDomain: v.optional(v.string()),
+  customDomainStatus: v.optional(
+    v.union(
+      v.literal("unconfigured"),
+      v.literal("pending"),
+      v.literal("verified"),
+      v.literal("error"),
+    ),
+  ),
+  customDomainRecords: v.optional(
+    v.array(
+      v.object({
+        type: v.string(),
+        name: v.string(),
+        value: v.string(),
+      }),
+    ),
+  ),
+  customDomainVerifiedAt: v.optional(v.number()),
+  customDomainLastError: v.optional(v.string()),
+  customDomainUpdatedAt: v.optional(v.number()),
   isPublic: v.boolean(),
   allowSelfRegistration: v.boolean(),
   planId: v.optional(v.id("plans")),
@@ -150,6 +170,26 @@ export const organizationWithRoleValidator = v.object({
   logo: v.optional(v.string()),
   primaryColor: v.optional(v.string()),
   customDomain: v.optional(v.string()),
+  customDomainStatus: v.optional(
+    v.union(
+      v.literal("unconfigured"),
+      v.literal("pending"),
+      v.literal("verified"),
+      v.literal("error"),
+    ),
+  ),
+  customDomainRecords: v.optional(
+    v.array(
+      v.object({
+        type: v.string(),
+        name: v.string(),
+        value: v.string(),
+      }),
+    ),
+  ),
+  customDomainVerifiedAt: v.optional(v.number()),
+  customDomainLastError: v.optional(v.string()),
+  customDomainUpdatedAt: v.optional(v.number()),
   isPublic: v.boolean(),
   allowSelfRegistration: v.boolean(),
   planId: v.optional(v.id("plans")),

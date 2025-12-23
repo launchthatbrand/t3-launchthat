@@ -112,6 +112,32 @@ export const getBySlug = query({
 });
 
 /**
+ * Get organization by custom domain (public)
+ */
+export const getByCustomDomain = query({
+  args: {
+    hostname: v.string(),
+  },
+  returns: v.union(organizationValidator, v.null()),
+  handler: async (ctx, args) => {
+    const normalized = args.hostname.trim().toLowerCase().replace(/^www\./, "");
+    if (!normalized) return null;
+
+    const org = await ctx.db
+      .query("organizations")
+      .withIndex("by_customDomain", (q) => q.eq("customDomain", normalized))
+      .unique();
+    if (!org) return null;
+    // Only allow routing to verified custom domains.
+    // Back-compat: orgs that predate domain verification may not have customDomainStatus set.
+    if (org.customDomainStatus && org.customDomainStatus !== "verified") {
+      return null;
+    }
+    return org;
+  },
+});
+
+/**
  * Get current user's plan details
  */
 export const getUserPlanDetails = query({

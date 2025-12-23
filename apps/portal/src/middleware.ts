@@ -2,7 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { fetchTenantBySlug } from "@/lib/tenant-fetcher";
+import { fetchTenantByCustomDomain, fetchTenantBySlug } from "@/lib/tenant-fetcher";
 import { rootDomain } from "@/lib/utils";
 
 // Routes requiring authentication
@@ -65,8 +65,23 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
 
   const { pathname } = req.nextUrl;
   const subdomain = extractSubdomain(req);
-  const tenant = await fetchTenantBySlug(subdomain);
   const host = req.headers.get("host") ?? "unknown-host";
+  const hostname = host.split(":")[0]?.toLowerCase() ?? "";
+  const rootDomainFormatted = rootDomain.split(":")[0]?.toLowerCase() ?? "";
+
+  // Resolve tenant:
+  // - If we have a subdomain under our root domain, resolve by slug.
+  // - Otherwise attempt custom-domain lookup (verified only).
+  const tenant =
+    subdomain !== null
+      ? await fetchTenantBySlug(subdomain)
+      : hostname &&
+          rootDomainFormatted &&
+          hostname !== rootDomainFormatted &&
+          hostname !== `www.${rootDomainFormatted}` &&
+          !hostname.endsWith(`.${rootDomainFormatted}`)
+        ? await fetchTenantByCustomDomain(hostname)
+        : await fetchTenantBySlug(null);
 
   console.log("[middleware] incoming request", {
     host,

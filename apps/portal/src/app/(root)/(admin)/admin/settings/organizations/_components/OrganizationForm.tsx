@@ -4,8 +4,8 @@ import type { Id } from "@/convex/_generated/dataModel";
 import React, { useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "convex/react";
-import { Building2, Save, X } from "lucide-react";
+import { useAction, useMutation, useQuery } from "convex/react";
+import { Building2, Copy, Globe, Save, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -37,6 +37,7 @@ import {
 } from "@acme/ui/select";
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
+import { rootDomain } from "~/lib/utils";
 
 // Form validation schema
 const organizationFormSchema = z.object({
@@ -45,6 +46,7 @@ const organizationFormSchema = z.object({
   planId: z.string().optional(),
   isPublic: z.boolean().default(false),
   allowSelfRegistration: z.boolean().default(false),
+  customDomain: z.string().optional(),
 });
 
 type OrganizationFormData = z.infer<typeof organizationFormSchema>;
@@ -86,6 +88,16 @@ export function OrganizationForm({
 
   // State
   const [isFormInitialized, setIsFormInitialized] = useState(false);
+  const [isStartingDomain, setIsStartingDomain] = useState(false);
+  const [isVerifyingDomain, setIsVerifyingDomain] = useState(false);
+  const [domainMessage, setDomainMessage] = useState<string | null>(null);
+  const [domainError, setDomainError] = useState<string | null>(null);
+  const [domainStatusOverride, setDomainStatusOverride] = useState<
+    "unconfigured" | "pending" | "verified" | "error" | null
+  >(null);
+  const [domainRecordsOverride, setDomainRecordsOverride] = useState<
+    { type: string; name: string; value: string }[] | null
+  >(null);
 
   // Queries
   const existingOrganization = useQuery(
@@ -103,6 +115,95 @@ export function OrganizationForm({
     api.core.organizations.mutations.update,
   );
 
+  const startCustomDomainSetup = useAction(
+    api.core.organizations.domains.startCustomDomainSetup,
+  );
+  const verifyCustomDomain = useAction(
+    api.core.organizations.domains.verifyCustomDomain,
+  );
+
+  const handleCopy = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success("Copied");
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
+
+  const handleStartDomainSetup = async () => {
+    if (!organizationId) {
+      toast.error("Save the organization first.");
+      return;
+    }
+    const domain = (form.getValues("customDomain") ?? "").trim();
+    if (!domain) {
+      toast.error("Enter a domain first.");
+      return;
+    }
+    try {
+      setIsStartingDomain(true);
+      setDomainError(null);
+      setDomainMessage(null);
+      const result = (await startCustomDomainSetup({
+        organizationId,
+        domain,
+      })) as {
+        customDomain: string;
+        status: "unconfigured" | "pending" | "verified" | "error";
+        records: { type: string; name: string; value: string }[];
+      };
+      form.setValue("customDomain", result.customDomain, { shouldDirty: true });
+      setDomainStatusOverride(result.status);
+      setDomainRecordsOverride(result.records);
+      setDomainMessage(
+        result.status === "verified"
+          ? "Domain verified."
+          : "Domain added. Update DNS records, then click Verify.",
+      );
+      toast.success("Domain setup started");
+    } catch (error) {
+      console.error(error);
+      setDomainError(
+        error instanceof Error ? error.message : "Failed to start domain setup",
+      );
+    } finally {
+      setIsStartingDomain(false);
+    }
+  };
+
+  const handleVerifyDomain = async () => {
+    if (!organizationId) return;
+    try {
+      setIsVerifyingDomain(true);
+      setDomainError(null);
+      setDomainMessage(null);
+      const result = (await verifyCustomDomain({
+        organizationId,
+      })) as {
+        customDomain: string;
+        status: "unconfigured" | "pending" | "verified" | "error";
+        records: { type: string; name: string; value: string }[];
+      };
+      form.setValue("customDomain", result.customDomain, { shouldDirty: true });
+      setDomainStatusOverride(result.status);
+      setDomainRecordsOverride(result.records);
+      setDomainMessage(
+        result.status === "verified"
+          ? "Domain verified."
+          : "Not verified yet. DNS may still be propagating.",
+      );
+      toast.success("Verification check complete");
+    } catch (error) {
+      console.error(error);
+      setDomainError(
+        error instanceof Error ? error.message : "Verification failed",
+      );
+    } finally {
+      setIsVerifyingDomain(false);
+    }
+  };
+
   // Check if current user is admin
   const isAdmin = currentUser?.role === "admin";
 
@@ -115,6 +216,7 @@ export function OrganizationForm({
       planId: "",
       isPublic: false,
       allowSelfRegistration: false,
+      customDomain: "",
     },
   });
 
@@ -127,6 +229,9 @@ export function OrganizationForm({
         planId: existingOrganization.planId || "",
         isPublic: existingOrganization.isPublic,
         allowSelfRegistration: existingOrganization.allowSelfRegistration,
+        customDomain:
+          (existingOrganization.customDomain as unknown as string | undefined) ??
+          "",
       });
       setIsFormInitialized(true);
     }
@@ -371,6 +476,173 @@ export function OrganizationForm({
                   </FormItem>
                 )}
               />
+
+              <div className="rounded-lg border p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="flex items-center gap-2 text-base font-medium">
+                      <Globe className="h-4 w-4" />
+                      Custom domain
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                      Connect a domain to this organization. After verification,
+                      both the custom domain and the launchthat subdomain will
+                      work.
+                    </p>
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    Status:{" "}
+                    <span className="font-mono">
+                      {domainStatusOverride ??
+                        ((existingOrganization as any)?.customDomainStatus ??
+                          "unconfigured")}
+                    </span>
+                  </div>
+                </div>
+
+                {!organizationId ? (
+                  <p className="text-muted-foreground mt-3 text-sm">
+                    Save the organization first to configure a domain.
+                  </p>
+                ) : (
+                  <div className="mt-4 space-y-3">
+                    <FormField
+                      control={form.control}
+                      name="customDomain"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Domain</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="dev.wsatraining.com"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Use the domain without protocol. Apex domains are
+                            supported if your DNS provider supports ALIAS/ANAME.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        onClick={() => void handleStartDomainSetup()}
+                        disabled={isStartingDomain || isVerifyingDomain}
+                      >
+                        {isStartingDomain ? "Starting…" : "Start setup"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => void handleVerifyDomain()}
+                        disabled={isStartingDomain || isVerifyingDomain}
+                      >
+                        {isVerifyingDomain ? "Verifying…" : "Verify"}
+                      </Button>
+                    </div>
+
+                    {domainMessage ? (
+                      <p className="text-sm text-emerald-600">{domainMessage}</p>
+                    ) : null}
+                    {domainError ? (
+                      <p className="text-destructive text-sm">{domainError}</p>
+                    ) : null}
+
+                    <div className="mt-2 space-y-2">
+                      <p className="text-sm font-medium">DNS records</p>
+                      {(
+                        domainRecordsOverride ??
+                        ((existingOrganization as any)?.customDomainRecords as
+                          | { type: string; name: string; value: string }[]
+                          | undefined) ??
+                        []
+                      ).length === 0 ? (
+                        <p className="text-muted-foreground text-sm">
+                          Start setup to generate DNS records.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {(domainRecordsOverride ??
+                            ((existingOrganization as any)
+                              ?.customDomainRecords as
+                              | { type: string; name: string; value: string }[]
+                              | undefined) ??
+                            []).map((rec) => {
+                            const line = `${rec.type} ${rec.name} ${rec.value}`;
+                            return (
+                              <div
+                                key={line}
+                                className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-card px-3 py-2"
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-xs font-mono">{line}</p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label="Copy DNS record"
+                                  onClick={() => void handleCopy(line)}
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      <p className="text-sm font-medium">Access URLs</p>
+                      {existingOrganization?.slug ? (
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-card px-3 py-2">
+                          <p className="text-xs font-mono">
+                            https://{existingOrganization.slug}.{rootDomain}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Copy launchthat URL"
+                            onClick={() =>
+                              void handleCopy(
+                                `https://${existingOrganization.slug}.${rootDomain}`,
+                              )
+                            }
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : null}
+                      {form.getValues("customDomain")?.trim() ? (
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-card px-3 py-2">
+                          <p className="text-xs font-mono">
+                            https://{form.getValues("customDomain")?.trim()}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Copy custom domain URL"
+                            onClick={() =>
+                              void handleCopy(
+                                `https://${form.getValues("customDomain")?.trim()}`,
+                              )
+                            }
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}

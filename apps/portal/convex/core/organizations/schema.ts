@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Plans table - defines subscription tiers and organization limits
@@ -34,6 +34,26 @@ export const organizationsTable = defineTable({
   logo: v.optional(v.string()), // Logo URL or storage ID
   primaryColor: v.optional(v.string()), // Hex color for branding
   customDomain: v.optional(v.string()), // Custom domain if configured
+  customDomainStatus: v.optional(
+    v.union(
+      v.literal("unconfigured"),
+      v.literal("pending"),
+      v.literal("verified"),
+      v.literal("error"),
+    ),
+  ),
+  customDomainRecords: v.optional(
+    v.array(
+      v.object({
+        type: v.string(),
+        name: v.string(),
+        value: v.string(),
+      }),
+    ),
+  ),
+  customDomainVerifiedAt: v.optional(v.number()),
+  customDomainLastError: v.optional(v.string()),
+  customDomainUpdatedAt: v.optional(v.number()),
 
   // Settings
   isPublic: v.boolean(), // Whether organization's content is publicly accessible
@@ -58,6 +78,7 @@ export const organizationsTable = defineTable({
 })
   .index("by_owner", ["ownerId"])
   .index("by_slug", ["slug"])
+  .index("by_customDomain", ["customDomain"])
   .index("by_plan", ["planId"])
   .index("by_subscription_status", ["subscriptionStatus"])
   .index("by_public", ["isPublic"])

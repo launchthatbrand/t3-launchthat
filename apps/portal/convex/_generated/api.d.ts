@@ -29,6 +29,8 @@ import type * as core_media_queries from "../core/media/queries.js";
 import type * as core_menus_mutations from "../core/menus/mutations.js";
 import type * as core_menus_queries from "../core/menus/queries.js";
 import type * as core_options from "../core/options.js";
+import type * as core_organizations_domains from "../core/organizations/domains.js";
+import type * as core_organizations_domainsInternal from "../core/organizations/domainsInternal.js";
 import type * as core_organizations_helpers from "../core/organizations/helpers.js";
 import type * as core_organizations_mutations from "../core/organizations/mutations.js";
 import type * as core_organizations_queries from "../core/organizations/queries.js";
@@ -235,6 +237,8 @@ declare const fullApi: ApiFromModules<{
   "core/menus/mutations": typeof core_menus_mutations;
   "core/menus/queries": typeof core_menus_queries;
   "core/options": typeof core_options;
+  "core/organizations/domains": typeof core_organizations_domains;
+  "core/organizations/domainsInternal": typeof core_organizations_domainsInternal;
   "core/organizations/helpers": typeof core_organizations_helpers;
   "core/organizations/mutations": typeof core_organizations_mutations;
   "core/organizations/queries": typeof core_organizations_queries;
