@@ -7,9 +7,9 @@ import type { FrontendFilterContext } from "launchthat-plugin-core/frontendFilte
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Fragment } from "react";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { api } from "@/convex/_generated/api";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
@@ -36,13 +36,13 @@ import {
   getPluginFrontendSingleSlotsForSlug,
   wrapWithPluginProviders,
 } from "~/lib/plugins/helpers";
+import { ATTACHMENTS_META_KEY } from "~/lib/posts/metaKeys";
 import {
   getCanonicalPostPath,
   getCanonicalPostSegments,
 } from "~/lib/postTypes/routing";
-import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
-import { ATTACHMENTS_META_KEY } from "~/lib/posts/metaKeys";
 import { SEO_META_KEYS, SEO_OPTION_KEYS } from "~/lib/seo/constants";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { cn } from "~/lib/utils";
 import { PortalConvexProvider } from "~/providers/ConvexClientProvider";
 import { PuckContentRenderer } from "../../../../components/puckeditor/PuckContentRenderer";
@@ -105,6 +105,54 @@ function toAbsoluteUrl(origin: string, input: string): string {
   return `${origin}/${value}`;
 }
 
+function stripTrailingSlash(url: string): string {
+  if (url.length <= 1) return url;
+  return url.endsWith("/") ? url.slice(0, -1) : url;
+}
+
+function deriveDescriptionFromContent(content: unknown): string {
+  if (typeof content !== "string") return "";
+  const raw = content.trim();
+  if (!raw) return "";
+
+  // Basic HTML strip (works for editor HTML).
+  if (raw.includes("<")) {
+    return raw
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  // Best-effort JSON text extraction (covers Lexical state).
+  if (raw.startsWith("{") || raw.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      const parts: string[] = [];
+      const walk = (node: unknown) => {
+        if (!node) return;
+        if (typeof node === "string") return;
+        if (Array.isArray(node)) {
+          node.forEach(walk);
+          return;
+        }
+        if (typeof node === "object") {
+          const obj = node as Record<string, unknown>;
+          if (typeof obj.text === "string") {
+            parts.push(obj.text);
+          }
+          Object.values(obj).forEach(walk);
+        }
+      };
+      walk(parsed);
+      return parts.join(" ").replace(/\s+/g, " ").trim();
+    } catch {
+      return "";
+    }
+  }
+
+  return raw.replace(/\s+/g, " ").trim();
+}
+
 type AttachmentMetaEntry = {
   mediaItemId?: string;
   url?: string;
@@ -136,8 +184,14 @@ function extractFirstImageAttachmentUrl(args: {
       if (typeof entry.url !== "string" || !entry.url.trim()) continue;
       if (!isLikelyImageAttachment(entry)) continue;
       return {
-        url: toAbsoluteUrl(args.origin, entry.url),
-        alt: typeof entry.alt === "string" && entry.alt.trim() ? entry.alt : undefined,
+        url:
+          typeof entry.mediaItemId === "string" && entry.mediaItemId.trim()
+            ? `${args.origin}/api/media/${entry.mediaItemId.trim()}`
+            : toAbsoluteUrl(args.origin, entry.url),
+        alt:
+          typeof entry.alt === "string" && entry.alt.trim()
+            ? entry.alt
+            : undefined,
       };
     }
   } catch {
@@ -219,9 +273,13 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
     typeof general?.separator === "string" ? general.separator : undefined;
 
   const enableSocialMeta =
-    typeof social?.enableSocialMeta === "boolean" ? social.enableSocialMeta : true;
+    typeof social?.enableSocialMeta === "boolean"
+      ? social.enableSocialMeta
+      : true;
   const twitterUsername =
-    typeof social?.twitterUsername === "string" ? social.twitterUsername : undefined;
+    typeof social?.twitterUsername === "string"
+      ? social.twitterUsername
+      : undefined;
   const twitterCardType =
     typeof social?.twitterCardType === "string"
       ? (social.twitterCardType as
@@ -321,9 +379,11 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const seoCanonical =
     metaValueToString(postMetaMap.get(SEO_META_KEYS.canonical))?.trim() ?? "";
   const seoNoindex = metaValueToBoolean(postMetaMap.get(SEO_META_KEYS.noindex));
-  const seoNofollow = metaValueToBoolean(postMetaMap.get(SEO_META_KEYS.nofollow));
+  const seoNofollow = metaValueToBoolean(
+    postMetaMap.get(SEO_META_KEYS.nofollow),
+  );
 
-  const canonicalPath = getCanonicalPostPath(post, postType, true) || "/";
+  const canonicalPath = getCanonicalPostPath(post, postType, false) || "/";
   const canonicalUrl = resolveCanonicalUrl({
     origin,
     canonicalPath,
@@ -342,7 +402,12 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
       titleFormat,
       separator,
     });
-  const description = seoDescription || post.excerpt || siteDescription || "";
+  const description =
+    seoDescription ||
+    post.excerpt ||
+    siteDescription ||
+    deriveDescriptionFromContent(post.content) ||
+    "";
   let firstAttachmentImage = extractFirstImageAttachmentUrl({
     origin,
     postMetaMap,
@@ -363,21 +428,22 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
               typeof entry.mediaItemId === "string" ? entry.mediaItemId : null;
             if (!mediaItemId) continue;
 
-            const media = await fetchQuery(api.core.media.queries.getMediaItem, {
-              id: mediaItemId as unknown as Id<"mediaItems">,
-            });
+            const media = await fetchQuery(
+              api.core.media.queries.getMediaItem,
+              {
+                id: mediaItemId as unknown as Id<"mediaItems">,
+              },
+            );
 
             const mimeType =
-              media && typeof (media as { mimeType?: unknown }).mimeType === "string"
+              media &&
+              typeof (media as { mimeType?: unknown }).mimeType === "string"
                 ? ((media as { mimeType: string }).mimeType ?? "")
                 : "";
-            const urlFromMedia =
-              media && typeof (media as { url?: unknown }).url === "string"
-                ? ((media as { url: string }).url ?? "")
-                : "";
-
-            if (mimeType.startsWith("image/") && urlFromMedia) {
-              firstAttachmentImage = { url: urlFromMedia };
+            if (mimeType.startsWith("image/")) {
+              firstAttachmentImage = {
+                url: `${origin}/api/media/${mediaItemId}`,
+              };
               break;
             }
           }
@@ -396,7 +462,9 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
     ? [
         {
           url: ogImageUrl,
-          ...(firstAttachmentImage?.alt ? { alt: firstAttachmentImage.alt } : {}),
+          ...(firstAttachmentImage?.alt
+            ? { alt: firstAttachmentImage.alt }
+            : {}),
         },
       ]
     : undefined;
@@ -405,7 +473,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
     metadataBase: new URL(origin),
     title,
     description,
-    alternates: { canonical: canonicalUrl },
+    alternates: { canonical: stripTrailingSlash(canonicalUrl) },
     robots: {
       index: !effectiveNoindex,
       follow: !effectiveNofollow,
@@ -413,7 +481,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
     ...(enableSocialMeta
       ? {
           openGraph: {
-            url: canonicalUrl,
+            url: stripTrailingSlash(canonicalUrl),
             title,
             description,
             type: "website" as const,

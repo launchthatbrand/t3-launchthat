@@ -404,8 +404,8 @@ export function AdminSinglePostView({
     queriedTab === seoTabValue ||
     pluginTabs.some((tab) => tab.slug === queriedTab) ||
     queriedTab === "edit"
-      ? queriedTab
-      : defaultTab;
+    ? queriedTab
+    : defaultTab;
   const [activeTab, setActiveTab] = useState(normalizedTab);
   const derivedEditorState = useMemo<SerializedEditorState | undefined>(() => {
     console.log("[AdminSinglePostView] deriving editor state", {
@@ -2230,9 +2230,9 @@ export function AdminSinglePostView({
     };
     const layoutTabs = [
       ...pluginTabs.map((tab) => ({
-        value: tab.slug,
-        label: tab.label,
-        onClick: () => handleTabChange(tab.slug),
+      value: tab.slug,
+      label: tab.label,
+      onClick: () => handleTabChange(tab.slug),
       })),
       {
         value: seoTabValue,

@@ -73,11 +73,11 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(origin),
     ...(enableSocialMeta
       ? {
-          openGraph: {
+  openGraph: {
             title: siteTitle,
             description: siteDescription,
-          },
-          twitter: {
+  },
+  twitter: {
             card: twitterCardType,
             ...(twitterUsername
               ? { site: twitterUsername, creator: twitterUsername }
@@ -85,8 +85,8 @@ export async function generateMetadata(): Promise<Metadata> {
           },
         }
       : {}),
-    icons: [{ rel: "icon", url: "/favicon.ico" }],
-  };
+  icons: [{ rel: "icon", url: "/favicon.ico" }],
+};
 }
 
 export const viewport: Viewport = {
