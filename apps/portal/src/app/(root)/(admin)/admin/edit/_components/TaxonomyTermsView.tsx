@@ -24,6 +24,7 @@ import {
 } from "@acme/ui/dialog";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
+import { MultiSelect } from "@acme/ui/multi-select";
 import {
   Select,
   SelectContent,
@@ -41,6 +42,7 @@ import {
   AdminLayoutMain,
   AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
+import { useTenant } from "~/context/TenantContext";
 import {
   useCreateTaxonomyTerm,
   useDeleteTaxonomyTerm,
@@ -61,6 +63,7 @@ const EMPTY_TERM_STATE = {
   slug: "",
   description: "",
   parentId: "",
+  postTypeSlugs: [] as string[],
 };
 
 export interface TaxonomyTermsViewProps {
@@ -76,8 +79,16 @@ export function TaxonomyTermsView({
   postTypes,
   onPostTypeChange,
 }: TaxonomyTermsViewProps) {
-  const taxonomy = useTaxonomyBySlug(taxonomySlug);
-  const taxonomyTermsData = useTaxonomyTerms(taxonomySlug);
+  const tenant = useTenant();
+  const organizationId =
+    (tenant?._id as Id<"organizations"> | undefined) ?? undefined;
+
+  const taxonomy = useTaxonomyBySlug(taxonomySlug, organizationId);
+  const taxonomyTermsData = useTaxonomyTerms(
+    taxonomySlug,
+    organizationId,
+    postTypeSlug,
+  ) as TaxonomyTermRow[] | undefined;
   const terms: TaxonomyTermRow[] = useMemo(
     () => taxonomyTermsData ?? [],
     [taxonomyTermsData],
@@ -123,51 +134,49 @@ export function TaxonomyTermsView({
     setTermDialogOpen(false);
   };
 
+  const allPostTypeSlugs = useMemo(
+    () => postTypes.map((type) => type.slug),
+    [postTypes],
+  );
+
   const openCreateTerm = () => {
     setEditingTerm(null);
-    setTermForm(EMPTY_TERM_STATE);
+    setTermForm({ ...EMPTY_TERM_STATE, postTypeSlugs: allPostTypeSlugs });
     setTermDialogOpen(true);
   };
 
   const openEditTerm = (term: TaxonomyTermRow) => {
+    const termPostTypes: string[] = Array.isArray(term.postTypeSlugs)
+      ? term.postTypeSlugs.filter(
+          (value): value is string => typeof value === "string",
+        )
+      : [];
+    const scopedPostTypes =
+      termPostTypes.length > 0 ? termPostTypes : allPostTypeSlugs;
     setEditingTerm(term);
     setTermForm({
       name: term.name,
       slug: term.slug,
       description: term.description ?? "",
       parentId: term.parentId ?? "",
+      postTypeSlugs: scopedPostTypes,
     });
     setTermDialogOpen(true);
   };
 
-  const castTermId = (
-    value: Id<"categories"> | Id<"tags"> | Id<"taxonomyTerms">,
-  ) => {
-    if (!taxonomyDoc) return value;
-    if (taxonomyDoc.termCollection === "categories") {
-      return value as Id<"categories">;
-    }
-    if (taxonomyDoc.termCollection === "tags") {
-      return value as Id<"tags">;
-    }
-    return value as Id<"taxonomyTerms">;
-  };
-
   const castParentId = (value: string) => {
-    if (!value) return undefined;
+    if (!value || value === "__none__") return undefined;
     if (!taxonomyDoc?.hierarchical) return undefined;
-    if (taxonomyDoc.termCollection === "categories") {
-      return value as Id<"categories">;
-    }
-    if (taxonomyDoc.termCollection === "custom") {
-      return value as Id<"taxonomyTerms">;
-    }
-    return undefined;
+    return value as Id<"taxonomyTerms">;
   };
 
   const handleTermSave = async () => {
     if (!taxonomyDoc) {
       toast.error("Taxonomy not found");
+      return;
+    }
+    if (!organizationId) {
+      toast.error("Organization not found");
       return;
     }
     if (!termForm.name) {
@@ -178,6 +187,7 @@ export function TaxonomyTermsView({
     try {
       setTermSaving(true);
       const basePayload = {
+        organizationId,
         taxonomySlug,
         name: termForm.name,
         slug: termForm.slug || undefined,
@@ -188,15 +198,22 @@ export function TaxonomyTermsView({
           ? castParentId(termForm.parentId)
           : undefined;
 
+      const selectedPostTypeSlugs =
+        termForm.postTypeSlugs.length === allPostTypeSlugs.length
+          ? undefined
+          : termForm.postTypeSlugs;
+
       if (editingTerm) {
         await updateTerm({
-          ...basePayload,
-          termId: castTermId(editingTerm._id),
+          organizationId,
+          taxonomySlug,
+          termId: editingTerm._id as Id<"taxonomyTerms">,
           data: {
             name: basePayload.name,
             slug: basePayload.slug,
             description: basePayload.description,
             parentId,
+            postTypeSlugs: selectedPostTypeSlugs,
           },
         });
         toast.success(`Updated ${editingTerm.name}`);
@@ -204,6 +221,7 @@ export function TaxonomyTermsView({
         await createTerm({
           ...basePayload,
           parentId,
+          postTypeSlugs: selectedPostTypeSlugs,
         });
         toast.success(`Created ${termForm.name}`);
       }
@@ -219,6 +237,7 @@ export function TaxonomyTermsView({
 
   const handleDeleteTerm = async (term: TaxonomyTermRow) => {
     if (!taxonomyDoc) return;
+    if (!organizationId) return;
     const confirmed = window.confirm(
       `Delete ${term.name}? This action cannot be undone.`,
     );
@@ -226,8 +245,9 @@ export function TaxonomyTermsView({
 
     try {
       await deleteTerm({
+        organizationId,
         taxonomySlug,
-        termId: castTermId(term._id),
+        termId: term._id as Id<"taxonomyTerms">,
       });
       toast.success(`Deleted ${term.name}`);
     } catch (error) {
@@ -253,7 +273,7 @@ export function TaxonomyTermsView({
             <div className="container space-y-6 py-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <Select value={postTypeSlug} onValueChange={onPostTypeChange}>
-                  <SelectTrigger className="w-[240px]">
+                  <SelectTrigger className="w-60">
                     <SelectValue placeholder="Select post type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -426,6 +446,29 @@ export function TaxonomyTermsView({
                 }
               />
             </div>
+            <div className="grid gap-2">
+              <Label>Post types</Label>
+              <MultiSelect
+                key={`${editingTerm?._id ?? "new"}-${termDialogOpen ? "open" : "closed"}`}
+                options={postTypes.map((type) => ({
+                  label: type.name,
+                  value: type.slug,
+                }))}
+                defaultValue={termForm.postTypeSlugs}
+                onValueChange={(value) =>
+                  setTermForm((prev) => ({
+                    ...prev,
+                    postTypeSlugs: value,
+                  }))
+                }
+                placeholder="All post types"
+                maxCount={3}
+              />
+              <p className="text-muted-foreground text-xs">
+                Defaults to all post types. Unselect to scope where this term is
+                available.
+              </p>
+            </div>
             {taxonomyDoc?.hierarchical ? (
               <div className="grid gap-2">
                 <Label htmlFor="term-parent">Parent term</Label>
@@ -439,7 +482,7 @@ export function TaxonomyTermsView({
                     <SelectValue placeholder="None" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {parentOptions.map((term) => (
                       <SelectItem key={term._id} value={term._id}>
                         {term.name}

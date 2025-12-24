@@ -22,16 +22,8 @@ const POST_TYPE_OPTIONS = [
 ];
 
 const CategoriesPage = () => {
-  const categories = useQuery(api.core.categories.queries.getCategories, {});
-  const createCategory = useMutation(
-    api.core.categories.mutations.createCategory,
-  );
-  const deleteCategory = useMutation(
-    api.core.categories.mutations.deleteCategory,
-  ); // You need to implement this mutation in Convex
-  const updateCategory = useMutation(
-    api.core.categories.mutations.updateCategory,
-  ); // You need to implement this mutation in Convex
+  // Legacy page: categories are now managed under Taxonomies -> Terms.
+  const categories: Doc<"categories">[] | null = null;
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -64,13 +56,16 @@ const CategoriesPage = () => {
   };
 
   const handleDelete = async (item: Doc<"categories">) => {
+    void item;
     if (
       !window.confirm(`Delete category '${item.name}'? This cannot be undone.`)
     )
       return;
     setDeleteLoadingId(item._id);
     try {
-      await deleteCategory({ id: item._id });
+      throw new Error(
+        "Categories are now managed under Taxonomies -> Terms (category).",
+      );
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to delete category");
     } finally {
@@ -98,20 +93,10 @@ const CategoriesPage = () => {
     setLoading(true);
     setError(null);
     try {
-      if (editId) {
-        await updateCategory({
-          id: editId,
-          name: form.name,
-          description: form.description || undefined,
-          postTypes: form.postTypes,
-        });
-      } else {
-        await createCategory({
-          name: form.name,
-          description: form.description || undefined,
-          postTypes: form.postTypes,
-        });
-      }
+      void editId;
+      throw new Error(
+        "Categories are now managed under Taxonomies -> Terms (category).",
+      );
       setOpen(false);
       toast.success("Category saved successfully");
     } catch (err: unknown) {
@@ -178,6 +163,10 @@ const CategoriesPage = () => {
 
   return (
     <div className="container py-8">
+      <div className="mb-4 rounded-md border p-3 text-sm">
+        Categories are now managed under{" "}
+        <span className="font-medium">Settings → Taxonomies → Categories</span>.
+      </div>
       <EntityList
         data={categories ?? []}
         columns={columns}

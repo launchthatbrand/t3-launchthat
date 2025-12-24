@@ -30,6 +30,7 @@ import {
 } from "@/lib/blog";
 import { useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { toast } from "sonner";
 
 import type { MetaBoxLocation, RegisteredMetaBox } from "@acme/admin-runtime";
 import { collectRegisteredMetaBoxes } from "@acme/admin-runtime";
@@ -44,6 +45,7 @@ import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
+import { MultiSelect } from "@acme/ui/multi-select";
 import {
   Select,
   SelectContent,
@@ -54,6 +56,7 @@ import {
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 
+import type { TaxonomyTerm } from "../../settings/taxonomies/_api/taxonomies";
 import type { ExternalMetaBoxRenderer } from "./metaBoxes/utils";
 import type {
   AdminMetaBoxContext,
@@ -112,6 +115,7 @@ import { getCanonicalPostPath } from "~/lib/postTypes/routing";
 import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
 import { useMetaBoxState } from "../_state/useMetaBoxState";
 import { usePostTypeFields } from "../../settings/post-types/_api/postTypes";
+import { useEnsureBuiltInTaxonomies } from "../../settings/taxonomies/_api/taxonomies";
 import { useAttachmentsMetaBox } from "./hooks/useAttachmentsMetaBox";
 import { ATTACHMENTS_META_KEY } from "./metaBoxes/constants";
 import {
@@ -348,6 +352,11 @@ export function AdminSinglePostView({
   const [slugValue, setSlugValue] = useState(post?.slug ?? "");
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? "");
   const [content, setContent] = useState(post?.content ?? "");
+  const [taxonomyTermIds, setTaxonomyTermIds] = useState<string[]>(
+    Array.isArray(post?.taxonomyTermIds)
+      ? (post.taxonomyTermIds as unknown as string[])
+      : [],
+  );
   const [postStatus, setPostStatus] = useState<AdminPostStatus>(
     (post?.status as AdminPostStatus) ?? (isNewRecord ? "published" : "draft"),
   );
@@ -359,6 +368,9 @@ export function AdminSinglePostView({
   );
   const updateSupportPost = useMutation(
     api.plugins.support.mutations.updateSupportPost,
+  );
+  const setObjectTerms = useMutation(
+    api.core.taxonomies.mutations.setObjectTerms,
   );
 
   const normalizedSlug = slug.toLowerCase();
@@ -380,6 +392,8 @@ export function AdminSinglePostView({
     (supportsPostsTable || isComponentStorage) &&
     (resolveSupportFlag(postType?.supports, "attachments") ||
       resolveSupportFlag(postType?.supports, "featuredImage"));
+  const supportsTaxonomy =
+    canSaveRecord && resolveSupportFlag(postType?.supports, "taxonomy");
   const commerceOrganizationId = organizationId
     ? (organizationId as unknown as string)
     : undefined;
@@ -404,8 +418,8 @@ export function AdminSinglePostView({
     queriedTab === seoTabValue ||
     pluginTabs.some((tab) => tab.slug === queriedTab) ||
     queriedTab === "edit"
-    ? queriedTab
-    : defaultTab;
+      ? queriedTab
+      : defaultTab;
   const [activeTab, setActiveTab] = useState(normalizedTab);
   const derivedEditorState = useMemo<SerializedEditorState | undefined>(() => {
     console.log("[AdminSinglePostView] deriving editor state", {
@@ -449,6 +463,14 @@ export function AdminSinglePostView({
   useEffect(() => {
     setActiveTab(normalizedTab);
   }, [normalizedTab]);
+
+  useEffect(() => {
+    setTaxonomyTermIds(
+      Array.isArray(post?.taxonomyTermIds)
+        ? (post.taxonomyTermIds as unknown as string[])
+        : [],
+    );
+  }, [post?._id, post?.taxonomyTermIds]);
 
   const { data: postTypeFields = [], isLoading: postTypeFieldsLoading } =
     usePostTypeFields(slug, true);
@@ -570,6 +592,99 @@ export function AdminSinglePostView({
       return acc;
     }, {});
   }, [postMeta]);
+
+  const ensureBuiltInTaxonomies = useEnsureBuiltInTaxonomies();
+  const categoryTaxonomy = useQuery(
+    api.core.taxonomies.queries.getTaxonomyBySlug,
+    supportsTaxonomy && organizationId
+      ? { slug: "category", organizationId }
+      : "skip",
+  );
+  const categoryTerms = useQuery(
+    api.core.taxonomies.queries.listTermsByTaxonomy,
+    supportsTaxonomy && organizationId
+      ? { taxonomySlug: "category", organizationId, postTypeSlug: slug }
+      : "skip",
+  ) as TaxonomyTerm[] | undefined;
+  const tagTaxonomy = useQuery(
+    api.core.taxonomies.queries.getTaxonomyBySlug,
+    supportsTaxonomy && organizationId
+      ? { slug: "post_tag", organizationId }
+      : "skip",
+  );
+  const tagTerms = useQuery(
+    api.core.taxonomies.queries.listTermsByTaxonomy,
+    supportsTaxonomy && organizationId
+      ? { taxonomySlug: "post_tag", organizationId, postTypeSlug: slug }
+      : "skip",
+  ) as TaxonomyTerm[] | undefined;
+
+  const componentAssignedTermIds = useQuery(
+    api.core.taxonomies.queries.listObjectTerms,
+    supportsTaxonomy && organizationId && post?._id
+      ? { organizationId, objectId: post._id as unknown as string }
+      : "skip",
+  ) as Id<"taxonomyTerms">[] | undefined;
+
+  useEffect(() => {
+    if (!supportsTaxonomy) return;
+    if (!componentAssignedTermIds) return;
+    setTaxonomyTermIds(componentAssignedTermIds as unknown as string[]);
+  }, [supportsTaxonomy, componentAssignedTermIds]);
+
+  useEffect(() => {
+    if (supportsTaxonomy && categoryTaxonomy === null) {
+      void ensureBuiltInTaxonomies();
+    }
+  }, [supportsTaxonomy, categoryTaxonomy, ensureBuiltInTaxonomies]);
+
+  const resolvedCategoryTerms = useMemo(() => {
+    const list = Array.isArray(categoryTerms) ? categoryTerms : [];
+    return [...list].sort((a, b) => a.name.localeCompare(b.name));
+  }, [categoryTerms]);
+
+  const resolvedTagTerms = useMemo(() => {
+    const list = Array.isArray(tagTerms) ? tagTerms : [];
+    return [...list].sort((a, b) => a.name.localeCompare(b.name));
+  }, [tagTerms]);
+
+  const isCategoryTaxonomyReady = useMemo(() => {
+    if (!supportsTaxonomy) return false;
+    if (categoryTaxonomy === undefined) return false;
+    if (categoryTaxonomy === null) return false;
+    if (!organizationId) return false;
+    return true;
+  }, [supportsTaxonomy, categoryTaxonomy, organizationId]);
+
+  const isTagTaxonomyReady = useMemo(() => {
+    if (!supportsTaxonomy) return false;
+    if (tagTaxonomy === undefined) return false;
+    if (tagTaxonomy === null) return false;
+    if (!organizationId) return false;
+    return true;
+  }, [supportsTaxonomy, tagTaxonomy, organizationId]);
+
+  const categoryTermIdSet = useMemo(
+    () =>
+      new Set(
+        resolvedCategoryTerms.map((term) => term._id as unknown as string),
+      ),
+    [resolvedCategoryTerms],
+  );
+  const tagTermIdSet = useMemo(
+    () =>
+      new Set(resolvedTagTerms.map((term) => term._id as unknown as string)),
+    [resolvedTagTerms],
+  );
+
+  const selectedCategoryTermIds = useMemo(
+    () => taxonomyTermIds.filter((id) => categoryTermIdSet.has(id)),
+    [taxonomyTermIds, categoryTermIdSet],
+  );
+  const selectedTagTermIds = useMemo(
+    () => taxonomyTermIds.filter((id) => tagTermIdSet.has(id)),
+    [taxonomyTermIds, tagTermIdSet],
+  );
 
   const [customFieldValues, setCustomFieldValues] = useState<
     Record<string, CustomFieldValue>
@@ -1332,42 +1447,43 @@ export function AdminSinglePostView({
             // Calling them as plain functions would execute any hooks inside the
             // renderer within this component's render cycle, violating the Rules
             // of Hooks and causing hook order mismatches.
-            const CustomRenderer = customRenderer as unknown as React.ComponentType<{
-              context: {
-                pluginId: string;
-                pluginName: string;
-                postTypeSlug: string;
-                organizationId?: string;
-                postId?: string;
-                isNewRecord: boolean;
-                post: Doc<"posts"> | null | undefined;
-                postType: Doc<"postTypes"> | null;
-              };
-              metaBox: {
-                id: string;
-                title: string;
-                description?: string;
-                location: "main" | "sidebar";
-              };
-              fields: {
-                key: string;
-                name: string;
-                description: string | null;
-                type: string;
-                required: boolean;
-                options: EditorCustomField["options"] | null;
-              }[];
-              getValue: (fieldKey: string) => unknown;
-              setValue: (fieldKey: string, value: unknown) => void;
-              renderField: (
-                fieldKey: string,
-                options?: { idSuffix?: string },
-              ) => ReactNode;
-              renderFieldControl: (
-                fieldKey: string,
-                options?: { idSuffix?: string },
-              ) => ReactNode;
-            }>;
+            const CustomRenderer =
+              customRenderer as unknown as React.ComponentType<{
+                context: {
+                  pluginId: string;
+                  pluginName: string;
+                  postTypeSlug: string;
+                  organizationId?: string;
+                  postId?: string;
+                  isNewRecord: boolean;
+                  post: Doc<"posts"> | null | undefined;
+                  postType: Doc<"postTypes"> | null;
+                };
+                metaBox: {
+                  id: string;
+                  title: string;
+                  description?: string;
+                  location: "main" | "sidebar";
+                };
+                fields: {
+                  key: string;
+                  name: string;
+                  description: string | null;
+                  type: string;
+                  required: boolean;
+                  options: EditorCustomField["options"] | null;
+                }[];
+                getValue: (fieldKey: string) => unknown;
+                setValue: (fieldKey: string, value: unknown) => void;
+                renderField: (
+                  fieldKey: string,
+                  options?: { idSuffix?: string },
+                ) => ReactNode;
+                renderFieldControl: (
+                  fieldKey: string,
+                  options?: { idSuffix?: string },
+                ) => ReactNode;
+              }>;
             const rendererProps = {
               context: {
                 pluginId: pluginMatch.plugin.id,
@@ -1396,8 +1512,10 @@ export function AdminSinglePostView({
               getValue: (fieldKey: string) => customFieldValues[fieldKey],
               setValue: (fieldKey: string, value: unknown) =>
                 handleCustomFieldChange(fieldKey, value as CustomFieldValue),
-              renderField: (fieldKey: string, options?: { idSuffix?: string }) =>
-                renderFieldByKey(fieldKey, options),
+              renderField: (
+                fieldKey: string,
+                options?: { idSuffix?: string },
+              ) => renderFieldByKey(fieldKey, options),
               renderFieldControl: (
                 fieldKey: string,
                 options?: { idSuffix?: string },
@@ -1808,7 +1926,16 @@ export function AdminSinglePostView({
           postTypeSlug: slug,
           ...(hasMetaEntries ? { meta: metaPayload } : {}),
         });
+        if (supportsTaxonomy && organizationId) {
+          await setObjectTerms({
+            organizationId,
+            objectId: newId as unknown as string,
+            postTypeSlug: slug,
+            termIds: taxonomyTermIds as unknown as Id<"taxonomyTerms">[],
+          });
+        }
         setSaveError(null);
+        toast.success("Saved");
         router.replace(`/admin/edit?post_type=${slug}&post_id=${newId}`);
         return;
       }
@@ -1829,12 +1956,24 @@ export function AdminSinglePostView({
           slug: normalizedSlugValueCore,
           ...(hasMetaEntries ? { meta: metaPayload } : {}),
         });
+        if (supportsTaxonomy && organizationId) {
+          await setObjectTerms({
+            organizationId,
+            objectId: post._id as unknown as string,
+            postTypeSlug: slug,
+            termIds: taxonomyTermIds as unknown as Id<"taxonomyTerms">[],
+          });
+        }
         setSaveError(null);
+        toast.success("Saved");
       }
     } catch (error) {
       setSaveError(
         error instanceof Error ? error.message : "Failed to save post.",
       );
+      toast.error("Save failed", {
+        description: error instanceof Error ? error.message : undefined,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -1860,6 +1999,8 @@ export function AdminSinglePostView({
     slug,
     slugValue,
     storageKind,
+    supportsTaxonomy,
+    taxonomyTermIds,
     title,
     updatePost,
     updateSupportPost,
@@ -1921,6 +2062,14 @@ export function AdminSinglePostView({
         postTypeSlug: slug,
         ...(hasMetaEntries ? { meta: metaPayload } : {}),
       });
+      if (supportsTaxonomy && organizationId) {
+        await setObjectTerms({
+          organizationId,
+          objectId: newId as unknown as string,
+          postTypeSlug: slug,
+          termIds: taxonomyTermIds as unknown as Id<"taxonomyTerms">[],
+        });
+      }
       router.replace(`/admin/edit?post_type=${slug}&post_id=${newId}`);
     } catch (error) {
       setSaveError(
@@ -1928,6 +2077,9 @@ export function AdminSinglePostView({
           ? error.message
           : "Failed to duplicate this entry.",
       );
+      toast.error("Duplicate failed", {
+        description: error instanceof Error ? error.message : undefined,
+      });
     } finally {
       setIsDuplicating(false);
     }
@@ -1945,6 +2097,8 @@ export function AdminSinglePostView({
     router,
     slug,
     slugValue,
+    supportsTaxonomy,
+    taxonomyTermIds,
     title,
   ]);
 
@@ -2163,10 +2317,91 @@ export function AdminSinglePostView({
         </Card>
       ) : null;
 
+    const categoriesMetaBox = supportsTaxonomy ? (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Categories</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Label className="text-xs">Categories</Label>
+          <MultiSelect
+            options={resolvedCategoryTerms.map((term) => ({
+              label: term.name,
+              value: term._id as unknown as string,
+            }))}
+            defaultValue={selectedCategoryTermIds}
+            onValueChange={(values: string[]) => {
+              setTaxonomyTermIds((prev) => {
+                const keep = prev.filter((id) => !categoryTermIdSet.has(id));
+                const next = [...keep, ...values];
+                if (organizationId && post?._id) {
+                  void setObjectTerms({
+                    organizationId,
+                    objectId: post._id as unknown as string,
+                    postTypeSlug: slug,
+                    termIds: next as unknown as Id<"taxonomyTerms">[],
+                  });
+                }
+                return next;
+              });
+            }}
+            placeholder="All categories"
+            maxCount={3}
+          />
+          {!isCategoryTaxonomyReady ? (
+            <p className="text-muted-foreground text-xs">Loading categories…</p>
+          ) : null}
+          <p className="text-muted-foreground text-xs">
+            Categories are scoped to the current organization.
+          </p>
+        </CardContent>
+      </Card>
+    ) : null;
+
+    const tagsMetaBox = supportsTaxonomy ? (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Tags</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Label className="text-xs">Tags</Label>
+          <MultiSelect
+            options={resolvedTagTerms.map((term) => ({
+              label: term.name,
+              value: term._id as unknown as string,
+            }))}
+            defaultValue={selectedTagTermIds}
+            onValueChange={(values: string[]) => {
+              setTaxonomyTermIds((prev) => {
+                const keep = prev.filter((id) => !tagTermIdSet.has(id));
+                const next = [...keep, ...values];
+                if (organizationId && post?._id) {
+                  void setObjectTerms({
+                    organizationId,
+                    objectId: post._id as unknown as string,
+                    postTypeSlug: slug,
+                    termIds: next as unknown as Id<"taxonomyTerms">[],
+                  });
+                }
+                return next;
+              });
+            }}
+            placeholder="All tags"
+            maxCount={3}
+          />
+          {!isTagTaxonomyReady ? (
+            <p className="text-muted-foreground text-xs">Loading tags…</p>
+          ) : null}
+        </CardContent>
+      </Card>
+    ) : null;
+
     return (
       <div className="space-y-4">
         {sidebarTopSlots}
         {pageTemplateSelect}
+        {categoriesMetaBox}
+        {tagsMetaBox}
         {renderMetaBoxList(resolvedMetaBoxes, "sidebar")}
         {sidebarBottomSlots}
       </div>
@@ -2230,9 +2465,9 @@ export function AdminSinglePostView({
     };
     const layoutTabs = [
       ...pluginTabs.map((tab) => ({
-      value: tab.slug,
-      label: tab.label,
-      onClick: () => handleTabChange(tab.slug),
+        value: tab.slug,
+        label: tab.label,
+        onClick: () => handleTabChange(tab.slug),
       })),
       {
         value: seoTabValue,
@@ -2279,7 +2514,11 @@ export function AdminSinglePostView({
 
   const baseTabs = [
     { value: "edit", label: "Edit", onClick: () => handleTabChange("edit") },
-    { value: seoTabValue, label: "SEO", onClick: () => handleTabChange(seoTabValue) },
+    {
+      value: seoTabValue,
+      label: "SEO",
+      onClick: () => handleTabChange(seoTabValue),
+    },
   ];
   const isSeoTab = activeTab === seoTabValue;
 

@@ -19,6 +19,7 @@ import type { PluginFrontendSingleSlotRegistration } from "~/lib/plugins/helpers
 import { EditorViewer } from "~/components/blocks/editor-x/viewer";
 import { PostCommentsSection } from "~/components/comments/PostCommentsSection";
 import { FrontendContentFilterHost } from "~/components/frontend/FrontendContentFilterHost";
+import { TaxonomyBadges } from "~/components/taxonomies/TaxonomyBadges";
 import { BackgroundRippleEffect } from "~/components/ui/background-ripple-effect";
 import {
   isLexicalSerializedStateString,
@@ -49,8 +50,11 @@ import { PuckContentRenderer } from "../../../../components/puckeditor/PuckConte
 
 type PluginMatch = ReturnType<typeof findPostTypeBySlug>;
 
+const PERMALINK_OPTION_KEY = "permalink_settings";
+
 interface PageProps {
   params: Promise<{ segments?: string[] }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
 function getRequestOriginFromHeaders(headerList: Headers): string | null {
@@ -115,15 +119,9 @@ function deriveDescriptionFromContent(content: unknown): string {
   const raw = content.trim();
   if (!raw) return "";
 
-  // Basic HTML strip (works for editor HTML).
-  if (raw.includes("<")) {
-    return raw
-      .replace(/<[^>]*>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
   // Lexical JSON -> plain text (avoid dumping JSON into meta tags).
+  // IMPORTANT: Lexical oEmbed nodes often contain HTML strings with "<iframe...>"
+  // so we must parse JSON BEFORE any HTML heuristics.
   if (raw.startsWith("{") || raw.startsWith("[")) {
     try {
       const parsed = JSON.parse(raw) as unknown;
@@ -174,8 +172,19 @@ function deriveDescriptionFromContent(content: unknown): string {
 
       return parts.join(" ").replace(/\s+/g, " ").trim();
     } catch {
+      // If it looks like JSON but isn't valid, do NOT return raw (avoid JSON-like blobs in meta).
       return "";
     }
+  }
+
+  // Basic HTML strip (works for editor HTML).
+  if (raw.includes("<")) {
+    const stripped = raw
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (stripped.length > 200) return `${stripped.slice(0, 197)}...`;
+    return stripped;
   }
 
   const normalized = raw.replace(/\s+/g, " ").trim();
@@ -560,6 +569,11 @@ const LMS_POST_TYPE_SLUGS = new Set([
 export default async function FrontendCatchAllPage(props: PageProps) {
   const resolvedParams = await props.params;
   const segments = normalizeSegments(resolvedParams?.segments ?? []);
+  const resolvedSearchParams = props.searchParams
+    ? await props.searchParams
+    : undefined;
+  const requestedPostTypeSlug =
+    parsePostTypeSlugFromSearchParams(resolvedSearchParams);
   const tenant = await getActiveTenantFromHeaders();
   const organizationId = getTenantOrganizationId(tenant);
 
@@ -610,6 +624,165 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       });
     }
     return <PostArchive postType={archiveContext.postType} posts={posts} />;
+  }
+
+  const taxonomyArchiveContext = await resolveTaxonomyArchiveContext(
+    segments,
+    organizationId,
+    requestedPostTypeSlug,
+  );
+  if (taxonomyArchiveContext === "not_found") {
+    notFound();
+  }
+  if (taxonomyArchiveContext) {
+    if (!organizationId) {
+      notFound();
+    }
+    const taxonomySlug = taxonomyArchiveContext.taxonomySlug;
+    const term = await fetchQuery(api.core.taxonomies.queries.getTermBySlug, {
+      taxonomySlug,
+      organizationId,
+      termSlug: taxonomyArchiveContext.termSlug,
+    });
+    if (!term) {
+      notFound();
+    }
+    const isLmsType = (slug: string) =>
+      [
+        "courses",
+        "lessons",
+        "topics",
+        "quizzes",
+        "certificates",
+        "badges",
+      ].includes(slug.toLowerCase());
+
+    // If ?post_type=... is provided, render only that post type (existing behavior).
+    if (taxonomyArchiveContext.postTypeSlug) {
+      const postTypeSlug = taxonomyArchiveContext.postTypeSlug;
+      const postType =
+        (await fetchQuery(api.core.postTypes.queries.getBySlug, {
+          slug: postTypeSlug,
+          ...(organizationId ? { organizationId } : {}),
+        })) ?? null;
+
+      const effectivePostType =
+        postType ??
+        ({
+          name: postTypeSlug,
+          slug: postTypeSlug,
+          description: null,
+        } as unknown as PostTypeDoc);
+
+      const objectIds = await fetchQuery(
+        api.core.taxonomies.queries.listObjectsByTerm,
+        {
+          organizationId,
+          termId: term._id,
+          postTypeSlug,
+        },
+      );
+      const objectIdSet = new Set(objectIds);
+
+      const unfiltered = isLmsType(postTypeSlug)
+        ? await fetchQuery(api.plugins.lms.posts.queries.getAllPosts, {
+            organizationId: organizationId ?? undefined,
+            filters: {
+              status: "published",
+              postTypeSlug,
+              limit: 200,
+            },
+          })
+        : await fetchQuery(api.core.posts.queries.getAllPosts, {
+            ...(organizationId ? { organizationId } : {}),
+            filters: {
+              status: "published",
+              postTypeSlug,
+              limit: 200,
+            },
+          });
+
+      const posts = (unfiltered ?? []).filter((post: any) =>
+        objectIdSet.has(post?._id as unknown as string),
+      );
+
+      return (
+        <TaxonomyArchive
+          label={taxonomyArchiveContext.taxonomyLabel}
+          termName={taxonomyArchiveContext.termName}
+          termSlug={taxonomyArchiveContext.termSlug}
+          description={taxonomyArchiveContext.description}
+          postType={effectivePostType}
+          posts={posts}
+        />
+      );
+    }
+
+    // No ?post_type=... => render all assigned posts grouped by post type.
+    const assignments = await fetchQuery(
+      api.core.taxonomies.queries.listAssignmentsByTerm,
+      { organizationId, termId: term._id },
+    );
+    const byPostType = new Map<string, Set<string>>();
+    for (const row of assignments) {
+      const slug = row.postTypeSlug.toLowerCase();
+      const set = byPostType.get(slug) ?? new Set<string>();
+      set.add(row.objectId);
+      byPostType.set(slug, set);
+    }
+
+    const sections: Array<{ postType: PostTypeDoc; posts: Doc<"posts">[] }> =
+      [];
+    for (const [postTypeSlug, objectIdSet] of byPostType.entries()) {
+      const postType =
+        (await fetchQuery(api.core.postTypes.queries.getBySlug, {
+          slug: postTypeSlug,
+          ...(organizationId ? { organizationId } : {}),
+        })) ?? null;
+
+      const effectivePostType =
+        postType ??
+        ({
+          name: postTypeSlug,
+          slug: postTypeSlug,
+          description: null,
+        } as unknown as PostTypeDoc);
+
+      const unfiltered = isLmsType(postTypeSlug)
+        ? await fetchQuery(api.plugins.lms.posts.queries.getAllPosts, {
+            organizationId: organizationId ?? undefined,
+            filters: {
+              status: "published",
+              postTypeSlug,
+              limit: 200,
+            },
+          })
+        : await fetchQuery(api.core.posts.queries.getAllPosts, {
+            ...(organizationId ? { organizationId } : {}),
+            filters: {
+              status: "published",
+              postTypeSlug,
+              limit: 200,
+            },
+          });
+
+      const posts = (unfiltered ?? []).filter((post: any) =>
+        objectIdSet.has(post?._id as unknown as string),
+      );
+      if (posts.length > 0) {
+        sections.push({ postType: effectivePostType, posts });
+      }
+    }
+
+    return (
+      <TaxonomyArchiveGrouped
+        label={taxonomyArchiveContext.taxonomyLabel}
+        termName={taxonomyArchiveContext.termName}
+        termSlug={taxonomyArchiveContext.termSlug}
+        description={taxonomyArchiveContext.description}
+        sections={sections}
+      />
+    );
   }
 
   const slug = deriveSlugFromSegments(segments);
@@ -881,6 +1054,11 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     [],
   );
 
+  const permalinkSettings = await loadPermalinkSettings(organizationId);
+  const categoryBase =
+    normalizeBaseSegment(permalinkSettings.categoryBase) ?? "categories";
+  const tagBase = normalizeBaseSegment(permalinkSettings.tagBase) ?? "tags";
+
   return wrapWithLmsProviderIfNeeded(
     <PostDetail
       post={post}
@@ -891,6 +1069,8 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       pluginSlots={pluginSlotNodes}
       contentFilterIds={contentFilterIds}
       postMetaObject={postMetaObject}
+      categoryBase={categoryBase}
+      tagBase={tagBase}
     />,
   );
 }
@@ -1124,6 +1304,8 @@ interface PostDetailProps {
   pluginSlots: FrontendSlotBuckets;
   contentFilterIds: string[];
   postMetaObject: Record<string, PostMetaValue>;
+  categoryBase: string;
+  tagBase: string;
 }
 
 function PostDetail({
@@ -1135,6 +1317,8 @@ function PostDetail({
   pluginSlots,
   contentFilterIds,
   postMetaObject,
+  categoryBase,
+  tagBase,
 }: PostDetailProps) {
   const contextLabel = resolveContextLabel(post, postType);
   const customFieldEntries = buildCustomFieldEntries({
@@ -1196,6 +1380,15 @@ function PostDetail({
                 <p className="text-muted-foreground text-lg">{post.excerpt}</p>
               )}
               <PostMetaSummary post={post} postType={postType} />
+              {post.organizationId ? (
+                <TaxonomyBadges
+                  organizationId={post.organizationId as unknown as string}
+                  objectId={post._id as unknown as string}
+                  postTypeSlug={post.postTypeSlug ?? undefined}
+                  categoryBase={categoryBase}
+                  tagBase={tagBase}
+                />
+              ) : null}
               {pluginSlots.header.length > 0 && (
                 <div className="space-y-3">{pluginSlots.header}</div>
               )}
@@ -1625,6 +1818,179 @@ async function resolveArchiveContext(
 
 const trimSlashes = (value: string) => value.replace(/^\/+|\/+$/g, "");
 
+interface PermalinkSettings {
+  categoryBase?: string;
+  tagBase?: string;
+}
+
+interface TaxonomyArchiveContext {
+  kind: "category" | "tag" | "custom";
+  taxonomySlug: string;
+  taxonomyLabel: string;
+  postTypeSlug?: string;
+  termSlug: string;
+  termName: string;
+  description?: string | null;
+}
+
+type TaxonomyArchiveResolution = TaxonomyArchiveContext | "not_found" | null;
+
+function normalizeBaseSegment(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimSlashes(trimmed).toLowerCase();
+}
+
+async function loadPermalinkSettings(
+  organizationId?: Doc<"organizations">["_id"],
+): Promise<PermalinkSettings> {
+  // Prefer tenant-specific settings, but fall back to the portal-root settings
+  // (the current admin UI saves without orgId today).
+  const orgOption = await fetchQuery(api.core.options.get, {
+    metaKey: PERMALINK_OPTION_KEY,
+    type: "site",
+    orgId: organizationId ?? undefined,
+  });
+  const fallbackOption =
+    orgOption ??
+    (await fetchQuery(api.core.options.get, {
+      metaKey: PERMALINK_OPTION_KEY,
+      type: "site",
+    }));
+
+  const metaValue = fallbackOption?.metaValue as unknown;
+  if (!metaValue || typeof metaValue !== "object") {
+    return {};
+  }
+  const record = metaValue as Record<string, unknown>;
+  return {
+    categoryBase:
+      typeof record.categoryBase === "string" ? record.categoryBase : undefined,
+    tagBase: typeof record.tagBase === "string" ? record.tagBase : undefined,
+  };
+}
+
+async function resolveTaxonomyArchiveContext(
+  segments: string[],
+  organizationId?: Doc<"organizations">["_id"],
+  requestedPostTypeSlug?: string,
+): Promise<TaxonomyArchiveResolution> {
+  if (segments.length < 2) return null;
+
+  const settings = await loadPermalinkSettings(organizationId);
+  const configuredCategoryBase = normalizeBaseSegment(settings.categoryBase);
+  const configuredTagBase = normalizeBaseSegment(settings.tagBase);
+
+  // Defaults align with the admin UI placeholders.
+  const categoryBases = new Set(
+    [configuredCategoryBase ?? "categories", "category"].filter(Boolean),
+  );
+  const tagBases = new Set(
+    [configuredTagBase ?? "tags", "tag"].filter(Boolean),
+  );
+
+  const base = segments[0]?.toLowerCase() ?? "";
+  const termSlug = (segments[segments.length - 1] ?? "").toLowerCase();
+  if (!termSlug) return null;
+
+  if (categoryBases.has(base)) {
+    if (!organizationId) {
+      return "not_found";
+    }
+    const term = await fetchQuery(api.core.taxonomies.queries.getTermBySlug, {
+      taxonomySlug: "category",
+      organizationId,
+      termSlug,
+    });
+    if (!term) {
+      // Base segment matched a taxonomy archive route, but the term doesn't exist.
+      // Treat this as a hard 404 rather than falling back to post slug resolution.
+      return "not_found";
+    }
+    return {
+      kind: "category",
+      taxonomySlug: "category",
+      taxonomyLabel: "Category",
+      postTypeSlug: requestedPostTypeSlug ?? undefined,
+      termSlug: term.slug,
+      termName: term.name,
+      description: term.description ?? null,
+    };
+  }
+
+  if (tagBases.has(base)) {
+    if (!organizationId) {
+      return "not_found";
+    }
+    const tag = await fetchQuery(api.core.taxonomies.queries.getTermBySlug, {
+      taxonomySlug: "post_tag",
+      organizationId,
+      termSlug,
+    });
+    if (!tag) {
+      // Base segment matched a taxonomy archive route, but the term doesn't exist.
+      // Treat this as a hard 404 rather than falling back to post slug resolution.
+      return "not_found";
+    }
+    return {
+      kind: "tag",
+      taxonomySlug: "post_tag",
+      taxonomyLabel: "Tag",
+      postTypeSlug: requestedPostTypeSlug ?? undefined,
+      termSlug: tag.slug,
+      termName: tag.name,
+      description: tag.description ?? null,
+    };
+  }
+
+  // Custom taxonomy archives: /{taxonomySlug}/{termSlug}
+  if (organizationId) {
+    const taxonomy = await fetchQuery(
+      api.core.taxonomies.queries.getTaxonomyBySlug,
+      {
+        slug: base,
+        organizationId,
+      },
+    );
+    if (taxonomy) {
+      const term = await fetchQuery(api.core.taxonomies.queries.getTermBySlug, {
+        taxonomySlug: base,
+        organizationId,
+        termSlug,
+      });
+      if (!term) {
+        return "not_found";
+      }
+      return {
+        kind: "custom",
+        taxonomySlug: base,
+        taxonomyLabel: taxonomy.name,
+        postTypeSlug: requestedPostTypeSlug ?? undefined,
+        termSlug: term.slug,
+        termName: term.name,
+        description: term.description ?? null,
+      };
+    }
+  }
+
+  return null;
+}
+
+function parsePostTypeSlugFromSearchParams(
+  searchParams?: Record<string, string | string[] | undefined>,
+): string | undefined {
+  if (!searchParams) return undefined;
+  const raw = searchParams.post_type;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  if (!trimmed) return undefined;
+  // Basic safety: keep it slug-like.
+  const normalized = trimmed.toLowerCase();
+  if (!/^[a-z0-9_-]+$/.test(normalized)) return undefined;
+  return normalized;
+}
+
 async function loadTemplateContent(
   templateType: "single" | "archive",
   postTypeSlug: string | null,
@@ -1724,6 +2090,164 @@ function PostArchive({
           })}
         </section>
       )}
+    </main>
+  );
+}
+
+function TaxonomyArchive({
+  label,
+  termName,
+  termSlug,
+  description,
+  postType,
+  posts,
+}: {
+  label: string;
+  termName: string;
+  termSlug: string;
+  description?: string | null;
+  postType: PostTypeDoc;
+  posts: Doc<"posts">[];
+}) {
+  const fallbackDescription =
+    description ??
+    `Browse published ${postType.name.toLowerCase()} filed under ${label.toLowerCase()} “${termName}”.`;
+
+  return (
+    <main className="container mx-auto max-w-5xl space-y-6 py-10">
+      <header className="space-y-2 text-center">
+        <p className="text-muted-foreground text-sm tracking-wide uppercase">
+          {label}
+        </p>
+        <h1 className="text-4xl font-bold">
+          {termName} <span className="text-muted-foreground">({termSlug})</span>
+        </h1>
+        <p className="text-muted-foreground">{fallbackDescription}</p>
+      </header>
+
+      {posts.length === 0 ? (
+        <div className="text-muted-foreground rounded-lg border p-10 text-center">
+          No {postType.name.toLowerCase()} have been published for this{" "}
+          {label.toLowerCase()} yet.
+        </div>
+      ) : (
+        <section className="grid gap-6 md:grid-cols-2">
+          {posts.map((post) => {
+            const url = getCanonicalPostPath(post, postType, true);
+            return (
+              <article
+                key={post._id}
+                className="bg-card rounded-lg border p-6 shadow-sm transition hover:shadow-md"
+              >
+                <Link href={url} className="space-y-3">
+                  <div className="space-y-1">
+                    <p className="text-muted-foreground text-sm font-medium">
+                      {postType.name}
+                    </p>
+                    <h2 className="text-foreground text-2xl font-semibold">
+                      {post.title || "Untitled"}
+                    </h2>
+                  </div>
+                  {post.excerpt ? (
+                    <p className="text-muted-foreground text-sm">
+                      {post.excerpt}
+                    </p>
+                  ) : null}
+                </Link>
+              </article>
+            );
+          })}
+        </section>
+      )}
+    </main>
+  );
+}
+
+function TaxonomyArchiveGrouped({
+  label,
+  termName,
+  termSlug,
+  description,
+  sections,
+}: {
+  label: string;
+  termName: string;
+  termSlug: string;
+  description?: string | null;
+  sections: Array<{ postType: PostTypeDoc; posts: Doc<"posts">[] }>;
+}) {
+  const fallbackDescription =
+    description ??
+    `Browse published entries filed under ${label.toLowerCase()} “${termName}”.`;
+
+  const sortedSections = [...sections].sort((a, b) =>
+    a.postType.name.localeCompare(b.postType.name),
+  );
+
+  return (
+    <main className="relative">
+      <BackgroundRippleEffect interactive={true} className="z-10 opacity-80" />
+      <div className="relative container mx-auto max-w-6xl space-y-10 overflow-hidden py-10">
+        <header className="space-y-3">
+          <p className="text-muted-foreground text-sm tracking-wide uppercase">
+            {label}
+          </p>
+          <h1 className="text-4xl font-bold">
+            {termName}{" "}
+            <span className="text-muted-foreground">({termSlug})</span>
+          </h1>
+          <p className="text-muted-foreground text-lg">{fallbackDescription}</p>
+        </header>
+
+        {sortedSections.length === 0 ? (
+          <div className="text-muted-foreground rounded-lg border p-10 text-center">
+            No posts have been published for this {label.toLowerCase()} yet.
+          </div>
+        ) : (
+          <div className="space-y-12">
+            {sortedSections.map((section) => (
+              <section key={section.postType.slug} className="space-y-4">
+                <div className="border-b pb-2">
+                  <h2 className="text-2xl font-semibold">
+                    {section.postType.name}
+                  </h2>
+                </div>
+                <div className="grid gap-6 md:grid-cols-2">
+                  {section.posts.map((post) => {
+                    const url = getCanonicalPostPath(
+                      post,
+                      section.postType,
+                      true,
+                    );
+                    return (
+                      <article
+                        key={post._id}
+                        className="bg-card rounded-lg border p-6 shadow-sm transition hover:shadow-md"
+                      >
+                        <Link href={url} className="space-y-3">
+                          <div className="space-y-1">
+                            <p className="text-muted-foreground text-sm font-medium">
+                              {section.postType.name}
+                            </p>
+                            <h3 className="text-foreground text-xl font-semibold">
+                              {post.title || "Untitled"}
+                            </h3>
+                          </div>
+                          {post.excerpt ? (
+                            <p className="text-muted-foreground text-sm">
+                              {post.excerpt}
+                            </p>
+                          ) : null}
+                        </Link>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
     </main>
   );
 }

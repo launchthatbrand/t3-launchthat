@@ -9,28 +9,37 @@ import { useMutation, useQuery } from "convex/react";
 
 export type TaxonomyDoc = Doc<"taxonomies">;
 export interface TaxonomyTerm {
+  _creationTime: number;
   taxonomyId: Id<"taxonomies">;
-  source: "categories" | "tags" | "custom";
-  _id: Id<"categories"> | Id<"tags"> | Id<"taxonomyTerms">;
+  organizationId: Id<"organizations">;
+  _id: Id<"taxonomyTerms">;
   name: string;
   slug: string;
   description?: string;
-  parentId?: Id<"categories"> | Id<"taxonomyTerms"> | null;
+  parentId?: Id<"taxonomyTerms">;
+  postTypeSlugs?: string[];
   metadata?: Record<string, string | number | boolean>;
+  createdAt: number;
+  updatedAt?: number;
 }
 
-export function useTaxonomies() {
-  const result = useQuery(api.core.taxonomies.queries.listTaxonomies, {});
+export function useTaxonomies(organizationId?: Id<"organizations">) {
+  const result = useQuery(api.core.taxonomies.queries.listTaxonomies, {
+    organizationId,
+  });
   return {
     data: result ?? [],
     isLoading: result === undefined,
   };
 }
 
-export function useTaxonomyBySlug(slug?: string) {
+export function useTaxonomyBySlug(
+  slug?: string,
+  organizationId?: Id<"organizations">,
+) {
   const result = useQuery(
     api.core.taxonomies.queries.getTaxonomyBySlug,
-    slug ? { slug } : "skip",
+    slug ? { slug, organizationId } : "skip",
   );
   if (result === undefined) {
     return undefined;
@@ -38,10 +47,16 @@ export function useTaxonomyBySlug(slug?: string) {
   return result ?? null;
 }
 
-export function useTaxonomyTerms(slug?: string) {
+export function useTaxonomyTerms(
+  taxonomySlug: string | undefined,
+  organizationId: Id<"organizations"> | undefined,
+  postTypeSlug?: string,
+) {
   const result = useQuery(
     api.core.taxonomies.queries.listTermsByTaxonomy,
-    slug ? { slug } : "skip",
+    taxonomySlug && organizationId
+      ? { taxonomySlug, organizationId, postTypeSlug }
+      : "skip",
   );
   if (result === undefined) {
     return undefined;

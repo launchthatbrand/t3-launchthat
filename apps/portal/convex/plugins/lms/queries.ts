@@ -364,6 +364,7 @@ export const getCourseStructureWithItems = query({
   returns: v.object({
     course: v.object({
       _id: v.string(),
+      organizationId: v.optional(v.id("organizations")),
       slug: v.optional(v.string()),
       title: v.string(),
       status: v.optional(v.string()),
@@ -465,6 +466,7 @@ export const getCourseStructureWithItems = query({
     return {
       course: {
         _id: course._id,
+        organizationId: organizationId ? (organizationId as Id<"organizations">) : undefined,
         slug: course.slug ?? undefined,
         title: course.title,
         status: course.status ?? undefined,

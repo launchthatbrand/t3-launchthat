@@ -85,6 +85,16 @@ const LMS_COMPONENT_TABLES = [
   "launchthat_lms:postsMeta",
 ];
 
+const LMS_POST_TYPE_SLUG_SET = new Set([
+  "courses",
+  "lessons",
+  "topics",
+  "quizzes",
+  "certificates",
+]);
+
+const FRONTEND_TAXONOMY_TERM_LINK_FILTER = "frontend.single.taxonomy.termLink";
+
 export const createLmsPluginDefinition = ({
   CourseBuilderTab,
   CourseMembersTab,
@@ -610,6 +620,57 @@ export const createLmsPluginDefinition = ({
       render: (props) => <LmsSettingsPage {...props} />,
     },
   ],
+  hooks: {
+    filters: [
+      {
+        hook: FRONTEND_TAXONOMY_TERM_LINK_FILTER,
+        acceptedArgs: 2,
+        callback: (href: unknown, context: unknown) => {
+          if (typeof href !== "string") {
+            return href;
+          }
+          if (!context || typeof context !== "object") {
+            return href;
+          }
+
+          const ctx = context as Record<string, unknown>;
+          const postTypeSlug =
+            typeof ctx.postTypeSlug === "string" ? ctx.postTypeSlug : undefined;
+          if (!postTypeSlug || !LMS_POST_TYPE_SLUG_SET.has(postTypeSlug)) {
+            return href;
+          }
+
+          const courseSlug =
+            typeof ctx.courseSlug === "string" ? ctx.courseSlug : undefined;
+          const taxonomySlug =
+            typeof ctx.taxonomySlug === "string" ? ctx.taxonomySlug : undefined;
+          const termSlug =
+            typeof ctx.termSlug === "string" ? ctx.termSlug : undefined;
+
+          if (!courseSlug || !taxonomySlug || !termSlug) {
+            return href;
+          }
+
+          const taxonomyParam =
+            taxonomySlug === "category"
+              ? "category"
+              : taxonomySlug === "post_tag"
+                ? "tag"
+                : taxonomySlug;
+          const key =
+            taxonomySlug === "category"
+              ? "category"
+              : taxonomySlug === "post_tag"
+                ? "tag"
+                : taxonomySlug;
+
+          return `/course/${encodeURIComponent(courseSlug)}?taxonomy=${encodeURIComponent(
+            taxonomyParam,
+          )}&${encodeURIComponent(key)}=${encodeURIComponent(termSlug)}`;
+        },
+      },
+    ],
+  },
 });
 
 export const getDefaultLmsComponents = () => ({

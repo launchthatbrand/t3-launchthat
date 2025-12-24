@@ -30,7 +30,7 @@ export const saveMedia = mutation({
     title: v.optional(v.string()),
     caption: v.optional(v.string()),
     alt: v.optional(v.string()),
-    categoryIds: v.optional(v.array(v.id("categories"))), // New global category IDs
+    taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
     categories: v.optional(v.array(v.string())), // Legacy field for backward compatibility
     status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
   },
@@ -41,7 +41,7 @@ export const saveMedia = mutation({
     title: v.optional(v.string()),
     caption: v.optional(v.string()),
     alt: v.optional(v.string()),
-    categoryIds: v.optional(v.array(v.id("categories"))),
+    taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
     categories: v.optional(v.array(v.string())),
     status: v.union(v.literal("draft"), v.literal("published")),
   }),
@@ -58,7 +58,7 @@ export const saveMedia = mutation({
       title: args.title,
       caption: args.caption,
       alt: args.alt,
-      categoryIds: args.categoryIds,
+      taxonomyTermIds: args.taxonomyTermIds,
       categories: args.categories,
       status: args.status ?? "draft",
     });
@@ -70,7 +70,7 @@ export const saveMedia = mutation({
       title: args.title,
       caption: args.caption,
       alt: args.alt,
-      categoryIds: args.categoryIds,
+      taxonomyTermIds: args.taxonomyTermIds,
       categories: args.categories,
       status: args.status ?? "draft",
     };

@@ -110,7 +110,7 @@ function OEmbedComponent({
     >
       <div
         ref={containerRef}
-        className="oembed-container w-full [&_iframe]:h-auto [&_iframe]:max-h-[70vh] [&_iframe]:rounded-md"
+        className="oembed-container w-full rounded-lg bg-black [&_iframe]:h-auto [&_iframe]:max-h-[70vh] [&_iframe]:rounded-md [&_iframe]:shadow-lg"
         aria-label={payload.title ?? payload.providerName ?? payload.url}
         dangerouslySetInnerHTML={{ __html: payload.html }}
       />

@@ -13,8 +13,10 @@ export const postsTable = defineTable({
   updatedAt: v.optional(v.number()),
   status: v.optional(v.string()), // "published", "draft", or "archived"
   slug: v.optional(v.string()), // URL slug for the post
-  tags: v.optional(v.array(v.string())), // Tags for categorization
-  category: v.optional(v.string()), // Category of the post
+  taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
+  // Legacy fields (will be removed after full migration)
+  tags: v.optional(v.array(v.string())),
+  category: v.optional(v.string()),
   excerpt: v.optional(v.string()), // Short description of the post
   featuredImageUrl: v.optional(v.string()), // URL to a featured image
   featured: v.optional(v.boolean()), // Whether the post is featured
@@ -28,7 +30,7 @@ export const postsTable = defineTable({
   .index("by_organization", ["organizationId"])
   .index("by_organization_slug", ["organizationId", "slug"])
   .index("by_organization_postTypeSlug", ["organizationId", "postTypeSlug"])
-  .index("by_category", ["category"])
+  .index("by_taxonomyTermIds", ["taxonomyTermIds"])
   .index("by_featured", ["featured"])
   .index("by_postTypeSlug", ["postTypeSlug"]);
 

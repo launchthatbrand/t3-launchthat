@@ -67,6 +67,8 @@ export const createPost = mutation({
       v.literal("draft"),
       v.literal("archived"),
     ),
+    taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
+    // Legacy fields (will be removed after full migration)
     category: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     featuredImage: v.optional(v.string()),
@@ -104,6 +106,7 @@ export const createPost = mutation({
       excerpt: args.excerpt,
       slug: uniqueSlug,
       status: args.status,
+      taxonomyTermIds: args.taxonomyTermIds,
       category: args.category,
       tags: args.tags,
       featuredImageUrl: args.featuredImage,
@@ -204,6 +207,8 @@ export const updatePost = mutation({
         v.literal("archived"),
       ),
     ),
+    taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
+    // Legacy fields (will be removed after full migration)
     category: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     featuredImage: v.optional(v.string()),

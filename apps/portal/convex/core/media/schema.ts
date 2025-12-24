@@ -15,9 +15,10 @@ export const mediaSchema = {
     caption: v.optional(v.string()),
     alt: v.optional(v.string()), // Alt text for accessibility
 
-    // Organization - using global categories now
-    categoryIds: v.optional(v.array(v.id("categories"))), // New global category references
-    categories: v.optional(v.array(v.string())), // Legacy field for backward compatibility
+    // Content categorization via taxonomy terms (org-scoped).
+    taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
+    // Legacy field for backward compatibility
+    categories: v.optional(v.array(v.string())),
     tags: v.optional(v.array(v.string())),
 
     // Status and workflow
@@ -41,10 +42,10 @@ export const mediaSchema = {
     .index("by_storage", ["storageId"])
     .index("by_status", ["status"])
     .index("by_category", ["categories"]) // legacy
-    .index("by_categoryIds", ["categoryIds"]) // new global categories
+    .index("by_taxonomyTermIds", ["taxonomyTermIds"])
     .index("by_uploaded_by", ["uploadedBy"])
     .index("by_uploaded_at", ["uploadedAt"])
-    .index("by_status_categoryIds", ["status", "categoryIds"]) // composite for combined filter
+    .index("by_status_taxonomyTermIds", ["status", "taxonomyTermIds"]) // composite for combined filter
     .searchIndex("search_title", {
       searchField: "title",
       filterFields: ["status"],

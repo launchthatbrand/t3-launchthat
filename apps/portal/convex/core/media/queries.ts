@@ -20,7 +20,7 @@ export const getMediaItem = query({
       title: v.optional(v.string()),
       caption: v.optional(v.string()),
       alt: v.optional(v.string()),
-      categoryIds: v.optional(v.array(v.id("categories"))), // Changed from categories array
+      taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
       categories: v.optional(v.array(v.string())), // Keep for backward compatibility
       status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
       mimeType: v.optional(v.string()),
@@ -63,7 +63,7 @@ export const getMediaItem = query({
       url,
       mimeType: mediaItem.mimeType ?? mimeType,
       // Map legacy categories field if it exists
-      categoryIds: mediaItem.categoryIds ?? [],
+      taxonomyTermIds: mediaItem.taxonomyTermIds ?? [],
     };
   },
 });
@@ -84,7 +84,7 @@ export const getMediaByStorageId = query({
       title: v.optional(v.string()),
       caption: v.optional(v.string()),
       alt: v.optional(v.string()),
-      categoryIds: v.optional(v.array(v.id("categories"))),
+      taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
       categories: v.optional(v.array(v.string())),
       status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
       mimeType: v.optional(v.string()),
@@ -117,7 +117,7 @@ export const getMediaByStorageId = query({
       ...mediaItem,
       url,
       mimeType: mediaItem.mimeType ?? mimeType,
-      categoryIds: mediaItem.categoryIds ?? [],
+      taxonomyTermIds: mediaItem.taxonomyTermIds ?? [],
     };
   },
 });
@@ -150,7 +150,7 @@ export const getMediaById = query({
       title: v.optional(v.string()),
       caption: v.optional(v.string()),
       alt: v.optional(v.string()),
-      categoryIds: v.optional(v.array(v.id("categories"))),
+      taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
       categories: v.optional(v.array(v.string())),
       status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
       mimeType: v.optional(v.string()),
@@ -189,7 +189,7 @@ export const getMediaById = query({
       ...mediaItem,
       url,
       mimeType: mediaItem.mimeType ?? mimeType,
-      categoryIds: mediaItem.categoryIds ?? [],
+      taxonomyTermIds: mediaItem.taxonomyTermIds ?? [],
     };
   },
 });
@@ -200,7 +200,7 @@ export const getMediaById = query({
 export const listMediaItemsWithUrl = query({
   args: {
     paginationOpts: paginationOptsValidator,
-    categoryIds: v.optional(v.array(v.id("categories"))), // Changed from categoryId
+    taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
     status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
     searchTerm: v.optional(v.string()),
   },
@@ -215,7 +215,7 @@ export const listMediaItemsWithUrl = query({
         title: v.optional(v.string()),
         caption: v.optional(v.string()),
         alt: v.optional(v.string()),
-        categoryIds: v.optional(v.array(v.id("categories"))),
+        taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
         categories: v.optional(v.array(v.string())),
         status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
         mimeType: v.optional(v.string()),
@@ -238,9 +238,11 @@ export const listMediaItemsWithUrl = query({
 
     // Post-filtering by categoryIds and search term on the current page only
     let page = result.page;
-    if (args.categoryIds && args.categoryIds.length > 0) {
+    if (args.taxonomyTermIds && args.taxonomyTermIds.length > 0) {
       page = page.filter((item) =>
-        (item.categoryIds ?? []).some((c) => args.categoryIds?.includes(c)),
+        (item.taxonomyTermIds ?? []).some((c) =>
+          args.taxonomyTermIds?.includes(c),
+        ),
       );
     }
     if (args.searchTerm) {
@@ -285,7 +287,7 @@ export const listMedia = query({
         title: v.optional(v.string()),
         caption: v.optional(v.string()),
         alt: v.optional(v.string()),
-        categoryIds: v.optional(v.array(v.id("categories"))),
+        taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
         categories: v.optional(v.array(v.string())),
         status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
         mimeType: v.optional(v.string()),
@@ -321,7 +323,7 @@ export const listImages = query({
         title: v.optional(v.string()),
         caption: v.optional(v.string()),
         alt: v.optional(v.string()),
-        categoryIds: v.optional(v.array(v.id("categories"))),
+        taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
         categories: v.optional(v.array(v.string())),
         status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
         mimeType: v.optional(v.string()),
@@ -346,7 +348,7 @@ export const listImages = query({
 export const searchMedia = query({
   args: {
     searchTerm: v.string(),
-    categoryIds: v.optional(v.array(v.id("categories"))),
+    taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
     status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
     limit: v.optional(v.number()),
   },
@@ -360,7 +362,7 @@ export const searchMedia = query({
       title: v.optional(v.string()),
       caption: v.optional(v.string()),
       alt: v.optional(v.string()),
-      categoryIds: v.optional(v.array(v.id("categories"))),
+      taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
       categories: v.optional(v.array(v.string())),
       status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
       mimeType: v.optional(v.string()),
@@ -378,7 +380,7 @@ export const searchMedia = query({
       title?: string;
       caption?: string;
       alt?: string;
-      categoryIds?: Id<"categories">[];
+      taxonomyTermIds?: Id<"taxonomyTerms">[];
       categories?: string[];
       status?: "draft" | "published";
     }[] = [];
@@ -422,14 +424,14 @@ export const searchMedia = query({
       ? deduped.filter((i) => i.status === args.status)
       : deduped;
 
-    // Apply categoryIds filter if provided
+    // Apply taxonomyTermIds filter if provided
     let filtered = filteredByStatus;
-    if (args.categoryIds && args.categoryIds.length > 0) {
+    if (args.taxonomyTermIds && args.taxonomyTermIds.length > 0) {
       filtered = filteredByStatus.filter((i) => {
-        const ids = i.categoryIds ?? [];
+        const ids = i.taxonomyTermIds ?? [];
         return ids.some(
           (c) =>
-            (args.categoryIds as Id<"categories">[] | undefined)?.includes(
+            (args.taxonomyTermIds as Id<"taxonomyTerms">[] | undefined)?.includes(
               c,
             ) === true,
         );
