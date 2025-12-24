@@ -116,7 +116,9 @@ export async function GET(req: Request) {
                 zIndex: 1,
               }}
             >
-              <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 18 }}
+              >
                 {label ? (
                   <div
                     style={{
@@ -193,11 +195,11 @@ export async function GET(req: Request) {
                     </div>
                     <div
                       style={{
-                        fontSize: 18,
+                        fontSize: 12,
                         color: "rgba(255,255,255,0.72)",
                       }}
                     >
-                      Powered by LaunchThat
+                      Powered by LaunchThat.App
                     </div>
                   </div>
                 </div>
@@ -227,5 +229,3 @@ export async function GET(req: Request) {
     return new NextResponse("Failed to render OG image", { status: 500 });
   }
 }
-
-
