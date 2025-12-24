@@ -17,6 +17,8 @@ const shouldBypassClerkMiddleware = (req: NextRequest) => {
   if (pathname.startsWith("/_microfrontends")) return true;
   if (pathname.startsWith("/puck")) return true;
   if (pathname.startsWith("/api/support-chat")) return true;
+  if (pathname.startsWith("/api/og/")) return true;
+  if (pathname.startsWith("/api/media/")) return true;
 
   // Allow SEO/social scrapers to fetch public HTML without Clerk dev handshake redirects.
   // IMPORTANT: Never bypass auth for protected/admin routes.
@@ -48,9 +50,6 @@ function extractSubdomain(request: NextRequest): string | null {
 
   // Localhost handling (e.g., http://tenant.localhost:3000)
   if (url.includes("localhost") || url.includes("127.0.0.1")) {
-    const match = /http:\/\/([^.]+)\.localhost/.exec(url);
-    if (match?.[1]) return match[1];
-
     if (hostname.includes(".localhost")) {
       return hostname.split(".")[0] ?? null;
     }

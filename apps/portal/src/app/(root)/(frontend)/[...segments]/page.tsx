@@ -184,74 +184,6 @@ function deriveDescriptionFromContent(content: unknown): string {
   return normalized;
 }
 
-interface AttachmentMetaEntry {
-  mediaItemId?: string;
-  url?: string;
-  title?: string;
-  alt?: string;
-  mimeType?: string;
-}
-
-function isLikelyImageFilename(value: string): boolean {
-  return /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(value);
-}
-
-function isLikelyNonImageFilename(value: string): boolean {
-  return /\.(pdf|mp4|mov|webm|mp3|wav|m4a|zip|rar|7z|docx?|xlsx?|pptx?)$/i.test(
-    value,
-  );
-}
-
-function isLikelyImageAttachment(entry: AttachmentMetaEntry): boolean {
-  const mime = typeof entry.mimeType === "string" ? entry.mimeType : "";
-  if (mime.startsWith("image/")) return true;
-  const url = typeof entry.url === "string" ? entry.url : "";
-  if (isLikelyImageFilename(url)) return true;
-  const title = typeof entry.title === "string" ? entry.title : "";
-  if (isLikelyImageFilename(title)) return true;
-
-  // Convex storage URLs often have no extension. If this looks like a storage URL
-  // and the title doesn't look like a known non-image file, treat it as image.
-  const isConvexStorageUrl =
-    url.includes(".convex.cloud/api/storage/") || url.includes("/api/storage/");
-  if (isConvexStorageUrl && title && !isLikelyNonImageFilename(title)) {
-    return true;
-  }
-
-  return false;
-}
-
-function extractFirstImageAttachmentUrl(args: {
-  origin: string;
-  postMetaMap: Map<string, PostMetaValue>;
-}): { url: string; alt?: string } | null {
-  const raw = metaValueToString(args.postMetaMap.get(ATTACHMENTS_META_KEY));
-  if (!raw) return null;
-
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return null;
-    let fallback: { url: string; alt?: string } | null = null;
-    for (const item of parsed) {
-      if (!item || typeof item !== "object") continue;
-      const entry = item as AttachmentMetaEntry;
-      if (typeof entry.url !== "string" || !entry.url.trim()) continue;
-      const resolved = {
-        url: toAbsoluteUrl(args.origin, entry.url),
-        alt:
-          typeof entry.alt === "string" && entry.alt.trim()
-            ? entry.alt
-            : undefined,
-      };
-      if (isLikelyImageAttachment(entry)) return resolved;
-      if (!fallback) fallback = resolved;
-    }
-    return fallback;
-  } catch {
-    return null;
-  }
-}
-
 function resolveTitleWithSiteSettings(args: {
   pageTitle: string;
   siteTitle?: string;
@@ -485,111 +417,105 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
     deriveDescriptionFromContent(content),
   );
 
-  const MIN_OG_IMAGE_SIZE = 200;
-  const pickOgImageFromAttachments = async (): Promise<{
-    url: string;
-    alt?: string;
-  } | null> => {
+  const siteNameForOg = siteTitle ?? tenant?.name ?? "LaunchThat Portal";
+  const labelForOg = typeof postType?.name === "string" ? postType.name : "";
+  const ogCardUrl = new URL("/api/og/post", origin);
+  ogCardUrl.searchParams.set("title", title);
+  ogCardUrl.searchParams.set("site", siteNameForOg);
+  if (labelForOg.trim()) ogCardUrl.searchParams.set("label", labelForOg.trim());
+
+  const pickOgBackgroundUrl = async (): Promise<string | null> => {
     const rawAttachments = metaValueToString(
       postMetaMap.get(ATTACHMENTS_META_KEY),
     );
-    if (rawAttachments) {
-      try {
-        const parsed = JSON.parse(rawAttachments) as unknown;
-        if (Array.isArray(parsed)) {
-          let fallback: { url: string; alt?: string } | null = null;
-          for (const item of parsed) {
-            if (!item || typeof item !== "object") continue;
-            const entry = item as AttachmentMetaEntry;
+    if (!rawAttachments) return null;
 
-            const alt =
-              typeof entry.alt === "string" && entry.alt.trim()
-                ? entry.alt.trim()
-                : undefined;
-
-            const mediaItemId =
-              typeof entry.mediaItemId === "string" ? entry.mediaItemId : null;
-            if (mediaItemId) {
-              const media = await fetchQuery(
-                api.core.media.queries.getMediaItem,
-                { id: mediaItemId as unknown as Id<"mediaItems"> },
-              );
-
-              const mimeType =
-                media &&
-                typeof (media as { mimeType?: unknown }).mimeType === "string"
-                  ? ((media as { mimeType: string }).mimeType ?? "")
-                  : "";
-              const width =
-                media &&
-                typeof (media as { width?: unknown }).width === "number"
-                  ? ((media as { width: number }).width ?? 0)
-                  : 0;
-              const height =
-                media &&
-                typeof (media as { height?: unknown }).height === "number"
-                  ? ((media as { height: number }).height ?? 0)
-                  : 0;
-
-              if (mimeType.startsWith("image/")) {
-                const stableUrl = `${origin}/api/media/${mediaItemId}`;
-                if (width >= MIN_OG_IMAGE_SIZE && height >= MIN_OG_IMAGE_SIZE) {
-                  return { url: stableUrl, ...(alt ? { alt } : {}) };
-                }
-                if (!fallback) {
-                  fallback = { url: stableUrl, ...(alt ? { alt } : {}) };
-                }
-              }
-              continue;
-            }
-
-            if (typeof entry.url === "string" && entry.url.trim()) {
-              const resolvedUrl = toAbsoluteUrl(origin, entry.url);
-              if (isLikelyImageAttachment(entry)) {
-                // Unknown dimensions, but likely image.
-                return { url: resolvedUrl, ...(alt ? { alt } : {}) };
-              }
-              if (!fallback) {
-                fallback = { url: resolvedUrl, ...(alt ? { alt } : {}) };
-              }
-            }
-          }
-
-          if (fallback) return fallback;
-        }
-      } catch {
-        // ignore
-      }
+    interface AttachmentMetaEntry {
+      mediaItemId?: string;
+      url?: string;
+      mimeType?: string;
+      title?: string;
     }
 
-    return extractFirstImageAttachmentUrl({ origin, postMetaMap });
+    try {
+      const parsed = JSON.parse(rawAttachments) as unknown;
+      if (!Array.isArray(parsed)) return null;
+      for (const item of parsed) {
+        if (!item || typeof item !== "object") continue;
+        const entry = item as AttachmentMetaEntry;
+
+        const entryMimeType =
+          typeof entry.mimeType === "string" ? entry.mimeType : "";
+        const entryTitle = typeof entry.title === "string" ? entry.title : "";
+
+        const mediaItemId =
+          typeof entry.mediaItemId === "string" ? entry.mediaItemId : null;
+        if (mediaItemId) {
+          // Prefer using the stable media proxy URL (it returns a fresh signed URL).
+          // Only include if we have strong signal it is an image.
+          const url =
+            typeof entry.url === "string" && entry.url.trim()
+              ? entry.url.trim()
+              : "";
+          const isConvexStorageUrl =
+            url.includes(".convex.cloud/api/storage/") ||
+            url.includes("/api/storage/");
+          const isLikelyNonImageTitle =
+            /\.(pdf|mp4|mov|webm|mp3|wav|m4a|zip|rar|7z|docx?|xlsx?|pptx?)$/i.test(
+              entryTitle,
+            );
+
+          if (entryMimeType.startsWith("image/")) {
+            return `${origin}/api/media/${mediaItemId}`;
+          }
+
+          // Attachment entries sometimes omit mimeType; Convex URLs often omit file extensions.
+          // If the URL looks like Convex storage and the title doesn't suggest a non-image, treat as image.
+          if (isConvexStorageUrl && entryTitle && !isLikelyNonImageTitle) {
+            return `${origin}/api/media/${mediaItemId}`;
+          }
+
+          // Last resort: ask Convex for mimeType if we have to.
+          const media = await fetchQuery(api.core.media.queries.getMediaItem, {
+            id: mediaItemId as unknown as Id<"mediaItems">,
+          });
+          const mimeType =
+            media &&
+            typeof (media as { mimeType?: unknown }).mimeType === "string"
+              ? ((media as { mimeType: string }).mimeType ?? "")
+              : "";
+          if (mimeType.startsWith("image/")) {
+            return `${origin}/api/media/${mediaItemId}`;
+          }
+        }
+
+        const url =
+          typeof entry.url === "string" && entry.url.trim()
+            ? entry.url.trim()
+            : "";
+        if (!url) continue;
+
+        // Best-effort URL check for external image thumbnails (e.g. Vimeo).
+        const looksLikeImageUrl =
+          /\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i.test(url) ||
+          url.includes("vimeocdn.com");
+        if (looksLikeImageUrl) {
+          return toAbsoluteUrl(origin, url);
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return null;
   };
 
-  const firstAttachmentImage = await pickOgImageFromAttachments();
+  const ogBackgroundUrl = await pickOgBackgroundUrl();
+  if (ogBackgroundUrl) {
+    ogCardUrl.searchParams.set("bg", ogBackgroundUrl);
+  }
 
-  const featuredImageUrl =
-    typeof (post as { featuredImageUrl?: unknown }).featuredImageUrl ===
-    "string"
-      ? ((post as { featuredImageUrl: string }).featuredImageUrl ?? "")
-      : "";
-
-  const ogImageUrl =
-    firstAttachmentImage?.url ??
-    (featuredImageUrl.trim().length > 0
-      ? toAbsoluteUrl(origin, featuredImageUrl)
-      : typeof social?.ogImage === "string" && social.ogImage.trim()
-        ? toAbsoluteUrl(origin, social.ogImage)
-        : null);
-  const ogImages = ogImageUrl
-    ? [
-        {
-          url: ogImageUrl,
-          ...(firstAttachmentImage?.alt
-            ? { alt: firstAttachmentImage.alt }
-            : {}),
-        },
-      ]
-    : undefined;
+  // Option A: Always use branded OG image.
+  const ogImages = [{ url: ogCardUrl.toString() }];
 
   return {
     metadataBase: new URL(origin),
