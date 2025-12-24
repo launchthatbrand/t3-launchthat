@@ -39,9 +39,20 @@ export const getMediaItem = query({
     let mimeType: string | undefined;
     if (mediaItem.storageId) {
       url = (await ctx.storage.getUrl(mediaItem.storageId)) ?? undefined;
-      const storageMeta = await ctx.db.system.get("_storage", mediaItem.storageId);
-      if (storageMeta && typeof (storageMeta as any).contentType === "string") {
-        mimeType = (storageMeta as any).contentType as string;
+      const storageId = mediaItem.storageId as unknown as string;
+      const looksLikeConvexId = /^[a-z0-9]{32}$/.test(storageId);
+      if (looksLikeConvexId) {
+        try {
+          const storageMeta = await ctx.db.system.get(
+            "_storage",
+            mediaItem.storageId,
+          );
+          if (storageMeta && typeof (storageMeta as any).contentType === "string") {
+            mimeType = (storageMeta as any).contentType as string;
+          }
+        } catch {
+          // Legacy/invalid storageId formats exist in some deployments; ignore.
+        }
       }
     } else if (mediaItem.externalUrl) {
       url = mediaItem.externalUrl;
@@ -93,9 +104,13 @@ export const getMediaByStorageId = query({
 
     const url = (await ctx.storage.getUrl(args.storageId)) ?? undefined;
     let mimeType: string | undefined;
-    const storageMeta = await ctx.db.system.get("_storage", args.storageId);
-    if (storageMeta && typeof (storageMeta as any).contentType === "string") {
-      mimeType = (storageMeta as any).contentType as string;
+    try {
+      const storageMeta = await ctx.db.system.get("_storage", args.storageId);
+      if (storageMeta && typeof (storageMeta as any).contentType === "string") {
+        mimeType = (storageMeta as any).contentType as string;
+      }
+    } catch {
+      // ignore
     }
 
     return {
@@ -151,9 +166,20 @@ export const getMediaById = query({
     let mimeType: string | undefined;
     if (mediaItem.storageId) {
       url = (await ctx.storage.getUrl(mediaItem.storageId)) ?? undefined;
-      const storageMeta = await ctx.db.system.get("_storage", mediaItem.storageId);
-      if (storageMeta && typeof (storageMeta as any).contentType === "string") {
-        mimeType = (storageMeta as any).contentType as string;
+      const storageId = mediaItem.storageId as unknown as string;
+      const looksLikeConvexId = /^[a-z0-9]{32}$/.test(storageId);
+      if (looksLikeConvexId) {
+        try {
+          const storageMeta = await ctx.db.system.get(
+            "_storage",
+            mediaItem.storageId,
+          );
+          if (storageMeta && typeof (storageMeta as any).contentType === "string") {
+            mimeType = (storageMeta as any).contentType as string;
+          }
+        } catch {
+          // ignore
+        }
       }
     } else if (mediaItem.externalUrl) {
       url = mediaItem.externalUrl;

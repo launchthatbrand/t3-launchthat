@@ -165,13 +165,29 @@ function isLikelyImageFilename(value: string): boolean {
   return /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(value);
 }
 
+function isLikelyNonImageFilename(value: string): boolean {
+  return /\.(pdf|mp4|mov|webm|mp3|wav|m4a|zip|rar|7z|docx?|xlsx?|pptx?)$/i.test(
+    value,
+  );
+}
+
 function isLikelyImageAttachment(entry: AttachmentMetaEntry): boolean {
   const mime = typeof entry.mimeType === "string" ? entry.mimeType : "";
   if (mime.startsWith("image/")) return true;
   const url = typeof entry.url === "string" ? entry.url : "";
   if (isLikelyImageFilename(url)) return true;
   const title = typeof entry.title === "string" ? entry.title : "";
-  return isLikelyImageFilename(title);
+  if (isLikelyImageFilename(title)) return true;
+
+  // Convex storage URLs often have no extension. If this looks like a storage URL
+  // and the title doesn't look like a known non-image file, treat it as image.
+  const isConvexStorageUrl =
+    url.includes(".convex.cloud/api/storage/") || url.includes("/api/storage/");
+  if (isConvexStorageUrl && title && !isLikelyNonImageFilename(title)) {
+    return true;
+  }
+
+  return false;
 }
 
 function extractFirstImageAttachmentUrl(args: {
@@ -397,7 +413,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const effectiveNoindex = seoNoindex ?? !isPublished;
   const effectiveNofollow = seoNofollow ?? !isPublished;
 
-  const resolveNonEmpty = (...values: Array<string | undefined | null>) => {
+  const resolveNonEmpty = (...values: (string | undefined | null)[]) => {
     for (const value of values) {
       if (typeof value === "string" && value.trim().length > 0) {
         return value.trim();
