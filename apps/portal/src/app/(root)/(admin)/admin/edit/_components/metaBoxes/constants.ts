@@ -1,1 +1,1 @@
-export const ATTACHMENTS_META_KEY = "__core_attachments";
+export { ATTACHMENTS_META_KEY } from "~/lib/posts/metaKeys";

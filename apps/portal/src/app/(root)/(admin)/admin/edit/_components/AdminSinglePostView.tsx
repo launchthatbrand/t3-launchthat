@@ -121,6 +121,7 @@ import {
 } from "./metaBoxes/utils";
 import { getFrontendBaseUrl } from "./permalink";
 import { PlaceholderState } from "./PlaceholderState";
+import { SeoTab } from "./SeoTab";
 
 const stripHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
 const resolveSupportFlag = (
@@ -384,6 +385,7 @@ export function AdminSinglePostView({
     : undefined;
   const pluginTabs: PluginSingleViewTabDefinition[] =
     pluginSingleView?.config.tabs ?? [];
+  const seoTabValue = "seo";
   const pluginSlotRegistrations = useMemo<PluginSingleViewSlotRegistration[]>(
     () => getPluginSingleViewSlotsForSlug(slug),
     [slug],
@@ -398,9 +400,12 @@ export function AdminSinglePostView({
   const tabParam =
     searchParams.get("tab") ?? searchParams.get("page") ?? undefined;
   const queriedTab = (tabParam ?? defaultTab).toLowerCase();
-  const normalizedTab = pluginTabs.some((tab) => tab.slug === queriedTab)
-    ? queriedTab
-    : defaultTab;
+  const normalizedTab =
+    queriedTab === seoTabValue ||
+    pluginTabs.some((tab) => tab.slug === queriedTab) ||
+    queriedTab === "edit"
+      ? queriedTab
+      : defaultTab;
   const [activeTab, setActiveTab] = useState(normalizedTab);
   const derivedEditorState = useMemo<SerializedEditorState | undefined>(() => {
     console.log("[AdminSinglePostView] deriving editor state", {
@@ -2196,9 +2201,12 @@ export function AdminSinglePostView({
   }
 
   if (pluginSingleView && pluginTabs.length > 0) {
+    const isSeoTab = activeTab === seoTabValue;
     const activeTabDefinition =
       pluginTabs.find((tab) => tab.slug === activeTab) ?? pluginTabs[0];
-    const showSidebar = activeTabDefinition?.usesDefaultEditor ?? false;
+    const showSidebar = isSeoTab
+      ? true
+      : (activeTabDefinition?.usesDefaultEditor ?? false);
     const defaultTabOptions = {
       showGeneralPanel: activeTabDefinition?.showGeneralPanel ?? true,
       showCustomFieldsPanel: activeTabDefinition?.showCustomFieldsPanel ?? true,
@@ -2220,11 +2228,18 @@ export function AdminSinglePostView({
       postTypeSlug: slug,
       organizationId,
     };
-    const layoutTabs = pluginTabs.map((tab) => ({
-      value: tab.slug,
-      label: tab.label,
-      onClick: () => handleTabChange(tab.slug),
-    }));
+    const layoutTabs = [
+      ...pluginTabs.map((tab) => ({
+        value: tab.slug,
+        label: tab.label,
+        onClick: () => handleTabChange(tab.slug),
+      })),
+      {
+        value: seoTabValue,
+        label: "SEO",
+        onClick: () => handleTabChange(seoTabValue),
+      },
+    ];
 
     return wrapWithPostTypeProviders(
       <>
@@ -2238,7 +2253,9 @@ export function AdminSinglePostView({
             <AdminLayoutMain>
               <AdminLayoutHeader customTabs={layoutTabs} />
               <div className="">
-                {activeTabDefinition?.usesDefaultEditor ? (
+                {isSeoTab ? (
+                  <SeoTab context={metaBoxContext} post={post ?? null} />
+                ) : activeTabDefinition?.usesDefaultEditor ? (
                   renderDefaultContent(defaultTabOptions)
                 ) : activeTabDefinition?.render ? (
                   activeTabDefinition.render(pluginTabProps)
@@ -2260,17 +2277,31 @@ export function AdminSinglePostView({
     );
   }
 
+  const baseTabs = [
+    { value: "edit", label: "Edit", onClick: () => handleTabChange("edit") },
+    { value: seoTabValue, label: "SEO", onClick: () => handleTabChange(seoTabValue) },
+  ];
+  const isSeoTab = activeTab === seoTabValue;
+
   return wrapWithPostTypeProviders(
     <>
       <AdminLayout
         title={`Edit ${headerLabel}`}
         description={postType?.description ?? "Manage this post entry."}
+        activeTab={activeTab}
+        tabs={baseTabs}
         pathname={pathname}
       >
         <AdminLayoutContent withSidebar>
           <AdminLayoutMain>
             <AdminLayoutHeader />
-            <div className="container py-6">{renderDefaultContent()}</div>
+            <div className="container py-6">
+              {isSeoTab ? (
+                <SeoTab context={metaBoxContext} post={post ?? null} />
+              ) : (
+                renderDefaultContent()
+              )}
+            </div>
           </AdminLayoutMain>
           <AdminLayoutSidebar className="border-l p-4">
             {renderSidebar()}

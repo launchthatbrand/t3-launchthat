@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 import { Fragment } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { api } from "@/convex/_generated/api";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
@@ -40,6 +41,8 @@ import {
   getCanonicalPostSegments,
 } from "~/lib/postTypes/routing";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import { ATTACHMENTS_META_KEY } from "~/lib/posts/metaKeys";
+import { SEO_META_KEYS, SEO_OPTION_KEYS } from "~/lib/seo/constants";
 import { cn } from "~/lib/utils";
 import { PortalConvexProvider } from "~/providers/ConvexClientProvider";
 import { PuckContentRenderer } from "../../../../components/puckeditor/PuckContentRenderer";
@@ -50,9 +53,385 @@ interface PageProps {
   params: Promise<{ segments?: string[] }>;
 }
 
-export const metadata: Metadata = {
-  title: "Post",
+function getRequestOriginFromHeaders(headerList: Headers): string | null {
+  const forwardedProto = headerList.get("x-forwarded-proto");
+  const proto = forwardedProto?.split(",")[0]?.trim() || "https";
+  const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
+  if (!host) return null;
+  return `${proto}://${host}`;
+}
+
+function resolveCanonicalUrl(args: {
+  origin: string;
+  canonicalPath: string;
+  seoCanonical?: string;
+}): string {
+  const seo = (args.seoCanonical ?? "").trim();
+  if (seo) {
+    if (/^https?:\/\//i.test(seo)) return seo;
+    if (seo.startsWith("/")) return `${args.origin}${seo}`;
+    return `${args.origin}/${seo}`;
+  }
+  const path = args.canonicalPath.startsWith("/")
+    ? args.canonicalPath
+    : `/${args.canonicalPath}`;
+  return `${args.origin}${path}`;
+}
+
+function metaValueToString(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  if (typeof value === "boolean") return value ? "true" : "false";
+  return null;
+}
+
+function metaValueToBoolean(value: unknown): boolean | null {
+  if (value === true) return true;
+  if (value === false) return false;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "1", "yes"].includes(normalized)) return true;
+    if (["false", "0", "no", ""].includes(normalized)) return false;
+  }
+  return null;
+}
+
+function toAbsoluteUrl(origin: string, input: string): string {
+  const value = input.trim();
+  if (!value) return value;
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("/")) return `${origin}${value}`;
+  return `${origin}/${value}`;
+}
+
+type AttachmentMetaEntry = {
+  mediaItemId?: string;
+  url?: string;
+  title?: string;
+  alt?: string;
+  mimeType?: string;
 };
+
+function isLikelyImageAttachment(entry: AttachmentMetaEntry): boolean {
+  const mime = typeof entry.mimeType === "string" ? entry.mimeType : "";
+  if (mime.startsWith("image/")) return true;
+  const url = typeof entry.url === "string" ? entry.url : "";
+  return /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(url);
+}
+
+function extractFirstImageAttachmentUrl(args: {
+  origin: string;
+  postMetaMap: Map<string, PostMetaValue>;
+}): { url: string; alt?: string } | null {
+  const raw = metaValueToString(args.postMetaMap.get(ATTACHMENTS_META_KEY));
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    for (const item of parsed) {
+      if (!item || typeof item !== "object") continue;
+      const entry = item as AttachmentMetaEntry;
+      if (typeof entry.url !== "string" || !entry.url.trim()) continue;
+      if (!isLikelyImageAttachment(entry)) continue;
+      return {
+        url: toAbsoluteUrl(args.origin, entry.url),
+        alt: typeof entry.alt === "string" && entry.alt.trim() ? entry.alt : undefined,
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function resolveTitleWithSiteSettings(args: {
+  pageTitle: string;
+  siteTitle?: string;
+  titleFormat?: string;
+  separator?: string;
+}): string {
+  const page = args.pageTitle.trim();
+  const site = (args.siteTitle ?? "").trim();
+  if (!site) return page;
+  const sep = typeof args.separator === "string" ? args.separator : " | ";
+  const format =
+    typeof args.titleFormat === "string" ? args.titleFormat : "page_first";
+  if (!page) return site;
+  if (format === "site_first") {
+    return `${site}${sep}${page}`;
+  }
+  if (format === "page_only") {
+    return page;
+  }
+  return `${page}${sep}${site}`;
+}
+
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  const resolvedParams = await props.params;
+  const segments = normalizeSegments(resolvedParams?.segments ?? []);
+  const slug = deriveSlugFromSegments(segments);
+
+  const headerList: Headers = await headers();
+  const origin = getRequestOriginFromHeaders(headerList) ?? "https://localhost";
+
+  if (!slug) {
+    return {
+      metadataBase: new URL(origin),
+      title: "Not Found",
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const tenant = await getActiveTenantFromHeaders();
+  const organizationId = getTenantOrganizationId(tenant);
+
+  const generalOption = await fetchQuery(api.core.options.get, {
+    metaKey: SEO_OPTION_KEYS.general,
+    type: "site",
+    ...(organizationId ? { orgId: organizationId } : {}),
+  } as const);
+  const socialOption = await fetchQuery(api.core.options.get, {
+    metaKey: SEO_OPTION_KEYS.social,
+    type: "site",
+    ...(organizationId ? { orgId: organizationId } : {}),
+  } as const);
+
+  const general =
+    generalOption?.metaValue && typeof generalOption.metaValue === "object"
+      ? (generalOption.metaValue as Record<string, unknown>)
+      : null;
+  const social =
+    socialOption?.metaValue && typeof socialOption.metaValue === "object"
+      ? (socialOption.metaValue as Record<string, unknown>)
+      : null;
+
+  const siteTitle =
+    typeof general?.siteTitle === "string" ? general.siteTitle : undefined;
+  const siteDescription =
+    typeof general?.siteDescription === "string"
+      ? general.siteDescription
+      : undefined;
+  const titleFormat =
+    typeof general?.titleFormat === "string" ? general.titleFormat : undefined;
+  const separator =
+    typeof general?.separator === "string" ? general.separator : undefined;
+
+  const enableSocialMeta =
+    typeof social?.enableSocialMeta === "boolean" ? social.enableSocialMeta : true;
+  const twitterUsername =
+    typeof social?.twitterUsername === "string" ? social.twitterUsername : undefined;
+  const twitterCardType =
+    typeof social?.twitterCardType === "string"
+      ? (social.twitterCardType as
+          | "summary"
+          | "summary_large_image"
+          | "app"
+          | "player")
+      : "summary_large_image";
+
+  const inferredLmsType = inferLmsPostTypeSlugFromSegments(segments);
+  let isLmsComponentPost = false;
+
+  let post = inferredLmsType
+    ? await fetchQuery(api.plugins.lms.posts.queries.getPostBySlug, {
+        slug,
+        organizationId: organizationId ?? undefined,
+      })
+    : null;
+  isLmsComponentPost = Boolean(post);
+
+  if (!post && inferredLmsType && isConvexId(slug)) {
+    post = await fetchQuery(api.plugins.lms.posts.queries.getPostById, {
+      id: slug,
+      organizationId: organizationId ?? undefined,
+    });
+    isLmsComponentPost = Boolean(post);
+  }
+
+  if (!post) {
+    post = await fetchQuery(api.core.posts.queries.getPostBySlug, {
+      slug,
+      ...(organizationId ? { organizationId } : {}),
+    });
+  }
+
+  if (!post && isConvexId(slug)) {
+    post = await fetchQuery(api.core.posts.queries.getPostById, {
+      id: slug as Id<"posts">,
+      ...(organizationId ? { organizationId } : {}),
+    });
+  }
+
+  if (!post) {
+    post = await fetchQuery(api.plugins.lms.posts.queries.getPostBySlug, {
+      slug,
+      organizationId: organizationId ?? undefined,
+    });
+    isLmsComponentPost = Boolean(post);
+  }
+
+  if (!post && isConvexId(slug)) {
+    post = await fetchQuery(api.plugins.lms.posts.queries.getPostById, {
+      id: slug,
+      organizationId: organizationId ?? undefined,
+    });
+    isLmsComponentPost = Boolean(post);
+  }
+
+  if (!post) {
+    return {
+      metadataBase: new URL(origin),
+      title: "Not Found",
+      robots: { index: false, follow: false },
+    };
+  }
+
+  let postType: PostTypeDoc | null = null;
+  if (post.postTypeSlug) {
+    postType =
+      (await fetchQuery(api.core.postTypes.queries.getBySlug, {
+        slug: post.postTypeSlug,
+        ...(organizationId ? { organizationId } : {}),
+      })) ?? null;
+  }
+
+  const postMetaResult: unknown = isLmsComponentPost
+    ? await fetchQuery(api.plugins.lms.posts.queries.getPostMeta, {
+        postId: post._id as unknown as string,
+        organizationId: organizationId ?? undefined,
+      })
+    : await fetchQuery(api.core.posts.postMeta.getPostMeta, {
+        postId: post._id,
+        ...(organizationId ? { organizationId } : {}),
+        postTypeSlug: post.postTypeSlug ?? undefined,
+      });
+
+  const postMeta = (postMetaResult ?? []) as {
+    key: string;
+    value?: string | number | boolean | null;
+  }[];
+  const postMetaMap = buildPostMetaMap(postMeta as unknown as PostMetaDoc[]);
+
+  const seoTitle =
+    metaValueToString(postMetaMap.get(SEO_META_KEYS.title))?.trim() ?? "";
+  const seoDescription =
+    metaValueToString(postMetaMap.get(SEO_META_KEYS.description))?.trim() ?? "";
+  const seoCanonical =
+    metaValueToString(postMetaMap.get(SEO_META_KEYS.canonical))?.trim() ?? "";
+  const seoNoindex = metaValueToBoolean(postMetaMap.get(SEO_META_KEYS.noindex));
+  const seoNofollow = metaValueToBoolean(postMetaMap.get(SEO_META_KEYS.nofollow));
+
+  const canonicalPath = getCanonicalPostPath(post, postType, true) || "/";
+  const canonicalUrl = resolveCanonicalUrl({
+    origin,
+    canonicalPath,
+    seoCanonical,
+  });
+
+  const isPublished = (post.status ?? "draft") === "published";
+  const effectiveNoindex = seoNoindex ?? !isPublished;
+  const effectiveNofollow = seoNofollow ?? !isPublished;
+
+  const title =
+    seoTitle ||
+    resolveTitleWithSiteSettings({
+      pageTitle: post.title || postType?.name || "Post",
+      siteTitle: siteTitle ?? tenant?.name ?? undefined,
+      titleFormat,
+      separator,
+    });
+  const description = seoDescription || post.excerpt || siteDescription || "";
+  let firstAttachmentImage = extractFirstImageAttachmentUrl({
+    origin,
+    postMetaMap,
+  });
+  // If we can't confirm the image type from the stored attachment entry (signed URLs
+  // often lack extensions and older entries may omit mimeType), attempt to resolve
+  // mimeType via mediaItems.
+  if (!firstAttachmentImage) {
+    const raw = metaValueToString(postMetaMap.get(ATTACHMENTS_META_KEY));
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as unknown;
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            if (!item || typeof item !== "object") continue;
+            const entry = item as AttachmentMetaEntry;
+            const mediaItemId =
+              typeof entry.mediaItemId === "string" ? entry.mediaItemId : null;
+            if (!mediaItemId) continue;
+
+            const media = await fetchQuery(api.core.media.queries.getMediaItem, {
+              id: mediaItemId as unknown as Id<"mediaItems">,
+            });
+
+            const mimeType =
+              media && typeof (media as { mimeType?: unknown }).mimeType === "string"
+                ? ((media as { mimeType: string }).mimeType ?? "")
+                : "";
+            const urlFromMedia =
+              media && typeof (media as { url?: unknown }).url === "string"
+                ? ((media as { url: string }).url ?? "")
+                : "";
+
+            if (mimeType.startsWith("image/") && urlFromMedia) {
+              firstAttachmentImage = { url: urlFromMedia };
+              break;
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+  const ogImageUrl =
+    firstAttachmentImage?.url ||
+    (typeof post.featuredImageUrl === "string" && post.featuredImageUrl.trim()
+      ? toAbsoluteUrl(origin, post.featuredImageUrl)
+      : null);
+  const ogImages = ogImageUrl
+    ? [
+        {
+          url: ogImageUrl,
+          ...(firstAttachmentImage?.alt ? { alt: firstAttachmentImage.alt } : {}),
+        },
+      ]
+    : undefined;
+
+  return {
+    metadataBase: new URL(origin),
+    title,
+    description,
+    alternates: { canonical: canonicalUrl },
+    robots: {
+      index: !effectiveNoindex,
+      follow: !effectiveNofollow,
+    },
+    ...(enableSocialMeta
+      ? {
+          openGraph: {
+            url: canonicalUrl,
+            title,
+            description,
+            type: "website" as const,
+            images: ogImages,
+          },
+          twitter: {
+            card: twitterCardType,
+            ...(twitterUsername
+              ? { site: twitterUsername, creator: twitterUsername }
+              : {}),
+            title,
+            description,
+            images: ogImages?.map((img) => img.url),
+          },
+        }
+      : {}),
+  };
+}
 
 const LMS_POST_TYPE_SLUGS = new Set([
   "courses",

@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Info, Save } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { useMutation, useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
 import {
@@ -42,8 +44,15 @@ import {
   TooltipTrigger,
 } from "@acme/ui/tooltip";
 
+import { api } from "@/convex/_generated/api";
+import { SEO_OPTION_KEYS } from "~/lib/seo/constants";
+import { useTenant } from "~/context/TenantContext";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+
 export default function SeoSettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
+  const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant) ?? null;
 
   return (
     <div className="container py-6">
@@ -70,26 +79,30 @@ export default function SeoSettingsPage() {
         </TabsList>
 
         <TabsContent value="general">
-          <GeneralSeoSettings />
+          <GeneralSeoSettings organizationId={organizationId} />
         </TabsContent>
 
         <TabsContent value="social">
-          <SocialSeoSettings />
+          <SocialSeoSettings organizationId={organizationId} />
         </TabsContent>
 
         <TabsContent value="sitemap">
-          <SitemapSettings />
+          <SitemapSettings organizationId={organizationId} />
         </TabsContent>
 
         <TabsContent value="structured">
-          <StructuredDataSettings />
+          <StructuredDataSettings organizationId={organizationId} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function GeneralSeoSettings() {
+function GeneralSeoSettings({
+  organizationId,
+}: {
+  organizationId: Id<"organizations"> | null;
+}) {
   const form = useForm({
     defaultValues: {
       siteTitle: "LaunchThat Portal",
@@ -104,9 +117,30 @@ function GeneralSeoSettings() {
     },
   });
 
-  const onSubmit = (data: any) => {
-    console.log("Submitting general SEO settings:", data);
-    // In a real app, you would save this data to your API
+  const option = useQuery(api.core.options.get, {
+    metaKey: SEO_OPTION_KEYS.general,
+    type: "site",
+    ...(organizationId ? { orgId: organizationId } : {}),
+  } as const);
+  const setBatch = useMutation(api.core.options.setBatch);
+
+  useEffect(() => {
+    const raw = option?.metaValue;
+    if (!raw || typeof raw !== "object") {
+      return;
+    }
+    form.reset({
+      ...form.getValues(),
+      ...(raw as Record<string, unknown>),
+    });
+  }, [option?.metaValue]);
+
+  const onSubmit = async (data: any) => {
+    await setBatch({
+      type: "site",
+      ...(organizationId ? { orgId: organizationId } : {}),
+      options: [{ metaKey: SEO_OPTION_KEYS.general, metaValue: data }],
+    });
   };
 
   return (
@@ -316,7 +350,11 @@ function GeneralSeoSettings() {
   );
 }
 
-function SocialSeoSettings() {
+function SocialSeoSettings({
+  organizationId,
+}: {
+  organizationId: Id<"organizations"> | null;
+}) {
   const form = useForm({
     defaultValues: {
       ogTitle: "",
@@ -329,8 +367,30 @@ function SocialSeoSettings() {
     },
   });
 
-  const onSubmit = (data: any) => {
-    console.log("Submitting social SEO settings:", data);
+  const option = useQuery(api.core.options.get, {
+    metaKey: SEO_OPTION_KEYS.social,
+    type: "site",
+    ...(organizationId ? { orgId: organizationId } : {}),
+  } as const);
+  const setBatch = useMutation(api.core.options.setBatch);
+
+  useEffect(() => {
+    const raw = option?.metaValue;
+    if (!raw || typeof raw !== "object") {
+      return;
+    }
+    form.reset({
+      ...form.getValues(),
+      ...(raw as Record<string, unknown>),
+    });
+  }, [option?.metaValue]);
+
+  const onSubmit = async (data: any) => {
+    await setBatch({
+      type: "site",
+      ...(organizationId ? { orgId: organizationId } : {}),
+      options: [{ metaKey: SEO_OPTION_KEYS.social, metaValue: data }],
+    });
   };
 
   return (
@@ -515,7 +575,11 @@ function SocialSeoSettings() {
   );
 }
 
-function SitemapSettings() {
+function SitemapSettings({
+  organizationId,
+}: {
+  organizationId: Id<"organizations"> | null;
+}) {
   const form = useForm({
     defaultValues: {
       enableSitemap: true,
@@ -525,8 +589,30 @@ function SitemapSettings() {
     },
   });
 
-  const onSubmit = (data: any) => {
-    console.log("Submitting sitemap settings:", data);
+  const option = useQuery(api.core.options.get, {
+    metaKey: SEO_OPTION_KEYS.sitemap,
+    type: "site",
+    ...(organizationId ? { orgId: organizationId } : {}),
+  } as const);
+  const setBatch = useMutation(api.core.options.setBatch);
+
+  useEffect(() => {
+    const raw = option?.metaValue;
+    if (!raw || typeof raw !== "object") {
+      return;
+    }
+    form.reset({
+      ...form.getValues(),
+      ...(raw as Record<string, unknown>),
+    });
+  }, [option?.metaValue]);
+
+  const onSubmit = async (data: any) => {
+    await setBatch({
+      type: "site",
+      ...(organizationId ? { orgId: organizationId } : {}),
+      options: [{ metaKey: SEO_OPTION_KEYS.sitemap, metaValue: data }],
+    });
   };
 
   return (
@@ -645,7 +731,11 @@ function SitemapSettings() {
   );
 }
 
-function StructuredDataSettings() {
+function StructuredDataSettings({
+  organizationId,
+}: {
+  organizationId: Id<"organizations"> | null;
+}) {
   const form = useForm({
     defaultValues: {
       enableStructuredData: true,
@@ -662,8 +752,30 @@ function StructuredDataSettings() {
     },
   });
 
-  const onSubmit = (data: any) => {
-    console.log("Submitting structured data settings:", data);
+  const option = useQuery(api.core.options.get, {
+    metaKey: SEO_OPTION_KEYS.structured,
+    type: "site",
+    ...(organizationId ? { orgId: organizationId } : {}),
+  } as const);
+  const setBatch = useMutation(api.core.options.setBatch);
+
+  useEffect(() => {
+    const raw = option?.metaValue;
+    if (!raw || typeof raw !== "object") {
+      return;
+    }
+    form.reset({
+      ...form.getValues(),
+      ...(raw as Record<string, unknown>),
+    });
+  }, [option?.metaValue]);
+
+  const onSubmit = async (data: any) => {
+    await setBatch({
+      type: "site",
+      ...(organizationId ? { orgId: organizationId } : {}),
+      options: [{ metaKey: SEO_OPTION_KEYS.structured, metaValue: data }],
+    });
   };
 
   return (
