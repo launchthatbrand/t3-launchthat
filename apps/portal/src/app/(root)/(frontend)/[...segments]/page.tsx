@@ -123,34 +123,65 @@ function deriveDescriptionFromContent(content: unknown): string {
       .trim();
   }
 
-  // Best-effort JSON text extraction (covers Lexical state).
+  // Lexical JSON -> plain text (avoid dumping JSON into meta tags).
   if (raw.startsWith("{") || raw.startsWith("[")) {
     try {
       const parsed = JSON.parse(raw) as unknown;
       const parts: string[] = [];
-      const walk = (node: unknown) => {
-        if (!node) return;
-        if (typeof node === "string") return;
-        if (Array.isArray(node)) {
-          node.forEach(walk);
+
+      const walkLexicalNode = (node: unknown) => {
+        if (!node || typeof node !== "object") return;
+        const obj = node as Record<string, unknown>;
+
+        const type = typeof obj.type === "string" ? obj.type : "";
+
+        if (type === "text") {
+          if (typeof obj.text === "string" && obj.text.trim()) {
+            parts.push(obj.text.trim());
+          }
           return;
         }
-        if (typeof node === "object") {
-          const obj = node as Record<string, unknown>;
-          if (typeof obj.text === "string") {
-            parts.push(obj.text);
+
+        // oEmbed nodes (e.g. Vimeo) often contain a title but no text nodes.
+        if (type === "oembed") {
+          if (typeof obj.title === "string" && obj.title.trim()) {
+            parts.push(obj.title.trim());
           }
-          Object.values(obj).forEach(walk);
+          return;
+        }
+
+        const children = obj.children;
+        if (Array.isArray(children)) {
+          for (const child of children) {
+            walkLexicalNode(child);
+          }
         }
       };
-      walk(parsed);
+
+      // Lexical editor state typically looks like: { root: { children: [...] } }
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        "root" in (parsed as Record<string, unknown>)
+      ) {
+        const root = (parsed as Record<string, unknown>).root;
+        walkLexicalNode(root);
+      } else if (Array.isArray(parsed)) {
+        for (const item of parsed) walkLexicalNode(item);
+      } else {
+        walkLexicalNode(parsed);
+      }
+
       return parts.join(" ").replace(/\s+/g, " ").trim();
     } catch {
       return "";
     }
   }
 
-  return raw.replace(/\s+/g, " ").trim();
+  const normalized = raw.replace(/\s+/g, " ").trim();
+  // Keep meta descriptions reasonably sized.
+  if (normalized.length > 200) return `${normalized.slice(0, 197)}...`;
+  return normalized;
 }
 
 interface AttachmentMetaEntry {
@@ -200,23 +231,25 @@ function extractFirstImageAttachmentUrl(args: {
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return null;
+    let fallback: { url: string; alt?: string } | null = null;
     for (const item of parsed) {
       if (!item || typeof item !== "object") continue;
       const entry = item as AttachmentMetaEntry;
       if (typeof entry.url !== "string" || !entry.url.trim()) continue;
-      if (!isLikelyImageAttachment(entry)) continue;
-      return {
+      const resolved = {
         url: toAbsoluteUrl(args.origin, entry.url),
         alt:
           typeof entry.alt === "string" && entry.alt.trim()
             ? entry.alt
             : undefined,
       };
+      if (isLikelyImageAttachment(entry)) return resolved;
+      if (!fallback) fallback = resolved;
     }
+    return fallback;
   } catch {
     return null;
   }
-  return null;
 }
 
 function resolveTitleWithSiteSettings(args: {
@@ -447,15 +480,92 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
 
   const description = resolveNonEmpty(
     seoDescription,
-    excerpt,
+    deriveDescriptionFromContent(excerpt),
     siteDescription,
     deriveDescriptionFromContent(content),
   );
 
-  const firstAttachmentImage = extractFirstImageAttachmentUrl({
-    origin,
-    postMetaMap,
-  });
+  const MIN_OG_IMAGE_SIZE = 200;
+  const pickOgImageFromAttachments = async (): Promise<{
+    url: string;
+    alt?: string;
+  } | null> => {
+    const rawAttachments = metaValueToString(
+      postMetaMap.get(ATTACHMENTS_META_KEY),
+    );
+    if (rawAttachments) {
+      try {
+        const parsed = JSON.parse(rawAttachments) as unknown;
+        if (Array.isArray(parsed)) {
+          let fallback: { url: string; alt?: string } | null = null;
+          for (const item of parsed) {
+            if (!item || typeof item !== "object") continue;
+            const entry = item as AttachmentMetaEntry;
+
+            const alt =
+              typeof entry.alt === "string" && entry.alt.trim()
+                ? entry.alt.trim()
+                : undefined;
+
+            const mediaItemId =
+              typeof entry.mediaItemId === "string" ? entry.mediaItemId : null;
+            if (mediaItemId) {
+              const media = await fetchQuery(
+                api.core.media.queries.getMediaItem,
+                { id: mediaItemId as unknown as Id<"mediaItems"> },
+              );
+
+              const mimeType =
+                media &&
+                typeof (media as { mimeType?: unknown }).mimeType === "string"
+                  ? ((media as { mimeType: string }).mimeType ?? "")
+                  : "";
+              const width =
+                media &&
+                typeof (media as { width?: unknown }).width === "number"
+                  ? ((media as { width: number }).width ?? 0)
+                  : 0;
+              const height =
+                media &&
+                typeof (media as { height?: unknown }).height === "number"
+                  ? ((media as { height: number }).height ?? 0)
+                  : 0;
+
+              if (mimeType.startsWith("image/")) {
+                const stableUrl = `${origin}/api/media/${mediaItemId}`;
+                if (width >= MIN_OG_IMAGE_SIZE && height >= MIN_OG_IMAGE_SIZE) {
+                  return { url: stableUrl, ...(alt ? { alt } : {}) };
+                }
+                if (!fallback) {
+                  fallback = { url: stableUrl, ...(alt ? { alt } : {}) };
+                }
+              }
+              continue;
+            }
+
+            if (typeof entry.url === "string" && entry.url.trim()) {
+              const resolvedUrl = toAbsoluteUrl(origin, entry.url);
+              if (isLikelyImageAttachment(entry)) {
+                // Unknown dimensions, but likely image.
+                return { url: resolvedUrl, ...(alt ? { alt } : {}) };
+              }
+              if (!fallback) {
+                fallback = { url: resolvedUrl, ...(alt ? { alt } : {}) };
+              }
+            }
+          }
+
+          if (fallback) return fallback;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    return extractFirstImageAttachmentUrl({ origin, postMetaMap });
+  };
+
+  const firstAttachmentImage = await pickOgImageFromAttachments();
 
   const featuredImageUrl =
     typeof (post as { featuredImageUrl?: unknown }).featuredImageUrl ===
@@ -467,7 +577,9 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
     firstAttachmentImage?.url ??
     (featuredImageUrl.trim().length > 0
       ? toAbsoluteUrl(origin, featuredImageUrl)
-      : null);
+      : typeof social?.ogImage === "string" && social.ogImage.trim()
+        ? toAbsoluteUrl(origin, social.ogImage)
+        : null);
   const ogImages = ogImageUrl
     ? [
         {
