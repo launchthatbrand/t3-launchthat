@@ -27,6 +27,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "../sidebar";
 
 interface SubItem {
@@ -58,7 +59,9 @@ interface NavMainProps {
 
 export function NavMain({ items, sections }: NavMainProps) {
   const pathname = usePathname();
+  const { isMobile, openMobile, setOpenMobile } = useSidebar();
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastPathnameRef = useRef<string>(pathname);
   const [focusedSectionLabel, setFocusedSectionLabel] = useState<string | null>(
     null,
   );
@@ -126,6 +129,23 @@ export function NavMain({ items, sections }: NavMainProps) {
   }, [pathname]);
 
   useEffect(() => {
+    const lastPathname = lastPathnameRef.current;
+    if (lastPathname === pathname) {
+      return;
+    }
+    lastPathnameRef.current = pathname;
+
+    if (!isMobile) return;
+    if (!openMobile) return;
+    setOpenMobile(false);
+  }, [isMobile, openMobile, pathname, setOpenMobile]);
+
+  const handleNavigate = () => {
+    if (!isMobile) return;
+    setOpenMobile(false);
+  };
+
+  useEffect(() => {
     const container = containerRef.current;
     if (!container || typeof window === "undefined") return;
 
@@ -179,6 +199,7 @@ export function NavMain({ items, sections }: NavMainProps) {
                   >
                     <Link
                       href={item.url}
+                      onClick={handleNavigate}
                       className="flex flex-1 items-center gap-2 [&>svg]:size-4 [&>svg]:shrink-0"
                     >
                       {item.icon && <item.icon />}
@@ -203,7 +224,7 @@ export function NavMain({ items, sections }: NavMainProps) {
                             data-nav-active={subItemActive ? "true" : undefined}
                             data-nav-exact={subItemActive ? "true" : undefined}
                           >
-                            <Link href={subItem.url}>
+                            <Link href={subItem.url} onClick={handleNavigate}>
                               <span>{subItem.title}</span>
                             </Link>
                           </SidebarMenuSubButton>
@@ -226,7 +247,7 @@ export function NavMain({ items, sections }: NavMainProps) {
               data-nav-active={itemActive ? "true" : undefined}
               data-nav-exact={itemActive ? "true" : undefined}
             >
-              <Link href={item.url}>
+              <Link href={item.url} onClick={handleNavigate}>
                 {item.icon && <item.icon />}
                 <span>{item.title}</span>
               </Link>

@@ -378,6 +378,27 @@ function buildEntryHref(
   if (!entry) {
     return null;
   }
+  if (entry.type === "certificate") {
+    const certificateSlug =
+      typeof entry.slug === "string" && entry.slug.length > 0
+        ? entry.slug
+        : (entry.id as string);
+    if (entry.scope === "course") {
+      return `/course/${courseSlug}/certificate/${certificateSlug}`;
+    }
+    const lessonSlug = entry.lessonSlug;
+    if (!lessonSlug) {
+      return null;
+    }
+    if (entry.scope === "lesson") {
+      return `/course/${courseSlug}/lesson/${lessonSlug}/certificate/${certificateSlug}`;
+    }
+    const topicSlug = entry.topicSlug;
+    if (!topicSlug) {
+      return null;
+    }
+    return `/course/${courseSlug}/lesson/${lessonSlug}/topic/${topicSlug}/certificate/${certificateSlug}`;
+  }
   if (entry.type === "quiz") {
     const quizSlug =
       typeof entry.slug === "string" && entry.slug.length > 0
@@ -413,6 +434,15 @@ function getNavEntryPreview(
   imageUrl?: string | null;
 } | null {
   if (!entry) return null;
+
+  if (entry.type === "certificate") {
+    return {
+      id: String(entry.id),
+      title: entry.title,
+      subtitle: "Certificate",
+      imageUrl: courseStructure.course.firstAttachmentUrl ?? null,
+    };
+  }
 
   if (entry.type === "lesson") {
     const lesson = courseStructure.attachedLessons.find(

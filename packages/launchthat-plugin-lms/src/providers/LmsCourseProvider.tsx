@@ -61,6 +61,17 @@ export type CourseNavEntry =
       slug?: string;
       title: string;
       isFinal?: boolean;
+    }
+  | {
+      type: "certificate";
+      id: LmsPostId;
+      slug?: string;
+      title: string;
+      scope: "course" | "lesson" | "topic";
+      lessonId?: LmsPostId;
+      lessonSlug?: string;
+      topicId?: LmsPostId;
+      topicSlug?: string;
     };
 
 export interface LessonSegment {
@@ -137,7 +148,13 @@ type CourseProgressArgs =
     }
   | "skip";
 
-const LMS_POST_SLUGS = new Set(["courses", "lessons", "topics", "quizzes"]);
+const LMS_POST_SLUGS = new Set([
+  "courses",
+  "lessons",
+  "topics",
+  "quizzes",
+  "certificates",
+]);
 
 export function LmsCourseProvider({
   children,
@@ -194,6 +211,15 @@ export function LmsCourseProvider({
     resolvedPostTypeSlug === "quizzes"
       ? (rawPostSlug ?? coerceString(metaRecord.quizSlug))
       : coerceString(metaRecord.quizSlug);
+
+  const certificateId =
+    resolvedPostTypeSlug === "certificates"
+      ? coercePostId(postRecord._id)
+      : coercePostId(metaRecord.certificateId ?? metaRecord.certificate_id);
+  const certificateSlug =
+    resolvedPostTypeSlug === "certificates"
+      ? rawPostSlug
+      : coerceString(metaRecord.certificateSlug ?? metaRecord.certificate_slug);
 
   const courseStructureArgs = useMemo<CourseStructureArgs>(() => {
     if (courseId) {
@@ -345,6 +371,16 @@ export function LmsCourseProvider({
       list.push(quiz);
       quizzesByKey.set(key, list);
     });
+
+    const certificatesById = new Map<string, { _id: LmsPostId; slug?: string; title?: string }>();
+    (courseStructure.attachedCertificates ?? []).forEach((cert) => {
+      certificatesById.set(String(cert._id), {
+        _id: cert._id,
+        slug: cert.slug ?? undefined,
+        title: cert.title ?? undefined,
+      });
+    });
+
     courseStructure.attachedLessons
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
       .forEach((lesson) => {
@@ -383,6 +419,23 @@ export function LmsCourseProvider({
                   isFinal: quiz.isFinal ?? false,
                 });
               });
+
+            if (topic.certificateId) {
+              const cert = certificatesById.get(String(topic.certificateId));
+              if (cert) {
+                entries.push({
+                  type: "certificate",
+                  id: cert._id,
+                  slug: cert.slug,
+                  title: cert.title ?? "Certificate",
+                  scope: "topic",
+                  lessonId: lesson._id,
+                  lessonSlug: lesson.slug,
+                  topicId: topic._id,
+                  topicSlug: topic.slug,
+                });
+              }
+            }
           });
         const lessonQuizzes = quizzesByKey.get(`lesson:${lesson._id}`) ?? [];
         lessonQuizzes
@@ -400,6 +453,21 @@ export function LmsCourseProvider({
               isFinal: quiz.isFinal ?? false,
             });
           });
+
+        if (lesson.certificateId) {
+          const cert = certificatesById.get(String(lesson.certificateId));
+          if (cert) {
+            entries.push({
+              type: "certificate",
+              id: cert._id,
+              slug: cert.slug,
+              title: cert.title ?? "Certificate",
+              scope: "lesson",
+              lessonId: lesson._id,
+              lessonSlug: lesson.slug,
+            });
+          }
+        }
       });
     (quizzesByKey.get("course") ?? [])
       .sort(
@@ -416,6 +484,19 @@ export function LmsCourseProvider({
           isFinal: quiz.isFinal ?? false,
         });
       });
+
+    if (courseStructure.course?.certificateId) {
+      const cert = certificatesById.get(String(courseStructure.course.certificateId));
+      if (cert) {
+        entries.push({
+          type: "certificate",
+          id: cert._id,
+          slug: cert.slug,
+          title: cert.title ?? "Certificate",
+          scope: "course",
+        });
+      }
+    }
     return entries;
   }, [courseStructure]);
 
@@ -443,6 +524,18 @@ export function LmsCourseProvider({
         ) ?? null
       );
     }
+    if (resolvedPostTypeSlug === "certificates" && certificateId) {
+      return (
+        navEntries.find(
+          (entry) =>
+            entry.type === "certificate" &&
+            (entry.id === certificateId ||
+              (certificateSlug &&
+                entry.slug &&
+                entry.slug === certificateSlug)),
+        ) ?? null
+      );
+    }
     if (lessonId) {
       return (
         navEntries.find(
@@ -455,6 +548,8 @@ export function LmsCourseProvider({
     }
     return null;
   }, [
+    certificateId,
+    certificateSlug,
     lessonId,
     lessonSlug,
     navEntries,
@@ -493,6 +588,9 @@ export function LmsCourseProvider({
       : resolvedPostTypeSlug === "lessons"
         ? (lessonId ??
           (currentEntry?.type === "lesson" ? currentEntry.id : undefined))
+      : resolvedPostTypeSlug === "certificates"
+        ? (lessonId ??
+          (currentEntry?.type === "certificate" ? currentEntry.lessonId : undefined))
         : undefined;
 
   const isLinearBlocked =

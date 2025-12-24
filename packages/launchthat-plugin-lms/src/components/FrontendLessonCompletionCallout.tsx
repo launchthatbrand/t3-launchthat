@@ -1,8 +1,9 @@
 "use client";
 
 import type { PluginFrontendSingleSlotProps } from "launchthat-plugin-core";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { api } from "@portal/convexspec";
 import { useMutation } from "convex/react";
 import { CheckCircle2 } from "lucide-react";
@@ -49,7 +50,9 @@ export function FrontendLessonCompletionCallout({
 }: PluginFrontendSingleSlotProps) {
   const config = LABEL_MAP[postTypeSlug];
   const courseContext = useLmsCourseContext();
+  const router = useRouter();
   const [isCompleting, setIsCompleting] = useState(false);
+  const shouldAutoAdvanceRef = useRef(false);
   const markLessonCompletion = useMutation(
     api.plugins.lms.mutations.setLessonCompletionStatus,
   );
@@ -104,6 +107,28 @@ export function FrontendLessonCompletionCallout({
       : false;
   const isCompleted = isLessonCompleted || isTopicCompleted;
   const isAuthenticatedProgress = courseProgress !== null;
+
+  const nextHref = useMemo(() => {
+    return buildEntryHref(nextEntry, resolvedCourseSlug);
+  }, [nextEntry, resolvedCourseSlug]);
+
+  // Auto-advance to the next step after a lesson/topic is marked complete.
+  // We only do this when the user explicitly completed in this view
+  // (i.e., never on initial render, and never when marking incomplete).
+  useEffect(() => {
+    if (postTypeSlug !== "lessons" && postTypeSlug !== "topics") return;
+    if (!shouldAutoAdvanceRef.current) return;
+    if (isCompleting) return;
+    if (!isCompleted) return;
+    if (!nextHref) return;
+
+    shouldAutoAdvanceRef.current = false;
+    const timeout = window.setTimeout(() => {
+      router.push(nextHref);
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [isCompleting, isCompleted, nextHref, postTypeSlug, router]);
 
   const attachedCertificates =
     courseContext?.courseStructure?.attachedCertificates ?? [];
@@ -204,12 +229,16 @@ export function FrontendLessonCompletionCallout({
     setIsCompleting(true);
     try {
       if (postTypeSlug === "lessons" && lessonId) {
+        // If we're transitioning from incomplete -> complete, schedule auto-advance.
+        shouldAutoAdvanceRef.current = !isLessonCompleted;
         await markLessonCompletion({
           courseId,
           lessonId,
           completed: !isLessonCompleted,
         });
       } else if (postTypeSlug === "topics" && topicId) {
+        // If we're transitioning from incomplete -> complete, schedule auto-advance.
+        shouldAutoAdvanceRef.current = !isTopicCompleted;
         await markTopicCompletion({
           topicId,
           lessonId: lessonId ?? undefined,
@@ -317,4 +346,59 @@ export function FrontendLessonCompletionCallout({
       ) : null}
     </div>
   );
+}
+
+function buildEntryHref(entry: CourseNavEntry | null, courseSlug: string) {
+  if (!entry) {
+    return null;
+  }
+
+  if (entry.type === "certificate") {
+    const certificateSlug =
+      typeof entry.slug === "string" && entry.slug.length > 0
+        ? entry.slug
+        : (entry.id as string);
+    if (entry.scope === "course") {
+      return `/course/${courseSlug}/certificate/${certificateSlug}`;
+    }
+    const lessonSlug = entry.lessonSlug;
+    if (!lessonSlug) {
+      return null;
+    }
+    if (entry.scope === "lesson") {
+      return `/course/${courseSlug}/lesson/${lessonSlug}/certificate/${certificateSlug}`;
+    }
+    const topicSlug = entry.topicSlug;
+    if (!topicSlug) {
+      return null;
+    }
+    return `/course/${courseSlug}/lesson/${lessonSlug}/topic/${topicSlug}/certificate/${certificateSlug}`;
+  }
+
+  if (entry.type === "quiz") {
+    const quizSlug =
+      typeof entry.slug === "string" && entry.slug.length > 0
+        ? entry.slug
+        : (entry.id as string);
+    return `/course/${courseSlug}/quiz/${quizSlug}`;
+  }
+
+  if (entry.type === "lesson") {
+    const lessonSlug =
+      typeof entry.slug === "string" && entry.slug.length > 0
+        ? entry.slug
+        : (entry.id as string);
+    return `/course/${courseSlug}/lesson/${lessonSlug}`;
+  }
+
+  const lessonSlug = entry.lessonSlug;
+  if (!lessonSlug) {
+    return null;
+  }
+
+  const topicSlug =
+    typeof entry.slug === "string" && entry.slug.length > 0
+      ? entry.slug
+      : (entry.id as string);
+  return `/course/${courseSlug}/lesson/${lessonSlug}/topic/${topicSlug}`;
 }
