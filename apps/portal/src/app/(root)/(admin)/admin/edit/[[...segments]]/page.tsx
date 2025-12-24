@@ -38,6 +38,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { AdminSinglePostView } from "../_components/AdminSinglePostView";
+import { AttachmentSingleView } from "../_components/AttachmentSingleView";
 import { AttachmentsArchiveView } from "../_components/AttachmentsArchiveView";
 import { Button } from "@acme/ui/button";
 import type { Doc } from "@/convex/_generated/dataModel";
@@ -374,6 +375,22 @@ function AdminEditPageBody() {
   }
 
   if (viewMode === "single") {
+    if (resolvedSlug === "attachment" || resolvedSlug === "attachments") {
+      const postIdParam = searchParams.get("post_id");
+      if (postIdParam && postIdParam !== "new") {
+        return (
+          <AttachmentSingleView
+            mediaItemId={postIdParam as unknown as Doc<"mediaItems">["_id"]}
+            onBack={() => {
+              const params = new URLSearchParams(searchParams.toString());
+              params.delete("post_id");
+              router.replace(`/admin/edit?${params.toString()}`);
+            }}
+          />
+        );
+      }
+    }
+
     const singleView = (
       <AdminSinglePostView
         post={post}

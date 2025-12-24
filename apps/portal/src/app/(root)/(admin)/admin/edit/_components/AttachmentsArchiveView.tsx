@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { formatDistanceToNow } from "date-fns";
-import { Sparkles, Trash2, Upload } from "lucide-react";
+import { Pencil, Sparkles, Trash2, Upload } from "lucide-react";
 
 import type { ColumnDefinition } from "@acme/ui/entity-list/types";
 import {
@@ -147,6 +147,16 @@ export function AttachmentsArchiveView({
       router.replace(`/admin/edit?${params.toString()}`);
     },
     [router, searchParamsString],
+  );
+
+  const handleEditAttachment = useCallback(
+    (item: MediaItemDoc) => {
+      const params = new URLSearchParams();
+      params.set("post_type", "attachments");
+      params.set("post_id", String(item._id));
+      router.push(`/admin/edit?${params.toString()}`);
+    },
+    [router],
   );
 
   const mediaResponse = useQuery(api.core.media.queries.listMediaItemsWithUrl, {
@@ -325,6 +335,19 @@ export function AttachmentsArchiveView({
               type="button"
               variant="ghost"
               size="icon"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleEditAttachment(item);
+              }}
+              title="Edit attachment"
+            >
+              <Pencil className="h-4 w-4" />
+              <span className="sr-only">Edit</span>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
               className="text-destructive hover:text-destructive"
               onClick={(event) => {
                 event.stopPropagation();
@@ -339,7 +362,7 @@ export function AttachmentsArchiveView({
         ),
       },
     ],
-    [],
+    [handleEditAttachment],
   );
 
   const libraryPanel = (
@@ -437,20 +460,35 @@ export function AttachmentsArchiveView({
                         </span>
                       </div>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setDeleteTarget(item);
-                      }}
-                      title="Delete attachment"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Delete</span>
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleEditAttachment(item);
+                        }}
+                        title="Edit attachment"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setDeleteTarget(item);
+                        }}
+                        title="Delete attachment"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
