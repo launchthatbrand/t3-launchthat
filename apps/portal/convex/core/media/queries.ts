@@ -36,8 +36,13 @@ export const getMediaItem = query({
 
     // Get URL for storage items
     let url: string | undefined;
+    let mimeType: string | undefined;
     if (mediaItem.storageId) {
       url = (await ctx.storage.getUrl(mediaItem.storageId)) ?? undefined;
+      const storageMeta = await ctx.db.system.get("_storage", mediaItem.storageId);
+      if (storageMeta && typeof (storageMeta as any).contentType === "string") {
+        mimeType = (storageMeta as any).contentType as string;
+      }
     } else if (mediaItem.externalUrl) {
       url = mediaItem.externalUrl;
     }
@@ -45,6 +50,7 @@ export const getMediaItem = query({
     return {
       ...mediaItem,
       url,
+      mimeType: mediaItem.mimeType ?? mimeType,
       // Map legacy categories field if it exists
       categoryIds: mediaItem.categoryIds ?? [],
     };
@@ -86,10 +92,16 @@ export const getMediaByStorageId = query({
     }
 
     const url = (await ctx.storage.getUrl(args.storageId)) ?? undefined;
+    let mimeType: string | undefined;
+    const storageMeta = await ctx.db.system.get("_storage", args.storageId);
+    if (storageMeta && typeof (storageMeta as any).contentType === "string") {
+      mimeType = (storageMeta as any).contentType as string;
+    }
 
     return {
       ...mediaItem,
       url,
+      mimeType: mediaItem.mimeType ?? mimeType,
       categoryIds: mediaItem.categoryIds ?? [],
     };
   },
@@ -136,8 +148,13 @@ export const getMediaById = query({
     if (!mediaItem) return null;
 
     let url: string | undefined;
+    let mimeType: string | undefined;
     if (mediaItem.storageId) {
       url = (await ctx.storage.getUrl(mediaItem.storageId)) ?? undefined;
+      const storageMeta = await ctx.db.system.get("_storage", mediaItem.storageId);
+      if (storageMeta && typeof (storageMeta as any).contentType === "string") {
+        mimeType = (storageMeta as any).contentType as string;
+      }
     } else if (mediaItem.externalUrl) {
       url = mediaItem.externalUrl;
     }
@@ -145,6 +162,7 @@ export const getMediaById = query({
     return {
       ...mediaItem,
       url,
+      mimeType: mediaItem.mimeType ?? mimeType,
       categoryIds: mediaItem.categoryIds ?? [],
     };
   },

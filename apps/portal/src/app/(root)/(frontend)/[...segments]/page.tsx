@@ -55,7 +55,7 @@ interface PageProps {
 
 function getRequestOriginFromHeaders(headerList: Headers): string | null {
   const forwardedProto = headerList.get("x-forwarded-proto");
-  const proto = forwardedProto?.split(",")[0]?.trim() || "https";
+  const proto = forwardedProto?.split(",")[0]?.trim() ?? "https";
   const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
   if (!host) return null;
   return `${proto}://${host}`;
@@ -153,19 +153,25 @@ function deriveDescriptionFromContent(content: unknown): string {
   return raw.replace(/\s+/g, " ").trim();
 }
 
-type AttachmentMetaEntry = {
+interface AttachmentMetaEntry {
   mediaItemId?: string;
   url?: string;
   title?: string;
   alt?: string;
   mimeType?: string;
-};
+}
+
+function isLikelyImageFilename(value: string): boolean {
+  return /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(value);
+}
 
 function isLikelyImageAttachment(entry: AttachmentMetaEntry): boolean {
   const mime = typeof entry.mimeType === "string" ? entry.mimeType : "";
   if (mime.startsWith("image/")) return true;
   const url = typeof entry.url === "string" ? entry.url : "";
-  return /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(url);
+  if (isLikelyImageFilename(url)) return true;
+  const title = typeof entry.title === "string" ? entry.title : "";
+  return isLikelyImageFilename(title);
 }
 
 function extractFirstImageAttachmentUrl(args: {
@@ -184,10 +190,7 @@ function extractFirstImageAttachmentUrl(args: {
       if (typeof entry.url !== "string" || !entry.url.trim()) continue;
       if (!isLikelyImageAttachment(entry)) continue;
       return {
-        url:
-          typeof entry.mediaItemId === "string" && entry.mediaItemId.trim()
-            ? `${args.origin}/api/media/${entry.mediaItemId.trim()}`
-            : toAbsoluteUrl(args.origin, entry.url),
+        url: toAbsoluteUrl(args.origin, entry.url),
         alt:
           typeof entry.alt === "string" && entry.alt.trim()
             ? entry.alt
@@ -394,69 +397,60 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const effectiveNoindex = seoNoindex ?? !isPublished;
   const effectiveNofollow = seoNofollow ?? !isPublished;
 
-  const title =
-    seoTitle ||
-    resolveTitleWithSiteSettings({
-      pageTitle: post.title || postType?.name || "Post",
-      siteTitle: siteTitle ?? tenant?.name ?? undefined,
-      titleFormat,
-      separator,
-    });
-  const description =
-    seoDescription ||
-    post.excerpt ||
-    siteDescription ||
-    deriveDescriptionFromContent(post.content) ||
-    "";
-  let firstAttachmentImage = extractFirstImageAttachmentUrl({
+  const resolveNonEmpty = (...values: Array<string | undefined | null>) => {
+    for (const value of values) {
+      if (typeof value === "string" && value.trim().length > 0) {
+        return value.trim();
+      }
+    }
+    return "";
+  };
+
+  const postTitle =
+    typeof (post as { title?: unknown }).title === "string"
+      ? ((post as { title: string }).title ?? "")
+      : "";
+
+  const resolvedTitle = resolveTitleWithSiteSettings({
+    pageTitle: resolveNonEmpty(postTitle, postType?.name, "Post"),
+    siteTitle: siteTitle ?? tenant?.name ?? undefined,
+    titleFormat,
+    separator,
+  });
+
+  const title = resolveNonEmpty(seoTitle, resolvedTitle);
+
+  const excerpt =
+    typeof (post as { excerpt?: unknown }).excerpt === "string"
+      ? ((post as { excerpt: string }).excerpt ?? "")
+      : "";
+  const content =
+    typeof (post as { content?: unknown }).content === "string"
+      ? ((post as { content: string }).content ?? "")
+      : "";
+
+  const description = resolveNonEmpty(
+    seoDescription,
+    excerpt,
+    siteDescription,
+    deriveDescriptionFromContent(content),
+  );
+
+  const firstAttachmentImage = extractFirstImageAttachmentUrl({
     origin,
     postMetaMap,
   });
-  // If we can't confirm the image type from the stored attachment entry (signed URLs
-  // often lack extensions and older entries may omit mimeType), attempt to resolve
-  // mimeType via mediaItems.
-  if (!firstAttachmentImage) {
-    const raw = metaValueToString(postMetaMap.get(ATTACHMENTS_META_KEY));
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as unknown;
-        if (Array.isArray(parsed)) {
-          for (const item of parsed) {
-            if (!item || typeof item !== "object") continue;
-            const entry = item as AttachmentMetaEntry;
-            const mediaItemId =
-              typeof entry.mediaItemId === "string" ? entry.mediaItemId : null;
-            if (!mediaItemId) continue;
 
-            const media = await fetchQuery(
-              api.core.media.queries.getMediaItem,
-              {
-                id: mediaItemId as unknown as Id<"mediaItems">,
-              },
-            );
+  const featuredImageUrl =
+    typeof (post as { featuredImageUrl?: unknown }).featuredImageUrl ===
+    "string"
+      ? ((post as { featuredImageUrl: string }).featuredImageUrl ?? "")
+      : "";
 
-            const mimeType =
-              media &&
-              typeof (media as { mimeType?: unknown }).mimeType === "string"
-                ? ((media as { mimeType: string }).mimeType ?? "")
-                : "";
-            if (mimeType.startsWith("image/")) {
-              firstAttachmentImage = {
-                url: `${origin}/api/media/${mediaItemId}`,
-              };
-              break;
-            }
-          }
-        }
-      } catch {
-        // ignore
-      }
-    }
-  }
   const ogImageUrl =
-    firstAttachmentImage?.url ||
-    (typeof post.featuredImageUrl === "string" && post.featuredImageUrl.trim()
-      ? toAbsoluteUrl(origin, post.featuredImageUrl)
+    firstAttachmentImage?.url ??
+    (featuredImageUrl.trim().length > 0
+      ? toAbsoluteUrl(origin, featuredImageUrl)
       : null);
   const ogImages = ogImageUrl
     ? [

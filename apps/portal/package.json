@@ -24,7 +24,8 @@
     "seed:help": "pnpm with-env tsx scripts/seed-integrations.ts --help",
     "seed:convex": "pnpm with-env convex run integrations/init",
     "generate:spec": "npx convex-helpers ts-api-spec --output-file ./convexspec",
-    "btools": "npx @agentdeskai/browser-tools-server@latest"
+    "btools": "npx @agentdeskai/browser-tools-server@latest",
+    "seo:inspect": "pnpm with-env node scripts/inspect-opengraph.mjs"
   },
   "dependencies": {
     "@acme/admin-runtime": "workspace:*",
