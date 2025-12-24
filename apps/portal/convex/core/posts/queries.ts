@@ -185,8 +185,83 @@ export const getPostMeta = query({
     postTypeSlug: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const postId = args.postId as Id<"posts">;
     const requestedOrg = args.organizationId ?? undefined;
+
+    // Support synthetic IDs for custom-table-backed post types.
+    // Format: `custom:{postTypeSlug}:{rawId}`
+    const rawPostId = args.postId;
+    const isSynthetic = rawPostId.startsWith("custom:");
+    const syntheticParts = isSynthetic ? rawPostId.split(":") : null;
+    const syntheticPostTypeSlug =
+      syntheticParts && syntheticParts.length >= 3
+        ? syntheticParts[1]?.toLowerCase()
+        : undefined;
+    const syntheticRawId =
+      syntheticParts && syntheticParts.length >= 3
+        ? syntheticParts.slice(2).join(":")
+        : undefined;
+
+    const resolvedPostTypeSlug =
+      (args.postTypeSlug ?? syntheticPostTypeSlug)?.toLowerCase() ?? undefined;
+
+    // Route custom-table meta first (so we don't attempt `ctx.db.get` with a non-Id).
+    if (isSynthetic && resolvedPostTypeSlug && syntheticRawId && requestedOrg) {
+      if (resolvedPostTypeSlug === "downloads" || resolvedPostTypeSlug === "download") {
+        const downloadId = syntheticRawId as Id<"downloads">;
+        const download = await ctx.db.get(downloadId);
+        if (!download || download.organizationId !== requestedOrg) {
+          return [];
+        }
+        const meta = await ctx.db
+          .query("downloadsMeta")
+          .withIndex("by_org_and_download", (q) =>
+            q.eq("organizationId", requestedOrg).eq("downloadId", downloadId),
+          )
+          .collect();
+
+        // Adapt to postsMeta-like entries (client only relies on `key`/`value`).
+        return meta.map((entry) => ({
+          _id: `custom:meta:downloads:${entry._id}` as unknown as Id<"postsMeta">,
+          _creationTime: entry._creationTime,
+          postId: rawPostId as unknown as Id<"posts">,
+          key: entry.key,
+          value: entry.value,
+          createdAt: entry.createdAt,
+          updatedAt: entry.updatedAt,
+        }));
+      }
+
+      if (
+        resolvedPostTypeSlug === "attachments" ||
+        resolvedPostTypeSlug === "attachment"
+      ) {
+        const mediaItemId = syntheticRawId as Id<"mediaItems">;
+        const mediaItem = await ctx.db.get(mediaItemId);
+        if (!mediaItem) {
+          return [];
+        }
+        const meta = await ctx.db
+          .query("mediaItemsMeta")
+          .withIndex("by_org_and_mediaItem", (q) =>
+            q
+              .eq("organizationId", requestedOrg)
+              .eq("mediaItemId", mediaItemId),
+          )
+          .collect();
+
+        return meta.map((entry) => ({
+          _id: `custom:meta:mediaItems:${entry._id}` as unknown as Id<"postsMeta">,
+          _creationTime: entry._creationTime,
+          postId: rawPostId as unknown as Id<"posts">,
+          key: entry.key,
+          value: entry.value,
+          createdAt: entry.createdAt,
+          updatedAt: entry.updatedAt,
+        }));
+      }
+    }
+
+    const postId = rawPostId as Id<"posts">;
     const postType: Doc<"postTypes"> | null = args.postTypeSlug
       ? await getScopedPostTypeBySlug(ctx, args.postTypeSlug, requestedOrg)
       : null;

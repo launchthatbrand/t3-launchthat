@@ -1,6 +1,13 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
+const mediaItemMetaValueValidator = v.union(
+  v.string(),
+  v.number(),
+  v.boolean(),
+  v.null(),
+);
+
 export const mediaSchema = {
   // Media Items table (metadata for Convex storage files and external URLs)
   mediaItems: defineTable({
@@ -58,4 +65,21 @@ export const mediaSchema = {
       searchField: "alt",
       filterFields: ["status"],
     }),
+
+  /**
+   * Media item meta (separate from postsMeta).
+   *
+   * Attachments are backed by `mediaItems`, but we want them to participate in
+   * the same metabox/custom-field system as other post types.
+   */
+  mediaItemsMeta: defineTable({
+    organizationId: v.id("organizations"),
+    mediaItemId: v.id("mediaItems"),
+    key: v.string(),
+    value: v.optional(mediaItemMetaValueValidator),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_org_and_mediaItem", ["organizationId", "mediaItemId"])
+    .index("by_org_mediaItem_and_key", ["organizationId", "mediaItemId", "key"]),
 };

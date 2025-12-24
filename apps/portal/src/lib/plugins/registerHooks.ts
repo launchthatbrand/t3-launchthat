@@ -1,4 +1,4 @@
-import { addAction, addFilter } from "@acme/admin-runtime";
+import { addAction, addFilter } from "@acme/admin-runtime/hooks";
 
 import type { PluginDefinition } from "./types";
 

@@ -21,6 +21,7 @@ import { PostCommentsSection } from "~/components/comments/PostCommentsSection";
 import { FrontendContentFilterHost } from "~/components/frontend/FrontendContentFilterHost";
 import { TaxonomyBadges } from "~/components/taxonomies/TaxonomyBadges";
 import { BackgroundRippleEffect } from "~/components/ui/background-ripple-effect";
+import { env } from "~/env";
 import {
   isLexicalSerializedStateString,
   parseLexicalSerializedState,
@@ -33,8 +34,8 @@ import {
 import { findPostTypeBySlug } from "~/lib/plugins/frontend";
 import { wrapWithFrontendProviders } from "~/lib/plugins/frontendProviders";
 import {
+  getFrontendSingleSlotsForSlug,
   getPluginFrontendFiltersForSlug,
-  getPluginFrontendSingleSlotsForSlug,
   wrapWithPluginProviders,
 } from "~/lib/plugins/helpers";
 import { ATTACHMENTS_META_KEY } from "~/lib/posts/metaKeys";
@@ -329,6 +330,61 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
       organizationId: organizationId ?? undefined,
     });
     isLmsComponentPost = Boolean(post);
+  }
+
+  const isDownloadRoute = ["download", "downloads"].includes(
+    segments[0]?.toLowerCase() ?? "",
+  );
+  if (!post && isDownloadRoute && organizationId) {
+    const result = await fetchQuery(
+      api.core.downloads.queries.getDownloadBySlug,
+      {
+        organizationId,
+        slug,
+      },
+    );
+    if (result) {
+      const download = result.download;
+      post = {
+        _id: `custom:downloads:${download._id}`,
+        _creationTime: download._creationTime,
+        organizationId: download.organizationId,
+        postTypeSlug: "downloads",
+        slug: download.slug,
+        title: download.title,
+        excerpt: download.description ?? undefined,
+        content: download.content ?? "",
+        status: download.status,
+        createdAt: download.createdAt,
+        updatedAt: download.updatedAt ?? download._creationTime,
+      } as unknown as Doc<"posts">;
+    }
+  }
+
+  if (!post && isDownloadRoute && organizationId && isConvexId(slug)) {
+    const result = await fetchQuery(
+      api.core.downloads.queries.getDownloadById,
+      {
+        organizationId,
+        downloadId: slug as unknown as Id<"downloads">,
+      },
+    );
+    if (result) {
+      const download = result.download;
+      post = {
+        _id: `custom:downloads:${download._id}`,
+        _creationTime: download._creationTime,
+        organizationId: download.organizationId,
+        postTypeSlug: "downloads",
+        slug: download.slug,
+        title: download.title,
+        excerpt: download.description ?? undefined,
+        content: download.content ?? "",
+        status: download.status,
+        createdAt: download.createdAt,
+        updatedAt: download.updatedAt ?? download._creationTime,
+      } as unknown as Doc<"posts">;
+    }
   }
 
   if (!post) {
@@ -843,6 +899,61 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     isLmsComponentPost = Boolean(post);
   }
 
+  const isDownloadRoute = ["download", "downloads"].includes(
+    segments[0]?.toLowerCase() ?? "",
+  );
+  if (!post && isDownloadRoute && organizationId) {
+    const result = await fetchQuery(
+      api.core.downloads.queries.getDownloadBySlug,
+      {
+        organizationId,
+        slug,
+      },
+    );
+    if (result) {
+      const download = result.download;
+      post = {
+        _id: `custom:downloads:${download._id}`,
+        _creationTime: download._creationTime,
+        organizationId: download.organizationId,
+        postTypeSlug: "downloads",
+        slug: download.slug,
+        title: download.title,
+        excerpt: download.description ?? undefined,
+        content: download.content ?? "",
+        status: download.status,
+        createdAt: download.createdAt,
+        updatedAt: download.updatedAt ?? download._creationTime,
+      } as unknown as Doc<"posts">;
+    }
+  }
+
+  if (!post && isDownloadRoute && organizationId && isConvexId(slug)) {
+    const result = await fetchQuery(
+      api.core.downloads.queries.getDownloadById,
+      {
+        organizationId,
+        downloadId: slug as unknown as Id<"downloads">,
+      },
+    );
+    if (result) {
+      const download = result.download;
+      post = {
+        _id: `custom:downloads:${download._id}`,
+        _creationTime: download._creationTime,
+        organizationId: download.organizationId,
+        postTypeSlug: "downloads",
+        slug: download.slug,
+        title: download.title,
+        excerpt: download.description ?? undefined,
+        content: download.content ?? "",
+        status: download.status,
+        createdAt: download.createdAt,
+        updatedAt: download.updatedAt ?? download._creationTime,
+      } as unknown as Doc<"posts">;
+    }
+  }
+
   console.log("[FrontendCatchAllPage] Post:", post);
 
   if (!post) {
@@ -1020,16 +1131,32 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     );
   }
 
-  const frontendSlotRegistrations =
-    post.postTypeSlug && pluginMatch
-      ? getPluginFrontendSingleSlotsForSlug(post.postTypeSlug)
-      : [];
+  const frontendSlotRegistrations = post.postTypeSlug
+    ? getFrontendSingleSlotsForSlug(post.postTypeSlug)
+    : [];
+  if (env.NODE_ENV !== "production") {
+    console.log("[FrontendCatchAllPage] frontendSlotRegistrations", {
+      postTypeSlug: post.postTypeSlug,
+      count: frontendSlotRegistrations.length,
+      locations: frontendSlotRegistrations.map((r) => r.slot.location),
+      ids: frontendSlotRegistrations.map((r) => r.slot.id),
+    });
+  }
   const disabledSlotIds = resolveDisabledFrontendSlotIds(postType);
   const filteredSlotRegistrations = disabledSlotIds.length
     ? frontendSlotRegistrations.filter(
         (registration) => !disabledSlotIds.includes(registration.slot.id),
       )
     : frontendSlotRegistrations;
+  if (env.NODE_ENV !== "production") {
+    console.log("[FrontendCatchAllPage] filteredSlotRegistrations", {
+      postTypeSlug: post.postTypeSlug,
+      disabledSlotIds,
+      count: filteredSlotRegistrations.length,
+      locations: filteredSlotRegistrations.map((r) => r.slot.location),
+      ids: filteredSlotRegistrations.map((r) => r.slot.id),
+    });
+  }
   const pluginSlotNodes = buildFrontendSlotNodes({
     registrations: filteredSlotRegistrations,
     post,
@@ -1037,6 +1164,15 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     organizationId,
     postMeta: postMetaObject,
   });
+  if (env.NODE_ENV !== "production") {
+    console.log("[FrontendCatchAllPage] pluginSlotNodes counts", {
+      beforeContent: pluginSlotNodes.beforeContent.length,
+      afterContent: pluginSlotNodes.afterContent.length,
+      header: pluginSlotNodes.header.length,
+      sidebarTop: pluginSlotNodes.sidebarTop.length,
+      sidebarBottom: pluginSlotNodes.sidebarBottom.length,
+    });
+  }
   const frontendFilterRegistrations =
     post.postTypeSlug && pluginMatch
       ? getPluginFrontendFiltersForSlug(post.postTypeSlug)

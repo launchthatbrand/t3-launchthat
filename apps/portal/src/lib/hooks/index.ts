@@ -13,7 +13,7 @@ export {
   hasFilter,
   getRegisteredActions,
   getRegisteredFilters,
-} from "@acme/admin-runtime";
+} from "@acme/admin-runtime/hooks";
 
 // React integration (portal-specific utilities)
 export {
@@ -35,4 +35,4 @@ export type {
   PluginTab,
   PluginSidebar,
   PluginSlotContent,
-} from "@acme/admin-runtime";
+} from "@acme/admin-runtime/hooks";

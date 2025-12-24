@@ -38,8 +38,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { AdminSinglePostView } from "../_components/AdminSinglePostView";
-import { AttachmentSingleView } from "../_components/AttachmentSingleView";
-import { AttachmentsArchiveView } from "../_components/AttachmentsArchiveView";
+import { encodeSyntheticId } from "~/lib/postTypes/adminAdapters";
 import { Button } from "@acme/ui/button";
 import type { Doc } from "@/convex/_generated/dataModel";
 import Link from "next/link";
@@ -175,6 +174,7 @@ function AdminEditPageBody() {
     searchParams.get("taxonomy")?.toLowerCase().trim() ?? "";
 
   const resolvedSlug = (postTypeSlug ?? DEFAULT_POST_TYPE).toLowerCase();
+  const postIdParam = searchParams.get("post_id");
   const permalinkSettings = useMemo<PermalinkSettings>(() => {
     const rawValue = permalinkOption?.metaValue as unknown;
     if (isPermalinkSettingsValue(rawValue)) {
@@ -189,6 +189,77 @@ function AdminEditPageBody() {
       postTypes.find((pt: PostTypeDoc) => pt.slug === resolvedSlug) ?? null
     );
   }, [postType, postTypes, resolvedSlug]);
+
+  const downloadRecord = useQuery(
+    api.core.downloads.queries.getDownloadById,
+    resolvedSlug === "downloads" && postIdParam && postIdParam !== "new" && organizationId
+      ? ({
+          organizationId,
+          downloadId: postIdParam as unknown as Doc<"downloads">["_id"],
+        } as const)
+      : "skip",
+  ) as
+    | {
+        download: Doc<"downloads">;
+        media: { url?: string; title?: string; mimeType?: string } | null;
+      }
+    | null
+    | undefined;
+
+  const mediaItemRecord = useQuery(
+    api.core.media.queries.getMediaItem,
+    resolvedSlug === "attachments" && postIdParam && postIdParam !== "new"
+      ? ({ id: postIdParam as unknown as Doc<"mediaItems">["_id"] } as const)
+      : "skip",
+  ) as Doc<"mediaItems"> | null | undefined;
+
+  const effectivePost = useMemo(() => {
+    if (resolvedSlug === "downloads") {
+      if (downloadRecord === undefined) return undefined;
+      if (downloadRecord === null) return null;
+      const download = downloadRecord.download;
+      return {
+        _id: encodeSyntheticId({ postTypeSlug: "downloads", rawId: download._id }),
+        _creationTime: download._creationTime,
+        title: download.title,
+        content: download.content ?? "",
+        excerpt: download.description ?? undefined,
+        slug: download.slug,
+        status: download.status,
+        postTypeSlug: "downloads",
+        organizationId: download.organizationId,
+        createdAt: download.createdAt,
+        updatedAt: download.updatedAt ?? download._creationTime,
+      } as unknown as Doc<"posts">;
+    }
+
+    if (resolvedSlug === "attachments") {
+      if (mediaItemRecord === undefined) return undefined;
+      if (mediaItemRecord === null) return null;
+      return {
+        _id: encodeSyntheticId({ postTypeSlug: "attachments", rawId: mediaItemRecord._id }),
+        _creationTime: mediaItemRecord._creationTime,
+        title: mediaItemRecord.title ?? "Untitled",
+        content: undefined,
+        excerpt: undefined,
+        slug: String(mediaItemRecord._id),
+        status: (mediaItemRecord.status ?? "draft") as "draft" | "published",
+        postTypeSlug: "attachments",
+        organizationId,
+        createdAt: mediaItemRecord.uploadedAt ?? mediaItemRecord._creationTime,
+        updatedAt: mediaItemRecord.uploadedAt ?? mediaItemRecord._creationTime,
+      } as unknown as Doc<"posts">;
+    }
+
+    return post;
+  }, [downloadRecord, mediaItemRecord, organizationId, post, resolvedSlug]);
+
+  const effectiveIsNewRecord = useMemo(() => {
+    if (resolvedSlug === "downloads" || resolvedSlug === "attachments") {
+      return !postIdParam || postIdParam === "new";
+    }
+    return isNewRecord;
+  }, [isNewRecord, postIdParam, resolvedSlug]);
 
   const handlePostTypeChange = useCallback(
     (value: string) => {
@@ -275,17 +346,6 @@ function AdminEditPageBody() {
       const slugToUse = targetSlug ?? resolvedSlug;
       const targetPostType =
         postTypes.find((type) => type.slug === slugToUse) ?? hydratedPostType;
-      if (slugToUse === "attachment" || slugToUse === "attachments") {
-        return (
-          <AttachmentsArchiveView
-            slug={slugToUse}
-            postType={targetPostType}
-            options={postTypes}
-            onPostTypeChange={handlePostTypeChange}
-            renderLayout={renderLayout}
-          />
-        );
-      }
       return (
         <GenericArchiveView
           slug={slugToUse}
@@ -375,28 +435,12 @@ function AdminEditPageBody() {
   }
 
   if (viewMode === "single") {
-    if (resolvedSlug === "attachment" || resolvedSlug === "attachments") {
-      const postIdParam = searchParams.get("post_id");
-      if (postIdParam && postIdParam !== "new") {
-        return (
-          <AttachmentSingleView
-            mediaItemId={postIdParam as unknown as Doc<"mediaItems">["_id"]}
-            onBack={() => {
-              const params = new URLSearchParams(searchParams.toString());
-              params.delete("post_id");
-              router.replace(`/admin/edit?${params.toString()}`);
-            }}
-          />
-        );
-      }
-    }
-
     const singleView = (
       <AdminSinglePostView
-        post={post}
+        post={effectivePost}
         postType={hydratedPostType}
         slug={resolvedSlug}
-        isNewRecord={isNewRecord}
+        isNewRecord={effectiveIsNewRecord}
         organizationId={organizationId ?? undefined}
         pluginSingleView={pluginSingleView}
         onBack={() => {
@@ -409,20 +453,6 @@ function AdminEditPageBody() {
     return pluginSingleView
       ? wrapWithPluginProviders(singleView, pluginSingleView.pluginId)
       : singleView;
-  }
-
-  if (
-    !pluginArchiveView &&
-    (resolvedSlug === "attachment" || resolvedSlug === "attachments")
-  ) {
-    return (
-      <AttachmentsArchiveView
-        slug={resolvedSlug}
-        postType={hydratedPostType}
-        options={postTypes}
-        onPostTypeChange={handlePostTypeChange}
-      />
-    );
   }
 
   const rawSidebarPreference =

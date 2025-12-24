@@ -165,6 +165,63 @@ const DEFAULT_POST_TYPE_FIELDS: Record<string, DefaultFieldSeed[]> = {
       order: 13,
     },
   ],
+  downloads: [
+    {
+      name: "Linked media item",
+      key: "mediaItemId",
+      type: "text",
+      description:
+        "Media library item ID to serve as the source file for this download.",
+      required: true,
+      searchable: false,
+      filterable: false,
+      order: 10,
+    },
+    {
+      name: "Description",
+      key: "description",
+      type: "textarea",
+      description: "Shown on the download page and in admin lists.",
+      required: false,
+      searchable: true,
+      filterable: false,
+      order: 11,
+    },
+    {
+      name: "Access kind",
+      key: "accessKind",
+      type: "select",
+      description: "Controls who can request a signed download URL.",
+      defaultValue: "public",
+      options: [
+        { label: "Public", value: "public" },
+        { label: "Gated", value: "gated" },
+      ],
+      order: 12,
+    },
+  ],
+  attachments: [
+    {
+      name: "Caption",
+      key: "caption",
+      type: "textarea",
+      description: "Optional caption displayed alongside the media.",
+      required: false,
+      searchable: true,
+      filterable: false,
+      order: 10,
+    },
+    {
+      name: "Alt text",
+      key: "alt",
+      type: "text",
+      description: "Accessibility alt text (primarily for images).",
+      required: false,
+      searchable: true,
+      filterable: false,
+      order: 11,
+    },
+  ],
 };
 
 const DEFAULT_POST_TYPES: DefaultPostTypeConfig[] = [
@@ -238,10 +295,9 @@ const DEFAULT_POST_TYPES: DefaultPostTypeConfig[] = [
     isPublic: false,
     supports: {
       title: true,
-      attachments: true,
-      featuredImage: true,
       customFields: true,
       postMeta: true,
+      taxonomy: true,
     },
     rewrite: {
       hasArchive: false,
@@ -257,8 +313,37 @@ const DEFAULT_POST_TYPES: DefaultPostTypeConfig[] = [
       icon: "Image",
       position: 30,
     },
-    storageKind: "posts",
-    storageTables: [...DEFAULT_POST_STORAGE_TABLES],
+    storageKind: "custom",
+    storageTables: ["mediaItems", "mediaItemsMeta"],
+  },
+  {
+    name: "Downloads",
+    slug: "downloads",
+    description:
+      "Public or gated downloads served via R2 with expiring URLs (created from attachments).",
+    isPublic: true,
+    supports: {
+      title: true,
+      customFields: true,
+      postMeta: true,
+      taxonomy: true,
+    },
+    rewrite: {
+      hasArchive: false,
+      singleSlug: "download",
+      withFront: true,
+      feeds: false,
+      pages: false,
+    },
+    adminMenu: {
+      enabled: true,
+      label: "Downloads",
+      slug: "downloads",
+      icon: "Download",
+      position: 31,
+    },
+    storageKind: "custom",
+    storageTables: ["downloads", "downloadEvents"],
   },
   {
     name: "Revisions",

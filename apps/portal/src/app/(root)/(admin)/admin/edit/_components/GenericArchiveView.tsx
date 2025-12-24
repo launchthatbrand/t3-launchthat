@@ -130,10 +130,57 @@ export function GenericArchiveView({
   const isComponentHelpdesk =
     postType?.storageKind === "component" &&
     normalizedSlug === "helpdeskarticles";
+  const isCustomDownloads =
+    postType?.storageKind === "custom" && normalizedSlug === "downloads";
+  const isCustomAttachments =
+    postType?.storageKind === "custom" && normalizedSlug === "attachments";
 
   const shouldLoadPosts = postType
-    ? true
+    ? !isCustomDownloads && !isCustomAttachments
     : isBuiltInPostTypeSlug(normalizedSlug);
+
+  const downloads =
+    (useQuery(
+      api.core.downloads.queries.listDownloads,
+      isCustomDownloads && organizationId ? { organizationId } : "skip",
+    ) as
+      | {
+          _id: string;
+          _creationTime: number;
+          organizationId: string;
+          slug: string;
+          title: string;
+          description?: string | null;
+          status: "draft" | "published";
+          createdAt: number;
+          updatedAt?: number | null;
+        }[]
+      | null
+      | undefined) ?? null;
+
+  const attachmentsPage = useQuery(
+    api.core.media.queries.listMediaItemsWithUrl,
+    isCustomAttachments
+      ? {
+          paginationOpts: {
+            numItems: 200,
+            cursor: null,
+          },
+        }
+      : "skip",
+  ) as
+    | {
+        page: {
+          _id: string;
+          _creationTime: number;
+          url?: string | null;
+          title?: string | null;
+          status?: "draft" | "published" | null;
+          uploadedAt?: number | null;
+        }[];
+      }
+    | null
+    | undefined;
 
   const componentPosts =
     (useQuery(
@@ -166,29 +213,74 @@ export function GenericArchiveView({
       : undefined,
   );
 
-  const posts = isComponentHelpdesk
-    ? ((componentPosts ?? []).map((item) => ({
+  const posts = isCustomDownloads
+    ? ((downloads ?? []).map((item) => ({
+        // Keep `post_id` URLs stable by using the raw downloads table id here.
         _id: item._id as unknown as Id<"posts">,
         _creationTime: item._creationTime,
         title: item.title ?? "Untitled",
-        content: item.content ?? undefined,
-        excerpt: item.excerpt ?? undefined,
+        content: undefined,
+        excerpt: item.description ?? undefined,
         slug: item.slug,
         status: item.status,
-        authorId: item.authorId ?? undefined,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt ?? item._creationTime,
-        postTypeSlug: (item.postTypeSlug ?? normalizedSlug) as string,
+        postTypeSlug: normalizedSlug,
         organizationId: organizationId ?? undefined,
       })) as ArchiveRow[])
-    : ((postsQuery.posts ?? []) as ArchiveRow[]);
+    : isCustomAttachments
+      ? ((attachmentsPage?.page ?? []).map((item) => ({
+          // Keep `post_id` URLs stable by using the raw mediaItems id here.
+          _id: item._id as unknown as Id<"posts">,
+          _creationTime: item._creationTime,
+          title: item.title ?? "Untitled",
+          content: undefined,
+          excerpt: undefined,
+          // Media items do not have a slug; use the ID as stable identifier.
+          slug: String(item._id),
+          status: (item.status ?? "draft") as "draft" | "published",
+          createdAt: item.uploadedAt ?? item._creationTime,
+          updatedAt: item.uploadedAt ?? item._creationTime,
+          postTypeSlug: normalizedSlug,
+          organizationId: organizationId ?? undefined,
+        })) as ArchiveRow[])
+      : isComponentHelpdesk
+        ? ((componentPosts ?? []).map((item) => ({
+            _id: item._id as unknown as Id<"posts">,
+            _creationTime: item._creationTime,
+            title: item.title ?? "Untitled",
+            content: item.content ?? undefined,
+            excerpt: item.excerpt ?? undefined,
+            slug: item.slug,
+            status: item.status,
+            authorId: item.authorId ?? undefined,
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt ?? item._creationTime,
+            postTypeSlug: (item.postTypeSlug ?? normalizedSlug) as string,
+            organizationId: organizationId ?? undefined,
+          })) as ArchiveRow[])
+        : ((postsQuery.posts ?? []) as ArchiveRow[]);
 
-  const postsLoading = isComponentHelpdesk
-    ? componentPosts === null
-    : postsQuery.isLoading;
+  const postsLoading = isCustomDownloads
+    ? downloads === null
+    : isCustomAttachments
+      ? attachmentsPage === undefined
+      : isComponentHelpdesk
+        ? componentPosts === null
+        : postsQuery.isLoading;
 
-  const rows: ArchiveRow[] = shouldLoadPosts ? posts : FALLBACK_ROWS;
-  const tableLoading = shouldLoadPosts ? postsLoading : isLoading;
+  const rows: ArchiveRow[] =
+    isCustomDownloads || isCustomAttachments
+      ? posts
+      : shouldLoadPosts
+        ? posts
+        : FALLBACK_ROWS;
+  const tableLoading =
+    isCustomDownloads || isCustomAttachments
+      ? postsLoading
+      : shouldLoadPosts
+        ? postsLoading
+        : isLoading;
   const displayRows = useMemo<ArchiveDisplayRow[]>(() => {
     return rows.map((row) => {
       if (isPostRow(row)) {
@@ -445,7 +537,7 @@ export function GenericArchiveView({
                 entityActions={entityActions}
                 isLoading={tableLoading}
                 enableFooter={false}
-                viewModes={["list"]}
+                viewModes={["list", "grid"]}
                 defaultViewMode="list"
                 enableSearch
                 emptyState={

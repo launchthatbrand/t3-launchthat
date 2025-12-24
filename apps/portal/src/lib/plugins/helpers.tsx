@@ -9,8 +9,12 @@ import type {
   PluginPostTypeFieldDefinition,
   PluginSingleViewSlotDefinition,
 } from "./types";
+import { applyFilters } from "@acme/admin-runtime/hooks";
 import { PortalConvexProvider } from "~/providers/ConvexClientProvider";
 import { pluginDefinitions } from "./definitions";
+import { FRONTEND_SINGLE_SLOTS_FILTER } from "./hookSlots";
+
+import "~/lib/plugins/installHooks";
 
 export interface PluginSingleViewInstance {
   pluginId: string;
@@ -122,6 +126,18 @@ export function getPluginFrontendSingleSlotsForSlug(
   }
 
   return registrations;
+}
+
+export function getFrontendSingleSlotsForSlug(
+  slug: string,
+): PluginFrontendSingleSlotRegistration[] {
+  const base = getPluginFrontendSingleSlotsForSlug(slug);
+  const filtered: unknown = applyFilters(FRONTEND_SINGLE_SLOTS_FILTER, base, {
+    postTypeSlug: slug,
+  });
+  return Array.isArray(filtered)
+    ? (filtered as PluginFrontendSingleSlotRegistration[])
+    : base;
 }
 
 export function getPluginFrontendFiltersForSlug(

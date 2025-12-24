@@ -8,6 +8,7 @@ import "./metaBoxes/customFields";
 import "./metaBoxes/actions";
 import "./metaBoxes/metadata";
 import "./metaBoxes/vimeo";
+import "./metaBoxes/downloads";
 import "~/lib/pageTemplates";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
@@ -28,7 +29,7 @@ import {
   useCreatePost,
   useUpdatePost,
 } from "@/lib/blog";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
@@ -109,6 +110,7 @@ import {
   getPluginSingleViewSlotsForSlug,
   wrapWithPluginProviders,
 } from "~/lib/plugins/helpers";
+import { decodeSyntheticId } from "~/lib/postTypes/adminAdapters";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import { adaptCommercePostMetaToPortal } from "~/lib/postTypes/customAdapters";
 import { getCanonicalPostPath } from "~/lib/postTypes/routing";
@@ -369,6 +371,20 @@ export function AdminSinglePostView({
   const updateSupportPost = useMutation(
     api.plugins.support.mutations.updateSupportPost,
   );
+  const createDownloadFromMediaItem = useMutation(
+    api.core.downloads.mutations.createDownloadFromMediaItem,
+  );
+  const updateDownload = useMutation(
+    api.core.downloads.mutations.updateDownload,
+  );
+  const publishDownload = useAction(api.core.downloads.actions.publishDownload);
+  const upsertDownloadMeta = useMutation(
+    api.core.downloads.meta.upsertDownloadMeta,
+  );
+  const updateMedia = useMutation(api.core.media.mutations.updateMedia);
+  const upsertMediaItemMeta = useMutation(
+    api.core.media.meta.upsertMediaItemMeta,
+  );
   const setObjectTerms = useMutation(
     api.core.taxonomies.mutations.setObjectTerms,
   );
@@ -380,12 +396,15 @@ export function AdminSinglePostView({
     (post?._id?.startsWith("custom:") ? "component" : "posts");
   const isCustomStorage = storageKind === "custom";
   const isComponentStorage = storageKind === "component";
-  const isSyntheticPostId = Boolean(post?._id?.startsWith("custom:"));
+  const _isSyntheticPostId = Boolean(post?._id?.startsWith("custom:"));
   const supportsPostsTable =
     storageKind === "posts" && (!!postType || isBuiltInPostTypeSlug(slug));
   const canSaveRecord =
     supportsPostsTable || isCustomStorage || isComponentStorage;
-  const supportsSlugEditing = supportsPostsTable || isComponentStorage;
+  const supportsSlugEditing =
+    supportsPostsTable ||
+    isComponentStorage ||
+    (isCustomStorage && normalizedSlug !== "attachments");
   const canDuplicateRecord =
     canSaveRecord && !isNewRecord && Boolean(post?._id) && !isCustomStorage;
   const supportsAttachments =
@@ -475,13 +494,15 @@ export function AdminSinglePostView({
   const { data: postTypeFields = [], isLoading: postTypeFieldsLoading } =
     usePostTypeFields(slug, true);
   const standardMetaArgs =
-    post?._id && supportsPostsTable && !isSyntheticPostId
-      ? organizationId
-        ? ({ postId: post._id, organizationId } as const)
-        : ({ postId: post._id } as const)
+    post?._id && (supportsPostsTable || isCustomStorage) && organizationId
+      ? ({
+          postId: post._id as unknown as string,
+          organizationId,
+          postTypeSlug: normalizedSlug,
+        } as const)
       : "skip";
   const standardMetaResult = useQuery(
-    api.core.posts.queries.getPostMeta,
+    api.core.posts.postMeta.getPostMeta,
     standardMetaArgs,
   ) as Doc<"postsMeta">[] | undefined;
 
@@ -494,7 +515,7 @@ export function AdminSinglePostView({
         } as const)
       : "skip";
   const supportMetaResult = useQuery(
-    api.core.posts.queries.getPostMeta,
+    api.core.posts.postMeta.getPostMeta,
     supportMetaArgs,
   ) as Doc<"postsMeta">[] | null | undefined;
 
@@ -1894,7 +1915,172 @@ export function AdminSinglePostView({
       }
 
       if (isCustomStorage) {
-        log("External storage detected, skipping core save", {
+        if (!organizationId) {
+          throw new Error("Organization is required to save this post type.");
+        }
+
+        const metaPayload = buildMetaPayload();
+        // Only strip true core/editor fields. For custom-table post types, we
+        // intentionally keep domain keys (e.g. `mediaItemId`) in meta as well so
+        // the metabox/custom-field UI can hydrate consistently.
+        const stripMetaKeys = new Set<string>([
+          "title",
+          "slug",
+          "status",
+          "content",
+          "excerpt",
+        ]);
+        const filteredMetaPayload = Object.fromEntries(
+          Object.entries(metaPayload).filter(
+            ([key]) => !stripMetaKeys.has(key),
+          ),
+        );
+
+        if (normalizedSlug === "downloads") {
+          const mediaItemIdRaw = metaPayload.mediaItemId;
+          const accessKindRaw = metaPayload.accessKind;
+          const descriptionRaw = metaPayload.description;
+          const resolvedMediaItemId =
+            typeof mediaItemIdRaw === "string" && mediaItemIdRaw.length > 0
+              ? (mediaItemIdRaw as unknown as Id<"mediaItems">)
+              : undefined;
+          const resolvedAccessKind =
+            accessKindRaw === "public" || accessKindRaw === "gated"
+              ? (accessKindRaw as "public" | "gated")
+              : undefined;
+          const resolvedDescription =
+            typeof descriptionRaw === "string" && descriptionRaw.length > 0
+              ? descriptionRaw
+              : undefined;
+
+          if (!resolvedMediaItemId) {
+            throw new Error("Downloads require a linked media item.");
+          }
+
+          const desiredStatus =
+            postStatus === "published"
+              ? ("published" as const)
+              : ("draft" as const);
+
+          const decoded = decodeSyntheticId(post?._id ?? null);
+          const rawDownloadId = decoded?.rawId as unknown as
+            | Id<"downloads">
+            | undefined;
+
+          let downloadId: Id<"downloads">;
+          if (isNewRecord || !rawDownloadId) {
+            downloadId = await createDownloadFromMediaItem({
+              organizationId,
+              mediaItemId: resolvedMediaItemId,
+              title: normalizedTitle,
+              slug: slugValue.trim() || undefined,
+              description: resolvedDescription,
+              content,
+              accessKind: resolvedAccessKind,
+            });
+          } else {
+            downloadId = rawDownloadId;
+            await updateDownload({
+              organizationId,
+              downloadId,
+              data: {
+                title: normalizedTitle,
+                slug: slugValue.trim() || undefined,
+                description: resolvedDescription,
+                content,
+                mediaItemId: resolvedMediaItemId,
+                accessKind: resolvedAccessKind,
+                status: desiredStatus === "draft" ? "draft" : undefined,
+              },
+            });
+          }
+
+          if (Object.keys(filteredMetaPayload).length > 0) {
+            await upsertDownloadMeta({
+              organizationId,
+              downloadId,
+              meta: filteredMetaPayload as Record<
+                string,
+                string | number | boolean | null
+              >,
+            });
+          }
+
+          if (desiredStatus === "published") {
+            await publishDownload({ organizationId, downloadId });
+          }
+
+          if (supportsTaxonomy && organizationId) {
+            await setObjectTerms({
+              organizationId,
+              objectId: String(downloadId),
+              postTypeSlug: slug,
+              termIds: taxonomyTermIds as unknown as Id<"taxonomyTerms">[],
+            });
+          }
+
+          setSaveError(null);
+          toast.success("Saved");
+          router.replace(
+            `/admin/edit?post_type=${slug}&post_id=${String(downloadId)}`,
+          );
+          return;
+        }
+
+        if (normalizedSlug === "attachments") {
+          const decoded = decodeSyntheticId(post?._id ?? null);
+          const rawMediaItemId = decoded?.rawId as unknown as
+            | Id<"mediaItems">
+            | undefined;
+          if (!rawMediaItemId) {
+            throw new Error("Attachment entry id is missing.");
+          }
+
+          const captionRaw = metaPayload.caption;
+          const altRaw = metaPayload.alt;
+          const resolvedCaption =
+            typeof captionRaw === "string" && captionRaw.length > 0
+              ? captionRaw
+              : undefined;
+          const resolvedAlt =
+            typeof altRaw === "string" && altRaw.length > 0
+              ? altRaw
+              : undefined;
+
+          await updateMedia({
+            id: rawMediaItemId,
+            title: normalizedTitle || undefined,
+            caption: resolvedCaption,
+            alt: resolvedAlt,
+            status: postStatus === "published" ? "published" : "draft",
+          });
+
+          if (Object.keys(filteredMetaPayload).length > 0) {
+            await upsertMediaItemMeta({
+              organizationId,
+              mediaItemId: rawMediaItemId,
+              meta: filteredMetaPayload as Record<
+                string,
+                string | number | boolean | null
+              >,
+            });
+          }
+
+          if (supportsTaxonomy && organizationId) {
+            await setObjectTerms({
+              organizationId,
+              objectId: String(rawMediaItemId),
+              postTypeSlug: slug,
+              termIds: taxonomyTermIds as unknown as Id<"taxonomyTerms">[],
+            });
+          }
+
+          setSaveError(null);
+          toast.success("Saved");
+          return;
+        }
+
+        log("External storage detected, no adapter configured yet", {
           storageKind,
           normalizedSlug,
         });
@@ -1982,6 +2168,7 @@ export function AdminSinglePostView({
     canSaveRecord,
     content,
     createPost,
+    createDownloadFromMediaItem,
     createSupportPost,
     excerpt,
     isComponentStorage,
@@ -1990,20 +2177,26 @@ export function AdminSinglePostView({
     log,
     normalizedSlug,
     organizationId,
+    publishDownload,
     post,
     postStatus,
     router,
     setIsSaving,
     setSaveError,
     setSlugValue,
+    setObjectTerms,
     slug,
     slugValue,
     storageKind,
     supportsTaxonomy,
     taxonomyTermIds,
     title,
+    updateDownload,
+    updateMedia,
     updatePost,
     updateSupportPost,
+    upsertDownloadMeta,
+    upsertMediaItemMeta,
   ]);
 
   const renderSaveButton = useCallback(
@@ -2090,11 +2283,13 @@ export function AdminSinglePostView({
     createPost,
     excerpt,
     headerLabel,
+    organizationId,
     post?._id,
     post?.slug,
     post?.status,
     post?.title,
     router,
+    setObjectTerms,
     slug,
     slugValue,
     supportsTaxonomy,

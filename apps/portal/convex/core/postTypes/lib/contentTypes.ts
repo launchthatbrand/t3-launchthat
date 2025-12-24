@@ -5,12 +5,8 @@
  */
 import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "@convex-config/_generated/server";
-import {
-  PORTAL_TENANT_ID,
-  PORTAL_TENANT_SLUG,
-  isPortalOrganizationValue,
-} from "../../../constants";
 
+import { isPortalOrganizationValue } from "../../../constants";
 import { FIELD_TYPES } from "../schema";
 
 /**
@@ -39,7 +35,7 @@ export interface PostTypeField {
 export type ConvexCtx = QueryCtx | MutationCtx;
 
 export const resolveScopedOrganizationId = (
-  organizationId?: Id<"organizations"> | typeof PORTAL_TENANT_SLUG,
+  organizationId?: Id<"organizations"> | string,
 ) => {
   if (!organizationId || isPortalOrganizationValue(organizationId)) {
     return undefined;
@@ -274,9 +270,14 @@ export async function updateEntryCount(ctx: MutationCtx, postTypeSlug: string) {
   // We need to check each collection based on the content type slug
   try {
     switch (postTypeSlug) {
+      case "attachments": {
+        entries = await ctx.db.query("mediaItems").collect();
+        entryCount = entries.length;
+        break;
+      }
       case "downloads": {
-        entryCount = 0;
-        console.log(`Found ${entryCount} downloads`);
+        entries = await ctx.db.query("downloads").collect();
+        entryCount = entries.length;
         break;
       }
       case "blog-posts":

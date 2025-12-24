@@ -1,5 +1,6 @@
 import { auditLogSchema } from "./auditLog/schema";
 import { contactsSchema } from "./crm/contacts/schema";
+import { downloadsSchema } from "./downloads/schema";
 import { mediaSchema } from "./media/schema";
 import { menusSchema } from "./menus/schema";
 import { optionsSchema } from "./options/schema";
@@ -15,6 +16,7 @@ export const coreSchema = {
   ...auditLogSchema,
   ...postTypesSchema,
   ...taxonomiesSchema,
+  ...downloadsSchema,
   ...mediaSchema,
   ...menusSchema,
   ...optionsSchema,

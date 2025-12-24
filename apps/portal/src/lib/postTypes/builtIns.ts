@@ -11,6 +11,8 @@ const BUILT_IN_POST_TYPE_SLUGS = new Set<string>([
   "revisions",
   "nav_menu_item",
   "nav-menu-item",
+  "download",
+  "downloads",
   "course",
   "courses",
   "lesson",

@@ -13,3 +13,6 @@ export const ADMIN_PLUGIN_SETTINGS_HEADER_AFTER =
 // Attachments (media library) archive extension points
 export const ADMIN_ATTACHMENTS_ARCHIVE_TABS_FILTER =
   "admin.attachments.archive.tabs.filter";
+
+// Frontend single-post extension points
+export const FRONTEND_SINGLE_SLOTS_FILTER = "frontend.single.slots";

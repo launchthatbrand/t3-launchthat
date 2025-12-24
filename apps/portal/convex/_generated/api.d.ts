@@ -19,11 +19,17 @@ import type * as core_categories_queries from "../core/categories/queries.js";
 import type * as core_crm_contacts_mutations from "../core/crm/contacts/mutations.js";
 import type * as core_crm_contacts_queries from "../core/crm/contacts/queries.js";
 import type * as core_crm_queries from "../core/crm/queries.js";
+import type * as core_downloads_actions from "../core/downloads/actions.js";
+import type * as core_downloads_meta from "../core/downloads/meta.js";
+import type * as core_downloads_mutations from "../core/downloads/mutations.js";
+import type * as core_downloads_policy from "../core/downloads/policy.js";
+import type * as core_downloads_queries from "../core/downloads/queries.js";
 import type * as core_lib_auth from "../core/lib/auth.js";
 import type * as core_lib_index from "../core/lib/index.js";
 import type * as core_lib_permissions from "../core/lib/permissions.js";
 import type * as core_media_http from "../core/media/http.js";
 import type * as core_media_integration from "../core/media/integration.js";
+import type * as core_media_meta from "../core/media/meta.js";
 import type * as core_media_mutations from "../core/media/mutations.js";
 import type * as core_media_queries from "../core/media/queries.js";
 import type * as core_menus_mutations from "../core/menus/mutations.js";
@@ -180,6 +186,7 @@ import type * as plugins_support_rag from "../plugins/support/rag.js";
 import type * as presence from "../presence.js";
 import type * as puckEditor_mutations from "../puckEditor/mutations.js";
 import type * as puckEditor_queries from "../puckEditor/queries.js";
+import type * as r2 from "../r2.js";
 import type * as shared_auth from "../shared/auth.js";
 import type * as shared_constants from "../shared/constants.js";
 import type * as shared_dates from "../shared/dates.js";
@@ -227,11 +234,17 @@ declare const fullApi: ApiFromModules<{
   "core/crm/contacts/mutations": typeof core_crm_contacts_mutations;
   "core/crm/contacts/queries": typeof core_crm_contacts_queries;
   "core/crm/queries": typeof core_crm_queries;
+  "core/downloads/actions": typeof core_downloads_actions;
+  "core/downloads/meta": typeof core_downloads_meta;
+  "core/downloads/mutations": typeof core_downloads_mutations;
+  "core/downloads/policy": typeof core_downloads_policy;
+  "core/downloads/queries": typeof core_downloads_queries;
   "core/lib/auth": typeof core_lib_auth;
   "core/lib/index": typeof core_lib_index;
   "core/lib/permissions": typeof core_lib_permissions;
   "core/media/http": typeof core_media_http;
   "core/media/integration": typeof core_media_integration;
+  "core/media/meta": typeof core_media_meta;
   "core/media/mutations": typeof core_media_mutations;
   "core/media/queries": typeof core_media_queries;
   "core/menus/mutations": typeof core_menus_mutations;
@@ -388,6 +401,7 @@ declare const fullApi: ApiFromModules<{
   presence: typeof presence;
   "puckEditor/mutations": typeof puckEditor_mutations;
   "puckEditor/queries": typeof puckEditor_queries;
+  r2: typeof r2;
   "shared/auth": typeof shared_auth;
   "shared/constants": typeof shared_constants;
   "shared/dates": typeof shared_dates;
@@ -4160,6 +4174,130 @@ export declare const components: {
           pageStatus?: "SplitRecommended" | "SplitRequired" | null;
           splitCursor?: string | null;
         }
+      >;
+    };
+  };
+  r2: {
+    lib: {
+      deleteMetadata: FunctionReference<
+        "mutation",
+        "internal",
+        { bucket: string; key: string },
+        null
+      >;
+      deleteObject: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          endpoint: string;
+          key: string;
+          secretAccessKey: string;
+        },
+        null
+      >;
+      deleteR2Object: FunctionReference<
+        "action",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          endpoint: string;
+          key: string;
+          secretAccessKey: string;
+        },
+        null
+      >;
+      getMetadata: FunctionReference<
+        "query",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          endpoint: string;
+          key: string;
+          secretAccessKey: string;
+        },
+        {
+          bucket: string;
+          bucketLink: string;
+          contentType?: string;
+          key: string;
+          lastModified: string;
+          link: string;
+          sha256?: string;
+          size?: number;
+          url: string;
+        } | null
+      >;
+      listMetadata: FunctionReference<
+        "query",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          cursor?: string;
+          endpoint: string;
+          limit?: number;
+          secretAccessKey: string;
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            bucket: string;
+            bucketLink: string;
+            contentType?: string;
+            key: string;
+            lastModified: string;
+            link: string;
+            sha256?: string;
+            size?: number;
+            url: string;
+          }>;
+          pageStatus?: null | "SplitRecommended" | "SplitRequired";
+          splitCursor?: null | string;
+        }
+      >;
+      store: FunctionReference<
+        "action",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          endpoint: string;
+          secretAccessKey: string;
+          url: string;
+        },
+        any
+      >;
+      syncMetadata: FunctionReference<
+        "action",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          endpoint: string;
+          key: string;
+          onComplete?: string;
+          secretAccessKey: string;
+        },
+        null
+      >;
+      upsertMetadata: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          bucket: string;
+          contentType?: string;
+          key: string;
+          lastModified: string;
+          link: string;
+          sha256?: string;
+          size?: number;
+        },
+        { isNew: boolean }
       >;
     };
   };

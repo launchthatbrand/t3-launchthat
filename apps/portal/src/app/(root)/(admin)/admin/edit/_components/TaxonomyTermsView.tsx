@@ -167,7 +167,7 @@ export function TaxonomyTermsView({
   const castParentId = (value: string) => {
     if (!value || value === "__none__") return undefined;
     if (!taxonomyDoc?.hierarchical) return undefined;
-    return value as Id<"taxonomyTerms">;
+      return value as Id<"taxonomyTerms">;
   };
 
   const handleTermSave = async () => {
