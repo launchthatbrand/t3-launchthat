@@ -2760,6 +2760,7 @@ export type PublicApiType = {
             slug: string;
             status: "published" | "draft" | "archived";
             tags?: Array<string>;
+            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
             title: string;
           },
           any
@@ -2791,6 +2792,7 @@ export type PublicApiType = {
             slug?: string;
             status?: "published" | "draft" | "archived";
             tags?: Array<string>;
+            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
             title?: string;
           },
           any
@@ -3156,9 +3158,9 @@ export type PublicApiType = {
             alt?: string;
             caption?: string;
             categories?: Array<string>;
-            categoryIds?: Array<Id<"categories">>;
             status?: "draft" | "published";
             storageId: Id<"_storage">;
+            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
             title?: string;
           },
           {
@@ -3166,9 +3168,9 @@ export type PublicApiType = {
             alt?: string;
             caption?: string;
             categories?: Array<string>;
-            categoryIds?: Array<Id<"categories">>;
             status: "draft" | "published";
             storageId: Id<"_storage">;
+            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
             title?: string;
             url: string;
           }
@@ -3217,12 +3219,15 @@ export type PublicApiType = {
             alt?: string;
             caption?: string;
             categories?: Array<string>;
-            categoryIds?: Array<Id<"categories">>;
             externalUrl?: string;
+            height?: number;
+            mimeType?: string;
             status?: "draft" | "published";
             storageId?: Id<"_storage">;
+            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
             title?: string;
             url?: string;
+            width?: number;
           }
         >;
         getMediaByStorageId: FunctionReference<
@@ -3235,12 +3240,15 @@ export type PublicApiType = {
             alt?: string;
             caption?: string;
             categories?: Array<string>;
-            categoryIds?: Array<Id<"categories">>;
             externalUrl?: string;
+            height?: number;
+            mimeType?: string;
             status?: "draft" | "published";
             storageId?: Id<"_storage">;
+            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
             title?: string;
             url?: string;
+            width?: number;
           }
         >;
         getStorageMetadata: FunctionReference<
@@ -3259,19 +3267,21 @@ export type PublicApiType = {
             alt?: string;
             caption?: string;
             categories?: Array<string>;
-            categoryIds?: Array<Id<"categories">>;
             externalUrl?: string;
+            height?: number;
+            mimeType?: string;
             status?: "draft" | "published";
             storageId?: Id<"_storage">;
+            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
             title?: string;
             url?: string;
+            width?: number;
           }
         >;
         listMediaItemsWithUrl: FunctionReference<
           "query",
           "public",
           {
-            categoryIds?: Array<Id<"categories">>;
             paginationOpts: {
               cursor: string | null;
               endCursor?: string | null;
@@ -3282,6 +3292,7 @@ export type PublicApiType = {
             };
             searchTerm?: string;
             status?: "draft" | "published";
+            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
           },
           {
             continueCursor: string | null;
@@ -3292,12 +3303,15 @@ export type PublicApiType = {
               alt?: string;
               caption?: string;
               categories?: Array<string>;
-              categoryIds?: Array<Id<"categories">>;
               externalUrl?: string;
+              height?: number;
+              mimeType?: string;
               status?: "draft" | "published";
               storageId?: Id<"_storage">;
+              taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
               title?: string;
               url?: string;
+              width?: number;
             }>;
             pageStatus?: string | null;
             splitCursor?: string | null;
@@ -3325,12 +3339,15 @@ export type PublicApiType = {
               alt?: string;
               caption?: string;
               categories?: Array<string>;
-              categoryIds?: Array<Id<"categories">>;
               externalUrl?: string;
+              height?: number;
+              mimeType?: string;
               status?: "draft" | "published";
               storageId?: Id<"_storage">;
+              taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
               title?: string;
               url?: string;
+              width?: number;
             }>;
           }
         >;
@@ -3356,12 +3373,15 @@ export type PublicApiType = {
               alt?: string;
               caption?: string;
               categories?: Array<string>;
-              categoryIds?: Array<Id<"categories">>;
               externalUrl?: string;
+              height?: number;
+              mimeType?: string;
               status?: "draft" | "published";
               storageId?: Id<"_storage">;
+              taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
               title?: string;
               url?: string;
+              width?: number;
             }>;
           }
         >;
@@ -3369,10 +3389,10 @@ export type PublicApiType = {
           "query",
           "public",
           {
-            categoryIds?: Array<Id<"categories">>;
             limit?: number;
             searchTerm: string;
             status?: "draft" | "published";
+            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
           },
           Array<{
             _creationTime: number;
@@ -3380,12 +3400,15 @@ export type PublicApiType = {
             alt?: string;
             caption?: string;
             categories?: Array<string>;
-            categoryIds?: Array<Id<"categories">>;
             externalUrl?: string;
+            height?: number;
+            mimeType?: string;
             status?: "draft" | "published";
             storageId?: Id<"_storage">;
+            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
             title?: string;
             url?: string;
+            width?: number;
           }>
         >;
       };
@@ -3552,6 +3575,19 @@ export type PublicApiType = {
             currentPeriodEnd?: number;
             currentPeriodStart?: number;
             customDomain?: string;
+            customDomainLastError?: string;
+            customDomainRecords?: Array<{
+              name: string;
+              type: string;
+              value: string;
+            }>;
+            customDomainStatus?:
+              | "unconfigured"
+              | "pending"
+              | "verified"
+              | "error";
+            customDomainUpdatedAt?: number;
+            customDomainVerifiedAt?: number;
             description?: string;
             isPublic: boolean;
             logo?: string;
@@ -3584,6 +3620,64 @@ export type PublicApiType = {
             currentPeriodEnd?: number;
             currentPeriodStart?: number;
             customDomain?: string;
+            customDomainLastError?: string;
+            customDomainRecords?: Array<{
+              name: string;
+              type: string;
+              value: string;
+            }>;
+            customDomainStatus?:
+              | "unconfigured"
+              | "pending"
+              | "verified"
+              | "error";
+            customDomainUpdatedAt?: number;
+            customDomainVerifiedAt?: number;
+            description?: string;
+            isPublic: boolean;
+            logo?: string;
+            memberCount?: number;
+            name: string;
+            ownerId: Id<"users">;
+            planId?: Id<"plans">;
+            primaryColor?: string;
+            slug: string;
+            subscriptionId?: string;
+            subscriptionStatus:
+              | "active"
+              | "trialing"
+              | "past_due"
+              | "canceled"
+              | "unpaid";
+            updatedAt: number;
+            userRole?: "owner" | "admin" | "editor" | "viewer" | "student";
+          } | null
+        >;
+        getByCustomDomain: FunctionReference<
+          "query",
+          "public",
+          { hostname: string },
+          {
+            _creationTime: number;
+            _id: Id<"organizations">;
+            allowSelfRegistration: boolean;
+            cancelAtPeriodEnd?: boolean;
+            currentPeriodEnd?: number;
+            currentPeriodStart?: number;
+            customDomain?: string;
+            customDomainLastError?: string;
+            customDomainRecords?: Array<{
+              name: string;
+              type: string;
+              value: string;
+            }>;
+            customDomainStatus?:
+              | "unconfigured"
+              | "pending"
+              | "verified"
+              | "error";
+            customDomainUpdatedAt?: number;
+            customDomainVerifiedAt?: number;
             description?: string;
             isPublic: boolean;
             logo?: string;
@@ -3666,6 +3760,19 @@ export type PublicApiType = {
             currentPeriodEnd?: number;
             currentPeriodStart?: number;
             customDomain?: string;
+            customDomainLastError?: string;
+            customDomainRecords?: Array<{
+              name: string;
+              type: string;
+              value: string;
+            }>;
+            customDomainStatus?:
+              | "unconfigured"
+              | "pending"
+              | "verified"
+              | "error";
+            customDomainUpdatedAt?: number;
+            customDomainVerifiedAt?: number;
             description?: string;
             isPublic: boolean;
             logo?: string;
@@ -3783,6 +3890,28 @@ export type PublicApiType = {
             sortOrder?: number;
           },
           null
+        >;
+      };
+      domains: {
+        startCustomDomainSetup: FunctionReference<
+          "action",
+          "public",
+          { domain: string; organizationId: Id<"organizations"> },
+          {
+            customDomain: string;
+            records: Array<{ name: string; type: string; value: string }>;
+            status: "unconfigured" | "pending" | "verified" | "error";
+          }
+        >;
+        verifyCustomDomain: FunctionReference<
+          "action",
+          "public",
+          { organizationId: Id<"organizations"> },
+          {
+            customDomain: string;
+            records: Array<{ name: string; type: string; value: string }>;
+            status: "unconfigured" | "pending" | "verified" | "error";
+          }
         >;
       };
     };
@@ -4303,7 +4432,7 @@ export type PublicApiType = {
         listTaxonomies: FunctionReference<
           "query",
           "public",
-          Record<string, never>,
+          { organizationId?: Id<"organizations"> },
           Array<{
             _creationTime: number;
             _id: Id<"taxonomies">;
@@ -4312,16 +4441,16 @@ export type PublicApiType = {
             description?: string;
             hierarchical: boolean;
             name: string;
+            organizationId?: Id<"organizations">;
             postTypeSlugs?: Array<string>;
             slug: string;
-            termCollection: "categories" | "tags" | "custom";
             updatedAt?: number;
           }>
         >;
         getTaxonomyBySlug: FunctionReference<
           "query",
           "public",
-          { slug: string },
+          { organizationId?: Id<"organizations">; slug: string },
           {
             _creationTime: number;
             _id: Id<"taxonomies">;
@@ -4330,25 +4459,94 @@ export type PublicApiType = {
             description?: string;
             hierarchical: boolean;
             name: string;
+            organizationId?: Id<"organizations">;
             postTypeSlugs?: Array<string>;
             slug: string;
-            termCollection: "categories" | "tags" | "custom";
             updatedAt?: number;
           } | null
         >;
         listTermsByTaxonomy: FunctionReference<
           "query",
           "public",
-          { slug: string },
+          {
+            organizationId: Id<"organizations">;
+            postTypeSlug?: string;
+            taxonomySlug: string;
+          },
           Array<{
-            _id: Id<"categories"> | Id<"tags"> | Id<"taxonomyTerms">;
+            _creationTime: number;
+            _id: Id<"taxonomyTerms">;
+            createdAt: number;
             description?: string;
             metadata?: Record<string, string | number | boolean>;
             name: string;
-            parentId?: Id<"categories"> | Id<"taxonomyTerms"> | Id<"tags">;
+            organizationId: Id<"organizations">;
+            parentId?: Id<"taxonomyTerms">;
+            postTypeSlugs?: Array<string>;
             slug: string;
-            source: "categories" | "tags" | "custom";
             taxonomyId: Id<"taxonomies">;
+            updatedAt?: number;
+          }>
+        >;
+        getTermBySlug: FunctionReference<
+          "query",
+          "public",
+          {
+            organizationId: Id<"organizations">;
+            taxonomySlug: string;
+            termSlug: string;
+          },
+          {
+            _creationTime: number;
+            _id: Id<"taxonomyTerms">;
+            createdAt: number;
+            description?: string;
+            metadata?: Record<string, string | number | boolean>;
+            name: string;
+            organizationId: Id<"organizations">;
+            parentId?: Id<"taxonomyTerms">;
+            postTypeSlugs?: Array<string>;
+            slug: string;
+            taxonomyId: Id<"taxonomies">;
+            updatedAt?: number;
+          } | null
+        >;
+        listObjectTerms: FunctionReference<
+          "query",
+          "public",
+          { objectId: string; organizationId: Id<"organizations"> },
+          Array<Id<"taxonomyTerms">>
+        >;
+        listObjectsByTerm: FunctionReference<
+          "query",
+          "public",
+          {
+            organizationId: Id<"organizations">;
+            postTypeSlug?: string;
+            termId: Id<"taxonomyTerms">;
+          },
+          Array<string>
+        >;
+        listAssignmentsByTerm: FunctionReference<
+          "query",
+          "public",
+          { organizationId: Id<"organizations">; termId: Id<"taxonomyTerms"> },
+          Array<{ objectId: string; postTypeSlug: string }>
+        >;
+        listObjectTermBadges: FunctionReference<
+          "query",
+          "public",
+          {
+            objectId: string;
+            organizationId: Id<"organizations">;
+            postTypeSlug?: string;
+          },
+          Array<{
+            taxonomyName: string;
+            taxonomySlug: string;
+            termId: Id<"taxonomyTerms">;
+            termName: string;
+            termSlug: string;
           }>
         >;
       };
@@ -4360,10 +4558,11 @@ export type PublicApiType = {
             description?: string;
             hierarchical: boolean;
             name: string;
+            organizationId: Id<"organizations">;
             postTypeSlugs?: Array<string>;
             slug?: string;
           },
-          any
+          Id<"taxonomies">
         >;
         createTerm: FunctionReference<
           "mutation",
@@ -4371,32 +4570,57 @@ export type PublicApiType = {
           {
             description?: string;
             name: string;
-            parentId?: Id<"categories"> | Id<"taxonomyTerms"> | Id<"tags">;
+            organizationId: Id<"organizations">;
+            parentId?: Id<"taxonomyTerms">;
+            postTypeSlugs?: Array<string>;
             slug?: string;
             taxonomySlug: string;
           },
-          any
+          Id<"taxonomyTerms">
         >;
         deleteTaxonomy: FunctionReference<
           "mutation",
           "public",
-          { id: Id<"taxonomies"> },
-          any
+          { id: Id<"taxonomies">; organizationId: Id<"organizations"> },
+          boolean
         >;
         deleteTerm: FunctionReference<
           "mutation",
           "public",
           {
+            organizationId: Id<"organizations">;
             taxonomySlug: string;
-            termId: Id<"categories"> | Id<"tags"> | Id<"taxonomyTerms">;
+            termId: Id<"taxonomyTerms">;
           },
-          any
+          boolean
         >;
         ensureBuiltInTaxonomies: FunctionReference<
           "mutation",
           "public",
           Record<string, never>,
-          any
+          Array<string>
+        >;
+        setObjectTerms: FunctionReference<
+          "mutation",
+          "public",
+          {
+            objectId: string;
+            organizationId: Id<"organizations">;
+            postTypeSlug: string;
+            termIds: Array<Id<"taxonomyTerms">>;
+          },
+          null
+        >;
+        setTermMeta: FunctionReference<
+          "mutation",
+          "public",
+          {
+            key: string;
+            organizationId: Id<"organizations">;
+            termId: Id<"taxonomyTerms">;
+            value?: string | number | boolean | null;
+          },
+          Id<"taxonomyMeta">
         >;
         updateTaxonomy: FunctionReference<
           "mutation",
@@ -4410,8 +4634,9 @@ export type PublicApiType = {
               slug?: string;
             };
             id: Id<"taxonomies">;
+            organizationId: Id<"organizations">;
           },
-          any
+          Id<"taxonomies">
         >;
         updateTerm: FunctionReference<
           "mutation",
@@ -4420,13 +4645,15 @@ export type PublicApiType = {
             data: {
               description?: string;
               name?: string;
-              parentId?: Id<"categories"> | Id<"taxonomyTerms"> | Id<"tags">;
+              parentId?: Id<"taxonomyTerms">;
+              postTypeSlugs?: Array<string>;
               slug?: string;
             };
+            organizationId: Id<"organizations">;
             taxonomySlug: string;
-            termId: Id<"categories"> | Id<"tags"> | Id<"taxonomyTerms">;
+            termId: Id<"taxonomyTerms">;
           },
-          any
+          Id<"taxonomyTerms">
         >;
       };
     };
@@ -5272,6 +5499,7 @@ export type PublicApiType = {
               certificateId?: string;
               courseStructure: Array<{ lessonId: string }>;
               firstAttachmentUrl?: string;
+              organizationId?: Id<"organizations">;
               slug?: string;
               status?: string;
               title: string;

@@ -35,8 +35,12 @@ export function CourseSingle({
   organizationId,
 }: CourseSingleProps) {
   const searchParams = useSearchParams();
-  const taxonomyParam = (searchParams.get("taxonomy") ?? "").trim().toLowerCase();
-  const categoryParam = (searchParams.get("category") ?? "").trim().toLowerCase();
+  const taxonomyParam = (searchParams.get("taxonomy") ?? "")
+    .trim()
+    .toLowerCase();
+  const categoryParam = (searchParams.get("category") ?? "")
+    .trim()
+    .toLowerCase();
   const tagParam = (searchParams.get("tag") ?? "").trim().toLowerCase();
   const taxonomyFilter = useMemo(() => {
     if (!taxonomyParam) return null;
@@ -47,7 +51,11 @@ export function CourseSingle({
         label: "Category",
       };
     }
-    if (taxonomyParam === "tag" || taxonomyParam === "post_tag" || taxonomyParam === "tags") {
+    if (
+      taxonomyParam === "tag" ||
+      taxonomyParam === "post_tag" ||
+      taxonomyParam === "tags"
+    ) {
       return {
         taxonomySlug: "post_tag",
         termSlug: tagParam,
@@ -82,9 +90,8 @@ export function CourseSingle({
     fallbackCourse) as LmsCourseBuilderData["course"];
   const resolvedOrganizationId =
     organizationId ??
-    ((data?.course as unknown as { organizationId?: unknown })?.organizationId as
-      | Id<"organizations">
-      | undefined);
+    ((data?.course as unknown as { organizationId?: unknown })
+      ?.organizationId as Id<"organizations"> | undefined);
   const attachedLessons = data?.attachedLessons ?? [];
   const attachedTopics = data?.attachedTopics ?? [];
   const attachedQuizzes = data?.attachedQuizzes ?? [];
@@ -92,35 +99,46 @@ export function CourseSingle({
 
   const baseCoursePath = `/course/${courseSlug ?? course._id}`;
 
-  const activeTerm = useQuery(
-    api.core.taxonomies.queries.getTermBySlug,
-    taxonomyFilter && taxonomyFilter.termSlug && resolvedOrganizationId
+  const availableTerms = useQuery(
+    api.core.taxonomies.queries.listTermsByTaxonomy,
+    taxonomyFilter && resolvedOrganizationId
       ? {
           taxonomySlug: taxonomyFilter.taxonomySlug,
-          organizationId: resolvedOrganizationId as unknown as string,
-          termSlug: taxonomyFilter.termSlug,
+          organizationId:
+            resolvedOrganizationId as unknown as Id<"organizations">,
         }
       : "skip",
   ) as
-    | {
+    | Array<{
         _id: string;
         name: string;
         slug: string;
-      }
-    | null
+      }>
     | undefined;
+
+  const activeTerm = useMemo(() => {
+    if (!taxonomyFilter?.termSlug) {
+      return undefined;
+    }
+    if (!availableTerms) {
+      return undefined;
+    }
+    const found = availableTerms.find(
+      (term) => term.slug.toLowerCase() === taxonomyFilter.termSlug,
+    );
+    return found ?? null;
+  }, [availableTerms, taxonomyFilter?.termSlug]);
 
   const assignments = useQuery(
     api.core.taxonomies.queries.listAssignmentsByTerm,
     activeTerm && resolvedOrganizationId
       ? {
-          organizationId: resolvedOrganizationId as unknown as string,
+          organizationId:
+            resolvedOrganizationId as unknown as Id<"organizations">,
           termId: activeTerm._id as any,
         }
       : "skip",
-  ) as
-    | Array<{ objectId: string; postTypeSlug: string }>
-    | undefined;
+  ) as Array<{ objectId: string; postTypeSlug: string }> | undefined;
 
   const idsInCourse = useMemo(() => {
     const ids = new Set<string>();
@@ -357,7 +375,9 @@ export function CourseSingle({
                 </p>
               ) : activeTerm === null ? (
                 <p className="text-muted-foreground text-sm">Term not found.</p>
-              ) : !isFilterLoading && activeTerm && inCourseAssignmentCount === 0 ? (
+              ) : !isFilterLoading &&
+                activeTerm &&
+                inCourseAssignmentCount === 0 ? (
                 <p className="text-muted-foreground text-sm">
                   No items in this course match this filter.
                 </p>
@@ -449,11 +469,14 @@ export function CourseSingle({
   );
 }
 
-function renderCourseTaxonomySection<T extends { _id: string; title: string; excerpt?: string; slug?: string | null }>(args: {
-  title: string;
-  items: T[];
-  getHref: (item: T) => string;
-}) {
+function renderCourseTaxonomySection<
+  T extends {
+    _id: string;
+    title: string;
+    excerpt?: string;
+    slug?: string | null;
+  },
+>(args: { title: string; items: T[]; getHref: (item: T) => string }) {
   // Note: course pages can include draft items in the outline (e.g. course builder previews),
   // so the in-course taxonomy filter should match that behavior and NOT drop drafts.
   const items = args.items ?? [];
