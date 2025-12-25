@@ -6,7 +6,6 @@ import { useCallback, useMemo } from "react";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
 import { useDeletePost, useGetAllPosts } from "@/lib/blog";
-import { useQuery } from "convex/react";
 import { formatDistanceToNow } from "date-fns";
 import { Eye, Info, Plus, Sparkles, Trash2 } from "lucide-react";
 
@@ -127,160 +126,15 @@ export function GenericArchiveView({
   const description =
     postType?.description ?? "Manage structured entries for this post type.";
   const normalizedSlug = slug.toLowerCase();
-  const isComponentHelpdesk =
-    postType?.storageKind === "component" &&
-    normalizedSlug === "helpdeskarticles";
-  const isCustomDownloads =
-    postType?.storageKind === "custom" && normalizedSlug === "downloads";
-  const isCustomAttachments =
-    postType?.storageKind === "custom" && normalizedSlug === "attachments";
 
-  const shouldLoadPosts = postType
-    ? !isCustomDownloads && !isCustomAttachments
-    : isBuiltInPostTypeSlug(normalizedSlug);
-
-  const downloads =
-    (useQuery(
-      api.core.downloads.queries.listDownloads,
-      isCustomDownloads && organizationId ? { organizationId } : "skip",
-    ) as
-      | {
-          _id: string;
-          _creationTime: number;
-          organizationId: string;
-          slug: string;
-          title: string;
-          description?: string | null;
-          status: "draft" | "published";
-          createdAt: number;
-          updatedAt?: number | null;
-        }[]
-      | null
-      | undefined) ?? null;
-
-  const attachmentsPage = useQuery(
-    api.core.media.queries.listMediaItemsWithUrl,
-    isCustomAttachments
-      ? {
-          paginationOpts: {
-            numItems: 200,
-            cursor: null,
-          },
-        }
-      : "skip",
-  ) as
-    | {
-        page: {
-          _id: string;
-          _creationTime: number;
-          url?: string | null;
-          title?: string | null;
-          status?: "draft" | "published" | null;
-          uploadedAt?: number | null;
-        }[];
-      }
-    | null
-    | undefined;
-
-  const componentPosts =
-    (useQuery(
-      api.plugins.support.queries.listSupportPosts,
-      isComponentHelpdesk && organizationId
-        ? {
-            organizationId,
-            filters: { postTypeSlug: normalizedSlug, limit: 200 },
-          }
-        : "skip",
-    ) as
-      | {
-          _id: string;
-          _creationTime: number;
-          title?: string | null;
-          content?: string | null;
-          excerpt?: string | null;
-          slug: string;
-          status: "draft" | "published" | "archived";
-          postTypeSlug?: string | null;
-          authorId?: string | null;
-          createdAt: number;
-          updatedAt?: number | null;
-        }[]
-      | null) ?? null;
-
+  const shouldLoadPosts = Boolean(postType) || isBuiltInPostTypeSlug(normalizedSlug);
   const postsQuery = useGetAllPosts(
-    !isComponentHelpdesk && shouldLoadPosts
-      ? { postTypeSlug: normalizedSlug }
-      : undefined,
+    shouldLoadPosts ? { postTypeSlug: normalizedSlug, limit: 200 } : undefined,
   );
-
-  const posts = isCustomDownloads
-    ? ((downloads ?? []).map((item) => ({
-        // Keep `post_id` URLs stable by using the raw downloads table id here.
-        _id: item._id as unknown as Id<"posts">,
-        _creationTime: item._creationTime,
-        title: item.title ?? "Untitled",
-        content: undefined,
-        excerpt: item.description ?? undefined,
-        slug: item.slug,
-        status: item.status,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt ?? item._creationTime,
-        postTypeSlug: normalizedSlug,
-        organizationId: organizationId ?? undefined,
-      })) as ArchiveRow[])
-    : isCustomAttachments
-      ? ((attachmentsPage?.page ?? []).map((item) => ({
-          // Keep `post_id` URLs stable by using the raw mediaItems id here.
-          _id: item._id as unknown as Id<"posts">,
-          _creationTime: item._creationTime,
-          title: item.title ?? "Untitled",
-          content: undefined,
-          excerpt: undefined,
-          // Media items do not have a slug; use the ID as stable identifier.
-          slug: String(item._id),
-          status: (item.status ?? "draft") as "draft" | "published",
-          createdAt: item.uploadedAt ?? item._creationTime,
-          updatedAt: item.uploadedAt ?? item._creationTime,
-          postTypeSlug: normalizedSlug,
-          organizationId: organizationId ?? undefined,
-        })) as ArchiveRow[])
-      : isComponentHelpdesk
-        ? ((componentPosts ?? []).map((item) => ({
-            _id: item._id as unknown as Id<"posts">,
-            _creationTime: item._creationTime,
-            title: item.title ?? "Untitled",
-            content: item.content ?? undefined,
-            excerpt: item.excerpt ?? undefined,
-            slug: item.slug,
-            status: item.status,
-            authorId: item.authorId ?? undefined,
-            createdAt: item.createdAt,
-            updatedAt: item.updatedAt ?? item._creationTime,
-            postTypeSlug: (item.postTypeSlug ?? normalizedSlug) as string,
-            organizationId: organizationId ?? undefined,
-          })) as ArchiveRow[])
-        : ((postsQuery.posts ?? []) as ArchiveRow[]);
-
-  const postsLoading = isCustomDownloads
-    ? downloads === null
-    : isCustomAttachments
-      ? attachmentsPage === undefined
-      : isComponentHelpdesk
-        ? componentPosts === null
-        : postsQuery.isLoading;
-
-  const rows: ArchiveRow[] =
-    isCustomDownloads || isCustomAttachments
-      ? posts
-      : shouldLoadPosts
-        ? posts
-        : FALLBACK_ROWS;
-  const tableLoading =
-    isCustomDownloads || isCustomAttachments
-      ? postsLoading
-      : shouldLoadPosts
-        ? postsLoading
-        : isLoading;
+  const rows: ArchiveRow[] = shouldLoadPosts
+    ? ((postsQuery.posts ?? []) as ArchiveRow[])
+    : FALLBACK_ROWS;
+  const tableLoading = shouldLoadPosts ? postsQuery.isLoading : isLoading;
   const displayRows = useMemo<ArchiveDisplayRow[]>(() => {
     return rows.map((row) => {
       if (isPostRow(row)) {

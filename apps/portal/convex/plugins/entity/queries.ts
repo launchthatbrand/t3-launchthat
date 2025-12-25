@@ -11,6 +11,7 @@ const filtersValidator = v.object({
   category: v.optional(v.string()),
   authorId: v.optional(v.string()),
   limit: v.optional(v.number()),
+  slug: v.optional(v.string()),
 });
 
 export const readEntity = query({
@@ -20,7 +21,7 @@ export const readEntity = query({
     organizationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const resolver = entityResolvers.get(args.postTypeSlug);
+    const resolver = await entityResolvers.get(ctx, args.postTypeSlug, args.organizationId);
     return await resolver.read(ctx, args);
   },
 });
@@ -32,7 +33,7 @@ export const listEntities = query({
     filters: v.optional(filtersValidator),
   },
   handler: async (ctx, args) => {
-    const resolver = entityResolvers.get(args.postTypeSlug);
+    const resolver = await entityResolvers.get(ctx, args.postTypeSlug, args.organizationId);
     return await resolver.list(ctx, {
       postTypeSlug: args.postTypeSlug,
       organizationId: args.organizationId,

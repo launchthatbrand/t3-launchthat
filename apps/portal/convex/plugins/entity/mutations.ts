@@ -13,10 +13,10 @@ export const saveEntity = mutation({
     data: baseEntityInput,
   },
   handler: async (ctx, args) => {
-    const resolver = entityResolvers.get(args.postTypeSlug);
     const data = args.data as Record<string, unknown>;
     const organizationId =
       typeof data.organizationId === "string" ? data.organizationId : undefined;
+    const resolver = await entityResolvers.get(ctx, args.postTypeSlug, organizationId);
     return await resolver.create(ctx, {
       postTypeSlug: args.postTypeSlug,
       data: args.data as EntitySaveInput,
@@ -32,10 +32,10 @@ export const updateEntity = mutation({
     data: updateEntityInput,
   },
   handler: async (ctx, args) => {
-    const resolver = entityResolvers.get(args.postTypeSlug);
     const data = args.data as Record<string, unknown>;
     const organizationId =
       typeof data.organizationId === "string" ? data.organizationId : undefined;
+    const resolver = await entityResolvers.get(ctx, args.postTypeSlug, organizationId);
     return await resolver.update(ctx, {
       postTypeSlug: args.postTypeSlug,
       id: args.id,
@@ -51,7 +51,7 @@ export const deleteEntity = mutation({
     id: v.string(),
   },
   handler: async (ctx, args) => {
-    const resolver = entityResolvers.get(args.postTypeSlug);
+    const resolver = await entityResolvers.get(ctx, args.postTypeSlug, undefined);
     await resolver.remove(ctx, {
       postTypeSlug: args.postTypeSlug,
       id: args.id,

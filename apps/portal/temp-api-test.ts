@@ -1,1 +1,0 @@
-import { api } from "./convex/_generated/api"; type ApiType = typeof api; console.log("API object keys:", Object.keys(api)); console.log("Available modules:", Object.keys(api).map(key => ({ module: key, functions: Object.keys(api[key] || {}) })));

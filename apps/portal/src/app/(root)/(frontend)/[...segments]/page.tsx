@@ -11,6 +11,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { api } from "@/convex/_generated/api";
+import { resolveFrontendEntry } from "@/lib/frontendRouting/resolveFrontendEntry";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
 import { LmsCourseProvider } from "launchthat-plugin-lms";
@@ -21,7 +22,6 @@ import { PostCommentsSection } from "~/components/comments/PostCommentsSection";
 import { FrontendContentFilterHost } from "~/components/frontend/FrontendContentFilterHost";
 import { TaxonomyBadges } from "~/components/taxonomies/TaxonomyBadges";
 import { BackgroundRippleEffect } from "~/components/ui/background-ripple-effect";
-import { env } from "~/env";
 import {
   isLexicalSerializedStateString,
   parseLexicalSerializedState,
@@ -48,6 +48,20 @@ import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { cn } from "~/lib/utils";
 import { PortalConvexProvider } from "~/providers/ConvexClientProvider";
 import { PuckContentRenderer } from "../../../../components/puckeditor/PuckContentRenderer";
+
+interface FrontendFilterRegistration {
+  filter: { location: string; id?: string };
+}
+
+const getFrontendSingleSlotsForSlugTyped =
+  getFrontendSingleSlotsForSlug as unknown as (
+    postTypeSlug: string,
+  ) => PluginFrontendSingleSlotRegistration[];
+
+const getPluginFrontendFiltersForSlugTyped =
+  getPluginFrontendFiltersForSlug as unknown as (
+    postTypeSlug: string,
+  ) => FrontendFilterRegistration[];
 
 type PluginMatch = ReturnType<typeof findPostTypeBySlug>;
 
@@ -332,58 +346,17 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
     isLmsComponentPost = Boolean(post);
   }
 
-  const isDownloadRoute = ["download", "downloads"].includes(
-    segments[0]?.toLowerCase() ?? "",
-  );
-  if (!post && isDownloadRoute && organizationId) {
-    const result = await fetchQuery(
-      api.core.downloads.queries.getDownloadBySlug,
-      {
-        organizationId,
-        slug,
-      },
-    );
-    if (result) {
-      const download = result.download;
-      post = {
-        _id: `custom:downloads:${download._id}`,
-        _creationTime: download._creationTime,
-        organizationId: download.organizationId,
-        postTypeSlug: "downloads",
-        slug: download.slug,
-        title: download.title,
-        excerpt: download.description ?? undefined,
-        content: download.content ?? "",
-        status: download.status,
-        createdAt: download.createdAt,
-        updatedAt: download.updatedAt ?? download._creationTime,
-      } as unknown as Doc<"posts">;
-    }
-  }
-
-  if (!post && isDownloadRoute && organizationId && isConvexId(slug)) {
-    const result = await fetchQuery(
-      api.core.downloads.queries.getDownloadById,
-      {
-        organizationId,
-        downloadId: slug as unknown as Id<"downloads">,
-      },
-    );
-    if (result) {
-      const download = result.download;
-      post = {
-        _id: `custom:downloads:${download._id}`,
-        _creationTime: download._creationTime,
-        organizationId: download.organizationId,
-        postTypeSlug: "downloads",
-        slug: download.slug,
-        title: download.title,
-        excerpt: download.description ?? undefined,
-        content: download.content ?? "",
-        status: download.status,
-        createdAt: download.createdAt,
-        updatedAt: download.updatedAt ?? download._creationTime,
-      } as unknown as Doc<"posts">;
+  if (!post) {
+    const resolved = await resolveFrontendEntry({
+      segments,
+      slug,
+      organizationId: organizationId ?? null,
+      fetchQuery,
+      readEntity: api.plugins.entity.queries.readEntity,
+      listEntities: api.plugins.entity.queries.listEntities,
+    });
+    if (resolved) {
+      post = resolved.post;
     }
   }
 
@@ -740,27 +713,30 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       );
       const objectIdSet = new Set(objectIds);
 
-      const unfiltered = isLmsType(postTypeSlug)
-        ? await fetchQuery(api.plugins.lms.posts.queries.getAllPosts, {
-            organizationId: organizationId ?? undefined,
-            filters: {
-              status: "published",
-              postTypeSlug,
-              limit: 200,
-            },
-          })
-        : await fetchQuery(api.core.posts.queries.getAllPosts, {
-            ...(organizationId ? { organizationId } : {}),
-            filters: {
-              status: "published",
-              postTypeSlug,
-              limit: 200,
-            },
-          });
+      type PostLike = { _id: string } & Record<string, unknown>;
+      const unfiltered = (
+        isLmsType(postTypeSlug)
+          ? await fetchQuery(api.plugins.lms.posts.queries.getAllPosts, {
+              organizationId: organizationId ?? undefined,
+              filters: {
+                status: "published",
+                postTypeSlug,
+                limit: 200,
+              },
+            })
+          : await fetchQuery(api.core.posts.queries.getAllPosts, {
+              ...(organizationId ? { organizationId } : {}),
+              filters: {
+                status: "published",
+                postTypeSlug,
+                limit: 200,
+              },
+            })
+      ) as PostLike[] | null;
 
-      const posts = (unfiltered ?? []).filter((post: any) =>
-        objectIdSet.has(post?._id as unknown as string),
-      );
+      const posts = (unfiltered ?? []).filter((post) =>
+        objectIdSet.has(String(post._id)),
+      ) as unknown as Doc<"posts">[];
 
       return (
         <TaxonomyArchive
@@ -787,8 +763,7 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       byPostType.set(slug, set);
     }
 
-    const sections: Array<{ postType: PostTypeDoc; posts: Doc<"posts">[] }> =
-      [];
+    const sections: { postType: PostTypeDoc; posts: Doc<"posts">[] }[] = [];
     for (const [postTypeSlug, objectIdSet] of byPostType.entries()) {
       const postType =
         (await fetchQuery(api.core.postTypes.queries.getBySlug, {
@@ -804,27 +779,30 @@ export default async function FrontendCatchAllPage(props: PageProps) {
           description: null,
         } as unknown as PostTypeDoc);
 
-      const unfiltered = isLmsType(postTypeSlug)
-        ? await fetchQuery(api.plugins.lms.posts.queries.getAllPosts, {
-            organizationId: organizationId ?? undefined,
-            filters: {
-              status: "published",
-              postTypeSlug,
-              limit: 200,
-            },
-          })
-        : await fetchQuery(api.core.posts.queries.getAllPosts, {
-            ...(organizationId ? { organizationId } : {}),
-            filters: {
-              status: "published",
-              postTypeSlug,
-              limit: 200,
-            },
-          });
+      type PostLike = { _id: string } & Record<string, unknown>;
+      const unfiltered = (
+        isLmsType(postTypeSlug)
+          ? await fetchQuery(api.plugins.lms.posts.queries.getAllPosts, {
+              organizationId: organizationId ?? undefined,
+              filters: {
+                status: "published",
+                postTypeSlug,
+                limit: 200,
+              },
+            })
+          : await fetchQuery(api.core.posts.queries.getAllPosts, {
+              ...(organizationId ? { organizationId } : {}),
+              filters: {
+                status: "published",
+                postTypeSlug,
+                limit: 200,
+              },
+            })
+      ) as PostLike[] | null;
 
-      const posts = (unfiltered ?? []).filter((post: any) =>
-        objectIdSet.has(post?._id as unknown as string),
-      );
+      const posts = (unfiltered ?? []).filter((post) =>
+        objectIdSet.has(String(post._id)),
+      ) as unknown as Doc<"posts">[];
       if (posts.length > 0) {
         sections.push({ postType: effectivePostType, posts });
       }
@@ -899,62 +877,19 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     isLmsComponentPost = Boolean(post);
   }
 
-  const isDownloadRoute = ["download", "downloads"].includes(
-    segments[0]?.toLowerCase() ?? "",
-  );
-  if (!post && isDownloadRoute && organizationId) {
-    const result = await fetchQuery(
-      api.core.downloads.queries.getDownloadBySlug,
-      {
-        organizationId,
-        slug,
-      },
-    );
-    if (result) {
-      const download = result.download;
-      post = {
-        _id: `custom:downloads:${download._id}`,
-        _creationTime: download._creationTime,
-        organizationId: download.organizationId,
-        postTypeSlug: "downloads",
-        slug: download.slug,
-        title: download.title,
-        excerpt: download.description ?? undefined,
-        content: download.content ?? "",
-        status: download.status,
-        createdAt: download.createdAt,
-        updatedAt: download.updatedAt ?? download._creationTime,
-      } as unknown as Doc<"posts">;
+  if (!post) {
+    const resolved = await resolveFrontendEntry({
+      segments,
+      slug,
+      organizationId: organizationId ?? null,
+      fetchQuery,
+      readEntity: api.plugins.entity.queries.readEntity,
+      listEntities: api.plugins.entity.queries.listEntities,
+    });
+    if (resolved) {
+      post = resolved.post;
     }
   }
-
-  if (!post && isDownloadRoute && organizationId && isConvexId(slug)) {
-    const result = await fetchQuery(
-      api.core.downloads.queries.getDownloadById,
-      {
-        organizationId,
-        downloadId: slug as unknown as Id<"downloads">,
-      },
-    );
-    if (result) {
-      const download = result.download;
-      post = {
-        _id: `custom:downloads:${download._id}`,
-        _creationTime: download._creationTime,
-        organizationId: download.organizationId,
-        postTypeSlug: "downloads",
-        slug: download.slug,
-        title: download.title,
-        excerpt: download.description ?? undefined,
-        content: download.content ?? "",
-        status: download.status,
-        createdAt: download.createdAt,
-        updatedAt: download.updatedAt ?? download._creationTime,
-      } as unknown as Doc<"posts">;
-    }
-  }
-
-  console.log("[FrontendCatchAllPage] Post:", post);
 
   if (!post) {
     notFound();
@@ -998,7 +933,6 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     string,
     PostMetaValue
   >;
-  console.log("[FrontendCatchAllPage] Post Meta:", postMeta);
 
   const puckMetaEntry = postMeta.find((meta) => meta.key === "puck_data");
   const puckData = parsePuckData(
@@ -1131,32 +1065,16 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     );
   }
 
-  const frontendSlotRegistrations = post.postTypeSlug
-    ? getFrontendSingleSlotsForSlug(post.postTypeSlug)
-    : [];
-  if (env.NODE_ENV !== "production") {
-    console.log("[FrontendCatchAllPage] frontendSlotRegistrations", {
-      postTypeSlug: post.postTypeSlug,
-      count: frontendSlotRegistrations.length,
-      locations: frontendSlotRegistrations.map((r) => r.slot.location),
-      ids: frontendSlotRegistrations.map((r) => r.slot.id),
-    });
-  }
+  const frontendSlotRegistrations: PluginFrontendSingleSlotRegistration[] =
+    post.postTypeSlug
+      ? getFrontendSingleSlotsForSlugTyped(post.postTypeSlug)
+      : [];
   const disabledSlotIds = resolveDisabledFrontendSlotIds(postType);
   const filteredSlotRegistrations = disabledSlotIds.length
     ? frontendSlotRegistrations.filter(
         (registration) => !disabledSlotIds.includes(registration.slot.id),
       )
     : frontendSlotRegistrations;
-  if (env.NODE_ENV !== "production") {
-    console.log("[FrontendCatchAllPage] filteredSlotRegistrations", {
-      postTypeSlug: post.postTypeSlug,
-      disabledSlotIds,
-      count: filteredSlotRegistrations.length,
-      locations: filteredSlotRegistrations.map((r) => r.slot.location),
-      ids: filteredSlotRegistrations.map((r) => r.slot.id),
-    });
-  }
   const pluginSlotNodes = buildFrontendSlotNodes({
     registrations: filteredSlotRegistrations,
     post,
@@ -1164,18 +1082,9 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     organizationId,
     postMeta: postMetaObject,
   });
-  if (env.NODE_ENV !== "production") {
-    console.log("[FrontendCatchAllPage] pluginSlotNodes counts", {
-      beforeContent: pluginSlotNodes.beforeContent.length,
-      afterContent: pluginSlotNodes.afterContent.length,
-      header: pluginSlotNodes.header.length,
-      sidebarTop: pluginSlotNodes.sidebarTop.length,
-      sidebarBottom: pluginSlotNodes.sidebarBottom.length,
-    });
-  }
-  const frontendFilterRegistrations =
+  const frontendFilterRegistrations: FrontendFilterRegistration[] =
     post.postTypeSlug && pluginMatch
-      ? getPluginFrontendFiltersForSlug(post.postTypeSlug)
+      ? getPluginFrontendFiltersForSlugTyped(post.postTypeSlug)
       : [];
   const contentFilterIds = frontendFilterRegistrations.reduce<string[]>(
     (acc, registration) => {
@@ -2310,7 +2219,7 @@ function TaxonomyArchiveGrouped({
   termName: string;
   termSlug: string;
   description?: string | null;
-  sections: Array<{ postType: PostTypeDoc; posts: Doc<"posts">[] }>;
+  sections: { postType: PostTypeDoc; posts: Doc<"posts">[] }[];
 }) {
   const fallbackDescription =
     description ??

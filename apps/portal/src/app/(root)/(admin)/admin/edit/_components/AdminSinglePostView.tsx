@@ -27,8 +27,8 @@ import { api } from "@/convex/_generated/api";
 import {
   generateSlugFromTitle,
   useCreatePost,
-  useUpdatePost,
 } from "@/lib/blog";
+import { saveAdminEntry } from "@/lib/postTypes/adminSave";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -349,7 +349,6 @@ export function AdminSinglePostView({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const createPost = useCreatePost();
-  const updatePost = useUpdatePost();
   const [title, setTitle] = useState(post?.title ?? "");
   const [slugValue, setSlugValue] = useState(post?.slug ?? "");
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? "");
@@ -365,23 +364,12 @@ export function AdminSinglePostView({
   const [isSaving, setIsSaving] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const createSupportPost = useMutation(
-    api.plugins.support.mutations.createSupportPost,
-  );
-  const updateSupportPost = useMutation(
-    api.plugins.support.mutations.updateSupportPost,
-  );
-  const createDownloadFromMediaItem = useMutation(
-    api.core.downloads.mutations.createDownloadFromMediaItem,
-  );
-  const updateDownload = useMutation(
-    api.core.downloads.mutations.updateDownload,
-  );
+  const saveEntity = useMutation(api.plugins.entity.mutations.saveEntity);
+  const updateEntity = useMutation(api.plugins.entity.mutations.updateEntity);
   const publishDownload = useAction(api.core.downloads.actions.publishDownload);
   const upsertDownloadMeta = useMutation(
     api.core.downloads.meta.upsertDownloadMeta,
   );
-  const updateMedia = useMutation(api.core.media.mutations.updateMedia);
   const upsertMediaItemMeta = useMutation(
     api.core.media.meta.upsertMediaItemMeta,
   );
@@ -1861,297 +1849,38 @@ export function AdminSinglePostView({
         log("Running beforeSave handler", handler.name ?? "anonymous");
         await handler();
       }
-      if (isComponentStorage && normalizedSlug === "helpdeskarticles") {
-        log("Component storage detected, saving via support component posts", {
-          storageKind,
-          normalizedSlug,
-        });
-        const metaPayload = buildMetaPayload();
-        const metaEntries = Object.entries(metaPayload).map(([key, value]) => ({
-          key,
-          value,
-        }));
-        const manualSlug = slugValue.trim();
-        const baseSlug =
-          manualSlug || generateSlugFromTitle(normalizedTitle) || "";
-        const normalizedSlugValue =
-          generateSlugFromTitle(baseSlug) || `post-${Date.now()}`;
-        setSlugValue(normalizedSlugValue);
-        const status = postStatus;
-
-        if (isNewRecord) {
-          const newId = await createSupportPost({
-            organizationId: organizationId as unknown as string,
-            postTypeSlug: normalizedSlug,
-            title: normalizedTitle,
-            content,
-            excerpt,
-            slug: normalizedSlugValue,
-            status,
-            meta: metaEntries,
-          });
-          setSaveError(null);
-          router.replace(
-            `/admin/edit?post_type=${slug}&post_id=${newId as string}`,
-          );
-          return;
-        }
-
-        if (post?._id) {
-          await updateSupportPost({
-            id: post._id as unknown as string,
-            organizationId: organizationId as unknown as string,
-            postTypeSlug: normalizedSlug,
-            title: normalizedTitle,
-            content,
-            excerpt,
-            slug: normalizedSlugValue,
-            status,
-            meta: metaEntries,
-          });
-          setSaveError(null);
-        }
-        return;
-      }
-
-      if (isCustomStorage) {
-        if (!organizationId) {
-          throw new Error("Organization is required to save this post type.");
-        }
-
-        const metaPayload = buildMetaPayload();
-        // Only strip true core/editor fields. For custom-table post types, we
-        // intentionally keep domain keys (e.g. `mediaItemId`) in meta as well so
-        // the metabox/custom-field UI can hydrate consistently.
-        const stripMetaKeys = new Set<string>([
-          "title",
-          "slug",
-          "status",
-          "content",
-          "excerpt",
-        ]);
-        const filteredMetaPayload = Object.fromEntries(
-          Object.entries(metaPayload).filter(
-            ([key]) => !stripMetaKeys.has(key),
-          ),
-        );
-
-        if (normalizedSlug === "downloads") {
-          const mediaItemIdRaw = metaPayload.mediaItemId;
-          const accessKindRaw = metaPayload.accessKind;
-          const descriptionRaw = metaPayload.description;
-          const resolvedMediaItemId =
-            typeof mediaItemIdRaw === "string" && mediaItemIdRaw.length > 0
-              ? (mediaItemIdRaw as unknown as Id<"mediaItems">)
-              : undefined;
-          const resolvedAccessKind =
-            accessKindRaw === "public" || accessKindRaw === "gated"
-              ? (accessKindRaw as "public" | "gated")
-              : undefined;
-          const resolvedDescription =
-            typeof descriptionRaw === "string" && descriptionRaw.length > 0
-              ? descriptionRaw
-              : undefined;
-
-          if (!resolvedMediaItemId) {
-            throw new Error("Downloads require a linked media item.");
-          }
-
-          const desiredStatus =
-            postStatus === "published"
-              ? ("published" as const)
-              : ("draft" as const);
-
-          const decoded = decodeSyntheticId(post?._id ?? null);
-          const rawDownloadId = decoded?.rawId as unknown as
-            | Id<"downloads">
-            | undefined;
-
-          let downloadId: Id<"downloads">;
-          if (isNewRecord || !rawDownloadId) {
-            downloadId = await createDownloadFromMediaItem({
-              organizationId,
-              mediaItemId: resolvedMediaItemId,
-              title: normalizedTitle,
-              slug: slugValue.trim() || undefined,
-              description: resolvedDescription,
-              content,
-              accessKind: resolvedAccessKind,
-            });
-          } else {
-            downloadId = rawDownloadId;
-            await updateDownload({
-              organizationId,
-              downloadId,
-              data: {
-                title: normalizedTitle,
-                slug: slugValue.trim() || undefined,
-                description: resolvedDescription,
-                content,
-                mediaItemId: resolvedMediaItemId,
-                accessKind: resolvedAccessKind,
-                status: desiredStatus === "draft" ? "draft" : undefined,
-              },
-            });
-          }
-
-          if (Object.keys(filteredMetaPayload).length > 0) {
-            await upsertDownloadMeta({
-              organizationId,
-              downloadId,
-              meta: filteredMetaPayload as Record<
-                string,
-                string | number | boolean | null
-              >,
-            });
-          }
-
-          if (desiredStatus === "published") {
-            await publishDownload({ organizationId, downloadId });
-          }
-
-          if (supportsTaxonomy && organizationId) {
-            await setObjectTerms({
-              organizationId,
-              objectId: String(downloadId),
-              postTypeSlug: slug,
-              termIds: taxonomyTermIds as unknown as Id<"taxonomyTerms">[],
-            });
-          }
-
-          setSaveError(null);
-          toast.success("Saved");
-          router.replace(
-            `/admin/edit?post_type=${slug}&post_id=${String(downloadId)}`,
-          );
-          return;
-        }
-
-        if (normalizedSlug === "attachments") {
-          const decoded = decodeSyntheticId(post?._id ?? null);
-          const rawMediaItemId = decoded?.rawId as unknown as
-            | Id<"mediaItems">
-            | undefined;
-          if (!rawMediaItemId) {
-            throw new Error("Attachment entry id is missing.");
-          }
-
-          const captionRaw = metaPayload.caption;
-          const altRaw = metaPayload.alt;
-          const resolvedCaption =
-            typeof captionRaw === "string" && captionRaw.length > 0
-              ? captionRaw
-              : undefined;
-          const resolvedAlt =
-            typeof altRaw === "string" && altRaw.length > 0
-              ? altRaw
-              : undefined;
-
-          await updateMedia({
-            id: rawMediaItemId,
-            title: normalizedTitle || undefined,
-            caption: resolvedCaption,
-            alt: resolvedAlt,
-            status: postStatus === "published" ? "published" : "draft",
-          });
-
-          if (Object.keys(filteredMetaPayload).length > 0) {
-            await upsertMediaItemMeta({
-              organizationId,
-              mediaItemId: rawMediaItemId,
-              meta: filteredMetaPayload as Record<
-                string,
-                string | number | boolean | null
-              >,
-            });
-          }
-
-          if (supportsTaxonomy && organizationId) {
-            await setObjectTerms({
-              organizationId,
-              objectId: String(rawMediaItemId),
-              postTypeSlug: slug,
-              termIds: taxonomyTermIds as unknown as Id<"taxonomyTerms">[],
-            });
-          }
-
-          setSaveError(null);
-          toast.success("Saved");
-          return;
-        }
-
-        log("External storage detected, no adapter configured yet", {
-          storageKind,
-          normalizedSlug,
-        });
-        setSaveError(null);
-        return;
-      }
       const metaPayload = buildMetaPayload();
-      const hasMetaEntries = Object.keys(metaPayload).length > 0;
-      const manualSlug = slugValue.trim();
-      const baseSlug =
-        manualSlug || generateSlugFromTitle(normalizedTitle) || "";
-      const normalizedSlugValueCore =
-        generateSlugFromTitle(baseSlug) || `post-${Date.now()}`;
-      setSlugValue(normalizedSlugValueCore);
-      const status = postStatus;
+      const result = await saveAdminEntry({
+        postTypeSlug: slug,
+        organizationId,
+        adminEntryId: post?._id ?? null,
+        isNewRecord,
+        title,
+        content,
+        excerpt,
+        slugValue,
+        status: postStatus,
+        metaPayload,
+        saveEntity,
+        updateEntity,
+        publishDownload,
+        upsertDownloadMeta,
+        upsertMediaItemMeta,
+        setObjectTerms,
+        supportsTaxonomy,
+        taxonomyTermIds: supportsTaxonomy
+          ? (taxonomyTermIds as unknown as Id<"taxonomyTerms">[])
+          : undefined,
+      });
+
+      setSlugValue(result.resolvedSlug);
+      setSaveError(null);
+      toast.success("Saved");
 
       if (isNewRecord) {
-        log("Creating core post", {
-          slug: normalizedSlug,
-          status,
-          metaPayload,
-        });
-        const newId = await createPost({
-          title: normalizedTitle,
-          content,
-          excerpt,
-          slug: normalizedSlugValueCore,
-          status,
-          postTypeSlug: slug,
-          ...(hasMetaEntries ? { meta: metaPayload } : {}),
-        });
-        if (supportsTaxonomy && organizationId) {
-          await setObjectTerms({
-            organizationId,
-            objectId: newId as unknown as string,
-            postTypeSlug: slug,
-            termIds: taxonomyTermIds as unknown as Id<"taxonomyTerms">[],
-          });
-        }
-        setSaveError(null);
-        toast.success("Saved");
-        router.replace(`/admin/edit?post_type=${slug}&post_id=${newId}`);
-        return;
-      }
-
-      if (post?._id) {
-        log("Updating core post", {
-          postId: post._id,
-          status,
-          metaPayload,
-        });
-        await updatePost({
-          id: post._id,
-          title: normalizedTitle,
-          content,
-          excerpt,
-          status,
-          postTypeSlug: slug,
-          slug: normalizedSlugValueCore,
-          ...(hasMetaEntries ? { meta: metaPayload } : {}),
-        });
-        if (supportsTaxonomy && organizationId) {
-          await setObjectTerms({
-            organizationId,
-            objectId: post._id as unknown as string,
-            postTypeSlug: slug,
-            termIds: taxonomyTermIds as unknown as Id<"taxonomyTerms">[],
-          });
-        }
-        setSaveError(null);
-        toast.success("Saved");
+        router.replace(
+          `/admin/edit?post_type=${slug}&post_id=${String(result.entityId)}`,
+        );
       }
     } catch (error) {
       setSaveError(
@@ -2167,20 +1896,15 @@ export function AdminSinglePostView({
     buildMetaPayload,
     canSaveRecord,
     content,
-    createPost,
-    createDownloadFromMediaItem,
-    createSupportPost,
     excerpt,
-    isComponentStorage,
-    isCustomStorage,
     isNewRecord,
     log,
-    normalizedSlug,
     organizationId,
     publishDownload,
     post,
     postStatus,
     router,
+    saveEntity,
     setIsSaving,
     setSaveError,
     setSlugValue,
@@ -2191,10 +1915,7 @@ export function AdminSinglePostView({
     supportsTaxonomy,
     taxonomyTermIds,
     title,
-    updateDownload,
-    updateMedia,
-    updatePost,
-    updateSupportPost,
+    updateEntity,
     upsertDownloadMeta,
     upsertMediaItemMeta,
   ]);

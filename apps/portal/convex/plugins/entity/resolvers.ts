@@ -8,6 +8,7 @@ import type {
   EntityStatus,
 } from "./types";
 import { api } from "../../_generated/api";
+import { getScopedPostTypeBySlug } from "../../core/postTypes/lib/contentTypes";
 
 const COMMERCE_SLUGS = new Set<string>([
   "products",
@@ -30,6 +31,8 @@ const LMS_SLUGS = new Set<string>([
 ]);
 
 const SUPPORT_SLUGS = new Set<string>(["helpdeskarticles"]);
+const DOWNLOADS_SLUGS = new Set<string>(["downloads", "download"]);
+const ATTACHMENTS_SLUGS = new Set<string>(["attachments", "attachment"]);
 
 type ResolverContext = {
   postTypeSlug: string;
@@ -137,6 +140,42 @@ const adaptSupportPost = (record: any): EntityRecord => ({
   updatedAt: record.updatedAt ?? record._creationTime ?? null,
 });
 
+const adaptDownload = (record: any): EntityRecord => ({
+  id: record._id,
+  postTypeSlug: "downloads",
+  title: record.title ?? null,
+  content: record.content ?? null,
+  excerpt: record.description ?? null,
+  slug: record.slug ?? null,
+  status: normalizeStatus(record.status),
+  organizationId: record.organizationId ?? null,
+  createdAt: record.createdAt ?? record._creationTime ?? null,
+  updatedAt: record.updatedAt ?? record._creationTime ?? null,
+  meta: {
+    mediaItemId: record.mediaItemId,
+    accessKind: record.access?.kind,
+    r2Key: record.r2Key,
+    downloadCountTotal: record.downloadCountTotal,
+  },
+});
+
+const adaptAttachment = (record: any): EntityRecord => ({
+  id: record._id,
+  postTypeSlug: "attachments",
+  title: record.title ?? null,
+  excerpt: record.caption ?? null,
+  slug: record._id ?? null,
+  status: normalizeStatus(record.status),
+  createdAt: record.uploadedAt ?? record._creationTime ?? null,
+  updatedAt: record.uploadedAt ?? record._creationTime ?? null,
+  meta: {
+    alt: record.alt,
+    caption: record.caption,
+    url: record.url,
+    mimeType: record.mimeType,
+  },
+});
+
 const coreResolver: Resolver = {
   read: async (ctx, { id, postTypeSlug, organizationId }) => {
     const result = await ctx.runQuery(api.core.posts.queries.getPostById, {
@@ -148,6 +187,21 @@ const coreResolver: Resolver = {
     return adaptPortalPost(result as Doc<"posts">);
   },
   list: async (ctx, { filters, postTypeSlug, organizationId }) => {
+    const slugFilter =
+      typeof filters?.slug === "string" ? filters.slug.trim() : "";
+    if (slugFilter) {
+      const post = await ctx.runQuery(api.core.posts.queries.getPostBySlug, {
+        slug: slugFilter,
+        organizationId: organizationId as Id<"organizations"> | undefined,
+      });
+      if (!post) return [];
+      const record = post as Doc<"posts">;
+      if ((record.postTypeSlug ?? "").toLowerCase() !== postTypeSlug.toLowerCase()) {
+        return [];
+      }
+      return [adaptPortalPost(record)];
+    }
+
     const payload: {
       organizationId?: Id<"organizations">;
       filters?: {
@@ -206,6 +260,165 @@ const coreResolver: Resolver = {
   },
 };
 
+const downloadsResolver: Resolver = {
+  read: async (ctx, { id, organizationId }) => {
+    if (!organizationId) return null;
+    const result = await ctx.runQuery(api.core.downloads.queries.getDownloadById, {
+      organizationId: organizationId as Id<"organizations">,
+      downloadId: id as Id<"downloads">,
+    });
+    return result ? adaptDownload(result.download) : null;
+  },
+  list: async (ctx, { filters, organizationId }) => {
+    if (!organizationId) return [];
+    const slugFilter =
+      typeof filters?.slug === "string" ? filters.slug.trim() : "";
+    if (slugFilter) {
+      const result = await ctx.runQuery(api.core.downloads.queries.getDownloadBySlug, {
+        organizationId: organizationId as Id<"organizations">,
+        slug: slugFilter,
+      });
+      return result ? [adaptDownload(result.download)] : [];
+    }
+
+    const status =
+      filters?.status === "draft" || filters?.status === "published"
+        ? (filters.status as "draft" | "published")
+        : undefined;
+    const rows =
+      (await ctx.runQuery(api.core.downloads.queries.listDownloads, {
+        organizationId: organizationId as Id<"organizations">,
+        status,
+      })) ?? [];
+    const limit = typeof filters?.limit === "number" ? filters.limit : undefined;
+    const mapped = rows.map(adaptDownload);
+    return typeof limit === "number" ? mapped.slice(0, limit) : mapped;
+  },
+  create: async (ctx, { data, organizationId }) => {
+    if (!organizationId) {
+      throw new Error("organizationId is required for downloads.");
+    }
+    const raw = data as unknown as Record<string, unknown>;
+    const mediaItemId = raw.mediaItemId as string | undefined;
+    if (!mediaItemId) {
+      throw new Error("mediaItemId is required to create a download.");
+    }
+    const createdId = await ctx.runMutation(
+      api.core.downloads.mutations.createDownloadFromMediaItem,
+      {
+        organizationId: organizationId as Id<"organizations">,
+        mediaItemId: mediaItemId as Id<"mediaItems">,
+        title: typeof raw.title === "string" ? raw.title : undefined,
+        description: typeof raw.description === "string" ? raw.description : undefined,
+        content: typeof raw.content === "string" ? raw.content : undefined,
+        slug: typeof raw.slug === "string" ? raw.slug : undefined,
+        accessKind:
+          raw.accessKind === "public" || raw.accessKind === "gated"
+            ? (raw.accessKind as "public" | "gated")
+            : undefined,
+      },
+    );
+    const result = await ctx.runQuery(api.core.downloads.queries.getDownloadById, {
+      organizationId: organizationId as Id<"organizations">,
+      downloadId: createdId,
+    });
+    if (!result) {
+      throw new Error("Failed to load created download.");
+    }
+    return adaptDownload(result.download);
+  },
+  update: async (ctx, { id, data, organizationId }) => {
+    if (!organizationId) {
+      throw new Error("organizationId is required for downloads.");
+    }
+    const raw = data as unknown as Record<string, unknown>;
+    await ctx.runMutation(api.core.downloads.mutations.updateDownload, {
+      organizationId: organizationId as Id<"organizations">,
+      downloadId: id as Id<"downloads">,
+      data: {
+        title: typeof raw.title === "string" ? raw.title : undefined,
+        description: typeof raw.description === "string" ? raw.description : undefined,
+        content: typeof raw.content === "string" ? raw.content : undefined,
+        slug: typeof raw.slug === "string" ? raw.slug : undefined,
+        accessKind:
+          raw.accessKind === "public" || raw.accessKind === "gated"
+            ? (raw.accessKind as "public" | "gated")
+            : undefined,
+        status:
+          raw.status === "draft" || raw.status === "published"
+            ? (raw.status as "draft" | "published")
+            : undefined,
+        mediaItemId:
+          typeof raw.mediaItemId === "string" && raw.mediaItemId.length > 0
+            ? (raw.mediaItemId as Id<"mediaItems">)
+            : undefined,
+      },
+    });
+    const result = await ctx.runQuery(api.core.downloads.queries.getDownloadById, {
+      organizationId: organizationId as Id<"organizations">,
+      downloadId: id as Id<"downloads">,
+    });
+    return result ? adaptDownload(result.download) : null;
+  },
+  remove: async () => {
+    throw new Error("Delete is not yet supported for downloads.");
+  },
+};
+
+const attachmentsResolver: Resolver = {
+  read: async (ctx, { id }) => {
+    const media = await ctx.runQuery(api.core.media.queries.getMediaById, {
+      id: id as Id<"mediaItems">,
+    });
+    return media ? adaptAttachment(media) : null;
+  },
+  list: async (ctx, { filters }) => {
+    const slugFilter =
+      typeof filters?.slug === "string" ? filters.slug.trim() : "";
+    if (slugFilter) {
+      const media = await ctx.runQuery(api.core.media.queries.getMediaById, {
+        id: slugFilter as Id<"mediaItems">,
+      });
+      return media ? [adaptAttachment(media)] : [];
+    }
+    const status =
+      filters?.status === "draft" || filters?.status === "published"
+        ? (filters.status as "draft" | "published")
+        : undefined;
+    const limit = typeof filters?.limit === "number" ? filters.limit : 200;
+    const page = await ctx.runQuery(api.core.media.queries.listMediaItemsWithUrl, {
+      paginationOpts: { numItems: limit, cursor: null },
+      status,
+    });
+    return (page?.page ?? []).map(adaptAttachment);
+  },
+  create: async () => {
+    throw new Error("Attachments must be created via upload.");
+  },
+  update: async (ctx, { id, data }) => {
+    const raw = data as unknown as Record<string, unknown>;
+    await ctx.runMutation(api.core.media.mutations.updateMedia, {
+      id: id as Id<"mediaItems">,
+      title: typeof raw.title === "string" ? raw.title : undefined,
+      caption: typeof raw.caption === "string" ? raw.caption : undefined,
+      alt: typeof raw.alt === "string" ? raw.alt : undefined,
+      status:
+        raw.status === "draft" || raw.status === "published"
+          ? (raw.status as "draft" | "published")
+          : undefined,
+    });
+    const media = await ctx.runQuery(api.core.media.queries.getMediaById, {
+      id: id as Id<"mediaItems">,
+    });
+    return media ? adaptAttachment(media) : null;
+  },
+  remove: async (ctx, { id }) => {
+    await ctx.runMutation(api.core.media.mutations.deleteMedia, {
+      id: id as Id<"mediaItems">,
+    });
+  },
+};
+
 const commerceResolver: Resolver = {
   read: async (ctx, { id, organizationId }) => {
     const result = await ctx.runQuery(
@@ -218,6 +431,21 @@ const commerceResolver: Resolver = {
     return result ? adaptCommercePost(result) : null;
   },
   list: async (ctx, { filters, postTypeSlug, organizationId }) => {
+    const slugFilter =
+      typeof filters?.slug === "string" ? filters.slug.trim() : "";
+    if (slugFilter) {
+      const result = await ctx.runQuery(api.plugins.commerce.queries.getPostBySlug, {
+        slug: slugFilter,
+        organizationId,
+      });
+      if (!result) return [];
+      const adapted = adaptCommercePost(result);
+      if ((adapted.postTypeSlug ?? "").toLowerCase() !== postTypeSlug.toLowerCase()) {
+        return [];
+      }
+      return [adapted];
+    }
+
     const payload: Record<string, unknown> = {
       organizationId,
     };
@@ -282,6 +510,21 @@ const lmsResolver: Resolver = {
     return result ? adaptLmsPost(result) : null;
   },
   list: async (ctx, { filters, postTypeSlug, organizationId }) => {
+    const slugFilter =
+      typeof filters?.slug === "string" ? filters.slug.trim() : "";
+    if (slugFilter) {
+      const result = await ctx.runQuery(api.plugins.lms.posts.queries.getPostBySlug, {
+        slug: slugFilter,
+        organizationId,
+      });
+      if (!result) return [];
+      const adapted = adaptLmsPost(result);
+      if ((adapted.postTypeSlug ?? "").toLowerCase() !== postTypeSlug.toLowerCase()) {
+        return [];
+      }
+      return [adapted];
+    }
+
     const payload: Record<string, unknown> = {
       organizationId,
     };
@@ -348,39 +591,142 @@ const supportResolver: Resolver = {
   },
   list: async (ctx, { filters, organizationId }) => {
     if (!organizationId) return [];
+    const slugFilter =
+      typeof filters?.slug === "string" ? filters.slug.trim() : "";
     const results =
       (await ctx.runQuery(api.plugins.support.queries.listSupportPosts, {
         organizationId,
         filters: {
           postTypeSlug: "helpdeskarticles",
           status: filters?.status,
-          limit: filters?.limit ?? 200,
+          limit: Math.max(filters?.limit ?? 200, slugFilter ? 200 : 0),
         },
       })) ?? [];
+    if (slugFilter) {
+      const match = results.find((row: any) => row?.slug === slugFilter);
+      return match ? [adaptSupportPost(match)] : [];
+    }
     return results.map(adaptSupportPost);
   },
-  create: () => {
-    throw new Error("Helpdesk creation is not supported through entity router");
+  create: async (ctx, { data, postTypeSlug, organizationId }) => {
+    if (!organizationId) {
+      throw new Error("organizationId is required for helpdesk posts.");
+    }
+    const raw = data as unknown as Record<string, unknown>;
+    const id = await ctx.runMutation(api.plugins.support.mutations.createSupportPost, {
+      organizationId,
+      postTypeSlug,
+      title: typeof raw.title === "string" ? raw.title : "",
+      content: typeof raw.content === "string" ? raw.content : undefined,
+      excerpt: typeof raw.excerpt === "string" ? raw.excerpt : undefined,
+      slug: typeof raw.slug === "string" ? raw.slug : "",
+      status:
+        raw.status === "published" || raw.status === "draft" || raw.status === "archived"
+          ? (raw.status as any)
+          : "draft",
+      tags: Array.isArray(raw.tags) ? (raw.tags as string[]) : undefined,
+      authorId: typeof raw.authorId === "string" ? raw.authorId : undefined,
+      meta: Array.isArray(raw.meta)
+        ? (raw.meta as any)
+        : undefined,
+    });
+    const created = await ctx.runQuery(api.plugins.support.queries.getSupportPostById, {
+      id: id as Id<"posts">,
+      organizationId,
+    });
+    return created ? adaptSupportPost(created) : { id, postTypeSlug, title: raw.title as any };
   },
-  update: () => {
-    throw new Error("Helpdesk update is not supported through entity router");
+  update: async (ctx, { id, data, postTypeSlug, organizationId }) => {
+    if (!organizationId) {
+      throw new Error("organizationId is required for helpdesk posts.");
+    }
+    const raw = data as unknown as Record<string, unknown>;
+    await ctx.runMutation(api.plugins.support.mutations.updateSupportPost, {
+      id: id as Id<"posts">,
+      organizationId,
+      postTypeSlug,
+      title: typeof raw.title === "string" ? raw.title : "",
+      content: typeof raw.content === "string" ? raw.content : undefined,
+      excerpt: typeof raw.excerpt === "string" ? raw.excerpt : undefined,
+      slug: typeof raw.slug === "string" ? raw.slug : "",
+      status:
+        raw.status === "published" || raw.status === "draft" || raw.status === "archived"
+          ? (raw.status as any)
+          : "draft",
+      tags: Array.isArray(raw.tags) ? (raw.tags as string[]) : undefined,
+      authorId: typeof raw.authorId === "string" ? raw.authorId : undefined,
+      meta: Array.isArray(raw.meta)
+        ? (raw.meta as any)
+        : undefined,
+    });
+    const updated = await ctx.runQuery(api.plugins.support.queries.getSupportPostById, {
+      id: id as Id<"posts">,
+      organizationId,
+    });
+    return updated ? adaptSupportPost(updated) : null;
   },
-  remove: () => {
-    throw new Error("Helpdesk delete is not supported through entity router");
+  remove: async () => {
+    throw new Error("Helpdesk delete is not supported through entity router.");
   },
 };
 
-const getResolver = (postTypeSlug: string): Resolver => {
+const resolveFromPostType = async (
+  ctx: QueryCtx | MutationCtx,
+  postTypeSlug: string,
+  organizationId?: string,
+): Promise<Resolver | null> => {
+  const orgId = organizationId
+    ? (organizationId as unknown as Id<"organizations">)
+    : undefined;
+  try {
+    const postType = await getScopedPostTypeBySlug(
+      ctx as unknown as QueryCtx,
+      postTypeSlug,
+      orgId,
+    );
+    if (!postType) return null;
+    const storageKind = postType.storageKind;
+    const storageTables = postType.storageTables ?? [];
+    if (storageKind === "component") {
+      if (storageTables.some((t) => t.includes("launchthat_lms:posts"))) {
+        return lmsResolver;
+      }
+      if (storageTables.some((t) => t.includes("launchthat_commerce:posts"))) {
+        return commerceResolver;
+      }
+      if (storageTables.some((t) => t.includes("launchthat_support:posts"))) {
+        return supportResolver;
+      }
+      // Unknown component storage; fall back to core (safe default).
+      return coreResolver;
+    }
+    return coreResolver;
+  } catch {
+    return null;
+  }
+};
+
+const getResolver = async (
+  ctx: QueryCtx | MutationCtx,
+  postTypeSlug: string,
+  organizationId?: string,
+): Promise<Resolver> => {
   const normalized = postTypeSlug.toLowerCase();
-  if (COMMERCE_SLUGS.has(normalized)) {
-    return commerceResolver;
+  if (DOWNLOADS_SLUGS.has(normalized)) {
+    return downloadsResolver;
   }
-  if (LMS_SLUGS.has(normalized)) {
-    return lmsResolver;
+  if (ATTACHMENTS_SLUGS.has(normalized)) {
+    return attachmentsResolver;
   }
-  if (SUPPORT_SLUGS.has(normalized)) {
-    return supportResolver;
-  }
+
+  // Preferred: choose based on postTypes definitions (storageKind/storageTables).
+  const fromPostType = await resolveFromPostType(ctx, normalized, organizationId);
+  if (fromPostType) return fromPostType;
+
+  // Fallback: legacy slug sets (kept for safety during migration).
+  if (COMMERCE_SLUGS.has(normalized)) return commerceResolver;
+  if (LMS_SLUGS.has(normalized)) return lmsResolver;
+  if (SUPPORT_SLUGS.has(normalized)) return supportResolver;
   return coreResolver;
 };
 

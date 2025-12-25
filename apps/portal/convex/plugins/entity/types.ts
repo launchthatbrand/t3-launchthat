@@ -23,6 +23,7 @@ export type EntityFilters = {
   category?: string;
   authorId?: string;
   limit?: number;
+  slug?: string;
 };
 
 export type EntitySaveInput = {
@@ -43,4 +44,5 @@ export type EntityFiltersInput = {
   category?: string;
   authorId?: string;
   limit?: number;
+  slug?: string;
 };

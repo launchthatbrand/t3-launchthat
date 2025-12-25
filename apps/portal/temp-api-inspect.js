@@ -1,1 +1,0 @@
-const { api } = require("./convex/_generated/api.js"); console.log("=== FULL API STRUCTURE ==="); console.log(JSON.stringify(Object.keys(api).reduce((acc, key) => { acc[key] = Object.keys(api[key] || {}); return acc; }, {}), null, 2));
