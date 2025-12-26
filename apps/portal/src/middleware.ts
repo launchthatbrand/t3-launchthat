@@ -1,9 +1,11 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-
-import type { NextRequest } from "next/server";
+import type { NextFetchEvent, NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { fetchTenantByCustomDomain, fetchTenantBySlug } from "@/lib/tenant-fetcher";
+import {
+  fetchTenantByCustomDomain,
+  fetchTenantBySlug,
+} from "@/lib/tenant-fetcher";
 import { rootDomain } from "@/lib/utils";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 // Routes requiring authentication
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/forum(.*)"]);
@@ -45,13 +47,16 @@ const shouldBypassClerkMiddleware = (req: NextRequest) => {
 function extractSubdomain(request: NextRequest): string | null {
   const url = request.url;
   const host =
-    request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "";
-  const hostname = host.split(":")[0];
+    request.headers.get("x-forwarded-host") ??
+    request.headers.get("host") ??
+    "";
+  const hostname = host.split(":")[0] ?? "";
 
   // Localhost handling (e.g., http://tenant.localhost:3000)
   if (url.includes("localhost") || url.includes("127.0.0.1")) {
     if (hostname.includes(".localhost")) {
-      return hostname.split(".")[0] ?? null;
+      const sub = hostname.split(".")[0] ?? "";
+      return sub || null;
     }
 
     return null;
@@ -60,7 +65,8 @@ function extractSubdomain(request: NextRequest): string | null {
   // Vercel preview handling: slug---project.vercel.app
   if (hostname.includes("---") && hostname.endsWith(".vercel.app")) {
     const parts = hostname.split("---");
-    return parts[0] ?? null;
+    const sub = parts[0] ?? "";
+    return sub || null;
   }
 
   const rootDomainFormatted = rootDomain.split(":")[0];
@@ -72,7 +78,7 @@ function extractSubdomain(request: NextRequest): string | null {
     hostname.endsWith(`.${rootDomainFormatted}`);
 
   return isSubdomain
-    ? (hostname.replace(`.${rootDomainFormatted}`, "") ?? null)
+    ? hostname.replace(`.${rootDomainFormatted}`, "") || null
     : null;
 }
 
@@ -173,9 +179,9 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
   return response;
 });
 
-type TenantContext = {
+interface TenantContext {
   response: NextResponse;
-};
+}
 
 async function buildTenantResponse(req: NextRequest): Promise<TenantContext> {
   const { pathname } = req.nextUrl;
@@ -224,17 +230,23 @@ async function buildTenantResponse(req: NextRequest): Promise<TenantContext> {
   return { response };
 }
 
-export default async function middleware(req: NextRequest) {
+export default async function middleware(
+  req: NextRequest,
+  event: NextFetchEvent,
+) {
   if (shouldBypassClerkMiddleware(req)) {
     const { response } = await buildTenantResponse(req);
     return response;
   }
-  return clerk(req);
+  return clerk(req, event);
 }
 
 export const config = {
   matcher: [
-    "/((?!_next|login|embed/|embed$|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    // NOTE: Do NOT exclude `/login` here. We still need tenant resolution headers
+    // (x-tenant-*) on the login page for custom domains/subdomains so SSR metadata
+    // and other tenant-aware server code doesn't fall back to the "Portal" tenant.
+    "/((?!_next|embed/|embed$|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
     "/(api|trpc)(.*)",
   ],
 };

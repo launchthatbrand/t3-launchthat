@@ -27,7 +27,9 @@ export const DownloadButton: React.FC<DownloadButtonProps> = ({
 }) => {
   const tenant = useTenant();
   const organizationId = getTenantOrganizationId(tenant);
-  const requestDownloadUrl = useMutation(api.core.downloads.mutations.requestDownloadUrl);
+  const requestDownloadUrl = useMutation(
+    api.core.downloads.mutations.requestDownloadUrl,
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   const handleClick = useCallback(async () => {
@@ -49,7 +51,8 @@ export const DownloadButton: React.FC<DownloadButtonProps> = ({
       }
     } catch (error) {
       toast.error("Download failed.", {
-        description: error instanceof Error ? error.message : "Unexpected error.",
+        description:
+          error instanceof Error ? error.message : "Unexpected error.",
       });
     } finally {
       setIsLoading(false);
@@ -57,7 +60,12 @@ export const DownloadButton: React.FC<DownloadButtonProps> = ({
   }, [downloadId, expiresInSeconds, organizationId, requestDownloadUrl]);
 
   return (
-    <Button type="button" onClick={handleClick} disabled={isLoading} className={className}>
+    <Button
+      type="button"
+      onClick={handleClick}
+      disabled={isLoading}
+      className={className}
+    >
       {isLoading ? (
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
       ) : (
@@ -67,5 +75,3 @@ export const DownloadButton: React.FC<DownloadButtonProps> = ({
     </Button>
   );
 };
-
-
