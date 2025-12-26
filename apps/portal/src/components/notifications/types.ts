@@ -170,6 +170,7 @@ export interface NotificationCardProps {
 // Define props for the notification dropdown component
 export interface NotificationDropdownProps {
   clerkId: string;
+  orgId: string;
   onClose: () => void;
   error?: string | null;
 }

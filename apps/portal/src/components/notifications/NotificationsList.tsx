@@ -1,7 +1,6 @@
 "use client";
 
-import type { Id } from "@/convex/_generated/dataModel";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { Check, Clock } from "lucide-react";
@@ -28,32 +27,64 @@ import type { Notification } from "./NotificationCard";
 import { NotificationCard } from "./NotificationCard";
 
 interface NotificationsListProps {
-  userId?: string;
+  clerkId?: string;
+  orgId?: string;
 }
 
-export function NotificationsList({ userId }: NotificationsListProps) {
+export function NotificationsList({ clerkId, orgId }: NotificationsListProps) {
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [paginationCursor, setPaginationCursor] = useState<string | null>(null);
+  const [items, setItems] = useState<Array<any>>([]);
+
+  const convexUser = useQuery(
+    api.core.users.queries.getUserByClerkId,
+    clerkId ? { clerkId } : "skip",
+  );
 
   // Query for notifications
   const notificationsResult = useQuery(
-    api.notifications.listNotifications,
-    userId
+    api.notifications.queries.paginateByClerkIdAndOrgId,
+    clerkId && orgId
       ? {
-          userId: userId as Id<"users">,
-          filters: { type: activeFilter !== "all" ? activeFilter : undefined },
-          paginationOpts: paginationCursor
-            ? { cursor: paginationCursor, numItems: 20 }
-            : { numItems: 20 },
+          clerkId,
+          orgId: orgId as any,
+          filters:
+            activeFilter !== "all" ? { eventKey: activeFilter } : undefined,
+          paginationOpts: {
+            numItems: 20,
+            cursor: paginationCursor ?? null,
+          },
         }
-      : null,
+      : "skip",
   );
 
   // Mutations for marking notifications as read
-  const markAsRead = useMutation(api.notifications.markNotificationAsRead);
-  const markAllAsRead = useMutation(
-    api.notifications.markAllNotificationsAsRead,
+  const markAsRead = useMutation(
+    api.notifications.mutations.markNotificationAsRead,
   );
+  const markAllAsRead = useMutation(
+    api.notifications.mutations.markAllNotificationsAsRead,
+  );
+
+  const cursorKey = useMemo(
+    () => `${activeFilter}:${paginationCursor ?? "null"}`,
+    [activeFilter, paginationCursor],
+  );
+
+  useEffect(() => {
+    if (!notificationsResult) return;
+    const page = notificationsResult.page ?? [];
+
+    setItems((prev) => {
+      const byId = new Map<string, any>();
+      // Reset on first page for this filter
+      const base = paginationCursor ? prev : [];
+      for (const n of base) byId.set(n._id, n);
+      for (const n of page) byId.set(n._id, n);
+      return Array.from(byId.values());
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cursorKey, notificationsResult]);
 
   // Handle marking a notification as read
   const handleMarkAsRead = async (notification: Notification) => {
@@ -63,6 +94,9 @@ export function NotificationsList({ userId }: NotificationsListProps) {
       await markAsRead({
         notificationId: notification._id,
       });
+      setItems((prev) =>
+        prev.map((n) => (n._id === notification._id ? { ...n, read: true } : n)),
+      );
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
       toast.error("Failed to update notification. Please try again.");
@@ -71,13 +105,15 @@ export function NotificationsList({ userId }: NotificationsListProps) {
 
   // Handle marking all notifications as read
   const handleMarkAllAsRead = async () => {
-    if (!userId) return;
+    if (!convexUser || !orgId) return;
 
     try {
       await markAllAsRead({
-        userId: userId as Id<"users">,
+        userId: convexUser._id as any,
+        orgId: orgId as any,
       });
       toast.success("All notifications marked as read");
+      setItems((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (error) {
       console.error("Failed to mark all notifications as read:", error);
       toast.error("Failed to update notifications. Please try again.");
@@ -86,12 +122,12 @@ export function NotificationsList({ userId }: NotificationsListProps) {
 
   // Handle loading more notifications
   const handleLoadMore = () => {
-    if (notificationsResult?.cursor) {
-      setPaginationCursor(notificationsResult.cursor);
+    if (notificationsResult?.continueCursor) {
+      setPaginationCursor(notificationsResult.continueCursor);
     }
   };
 
-  if (!userId) {
+  if (!clerkId || !orgId) {
     return (
       <Empty>
         <EmptyMedia variant="icon">
@@ -141,7 +177,11 @@ export function NotificationsList({ userId }: NotificationsListProps) {
     );
   }
 
-  const { notifications, hasMore } = notificationsResult;
+  const notifications = items;
+  const hasMore =
+    !!notificationsResult &&
+    !notificationsResult.isDone &&
+    !!notificationsResult.continueCursor;
 
   return (
     <div className="space-y-4">
@@ -166,7 +206,7 @@ export function NotificationsList({ userId }: NotificationsListProps) {
             onClick={handleMarkAllAsRead}
             disabled={
               notifications.length === 0 ||
-              notifications.every((n: Notification) => n.isRead)
+              notifications.every((n: any) => n.read)
             }
           >
             <Check className="mr-2 h-4 w-4" />
@@ -187,11 +227,29 @@ export function NotificationsList({ userId }: NotificationsListProps) {
         />
       ) : (
         <div className="space-y-2">
-          {notifications.map((notification: Notification) => (
+          {notifications.map((notification: any) => (
             <NotificationCard
               key={notification._id}
-              notification={notification}
-              onClick={() => handleMarkAsRead(notification)}
+              notification={{
+                _id: notification._id,
+                title: notification.title,
+                content: notification.content,
+                createdAt: notification.createdAt,
+                actionUrl: notification.actionUrl,
+                type: notification.eventKey,
+                isRead: notification.read,
+              }}
+              onClick={() =>
+                handleMarkAsRead({
+                  _id: notification._id,
+                  title: notification.title,
+                  content: notification.content,
+                  createdAt: notification.createdAt,
+                  actionUrl: notification.actionUrl,
+                  type: notification.eventKey,
+                  isRead: notification.read,
+                } as Notification)
+              }
               className="border"
             />
           ))}

@@ -108,6 +108,23 @@ export const createLmsPluginDefinition = ({
   description: "Courses, lessons, topics and quizzes with learner tracking.",
   longDescription:
     "Perfect for education businesses. Enabling this plugin provisions all LMS post types with archive pages, admin menus and rich metadata.",
+  notificationEvents: [
+    {
+      eventKey: "lms.course.stepAdded",
+      label: "New course step added",
+      description:
+        "Notifies when a new lesson/step is added to a course you follow.",
+      category: "lms",
+      scopes: [
+        {
+          scopeKind: "course",
+          label: "Course",
+          supportsAny: true,
+        },
+      ],
+      defaultInAppEnabled: true,
+    },
+  ],
   features: [
     "Course + lesson builders",
     "Topic + quiz post types",

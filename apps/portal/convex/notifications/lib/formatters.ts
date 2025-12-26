@@ -161,8 +161,8 @@ export function formatNotificationForDisplay(
 
   let icon = "bell";
 
-  // Set appropriate icon based on notification type
-  switch (notification.type) {
+  // Set appropriate icon based on eventKey (legacy: this used to be `type`)
+  switch (notification.eventKey) {
     case "friendRequest":
     case "friendAccepted":
       icon = "user-plus";
@@ -241,11 +241,11 @@ export function groupNotificationsByType(
 ): Record<string, Doc<"notifications">[]> {
   return notifications.reduce(
     (groups, notification) => {
-      const type = notification.type;
-      if (!groups[type]) {
-        groups[type] = [];
+      const key = notification.eventKey;
+      if (!groups[key]) {
+        groups[key] = [];
       }
-      groups[type].push(notification);
+      groups[key].push(notification);
       return groups;
     },
     {} as Record<string, Doc<"notifications">[]>,

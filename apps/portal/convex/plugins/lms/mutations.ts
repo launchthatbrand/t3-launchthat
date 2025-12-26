@@ -6,9 +6,10 @@ import type { MutationCtx } from "../../_generated/server";
 import {
   api as generatedApi,
   components as generatedComponents,
+  internal as generatedInternal,
 } from "../../_generated/api";
 import { mutation as baseMutation } from "../../_generated/server";
-import { PORTAL_TENANT_SLUG } from "../../constants";
+import { PORTAL_TENANT_ID, PORTAL_TENANT_SLUG } from "../../constants";
 import { getAuthenticatedUserDocIdByToken } from "../../core/lib/permissions";
 import {
   awardBadgesForSource,
@@ -27,6 +28,7 @@ import {
 
 const api = generatedApi as any;
 const components = generatedComponents as any;
+const internal = generatedInternal as any;
 const mutation = baseMutation as any;
 
 const CERTIFICATE_META_KEY = "certificateId";
@@ -602,7 +604,8 @@ const attachLessonToCourseInternal = async (
   const structure = parseCourseStructureMeta(
     courseMeta.get("courseStructure") ?? null,
   );
-  if (!structure.includes(lessonId)) {
+  const wasAdded = !structure.includes(lessonId);
+  if (wasAdded) {
     structure.push(lessonId);
     await setPostMetaValue(
       ctx,
@@ -625,6 +628,57 @@ const attachLessonToCourseInternal = async (
     "courseSlug",
     course.slug ?? course._id,
   );
+
+  if (wasAdded) {
+    console.log("[lms.attachLessonToCourseInternal] dispatching stepAdded", {
+      courseId: String(course._id),
+      lessonId: String(lessonId),
+      orgId: course.organizationId ?? null,
+    });
+
+    const orgId =
+      typeof course.organizationId === "string" &&
+      course.organizationId.length > 0
+        ? (course.organizationId as unknown as Id<"organizations">)
+        : PORTAL_TENANT_ID;
+
+    const courseSlug =
+      typeof course.slug === "string" && course.slug.length > 0
+        ? course.slug
+        : String(course._id);
+
+    const lesson = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: lessonId as unknown as string },
+    );
+
+    const lessonTitle =
+      lesson && typeof lesson.title === "string" && lesson.title.length > 0
+        ? lesson.title
+        : "A new step";
+    const lessonSegment =
+      lesson && typeof lesson.slug === "string" && lesson.slug.length > 0
+        ? lesson.slug
+        : String(lessonId);
+
+    await ctx.runMutation(
+      internal.notifications.internal.dispatch.dispatchEvent,
+      {
+        orgId,
+        eventKey: "lms.course.stepAdded",
+        scopeKind: "course",
+        scopeId: String(course._id),
+        title:
+          typeof course.title === "string" && course.title.length > 0
+            ? `New step added to ${course.title}`
+            : "New course step added",
+        content: `${lessonTitle} was added to this course.`,
+        actionUrl: `/course/${encodeURIComponent(courseSlug)}/lesson/${encodeURIComponent(
+          lessonSegment,
+        )}`,
+      },
+    );
+  }
 };
 
 export const addLessonToCourse: any = mutation({
@@ -710,6 +764,24 @@ export const reorderLessonsInCourse: any = mutation({
       throw new Error("Course not found");
     }
 
+    const courseMeta = await getPostMetaMap(ctx, course._id);
+    const previousStructure = parseCourseStructureMeta(
+      courseMeta.get("courseStructure") ?? null,
+    ).map(String);
+
+    const nextStructure = (args.orderedLessonIds ?? []).map(String);
+    const prevSet = new Set(previousStructure);
+    const addedLessonIds = nextStructure.filter(
+      (id: string) => !prevSet.has(id),
+    );
+
+    console.log("[lms.reorderLessonsInCourse] structure diff", {
+      courseId: String(course._id),
+      prevCount: previousStructure.length,
+      nextCount: nextStructure.length,
+      addedLessonIds,
+    });
+
     await setPostMetaValue(
       ctx,
       course._id,
@@ -729,6 +801,58 @@ export const reorderLessonsInCourse: any = mutation({
         ),
       ),
     );
+
+    if (addedLessonIds.length > 0) {
+      const orgId =
+        typeof course.organizationId === "string" &&
+        course.organizationId.length > 0
+          ? (course.organizationId as unknown as Id<"organizations">)
+          : PORTAL_TENANT_ID;
+
+      const courseSlug =
+        typeof course.slug === "string" && course.slug.length > 0
+          ? course.slug
+          : String(course._id);
+
+      for (const lessonId of addedLessonIds) {
+        console.log("[lms.reorderLessonsInCourse] dispatching stepAdded", {
+          courseId: String(course._id),
+          orgId,
+          lessonId,
+        });
+
+        const lesson = await ctx.runQuery(
+          components.launchthat_lms.posts.queries.getPostByIdInternal,
+          { id: lessonId as unknown as string },
+        );
+        const lessonTitle =
+          lesson && typeof lesson.title === "string" && lesson.title.length > 0
+            ? lesson.title
+            : "A new step";
+        const lessonSegment =
+          lesson && typeof lesson.slug === "string" && lesson.slug.length > 0
+            ? lesson.slug
+            : String(lessonId);
+
+        await ctx.runMutation(
+          internal.notifications.internal.dispatch.dispatchEvent,
+          {
+            orgId,
+            eventKey: "lms.course.stepAdded",
+            scopeKind: "course",
+            scopeId: String(course._id),
+            title:
+              typeof course.title === "string" && course.title.length > 0
+                ? `New step added to ${course.title}`
+                : "New course step added",
+            content: `${lessonTitle} was added to this course.`,
+            actionUrl: `/course/${encodeURIComponent(courseSlug)}/lesson/${encodeURIComponent(
+              lessonSegment,
+            )}`,
+          },
+        );
+      }
+    }
 
     return { success: true };
   },

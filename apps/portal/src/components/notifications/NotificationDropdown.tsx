@@ -29,6 +29,7 @@ import { NOTIFICATION_CATEGORIES } from "./types";
 
 export function NotificationDropdown({
   clerkId,
+  orgId,
   onClose,
   error,
 }: NotificationDropdownProps) {
@@ -51,7 +52,7 @@ export function NotificationDropdown({
     // Get the first type in the category array (API expects a single type)
     const categoryTypes = NOTIFICATION_CATEGORIES[category];
     if (categoryTypes.length > 0) {
-      return { type: categoryTypes[0] };
+      return { eventKey: categoryTypes[0] };
     }
 
     return {};
@@ -59,10 +60,11 @@ export function NotificationDropdown({
 
   // Query for notifications
   const notificationsResult = useQuery(
-    api.notifications.queries.getNotificationsByClerkId,
+    api.notifications.queries.paginateByClerkIdAndOrgId,
     clerkId
       ? {
           clerkId,
+          orgId: orgId as any,
           filters: getFilterTypes(activeTab),
           paginationOpts: {
             numItems: 10,
@@ -99,6 +101,7 @@ export function NotificationDropdown({
     try {
       await markAllAsRead({
         userId: convexUser._id as any,
+        orgId: orgId as any,
       });
       toast.success("All notifications marked as read");
     } catch (error) {
@@ -148,7 +151,7 @@ export function NotificationDropdown({
       return <NotificationSkeleton count={5} />;
     }
 
-    if (!notificationsResult || notificationsResult.length === 0) {
+    if (!notificationsResult || notificationsResult.page.length === 0) {
       return (
         <EmptyState
           icon={<Clock className="text-muted-foreground h-10 w-10" />}
@@ -162,8 +165,8 @@ export function NotificationDropdown({
       );
     }
 
-    const notifications = notificationsResult;
-    const hasMore = notifications.length === 10; // We fetched 10, so if we have 10, there might be more
+    const notifications = notificationsResult.page;
+    const hasMore = !notificationsResult.isDone && !!notificationsResult.continueCursor;
 
     return (
       <>
@@ -188,18 +191,7 @@ export function NotificationDropdown({
               variant="ghost"
               size="sm"
               onClick={() => {
-                if (notifications.length > 0) {
-                  const lastNotification =
-                    notifications[notifications.length - 1];
-                  if (
-                    lastNotification &&
-                    lastNotification._creationTime !== undefined
-                  ) {
-                    setPaginationCursor(
-                      lastNotification._creationTime.toString(),
-                    );
-                  }
-                }
+                setPaginationCursor(notificationsResult.continueCursor);
               }}
               className="w-full"
             >

@@ -1,6 +1,7 @@
 import { Id } from "../../_generated/dataModel";
 import { MutationCtx } from "../../_generated/server";
 import { NotificationType } from "../../shared/validators";
+import { PORTAL_TENANT_ID } from "../../constants";
 
 /**
  * Create a notification for when a user reacts to a post
@@ -25,11 +26,14 @@ export async function notifyReaction(
   // Get user information for better notifications
   const reactor = await ctx.db.get(reactorId);
   if (!reactor) return;
+  const recipient = await ctx.db.get(feedItem.creatorId);
+  if (!recipient) return;
 
   // Create notification for the post creator
   await ctx.db.insert("notifications", {
     userId: feedItem.creatorId,
-    type: "reaction" as NotificationType,
+    orgId: recipient.organizationId ?? PORTAL_TENANT_ID,
+    eventKey: "reaction" as NotificationType,
     title: `${reactor.name} reacted to your post`,
     content: `${reactor.name} ${reactionType}d your post`,
     read: false,
@@ -105,6 +109,8 @@ async function notifyDirectComment(
   // Get user information for better notifications
   const commenter = await ctx.db.get(commenterId);
   if (!commenter) return;
+  const recipient = await ctx.db.get(feedItem.creatorId);
+  if (!recipient) return;
 
   // Create a preview of the comment (limit to ~50 chars)
   const contentPreview =
@@ -113,7 +119,8 @@ async function notifyDirectComment(
   // Create notification for the post creator
   await ctx.db.insert("notifications", {
     userId: feedItem.creatorId,
-    type: "comment" as NotificationType,
+    orgId: recipient.organizationId ?? PORTAL_TENANT_ID,
+    eventKey: "comment" as NotificationType,
     title: `${commenter.name} commented on your post`,
     content: contentPreview,
     read: false,
@@ -148,6 +155,8 @@ async function notifyCommentReply(
   // Get user information for better notifications
   const commenter = await ctx.db.get(commenterId);
   if (!commenter) return;
+  const recipient = await ctx.db.get(parentComment.userId);
+  if (!recipient) return;
 
   // Create a preview of the comment (limit to ~50 chars)
   const contentPreview =
@@ -156,7 +165,8 @@ async function notifyCommentReply(
   // Create notification for the parent comment author
   await ctx.db.insert("notifications", {
     userId: parentComment.userId,
-    type: "commentReply" as NotificationType,
+    orgId: recipient.organizationId ?? PORTAL_TENANT_ID,
+    eventKey: "commentReply" as NotificationType,
     title: `${commenter.name} replied to your comment`,
     content: contentPreview,
     read: false,
@@ -208,7 +218,8 @@ export async function notifyMentions(
     // Create notification
     await ctx.db.insert("notifications", {
       userId: mentionedUser._id,
-      type: "mention" as NotificationType,
+      orgId: mentionedUser.organizationId ?? PORTAL_TENANT_ID,
+      eventKey: "mention" as NotificationType,
       title: `${mentioner.name} mentioned you`,
       content: commentId
         ? `${mentioner.name} mentioned you in a comment`
@@ -244,11 +255,14 @@ export async function notifyShare(
   // Get user information for better notifications
   const sharer = await ctx.db.get(sharerId);
   if (!sharer) return;
+  const recipient = await ctx.db.get(originalContent.creatorId);
+  if (!recipient) return;
 
   // Create notification for the original content creator
   await ctx.db.insert("notifications", {
     userId: originalContent.creatorId,
-    type: "share" as NotificationType,
+    orgId: recipient.organizationId ?? PORTAL_TENANT_ID,
+    eventKey: "share" as NotificationType,
     title: `${sharer.name} shared your post`,
     content: `${sharer.name} shared your post with their followers`,
     read: false,
@@ -295,9 +309,12 @@ export async function notifyFollowers(
 
   // Create notifications individually instead of using batch
   for (const followerId of followerIds) {
+    const follower = await ctx.db.get(followerId);
+    if (!follower) continue;
     await ctx.db.insert("notifications", {
       userId: followerId,
-      type: "newFollowedUserPost" as NotificationType,
+      orgId: follower.organizationId ?? PORTAL_TENANT_ID,
+      eventKey: "newFollowedUserPost" as NotificationType,
       title: `${creator.name} posted something new`,
       content: contentPreview,
       read: false,

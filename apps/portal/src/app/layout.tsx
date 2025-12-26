@@ -9,6 +9,7 @@ import { cn } from "@acme/ui";
 import StandardLayout from "@acme/ui/layout/StandardLayout";
 
 import { Providers } from "./providers";
+import { NotificationIcon } from "~/components/notifications/NotificationIcon";
 
 // const fontSans = Geist({
 //   subsets: ["latin"],
@@ -26,6 +27,7 @@ export default async function RootLayout(props: {
   header: React.ReactNode;
 }) {
   const tenant = await getActiveTenantFromHeaders();
+  const appName = tenant?.name ?? "Portal";
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -38,10 +40,11 @@ export default async function RootLayout(props: {
       >
         <Providers tenant={tenant}>
           <StandardLayout
-            appName="Wall Street Academys"
+            appName={appName}
             sidebar={props.sidebar}
             header={props.header}
             sidebarVariant="inset"
+            headerRightSlot={<NotificationIcon />}
           >
             {props.children}
           </StandardLayout>

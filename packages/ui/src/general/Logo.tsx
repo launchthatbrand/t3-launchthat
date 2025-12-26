@@ -25,8 +25,12 @@ export function Logo({
       ) : null}
       {appName ? (
         <div className="hidden gap-1 md:flex">
-          <span className="font-semibold text-[#2b0e4d]">{firstPart}</span>
-          <span className="font-light text-[#FC653C]">{secondPart}</span>
+          <span className="font-semibold text-[#2b0e4d] dark:text-white">
+            {firstPart}
+          </span>
+          <span className="font-light text-[#FC653C] dark:text-white">
+            {secondPart}
+          </span>
         </div>
       ) : null}
     </div>

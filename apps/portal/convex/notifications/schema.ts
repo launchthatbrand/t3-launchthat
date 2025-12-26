@@ -4,7 +4,10 @@ import { v } from "convex/values";
 // Notifications table definition
 export const notificationsTable = defineTable({
   userId: v.id("users"),
-  type: v.string(),
+  orgId: v.id("organizations"),
+  eventKey: v.string(),
+  scopeKind: v.optional(v.string()),
+  scopeId: v.optional(v.string()),
   title: v.string(),
   content: v.optional(v.string()),
   read: v.boolean(),
@@ -18,8 +21,10 @@ export const notificationsTable = defineTable({
   expiresAt: v.optional(v.number()),
   relatedId: v.optional(v.id("groupInvitations")),
 })
-  .index("by_user", ["userId"]) // For fetching a user's notifications
-  .index("by_user_type", ["userId", "type"]); // For filtering by type within a user
+  .index("by_user", ["userId"]) // legacy
+  .index("by_user_org", ["userId", "orgId"])
+  .index("by_user_org_read", ["userId", "orgId", "read"])
+  .index("by_user_org_eventKey", ["userId", "orgId", "eventKey"]);
 
 // Notification preferences table
 export const notificationPreferencesTable = defineTable({
@@ -30,8 +35,41 @@ export const notificationPreferencesTable = defineTable({
   pushToken: v.optional(v.string()),
 }).index("by_user", ["userId"]);
 
+export const notificationOrgDefaultsTable = defineTable({
+  orgId: v.id("organizations"),
+  inAppDefaults: v.optional(v.record(v.string(), v.boolean())),
+}).index("by_org", ["orgId"]);
+
+export const notificationUserEventPrefsTable = defineTable({
+  userId: v.id("users"),
+  orgId: v.id("organizations"),
+  inAppEnabled: v.optional(v.record(v.string(), v.boolean())),
+}).index("by_user_org", ["userId", "orgId"]);
+
+export const notificationSubscriptionsTable = defineTable({
+  userId: v.id("users"),
+  orgId: v.id("organizations"),
+  eventKey: v.string(),
+  scopeKind: v.string(),
+  scopeId: v.union(v.string(), v.null()),
+  enabled: v.boolean(),
+})
+  .index("by_user_org", ["userId", "orgId"])
+  .index("by_user_org_event", ["userId", "orgId", "eventKey"])
+  .index("by_user_org_event_scope", [
+    "userId",
+    "orgId",
+    "eventKey",
+    "scopeKind",
+    "scopeId",
+  ])
+  .index("by_org_event_scope", ["orgId", "eventKey", "scopeKind", "scopeId"]);
+
 // Export schema aggregate for main schema composition
 export const notificationsSchema = {
   notifications: notificationsTable,
   notificationPreferences: notificationPreferencesTable,
+  notificationOrgDefaults: notificationOrgDefaultsTable,
+  notificationUserEventPrefs: notificationUserEventPrefsTable,
+  notificationSubscriptions: notificationSubscriptionsTable,
 };

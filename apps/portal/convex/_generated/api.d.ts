@@ -61,6 +61,7 @@ import type * as core_users_marketingTags_index from "../core/users/marketingTag
 import type * as core_users_mutations from "../core/users/mutations.js";
 import type * as core_users_queries from "../core/users/queries.js";
 import type * as core_users_types from "../core/users/types.js";
+import type * as core_users from "../core/users.js";
 import type * as ecommerce_balances_mutations from "../ecommerce/balances/mutations.js";
 import type * as ecommerce_balances_queries from "../ecommerce/balances/queries.js";
 import type * as ecommerce_cart_cartUtils from "../ecommerce/cart/cartUtils.js";
@@ -145,6 +146,7 @@ import type * as lms_contentAccess_mutations from "../lms/contentAccess/mutation
 import type * as lms_contentAccess_queries from "../lms/contentAccess/queries.js";
 import type * as migrations_portal from "../migrations/portal.js";
 import type * as notifications_helpers from "../notifications/helpers.js";
+import type * as notifications_internal_dispatch from "../notifications/internal/dispatch.js";
 import type * as notifications_lib_feedNotifications from "../notifications/lib/feedNotifications.js";
 import type * as notifications_lib_formatters from "../notifications/lib/formatters.js";
 import type * as notifications_lib_index from "../notifications/lib/index.js";
@@ -152,6 +154,7 @@ import type * as notifications_lib_preferences from "../notifications/lib/prefer
 import type * as notifications_mutations from "../notifications/mutations.js";
 import type * as notifications_preferences from "../notifications/preferences.js";
 import type * as notifications_queries from "../notifications/queries.js";
+import type * as notifications_settings from "../notifications/settings.js";
 import type * as notifications_types from "../notifications/types.js";
 import type * as plugins_calendar_crud from "../plugins/calendar/crud.js";
 import type * as plugins_calendar_events_crud from "../plugins/calendar/events/crud.js";
@@ -276,6 +279,7 @@ declare const fullApi: ApiFromModules<{
   "core/users/mutations": typeof core_users_mutations;
   "core/users/queries": typeof core_users_queries;
   "core/users/types": typeof core_users_types;
+  "core/users": typeof core_users;
   "ecommerce/balances/mutations": typeof ecommerce_balances_mutations;
   "ecommerce/balances/queries": typeof ecommerce_balances_queries;
   "ecommerce/cart/cartUtils": typeof ecommerce_cart_cartUtils;
@@ -360,6 +364,7 @@ declare const fullApi: ApiFromModules<{
   "lms/contentAccess/queries": typeof lms_contentAccess_queries;
   "migrations/portal": typeof migrations_portal;
   "notifications/helpers": typeof notifications_helpers;
+  "notifications/internal/dispatch": typeof notifications_internal_dispatch;
   "notifications/lib/feedNotifications": typeof notifications_lib_feedNotifications;
   "notifications/lib/formatters": typeof notifications_lib_formatters;
   "notifications/lib/index": typeof notifications_lib_index;
@@ -367,6 +372,7 @@ declare const fullApi: ApiFromModules<{
   "notifications/mutations": typeof notifications_mutations;
   "notifications/preferences": typeof notifications_preferences;
   "notifications/queries": typeof notifications_queries;
+  "notifications/settings": typeof notifications_settings;
   "notifications/types": typeof notifications_types;
   "plugins/calendar/crud": typeof plugins_calendar_crud;
   "plugins/calendar/events/crud": typeof plugins_calendar_events_crud;

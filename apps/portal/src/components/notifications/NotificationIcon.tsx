@@ -8,39 +8,20 @@ import { Bell } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
 
+import { useTenant } from "~/context/TenantContext";
 import { NotificationDropdown } from "./NotificationDropdown";
-
-// Define the notification type
-interface Notification {
-  _id: string;
-  read: boolean;
-  title: string;
-  content?: string;
-  type: string;
-  createdAt: number;
-}
 
 export function NotificationIcon() {
   const { user } = useClerk();
   const clerkId = user?.id;
+  const tenant = useTenant();
+  const orgId = tenant?._id;
   const [isOpen, setIsOpen] = useState(false);
 
-  // Get notifications from Convex using Clerk ID
-  const notificationsResult = useQuery(
-    api.notifications.queries.listNotificationsByClerkId,
-    clerkId ? { clerkId } : "skip",
+  const unreadCount = useQuery(
+    api.notifications.queries.getUnreadCountByClerkIdAndOrgId,
+    clerkId && orgId ? { clerkId, orgId } : "skip",
   );
-
-  // Count unread notifications
-  const unreadCount = Array.isArray(notificationsResult)
-    ? notificationsResult.filter((n: Notification) => !n.read).length
-    : 0;
-
-  // Handle errors in the UI rather than in the query
-  // This is a more React-friendly approach
-  if (notificationsResult instanceof Error) {
-    console.error("Error fetching notifications:", notificationsResult);
-  }
 
   return (
     <div className="relative">
@@ -49,25 +30,22 @@ export function NotificationIcon() {
         size="icon"
         onClick={() => setIsOpen(!isOpen)}
         className="relative"
-        aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+        aria-label={`Notifications${(unreadCount ?? 0) > 0 ? ` (${unreadCount} unread)` : ""}`}
       >
         <Bell className="h-5 w-5" />
-        {unreadCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-xs text-white">
-            {unreadCount > 99 ? "99+" : unreadCount}
+        {(unreadCount ?? 0) > 0 && (
+          <span className="bg-destructive absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs text-white">
+            {(unreadCount ?? 0) > 99 ? "99+" : unreadCount}
           </span>
         )}
       </Button>
 
-      {isOpen && clerkId && (
+      {isOpen && clerkId && orgId && (
         <NotificationDropdown
           onClose={() => setIsOpen(false)}
           clerkId={clerkId}
-          error={
-            notificationsResult instanceof Error
-              ? "Unable to load notifications"
-              : null
-          }
+          orgId={orgId}
+          error={null}
         />
       )}
     </div>

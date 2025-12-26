@@ -2,11 +2,9 @@ import { v } from "convex/values";
 
 import type { Id } from "../_generated/dataModel";
 import { mutation } from "../_generated/server";
-import { throwNotFound } from "../shared/errors";
-import {
-  notificationTypeValidator,
-  userIdValidator,
-} from "../shared/validators";
+import { PORTAL_TENANT_ID } from "../constants";
+import { throwInvalidInput, throwNotFound } from "../shared/errors";
+import { userIdValidator } from "../shared/validators";
 import { generateNotificationContent } from "./lib/formatters";
 
 /**
@@ -38,14 +36,15 @@ export const markNotificationAsRead = mutation({
 export const markAllNotificationsAsRead = mutation({
   args: {
     userId: userIdValidator,
+    orgId: v.id("organizations"),
   },
   returns: v.number(),
   handler: async (ctx, args) => {
-    // Use filter method instead of withIndex to avoid chaining eq calls
     const unreadNotifications = await ctx.db
       .query("notifications")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .filter((q) => q.eq(q.field("read"), false))
+      .withIndex("by_user_org_read", (q) =>
+        q.eq("userId", args.userId).eq("orgId", args.orgId).eq("read", false),
+      )
       .collect();
 
     // Update each unread notification
@@ -65,7 +64,10 @@ export const markAllNotificationsAsRead = mutation({
 export const createNotification = mutation({
   args: {
     userId: userIdValidator,
-    type: notificationTypeValidator,
+    orgId: v.optional(v.id("organizations")),
+    eventKey: v.optional(v.string()),
+    // Legacy field name (pre-pluggable). Prefer `eventKey`.
+    type: v.optional(v.string()),
     title: v.string(),
     content: v.optional(v.string()),
     sourceUserId: v.optional(v.id("users")),
@@ -79,6 +81,18 @@ export const createNotification = mutation({
   },
   returns: v.id("notifications"),
   handler: async (ctx, args) => {
+    const eventKey = (args.eventKey ?? args.type)?.trim();
+    if (!eventKey) {
+      throwInvalidInput("Either eventKey or type must be provided");
+    }
+
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throwNotFound("User", args.userId);
+    }
+
+    const orgId = args.orgId ?? user.organizationId ?? PORTAL_TENANT_ID;
+
     // Get user notification preferences to check if this notification type is enabled
     const preferencesDoc = await ctx.db
       .query("notificationPreferences")
@@ -92,15 +106,26 @@ export const createNotification = mutation({
     if (preferencesDoc?.appPreferences) {
       // Type-safe access to notification preferences
       const appPrefs = preferencesDoc.appPreferences;
-      const notificationType = args.type;
-      isNotificationDisabled = appPrefs[notificationType] === false;
+      isNotificationDisabled = appPrefs[eventKey] === false;
     }
 
     if (isNotificationDisabled) {
       // User has disabled this notification type
       // Still create the notification but mark it as read already
       return await ctx.db.insert("notifications", {
-        ...args,
+        userId: args.userId,
+        orgId,
+        eventKey,
+        scopeKind: undefined,
+        scopeId: undefined,
+        title: args.title,
+        content: args.content,
+        sourceUserId: args.sourceUserId,
+        sourceOrderId: args.sourceOrderId,
+        actionUrl: args.actionUrl,
+        actionData: args.actionData,
+        expiresAt: args.expiresAt,
+        relatedId: args.relatedId,
         read: true,
         createdAt: Date.now(),
       });
@@ -109,14 +134,32 @@ export const createNotification = mutation({
     // Use the formatter helper to generate content if not provided
     let content = args.content;
     if (!content) {
-      content = await generateNotificationContent(ctx, args);
+      content = await generateNotificationContent(ctx, {
+        type: eventKey,
+        userId: args.userId,
+        sourceUserId: args.sourceUserId,
+        sourceOrderId: args.sourceOrderId,
+        title: args.title,
+        message: args.message,
+      });
     }
 
     // Create the notification
     return await ctx.db.insert("notifications", {
-      ...args,
+      userId: args.userId,
+      orgId,
+      eventKey,
+      scopeKind: undefined,
+      scopeId: undefined,
+      title: args.title,
       content,
       read: false,
+      sourceUserId: args.sourceUserId,
+      sourceOrderId: args.sourceOrderId,
+      actionUrl: args.actionUrl,
+      actionData: args.actionData,
+      expiresAt: args.expiresAt,
+      relatedId: args.relatedId,
       createdAt: Date.now(),
     });
   },
@@ -148,12 +191,15 @@ export const deleteNotification = mutation({
 export const deleteAllNotifications = mutation({
   args: {
     userId: userIdValidator,
+    orgId: v.id("organizations"),
   },
   returns: v.number(),
   handler: async (ctx, args) => {
     const notifications = await ctx.db
       .query("notifications")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", args.userId).eq("orgId", args.orgId),
+      )
       .collect();
 
     for (const notification of notifications) {
@@ -170,7 +216,10 @@ export const deleteAllNotifications = mutation({
 export const batchCreateNotifications = mutation({
   args: {
     userIds: v.array(userIdValidator),
-    type: notificationTypeValidator,
+    orgId: v.optional(v.id("organizations")),
+    eventKey: v.optional(v.string()),
+    // Legacy field name (pre-pluggable). Prefer `eventKey`.
+    type: v.optional(v.string()),
     title: v.string(),
     content: v.optional(v.string()),
     sourceUserId: v.optional(v.id("users")),
@@ -187,11 +236,30 @@ export const batchCreateNotifications = mutation({
     const { userIds, ...notificationData } = args;
     const notificationIds: Id<"notifications">[] = [];
 
+    const eventKey = (notificationData.eventKey ?? notificationData.type)?.trim();
+    if (!eventKey) {
+      throwInvalidInput("Either eventKey or type must be provided");
+    }
+
     // Create a notification for each user
     for (const userId of userIds) {
+      const user = await ctx.db.get(userId);
+      if (!user) continue;
+      const orgId = notificationData.orgId ?? user.organizationId ?? PORTAL_TENANT_ID;
       const notificationId = await ctx.db.insert("notifications", {
-        ...notificationData,
+        title: notificationData.title,
+        content: notificationData.content,
+        sourceUserId: notificationData.sourceUserId,
+        sourceOrderId: notificationData.sourceOrderId,
+        actionUrl: notificationData.actionUrl,
+        actionData: notificationData.actionData,
+        expiresAt: notificationData.expiresAt,
+        relatedId: notificationData.relatedId,
         userId,
+        orgId,
+        eventKey,
+        scopeKind: undefined,
+        scopeId: undefined,
         read: false,
         createdAt: Date.now(),
       });

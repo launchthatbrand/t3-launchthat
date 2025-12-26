@@ -342,6 +342,38 @@ export interface PluginAdminConfig {
   bootstrap?: () => void;
 }
 
+export type NotificationEventCategory =
+  | "activity"
+  | "group"
+  | "system"
+  | "event"
+  | "ecommerce"
+  | "lms"
+  | "custom";
+
+export interface NotificationEventScopeDefinition {
+  /**
+   * A plugin-defined scope kind (e.g. "course").
+   * `scopeId = null` means "any" within this scope kind (e.g. any course).
+   */
+  scopeKind: string;
+  label: string;
+  supportsAny?: boolean;
+}
+
+export interface PluginNotificationEventDefinition {
+  /**
+   * Namespaced event key (e.g. "lms.course.stepAdded").
+   * This is what gets stored on notifications as `eventKey` and on subscriptions.
+   */
+  eventKey: string;
+  label: string;
+  description?: string;
+  category?: NotificationEventCategory;
+  scopes?: NotificationEventScopeDefinition[];
+  defaultInAppEnabled?: boolean;
+}
+
 export interface PluginDefinition {
   id: string;
   name: string;
@@ -351,6 +383,7 @@ export interface PluginDefinition {
   postTypes: PluginPostTypeConfig[];
   fieldRegistrations?: PluginPostTypeFieldRegistration[];
   settingsPages?: PluginSettingDefinition[];
+  notificationEvents?: PluginNotificationEventDefinition[];
   activation?: PluginActivationConfig;
   adminMenus?: PluginAdminMenuEntry[];
   providers?: Record<string, ComponentType<{ children: ReactNode }>>;
