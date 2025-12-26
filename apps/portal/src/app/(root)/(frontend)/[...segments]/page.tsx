@@ -11,7 +11,9 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { api } from "@/convex/_generated/api";
+import { resolveFrontendArchive } from "@/lib/frontendRouting/resolveFrontendArchive";
 import { resolveFrontendEntry } from "@/lib/frontendRouting/resolveFrontendEntry";
+import { resolveFrontendTaxonomyArchive } from "@/lib/frontendRouting/resolveFrontendTaxonomyArchive";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
 import { LmsCourseProvider } from "launchthat-plugin-lms";
@@ -64,8 +66,6 @@ const getPluginFrontendFiltersForSlugTyped =
   ) => FrontendFilterRegistration[];
 
 type PluginMatch = ReturnType<typeof findPostTypeBySlug>;
-
-const PERMALINK_OPTION_KEY = "permalink_settings";
 
 interface PageProps {
   params: Promise<{ segments?: string[] }>;
@@ -601,8 +601,6 @@ export default async function FrontendCatchAllPage(props: PageProps) {
   const resolvedSearchParams = props.searchParams
     ? await props.searchParams
     : undefined;
-  const requestedPostTypeSlug =
-    parsePostTypeSlugFromSearchParams(resolvedSearchParams);
   const tenant = await getActiveTenantFromHeaders();
   const organizationId = getTenantOrganizationId(tenant);
 
@@ -620,30 +618,16 @@ export default async function FrontendCatchAllPage(props: PageProps) {
         </main>
       );
     }
-    const archiveSlug = archiveContext.postType.slug?.toLowerCase() ?? "";
-    const isLmsComponentArchive =
-      LMS_POST_TYPE_SLUGS.has(archiveSlug) ||
-      (archiveContext.postType.storageKind === "component" &&
-        (archiveContext.postType.storageTables ?? []).some((table) =>
-          table.includes("launchthat_lms:posts"),
-        ));
-    const posts = isLmsComponentArchive
-      ? await fetchQuery(api.plugins.lms.posts.queries.getAllPosts, {
-          organizationId: organizationId ?? undefined,
-          filters: {
-            status: "published",
-            postTypeSlug: archiveContext.postType.slug,
-            limit: 50,
-          },
-        })
-      : await fetchQuery(api.core.posts.queries.getAllPosts, {
-          ...(organizationId ? { organizationId } : {}),
-          filters: {
-            status: "published",
-            postTypeSlug: archiveContext.postType.slug,
-            limit: 50,
-          },
-        });
+    const resolvedCustomArchive = await resolveFrontendArchive({
+      postType: archiveContext.postType,
+      organizationId: organizationId ?? null,
+      fetchQuery,
+      getAllPostsCore: api.core.posts.queries.getAllPosts,
+      getAllPostsLms: api.plugins.lms.posts.queries.getAllPosts,
+      listEntities: api.plugins.entity.queries.listEntities,
+    });
+
+    const posts = resolvedCustomArchive.posts ?? [];
     const pluginMatch = findPostTypeBySlug(archiveContext.postType.slug);
     const pluginArchive = pluginMatch?.postType.frontend?.archive;
     if (pluginMatch && pluginArchive?.render) {
@@ -655,166 +639,44 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     return <PostArchive postType={archiveContext.postType} posts={posts} />;
   }
 
-  const taxonomyArchiveContext = await resolveTaxonomyArchiveContext(
+  const resolvedTaxonomyArchive = await resolveFrontendTaxonomyArchive({
     segments,
-    organizationId,
-    requestedPostTypeSlug,
-  );
-  if (taxonomyArchiveContext === "not_found") {
+    searchParams: resolvedSearchParams,
+    organizationId: organizationId ?? null,
+    fetchQuery,
+    getOption: api.core.options.get,
+    getTermBySlug: api.core.taxonomies.queries.getTermBySlug,
+    getTaxonomyBySlug: api.core.taxonomies.queries.getTaxonomyBySlug,
+    listObjectsByTerm: api.core.taxonomies.queries.listObjectsByTerm,
+    listAssignmentsByTerm: api.core.taxonomies.queries.listAssignmentsByTerm,
+    getPostTypeBySlug: api.core.postTypes.queries.getBySlug,
+    getAllPostsCore: api.core.posts.queries.getAllPosts,
+    getAllPostsLms: api.plugins.lms.posts.queries.getAllPosts,
+    listEntities: api.plugins.entity.queries.listEntities,
+  });
+  if (resolvedTaxonomyArchive === "not_found") {
     notFound();
   }
-  if (taxonomyArchiveContext) {
-    if (!organizationId) {
-      notFound();
-    }
-    const taxonomySlug = taxonomyArchiveContext.taxonomySlug;
-    const term = await fetchQuery(api.core.taxonomies.queries.getTermBySlug, {
-      taxonomySlug,
-      organizationId,
-      termSlug: taxonomyArchiveContext.termSlug,
-    });
-    if (!term) {
-      notFound();
-    }
-    const isLmsType = (slug: string) =>
-      [
-        "courses",
-        "lessons",
-        "topics",
-        "quizzes",
-        "certificates",
-        "badges",
-      ].includes(slug.toLowerCase());
-
-    // If ?post_type=... is provided, render only that post type (existing behavior).
-    if (taxonomyArchiveContext.postTypeSlug) {
-      const postTypeSlug = taxonomyArchiveContext.postTypeSlug;
-      const postType =
-        (await fetchQuery(api.core.postTypes.queries.getBySlug, {
-          slug: postTypeSlug,
-          ...(organizationId ? { organizationId } : {}),
-        })) ?? null;
-
-      const effectivePostType =
-        postType ??
-        ({
-          name: postTypeSlug,
-          slug: postTypeSlug,
-          description: null,
-        } as unknown as PostTypeDoc);
-
-      const objectIds = await fetchQuery(
-        api.core.taxonomies.queries.listObjectsByTerm,
-        {
-          organizationId,
-          termId: term._id,
-          postTypeSlug,
-        },
-      );
-      const objectIdSet = new Set(objectIds);
-
-      type PostLike = { _id: string } & Record<string, unknown>;
-      const unfiltered = (
-        isLmsType(postTypeSlug)
-          ? await fetchQuery(api.plugins.lms.posts.queries.getAllPosts, {
-              organizationId: organizationId ?? undefined,
-              filters: {
-                status: "published",
-                postTypeSlug,
-                limit: 200,
-              },
-            })
-          : await fetchQuery(api.core.posts.queries.getAllPosts, {
-              ...(organizationId ? { organizationId } : {}),
-              filters: {
-                status: "published",
-                postTypeSlug,
-                limit: 200,
-              },
-            })
-      ) as PostLike[] | null;
-
-      const posts = (unfiltered ?? []).filter((post) =>
-        objectIdSet.has(String(post._id)),
-      ) as unknown as Doc<"posts">[];
-
+  if (resolvedTaxonomyArchive) {
+    if (resolvedTaxonomyArchive.kind === "single") {
       return (
         <TaxonomyArchive
-          label={taxonomyArchiveContext.taxonomyLabel}
-          termName={taxonomyArchiveContext.termName}
-          termSlug={taxonomyArchiveContext.termSlug}
-          description={taxonomyArchiveContext.description}
-          postType={effectivePostType}
-          posts={posts}
+          label={resolvedTaxonomyArchive.label}
+          termName={resolvedTaxonomyArchive.termName}
+          termSlug={resolvedTaxonomyArchive.termSlug}
+          description={resolvedTaxonomyArchive.description}
+          postType={resolvedTaxonomyArchive.postType}
+          posts={resolvedTaxonomyArchive.posts}
         />
       );
     }
-
-    // No ?post_type=... => render all assigned posts grouped by post type.
-    const assignments = await fetchQuery(
-      api.core.taxonomies.queries.listAssignmentsByTerm,
-      { organizationId, termId: term._id },
-    );
-    const byPostType = new Map<string, Set<string>>();
-    for (const row of assignments) {
-      const slug = row.postTypeSlug.toLowerCase();
-      const set = byPostType.get(slug) ?? new Set<string>();
-      set.add(row.objectId);
-      byPostType.set(slug, set);
-    }
-
-    const sections: { postType: PostTypeDoc; posts: Doc<"posts">[] }[] = [];
-    for (const [postTypeSlug, objectIdSet] of byPostType.entries()) {
-      const postType =
-        (await fetchQuery(api.core.postTypes.queries.getBySlug, {
-          slug: postTypeSlug,
-          ...(organizationId ? { organizationId } : {}),
-        })) ?? null;
-
-      const effectivePostType =
-        postType ??
-        ({
-          name: postTypeSlug,
-          slug: postTypeSlug,
-          description: null,
-        } as unknown as PostTypeDoc);
-
-      type PostLike = { _id: string } & Record<string, unknown>;
-      const unfiltered = (
-        isLmsType(postTypeSlug)
-          ? await fetchQuery(api.plugins.lms.posts.queries.getAllPosts, {
-              organizationId: organizationId ?? undefined,
-              filters: {
-                status: "published",
-                postTypeSlug,
-                limit: 200,
-              },
-            })
-          : await fetchQuery(api.core.posts.queries.getAllPosts, {
-              ...(organizationId ? { organizationId } : {}),
-              filters: {
-                status: "published",
-                postTypeSlug,
-                limit: 200,
-              },
-            })
-      ) as PostLike[] | null;
-
-      const posts = (unfiltered ?? []).filter((post) =>
-        objectIdSet.has(String(post._id)),
-      ) as unknown as Doc<"posts">[];
-      if (posts.length > 0) {
-        sections.push({ postType: effectivePostType, posts });
-      }
-    }
-
     return (
       <TaxonomyArchiveGrouped
-        label={taxonomyArchiveContext.taxonomyLabel}
-        termName={taxonomyArchiveContext.termName}
-        termSlug={taxonomyArchiveContext.termSlug}
-        description={taxonomyArchiveContext.description}
-        sections={sections}
+        label={resolvedTaxonomyArchive.label}
+        termName={resolvedTaxonomyArchive.termName}
+        termSlug={resolvedTaxonomyArchive.termSlug}
+        description={resolvedTaxonomyArchive.description}
+        sections={resolvedTaxonomyArchive.sections}
       />
     );
   }
@@ -1863,22 +1725,7 @@ async function resolveArchiveContext(
 
 const trimSlashes = (value: string) => value.replace(/^\/+|\/+$/g, "");
 
-interface PermalinkSettings {
-  categoryBase?: string;
-  tagBase?: string;
-}
-
-interface TaxonomyArchiveContext {
-  kind: "category" | "tag" | "custom";
-  taxonomySlug: string;
-  taxonomyLabel: string;
-  postTypeSlug?: string;
-  termSlug: string;
-  termName: string;
-  description?: string | null;
-}
-
-type TaxonomyArchiveResolution = TaxonomyArchiveContext | "not_found" | null;
+const PERMALINK_OPTION_KEY = "permalink_settings";
 
 function normalizeBaseSegment(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -1889,9 +1736,7 @@ function normalizeBaseSegment(value: unknown): string | null {
 
 async function loadPermalinkSettings(
   organizationId?: Doc<"organizations">["_id"],
-): Promise<PermalinkSettings> {
-  // Prefer tenant-specific settings, but fall back to the portal-root settings
-  // (the current admin UI saves without orgId today).
+): Promise<{ categoryBase?: string; tagBase?: string }> {
   const orgOption = await fetchQuery(api.core.options.get, {
     metaKey: PERMALINK_OPTION_KEY,
     type: "site",
@@ -1914,126 +1759,6 @@ async function loadPermalinkSettings(
       typeof record.categoryBase === "string" ? record.categoryBase : undefined,
     tagBase: typeof record.tagBase === "string" ? record.tagBase : undefined,
   };
-}
-
-async function resolveTaxonomyArchiveContext(
-  segments: string[],
-  organizationId?: Doc<"organizations">["_id"],
-  requestedPostTypeSlug?: string,
-): Promise<TaxonomyArchiveResolution> {
-  if (segments.length < 2) return null;
-
-  const settings = await loadPermalinkSettings(organizationId);
-  const configuredCategoryBase = normalizeBaseSegment(settings.categoryBase);
-  const configuredTagBase = normalizeBaseSegment(settings.tagBase);
-
-  // Defaults align with the admin UI placeholders.
-  const categoryBases = new Set(
-    [configuredCategoryBase ?? "categories", "category"].filter(Boolean),
-  );
-  const tagBases = new Set(
-    [configuredTagBase ?? "tags", "tag"].filter(Boolean),
-  );
-
-  const base = segments[0]?.toLowerCase() ?? "";
-  const termSlug = (segments[segments.length - 1] ?? "").toLowerCase();
-  if (!termSlug) return null;
-
-  if (categoryBases.has(base)) {
-    if (!organizationId) {
-      return "not_found";
-    }
-    const term = await fetchQuery(api.core.taxonomies.queries.getTermBySlug, {
-      taxonomySlug: "category",
-      organizationId,
-      termSlug,
-    });
-    if (!term) {
-      // Base segment matched a taxonomy archive route, but the term doesn't exist.
-      // Treat this as a hard 404 rather than falling back to post slug resolution.
-      return "not_found";
-    }
-    return {
-      kind: "category",
-      taxonomySlug: "category",
-      taxonomyLabel: "Category",
-      postTypeSlug: requestedPostTypeSlug ?? undefined,
-      termSlug: term.slug,
-      termName: term.name,
-      description: term.description ?? null,
-    };
-  }
-
-  if (tagBases.has(base)) {
-    if (!organizationId) {
-      return "not_found";
-    }
-    const tag = await fetchQuery(api.core.taxonomies.queries.getTermBySlug, {
-      taxonomySlug: "post_tag",
-      organizationId,
-      termSlug,
-    });
-    if (!tag) {
-      // Base segment matched a taxonomy archive route, but the term doesn't exist.
-      // Treat this as a hard 404 rather than falling back to post slug resolution.
-      return "not_found";
-    }
-    return {
-      kind: "tag",
-      taxonomySlug: "post_tag",
-      taxonomyLabel: "Tag",
-      postTypeSlug: requestedPostTypeSlug ?? undefined,
-      termSlug: tag.slug,
-      termName: tag.name,
-      description: tag.description ?? null,
-    };
-  }
-
-  // Custom taxonomy archives: /{taxonomySlug}/{termSlug}
-  if (organizationId) {
-    const taxonomy = await fetchQuery(
-      api.core.taxonomies.queries.getTaxonomyBySlug,
-      {
-        slug: base,
-        organizationId,
-      },
-    );
-    if (taxonomy) {
-      const term = await fetchQuery(api.core.taxonomies.queries.getTermBySlug, {
-        taxonomySlug: base,
-        organizationId,
-        termSlug,
-      });
-      if (!term) {
-        return "not_found";
-      }
-      return {
-        kind: "custom",
-        taxonomySlug: base,
-        taxonomyLabel: taxonomy.name,
-        postTypeSlug: requestedPostTypeSlug ?? undefined,
-        termSlug: term.slug,
-        termName: term.name,
-        description: term.description ?? null,
-      };
-    }
-  }
-
-  return null;
-}
-
-function parsePostTypeSlugFromSearchParams(
-  searchParams?: Record<string, string | string[] | undefined>,
-): string | undefined {
-  if (!searchParams) return undefined;
-  const raw = searchParams.post_type;
-  const value = Array.isArray(raw) ? raw[0] : raw;
-  const trimmed = typeof value === "string" ? value.trim() : "";
-  if (!trimmed) return undefined;
-  // Basic safety: keep it slug-like.
-  const normalized = trimmed.toLowerCase();
-  if (!/^[a-z0-9_-]+$/.test(normalized)) return undefined;
-  return normalized;
 }
 
 async function loadTemplateContent(
