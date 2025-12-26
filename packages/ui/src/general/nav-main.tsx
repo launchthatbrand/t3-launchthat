@@ -265,7 +265,7 @@ export function NavMain({ items, sections }: NavMainProps) {
     });
 
   return (
-    <SidebarGroup>
+    <SidebarGroup className="mb-20 overflow-y-auto">
       <SidebarGroupContent
         ref={containerRef}
         className="flex flex-col gap-4 overflow-y-auto"
