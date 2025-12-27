@@ -10,7 +10,11 @@ import {
 } from "./schema";
 
 import type { Id } from "../../_generated/dataModel";
-import { getScopedPostTypeBySlug } from "./lib/contentTypes";
+import {
+  getScopedPostTypeByArchiveSlugKey,
+  getScopedPostTypeBySingleSlugKey,
+  getScopedPostTypeBySlug,
+} from "./lib/contentTypes";
 import { query } from "../../_generated/server";
 /**
  * Content Types Queries
@@ -54,6 +58,8 @@ export const list = query({
       name: v.string(),
       slug: v.string(),
       description: v.optional(v.string()),
+      singleSlugKey: v.optional(v.string()),
+      archiveSlugKey: v.optional(v.string()),
       isBuiltIn: v.boolean(),
       isPublic: v.boolean(),
       enableVersioning: v.optional(v.boolean()),
@@ -151,6 +157,8 @@ export const get = query({
       name: v.string(),
       slug: v.string(),
       description: v.optional(v.string()),
+      singleSlugKey: v.optional(v.string()),
+      archiveSlugKey: v.optional(v.string()),
       isBuiltIn: v.boolean(),
       isPublic: v.boolean(),
       enableVersioning: v.optional(v.boolean()),
@@ -220,6 +228,8 @@ export const getBySlug = query({
       name: v.string(),
       slug: v.string(),
       description: v.optional(v.string()),
+      singleSlugKey: v.optional(v.string()),
+      archiveSlugKey: v.optional(v.string()),
       isBuiltIn: v.boolean(),
       isPublic: v.boolean(),
       enableVersioning: v.optional(v.boolean()),
@@ -268,6 +278,98 @@ export const getBySlug = query({
       }
     }
 
+    return postType;
+  },
+});
+
+export const getBySingleSlugKey = query({
+  args: {
+    singleSlugKey: v.string(),
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.union(
+    v.object({
+      _id: v.id("postTypes"),
+      _creationTime: v.number(),
+      name: v.string(),
+      slug: v.string(),
+      description: v.optional(v.string()),
+      isBuiltIn: v.boolean(),
+      isPublic: v.boolean(),
+      enableVersioning: v.optional(v.boolean()),
+      enableApi: v.optional(v.boolean()),
+      includeTimestamps: v.optional(v.boolean()),
+      supports: v.optional(postTypeSupportsValidator),
+      rewrite: v.optional(postTypeRewriteValidator),
+      adminMenu: v.optional(postTypeAdminMenuValidator),
+      fieldCount: v.optional(v.number()),
+      entryCount: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+      createdBy: v.optional(v.id("users")),
+      organizationId: v.optional(enabledOrgIdValidator),
+      enabledOrganizationIds: v.optional(v.array(enabledOrgIdValidator)),
+      storageKind: v.optional(postTypeStorageKindValidator),
+      storageTables: v.optional(postTypeStorageTablesValidator),
+      metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
+      frontendVisibility: v.optional(postTypeFrontendVisibilityValidator),
+      singleSlugKey: v.optional(v.string()),
+      archiveSlugKey: v.optional(v.string()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const postType = await getScopedPostTypeBySingleSlugKey(
+      ctx,
+      args.singleSlugKey,
+      args.organizationId,
+    );
+    return postType;
+  },
+});
+
+export const getByArchiveSlugKey = query({
+  args: {
+    archiveSlugKey: v.string(),
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.union(
+    v.object({
+      _id: v.id("postTypes"),
+      _creationTime: v.number(),
+      name: v.string(),
+      slug: v.string(),
+      description: v.optional(v.string()),
+      isBuiltIn: v.boolean(),
+      isPublic: v.boolean(),
+      enableVersioning: v.optional(v.boolean()),
+      enableApi: v.optional(v.boolean()),
+      includeTimestamps: v.optional(v.boolean()),
+      supports: v.optional(postTypeSupportsValidator),
+      rewrite: v.optional(postTypeRewriteValidator),
+      adminMenu: v.optional(postTypeAdminMenuValidator),
+      fieldCount: v.optional(v.number()),
+      entryCount: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+      createdBy: v.optional(v.id("users")),
+      organizationId: v.optional(enabledOrgIdValidator),
+      enabledOrganizationIds: v.optional(v.array(enabledOrgIdValidator)),
+      storageKind: v.optional(postTypeStorageKindValidator),
+      storageTables: v.optional(postTypeStorageTablesValidator),
+      metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
+      frontendVisibility: v.optional(postTypeFrontendVisibilityValidator),
+      singleSlugKey: v.optional(v.string()),
+      archiveSlugKey: v.optional(v.string()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const postType = await getScopedPostTypeByArchiveSlugKey(
+      ctx,
+      args.archiveSlugKey,
+      args.organizationId,
+    );
     return postType;
   },
 });

@@ -1,6 +1,6 @@
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 
-type FetchQuery = <TResult>(fn: unknown, args: unknown) => Promise<TResult>;
+import type { FetchQueryLike } from "../fetchQueryAdapter";
 
 const isConvexId = (value: string) => /^[a-z0-9]{32}$/.test(value);
 
@@ -21,7 +21,7 @@ export async function resolveDownloadPost(args: {
   segments: string[];
   slug: string;
   organizationId: Id<"organizations"> | null;
-  fetchQuery: FetchQuery;
+  fetchQuery: FetchQueryLike;
   readEntity: unknown;
   listEntities: unknown;
 }): Promise<Doc<"posts"> | null> {

@@ -10,8 +10,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { resolveFrontendArchive } from "@/lib/frontendRouting/resolveFrontendArchive";
-import { resolveFrontendEntry } from "@/lib/frontendRouting/resolveFrontendEntry";
+import { adaptFetchQuery } from "@/lib/frontendRouting/fetchQueryAdapter";
 import { resolveFrontendTaxonomyArchive } from "@/lib/frontendRouting/resolveFrontendTaxonomyArchive";
+import { resolveFrontendPostForRequest } from "@/lib/frontendRouting/resolveFrontendPostForRequest";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
 import { LmsCourseProvider } from "launchthat-plugin-lms";
@@ -170,41 +171,20 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     notFound();
   }
 
-  type FrontendEntryArgs = Parameters<typeof resolveFrontendEntry>[0];
-  const fetchQueryUnsafe =
-    fetchQuery as unknown as FrontendEntryArgs["fetchQuery"];
+  const resolved = await resolveFrontendPostForRequest({
+    segments,
+    slug,
+    organizationId: organizationId ?? null,
+    fetchQuery: adaptFetchQuery(fetchQuery),
+    getPostTypeBySingleSlugKey: api.core.postTypes.queries.getBySingleSlugKey,
+    readEntity: api.plugins.entity.queries.readEntity,
+    listEntities: api.plugins.entity.queries.listEntities,
+    getCorePostBySlug: api.core.posts.queries.getPostBySlug,
+    getCorePostById: api.core.posts.queries.getPostById,
+  });
 
-  // Resolve plugin/component-backed routes (including nested markers like
-  // /course/:courseSlug/lesson/:lessonSlug) via the shared frontend resolver.
-  let post =
-    (
-      await resolveFrontendEntry({
-        segments,
-        slug,
-        organizationId: organizationId ?? null,
-        fetchQuery: fetchQueryUnsafe,
-        readEntity: api.plugins.entity.queries.readEntity,
-        listEntities: api.plugins.entity.queries.listEntities,
-      })
-    )?.post ?? null;
-
-  if (!post) {
-    post = await fetchQuery(api.core.posts.queries.getPostBySlug, {
-      slug,
-      ...(organizationId ? { organizationId } : {}),
-    });
-  }
-
-  if (!post && isConvexId(slug)) {
-    post = await fetchQuery(api.core.posts.queries.getPostById, {
-      id: slug as Id<"posts">,
-      ...(organizationId ? { organizationId } : {}),
-    });
-  }
-
-  if (!post) {
-    notFound();
-  }
+  const post = resolved?.post ?? null;
+  if (!post) notFound();
 
   let postType: PostTypeDoc | null = null;
   let postFields: Doc<"postTypeFields">[] = [];
@@ -298,7 +278,16 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       redirect(`/${normalizedCanonical}`);
     }
   } else if (!shouldSkipCanonicalRedirect) {
-    const canonicalSegments = getCanonicalPostSegments(post, postType);
+    const postTypeSingleSlug = trimSlashes(postType?.rewrite?.singleSlug ?? "");
+    const pluginSingleSlug = trimSlashes(
+      pluginMatch?.postType.rewrite?.singleSlug ?? "",
+    );
+    const canonicalSegments =
+      postTypeSingleSlug.length > 0
+        ? getCanonicalPostSegments(post, postType)
+        : pluginSingleSlug.length > 0
+          ? [pluginSingleSlug, trimSlashes(post.slug ?? post._id)]
+          : getCanonicalPostSegments(post, postType);
     if (canonicalSegments.length > 0) {
       const canonicalPath = canonicalSegments.join("/");
       if (canonicalPath !== requestedPath) {
@@ -1112,29 +1101,14 @@ async function resolveArchiveContext(
     return null;
   }
   const path = segments.join("/");
-  const postTypes: PostTypeDoc[] = await fetchQuery(
-    api.core.postTypes.queries.list,
-    {
-      includeBuiltIn: true,
-      ...(organizationId ? { organizationId } : {}),
-    },
-  );
 
-  const match = postTypes.find((type) => {
-    if (!type.rewrite?.hasArchive) {
-      return false;
-    }
-    const archiveSlug = trimSlashes(type.rewrite.archiveSlug ?? "");
-    if (!archiveSlug) {
-      return false;
-    }
-    return archiveSlug === path;
+  const match = await fetchQuery(api.core.postTypes.queries.getByArchiveSlugKey, {
+    archiveSlugKey: path,
+    ...(organizationId ? { organizationId } : {}),
   });
 
-  if (!match) {
-    return null;
-  }
-
+  if (!match) return null;
+  if (!match.rewrite?.hasArchive) return null;
   return { postType: match };
 }
 

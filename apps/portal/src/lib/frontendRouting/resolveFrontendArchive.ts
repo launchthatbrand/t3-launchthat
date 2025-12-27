@@ -9,13 +9,9 @@ type FetchQueryRest =
 
 type PostTypeDoc = Doc<"postTypes">;
 
-const LMS_ARCHIVE_SLUGS = new Set([
-  "courses",
-  "lessons",
-  "topics",
-  "quizzes",
-  "certificates",
-]);
+const isLmsComponentPostType = (postType: PostTypeDoc) =>
+  postType.storageKind === "component" &&
+  (postType.storageTables ?? []).some((table) => table.includes("launchthat_lms:posts"));
 
 export async function resolveFrontendArchive<
   TCoreQuery extends QueryRef,
@@ -92,12 +88,7 @@ export async function resolveFrontendArchive<
     return { posts };
   }
 
-  const isLmsComponentArchive =
-    LMS_ARCHIVE_SLUGS.has(archiveSlug) ||
-    (args.postType.storageKind === "component" &&
-      (args.postType.storageTables ?? []).some((table) =>
-        table.includes("launchthat_lms:posts"),
-      ));
+  const isLmsComponentArchive = isLmsComponentPostType(args.postType);
 
   const posts = isLmsComponentArchive
     ? await callFetchQuery<Doc<"posts">[] | null>(args.getAllPostsLms, {

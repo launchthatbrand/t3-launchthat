@@ -104,6 +104,19 @@ const metaBoxesEqual = (
   });
 };
 
+const normalizeRouteKey = (value: unknown): string | undefined => {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.replace(/^\/+|\/+$/g, "").trim().toLowerCase();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const deriveRewriteKeys = (rewrite: Doc<"postTypes">["rewrite"] | undefined) => {
+  const singleSlugKey = normalizeRouteKey(rewrite?.singleSlug);
+  const archiveSlugKey =
+    rewrite?.hasArchive === false ? undefined : normalizeRouteKey(rewrite?.archiveSlug);
+  return { singleSlugKey, archiveSlugKey };
+};
+
 interface DefaultPostTypeConfig {
   name: string;
   slug: string;
@@ -699,12 +712,16 @@ export const create = mutation({
     if (storageKind === "custom" && storageTables.length === 0) {
       throw new Error("Custom post types must specify storage tables");
     }
+    const { singleSlugKey, archiveSlugKey } = deriveRewriteKeys(args.rewrite);
+
     const id = await ctx.db.insert("postTypes", {
       organizationId: resolvedOrgId,
       enabledOrganizationIds: resolvedOrgId ? [resolvedOrgId] : undefined,
       name: args.name,
       slug: args.slug,
       description: args.description,
+      singleSlugKey,
+      archiveSlugKey,
       isPublic: args.isPublic,
       isBuiltIn: false,
       enableApi: args.enableApi ?? true,
@@ -1161,6 +1178,12 @@ export const update = mutation({
       updatedAt: Date.now(),
     };
 
+    if (args.data.rewrite !== undefined) {
+      const { singleSlugKey, archiveSlugKey } = deriveRewriteKeys(args.data.rewrite);
+      patchPayload.singleSlugKey = singleSlugKey;
+      patchPayload.archiveSlugKey = archiveSlugKey;
+    }
+
     if (
       args.data.storageKind !== undefined ||
       args.data.storageTables !== undefined
@@ -1186,6 +1209,38 @@ export const update = mutation({
     await ctx.db.patch(args.id, patchPayload);
 
     return true;
+  },
+});
+
+export const backfillRewriteKeys = mutation({
+  args: {
+    organizationId: v.optional(v.id("organizations")),
+  },
+  handler: async (ctx, args) => {
+    const targetOrgId = resolveScopedOrganizationId(args.organizationId);
+    const rows = await ctx.db.query("postTypes").collect();
+
+    let updated = 0;
+    for (const type of rows) {
+      if (targetOrgId) {
+        if (type.organizationId !== targetOrgId) continue;
+      }
+
+      const derived = deriveRewriteKeys(type.rewrite);
+      const needsUpdate =
+        type.singleSlugKey !== derived.singleSlugKey ||
+        type.archiveSlugKey !== derived.archiveSlugKey;
+      if (!needsUpdate) continue;
+
+      await ctx.db.patch(type._id, {
+        singleSlugKey: derived.singleSlugKey,
+        archiveSlugKey: derived.archiveSlugKey,
+        updatedAt: Date.now(),
+      });
+      updated += 1;
+    }
+
+    return { updated };
   },
 });
 

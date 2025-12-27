@@ -1,9 +1,7 @@
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 
-import { findPostTypeBySingleSlug } from "~/lib/plugins/frontend";
 import { resolveDownloadPost } from "./resolvers/downloads";
-
-type FetchQuery = <TResult>(fn: unknown, args: unknown) => Promise<TResult>;
+import type { FetchQueryLike } from "./fetchQueryAdapter";
 
 const looksLikeConvexId = (value: string) => /^[a-z0-9]{32}$/.test(value);
 
@@ -11,49 +9,80 @@ export async function resolveFrontendEntry(args: {
   segments: string[];
   slug: string;
   organizationId: Id<"organizations"> | null;
-  fetchQuery: FetchQuery;
+  fetchQuery: FetchQueryLike;
+  getPostTypeBySingleSlugKey: unknown;
   readEntity: unknown;
   listEntities: unknown;
-}): Promise<{ post: Doc<"posts"> } | null> {
-  const normalizeEntityPost = (entity: unknown): Doc<"posts"> | null => {
+}): Promise<{ post: Doc<"posts">; resolvedBy: "downloads" | "entity" } | null> {
+  const normalizeEntityPost = (
+    entity: unknown,
+    fallbackPostTypeSlug: string,
+  ): Doc<"posts"> | null => {
     if (!entity || typeof entity !== "object") return null;
     const raw = entity as Record<string, unknown>;
     const id = raw._id ?? raw.id;
     if (typeof id !== "string") return null;
-    return { ...raw, _id: id } as unknown as Doc<"posts">;
+    const postTypeSlug =
+      typeof raw.postTypeSlug === "string" && raw.postTypeSlug.trim().length > 0
+        ? raw.postTypeSlug
+        : fallbackPostTypeSlug;
+    return { ...raw, _id: id, postTypeSlug } as unknown as Doc<"posts">;
   };
 
   const downloadPost = await resolveDownloadPost(args);
-  if (downloadPost) return { post: downloadPost };
+  if (downloadPost) return { post: downloadPost, resolvedBy: "downloads" };
+
+  const normalizeRouteKey = (value: string) =>
+    value.replace(/^\/+|\/+$/g, "").trim().toLowerCase();
 
   // Support nested routing shapes (e.g. /course/:courseSlug/lesson/:lessonSlug)
   // by scanning for the *last* `singleSlug` marker in the path and using the
   // segment immediately after it as the candidate slug.
-  let pluginMatch: ReturnType<typeof findPostTypeBySingleSlug> = null;
+  let postTypeSlug: string | null = null;
   let candidateSlug: string | null = null;
 
   for (let i = 0; i < args.segments.length - 1; i += 1) {
     const segment = (args.segments[i] ?? "").toLowerCase();
     if (!segment) continue;
-    const found = findPostTypeBySingleSlug(segment);
-    if (!found) continue;
+    const key = normalizeRouteKey(segment);
+    if (!key) continue;
+
+    const found = await args.fetchQuery<{
+      slug: string;
+    } | null>(args.getPostTypeBySingleSlugKey, {
+      singleSlugKey: key,
+      ...(args.organizationId ? { organizationId: args.organizationId } : {}),
+    });
+    if (!found || typeof found.slug !== "string" || !found.slug) continue;
 
     const next = args.segments[i + 1]?.trim();
     if (!next) continue;
 
-    pluginMatch = found;
+    postTypeSlug = found.slug;
     candidateSlug = next;
   }
 
   // Fallback to the legacy behavior for simple routes like /{singleSlug}/{slug}
   // (where the singleSlug is the first segment and the slug is derived from the URL).
-  if (!pluginMatch && args.segments.length >= 2) {
+  if (!postTypeSlug && args.segments.length >= 2) {
     const baseSegment = (args.segments[0] ?? "").toLowerCase();
-    pluginMatch = baseSegment ? findPostTypeBySingleSlug(baseSegment) : null;
+    const key = baseSegment ? normalizeRouteKey(baseSegment) : "";
+    if (key) {
+      const found = await args.fetchQuery<{ slug: string } | null>(
+        args.getPostTypeBySingleSlugKey,
+        {
+          singleSlugKey: key,
+          ...(args.organizationId ? { organizationId: args.organizationId } : {}),
+        },
+      );
+      if (found && typeof found.slug === "string" && found.slug) {
+        postTypeSlug = found.slug;
+      }
+    }
     candidateSlug = args.slug;
   }
 
-  if (pluginMatch) {
+  if (postTypeSlug) {
     const organizationId = args.organizationId
       ? String(args.organizationId)
       : undefined;
@@ -64,23 +93,23 @@ export async function resolveFrontendEntry(args: {
     // Fast-path: allow ID-based access when the slug is actually a Convex id.
     if (looksLikeConvexId(candidate)) {
       const entity = await args.fetchQuery(readEntityFn, {
-        postTypeSlug: pluginMatch.postType.slug,
+        postTypeSlug,
         id: candidate,
         organizationId,
       });
-      const normalized = normalizeEntityPost(entity);
-      if (normalized) return { post: normalized };
+      const normalized = normalizeEntityPost(entity, postTypeSlug);
+      if (normalized) return { post: normalized, resolvedBy: "entity" };
     }
 
     // Default: resolve by slug via listEntities (readEntity only supports id).
     const results = await args.fetchQuery(listEntitiesFn, {
-      postTypeSlug: pluginMatch.postType.slug,
+      postTypeSlug,
       organizationId,
       filters: { slug: candidate, status: "published", limit: 1 },
     });
     if (Array.isArray(results) && results.length > 0) {
-      const normalized = normalizeEntityPost(results[0]);
-      if (normalized) return { post: normalized };
+      const normalized = normalizeEntityPost(results[0], postTypeSlug);
+      if (normalized) return { post: normalized, resolvedBy: "entity" };
     }
   }
 

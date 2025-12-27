@@ -3,12 +3,14 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { api } from "@/convex/_generated/api";
-import { resolveFrontendEntry } from "@/lib/frontendRouting/resolveFrontendEntry";
+import { adaptFetchQuery } from "@/lib/frontendRouting/fetchQueryAdapter";
+import { resolveFrontendPostForRequest } from "@/lib/frontendRouting/resolveFrontendPostForRequest";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
 
 import { ATTACHMENTS_META_KEY } from "~/lib/posts/metaKeys";
-import { getCanonicalPostPath } from "~/lib/postTypes/routing";
+import { findPostTypeBySlug } from "~/lib/plugins/frontend";
+import { getCanonicalPostSegments } from "~/lib/postTypes/routing";
 import { SEO_META_KEYS, SEO_OPTION_KEYS } from "~/lib/seo/constants";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 
@@ -255,34 +257,19 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
           | "player")
       : "summary_large_image";
 
-  // Resolve plugin/component-backed routes (including nested marker shapes)
-  // via the shared frontend resolver first.
-  let post: Doc<"posts"> | null =
-    (await resolveFrontendEntry({
-      segments,
-      slug,
-      organizationId: organizationId ?? null,
-      fetchQuery: fetchQuery as unknown as (
-        fn: unknown,
-        args: unknown,
-      ) => Promise<unknown>,
-      readEntity: api.plugins.entity.queries.readEntity,
-      listEntities: api.plugins.entity.queries.listEntities,
-    }))?.post ?? null;
+  const resolved = await resolveFrontendPostForRequest({
+    segments,
+    slug,
+    organizationId: organizationId ?? null,
+    fetchQuery: adaptFetchQuery(fetchQuery),
+    getPostTypeBySingleSlugKey: api.core.postTypes.queries.getBySingleSlugKey,
+    readEntity: api.plugins.entity.queries.readEntity,
+    listEntities: api.plugins.entity.queries.listEntities,
+    getCorePostBySlug: api.core.posts.queries.getPostBySlug,
+    getCorePostById: api.core.posts.queries.getPostById,
+  });
 
-  if (!post) {
-    post = await fetchQuery(api.core.posts.queries.getPostBySlug, {
-      slug,
-      ...(organizationId ? { organizationId } : {}),
-    });
-  }
-
-  if (!post && isConvexId(slug)) {
-    post = await fetchQuery(api.core.posts.queries.getPostById, {
-      id: slug as Id<"posts">,
-      ...(organizationId ? { organizationId } : {}),
-    });
-  }
+  const post: Doc<"posts"> | null = resolved?.post ?? null;
 
   if (!post) {
     return {
@@ -321,7 +308,24 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const seoNoindex = metaValueToBoolean(postMetaMap.get(SEO_META_KEYS.noindex));
   const seoNofollow = metaValueToBoolean(postMetaMap.get(SEO_META_KEYS.nofollow));
 
-  const canonicalPath = getCanonicalPostPath(post, postType, false) || "/";
+  const pluginMatch = post.postTypeSlug ? findPostTypeBySlug(post.postTypeSlug) : null;
+  const postTypeSingleSlug =
+    typeof postType?.rewrite?.singleSlug === "string"
+      ? postType.rewrite.singleSlug
+      : "";
+  const pluginSingleSlug =
+    typeof pluginMatch?.postType.rewrite?.singleSlug === "string"
+      ? pluginMatch.postType.rewrite.singleSlug
+      : "";
+  const trimSlashes = (value: string) => value.replace(/^\/+|\/+$/g, "");
+  const canonicalSegments =
+    trimSlashes(postTypeSingleSlug).length > 0
+      ? getCanonicalPostSegments(post, postType)
+      : trimSlashes(pluginSingleSlug).length > 0
+        ? [trimSlashes(pluginSingleSlug), trimSlashes(post.slug ?? post._id)]
+        : getCanonicalPostSegments(post, postType);
+  const canonicalPath =
+    canonicalSegments.length > 0 ? `/${canonicalSegments.join("/")}` : "/";
   const canonicalUrl = resolveCanonicalUrl({
     origin,
     canonicalPath,

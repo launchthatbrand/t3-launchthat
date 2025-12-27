@@ -87,6 +87,76 @@ export async function getScopedPostTypeBySlug(
   return matches[0] ?? null;
 }
 
+const normalizeRouteKey = (value: string): string => {
+  return value.replace(/^\/+|\/+$/g, "").trim().toLowerCase();
+};
+
+export async function getScopedPostTypeBySingleSlugKey(
+  ctx: ConvexCtx,
+  singleSlugKey: string,
+  organizationId?: Id<"organizations">,
+): Promise<Doc<"postTypes"> | null> {
+  const resolvedOrgId = resolveScopedOrganizationId(organizationId);
+  const normalized = normalizeRouteKey(singleSlugKey);
+  if (!normalized) return null;
+
+  if (resolvedOrgId) {
+    const orgSpecific = await ctx.db
+      .query("postTypes")
+      .withIndex("by_singleSlugKey_organization", (q) =>
+        q.eq("singleSlugKey", normalized).eq("organizationId", resolvedOrgId),
+      )
+      .unique();
+    if (orgSpecific) {
+      return orgSpecific;
+    }
+  }
+
+  const matches = await ctx.db
+    .query("postTypes")
+    .withIndex("by_singleSlugKey", (q) => q.eq("singleSlugKey", normalized))
+    .collect();
+
+  const global = matches.find((type) => type.organizationId === undefined);
+  if (global) return global;
+
+  if (resolvedOrgId) return null;
+  return matches[0] ?? null;
+}
+
+export async function getScopedPostTypeByArchiveSlugKey(
+  ctx: ConvexCtx,
+  archiveSlugKey: string,
+  organizationId?: Id<"organizations">,
+): Promise<Doc<"postTypes"> | null> {
+  const resolvedOrgId = resolveScopedOrganizationId(organizationId);
+  const normalized = normalizeRouteKey(archiveSlugKey);
+  if (!normalized) return null;
+
+  if (resolvedOrgId) {
+    const orgSpecific = await ctx.db
+      .query("postTypes")
+      .withIndex("by_archiveSlugKey_organization", (q) =>
+        q.eq("archiveSlugKey", normalized).eq("organizationId", resolvedOrgId),
+      )
+      .unique();
+    if (orgSpecific) {
+      return orgSpecific;
+    }
+  }
+
+  const matches = await ctx.db
+    .query("postTypes")
+    .withIndex("by_archiveSlugKey", (q) => q.eq("archiveSlugKey", normalized))
+    .collect();
+
+  const global = matches.find((type) => type.organizationId === undefined);
+  if (global) return global;
+
+  if (resolvedOrgId) return null;
+  return matches[0] ?? null;
+}
+
 export async function getPostTypeBySlug(ctx: QueryCtx, slug: string) {
   return await getScopedPostTypeBySlug(ctx, slug);
 }

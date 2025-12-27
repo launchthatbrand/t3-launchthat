@@ -165,6 +165,13 @@ export const postTypesTable = defineTable({
   slug: v.string(), // URL/API slug (e.g., "blog-posts")
   description: v.optional(v.string()), // Description of this content type
 
+  /**
+   * Denormalized route keys for indexed frontend routing.
+   * These MUST remain normalized (trim slashes + lowercase).
+   */
+  singleSlugKey: v.optional(v.string()),
+  archiveSlugKey: v.optional(v.string()),
+
   // Configuration
   isBuiltIn: v.boolean(), // Whether this is a built-in type or custom
   isPublic: v.boolean(), // Whether this type is exposed via public API
@@ -191,7 +198,11 @@ export const postTypesTable = defineTable({
   .index("by_slug", ["slug"])
   .index("by_isBuiltIn", ["isBuiltIn"])
   .index("by_organization", ["organizationId"])
-  .index("by_slug_organization", ["slug", "organizationId"]);
+  .index("by_slug_organization", ["slug", "organizationId"])
+  .index("by_singleSlugKey", ["singleSlugKey"])
+  .index("by_archiveSlugKey", ["archiveSlugKey"])
+  .index("by_singleSlugKey_organization", ["singleSlugKey", "organizationId"])
+  .index("by_archiveSlugKey_organization", ["archiveSlugKey", "organizationId"]);
 
 /**
  * Content Type Fields Table - Defines fields for each content type

@@ -49,14 +49,9 @@ export type FrontendTaxonomyArchiveResolved =
 
 const PERMALINK_OPTION_KEY = "permalink_settings";
 
-const LMS_POST_TYPE_SLUGS = new Set([
-  "courses",
-  "lessons",
-  "topics",
-  "quizzes",
-  "certificates",
-  "badges",
-]);
+const isLmsComponentPostType = (postType: PostTypeDoc) =>
+  postType.storageKind === "component" &&
+  (postType.storageTables ?? []).some((table) => table.includes("launchthat_lms:posts"));
 
 const trimSlashes = (value: string) => value.replace(/^\/+|\/+$/g, "");
 
@@ -336,12 +331,7 @@ async function fetchPostsForPostType(args: {
     return mapped;
   }
 
-  const isLmsComponentArchive =
-    LMS_POST_TYPE_SLUGS.has(postTypeSlug) ||
-    (args.postType.storageKind === "component" &&
-      (args.postType.storageTables ?? []).some((table) =>
-        table.includes("launchthat_lms:posts"),
-      ));
+  const isLmsComponentArchive = isLmsComponentPostType(args.postType);
 
   const rawPosts = (
     isLmsComponentArchive
