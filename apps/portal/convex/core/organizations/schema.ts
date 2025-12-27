@@ -55,6 +55,29 @@ export const organizationsTable = defineTable({
   customDomainLastError: v.optional(v.string()),
   customDomainUpdatedAt: v.optional(v.number()),
 
+  // Email sending domain (Resend) - derived from `customDomain` apex
+  emailDomain: v.optional(v.string()),
+  emailDomainStatus: v.optional(
+    v.union(
+      v.literal("unconfigured"),
+      v.literal("pending"),
+      v.literal("verified"),
+      v.literal("error"),
+    ),
+  ),
+  emailDomainRecords: v.optional(
+    v.array(
+      v.object({
+        type: v.string(),
+        name: v.string(),
+        value: v.string(),
+      }),
+    ),
+  ),
+  emailDomainVerifiedAt: v.optional(v.number()),
+  emailDomainLastError: v.optional(v.string()),
+  emailDomainUpdatedAt: v.optional(v.number()),
+
   // Settings
   isPublic: v.boolean(), // Whether organization's content is publicly accessible
   allowSelfRegistration: v.boolean(), // Whether users can register themselves

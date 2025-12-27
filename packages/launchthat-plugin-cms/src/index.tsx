@@ -6,6 +6,24 @@ export interface CmsPluginOptions {
 
 const defaultOptions: CmsPluginOptions = {};
 
+const CmsSettingsPage = () => {
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="text-lg font-semibold">CMS Settings</div>
+        <div className="text-muted-foreground text-sm">
+          Configure the CRM/CMS plugin and jump to the Contacts admin.
+        </div>
+      </div>
+      <div>
+        <a className="text-primary underline" href="/admin/contacts">
+          Open Contacts
+        </a>
+      </div>
+    </div>
+  );
+};
+
 const createCmsPluginDefinition = (
   options: CmsPluginOptions = defaultOptions,
 ): PluginDefinition => ({
@@ -35,7 +53,11 @@ const createCmsPluginDefinition = (
         singleSlug: "contact",
       },
       adminMenu: {
-        enabled: false,
+        enabled: true,
+        label: "Contacts",
+        icon: "Users",
+        parent: "crm",
+        position: 25,
       },
       storageKind: "custom",
       storageTables: ["contacts", "contact_meta"],
@@ -47,6 +69,15 @@ const createCmsPluginDefinition = (
     optionType: "site",
     defaultEnabled: false,
   },
+  settingsPages: [
+    {
+      id: "cms-settings",
+      slug: "settings",
+      label: "Settings",
+      description: "Configure the Contacts & CRM plugin.",
+      render: () => <CmsSettingsPage />,
+    },
+  ],
   adminMenus: options.adminMenus ?? [
     {
       label: "Contacts",

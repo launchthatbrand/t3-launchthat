@@ -281,7 +281,7 @@ interface AdminLayoutHeaderProps {
 }
 
 const AdminLayoutHeader: React.FC<AdminLayoutHeaderProps> = ({
-  className = "space-y-6 rounded-none bg-muted/50 shadow-sm",
+  className = "space-y-0 gap-2 rounded-none bg-muted/50 shadow-sm",
   contentClassName = "",
   customTabs,
 }) => {

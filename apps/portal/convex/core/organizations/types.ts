@@ -58,6 +58,27 @@ export const organizationValidator = v.object({
   customDomainVerifiedAt: v.optional(v.number()),
   customDomainLastError: v.optional(v.string()),
   customDomainUpdatedAt: v.optional(v.number()),
+  emailDomain: v.optional(v.string()),
+  emailDomainStatus: v.optional(
+    v.union(
+      v.literal("unconfigured"),
+      v.literal("pending"),
+      v.literal("verified"),
+      v.literal("error"),
+    ),
+  ),
+  emailDomainRecords: v.optional(
+    v.array(
+      v.object({
+        type: v.string(),
+        name: v.string(),
+        value: v.string(),
+      }),
+    ),
+  ),
+  emailDomainVerifiedAt: v.optional(v.number()),
+  emailDomainLastError: v.optional(v.string()),
+  emailDomainUpdatedAt: v.optional(v.number()),
   isPublic: v.boolean(),
   allowSelfRegistration: v.boolean(),
   planId: v.optional(v.id("plans")),
@@ -190,6 +211,27 @@ export const organizationWithRoleValidator = v.object({
   customDomainVerifiedAt: v.optional(v.number()),
   customDomainLastError: v.optional(v.string()),
   customDomainUpdatedAt: v.optional(v.number()),
+  emailDomain: v.optional(v.string()),
+  emailDomainStatus: v.optional(
+    v.union(
+      v.literal("unconfigured"),
+      v.literal("pending"),
+      v.literal("verified"),
+      v.literal("error"),
+    ),
+  ),
+  emailDomainRecords: v.optional(
+    v.array(
+      v.object({
+        type: v.string(),
+        name: v.string(),
+        value: v.string(),
+      }),
+    ),
+  ),
+  emailDomainVerifiedAt: v.optional(v.number()),
+  emailDomainLastError: v.optional(v.string()),
+  emailDomainUpdatedAt: v.optional(v.number()),
   isPublic: v.boolean(),
   allowSelfRegistration: v.boolean(),
   planId: v.optional(v.id("plans")),

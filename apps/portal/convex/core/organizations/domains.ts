@@ -4,6 +4,7 @@ import type { FunctionReference } from "convex/server";
 import { v } from "convex/values";
 
 import type { Id } from "../../_generated/dataModel";
+import { api } from "../../_generated/api";
 import { internal } from "../../_generated/api";
 import { action } from "../../_generated/server";
 
@@ -271,6 +272,18 @@ export const startCustomDomainSetup = action({
       lastError: "",
     });
 
+    // Best-effort: refresh email sending domain state in Resend (derived from customDomain apex).
+    try {
+      await ctx.runAction(api.core.organizations.emailDomains.syncEmailDomainFromCustomDomain, {
+        organizationId: args.organizationId,
+      });
+    } catch (err) {
+      console.warn(
+        "[domains.startCustomDomainSetup] failed to sync Resend email domain",
+        err,
+      );
+    }
+
     return { customDomain: normalizedDomain, status, records };
   },
 });
@@ -346,6 +359,18 @@ export const verifyCustomDomain = action({
       verifiedAt: verified ? Date.now() : undefined,
       lastError: "",
     });
+
+    // Best-effort: refresh email sending domain state in Resend (derived from customDomain apex).
+    try {
+      await ctx.runAction(api.core.organizations.emailDomains.syncEmailDomainFromCustomDomain, {
+        organizationId: args.organizationId,
+      });
+    } catch (err) {
+      console.warn(
+        "[domains.verifyCustomDomain] failed to sync Resend email domain",
+        err,
+      );
+    }
 
     return { customDomain: domain, status, records };
   },

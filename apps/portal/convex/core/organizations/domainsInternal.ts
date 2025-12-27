@@ -126,4 +126,44 @@ export const internalUpsertOrgDomainState = internalMutation({
   },
 });
 
+export const internalUpsertOrgEmailDomainState = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    emailDomain: v.optional(v.string()),
+    status: v.optional(
+      v.union(
+        v.literal("unconfigured"),
+        v.literal("pending"),
+        v.literal("verified"),
+        v.literal("error"),
+      ),
+    ),
+    records: v.optional(v.array(domainRecordValidator)),
+    verifiedAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const updates: Record<string, unknown> = {
+      updatedAt: Date.now(),
+      emailDomainUpdatedAt: Date.now(),
+    };
+
+    if (args.emailDomain !== undefined) {
+      updates.emailDomain = args.emailDomain;
+    }
+    if (args.status !== undefined) updates.emailDomainStatus = args.status;
+    if (args.records !== undefined) updates.emailDomainRecords = args.records;
+    if (args.verifiedAt !== undefined) {
+      updates.emailDomainVerifiedAt = args.verifiedAt;
+    }
+    if (args.lastError !== undefined) {
+      updates.emailDomainLastError = args.lastError;
+    }
+
+    await ctx.db.patch(args.organizationId, updates);
+    return null;
+  },
+});
+
 

@@ -193,12 +193,24 @@ export const navItems: CoreNavItem[] = [
         url: "/admin/settings/organizations",
       },
       {
+        title: "Domains",
+        url: "/admin/settings/domains",
+      },
+      {
         title: "Permalinks",
         url: "/admin/settings/permalinks",
       },
       {
         title: "Page Templates",
         url: "/admin/settings/page-templates",
+      },
+      {
+        title: "Notifications",
+        url: "/admin/settings/notifications",
+      },
+      {
+        title: "Emails",
+        url: "/admin/settings/emails",
       },
     ],
   },

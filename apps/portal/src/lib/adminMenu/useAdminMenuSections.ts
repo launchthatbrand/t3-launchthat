@@ -224,10 +224,16 @@ export const useAdminMenuSections = (): UseAdminMenuSectionsResult => {
       if (!isPluginEnabled(plugin)) {
         return acc;
       }
+      // Only parent post types under `plugin:<id>` when that plugin contributes a
+      // root menu entry (today: via `settingsPages`). Otherwise, we orphan the
+      // post type item and it disappears from the sidebar.
+      if (!plugin.settingsPages?.length) {
+        return acc;
+      }
       plugin.postTypes.forEach((definition) => {
         acc[definition.slug] = {
           parentId: `plugin:${plugin.id}`,
-          customPath: definition.adminMenu.slug,
+          customPath: definition.adminMenu?.slug,
         };
       });
       return acc;

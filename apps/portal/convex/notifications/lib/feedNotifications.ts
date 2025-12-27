@@ -1,6 +1,6 @@
-import { Id } from "../../_generated/dataModel";
-import { MutationCtx } from "../../_generated/server";
-import { NotificationType } from "../../shared/validators";
+import type { Id } from "../../_generated/dataModel";
+import type { MutationCtx } from "../../_generated/server";
+import type { NotificationType } from "../../shared/validators";
 import { PORTAL_TENANT_ID } from "../../constants";
 
 /**
