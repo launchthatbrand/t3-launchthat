@@ -224,6 +224,111 @@ export const EMAIL_TEMPLATE_REGISTRY: Record<string, EmailTemplateDefinition> =
         );
       },
     },
+
+    "core.disclaimer.request": {
+      templateKey: "core.disclaimer.request",
+      title: "Disclaimer request",
+      defaultSubject: "Please sign: {{disclaimerTitle}}",
+      previewText: "Signature requested",
+      requiredVariables: ["disclaimerTitle", "signUrl"],
+      copySchema: [
+        {
+          key: "headline",
+          label: "Headline",
+          placeholder: "Signature requested",
+          kind: "singleLine",
+          maxLength: 140,
+        },
+        {
+          key: "body",
+          label: "Body",
+          multiline: true,
+          placeholder:
+            "Please review and sign the following disclaimer:\n\n{{disclaimerTitle}}",
+          kind: "multiLine",
+          maxLength: 3000,
+        },
+        {
+          key: "ctaLabel",
+          label: "Button label",
+          placeholder: "Review & sign",
+          kind: "singleLine",
+          maxLength: 80,
+        },
+        {
+          key: "finePrint",
+          label: "Fine print",
+          multiline: true,
+          placeholder:
+            "If the button doesn't work, copy and paste: {{signUrl}}",
+          kind: "multiLine",
+          maxLength: 1500,
+        },
+      ],
+      defaultCopy: {
+        headline: "Signature requested",
+        body: "Please review and sign the following disclaimer:\n\n{{disclaimerTitle}}",
+        ctaLabel: "Review & sign",
+        finePrint: "If the button doesn't work, copy and paste: {{signUrl}}",
+      },
+      render: ({ copy, variables }) => {
+        const signUrl = variables.signUrl ?? "";
+        return React.createElement(
+          React.Fragment,
+          null,
+          React.createElement(
+            TextEl,
+            {
+              style: { fontSize: "18px", fontWeight: 700, margin: "0 0 12px" },
+            },
+            copy.headline ?? "",
+          ),
+          React.createElement(
+            TextEl,
+            {
+              style: {
+                whiteSpace: "pre-line",
+                color: "#4b5563",
+                margin: "0 0 16px",
+              },
+            },
+            copy.body ?? "",
+          ),
+          React.createElement(
+            SectionEl,
+            null,
+            React.createElement(
+              ButtonEl,
+              {
+                href: signUrl,
+                style: {
+                  display: "inline-block",
+                  padding: "12px 16px",
+                  borderRadius: "10px",
+                  backgroundColor: "#111827",
+                  color: "#ffffff",
+                  textDecoration: "none",
+                  fontWeight: 600,
+                },
+              },
+              copy.ctaLabel ?? "Open",
+            ),
+          ),
+          React.createElement(
+            TextEl,
+            {
+              style: {
+                color: "#6b7280",
+                fontSize: "12px",
+                marginTop: "16px",
+                whiteSpace: "pre-line",
+              },
+            },
+            copy.finePrint ?? "",
+          ),
+        );
+      },
+    },
   };
 
 export const listEmailTemplateKeys = (): string[] =>

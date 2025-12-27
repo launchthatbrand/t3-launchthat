@@ -196,7 +196,9 @@ const coreResolver: Resolver = {
       });
       if (!post) return [];
       const record = post as Doc<"posts">;
-      if ((record.postTypeSlug ?? "").toLowerCase() !== postTypeSlug.toLowerCase()) {
+      if (
+        (record.postTypeSlug ?? "").toLowerCase() !== postTypeSlug.toLowerCase()
+      ) {
         return [];
       }
       return [adaptPortalPost(record)];
@@ -263,10 +265,13 @@ const coreResolver: Resolver = {
 const downloadsResolver: Resolver = {
   read: async (ctx, { id, organizationId }) => {
     if (!organizationId) return null;
-    const result = await ctx.runQuery(api.core.downloads.queries.getDownloadById, {
-      organizationId: organizationId as Id<"organizations">,
-      downloadId: id as Id<"downloads">,
-    });
+    const result = await ctx.runQuery(
+      api.core.downloads.queries.getDownloadById,
+      {
+        organizationId: organizationId as Id<"organizations">,
+        downloadId: id as Id<"downloads">,
+      },
+    );
     return result ? adaptDownload(result.download) : null;
   },
   list: async (ctx, { filters, organizationId }) => {
@@ -274,10 +279,13 @@ const downloadsResolver: Resolver = {
     const slugFilter =
       typeof filters?.slug === "string" ? filters.slug.trim() : "";
     if (slugFilter) {
-      const result = await ctx.runQuery(api.core.downloads.queries.getDownloadBySlug, {
-        organizationId: organizationId as Id<"organizations">,
-        slug: slugFilter,
-      });
+      const result = await ctx.runQuery(
+        api.core.downloads.queries.getDownloadBySlug,
+        {
+          organizationId: organizationId as Id<"organizations">,
+          slug: slugFilter,
+        },
+      );
       return result ? [adaptDownload(result.download)] : [];
     }
 
@@ -290,7 +298,8 @@ const downloadsResolver: Resolver = {
         organizationId: organizationId as Id<"organizations">,
         status,
       })) ?? [];
-    const limit = typeof filters?.limit === "number" ? filters.limit : undefined;
+    const limit =
+      typeof filters?.limit === "number" ? filters.limit : undefined;
     const mapped = rows.map(adaptDownload);
     return typeof limit === "number" ? mapped.slice(0, limit) : mapped;
   },
@@ -309,7 +318,8 @@ const downloadsResolver: Resolver = {
         organizationId: organizationId as Id<"organizations">,
         mediaItemId: mediaItemId as Id<"mediaItems">,
         title: typeof raw.title === "string" ? raw.title : undefined,
-        description: typeof raw.description === "string" ? raw.description : undefined,
+        description:
+          typeof raw.description === "string" ? raw.description : undefined,
         content: typeof raw.content === "string" ? raw.content : undefined,
         slug: typeof raw.slug === "string" ? raw.slug : undefined,
         accessKind:
@@ -318,10 +328,13 @@ const downloadsResolver: Resolver = {
             : undefined,
       },
     );
-    const result = await ctx.runQuery(api.core.downloads.queries.getDownloadById, {
-      organizationId: organizationId as Id<"organizations">,
-      downloadId: createdId,
-    });
+    const result = await ctx.runQuery(
+      api.core.downloads.queries.getDownloadById,
+      {
+        organizationId: organizationId as Id<"organizations">,
+        downloadId: createdId,
+      },
+    );
     if (!result) {
       throw new Error("Failed to load created download.");
     }
@@ -337,7 +350,8 @@ const downloadsResolver: Resolver = {
       downloadId: id as Id<"downloads">,
       data: {
         title: typeof raw.title === "string" ? raw.title : undefined,
-        description: typeof raw.description === "string" ? raw.description : undefined,
+        description:
+          typeof raw.description === "string" ? raw.description : undefined,
         content: typeof raw.content === "string" ? raw.content : undefined,
         slug: typeof raw.slug === "string" ? raw.slug : undefined,
         accessKind:
@@ -354,10 +368,13 @@ const downloadsResolver: Resolver = {
             : undefined,
       },
     });
-    const result = await ctx.runQuery(api.core.downloads.queries.getDownloadById, {
-      organizationId: organizationId as Id<"organizations">,
-      downloadId: id as Id<"downloads">,
-    });
+    const result = await ctx.runQuery(
+      api.core.downloads.queries.getDownloadById,
+      {
+        organizationId: organizationId as Id<"organizations">,
+        downloadId: id as Id<"downloads">,
+      },
+    );
     return result ? adaptDownload(result.download) : null;
   },
   remove: async () => {
@@ -386,10 +403,13 @@ const attachmentsResolver: Resolver = {
         ? (filters.status as "draft" | "published")
         : undefined;
     const limit = typeof filters?.limit === "number" ? filters.limit : 200;
-    const page = await ctx.runQuery(api.core.media.queries.listMediaItemsWithUrl, {
-      paginationOpts: { numItems: limit, cursor: null },
-      status,
-    });
+    const page = await ctx.runQuery(
+      api.core.media.queries.listMediaItemsWithUrl,
+      {
+        paginationOpts: { numItems: limit, cursor: null },
+        status,
+      },
+    );
     return (page?.page ?? []).map(adaptAttachment);
   },
   create: async () => {
@@ -434,13 +454,19 @@ const commerceResolver: Resolver = {
     const slugFilter =
       typeof filters?.slug === "string" ? filters.slug.trim() : "";
     if (slugFilter) {
-      const result = await ctx.runQuery(api.plugins.commerce.queries.getPostBySlug, {
-        slug: slugFilter,
-        organizationId,
-      });
+      const result = await ctx.runQuery(
+        api.plugins.commerce.queries.getPostBySlug,
+        {
+          slug: slugFilter,
+          organizationId,
+        },
+      );
       if (!result) return [];
       const adapted = adaptCommercePost(result);
-      if ((adapted.postTypeSlug ?? "").toLowerCase() !== postTypeSlug.toLowerCase()) {
+      if (
+        (adapted.postTypeSlug ?? "").toLowerCase() !==
+        postTypeSlug.toLowerCase()
+      ) {
         return [];
       }
       return [adapted];
@@ -513,13 +539,19 @@ const lmsResolver: Resolver = {
     const slugFilter =
       typeof filters?.slug === "string" ? filters.slug.trim() : "";
     if (slugFilter) {
-      const result = await ctx.runQuery(api.plugins.lms.posts.queries.getPostBySlug, {
-        slug: slugFilter,
-        organizationId,
-      });
+      const result = await ctx.runQuery(
+        api.plugins.lms.posts.queries.getPostBySlug,
+        {
+          slug: slugFilter,
+          organizationId,
+        },
+      );
       if (!result) return [];
       const adapted = adaptLmsPost(result);
-      if ((adapted.postTypeSlug ?? "").toLowerCase() !== postTypeSlug.toLowerCase()) {
+      if (
+        (adapted.postTypeSlug ?? "").toLowerCase() !==
+        postTypeSlug.toLowerCase()
+      ) {
         return [];
       }
       return [adapted];
@@ -577,6 +609,117 @@ const lmsResolver: Resolver = {
   },
 };
 
+const disclaimersResolver: Resolver = {
+  read: async (ctx, { id, organizationId }) => {
+    const result = await ctx.runQuery(
+      api.plugins.disclaimers.posts.queries.getPostById,
+      {
+        id,
+        organizationId,
+      },
+    );
+    return result ? adaptLmsPost(result) : null;
+  },
+  list: async (ctx, { filters, postTypeSlug, organizationId }) => {
+    const slugFilter =
+      typeof filters?.slug === "string" ? filters.slug.trim() : "";
+    if (slugFilter) {
+      const result = await ctx.runQuery(
+        api.plugins.disclaimers.posts.queries.getPostBySlug,
+        {
+          slug: slugFilter,
+          organizationId,
+        },
+      );
+      if (!result) return [];
+      const adapted = adaptLmsPost(result);
+      if (
+        (adapted.postTypeSlug ?? "").toLowerCase() !==
+        postTypeSlug.toLowerCase()
+      ) {
+        return [];
+      }
+      return [adapted];
+    }
+
+    const payload: Record<string, unknown> = {
+      organizationId,
+    };
+    if (filters) {
+      payload.filters = { ...filters, postTypeSlug };
+    } else {
+      payload.filters = { postTypeSlug };
+    }
+    const results =
+      (await ctx.runQuery(
+        api.plugins.disclaimers.posts.queries.getAllPosts,
+        payload as any,
+      )) ?? [];
+    return results.map(adaptLmsPost);
+  },
+  create: async (ctx, { data, postTypeSlug }) => {
+    const id = await ctx.runMutation(
+      api.plugins.disclaimers.posts.mutations.createPost,
+      {
+        ...data,
+        postTypeSlug,
+        organizationId: data.organizationId,
+      },
+    );
+    const created = await ctx.runQuery(
+      api.plugins.disclaimers.posts.queries.getPostById,
+      {
+        id,
+        organizationId: data.organizationId,
+      },
+    );
+    return adaptLmsPost(created);
+  },
+  update: async (ctx, { id, data }) => {
+    // The /admin/edit entity payload includes additional fields used for resolver
+    // selection and scoping (e.g. organizationId, postTypeSlug). The underlying
+    // component post mutation validators don't accept these fields, so we must
+    // explicitly strip them before forwarding.
+    const raw = (data ?? {}) as Record<string, unknown>;
+    const updatePayload: Record<string, unknown> = { id };
+    if (typeof raw.title === "string") updatePayload.title = raw.title;
+    if (typeof raw.content === "string") updatePayload.content = raw.content;
+    if (typeof raw.excerpt === "string") updatePayload.excerpt = raw.excerpt;
+    if (typeof raw.slug === "string") updatePayload.slug = raw.slug;
+    if (
+      raw.status === "published" ||
+      raw.status === "draft" ||
+      raw.status === "archived"
+    ) {
+      updatePayload.status = raw.status;
+    }
+    if (typeof raw.category === "string") updatePayload.category = raw.category;
+    if (Array.isArray(raw.tags)) updatePayload.tags = raw.tags;
+    if (typeof raw.featuredImage === "string") {
+      updatePayload.featuredImage = raw.featuredImage;
+    }
+    if (raw.meta && typeof raw.meta === "object") updatePayload.meta = raw.meta;
+
+    await ctx.runMutation(
+      api.plugins.disclaimers.posts.mutations.updatePost,
+      updatePayload as any,
+    );
+    const updated = await ctx.runQuery(
+      api.plugins.disclaimers.posts.queries.getPostById,
+      {
+        id,
+        organizationId: data.organizationId,
+      },
+    );
+    return updated ? adaptLmsPost(updated) : null;
+  },
+  remove: async (ctx, { id }) => {
+    await ctx.runMutation(api.plugins.disclaimers.posts.mutations.deletePost, {
+      id,
+    });
+  },
+};
+
 const supportResolver: Resolver = {
   read: async (ctx, { id, organizationId }) => {
     if (!organizationId) return null;
@@ -613,28 +756,36 @@ const supportResolver: Resolver = {
       throw new Error("organizationId is required for helpdesk posts.");
     }
     const raw = data as unknown as Record<string, unknown>;
-    const id = await ctx.runMutation(api.plugins.support.mutations.createSupportPost, {
-      organizationId,
-      postTypeSlug,
-      title: typeof raw.title === "string" ? raw.title : "",
-      content: typeof raw.content === "string" ? raw.content : undefined,
-      excerpt: typeof raw.excerpt === "string" ? raw.excerpt : undefined,
-      slug: typeof raw.slug === "string" ? raw.slug : "",
-      status:
-        raw.status === "published" || raw.status === "draft" || raw.status === "archived"
-          ? (raw.status as any)
-          : "draft",
-      tags: Array.isArray(raw.tags) ? (raw.tags as string[]) : undefined,
-      authorId: typeof raw.authorId === "string" ? raw.authorId : undefined,
-      meta: Array.isArray(raw.meta)
-        ? (raw.meta as any)
-        : undefined,
-    });
-    const created = await ctx.runQuery(api.plugins.support.queries.getSupportPostById, {
-      id: id as Id<"posts">,
-      organizationId,
-    });
-    return created ? adaptSupportPost(created) : { id, postTypeSlug, title: raw.title as any };
+    const id = await ctx.runMutation(
+      api.plugins.support.mutations.createSupportPost,
+      {
+        organizationId,
+        postTypeSlug,
+        title: typeof raw.title === "string" ? raw.title : "",
+        content: typeof raw.content === "string" ? raw.content : undefined,
+        excerpt: typeof raw.excerpt === "string" ? raw.excerpt : undefined,
+        slug: typeof raw.slug === "string" ? raw.slug : "",
+        status:
+          raw.status === "published" ||
+          raw.status === "draft" ||
+          raw.status === "archived"
+            ? (raw.status as any)
+            : "draft",
+        tags: Array.isArray(raw.tags) ? (raw.tags as string[]) : undefined,
+        authorId: typeof raw.authorId === "string" ? raw.authorId : undefined,
+        meta: Array.isArray(raw.meta) ? (raw.meta as any) : undefined,
+      },
+    );
+    const created = await ctx.runQuery(
+      api.plugins.support.queries.getSupportPostById,
+      {
+        id: id as Id<"posts">,
+        organizationId,
+      },
+    );
+    return created
+      ? adaptSupportPost(created)
+      : { id, postTypeSlug, title: raw.title as any };
   },
   update: async (ctx, { id, data, postTypeSlug, organizationId }) => {
     if (!organizationId) {
@@ -650,19 +801,22 @@ const supportResolver: Resolver = {
       excerpt: typeof raw.excerpt === "string" ? raw.excerpt : undefined,
       slug: typeof raw.slug === "string" ? raw.slug : "",
       status:
-        raw.status === "published" || raw.status === "draft" || raw.status === "archived"
+        raw.status === "published" ||
+        raw.status === "draft" ||
+        raw.status === "archived"
           ? (raw.status as any)
           : "draft",
       tags: Array.isArray(raw.tags) ? (raw.tags as string[]) : undefined,
       authorId: typeof raw.authorId === "string" ? raw.authorId : undefined,
-      meta: Array.isArray(raw.meta)
-        ? (raw.meta as any)
-        : undefined,
+      meta: Array.isArray(raw.meta) ? (raw.meta as any) : undefined,
     });
-    const updated = await ctx.runQuery(api.plugins.support.queries.getSupportPostById, {
-      id: id as Id<"posts">,
-      organizationId,
-    });
+    const updated = await ctx.runQuery(
+      api.plugins.support.queries.getSupportPostById,
+      {
+        id: id as Id<"posts">,
+        organizationId,
+      },
+    );
     return updated ? adaptSupportPost(updated) : null;
   },
   remove: async () => {
@@ -694,6 +848,11 @@ const resolveFromPostType = async (
       if (storageTables.some((t) => t.includes("launchthat_commerce:posts"))) {
         return commerceResolver;
       }
+      if (
+        storageTables.some((t) => t.includes("launchthat_disclaimers:posts"))
+      ) {
+        return disclaimersResolver;
+      }
       if (storageTables.some((t) => t.includes("launchthat_support:posts"))) {
         return supportResolver;
       }
@@ -720,7 +879,11 @@ const getResolver = async (
   }
 
   // Preferred: choose based on postTypes definitions (storageKind/storageTables).
-  const fromPostType = await resolveFromPostType(ctx, normalized, organizationId);
+  const fromPostType = await resolveFromPostType(
+    ctx,
+    normalized,
+    organizationId,
+  );
   if (fromPostType) return fromPostType;
 
   // Fallback: legacy slug sets (kept for safety during migration).

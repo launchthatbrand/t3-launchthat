@@ -1,13 +1,11 @@
 import "~/lib/pageTemplates";
 
-/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-assignment */
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { Data as PuckData } from "@measured/puck";
 import type { FrontendFilterContext } from "launchthat-plugin-core/frontendFilters";
-import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Fragment } from "react";
-import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { api } from "@/convex/_generated/api";
@@ -40,16 +38,16 @@ import {
   getPluginFrontendFiltersForSlug,
   wrapWithPluginProviders,
 } from "~/lib/plugins/helpers";
-import { ATTACHMENTS_META_KEY } from "~/lib/posts/metaKeys";
 import {
   getCanonicalPostPath,
   getCanonicalPostSegments,
 } from "~/lib/postTypes/routing";
-import { SEO_META_KEYS, SEO_OPTION_KEYS } from "~/lib/seo/constants";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { cn } from "~/lib/utils";
 import { PortalConvexProvider } from "~/providers/ConvexClientProvider";
 import { PuckContentRenderer } from "../../../../components/puckeditor/PuckContentRenderer";
+
+export { generateMetadata } from "./metadata";
 
 interface FrontendFilterRegistration {
   filter: { location: string; id?: string };
@@ -70,521 +68,6 @@ type PluginMatch = ReturnType<typeof findPostTypeBySlug>;
 interface PageProps {
   params: Promise<{ segments?: string[] }>;
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
-}
-
-function getRequestOriginFromHeaders(headerList: Headers): string | null {
-  const forwardedProto = headerList.get("x-forwarded-proto");
-  const proto = forwardedProto?.split(",")[0]?.trim() ?? "https";
-  const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
-  if (!host) return null;
-  return `${proto}://${host}`;
-}
-
-function resolveCanonicalUrl(args: {
-  origin: string;
-  canonicalPath: string;
-  seoCanonical?: string;
-}): string {
-  const seo = (args.seoCanonical ?? "").trim();
-  if (seo) {
-    if (/^https?:\/\//i.test(seo)) return seo;
-    if (seo.startsWith("/")) return `${args.origin}${seo}`;
-    return `${args.origin}/${seo}`;
-  }
-  const path = args.canonicalPath.startsWith("/")
-    ? args.canonicalPath
-    : `/${args.canonicalPath}`;
-  return `${args.origin}${path}`;
-}
-
-function metaValueToString(value: unknown): string | null {
-  if (typeof value === "string") return value;
-  if (typeof value === "number") return String(value);
-  if (typeof value === "boolean") return value ? "true" : "false";
-  return null;
-}
-
-function metaValueToBoolean(value: unknown): boolean | null {
-  if (value === true) return true;
-  if (value === false) return false;
-  if (typeof value === "number") return value !== 0;
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (["true", "1", "yes"].includes(normalized)) return true;
-    if (["false", "0", "no", ""].includes(normalized)) return false;
-  }
-  return null;
-}
-
-function toAbsoluteUrl(origin: string, input: string): string {
-  const value = input.trim();
-  if (!value) return value;
-  if (/^https?:\/\//i.test(value)) return value;
-  if (value.startsWith("/")) return `${origin}${value}`;
-  return `${origin}/${value}`;
-}
-
-function stripTrailingSlash(url: string): string {
-  if (url.length <= 1) return url;
-  return url.endsWith("/") ? url.slice(0, -1) : url;
-}
-
-function deriveDescriptionFromContent(content: unknown): string {
-  if (typeof content !== "string") return "";
-  const raw = content.trim();
-  if (!raw) return "";
-
-  // Lexical JSON -> plain text (avoid dumping JSON into meta tags).
-  // IMPORTANT: Lexical oEmbed nodes often contain HTML strings with "<iframe...>"
-  // so we must parse JSON BEFORE any HTML heuristics.
-  if (raw.startsWith("{") || raw.startsWith("[")) {
-    try {
-      const parsed = JSON.parse(raw) as unknown;
-      const parts: string[] = [];
-
-      const walkLexicalNode = (node: unknown) => {
-        if (!node || typeof node !== "object") return;
-        const obj = node as Record<string, unknown>;
-
-        const type = typeof obj.type === "string" ? obj.type : "";
-
-        if (type === "text") {
-          if (typeof obj.text === "string" && obj.text.trim()) {
-            parts.push(obj.text.trim());
-          }
-          return;
-        }
-
-        // oEmbed nodes (e.g. Vimeo) often contain a title but no text nodes.
-        if (type === "oembed") {
-          if (typeof obj.title === "string" && obj.title.trim()) {
-            parts.push(obj.title.trim());
-          }
-          return;
-        }
-
-        const children = obj.children;
-        if (Array.isArray(children)) {
-          for (const child of children) {
-            walkLexicalNode(child);
-          }
-        }
-      };
-
-      // Lexical editor state typically looks like: { root: { children: [...] } }
-      if (
-        parsed &&
-        typeof parsed === "object" &&
-        "root" in (parsed as Record<string, unknown>)
-      ) {
-        const root = (parsed as Record<string, unknown>).root;
-        walkLexicalNode(root);
-      } else if (Array.isArray(parsed)) {
-        for (const item of parsed) walkLexicalNode(item);
-      } else {
-        walkLexicalNode(parsed);
-      }
-
-      return parts.join(" ").replace(/\s+/g, " ").trim();
-    } catch {
-      // If it looks like JSON but isn't valid, do NOT return raw (avoid JSON-like blobs in meta).
-      return "";
-    }
-  }
-
-  // Basic HTML strip (works for editor HTML).
-  if (raw.includes("<")) {
-    const stripped = raw
-      .replace(/<[^>]*>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (stripped.length > 200) return `${stripped.slice(0, 197)}...`;
-    return stripped;
-  }
-
-  const normalized = raw.replace(/\s+/g, " ").trim();
-  // Keep meta descriptions reasonably sized.
-  if (normalized.length > 200) return `${normalized.slice(0, 197)}...`;
-  return normalized;
-}
-
-function resolveTitleWithSiteSettings(args: {
-  pageTitle: string;
-  siteTitle?: string;
-  titleFormat?: string;
-  separator?: string;
-}): string {
-  const page = args.pageTitle.trim();
-  const site = (args.siteTitle ?? "").trim();
-  if (!site) return page;
-  const sep = typeof args.separator === "string" ? args.separator : " | ";
-  const format =
-    typeof args.titleFormat === "string" ? args.titleFormat : "page_first";
-  if (!page) return site;
-  if (format === "site_first") {
-    return `${site}${sep}${page}`;
-  }
-  if (format === "page_only") {
-    return page;
-  }
-  return `${page}${sep}${site}`;
-}
-
-export async function generateMetadata(props: PageProps): Promise<Metadata> {
-  const resolvedParams = await props.params;
-  const segments = normalizeSegments(resolvedParams?.segments ?? []);
-  const slug = deriveSlugFromSegments(segments);
-
-  const headerList: Headers = await headers();
-  const origin = getRequestOriginFromHeaders(headerList) ?? "https://localhost";
-
-  if (!slug) {
-    return {
-      metadataBase: new URL(origin),
-      title: "Not Found",
-      robots: { index: false, follow: false },
-    };
-  }
-
-  const tenant = await getActiveTenantFromHeaders();
-  const organizationId = getTenantOrganizationId(tenant);
-
-  const generalOption = await fetchQuery(api.core.options.get, {
-    metaKey: SEO_OPTION_KEYS.general,
-    type: "site",
-    ...(organizationId ? { orgId: organizationId } : {}),
-  } as const);
-  const socialOption = await fetchQuery(api.core.options.get, {
-    metaKey: SEO_OPTION_KEYS.social,
-    type: "site",
-    ...(organizationId ? { orgId: organizationId } : {}),
-  } as const);
-
-  const general =
-    generalOption?.metaValue && typeof generalOption.metaValue === "object"
-      ? (generalOption.metaValue as Record<string, unknown>)
-      : null;
-  const social =
-    socialOption?.metaValue && typeof socialOption.metaValue === "object"
-      ? (socialOption.metaValue as Record<string, unknown>)
-      : null;
-
-  const siteTitle =
-    typeof general?.siteTitle === "string" ? general.siteTitle : undefined;
-  const siteDescription =
-    typeof general?.siteDescription === "string"
-      ? general.siteDescription
-      : undefined;
-  const titleFormat =
-    typeof general?.titleFormat === "string" ? general.titleFormat : undefined;
-  const separator =
-    typeof general?.separator === "string" ? general.separator : undefined;
-
-  const enableSocialMeta =
-    typeof social?.enableSocialMeta === "boolean"
-      ? social.enableSocialMeta
-      : true;
-  const twitterUsername =
-    typeof social?.twitterUsername === "string"
-      ? social.twitterUsername
-      : undefined;
-  const twitterCardType =
-    typeof social?.twitterCardType === "string"
-      ? (social.twitterCardType as
-          | "summary"
-          | "summary_large_image"
-          | "app"
-          | "player")
-      : "summary_large_image";
-
-  const inferredLmsType = inferLmsPostTypeSlugFromSegments(segments);
-  let isLmsComponentPost = false;
-
-  let post = inferredLmsType
-    ? await fetchQuery(api.plugins.lms.posts.queries.getPostBySlug, {
-        slug,
-        organizationId: organizationId ?? undefined,
-      })
-    : null;
-  isLmsComponentPost = Boolean(post);
-
-  if (!post && inferredLmsType && isConvexId(slug)) {
-    post = await fetchQuery(api.plugins.lms.posts.queries.getPostById, {
-      id: slug,
-      organizationId: organizationId ?? undefined,
-    });
-    isLmsComponentPost = Boolean(post);
-  }
-
-  if (!post) {
-    post = await fetchQuery(api.core.posts.queries.getPostBySlug, {
-      slug,
-      ...(organizationId ? { organizationId } : {}),
-    });
-  }
-
-  if (!post && isConvexId(slug)) {
-    post = await fetchQuery(api.core.posts.queries.getPostById, {
-      id: slug as Id<"posts">,
-      ...(organizationId ? { organizationId } : {}),
-    });
-  }
-
-  if (!post) {
-    post = await fetchQuery(api.plugins.lms.posts.queries.getPostBySlug, {
-      slug,
-      organizationId: organizationId ?? undefined,
-    });
-    isLmsComponentPost = Boolean(post);
-  }
-
-  if (!post && isConvexId(slug)) {
-    post = await fetchQuery(api.plugins.lms.posts.queries.getPostById, {
-      id: slug,
-      organizationId: organizationId ?? undefined,
-    });
-    isLmsComponentPost = Boolean(post);
-  }
-
-  if (!post) {
-    const resolved = await resolveFrontendEntry({
-      segments,
-      slug,
-      organizationId: organizationId ?? null,
-      fetchQuery,
-      readEntity: api.plugins.entity.queries.readEntity,
-      listEntities: api.plugins.entity.queries.listEntities,
-    });
-    if (resolved) {
-      post = resolved.post;
-    }
-  }
-
-  if (!post) {
-    return {
-      metadataBase: new URL(origin),
-      title: "Not Found",
-      robots: { index: false, follow: false },
-    };
-  }
-
-  let postType: PostTypeDoc | null = null;
-  if (post.postTypeSlug) {
-    postType =
-      (await fetchQuery(api.core.postTypes.queries.getBySlug, {
-        slug: post.postTypeSlug,
-        ...(organizationId ? { organizationId } : {}),
-      })) ?? null;
-  }
-
-  const postMetaResult: unknown = isLmsComponentPost
-    ? await fetchQuery(api.plugins.lms.posts.queries.getPostMeta, {
-        postId: post._id as unknown as string,
-        organizationId: organizationId ?? undefined,
-      })
-    : await fetchQuery(api.core.posts.postMeta.getPostMeta, {
-        postId: post._id,
-        ...(organizationId ? { organizationId } : {}),
-        postTypeSlug: post.postTypeSlug ?? undefined,
-      });
-
-  const postMeta = (postMetaResult ?? []) as {
-    key: string;
-    value?: string | number | boolean | null;
-  }[];
-  const postMetaMap = buildPostMetaMap(postMeta as unknown as PostMetaDoc[]);
-
-  const seoTitle =
-    metaValueToString(postMetaMap.get(SEO_META_KEYS.title))?.trim() ?? "";
-  const seoDescription =
-    metaValueToString(postMetaMap.get(SEO_META_KEYS.description))?.trim() ?? "";
-  const seoCanonical =
-    metaValueToString(postMetaMap.get(SEO_META_KEYS.canonical))?.trim() ?? "";
-  const seoNoindex = metaValueToBoolean(postMetaMap.get(SEO_META_KEYS.noindex));
-  const seoNofollow = metaValueToBoolean(
-    postMetaMap.get(SEO_META_KEYS.nofollow),
-  );
-
-  const canonicalPath = getCanonicalPostPath(post, postType, false) || "/";
-  const canonicalUrl = resolveCanonicalUrl({
-    origin,
-    canonicalPath,
-    seoCanonical,
-  });
-
-  const isPublished = (post.status ?? "draft") === "published";
-  const effectiveNoindex = seoNoindex ?? !isPublished;
-  const effectiveNofollow = seoNofollow ?? !isPublished;
-
-  const resolveNonEmpty = (...values: (string | undefined | null)[]) => {
-    for (const value of values) {
-      if (typeof value === "string" && value.trim().length > 0) {
-        return value.trim();
-      }
-    }
-    return "";
-  };
-
-  const postTitle =
-    typeof (post as { title?: unknown }).title === "string"
-      ? ((post as { title: string }).title ?? "")
-      : "";
-
-  const resolvedTitle = resolveTitleWithSiteSettings({
-    pageTitle: resolveNonEmpty(postTitle, postType?.name, "Post"),
-    siteTitle: siteTitle ?? tenant?.name ?? undefined,
-    titleFormat,
-    separator,
-  });
-
-  const title = resolveNonEmpty(seoTitle, resolvedTitle);
-
-  const excerpt =
-    typeof (post as { excerpt?: unknown }).excerpt === "string"
-      ? ((post as { excerpt: string }).excerpt ?? "")
-      : "";
-  const content =
-    typeof (post as { content?: unknown }).content === "string"
-      ? ((post as { content: string }).content ?? "")
-      : "";
-
-  const description = resolveNonEmpty(
-    seoDescription,
-    deriveDescriptionFromContent(excerpt),
-    siteDescription,
-    deriveDescriptionFromContent(content),
-  );
-
-  const siteNameForOg = siteTitle ?? tenant?.name ?? "LaunchThat Portal";
-  const labelForOg = typeof postType?.name === "string" ? postType.name : "";
-  const ogCardUrl = new URL("/api/og/post", origin);
-  ogCardUrl.searchParams.set("title", title);
-  ogCardUrl.searchParams.set("site", siteNameForOg);
-  if (labelForOg.trim()) ogCardUrl.searchParams.set("label", labelForOg.trim());
-
-  const pickOgBackgroundUrl = async (): Promise<string | null> => {
-    const rawAttachments = metaValueToString(
-      postMetaMap.get(ATTACHMENTS_META_KEY),
-    );
-    if (!rawAttachments) return null;
-
-    interface AttachmentMetaEntry {
-      mediaItemId?: string;
-      url?: string;
-      mimeType?: string;
-      title?: string;
-    }
-
-    try {
-      const parsed = JSON.parse(rawAttachments) as unknown;
-      if (!Array.isArray(parsed)) return null;
-      for (const item of parsed) {
-        if (!item || typeof item !== "object") continue;
-        const entry = item as AttachmentMetaEntry;
-
-        const entryMimeType =
-          typeof entry.mimeType === "string" ? entry.mimeType : "";
-        const entryTitle = typeof entry.title === "string" ? entry.title : "";
-
-        const mediaItemId =
-          typeof entry.mediaItemId === "string" ? entry.mediaItemId : null;
-        if (mediaItemId) {
-          // Prefer using the stable media proxy URL (it returns a fresh signed URL).
-          // Only include if we have strong signal it is an image.
-          const url =
-            typeof entry.url === "string" && entry.url.trim()
-              ? entry.url.trim()
-              : "";
-          const isConvexStorageUrl =
-            url.includes(".convex.cloud/api/storage/") ||
-            url.includes("/api/storage/");
-          const isLikelyNonImageTitle =
-            /\.(pdf|mp4|mov|webm|mp3|wav|m4a|zip|rar|7z|docx?|xlsx?|pptx?)$/i.test(
-              entryTitle,
-            );
-
-          if (entryMimeType.startsWith("image/")) {
-            return `${origin}/api/media/${mediaItemId}`;
-          }
-
-          // Attachment entries sometimes omit mimeType; Convex URLs often omit file extensions.
-          // If the URL looks like Convex storage and the title doesn't suggest a non-image, treat as image.
-          if (isConvexStorageUrl && entryTitle && !isLikelyNonImageTitle) {
-            return `${origin}/api/media/${mediaItemId}`;
-          }
-
-          // Last resort: ask Convex for mimeType if we have to.
-          const media = await fetchQuery(api.core.media.queries.getMediaItem, {
-            id: mediaItemId as unknown as Id<"mediaItems">,
-          });
-          const mimeType =
-            media &&
-            typeof (media as { mimeType?: unknown }).mimeType === "string"
-              ? ((media as { mimeType: string }).mimeType ?? "")
-              : "";
-          if (mimeType.startsWith("image/")) {
-            return `${origin}/api/media/${mediaItemId}`;
-          }
-        }
-
-        const url =
-          typeof entry.url === "string" && entry.url.trim()
-            ? entry.url.trim()
-            : "";
-        if (!url) continue;
-
-        // Best-effort URL check for external image thumbnails (e.g. Vimeo).
-        const looksLikeImageUrl =
-          /\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i.test(url) ||
-          url.includes("vimeocdn.com");
-        if (looksLikeImageUrl) {
-          return toAbsoluteUrl(origin, url);
-        }
-      }
-    } catch {
-      // ignore
-    }
-    return null;
-  };
-
-  const ogBackgroundUrl = await pickOgBackgroundUrl();
-  if (ogBackgroundUrl) {
-    ogCardUrl.searchParams.set("bg", ogBackgroundUrl);
-  }
-
-  // Option A: Always use branded OG image.
-  const ogImages = [{ url: ogCardUrl.toString() }];
-
-  return {
-    metadataBase: new URL(origin),
-    title,
-    description,
-    alternates: { canonical: stripTrailingSlash(canonicalUrl) },
-    robots: {
-      index: !effectiveNoindex,
-      follow: !effectiveNofollow,
-    },
-    ...(enableSocialMeta
-      ? {
-          openGraph: {
-            url: stripTrailingSlash(canonicalUrl),
-            title,
-            description,
-            type: "website" as const,
-            images: ogImages,
-          },
-          twitter: {
-            card: twitterCardType,
-            ...(twitterUsername
-              ? { site: twitterUsername, creator: twitterUsername }
-              : {}),
-            title,
-            description,
-            images: ogImages?.map((img) => img.url),
-          },
-        }
-      : {}),
-  };
 }
 
 const LMS_POST_TYPE_SLUGS = new Set([
@@ -687,26 +170,23 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     notFound();
   }
 
-  const inferredLmsType = inferLmsPostTypeSlugFromSegments(segments);
-  let isLmsComponentPost = false;
+  type FrontendEntryArgs = Parameters<typeof resolveFrontendEntry>[0];
+  const fetchQueryUnsafe =
+    fetchQuery as unknown as FrontendEntryArgs["fetchQuery"];
 
-  // If the URL shape clearly indicates an LMS route (e.g. /course/.../lesson/...),
-  // prefer resolving from the LMS component to avoid stale core `posts` collisions.
-  let post = inferredLmsType
-    ? await fetchQuery(api.plugins.lms.posts.queries.getPostBySlug, {
+  // Resolve plugin/component-backed routes (including nested markers like
+  // /course/:courseSlug/lesson/:lessonSlug) via the shared frontend resolver.
+  let post =
+    (
+      await resolveFrontendEntry({
+        segments,
         slug,
-        organizationId: organizationId ?? undefined,
+        organizationId: organizationId ?? null,
+        fetchQuery: fetchQueryUnsafe,
+        readEntity: api.plugins.entity.queries.readEntity,
+        listEntities: api.plugins.entity.queries.listEntities,
       })
-    : null;
-  isLmsComponentPost = Boolean(post);
-
-  if (!post && inferredLmsType && isConvexId(slug)) {
-    post = await fetchQuery(api.plugins.lms.posts.queries.getPostById, {
-      id: slug,
-      organizationId: organizationId ?? undefined,
-    });
-    isLmsComponentPost = Boolean(post);
-  }
+    )?.post ?? null;
 
   if (!post) {
     post = await fetchQuery(api.core.posts.queries.getPostBySlug, {
@@ -720,37 +200,6 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       id: slug as Id<"posts">,
       ...(organizationId ? { organizationId } : {}),
     });
-  }
-
-  // Fallback: if it wasn't an obvious LMS route, still try LMS component after core.
-  if (!post) {
-    post = await fetchQuery(api.plugins.lms.posts.queries.getPostBySlug, {
-      slug,
-      organizationId: organizationId ?? undefined,
-    });
-    isLmsComponentPost = Boolean(post);
-  }
-
-  if (!post && isConvexId(slug)) {
-    post = await fetchQuery(api.plugins.lms.posts.queries.getPostById, {
-      id: slug,
-      organizationId: organizationId ?? undefined,
-    });
-    isLmsComponentPost = Boolean(post);
-  }
-
-  if (!post) {
-    const resolved = await resolveFrontendEntry({
-      segments,
-      slug,
-      organizationId: organizationId ?? null,
-      fetchQuery,
-      readEntity: api.plugins.entity.queries.readEntity,
-      listEntities: api.plugins.entity.queries.listEntities,
-    });
-    if (resolved) {
-      post = resolved.post;
-    }
   }
 
   if (!post) {
@@ -776,16 +225,14 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     postFields = fieldResult ?? [];
   }
 
-  const postMetaResult: unknown = isLmsComponentPost
-    ? await fetchQuery(api.plugins.lms.posts.queries.getPostMeta, {
-        postId: post._id as unknown as string,
-        organizationId: organizationId ?? undefined,
-      })
-    : await fetchQuery(api.core.posts.postMeta.getPostMeta, {
-        postId: post._id,
-        ...(organizationId ? { organizationId } : {}),
-        postTypeSlug: post.postTypeSlug ?? undefined,
-      });
+  const postMetaResult: unknown = await fetchQuery(
+    api.core.posts.postMeta.getPostMeta,
+    {
+      postId: post._id,
+      ...(organizationId ? { organizationId } : {}),
+      postTypeSlug: post.postTypeSlug ?? undefined,
+    },
+  );
   const postMeta = (postMetaResult ?? []) as {
     key: string;
     value?: string | number | boolean | null;
@@ -996,38 +443,6 @@ function deriveSlugFromSegments(segments: string[]): string | null {
     }
   }
   return null;
-}
-
-function inferLmsPostTypeSlugFromSegments(
-  segments: string[],
-): "courses" | "lessons" | "topics" | "quizzes" | "certificates" | null {
-  // LMS permalink shapes (examples):
-  // - /course/:courseSlug
-  // - /course/:courseSlug/lesson/:lessonSlug
-  // - /course/:courseSlug/lesson/:lessonSlug/topic/:topicSlug
-  // - /course/:courseSlug/lesson/:lessonSlug/topic/:topicSlug/quiz/:quizSlug
-  // - /course/:courseSlug/certificate/:certificateSlug
-  // - /course/:courseSlug/lesson/:lessonSlug/certificate/:certificateSlug
-  // - /course/:courseSlug/lesson/:lessonSlug/topic/:topicSlug/certificate/:certificateSlug
-  // Only infer LMS types when route is under `/course/...`
-  if (segments[0]?.toLowerCase() !== "course") {
-    return null;
-  }
-
-  const lowered = segments.map((segment) => segment.toLowerCase());
-  if (lowered.includes("certificate")) {
-    return "certificates";
-  }
-  if (lowered.includes("quiz")) {
-    return "quizzes";
-  }
-  if (lowered.includes("topic")) {
-    return "topics";
-  }
-  if (lowered.includes("lesson")) {
-    return "lessons";
-  }
-  return "courses";
 }
 
 function isConvexId(value: string): boolean {

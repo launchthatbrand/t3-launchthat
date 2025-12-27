@@ -145,6 +145,14 @@ export const getPostMeta = query({
     const isSupportComponent =
       storageKind === "component" &&
       storageTables.some((table) => table.includes("launchthat_support:posts"));
+  const isLmsComponent =
+    storageKind === "component" &&
+    storageTables.some((table) => table.includes("launchthat_lms:posts"));
+  const isDisclaimersComponent =
+    storageKind === "component" &&
+    storageTables.some((table) =>
+      table.includes("launchthat_disclaimers:posts"),
+    );
 
     if (isSupportComponent) {
       const metaUnknown: unknown = await ctx.runQuery(
@@ -180,6 +188,72 @@ export const getPostMeta = query({
         };
       });
     }
+
+  if (isLmsComponent) {
+    const metaUnknown: unknown = await ctx.runQuery(
+      api.plugins.lms.posts.queries.getPostMeta,
+      {
+        postId: rawPostId,
+        organizationId: requestedOrg ? String(requestedOrg) : undefined,
+      },
+    );
+
+    return Array.isArray(metaUnknown)
+      ? metaUnknown.map((entry): PostMetaEntry => {
+          const record = entry as unknown as {
+            _id: string;
+            _creationTime: number;
+            postId: string;
+            key: string;
+            value?: string | number | boolean | null;
+            createdAt: number;
+            updatedAt?: number;
+          };
+          return {
+            _id: record._id,
+            _creationTime: record._creationTime,
+            postId: record.postId,
+            key: record.key,
+            value: record.value,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt,
+          };
+        })
+      : [];
+  }
+
+  if (isDisclaimersComponent) {
+    const metaUnknown: unknown = await ctx.runQuery(
+      api.plugins.disclaimers.posts.queries.getPostMeta,
+      {
+        postId: rawPostId,
+        organizationId: requestedOrg ? String(requestedOrg) : undefined,
+      },
+    );
+
+    return Array.isArray(metaUnknown)
+      ? metaUnknown.map((entry): PostMetaEntry => {
+          const record = entry as unknown as {
+            _id: string;
+            _creationTime: number;
+            postId: string;
+            key: string;
+            value?: string | number | boolean | null;
+            createdAt: number;
+            updatedAt?: number;
+          };
+          return {
+            _id: record._id,
+            _creationTime: record._creationTime,
+            postId: record.postId,
+            key: record.key,
+            value: record.value,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt,
+          };
+        })
+      : [];
+  }
 
     const post = await ctx.db.get(postId);
     if (!post) {

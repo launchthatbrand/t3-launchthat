@@ -1915,7 +1915,7 @@ export type PublicApiType = {
       markAllNotificationsAsRead: FunctionReference<
         "mutation",
         "public",
-        { userId: Id<"users"> },
+        { orgId: Id<"organizations">; userId: Id<"users"> },
         number
       >;
       createNotification: FunctionReference<
@@ -1925,41 +1925,15 @@ export type PublicApiType = {
           actionData?: Record<string, string>;
           actionUrl?: string;
           content?: string;
+          eventKey?: string;
           expiresAt?: number;
           message?: string;
+          orgId?: Id<"organizations">;
           relatedId?: Id<"groupInvitations">;
           sourceOrderId?: Id<"transactions">;
           sourceUserId?: Id<"users">;
           title: string;
-          type:
-            | "friendRequest"
-            | "friendAccepted"
-            | "message"
-            | "mention"
-            | "groupInvite"
-            | "groupJoinRequest"
-            | "groupJoinApproved"
-            | "groupJoinRejected"
-            | "groupInvitation"
-            | "invitationAccepted"
-            | "invitationDeclined"
-            | "groupPost"
-            | "groupComment"
-            | "eventInvite"
-            | "eventReminder"
-            | "eventUpdate"
-            | "newDownload"
-            | "courseUpdate"
-            | "orderConfirmation"
-            | "paymentSuccess"
-            | "paymentFailed"
-            | "productUpdate"
-            | "systemAnnouncement"
-            | "reaction"
-            | "comment"
-            | "commentReply"
-            | "share"
-            | "newFollowedUserPost";
+          type?: string;
           userId: Id<"users">;
         },
         Id<"notifications">
@@ -1973,7 +1947,7 @@ export type PublicApiType = {
       deleteAllNotifications: FunctionReference<
         "mutation",
         "public",
-        { userId: Id<"users"> },
+        { orgId: Id<"organizations">; userId: Id<"users"> },
         number
       >;
       batchCreateNotifications: FunctionReference<
@@ -1983,41 +1957,15 @@ export type PublicApiType = {
           actionData?: Record<string, string>;
           actionUrl?: string;
           content?: string;
+          eventKey?: string;
           expiresAt?: number;
           message?: string;
+          orgId?: Id<"organizations">;
           relatedId?: Id<"groupInvitations">;
           sourceOrderId?: Id<"transactions">;
           sourceUserId?: Id<"users">;
           title: string;
-          type:
-            | "friendRequest"
-            | "friendAccepted"
-            | "message"
-            | "mention"
-            | "groupInvite"
-            | "groupJoinRequest"
-            | "groupJoinApproved"
-            | "groupJoinRejected"
-            | "groupInvitation"
-            | "invitationAccepted"
-            | "invitationDeclined"
-            | "groupPost"
-            | "groupComment"
-            | "eventInvite"
-            | "eventReminder"
-            | "eventUpdate"
-            | "newDownload"
-            | "courseUpdate"
-            | "orderConfirmation"
-            | "paymentSuccess"
-            | "paymentFailed"
-            | "productUpdate"
-            | "systemAnnouncement"
-            | "reaction"
-            | "comment"
-            | "commentReply"
-            | "share"
-            | "newFollowedUserPost";
+          type?: string;
           userIds: Array<Id<"users">>;
         },
         Array<Id<"notifications">>
@@ -2090,13 +2038,26 @@ export type PublicApiType = {
       >;
     };
     queries: {
-      getNotificationsByClerkId: FunctionReference<
+      getUnreadCountByClerkIdAndOrgId: FunctionReference<
+        "query",
+        "public",
+        { clerkId: string; orgId?: Id<"organizations"> },
+        number
+      >;
+      listLatestByClerkIdAndOrgId: FunctionReference<
+        "query",
+        "public",
+        { clerkId: string; limit?: number; orgId?: Id<"organizations"> },
+        Array<any>
+      >;
+      paginateByClerkIdAndOrgId: FunctionReference<
         "query",
         "public",
         {
           clerkId: string;
-          filters?: { type?: string };
-          paginationOpts?: {
+          filters?: { eventKey?: string };
+          orgId?: Id<"organizations">;
+          paginationOpts: {
             cursor: string | null;
             endCursor?: string | null;
             id?: number;
@@ -2105,13 +2066,69 @@ export type PublicApiType = {
             numItems: number;
           };
         },
-        any
+        { continueCursor: string | null; isDone: boolean; page: Array<any> }
       >;
-      listNotificationsByClerkId: FunctionReference<
+    };
+    settings: {
+      getOrgDefaults: FunctionReference<
         "query",
         "public",
-        { clerkId: string },
-        any
+        { orgId: Id<"organizations"> },
+        { inAppDefaults: Record<string, boolean> }
+      >;
+      setOrgDefaults: FunctionReference<
+        "mutation",
+        "public",
+        {
+          actorUserId: Id<"users">;
+          inAppDefaults: Record<string, boolean>;
+          orgId: Id<"organizations">;
+        },
+        null
+      >;
+      getUserEventPrefs: FunctionReference<
+        "query",
+        "public",
+        { orgId: Id<"organizations">; userId: Id<"users"> },
+        { inAppEnabled: Record<string, boolean> }
+      >;
+      setUserEventPrefs: FunctionReference<
+        "mutation",
+        "public",
+        {
+          inAppEnabled: Record<string, boolean>;
+          orgId: Id<"organizations">;
+          userId: Id<"users">;
+        },
+        null
+      >;
+      listSubscriptions: FunctionReference<
+        "query",
+        "public",
+        { eventKey?: string; orgId: Id<"organizations">; userId: Id<"users"> },
+        Array<{
+          _creationTime: number;
+          _id: Id<"notificationSubscriptions">;
+          enabled: boolean;
+          eventKey: string;
+          orgId: Id<"organizations">;
+          scopeId: string | null;
+          scopeKind: string;
+          userId: Id<"users">;
+        }>
+      >;
+      upsertSubscription: FunctionReference<
+        "mutation",
+        "public",
+        {
+          enabled: boolean;
+          eventKey: string;
+          orgId: Id<"organizations">;
+          scopeId: string | null;
+          scopeKind: string;
+          userId: Id<"users">;
+        },
+        Id<"notificationSubscriptions">
       >;
     };
   };
@@ -2911,10 +2928,10 @@ export type PublicApiType = {
           },
           Array<{
             _creationTime: number;
-            _id: Id<"postsMeta">;
+            _id: string;
             createdAt: number;
             key: string;
-            postId: Id<"posts">;
+            postId: string;
             updatedAt?: number;
             value?: string | number | boolean | null;
           }>
@@ -3412,6 +3429,36 @@ export type PublicApiType = {
           }>
         >;
       };
+      meta: {
+        listMediaItemMeta: FunctionReference<
+          "query",
+          "public",
+          {
+            mediaItemId: Id<"mediaItems">;
+            organizationId: Id<"organizations">;
+          },
+          Array<{
+            _creationTime: number;
+            _id: Id<"mediaItemsMeta">;
+            createdAt: number;
+            key: string;
+            mediaItemId: Id<"mediaItems">;
+            organizationId: Id<"organizations">;
+            updatedAt?: number;
+            value?: string | number | boolean | null;
+          }>
+        >;
+        upsertMediaItemMeta: FunctionReference<
+          "mutation",
+          "public",
+          {
+            mediaItemId: Id<"mediaItems">;
+            meta: Record<string, string | number | boolean | null>;
+            organizationId: Id<"organizations">;
+          },
+          null
+        >;
+      };
     };
     organizations: {
       mutations: {
@@ -3589,6 +3636,20 @@ export type PublicApiType = {
             customDomainUpdatedAt?: number;
             customDomainVerifiedAt?: number;
             description?: string;
+            emailDomain?: string;
+            emailDomainLastError?: string;
+            emailDomainRecords?: Array<{
+              name: string;
+              type: string;
+              value: string;
+            }>;
+            emailDomainStatus?:
+              | "unconfigured"
+              | "pending"
+              | "verified"
+              | "error";
+            emailDomainUpdatedAt?: number;
+            emailDomainVerifiedAt?: number;
             isPublic: boolean;
             logo?: string;
             memberCount?: number;
@@ -3634,6 +3695,20 @@ export type PublicApiType = {
             customDomainUpdatedAt?: number;
             customDomainVerifiedAt?: number;
             description?: string;
+            emailDomain?: string;
+            emailDomainLastError?: string;
+            emailDomainRecords?: Array<{
+              name: string;
+              type: string;
+              value: string;
+            }>;
+            emailDomainStatus?:
+              | "unconfigured"
+              | "pending"
+              | "verified"
+              | "error";
+            emailDomainUpdatedAt?: number;
+            emailDomainVerifiedAt?: number;
             isPublic: boolean;
             logo?: string;
             memberCount?: number;
@@ -3679,6 +3754,20 @@ export type PublicApiType = {
             customDomainUpdatedAt?: number;
             customDomainVerifiedAt?: number;
             description?: string;
+            emailDomain?: string;
+            emailDomainLastError?: string;
+            emailDomainRecords?: Array<{
+              name: string;
+              type: string;
+              value: string;
+            }>;
+            emailDomainStatus?:
+              | "unconfigured"
+              | "pending"
+              | "verified"
+              | "error";
+            emailDomainUpdatedAt?: number;
+            emailDomainVerifiedAt?: number;
             isPublic: boolean;
             logo?: string;
             memberCount?: number;
@@ -3774,6 +3863,20 @@ export type PublicApiType = {
             customDomainUpdatedAt?: number;
             customDomainVerifiedAt?: number;
             description?: string;
+            emailDomain?: string;
+            emailDomainLastError?: string;
+            emailDomainRecords?: Array<{
+              name: string;
+              type: string;
+              value: string;
+            }>;
+            emailDomainStatus?:
+              | "unconfigured"
+              | "pending"
+              | "verified"
+              | "error";
+            emailDomainUpdatedAt?: number;
+            emailDomainVerifiedAt?: number;
             isPublic: boolean;
             logo?: string;
             memberCount?: number;
@@ -3911,6 +4014,20 @@ export type PublicApiType = {
             customDomain: string;
             records: Array<{ name: string; type: string; value: string }>;
             status: "unconfigured" | "pending" | "verified" | "error";
+          }
+        >;
+      };
+      emailDomains: {
+        syncEmailDomainFromCustomDomain: FunctionReference<
+          "action",
+          "public",
+          { organizationId: Id<"organizations"> },
+          {
+            emailDomain: string | null;
+            lastError?: string;
+            records: Array<{ name: string; type: string; value: string }>;
+            status: "unconfigured" | "pending" | "verified" | "error";
+            updatedAt: number;
           }
         >;
       };
@@ -4864,6 +4981,31 @@ export type PublicApiType = {
           }
         >;
       };
+      getUserByClerkId: FunctionReference<
+        "query",
+        "public",
+        { clerkId: string },
+        null | {
+          _creationTime: number;
+          _id: Id<"users">;
+          addresses?: Array<{
+            addressLine1: string;
+            addressLine2?: string;
+            city: string;
+            country: string;
+            fullName: string;
+            phoneNumber?: string;
+            postalCode: string;
+            stateOrProvince: string;
+          }>;
+          email: string;
+          image?: string;
+          name?: string;
+          role?: string;
+          tokenIdentifier?: string;
+          username?: string;
+        }
+      >;
     };
     crm: {
       queries: {
@@ -5046,6 +5188,458 @@ export type PublicApiType = {
             totalEntries: number;
             uniqueUsers: number;
           }
+        >;
+      };
+    };
+    downloads: {
+      queries: {
+        getDownloadBySlug: FunctionReference<
+          "query",
+          "public",
+          { organizationId: Id<"organizations">; slug: string },
+          null | {
+            download: {
+              _creationTime: number;
+              _id: Id<"downloads">;
+              access: { kind: "public" | "gated" };
+              content?: string;
+              createdAt: number;
+              description?: string;
+              downloadCountTotal: number;
+              mediaItemId: Id<"mediaItems">;
+              organizationId: Id<"organizations">;
+              r2Key?: string;
+              slug: string;
+              source: { kind: "mediaItem" };
+              status: "draft" | "published";
+              title: string;
+              updatedAt?: number;
+            };
+            media: {
+              _id: Id<"mediaItems">;
+              mimeType?: string;
+              title?: string;
+              url?: string;
+            };
+          }
+        >;
+        getDownloadById: FunctionReference<
+          "query",
+          "public",
+          { downloadId: Id<"downloads">; organizationId: Id<"organizations"> },
+          null | {
+            download: {
+              _creationTime: number;
+              _id: Id<"downloads">;
+              access: { kind: "public" | "gated" };
+              content?: string;
+              createdAt: number;
+              description?: string;
+              downloadCountTotal: number;
+              mediaItemId: Id<"mediaItems">;
+              organizationId: Id<"organizations">;
+              r2Key?: string;
+              slug: string;
+              source: { kind: "mediaItem" };
+              status: "draft" | "published";
+              title: string;
+              updatedAt?: number;
+            };
+            media: null | {
+              _id: Id<"mediaItems">;
+              mimeType?: string;
+              title?: string;
+              url?: string;
+            };
+          }
+        >;
+        listDownloads: FunctionReference<
+          "query",
+          "public",
+          {
+            organizationId: Id<"organizations">;
+            status?: "draft" | "published";
+          },
+          Array<{
+            _creationTime: number;
+            _id: Id<"downloads">;
+            access: { kind: "public" | "gated" };
+            content?: string;
+            createdAt: number;
+            description?: string;
+            downloadCountTotal: number;
+            mediaItemId: Id<"mediaItems">;
+            organizationId: Id<"organizations">;
+            r2Key?: string;
+            slug: string;
+            source: { kind: "mediaItem" };
+            status: "draft" | "published";
+            title: string;
+            updatedAt?: number;
+          }>
+        >;
+      };
+      mutations: {
+        createDownloadFromMediaItem: FunctionReference<
+          "mutation",
+          "public",
+          {
+            accessKind?: "public" | "gated";
+            content?: string;
+            description?: string;
+            mediaItemId: Id<"mediaItems">;
+            organizationId: Id<"organizations">;
+            slug?: string;
+            title?: string;
+          },
+          Id<"downloads">
+        >;
+        updateDownload: FunctionReference<
+          "mutation",
+          "public",
+          {
+            data: {
+              accessKind?: "public" | "gated";
+              content?: string;
+              description?: string;
+              mediaItemId?: Id<"mediaItems">;
+              slug?: string;
+              status?: "draft" | "published";
+              title?: string;
+            };
+            downloadId: Id<"downloads">;
+            organizationId: Id<"organizations">;
+          },
+          null
+        >;
+        requestDownloadUrl: FunctionReference<
+          "mutation",
+          "public",
+          {
+            downloadId: Id<"downloads">;
+            expiresInSeconds?: number;
+            organizationId: Id<"organizations">;
+          },
+          string
+        >;
+      };
+      actions: {
+        publishDownload: FunctionReference<
+          "action",
+          "public",
+          { downloadId: Id<"downloads">; organizationId: Id<"organizations"> },
+          { downloadId: Id<"downloads">; r2Key: string }
+        >;
+      };
+      meta: {
+        listDownloadMeta: FunctionReference<
+          "query",
+          "public",
+          { downloadId: Id<"downloads">; organizationId: Id<"organizations"> },
+          Array<{
+            _creationTime: number;
+            _id: Id<"downloadsMeta">;
+            createdAt: number;
+            downloadId: Id<"downloads">;
+            key: string;
+            organizationId: Id<"organizations">;
+            updatedAt?: number;
+            value?: string | number | boolean | null;
+          }>
+        >;
+        upsertDownloadMeta: FunctionReference<
+          "mutation",
+          "public",
+          {
+            downloadId: Id<"downloads">;
+            meta: Record<string, string | number | boolean | null>;
+            organizationId: Id<"organizations">;
+          },
+          null
+        >;
+      };
+    };
+    emails: {
+      service: {
+        getProviderStatus: FunctionReference<
+          "query",
+          "public",
+          Record<string, never>,
+          { resendConfigured: boolean }
+        >;
+        getSettings: FunctionReference<
+          "query",
+          "public",
+          { orgId?: Id<"organizations"> },
+          {
+            _creationTime: number;
+            _id: Id<"emailSettings">;
+            createdAt: number;
+            designKey?: "clean" | "bold" | "minimal";
+            enabled: boolean;
+            fromEmail: string;
+            fromLocalPart: string;
+            fromMode: "portal" | "custom";
+            fromName: string;
+            orgId: Id<"organizations">;
+            provider: "resend";
+            replyToEmail?: string;
+            updatedAt: number;
+            updatedBy?: Id<"users">;
+          } | null
+        >;
+        listTemplates: FunctionReference<
+          "query",
+          "public",
+          { orgId?: Id<"organizations"> },
+          Array<{
+            _creationTime: number;
+            _id: Id<"emailTemplates">;
+            copyOverrides?: Record<string, string>;
+            createdAt: number;
+            designOverrideKey?: "inherit" | "clean" | "bold" | "minimal";
+            markdownBody?: string;
+            orgId: Id<"organizations">;
+            subject?: string;
+            subjectOverride?: string;
+            templateKey: string;
+            updatedAt: number;
+            updatedBy?: Id<"users">;
+          }>
+        >;
+        listTemplateCatalog: FunctionReference<
+          "query",
+          "public",
+          { orgId?: Id<"organizations"> },
+          Array<{
+            designOverrideKey?: "inherit" | "clean" | "bold" | "minimal";
+            hasOverride: boolean;
+            subject: string;
+            templateId?: Id<"emailTemplates">;
+            templateKey: string;
+            title: string;
+            updatedAt?: number;
+          }>
+        >;
+        resetTemplateOverride: FunctionReference<
+          "mutation",
+          "public",
+          { orgId?: Id<"organizations">; templateId: Id<"emailTemplates"> },
+          null
+        >;
+        getTemplateById: FunctionReference<
+          "query",
+          "public",
+          { orgId?: Id<"organizations">; templateId: Id<"emailTemplates"> },
+          {
+            _id: Id<"emailTemplates">;
+            copyOverrides?: Record<string, string>;
+            createdAt: number;
+            designOverrideKey?: "inherit" | "clean" | "bold" | "minimal";
+            subjectOverride?: string;
+            templateKey: string;
+            updatedAt: number;
+          } | null
+        >;
+        getTemplateEditorById: FunctionReference<
+          "query",
+          "public",
+          { orgId?: Id<"organizations">; templateId: Id<"emailTemplates"> },
+          {
+            definition: {
+              copySchema: Array<{
+                description?: string;
+                key: string;
+                kind?: "singleLine" | "multiLine" | "url";
+                label: string;
+                maxLength?: number;
+                multiline?: boolean;
+                placeholder?: string;
+              }>;
+              defaultCopy: Record<string, string>;
+              defaultSubject: string;
+              templateKey: string;
+              title: string;
+            };
+            orgDesignKey: "clean" | "bold" | "minimal";
+            template: {
+              _id: Id<"emailTemplates">;
+              copyOverrides?: Record<string, string>;
+              createdAt: number;
+              designOverrideKey?: "inherit" | "clean" | "bold" | "minimal";
+              subjectOverride?: string;
+              templateKey: string;
+              updatedAt: number;
+            };
+          }
+        >;
+        ensureTemplateOverrideForKey: FunctionReference<
+          "mutation",
+          "public",
+          { orgId?: Id<"organizations">; templateKey: string },
+          Id<"emailTemplates">
+        >;
+        listOutbox: FunctionReference<
+          "query",
+          "public",
+          {
+            orgId?: Id<"organizations">;
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+            status?: "queued" | "sent" | "failed";
+          },
+          {
+            continueCursor: string | null;
+            isDone: boolean;
+            page: Array<{
+              _creationTime: number;
+              _id: Id<"emailOutbox">;
+              createdAt: number;
+              error?: string;
+              fromEmail: string;
+              fromName: string;
+              htmlBody: string;
+              orgId: Id<"organizations">;
+              providerMessageId?: string;
+              replyToEmail?: string;
+              sentAt?: number;
+              status: "queued" | "sent" | "failed";
+              subject: string;
+              templateKey?: string;
+              textBody: string;
+              to: string;
+            }>;
+          }
+        >;
+        updateSettings: FunctionReference<
+          "mutation",
+          "public",
+          {
+            designKey?: "clean" | "bold" | "minimal";
+            enabled: boolean;
+            fromLocalPart: string;
+            fromMode: "portal" | "custom";
+            fromName: string;
+            orgId?: Id<"organizations">;
+            replyToEmail?: string;
+          },
+          Id<"emailSettings">
+        >;
+        upsertTemplate: FunctionReference<
+          "mutation",
+          "public",
+          {
+            copyOverrides?: Record<string, string>;
+            designOverrideKey?: "inherit" | "clean" | "bold" | "minimal";
+            orgId?: Id<"organizations">;
+            subjectOverride?: string;
+            templateKey: string;
+          },
+          Id<"emailTemplates">
+        >;
+        migrateLegacyMarkdownTemplatesForOrg: FunctionReference<
+          "mutation",
+          "public",
+          { orgId?: Id<"organizations"> },
+          { migratedCount: number }
+        >;
+        sendTransactionalEmail: FunctionReference<
+          "mutation",
+          "public",
+          {
+            orgId?: Id<"organizations">;
+            templateKey: string;
+            to: string;
+            variables?: Record<string, string>;
+          },
+          Id<"emailOutbox">
+        >;
+        sendTestEmail: FunctionReference<
+          "mutation",
+          "public",
+          { orgId?: Id<"organizations">; to: string },
+          Id<"emailOutbox">
+        >;
+        getSenderOptions: FunctionReference<
+          "query",
+          "public",
+          { orgId?: Id<"organizations"> },
+          {
+            canUseCustomDomain: boolean;
+            customDomain: string | null;
+            customDomainStatus:
+              | "unconfigured"
+              | "pending"
+              | "verified"
+              | "error";
+            portalDomain: string;
+          }
+        >;
+      };
+      reactEmailRender: {
+        previewTemplateById: FunctionReference<
+          "action",
+          "public",
+          {
+            orgId?: Id<"organizations">;
+            templateId: Id<"emailTemplates">;
+            variables?: Record<string, string>;
+          },
+          {
+            copyUsed: Record<string, string>;
+            designKey: "clean" | "bold" | "minimal";
+            html: string;
+            subject: string;
+            subjectTemplateUsed: string;
+            text: string;
+            warnings: Array<string>;
+          }
+        >;
+        previewTemplateByIdWithOverrides: FunctionReference<
+          "action",
+          "public",
+          {
+            orgId?: Id<"organizations">;
+            overrides: {
+              copyOverrides?: Record<string, string>;
+              designOverrideKey?: "inherit" | "clean" | "bold" | "minimal";
+              subjectOverride?: string;
+            };
+            templateId: Id<"emailTemplates">;
+            variables?: Record<string, string>;
+          },
+          {
+            copyUsed: Record<string, string>;
+            designKey: "clean" | "bold" | "minimal";
+            html: string;
+            subject: string;
+            subjectTemplateUsed: string;
+            text: string;
+            warnings: Array<string>;
+          }
+        >;
+        sendTransactionalEmail: FunctionReference<
+          "action",
+          "public",
+          {
+            orgId?: Id<"organizations">;
+            templateKey: string;
+            to: string;
+            variables?: Record<string, string>;
+          },
+          Id<"emailOutbox">
+        >;
+        sendTestEmail: FunctionReference<
+          "action",
+          "public",
+          { orgId?: Id<"organizations">; to: string },
+          Id<"emailOutbox">
         >;
       };
     };
@@ -7110,6 +7704,7 @@ export type PublicApiType = {
               authorId?: string;
               category?: string;
               limit?: number;
+              slug?: string;
               status?: "published" | "draft" | "archived";
             };
             organizationId?: string;
@@ -7135,6 +7730,190 @@ export type PublicApiType = {
           "mutation",
           "public",
           { id: string; postTypeSlug: string },
+          any
+        >;
+      };
+    };
+    disclaimers: {
+      posts: {
+        mutations: {
+          createPost: FunctionReference<
+            "mutation",
+            "public",
+            {
+              category?: string;
+              content?: string;
+              excerpt?: string;
+              featuredImage?: string;
+              meta?: Record<string, string | number | boolean | null>;
+              organizationId?: string;
+              postTypeSlug: string;
+              slug: string;
+              status: "published" | "draft" | "archived";
+              tags?: Array<string>;
+              title: string;
+            },
+            string
+          >;
+          updatePost: FunctionReference<
+            "mutation",
+            "public",
+            {
+              category?: string;
+              content?: string;
+              excerpt?: string;
+              featuredImage?: string;
+              id: string;
+              meta?: Record<string, string | number | boolean | null>;
+              slug?: string;
+              status?: "published" | "draft" | "archived";
+              tags?: Array<string>;
+              title?: string;
+            },
+            string
+          >;
+          deletePost: FunctionReference<
+            "mutation",
+            "public",
+            { id: string },
+            null
+          >;
+        };
+        queries: {
+          getAllPosts: FunctionReference<
+            "query",
+            "public",
+            {
+              filters?: {
+                authorId?: string;
+                category?: string;
+                limit?: number;
+                postTypeSlug?: string;
+                status?: "published" | "draft" | "archived";
+              };
+              organizationId?: string;
+            },
+            any
+          >;
+          getPostById: FunctionReference<
+            "query",
+            "public",
+            { id: string; organizationId?: string },
+            any
+          >;
+          getPostBySlug: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string; slug: string },
+            any
+          >;
+          getPostMeta: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string; postId: string },
+            any
+          >;
+        };
+      };
+      mutations: {
+        upsertDisclaimerTemplateMeta: FunctionReference<
+          "mutation",
+          "public",
+          {
+            consentText?: string;
+            description?: string;
+            organizationId?: string;
+            pdfFileId?: Id<"_storage">;
+            postId: string;
+          },
+          string
+        >;
+        createManualIssue: FunctionReference<
+          "mutation",
+          "public",
+          {
+            organizationId?: string;
+            recipientEmail: string;
+            recipientName?: string;
+            recipientUserId?: string;
+            templatePostId: string;
+          },
+          { issueId: string; token: string }
+        >;
+        resendIssue: FunctionReference<
+          "mutation",
+          "public",
+          { issueId: string; organizationId?: string },
+          {
+            issueId: string;
+            recipientEmail: string;
+            recipientUserId?: string;
+            templatePostId: string;
+            token: string;
+          }
+        >;
+      };
+      queries: {
+        listDisclaimerTemplates: FunctionReference<
+          "query",
+          "public",
+          { organizationId?: string },
+          any
+        >;
+        listIssues: FunctionReference<
+          "query",
+          "public",
+          {
+            limit?: number;
+            organizationId?: string;
+            status?: "incomplete" | "complete";
+          },
+          any
+        >;
+        getSigningContext: FunctionReference<
+          "query",
+          "public",
+          { issueId: string; tokenHash: string },
+          any
+        >;
+        getLatestSignatureForIssue: FunctionReference<
+          "query",
+          "public",
+          { issueId: string; organizationId?: string },
+          any
+        >;
+      };
+      actions: {
+        issueDisclaimerAndSendEmail: FunctionReference<
+          "action",
+          "public",
+          {
+            orgId?: string;
+            recipientEmail: string;
+            recipientName?: string;
+            recipientUserId?: string;
+            templatePostId: string;
+          },
+          any
+        >;
+        resendDisclaimerAndSendEmail: FunctionReference<
+          "action",
+          "public",
+          { issueId: string; orgId?: string },
+          any
+        >;
+        submitSignature: FunctionReference<
+          "action",
+          "public",
+          {
+            consentText: string;
+            issueId: string;
+            signatureDataUrl: string;
+            signedEmail: string;
+            signedName: string;
+            tokenHash: string;
+            userAgent?: string;
+          },
           any
         >;
       };

@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { v } from "convex/values";
 
-import { components } from "../../_generated/api";
-import { mutation } from "../../_generated/server";
+import { components as componentsTyped } from "../../../_generated/api";
+import { mutation } from "../../../_generated/server";
 
-const commercePostsMutations = components.launchthat_ecommerce.posts.mutations;
+const disclaimersPostsMutations: any = (componentsTyped as any)
+  .launchthat_disclaimers.posts.mutations;
 
 export const createPost = mutation({
   args: {
@@ -30,7 +32,11 @@ export const createPost = mutation({
   },
   returns: v.string(),
   handler: async (ctx, args) => {
-    return await ctx.runMutation(commercePostsMutations.createPost, args);
+    const result: unknown = await ctx.runMutation(
+      disclaimersPostsMutations.createPost,
+      args as any,
+    );
+    return String(result);
   },
 });
 
@@ -60,56 +66,21 @@ export const updatePost = mutation({
   },
   returns: v.string(),
   handler: async (ctx, args) => {
-    return await ctx.runMutation(commercePostsMutations.updatePost, args);
+    const result: unknown = await ctx.runMutation(
+      disclaimersPostsMutations.updatePost,
+      args as any,
+    );
+    return String(result);
   },
 });
 
 export const deletePost = mutation({
-  args: {
-    id: v.string(),
-  },
+  args: { id: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    return await ctx.runMutation(commercePostsMutations.deletePost, args);
+    await ctx.runMutation(disclaimersPostsMutations.deletePost, {
+      id: args.id as any,
+    });
+    return null;
   },
 });
-
-export const updatePostStatus = mutation({
-  args: {
-    id: v.string(),
-    status: v.union(
-      v.literal("published"),
-      v.literal("draft"),
-      v.literal("archived"),
-    ),
-  },
-  returns: v.string(),
-  handler: async (ctx, args) => {
-    return await ctx.runMutation(commercePostsMutations.updatePostStatus, args);
-  },
-});
-
-export const bulkUpdatePostStatus = mutation({
-  args: {
-    ids: v.array(v.string()),
-    status: v.union(
-      v.literal("published"),
-      v.literal("draft"),
-      v.literal("archived"),
-    ),
-  },
-  returns: v.array(v.string()),
-  handler: async (ctx, args) => {
-    return await ctx.runMutation(
-      commercePostsMutations.bulkUpdatePostStatus,
-      args,
-    );
-  },
-});
-
-
-
-
-
-
-

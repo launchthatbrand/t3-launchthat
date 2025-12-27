@@ -49,10 +49,22 @@
       ],
       "launchthat-plugin-support/*": [
         "../../packages/launchthat-plugin-support/src/*"
+      ],
+      "launchthat-plugin-disclaimers": [
+        "../../packages/launchthat-plugin-disclaimers/src/index"
+      ],
+      "launchthat-plugin-disclaimers/*": [
+        "../../packages/launchthat-plugin-disclaimers/src/*"
       ]
     },
     "plugins": [{ "name": "next" }]
   },
   "include": [".", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "temp-debug", "temp-*.js", "temp-*.ts", "temp-*.mjs"]
+  "exclude": [
+    "node_modules",
+    "temp-debug",
+    "temp-*.js",
+    "temp-*.ts",
+    "temp-*.mjs"
+  ]
 }

@@ -169,6 +169,11 @@ import type * as plugins_calendar_helpers from "../plugins/calendar/helpers.js";
 import type * as plugins_calendar_queries from "../plugins/calendar/queries.js";
 import type * as plugins_commerce_mutations from "../plugins/commerce/mutations.js";
 import type * as plugins_commerce_queries from "../plugins/commerce/queries.js";
+import type * as plugins_disclaimers_actions from "../plugins/disclaimers/actions.js";
+import type * as plugins_disclaimers_mutations from "../plugins/disclaimers/mutations.js";
+import type * as plugins_disclaimers_posts_mutations from "../plugins/disclaimers/posts/mutations.js";
+import type * as plugins_disclaimers_posts_queries from "../plugins/disclaimers/posts/queries.js";
+import type * as plugins_disclaimers_queries from "../plugins/disclaimers/queries.js";
 import type * as plugins_entity_mutations from "../plugins/entity/mutations.js";
 import type * as plugins_entity_queries from "../plugins/entity/queries.js";
 import type * as plugins_entity_resolvers from "../plugins/entity/resolvers.js";
@@ -392,6 +397,11 @@ declare const fullApi: ApiFromModules<{
   "plugins/calendar/queries": typeof plugins_calendar_queries;
   "plugins/commerce/mutations": typeof plugins_commerce_mutations;
   "plugins/commerce/queries": typeof plugins_commerce_queries;
+  "plugins/disclaimers/actions": typeof plugins_disclaimers_actions;
+  "plugins/disclaimers/mutations": typeof plugins_disclaimers_mutations;
+  "plugins/disclaimers/posts/mutations": typeof plugins_disclaimers_posts_mutations;
+  "plugins/disclaimers/posts/queries": typeof plugins_disclaimers_posts_queries;
+  "plugins/disclaimers/queries": typeof plugins_disclaimers_queries;
   "plugins/entity/mutations": typeof plugins_entity_mutations;
   "plugins/entity/queries": typeof plugins_entity_queries;
   "plugins/entity/resolvers": typeof plugins_entity_resolvers;
@@ -5484,6 +5494,246 @@ export declare const components: {
           any
         >;
       };
+    };
+  };
+  launchthat_disclaimers: {
+    actions: {
+      submitSignature: FunctionReference<
+        "action",
+        "internal",
+        {
+          consentText: string;
+          ip?: string;
+          issueId: string;
+          signatureDataUrl: string;
+          signedByUserId?: string;
+          signedEmail: string;
+          signedName: string;
+          tokenHash: string;
+          userAgent?: string;
+        },
+        { signatureId: string; signedPdfFileId: string }
+      >;
+    };
+    mutations: {
+      createManualIssue: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          organizationId?: string;
+          recipientEmail: string;
+          recipientName?: string;
+          recipientUserId?: string;
+          templatePostId: string;
+        },
+        { issueId: string; token: string }
+      >;
+      finalizeSignature: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          consentText: string;
+          ip?: string;
+          issueId: string;
+          organizationId?: string;
+          pdfSha256: string;
+          signaturePngFileId?: string;
+          signedByUserId?: string;
+          signedEmail: string;
+          signedName: string;
+          signedPdfFileId: string;
+          tokenHash: string;
+          userAgent?: string;
+        },
+        { signatureId: string; signedPdfFileId: string }
+      >;
+      resendIssue: FunctionReference<
+        "mutation",
+        "internal",
+        { issueId: string; organizationId?: string },
+        {
+          issueId: string;
+          recipientEmail: string;
+          recipientUserId?: string;
+          templatePostId: string;
+          token: string;
+        }
+      >;
+      upsertDisclaimerTemplateMeta: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          consentText?: string;
+          description?: string;
+          organizationId?: string;
+          pdfFileId?: string;
+          postId: string;
+        },
+        string
+      >;
+    };
+    posts: {
+      mutations: {
+        bulkUpdatePostStatus: FunctionReference<
+          "mutation",
+          "internal",
+          { ids: Array<string>; status: "published" | "draft" | "archived" },
+          Array<string>
+        >;
+        createPost: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            category?: string;
+            content?: string;
+            excerpt?: string;
+            featuredImage?: string;
+            meta?: Record<string, string | number | boolean | null>;
+            organizationId?: string;
+            postTypeSlug: string;
+            slug: string;
+            status: "published" | "draft" | "archived";
+            tags?: Array<string>;
+            title: string;
+          },
+          string
+        >;
+        deletePost: FunctionReference<
+          "mutation",
+          "internal",
+          { id: string },
+          null
+        >;
+        updatePost: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            category?: string;
+            content?: string;
+            excerpt?: string;
+            featuredImage?: string;
+            id: string;
+            meta?: Record<string, string | number | boolean | null>;
+            slug?: string;
+            status?: "published" | "draft" | "archived";
+            tags?: Array<string>;
+            title?: string;
+          },
+          string
+        >;
+        updatePostStatus: FunctionReference<
+          "mutation",
+          "internal",
+          { id: string; status: "published" | "draft" | "archived" },
+          string
+        >;
+      };
+      queries: {
+        getAllPosts: FunctionReference<
+          "query",
+          "internal",
+          {
+            filters?: {
+              authorId?: string;
+              category?: string;
+              limit?: number;
+              postTypeSlug?: string;
+              status?: "published" | "draft" | "archived";
+            };
+            organizationId?: string;
+          },
+          any
+        >;
+        getPostById: FunctionReference<
+          "query",
+          "internal",
+          { id: string; organizationId?: string },
+          any
+        >;
+        getPostBySlug: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; slug: string },
+          any
+        >;
+        getPostMeta: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; postId: string },
+          any
+        >;
+      };
+    };
+    queries: {
+      getLatestSignatureForIssue: FunctionReference<
+        "query",
+        "internal",
+        { issueId: string; organizationId?: string },
+        null | {
+          createdAt: number;
+          pdfSha256: string;
+          signatureId: string;
+          signedPdfFileId: string;
+          signedPdfUrl: string | null;
+        }
+      >;
+      getSigningContext: FunctionReference<
+        "query",
+        "internal",
+        { issueId: string; tokenHash: string },
+        null | {
+          issueId: string;
+          recipientEmail: string;
+          recipientName?: string;
+          status: "incomplete" | "complete";
+          template: {
+            consentText: string;
+            pdfUrl: string;
+            pdfVersion: number;
+            postId: string;
+            title: string;
+          };
+        }
+      >;
+      listDisclaimerTemplates: FunctionReference<
+        "query",
+        "internal",
+        { organizationId?: string },
+        Array<{
+          createdAt: number;
+          id: string;
+          meta: Record<string, string | number | boolean | null>;
+          pdfUrl: string | null;
+          slug: string;
+          status: "published" | "draft" | "archived";
+          title: string;
+          updatedAt?: number;
+        }>
+      >;
+      listIssues: FunctionReference<
+        "query",
+        "internal",
+        {
+          limit?: number;
+          organizationId?: string;
+          status?: "incomplete" | "complete";
+        },
+        Array<{
+          completedAt?: number;
+          createdAt: number;
+          id: string;
+          lastSentAt?: number;
+          organizationId?: string;
+          recipientEmail: string;
+          recipientName?: string;
+          recipientUserId?: string;
+          sendCount: number;
+          status: "incomplete" | "complete";
+          templatePostId: string;
+          templateVersion: number;
+          updatedAt: number;
+        }>
+      >;
     };
   };
 };

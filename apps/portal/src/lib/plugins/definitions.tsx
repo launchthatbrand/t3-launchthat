@@ -11,6 +11,7 @@ import { adminMenuRegistry } from "~/lib/adminMenu";
 import { calendarPlugin } from "launchthat-plugin-calendar";
 import { cmsPlugin } from "launchthat-plugin-cms";
 import { createCommercePluginDefinition } from "launchthat-plugin-commerce";
+import { disclaimersPlugin } from "launchthat-plugin-disclaimers";
 import { createSupportPluginDefinition } from "launchthat-plugin-support";
 import { lmsPlugin } from "launchthat-plugin-lms";
 import { tasksPlugin } from "launchthat-plugin-tasks";
@@ -35,6 +36,7 @@ export const pluginDefinitions: PluginDefinition[] = [
   tasksPlugin,
   supportPlugin,
   vimeoPlugin,
+  disclaimersPlugin,
 ];
 
 const SUPPORT_PAGE_ICON_MAP: Record<string, string> = {
@@ -53,6 +55,7 @@ const PLUGIN_ROOT_ICON_MAP: Record<string, string> = {
   socialfeed: "Share2",
   tasks: "ListChecks",
   vimeo: "Video",
+  disclaimers: "FileSignature",
 };
 
 const registerPluginMenuSource = () => {

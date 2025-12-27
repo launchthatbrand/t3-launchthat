@@ -16,7 +16,8 @@ export const findPostTypeByArchiveSlug = (
   slug: string,
 ): PluginPostTypeMatch | null => {
   for (const plugin of pluginDefinitions) {
-    for (const postType of plugin.postTypes) {
+    const postTypes = Array.isArray(plugin.postTypes) ? plugin.postTypes : [];
+    for (const postType of postTypes) {
       if (
         postType.rewrite?.archiveSlug &&
         slugEquals(postType.rewrite.archiveSlug, slug)
@@ -32,7 +33,8 @@ export const findPostTypeBySingleSlug = (
   slug: string,
 ): PluginPostTypeMatch | null => {
   for (const plugin of pluginDefinitions) {
-    for (const postType of plugin.postTypes) {
+    const postTypes = Array.isArray(plugin.postTypes) ? plugin.postTypes : [];
+    for (const postType of postTypes) {
       if (
         postType.rewrite?.singleSlug &&
         slugEquals(postType.rewrite.singleSlug, slug)
@@ -51,7 +53,8 @@ export const findPostTypeBySlug = (
     return null;
   }
   for (const plugin of pluginDefinitions) {
-    for (const postType of plugin.postTypes) {
+    const postTypes = Array.isArray(plugin.postTypes) ? plugin.postTypes : [];
+    for (const postType of postTypes) {
       if (postType.slug === postTypeSlug) {
         return { plugin, postType };
       }
