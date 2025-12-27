@@ -9,13 +9,12 @@ import { Fragment } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { api } from "@/convex/_generated/api";
-import { resolveFrontendArchive } from "@/lib/frontendRouting/resolveFrontendArchive";
 import { adaptFetchQuery } from "@/lib/frontendRouting/fetchQueryAdapter";
-import { resolveFrontendTaxonomyArchive } from "@/lib/frontendRouting/resolveFrontendTaxonomyArchive";
+import { resolveFrontendArchive } from "@/lib/frontendRouting/resolveFrontendArchive";
 import { resolveFrontendPostForRequest } from "@/lib/frontendRouting/resolveFrontendPostForRequest";
+import { resolveFrontendTaxonomyArchive } from "@/lib/frontendRouting/resolveFrontendTaxonomyArchive";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
-import { LmsCourseProvider } from "launchthat-plugin-lms";
 
 import type { PluginFrontendSingleSlotRegistration } from "~/lib/plugins/helpers";
 import { EditorViewer } from "~/components/blocks/editor-x/viewer";
@@ -33,7 +32,10 @@ import {
   PAGE_TEMPLATE_ACCESS_OPTION_KEY,
 } from "~/lib/pageTemplates/registry";
 import { findPostTypeBySlug } from "~/lib/plugins/frontend";
-import { wrapWithFrontendProviders } from "~/lib/plugins/frontendProviders";
+import {
+  getFrontendProvidersForPostType,
+  wrapWithFrontendProviders,
+} from "~/lib/plugins/frontendProviders";
 import {
   getFrontendSingleSlotsForSlug,
   getPluginFrontendFiltersForSlug,
@@ -70,14 +72,6 @@ interface PageProps {
   params: Promise<{ segments?: string[] }>;
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
-
-const LMS_POST_TYPE_SLUGS = new Set([
-  "courses",
-  "lessons",
-  "topics",
-  "quizzes",
-  "certificates",
-]);
 
 export default async function FrontendCatchAllPage(props: PageProps) {
   const resolvedParams = await props.params;
@@ -295,24 +289,25 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       }
     }
   }
-  const shouldWrapWithLmsProvider =
-    typeof post.postTypeSlug === "string" &&
-    LMS_POST_TYPE_SLUGS.has(post.postTypeSlug);
+  const providerCtx = {
+    routeKind: "frontend" as const,
+    pluginId: pluginMatch?.plugin.id,
+    organizationId: organizationId ?? null,
+    postTypeSlug: post.postTypeSlug ?? null,
+    post,
+    postMeta: postMetaObject,
+  };
 
-  const wrapWithLmsProviderIfNeeded = (node: ReactNode) => {
-    if (!node || !shouldWrapWithLmsProvider) {
+  const wrapWithFrontendProviderSpecsIfNeeded = (
+    node: ReactNode,
+    providerIds?: string[],
+  ) => {
+    if (!providerIds || providerIds.length === 0) {
       return node;
     }
     return (
       <PortalConvexProvider>
-        <LmsCourseProvider
-          post={post}
-          postTypeSlug={post.postTypeSlug}
-          postMeta={postMetaObject}
-          organizationId={organizationId}
-        >
-          {node}
-        </LmsCourseProvider>
+        {wrapWithFrontendProviders(node, providerIds, providerCtx)}
       </PortalConvexProvider>
     );
   };
@@ -339,25 +334,24 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       pageTemplate.slug !== DEFAULT_PAGE_TEMPLATE_SLUG &&
       pageTemplate.render
     ) {
-      return wrapWithLmsProviderIfNeeded(
-        pageTemplate.render({
-          post,
-          postType,
-          meta: postMetaObject,
-          organizationId,
-        }),
-      );
+      const rendered = pageTemplate.render({
+        post,
+        postType,
+        meta: postMetaObject,
+        organizationId,
+      });
+      const providerIds = getFrontendProvidersForPostType(post.postTypeSlug);
+      return wrapWithFrontendProviderSpecsIfNeeded(rendered, providerIds);
     }
   }
 
   const pluginSingle = pluginMatch?.postType.frontend?.single;
   if (pluginMatch && pluginSingle?.render) {
-    let rendered = pluginSingle.render({
+    const rendered = pluginSingle.render({
       post,
       postType: pluginMatch.postType,
     });
-    rendered = wrapWithLmsProviderIfNeeded(rendered);
-    return wrapWithFrontendProviders(
+    return wrapWithFrontendProviderSpecsIfNeeded(
       rendered,
       pluginMatch.postType.frontend?.providers,
     );
@@ -402,7 +396,8 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     normalizeBaseSegment(permalinkSettings.categoryBase) ?? "categories";
   const tagBase = normalizeBaseSegment(permalinkSettings.tagBase) ?? "tags";
 
-  return wrapWithLmsProviderIfNeeded(
+  const providerIds = getFrontendProvidersForPostType(post.postTypeSlug);
+  return wrapWithFrontendProviderSpecsIfNeeded(
     <PostDetail
       post={post}
       postType={postType}
@@ -415,6 +410,7 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       categoryBase={categoryBase}
       tagBase={tagBase}
     />,
+    providerIds,
   );
 }
 
@@ -432,10 +428,6 @@ function deriveSlugFromSegments(segments: string[]): string | null {
     }
   }
   return null;
-}
-
-function isConvexId(value: string): boolean {
-  return /^[a-z0-9]{32}$/.test(value);
 }
 
 type PostTypeDoc = Doc<"postTypes">;
@@ -576,7 +568,13 @@ function buildFrontendSlotNodes({
     if (!element) {
       return;
     }
-    const wrapped = wrapWithPluginProviders(element, registration.pluginId);
+    const wrapped = wrapWithPluginProviders(element, registration.pluginId, {
+      routeKind: "frontend",
+      organizationId: organizationId ?? null,
+      postTypeSlug: post.postTypeSlug ?? "",
+      post,
+      postMeta,
+    });
     const keyedWrapped = (
       <Fragment key={`${registration.pluginId}-${registration.slot.id}`}>
         {wrapped}
@@ -1096,16 +1094,19 @@ function coerceFieldDefault(
 async function resolveArchiveContext(
   segments: string[],
   organizationId?: Doc<"organizations">["_id"],
-) {
+): Promise<{ postType: PostTypeDoc } | null> {
   if (segments.length === 0) {
     return null;
   }
   const path = segments.join("/");
 
-  const match = await fetchQuery(api.core.postTypes.queries.getByArchiveSlugKey, {
-    archiveSlugKey: path,
-    ...(organizationId ? { organizationId } : {}),
-  });
+  const match: PostTypeDoc | null = await fetchQuery(
+    api.core.postTypes.queries.getByArchiveSlugKey,
+    {
+      archiveSlugKey: path,
+      ...(organizationId ? { organizationId } : {}),
+    },
+  );
 
   if (!match) return null;
   if (!match.rewrite?.hasArchive) return null;

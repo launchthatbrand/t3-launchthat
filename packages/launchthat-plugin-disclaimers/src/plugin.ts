@@ -1,16 +1,26 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
+import { createElement } from "react";
 
 import { DisclaimersTemplatePdfMetaBox } from "./admin/metaBoxes/DisclaimersTemplatePdfMetaBox";
 import { DisclaimersOverviewPage } from "./admin/OverviewPage";
 import { DisclaimersSettingsPage } from "./admin/SettingsPage";
+
+export const PLUGIN_ID = "disclaimers" as const;
+export type PluginId = typeof PLUGIN_ID;
+
+export type CreateDisclaimersPluginDefinitionOptions = Record<string, never>;
+
+const defaultOptions: CreateDisclaimersPluginDefinitionOptions = {};
 
 const DISCLAIMERS_COMPONENT_TABLES = [
   "launchthat_disclaimers:posts",
   "launchthat_disclaimers:postsMeta",
 ];
 
-export const disclaimersPlugin: PluginDefinition = {
-  id: "disclaimers",
+export const createDisclaimersPluginDefinition = (
+  _options: CreateDisclaimersPluginDefinitionOptions = defaultOptions,
+): PluginDefinition => ({
+  id: PLUGIN_ID,
   name: "Disclaimers",
   description: "Collect signed disclaimers from users.",
   longDescription:
@@ -85,7 +95,7 @@ export const disclaimersPlugin: PluginDefinition = {
     },
   ],
   activation: {
-    optionKey: "plugin_disclaimers_enabled",
+    optionKey: `plugin_${PLUGIN_ID}_enabled`,
     optionType: "site",
     defaultEnabled: false,
   },
@@ -95,14 +105,17 @@ export const disclaimersPlugin: PluginDefinition = {
       slug: "overview",
       label: "Overview",
       description: "Shortcuts to Disclaimers and Templates.",
-      render: (props) => <DisclaimersOverviewPage {...props} />,
+      render: (props) => createElement(DisclaimersOverviewPage, props),
     },
     {
       id: "disclaimers-settings",
       slug: "settings",
       label: "Settings",
       description: "Configure defaults and behavior for disclaimers.",
-      render: (props) => <DisclaimersSettingsPage {...props} />,
+      render: (props) => createElement(DisclaimersSettingsPage, props),
     },
   ],
-};
+});
+
+export const disclaimersPlugin: PluginDefinition =
+  createDisclaimersPluginDefinition();

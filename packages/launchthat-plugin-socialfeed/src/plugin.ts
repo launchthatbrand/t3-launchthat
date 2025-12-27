@@ -3,22 +3,23 @@ import type {
   PluginFrontendSingleRendererProps,
 } from "launchthat-plugin-core";
 import type { ComponentType, ReactNode } from "react";
+import { createElement } from "react";
 
 import { SocialHubDashboard } from "./components/SocialHubDashboard";
 import { SocialFeedGroupSingle } from "./frontend/SocialFeedGroupSingle";
 
+export const PLUGIN_ID = "socialfeed" as const;
+
 export const SOCIAL_FEED_FRONTEND_PROVIDER_ID = "socialfeed-client";
 
-interface SocialFeedPluginOverrides {
-  providers?: Record<string, ComponentType<{ children: ReactNode }>>;
-}
+type ProviderProps = { children: ReactNode };
 
-const defaultOverrides: SocialFeedPluginOverrides = {};
+// Keep a stable object reference so the plugin definition doesn't need to be replaced
+// when portal configures provider implementations.
+const socialFeedProviders: Record<string, ComponentType<ProviderProps>> = {};
 
-const createSocialFeedPluginDefinition = (
-  overrides: SocialFeedPluginOverrides = defaultOverrides,
-): PluginDefinition => ({
-  id: "socialfeed",
+export const createSocialFeedPluginDefinition = (): PluginDefinition => ({
+  id: PLUGIN_ID,
   name: "Social Feed",
   description: "Activity feeds, reactions, and group conversations.",
   longDescription:
@@ -63,7 +64,7 @@ const createSocialFeedPluginDefinition = (
             label: "Dashboard",
             description:
               "Monitor feed performance, publish announcements, and view recent engagement.",
-            render: () => <SocialHubDashboard />,
+            render: () => createElement(SocialHubDashboard),
           },
           {
             id: "edit",
@@ -83,7 +84,7 @@ const createSocialFeedPluginDefinition = (
             label: "Dashboard",
             description:
               "Monitor feed performance, publish announcements, and view recent engagement.",
-            render: () => <SocialHubDashboard />,
+            render: () => createElement(SocialHubDashboard),
           },
           {
             id: "list",
@@ -132,24 +133,22 @@ const createSocialFeedPluginDefinition = (
         single: {
           render: ({ post }: PluginFrontendSingleRendererProps) => {
             const typedPost = post as any;
-            return (
-              <SocialFeedGroupSingle
-                post={{
-                  _id: typedPost._id,
-                  title: typedPost.title,
-                  excerpt: typedPost.excerpt,
-                  content: typedPost.content,
-                  slug: typedPost.slug,
-                  organizationId: typedPost.organizationId,
-                }}
-              />
-            );
+            return createElement(SocialFeedGroupSingle, {
+              post: {
+                _id: typedPost._id,
+                title: typedPost.title,
+                excerpt: typedPost.excerpt,
+                content: typedPost.content,
+                slug: typedPost.slug,
+                organizationId: typedPost.organizationId,
+              },
+            });
           },
         },
       },
     },
   ],
-  providers: overrides.providers,
+  providers: socialFeedProviders,
   adminMenus: [
     {
       label: "Social Hub",
@@ -175,12 +174,16 @@ const createSocialFeedPluginDefinition = (
   ],
 });
 
-export let socialFeedPlugin = createSocialFeedPluginDefinition();
+export const socialFeedPlugin: PluginDefinition =
+  createSocialFeedPluginDefinition();
 
-export const configureSocialFeedPlugin = (
-  overrides: SocialFeedPluginOverrides,
-) => {
-  socialFeedPlugin = createSocialFeedPluginDefinition(overrides);
+export const configureSocialFeedPlugin = (overrides: {
+  providers?: Record<string, ComponentType<ProviderProps>>;
+}) => {
+  for (const key of Object.keys(socialFeedProviders)) {
+    delete socialFeedProviders[key];
+  }
+  if (overrides.providers) {
+    Object.assign(socialFeedProviders, overrides.providers);
+  }
 };
-
-export default socialFeedPlugin;

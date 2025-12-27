@@ -1,7 +1,15 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
+import { ADMIN_ATTACHMENTS_ARCHIVE_TABS_FILTER } from "launchthat-plugin-core/hookSlots";
+import { createElement } from "react";
 
-import { configureVimeoPlugin } from "./config";
 import { VimeoAttachmentsTab } from "./admin/VimeoAttachmentsTab";
+
+export const PLUGIN_ID = "vimeo" as const;
+export type PluginId = typeof PLUGIN_ID;
+
+export type CreateVimeoPluginDefinitionOptions = Record<string, never>;
+
+const defaultOptions: CreateVimeoPluginDefinitionOptions = {};
 
 const buildVimeoFieldDefinitions = () => [
   {
@@ -27,10 +35,10 @@ const buildVimeoFieldDefinitions = () => [
   },
 ];
 
-export { configureVimeoPlugin };
-
-export const vimeoPlugin: PluginDefinition = {
-  id: "vimeo",
+export const createVimeoPluginDefinition = (
+  _options: CreateVimeoPluginDefinitionOptions = defaultOptions,
+): PluginDefinition => ({
+  id: PLUGIN_ID,
   name: "Vimeo",
   description: "Surface videos from your Vimeo workspace inside the media hub.",
   longDescription:
@@ -58,7 +66,7 @@ export const vimeoPlugin: PluginDefinition = {
     },
   ],
   activation: {
-    optionKey: "plugin_vimeo_enabled",
+    optionKey: `plugin_${PLUGIN_ID}_enabled`,
     optionType: "site",
     defaultEnabled: false,
   },
@@ -68,10 +76,11 @@ export const vimeoPlugin: PluginDefinition = {
   hooks: {
     filters: [
       {
-        hook: "admin.attachments.archive.tabs.filter",
+        hook: ADMIN_ATTACHMENTS_ARCHIVE_TABS_FILTER,
         callback: (...args: unknown[]) => {
           const tabs = (args[0] as any[]) ?? [];
-          const context = (args[1] as { postTypeSlug?: string } | undefined) ?? undefined;
+          const context =
+            (args[1] as { postTypeSlug?: string } | undefined) ?? undefined;
 
           if (context?.postTypeSlug !== "attachments") {
             return tabs;
@@ -83,9 +92,10 @@ export const vimeoPlugin: PluginDefinition = {
             label: "Vimeo",
             order: 10,
             condition: (ctx: unknown) => Boolean((ctx as any)?.organizationId),
-            component: (props: any) => (
-              <VimeoAttachmentsTab organizationId={props.organizationId} />
-            ),
+            component: (props: any) =>
+              createElement(VimeoAttachmentsTab, {
+                organizationId: props.organizationId,
+              }),
           });
           return next;
         },
@@ -94,6 +104,8 @@ export const vimeoPlugin: PluginDefinition = {
       },
     ],
   },
-};
+});
 
-export default vimeoPlugin;
+export const vimeoPlugin: PluginDefinition = createVimeoPluginDefinition();
+
+

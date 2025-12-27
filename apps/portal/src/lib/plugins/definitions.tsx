@@ -10,22 +10,18 @@ import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
 import { adminMenuRegistry } from "~/lib/adminMenu";
 import { calendarPlugin } from "launchthat-plugin-calendar";
 import { cmsPlugin } from "launchthat-plugin-cms";
-import { createCommercePluginDefinition } from "launchthat-plugin-commerce";
+import { commercePlugin } from "launchthat-plugin-commerce";
 import { disclaimersPlugin } from "launchthat-plugin-disclaimers";
-import { createSupportPluginDefinition } from "launchthat-plugin-support";
+import { supportPlugin } from "launchthat-plugin-support";
 import { lmsPlugin } from "launchthat-plugin-lms";
 import { tasksPlugin } from "launchthat-plugin-tasks";
 import { vimeoPlugin } from "launchthat-plugin-vimeo";
-
-const commercePlugin = createCommercePluginDefinition();
 
 configureSocialFeedPlugin({
   providers: {
     [SOCIAL_FEED_FRONTEND_PROVIDER_ID]: PortalSocialFeedProvider,
   },
 });
-
-const supportPlugin = createSupportPluginDefinition();
 
 export const pluginDefinitions: PluginDefinition[] = [
   cmsPlugin,

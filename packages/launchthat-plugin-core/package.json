@@ -8,6 +8,10 @@
       "types": "./dist/index.d.ts",
       "default": "./src/index.ts"
     },
+    "./hookSlots": {
+      "types": "./dist/hookSlots.d.ts",
+      "default": "./src/hookSlots.ts"
+    },
     "./frontendFilters": {
       "types": "./src/frontendFilters.ts",
       "default": "./src/frontendFilters.ts"

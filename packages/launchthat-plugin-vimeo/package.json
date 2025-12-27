@@ -6,7 +6,7 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./src/index.tsx"
+      "default": "./src/index.ts"
     }
   },
   "license": "MIT",

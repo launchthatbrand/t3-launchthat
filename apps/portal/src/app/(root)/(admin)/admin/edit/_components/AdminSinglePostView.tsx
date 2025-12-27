@@ -24,10 +24,7 @@ import {
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
-import {
-  generateSlugFromTitle,
-  useCreatePost,
-} from "@/lib/blog";
+import { generateSlugFromTitle, useCreatePost } from "@/lib/blog";
 import { saveAdminEntry } from "@/lib/postTypes/adminSave";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
@@ -1637,7 +1634,12 @@ export function AdminSinglePostView({
               key={`${registration.pluginId}-${registration.slot.id}`}
               className="w-full"
             >
-              {wrapWithPluginProviders(element, registration.pluginId)}
+              {wrapWithPluginProviders(element, registration.pluginId, {
+                routeKind: "admin",
+                organizationId,
+                postTypeSlug: slug,
+                post,
+              })}
             </div>
           );
         })

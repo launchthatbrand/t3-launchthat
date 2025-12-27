@@ -95,7 +95,7 @@ const LMS_POST_TYPE_SLUG_SET = new Set([
 
 const FRONTEND_TAXONOMY_TERM_LINK_FILTER = "frontend.single.taxonomy.termLink";
 
-export const createLmsPluginDefinition = ({
+export const createLmsPluginDefinitionImpl = ({
   CourseBuilderTab,
   CourseMembersTab,
   CourseLinkedProductTab,
@@ -160,6 +160,7 @@ export const createLmsPluginDefinition = ({
         pages: true,
       },
       frontend: {
+        providers: ["lms-course"],
         archive: {
           render: ({ posts }) => (
             <CoursesArchive courses={(posts ?? []) as CourseSummary[]} />
@@ -286,6 +287,7 @@ export const createLmsPluginDefinition = ({
         pages: true,
       },
       frontend: {
+        providers: ["lms-course"],
         single: {
           render: ({ post }: PluginFrontendSingleRendererProps) => {
             const typedPost = post as {
@@ -411,6 +413,7 @@ export const createLmsPluginDefinition = ({
         },
       },
       frontend: {
+        providers: ["lms-course"],
         singleSlots: [
           buildFrontendProgressSlot("lessons"),
           buildFrontendCompletionSlot("lessons"),
@@ -473,6 +476,7 @@ export const createLmsPluginDefinition = ({
         },
       },
       frontend: {
+        providers: ["lms-course"],
         singleSlots: [
           buildFrontendProgressSlot("topics"),
           buildFrontendCompletionSlot("topics"),
@@ -535,6 +539,7 @@ export const createLmsPluginDefinition = ({
         },
       },
       frontend: {
+        providers: ["lms-course"],
         singleSlots: [buildFrontendCompletionSlot("quizzes")],
         filters: [
           {
@@ -699,35 +704,5 @@ export const getDefaultLmsComponents = () => ({
   CertificateBuilderTab,
 });
 
-export let lmsPlugin: PluginDefinition = createLmsPluginDefinition(
-  getDefaultLmsComponents(),
-);
-
-type ConfigureLmsPluginArgs = {
-  CourseBuilderTab: ComponentType<PluginSingleViewComponentProps>;
-  CourseMembersTab?: ComponentType<PluginSingleViewComponentProps>;
-  CourseLinkedProductTab?: ComponentType<PluginSingleViewComponentProps>;
-  CourseSettingsTab?: ComponentType<PluginSingleViewComponentProps>;
-  QuizBuilderTab?: ComponentType<PluginSingleViewComponentProps>;
-  CertificateBuilderTab?: ComponentType<PluginSingleViewComponentProps>;
-};
-
-export const configureLmsPlugin = ({
-  CourseBuilderTab,
-  CourseMembersTab: membersOverride,
-  CourseLinkedProductTab: linkedProductOverride,
-  CourseSettingsTab: settingsOverride,
-  QuizBuilderTab: quizBuilderOverride,
-  CertificateBuilderTab: certificateBuilderOverride,
-}: ConfigureLmsPluginArgs) => {
-  lmsPlugin = createLmsPluginDefinition({
-    CourseBuilderTab,
-    CourseMembersTab: membersOverride ?? CourseMembersTab,
-    CourseLinkedProductTab: linkedProductOverride ?? CourseLinkedProductTab,
-    CourseSettingsTab: settingsOverride ?? CourseSettingsTab,
-    QuizBuilderTab: quizBuilderOverride ?? QuizBuilderTab,
-    CertificateBuilderTab: certificateBuilderOverride ?? CertificateBuilderTab,
-  });
-};
-
-export default createLmsPluginDefinition;
+// (Note) `lmsPlugin` and `configureLmsPlugin` live in `src/plugin.ts` / `src/index.ts`
+// in the migrated standard.

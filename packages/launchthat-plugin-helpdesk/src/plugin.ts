@@ -6,6 +6,8 @@
 import { createRequire } from "module";
 import type { PluginDefinition } from "launchthat-plugin-core";
 
+export const PLUGIN_ID = "helpdesk" as const;
+
 type SupportModuleShape = {
   supportPlugin?: PluginDefinition;
   default?: PluginDefinition;
@@ -26,6 +28,8 @@ if (!resolvedPlugin) {
   );
 }
 
-export const helpdeskPlugin: PluginDefinition = resolvedPlugin;
+export const createHelpdeskPluginDefinition = (): PluginDefinition =>
+  resolvedPlugin;
 
-export default helpdeskPlugin;
+export const helpdeskPlugin: PluginDefinition =
+  createHelpdeskPluginDefinition();

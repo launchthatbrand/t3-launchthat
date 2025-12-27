@@ -1,30 +1,12 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
+import { createElement } from "react";
 
 import { CalendarMonthViewTab } from "./tabs/CalendarMonthViewTab";
 
-export { CalendarSidebar } from "./components/CalendarSidebar";
-export type { CalendarSidebarCalendar } from "./components/CalendarSidebar";
+export const PLUGIN_ID = "calendar" as const;
 
-export { LoadingSpinner } from "./components/LoadingSpinner";
-export { ColorPicker } from "./components/ColorPicker";
-export { AttendeesList } from "./components/event/AttendeesList";
-export { default as BigCalendar } from "./components/event/BigCalendar";
-export { CreateEventDialog } from "./components/event/CreateEventDialog";
-export { EditEventDialog } from "./components/event/EditEventDialog";
-export { RecurrenceSelector } from "./components/event/RecurrenceSelector";
-export { ReminderSettings } from "./components/event/ReminderSettings";
-export { RSVPButtons } from "./components/event/RSVPButtons";
-export { eventFormSchema } from "./components/event/formSchema";
-export type {
-  EventFormValues,
-  RecurrenceFormValues,
-  DayString,
-} from "./components/event/formSchema";
-
-export { CalendarMonthViewTab } from "./tabs/CalendarMonthViewTab";
-
-export const calendarPlugin: PluginDefinition = {
-  id: "calendar",
+export const createCalendarPluginDefinition = (): PluginDefinition => ({
+  id: PLUGIN_ID,
   name: "Campaign Calendar",
   description: "Shared calendars and event planning tools.",
   longDescription:
@@ -75,7 +57,7 @@ export const calendarPlugin: PluginDefinition = {
             slug: "month-view",
             label: "Month View",
             description: "Browse this calendar using a drag-and-drop grid.",
-            render: (props) => <CalendarMonthViewTab {...props} />,
+            render: (props) => createElement(CalendarMonthViewTab, props),
           },
         ],
       },
@@ -110,6 +92,8 @@ export const calendarPlugin: PluginDefinition = {
       },
     },
   ],
-};
+});
 
-export default calendarPlugin;
+export const calendarPlugin: PluginDefinition = createCalendarPluginDefinition();
+
+

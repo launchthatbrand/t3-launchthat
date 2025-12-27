@@ -386,10 +386,32 @@ export interface PluginDefinition {
   notificationEvents?: PluginNotificationEventDefinition[];
   activation?: PluginActivationConfig;
   adminMenus?: PluginAdminMenuEntry[];
-  providers?: Record<string, ComponentType<{ children: ReactNode }>>;
+  providers?: Record<string, PluginProviderEntry>;
   hooks?: PluginHookConfig;
   admin?: PluginAdminConfig;
 }
+
+export type ProviderRouteKind = "admin" | "frontend";
+
+export interface ProviderContext {
+  routeKind: ProviderRouteKind;
+  pluginId?: string;
+  organizationId?: Id<"organizations"> | string | null;
+  postTypeSlug?: string | null;
+  post?: unknown;
+  postMeta?: Record<string, unknown>;
+}
+
+export type ProviderComponent = ComponentType<{ children: ReactNode }>;
+
+export type ProviderSpecProps = Record<string, unknown>;
+
+export type ProviderSpec<P extends ProviderSpecProps = ProviderSpecProps> = {
+  Provider: ComponentType<P & { children: ReactNode }>;
+  getProps?: (ctx: ProviderContext) => P;
+};
+
+export type PluginProviderEntry = ProviderComponent | ProviderSpec;
 
 export interface PluginContext {
   postType?: string;
@@ -449,3 +471,5 @@ export interface PluginRegistryConfig {
   enabledPlugins?: string[];
   pluginConfigs?: Record<string, unknown>;
 }
+
+export * from "./hookSlots";

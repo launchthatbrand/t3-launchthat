@@ -1,0 +1,31 @@
+import type { PluginDefinition } from "launchthat-plugin-core";
+
+export const PLUGIN_ID = "{{ id }}" as const;
+export type PluginId = typeof PLUGIN_ID;
+
+export type CreatePluginDefinitionOptions = {
+  // Extend this options type as your plugin grows.
+};
+
+const defaultOptions: CreatePluginDefinitionOptions = {};
+
+export const create{{ properCase displayName }}PluginDefinition = (
+  _options: CreatePluginDefinitionOptions = defaultOptions,
+): PluginDefinition => ({
+  id: PLUGIN_ID,
+  name: "{{ displayName }}",
+  description: "{{ description }}",
+  longDescription: "{{ description }}",
+  features: [],
+  postTypes: [],
+  activation: {
+    optionKey: `plugin_${PLUGIN_ID}_enabled`,
+    optionType: "site",
+    defaultEnabled: false,
+  },
+});
+
+export const {{ camelCase id }}Plugin: PluginDefinition =
+  create{{ properCase displayName }}PluginDefinition();
+
+

@@ -1,7 +1,9 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
 
-export const tasksPlugin: PluginDefinition = {
-  id: "tasks",
+export const PLUGIN_ID = "tasks" as const;
+
+export const createTasksPluginDefinition = (): PluginDefinition => ({
+  id: PLUGIN_ID,
   name: "Tasks",
   description: "Kanban boards, calendars, and table views for internal tasks.",
   longDescription:
@@ -40,11 +42,8 @@ export const tasksPlugin: PluginDefinition = {
       position: 62,
     },
   ],
-};
+});
 
-export default tasksPlugin;
+export const tasksPlugin: PluginDefinition = createTasksPluginDefinition();
 
-export * from "./components";
-export * from "./screens";
-export * from "./api/tasks";
-export * from "./context/TasksClientProvider";
+

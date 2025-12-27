@@ -1,6 +1,4 @@
 import type { ReactElement, ReactNode } from "react";
-import { PortalSocialFeedProvider } from "@/src/providers/SocialFeedProvider";
-
 import type {
   PluginFrontendFilterDefinition,
   PluginFrontendSingleSlotDefinition,
@@ -9,9 +7,11 @@ import type {
   PluginPostTypeFieldDefinition,
   PluginSingleViewSlotDefinition,
 } from "./types";
+import type { ProviderContext } from "launchthat-plugin-core";
 import { applyFilters } from "@acme/admin-runtime/hooks";
 import { PortalConvexProvider } from "~/providers/ConvexClientProvider";
 import { pluginDefinitions } from "./definitions";
+import { wrapWithFrontendProviders } from "./frontendProviders";
 import { FRONTEND_SINGLE_SLOTS_FILTER } from "./hookSlots";
 
 import "~/lib/plugins/installHooks";
@@ -191,6 +191,9 @@ export function getPluginFieldDefinitionsForSlug(
 export function wrapWithPluginProviders(
   node: ReactNode,
   pluginId?: string | null,
+  ctx?: Omit<ProviderContext, "routeKind" | "pluginId"> & {
+    routeKind: ProviderContext["routeKind"];
+  },
 ): ReactNode {
   if (!pluginId || !node) {
     return node;
@@ -200,9 +203,18 @@ export function wrapWithPluginProviders(
 
   wrapped = <PortalConvexProvider>{wrapped}</PortalConvexProvider>;
 
-  if (pluginId === "socialfeed") {
-    wrapped = <PortalSocialFeedProvider>{wrapped}</PortalSocialFeedProvider>;
-  }
+  const plugin = pluginDefinitions.find((p) => p.id === pluginId);
+  const providerIds = plugin?.providers
+    ? Object.keys(plugin.providers).sort()
+    : undefined;
+  wrapped = wrapWithFrontendProviders(wrapped, providerIds, {
+    routeKind: ctx?.routeKind ?? "frontend",
+    pluginId,
+    organizationId: ctx?.organizationId ?? null,
+    postTypeSlug: ctx?.postTypeSlug ?? null,
+    post: ctx?.post,
+    postMeta: ctx?.postMeta,
+  });
 
   return wrapped;
 }

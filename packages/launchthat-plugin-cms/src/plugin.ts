@@ -1,4 +1,9 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
+import { createElement } from "react";
+
+import { CmsSettingsPage } from "./CmsSettingsPage";
+
+export const PLUGIN_ID = "cms" as const;
 
 export interface CmsPluginOptions {
   adminMenus?: PluginDefinition["adminMenus"];
@@ -6,28 +11,10 @@ export interface CmsPluginOptions {
 
 const defaultOptions: CmsPluginOptions = {};
 
-const CmsSettingsPage = () => {
-  return (
-    <div className="space-y-4">
-      <div>
-        <div className="text-lg font-semibold">CMS Settings</div>
-        <div className="text-muted-foreground text-sm">
-          Configure the CRM/CMS plugin and jump to the Contacts admin.
-        </div>
-      </div>
-      <div>
-        <a className="text-primary underline" href="/admin/contacts">
-          Open Contacts
-        </a>
-      </div>
-    </div>
-  );
-};
-
-const createCmsPluginDefinition = (
+export const createCmsPluginDefinition = (
   options: CmsPluginOptions = defaultOptions,
 ): PluginDefinition => ({
-  id: "cms",
+  id: PLUGIN_ID,
   name: "Contacts & CRM",
   description: "Lightweight contact management sourced from Convex contacts.",
   longDescription:
@@ -75,7 +62,7 @@ const createCmsPluginDefinition = (
       slug: "settings",
       label: "Settings",
       description: "Configure the Contacts & CRM plugin.",
-      render: () => <CmsSettingsPage />,
+      render: () => createElement(CmsSettingsPage),
     },
   ],
   adminMenus: options.adminMenus ?? [
@@ -89,10 +76,6 @@ const createCmsPluginDefinition = (
   ],
 });
 
-export let cmsPlugin = createCmsPluginDefinition();
+export const cmsPlugin: PluginDefinition = createCmsPluginDefinition();
 
-export const configureCmsPlugin = (options: CmsPluginOptions) => {
-  cmsPlugin = createCmsPluginDefinition(options);
-};
 
-export default cmsPlugin;

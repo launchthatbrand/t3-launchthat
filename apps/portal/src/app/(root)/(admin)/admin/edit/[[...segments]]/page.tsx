@@ -3,17 +3,15 @@
 
 import "@/lib/plugins/vimeo/configureClient";
 
-import {
-  ADMIN_PLUGIN_SETTINGS_HEADER_AFTER,
-  ADMIN_PLUGIN_SETTINGS_HEADER_BEFORE,
-} from "~/lib/plugins/hookSlots";
-import {
-  AdminLayout,
-  AdminLayoutContent,
-  AdminLayoutHeader,
-  AdminLayoutMain,
-  AdminLayoutSidebar,
-} from "~/components/admin/AdminLayout";
+import type { Doc } from "@/convex/_generated/dataModel";
+import type { ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { api } from "@/convex/_generated/api";
+import { useQuery } from "convex/react";
+
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -21,40 +19,43 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+
+import type { PluginMenuItem } from "../_components/GenericArchiveView";
+import type { PermalinkSettings } from "../_components/permalink";
 import {
-  DefaultArchiveSidebar,
-  GenericArchiveView,
-} from "../_components/GenericArchiveView";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import {
-  defaultPermalinkSettings,
-  isPermalinkSettingsValue,
-} from "../_components/permalink";
+  AdminLayout,
+  AdminLayoutContent,
+  AdminLayoutHeader,
+  AdminLayoutMain,
+  AdminLayoutSidebar,
+} from "~/components/admin/AdminLayout";
+import { useTenant } from "~/context/TenantContext";
+import { useAdminMenuSections } from "~/lib/adminMenu/useAdminMenuSections";
+import { useApplyFilters } from "~/lib/hooks/react";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
 import {
   getPluginArchiveViewForSlug,
   getPluginSingleViewForSlug,
   wrapWithPluginProviders,
 } from "~/lib/plugins/helpers";
-import { useRouter, useSearchParams } from "next/navigation";
-
-import { AdminSinglePostView } from "../_components/AdminSinglePostView";
+import {
+  ADMIN_PLUGIN_SETTINGS_HEADER_AFTER,
+  ADMIN_PLUGIN_SETTINGS_HEADER_BEFORE,
+} from "~/lib/plugins/hookSlots";
 import { encodeSyntheticId } from "~/lib/postTypes/adminAdapters";
-import { Button } from "@acme/ui/button";
-import type { Doc } from "@/convex/_generated/dataModel";
-import Link from "next/link";
-import type { PermalinkSettings } from "../_components/permalink";
-import { PlaceholderState } from "../_components/PlaceholderState";
-import type { PluginMenuItem } from "../_components/GenericArchiveView";
-import type { ReactNode } from "react";
-import { TaxonomyTermsView } from "../_components/TaxonomyTermsView";
-import { api } from "@/convex/_generated/api";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
-import { pluginDefinitions } from "~/lib/plugins/definitions";
-import { useAdminMenuSections } from "~/lib/adminMenu/useAdminMenuSections";
+import { AdminSinglePostView } from "../_components/AdminSinglePostView";
+import {
+  DefaultArchiveSidebar,
+  GenericArchiveView,
+} from "../_components/GenericArchiveView";
+import {
+  defaultPermalinkSettings,
+  isPermalinkSettingsValue,
+} from "../_components/permalink";
+import { PlaceholderState } from "../_components/PlaceholderState";
+import { TaxonomyTermsView } from "../_components/TaxonomyTermsView";
 import { useAdminPostContext } from "../../_providers/AdminPostProvider";
-import { useApplyFilters } from "~/lib/hooks/react";
-import { useQuery } from "convex/react";
-import { useTenant } from "~/context/TenantContext";
 
 const DEFAULT_POST_TYPE = "course";
 const PERMALINK_OPTION_KEY = "permalink_settings";
@@ -192,7 +193,10 @@ function AdminEditPageBody() {
 
   const downloadRecord = useQuery(
     api.core.downloads.queries.getDownloadById,
-    resolvedSlug === "downloads" && postIdParam && postIdParam !== "new" && organizationId
+    resolvedSlug === "downloads" &&
+      postIdParam &&
+      postIdParam !== "new" &&
+      organizationId
       ? ({
           organizationId,
           downloadId: postIdParam as unknown as Doc<"downloads">["_id"],
@@ -219,7 +223,10 @@ function AdminEditPageBody() {
       if (downloadRecord === null) return null;
       const download = downloadRecord.download;
       return {
-        _id: encodeSyntheticId({ postTypeSlug: "downloads", rawId: download._id }),
+        _id: encodeSyntheticId({
+          postTypeSlug: "downloads",
+          rawId: download._id,
+        }),
         _creationTime: download._creationTime,
         title: download.title,
         content: download.content ?? "",
@@ -237,7 +244,10 @@ function AdminEditPageBody() {
       if (mediaItemRecord === undefined) return undefined;
       if (mediaItemRecord === null) return null;
       return {
-        _id: encodeSyntheticId({ postTypeSlug: "attachments", rawId: mediaItemRecord._id }),
+        _id: encodeSyntheticId({
+          postTypeSlug: "attachments",
+          rawId: mediaItemRecord._id,
+        }),
         _creationTime: mediaItemRecord._creationTime,
         title: mediaItemRecord.title ?? "Untitled",
         content: undefined,
@@ -451,7 +461,12 @@ function AdminEditPageBody() {
       />
     );
     return pluginSingleView
-      ? wrapWithPluginProviders(singleView, pluginSingleView.pluginId)
+      ? wrapWithPluginProviders(singleView, pluginSingleView.pluginId, {
+          routeKind: "admin",
+          organizationId: organizationId ?? null,
+          postTypeSlug: resolvedSlug,
+          post: effectivePost,
+        })
       : singleView;
   }
 
@@ -501,7 +516,11 @@ function AdminEditPageBody() {
         showSidebar={showPluginSidebar}
       />
     );
-    return wrapWithPluginProviders(archiveLayout, pluginArchiveView.pluginId);
+    return wrapWithPluginProviders(archiveLayout, pluginArchiveView.pluginId, {
+      routeKind: "admin",
+      organizationId: organizationId ?? null,
+      postTypeSlug: archiveSlug,
+    });
   }
 
   return renderGenericArchive(true, undefined, {

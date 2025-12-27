@@ -213,7 +213,7 @@
     ],
     "metadata": {
       "created": "2025-07-11T13:44:11.799Z",
-      "updated": "2025-08-07T03:14:21.087Z",
+      "updated": "2025-12-27T22:27:18.881Z",
       "description": "Tasks for feature-admin-task-manager context"
     }
   },
@@ -1274,9 +1274,7 @@
         "details": "Create a 'calendar' folder. Move existing logic to appropriate files. Update schema imports. Use TypeScript interfaces for event types. Implement Convex's `v` function for schema validation. Consider using date-fns (v2.30.0 or later) for advanced date manipulation.",
         "testStrategy": "Write unit tests for all calendar and event functions. Test event creation, scheduling, and recurring event handling. Verify date calculations and timezone handling. Ensure TypeScript compilation with no 'any' type warnings.",
         "priority": "medium",
-        "dependencies": [
-          12
-        ],
+        "dependencies": [],
         "status": "done",
         "subtasks": [
           {
@@ -1363,7 +1361,6 @@
           9,
           10,
           11,
-          12,
           13,
           14
         ],

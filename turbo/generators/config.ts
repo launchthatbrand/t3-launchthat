@@ -92,4 +92,104 @@ export default function generator(plop: PlopTypes.NodePlopAPI): void {
       },
     ],
   });
+
+  plop.setGenerator("portal-plugin", {
+    description:
+      "Generate a new LaunchThat Portal plugin package (packages/launchthat-plugin-*)",
+    prompts: [
+      {
+        type: "input",
+        name: "id",
+        message:
+          'Plugin id (package suffix), e.g. "support" -> launchthat-plugin-support',
+      },
+      {
+        type: "input",
+        name: "displayName",
+        message: 'Human name, e.g. "Support"',
+      },
+      {
+        type: "input",
+        name: "description",
+        message: "Short description (one sentence)",
+      },
+    ],
+    actions: [
+      (answers) => {
+        const a = answers as Record<string, unknown>;
+        if (typeof a.id !== "string") {
+          throw new Error("Expected id");
+        }
+        const id = a.id.trim().toLowerCase();
+        a.id = id;
+        if (!id || !/^[a-z0-9-]+$/.test(id)) {
+          throw new Error("Plugin id must match /^[a-z0-9-]+$/");
+        }
+        if (typeof a.displayName !== "string" || !a.displayName.trim()) {
+          a.displayName = id;
+        }
+        if (typeof a.description !== "string") {
+          a.description = "";
+        }
+        return "Config sanitized";
+      },
+      {
+        type: "add",
+        path: "packages/launchthat-plugin-{{ id }}/eslint.config.js",
+        templateFile: "templates/portal-plugin/eslint.config.js.hbs",
+      },
+      {
+        type: "add",
+        path: "packages/launchthat-plugin-{{ id }}/package.json",
+        templateFile: "templates/portal-plugin/package.json.hbs",
+      },
+      {
+        type: "add",
+        path: "packages/launchthat-plugin-{{ id }}/tsconfig.json",
+        templateFile: "templates/portal-plugin/tsconfig.json.hbs",
+      },
+      {
+        type: "add",
+        path: "packages/launchthat-plugin-{{ id }}/src/plugin.ts",
+        templateFile: "templates/portal-plugin/src/plugin.ts.hbs",
+      },
+      {
+        type: "add",
+        path: "packages/launchthat-plugin-{{ id }}/src/index.ts",
+        templateFile: "templates/portal-plugin/src/index.ts.hbs",
+      },
+      {
+        type: "add",
+        path: "packages/launchthat-plugin-{{ id }}/src/admin/index.ts",
+        template: "export {};",
+      },
+      {
+        type: "add",
+        path: "packages/launchthat-plugin-{{ id }}/src/frontend/index.ts",
+        template: "export {};",
+      },
+      {
+        type: "add",
+        path: "packages/launchthat-plugin-{{ id }}/src/context/index.ts",
+        template: "export {};",
+      },
+      async (answers) => {
+        const a = answers as Record<string, unknown>;
+        if (typeof a.id !== "string") {
+          return "Plugin not scaffolded";
+        }
+        execSync(
+          "pnpm prettier --write turbo/generators/templates/portal-plugin/**",
+          {
+            stdio: "inherit",
+          },
+        );
+        execSync(
+          `pnpm prettier --write packages/launchthat-plugin-${a.id}/** --list-different`,
+          { stdio: "inherit" },
+        );
+        return "Portal plugin scaffolded";
+      },
+    ],
+  });
 }
