@@ -50,6 +50,9 @@ const hookStringLiterals = [
   "frontend.single.slots",
 ];
 
+const providerIdsByPlugin = new Map();
+const allProviderIds = new Map();
+
 for (const pluginDir of pluginDirs) {
   const pkgJsonPath = path.join(pluginDir, "package.json");
   const srcDir = path.join(pluginDir, "src");
@@ -110,6 +113,29 @@ for (const pluginDir of pluginDirs) {
     if (pluginContent.includes(needle)) {
       fail(`${pkgName}: src/plugin.ts contains hook string literal "${needle}". Import from launchthat-plugin-core/hookSlots.`);
       break;
+    }
+  }
+
+  // Best-effort provider collision detection (string-literal keys only).
+  // This intentionally ignores computed keys like {[SOME_CONST]: Provider}.
+  const providerBlock = pluginContent.match(/providers\\s*:\\s*\\{([\\s\\S]*?)\\n\\s*\\}/m);
+  if (providerBlock) {
+    const block = providerBlock[1] ?? "";
+    const literalKeys = Array.from(block.matchAll(/['"]([^'"]+)['"]\\s*:/g)).map(
+      (m) => m[1],
+    );
+    if (literalKeys.length > 0) {
+      providerIdsByPlugin.set(pluginId, literalKeys);
+      for (const providerId of literalKeys) {
+        const owner = allProviderIds.get(providerId);
+        if (owner && owner !== pluginId) {
+          warn(
+            `${pkgName}: providerId "${providerId}" is also declared by "${owner}". Provider IDs should be globally unique across plugins.`,
+          );
+        } else {
+          allProviderIds.set(providerId, pluginId);
+        }
+      }
     }
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
+import React from "react";
 import {
   Cog,
   Database,
@@ -33,7 +33,7 @@ function SettingCard({ title, description, icon, href }: SettingCardProps) {
   return (
     <Card className="flex h-full flex-col">
       <CardHeader>
-        <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+        <div className="bg-primary/10 text-primary mb-2 flex h-10 w-10 items-center justify-center rounded-md">
           {icon}
         </div>
         <CardTitle>{title}</CardTitle>
@@ -101,27 +101,16 @@ function SettingsPage() {
   ];
 
   return (
-    <div className="container py-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Settings</h1>
-          <p className="text-muted-foreground">
-            Manage site-wide configuration and settings
-          </p>
-        </div>
-      </div>
-
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {settingsCategories.map((category) => (
-          <SettingCard
-            key={category.title}
-            title={category.title}
-            description={category.description}
-            icon={category.icon}
-            href={category.href}
-          />
-        ))}
-      </div>
+    <div className="container grid gap-6 py-4 sm:grid-cols-2 lg:grid-cols-3">
+      {settingsCategories.map((category) => (
+        <SettingCard
+          key={category.title}
+          title={category.title}
+          description={category.description}
+          icon={category.icon}
+          href={category.href}
+        />
+      ))}
     </div>
   );
 }

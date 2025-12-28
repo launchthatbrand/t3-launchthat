@@ -148,6 +148,11 @@ export const createSocialFeedPluginDefinition = (): PluginDefinition => ({
       },
     },
   ],
+  activation: {
+    optionKey: `plugin_${PLUGIN_ID}_enabled`,
+    optionType: "site",
+    defaultEnabled: false,
+  },
   providers: socialFeedProviders,
   adminMenus: [
     {

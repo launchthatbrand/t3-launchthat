@@ -63,8 +63,16 @@ const registerPostTypeMenus = () => {
         | undefined) ?? new Map<string, TaxonomyDefinition[]>();
     const pluginParents =
       (context.pluginParents as
-        | Record<string, { parentId: string; customPath?: string }>
+        | Record<
+            string,
+            {
+              parentId?: string;
+              customPath?: string;
+              mode?: "inline" | "group";
+            }
+          >
         | undefined) ?? {};
+    const pluginPostTypeOwners = context.pluginPostTypeOwners ?? {};
 
     const items: MenuItemInput[] = [];
 
@@ -77,6 +85,12 @@ const registerPostTypeMenus = () => {
       })
       .forEach((postType) => {
         const slug = postType.slug;
+        const owningPluginId = pluginPostTypeOwners[slug];
+        if (owningPluginId && context.isPluginEnabled) {
+          if (!context.isPluginEnabled(owningPluginId)) {
+            return;
+          }
+        }
         const section = getSectionForPostType(postType);
         const adminSlug = postType.adminMenu?.slug?.trim();
         const pluginMeta = pluginParents[slug];
@@ -95,15 +109,10 @@ const registerPostTypeMenus = () => {
         }
 
         const menuId = `postType:${slug}`;
-        const parentValue = postType.adminMenu?.parent?.trim();
-
-        const normalizedParent = parentValue?.toLowerCase();
-        let pluginParentId = normalizedParent?.startsWith("plugin:")
-          ? normalizedParent
-          : undefined;
-        if (!pluginParentId && pluginMeta) {
-          pluginParentId = pluginMeta.parentId;
-        }
+        // Ignore `plugin:*` parent declarations on post types.
+        // We want plugin grouping/inline behavior to be controlled centrally by
+        // `pluginParents` (which is enablement-aware).
+        const pluginParentId = pluginMeta?.parentId;
 
         const href = customPath
           ? customPath.startsWith("http")
@@ -121,6 +130,9 @@ const registerPostTypeMenus = () => {
 
         if (pluginParentId) {
           baseItem.parentId = pluginParentId;
+        } else if (pluginMeta?.mode === "inline") {
+          // Inline plugin post types should land in the default sidebar list
+          // (no plugin group, no special section heuristics).
         } else if (section) {
           baseItem.section = section;
         }

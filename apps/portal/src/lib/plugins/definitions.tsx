@@ -1,21 +1,21 @@
-import type { MenuItemInput, MenuSectionRef } from "~/lib/adminMenu";
-import {
-  SOCIAL_FEED_FRONTEND_PROVIDER_ID,
-  configureSocialFeedPlugin,
-  socialFeedPlugin,
-} from "launchthat-plugin-socialfeed";
-
-import type { PluginDefinition } from "./types";
-import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
-import { adminMenuRegistry } from "~/lib/adminMenu";
 import { calendarPlugin } from "launchthat-plugin-calendar";
 import { cmsPlugin } from "launchthat-plugin-cms";
 import { commercePlugin } from "launchthat-plugin-commerce";
 import { disclaimersPlugin } from "launchthat-plugin-disclaimers";
-import { supportPlugin } from "launchthat-plugin-support";
 import { lmsPlugin } from "launchthat-plugin-lms";
+import {
+  configureSocialFeedPlugin,
+  SOCIAL_FEED_FRONTEND_PROVIDER_ID,
+  socialFeedPlugin,
+} from "launchthat-plugin-socialfeed";
+import { supportPlugin } from "launchthat-plugin-support";
 import { tasksPlugin } from "launchthat-plugin-tasks";
 import { vimeoPlugin } from "launchthat-plugin-vimeo";
+
+import type { PluginDefinition, PluginSettingDefinition } from "./types";
+import type { MenuItemInput } from "~/lib/adminMenu";
+import { adminMenuRegistry } from "~/lib/adminMenu";
+import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
 
 configureSocialFeedPlugin({
   providers: {
@@ -24,76 +24,104 @@ configureSocialFeedPlugin({
 });
 
 export const pluginDefinitions: PluginDefinition[] = [
-  cmsPlugin,
-  lmsPlugin,
-  calendarPlugin,
-  commercePlugin,
-  socialFeedPlugin,
-  tasksPlugin,
-  supportPlugin,
-  vimeoPlugin,
-  disclaimersPlugin,
+  cmsPlugin as unknown as PluginDefinition,
+  lmsPlugin as unknown as PluginDefinition,
+  calendarPlugin as unknown as PluginDefinition,
+  commercePlugin as unknown as PluginDefinition,
+  socialFeedPlugin as unknown as PluginDefinition,
+  tasksPlugin as unknown as PluginDefinition,
+  supportPlugin as unknown as PluginDefinition,
+  vimeoPlugin as unknown as PluginDefinition,
+  disclaimersPlugin as unknown as PluginDefinition,
 ];
-
-const SUPPORT_PAGE_ICON_MAP: Record<string, string> = {
-  dashboard: "LayoutDashboard",
-  conversations: "MessageSquare",
-  "helpdesk-articles": "BookOpen",
-  settings: "Settings",
-};
-
-const PLUGIN_ROOT_ICON_MAP: Record<string, string> = {
-  support: "LifeBuoy",
-  commerce: "ShoppingCart",
-  lms: "GraduationCap",
-  cms: "FileStack",
-  calendar: "Calendar",
-  socialfeed: "Share2",
-  tasks: "ListChecks",
-  vimeo: "Video",
-  disclaimers: "FileSignature",
-};
 
 const registerPluginMenuSource = () => {
   if (typeof adminMenuRegistry.registerSource !== "function") {
     return;
   }
 
-  adminMenuRegistry.registerSource("plugins:settings", (context) => {
+  adminMenuRegistry.registerSource("plugins:nav", (context) => {
     const isEnabled = context.isPluginEnabled ?? (() => true);
+    const pluginParents = (context.pluginParents ??
+      ({} as Record<
+        string,
+        { parentId?: string; customPath?: string; mode?: "inline" | "group" }
+      >)) as Record<
+      string,
+      { parentId?: string; customPath?: string; mode?: "inline" | "group" }
+    >;
 
     const items: MenuItemInput[] = [];
 
+    const getPluginPostTypeSlugsForGroup = (pluginId: string): string[] => {
+      const parentId = `plugin:${pluginId}`;
+      return Object.entries(pluginParents)
+        .filter(
+          ([, meta]) => meta.mode === "group" && meta.parentId === parentId,
+        )
+        .map(([slug]) => slug);
+    };
+
+    const shouldShowPluginRoot = (plugin: PluginDefinition): boolean => {
+      if (!isEnabled(plugin.id)) return false;
+      const hasPages = Boolean(plugin.settingsPages?.length);
+      const groupPostTypeSlugs = getPluginPostTypeSlugsForGroup(plugin.id);
+      return hasPages || groupPostTypeSlugs.length > 0;
+    };
+
+    const getDefaultPluginHref = (plugin: PluginDefinition): string => {
+      const pages = plugin.settingsPages ?? [];
+      const nonSettings = pages.filter((p) => p.slug !== "settings");
+      const defaultPageSlug = nonSettings[0]?.slug ?? pages[0]?.slug ?? null;
+      if (defaultPageSlug) {
+        return `/admin/edit?plugin=${plugin.id}&page=${defaultPageSlug}`;
+      }
+
+      const postTypeSlug = getPluginPostTypeSlugsForGroup(plugin.id)[0];
+      if (postTypeSlug) {
+        return `/admin/edit?post_type=${encodeURIComponent(postTypeSlug)}`;
+      }
+
+      // Fallback (should be rare): send to the plugin listing.
+      return "/admin/plugins";
+    };
+
+    const getPluginRootIcon = (_plugin: PluginDefinition): string => "Puzzle";
+
+    const getSettingsPageIcon = (pageSlug: string): string =>
+      pageSlug === "settings" ? "Settings" : "BookOpen";
+
     pluginDefinitions.forEach((plugin, pluginIndex) => {
-      if (!plugin.settingsPages?.length || !isEnabled(plugin.id)) {
+      if (!shouldShowPluginRoot(plugin)) {
         return;
       }
 
-      const section: MenuSectionRef = {
-        id: plugin.id,
-        label: plugin.name,
-        order: pluginIndex + 50,
-      };
-
       const rootId = `plugin:${plugin.id}`;
-      const defaultPageSlug = plugin.settingsPages[0]?.slug ?? "settings";
 
       items.push({
         id: rootId,
         label: plugin.name,
-        href: `/admin/edit?plugin=${plugin.id}&page=${defaultPageSlug}`,
-        icon: getPluginRootIcon(plugin.id),
+        href: getDefaultPluginHref(plugin),
+        icon: getPluginRootIcon(plugin),
         order: pluginIndex,
-        section,
       });
 
-      plugin.settingsPages.forEach((page, pageIndex) => {
+      const pages: PluginSettingDefinition[] = plugin.settingsPages ?? [];
+      pages.forEach((page, pageIndex) => {
+        const isSettings = page.slug === "settings";
+        const explicitOrder =
+          typeof page.order === "number" ? page.order : undefined;
+        const order = explicitOrder ?? (isSettings ? 1000 : pageIndex);
+
         items.push({
           id: `plugin:${plugin.id}:${page.slug}`,
           label: page.label,
           href: `/admin/edit?plugin=${plugin.id}&page=${page.slug}`,
-          icon: getPluginPageIcon(plugin.id, page.slug),
-          order: pageIndex,
+          icon:
+            typeof page.icon === "string"
+              ? page.icon
+              : getSettingsPageIcon(page.slug),
+          order,
           parentId: rootId,
         });
       });
@@ -101,20 +129,6 @@ const registerPluginMenuSource = () => {
 
     return items;
   });
-};
-
-const getPluginPageIcon = (pluginId: string, pageSlug: string): string => {
-  if (pluginId === "support") {
-    return SUPPORT_PAGE_ICON_MAP[pageSlug] ?? "BookOpen";
-  }
-  if (pluginId === "commerce") {
-    return pageSlug === "storefront" ? "ShoppingCart" : "Cog";
-  }
-  return "BookOpen";
-};
-
-const getPluginRootIcon = (pluginId: string): string => {
-  return PLUGIN_ROOT_ICON_MAP[pluginId] ?? "Puzzle";
 };
 
 registerPluginMenuSource();

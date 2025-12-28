@@ -4,7 +4,7 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Edit, Loader2, Plus, Trash } from "lucide-react";
+import { Edit, Loader2, Plus, Trash } from "lucide-react";
 import { toast } from "sonner";
 
 import type { ColumnDefinition } from "@acme/ui/entity-list/types";
@@ -31,7 +31,6 @@ import {
   SelectValue,
 } from "@acme/ui/select";
 import { Switch } from "@acme/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { Textarea } from "@acme/ui/textarea";
 
 import {
@@ -133,8 +132,7 @@ export default function PostTypesSettingsPage() {
   const pathname = usePathname();
   const tabParam = searchParams.get("tab");
   const postTypeParam = searchParams.get("post_type");
-  const initialTab = isValidTab(tabParam) ? tabParam : DEFAULT_TAB;
-  const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
+  const activeTab = isValidTab(tabParam) ? tabParam : DEFAULT_TAB;
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newPostType, setNewPostType] = useState({
@@ -180,33 +178,12 @@ export default function PostTypesSettingsPage() {
     hierarchical: false,
   });
 
-  useEffect(() => {
-    const derivedTab = isValidTab(tabParam) ? tabParam : DEFAULT_TAB;
-    if (derivedTab !== activeTab) {
-      setActiveTab(derivedTab);
-    }
-  }, [tabParam, activeTab]);
-
   const updateQueryParams = (mutator: (params: URLSearchParams) => void) => {
     const params = new URLSearchParams(searchParams.toString());
     mutator(params);
     const query = params.toString();
     const target = query ? `${pathname}?${query}` : pathname;
     router.replace(target, { scroll: false });
-  };
-
-  const handleTabChange = (value: string) => {
-    if (!isValidTab(value)) {
-      return;
-    }
-    setActiveTab(value);
-    updateQueryParams((params) => {
-      if (value === DEFAULT_TAB) {
-        params.delete("tab");
-      } else {
-        params.set("tab", value);
-      }
-    });
   };
 
   const postTypesResult = usePostTypes();
@@ -1223,56 +1200,40 @@ export default function PostTypesSettingsPage() {
       <p className="text-muted-foreground">
         Create a post type to begin attaching custom fields.
       </p>
-      <Button onClick={() => setActiveTab("types")}>Go to Post Types</Button>
+      <Button
+        onClick={() =>
+          updateQueryParams((params) => {
+            params.set("tab", "types");
+          })
+        }
+      >
+        Go to Post Types
+      </Button>
     </div>
   );
 
   return (
-    <div className="container py-6">
-      <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/admin/settings">
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-3xl font-bold">Post Types</h1>
-        </div>
-        <p className="text-muted-foreground mt-2">
-          Define and manage custom post types and their structure
-        </p>
-      </div>
+    <div className="container space-y-6 py-4">
+      {activeTab === "types" ? (
+        <Card>
+          <CardContent className="p-6">
+            <EntityList<PostType>
+              data={postTypes}
+              columns={postTypeColumns}
+              title="All Post Types"
+              description="Overview of your built-in and custom content types"
+              actions={postTypeListActions}
+              isLoading={postTypesLoading}
+              enableSearch
+              viewModes={["list"]}
+              emptyState={postTypesEmptyState}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
-      <Tabs
-        value={activeTab}
-        onValueChange={handleTabChange}
-        className="w-full"
-      >
-        <TabsList className="mb-4">
-          <TabsTrigger value="types">Post Types</TabsTrigger>
-          <TabsTrigger value="fields">Fields</TabsTrigger>
-          <TabsTrigger value="taxonomies">Taxonomies</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="types">
-          <Card>
-            <CardContent className="p-6">
-              <EntityList<PostType>
-                data={postTypes}
-                columns={postTypeColumns}
-                title="All Post Types"
-                description="Overview of your built-in and custom content types"
-                actions={postTypeListActions}
-                isLoading={postTypesLoading}
-                enableSearch
-                viewModes={["list"]}
-                emptyState={postTypesEmptyState}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="taxonomies">
+      {activeTab === "taxonomies" ? (
+        <>
           <p className="text-muted-foreground mb-4 text-sm">
             Assign hierarchical or flat taxonomies to each post type—just like
             WordPress categories and tags.
@@ -1296,7 +1257,13 @@ export default function PostTypesSettingsPage() {
                     <p className="text-muted-foreground">
                       Choose a post type to manage taxonomy relationships.
                     </p>
-                    <Button onClick={() => setActiveTab("types")}>
+                    <Button
+                      onClick={() =>
+                        updateQueryParams((params) => {
+                          params.set("tab", "types");
+                        })
+                      }
+                    >
                       Go to Post Types
                     </Button>
                   </div>
@@ -1304,9 +1271,11 @@ export default function PostTypesSettingsPage() {
               />
             </CardContent>
           </Card>
-        </TabsContent>
+        </>
+      ) : null}
 
-        <TabsContent value="fields">
+      {activeTab === "fields" ? (
+        <>
           <p className="text-muted-foreground mb-4 text-sm">
             Define field metadata, meta keys, and storage options similar to
             WordPress custom fields.
@@ -1334,8 +1303,8 @@ export default function PostTypesSettingsPage() {
               />
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </>
+      ) : null}
     </div>
   );
 }

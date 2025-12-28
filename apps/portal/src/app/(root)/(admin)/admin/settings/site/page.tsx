@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { ChevronLeft, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -25,21 +25,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
-import Link from "next/link";
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 import { useForm } from "react-hook-form";
-import { useState } from "react";
-import type { Id } from "@/convex/_generated/dataModel";
+import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTenant } from "~/context/TenantContext";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { OrganizationDomainsCard } from "../organizations/_components/OrganizationDomainsCard";
 
-type FormData = {
+interface FormData {
   siteName: string;
   siteUrl: string;
   adminEmail: string;
@@ -57,76 +55,44 @@ type FormData = {
   googleAnalyticsId: string;
   enableCaching: boolean;
   cacheTtl: string;
-};
+}
 
 export default function SiteSettingsPage() {
-  const [activeTab, setActiveTab] = useState("general");
   const tenant = useTenant();
   const organizationId = getTenantOrganizationId(tenant) ?? null;
+  const searchParams = useSearchParams();
+
+  const activeTab = useMemo(() => {
+    const raw = searchParams.get("tab") ?? "general";
+    const allowed = ["general", "branding", "localization", "domains", "advanced"];
+    return allowed.includes(raw) ? raw : "general";
+  }, [searchParams]);
 
   return (
-    <div className="container py-6">
-      <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/admin/settings">
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-3xl font-bold">Site Configuration</h1>
-        </div>
-        <p className="mt-2 text-muted-foreground">
-          Manage global site settings, branding, and appearance
-        </p>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="branding">Branding</TabsTrigger>
-          <TabsTrigger value="localization">Localization</TabsTrigger>
-          <TabsTrigger value="domains">Domains</TabsTrigger>
-          <TabsTrigger value="advanced">Advanced</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="general">
-          <GeneralSettings />
-        </TabsContent>
-
-        <TabsContent value="branding">
-          <BrandingSettings />
-        </TabsContent>
-
-        <TabsContent value="localization">
-          <LocalizationSettings />
-        </TabsContent>
-
-        <TabsContent value="advanced">
-          <AdvancedSettings />
-        </TabsContent>
-
-        <TabsContent value="domains">
-          {organizationId ? (
-            <OrganizationDomainsCard
-              organizationId={organizationId as Id<"organizations">}
-            />
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Domains</CardTitle>
-                <CardDescription>
-                  Domains are scoped to the current organization.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-sm">
-                  No organization is currently selected.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+    <div className="container space-y-6 py-4">
+      {activeTab === "general" ? <GeneralSettings /> : null}
+      {activeTab === "branding" ? <BrandingSettings /> : null}
+      {activeTab === "localization" ? <LocalizationSettings /> : null}
+      {activeTab === "advanced" ? <AdvancedSettings /> : null}
+      {activeTab === "domains" ? (
+        organizationId ? (
+          <OrganizationDomainsCard organizationId={organizationId} />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Domains</CardTitle>
+              <CardDescription>
+                Domains are scoped to the current organization.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-sm">
+                No organization is currently selected.
+              </p>
+            </CardContent>
+          </Card>
+        )
+      ) : null}
     </div>
   );
 }

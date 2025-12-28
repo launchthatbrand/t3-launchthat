@@ -252,6 +252,11 @@ export const createCommercePluginDefinition = (): PluginDefinition => ({
       },
     },
   ],
+  activation: {
+    optionKey: `plugin_${PLUGIN_ID}_enabled`,
+    optionType: "site",
+    defaultEnabled: false,
+  },
   settingsPages: [
     {
       id: "commerce-dashboard",

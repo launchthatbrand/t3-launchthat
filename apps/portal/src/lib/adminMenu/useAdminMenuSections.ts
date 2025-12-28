@@ -216,29 +216,60 @@ export const useAdminMenuSections = (): UseAdminMenuSectionsResult => {
   );
 
   const pluginParents = useMemo<
-    Record<string, { parentId: string; customPath?: string }>
+    Record<
+      string,
+      { parentId?: string; customPath?: string; mode?: "inline" | "group" }
+    >
   >(() => {
     return pluginDefinitions.reduce<
-      Record<string, { parentId: string; customPath?: string }>
+      Record<
+        string,
+        { parentId?: string; customPath?: string; mode?: "inline" | "group" }
+      >
     >((acc, plugin) => {
       if (!isPluginEnabled(plugin)) {
         return acc;
       }
-      // Only parent post types under `plugin:<id>` when that plugin contributes a
-      // root menu entry (today: via `settingsPages`). Otherwise, we orphan the
-      // post type item and it disappears from the sidebar.
-      if (!plugin.settingsPages?.length) {
-        return acc;
-      }
+      const hasCustomPages =
+        Array.isArray(plugin.settingsPages) && plugin.settingsPages.length > 0;
+
+      const navEnabledPostTypeSlugs = plugin.postTypes
+        .map((definition) => definition.slug)
+        .filter(
+          (slug): slug is string => typeof slug === "string" && slug.length > 0,
+        )
+        .filter((slug) => {
+          const match = contentTypes.find((type) => type.slug === slug);
+          return Boolean(match?.adminMenu?.enabled);
+        });
+
+      const shouldInlineSingle =
+        !hasCustomPages && navEnabledPostTypeSlugs.length === 1;
+
       plugin.postTypes.forEach((definition) => {
+        if (!definition.slug) return;
+        const mode: "inline" | "group" = shouldInlineSingle
+          ? "inline"
+          : "group";
         acc[definition.slug] = {
-          parentId: `plugin:${plugin.id}`,
-          customPath: definition.adminMenu?.slug,
+          ...(mode === "group" ? { parentId: `plugin:${plugin.id}` } : {}),
+          customPath: definition.adminMenu.slug,
+          mode,
         };
       });
       return acc;
     }, {});
-  }, [isPluginEnabled]);
+  }, [isPluginEnabled, contentTypes]);
+
+  const pluginPostTypeOwners = useMemo<Record<string, string>>(() => {
+    return pluginDefinitions.reduce<Record<string, string>>((acc, plugin) => {
+      plugin.postTypes.forEach((definition) => {
+        if (!definition.slug) return;
+        acc[definition.slug] = plugin.id;
+      });
+      return acc;
+    }, {});
+  }, []);
 
   const registrySections = useMemo(
     () =>
@@ -247,8 +278,15 @@ export const useAdminMenuSections = (): UseAdminMenuSectionsResult => {
         taxonomyAssignments,
         isPluginEnabled: pluginEnabledLookup,
         pluginParents,
+        pluginPostTypeOwners,
       }),
-    [contentTypes, pluginEnabledLookup, pluginParents, taxonomyAssignments],
+    [
+      contentTypes,
+      pluginEnabledLookup,
+      pluginParents,
+      pluginPostTypeOwners,
+      taxonomyAssignments,
+    ],
   );
 
   const appliedSections = useMemo(

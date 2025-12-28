@@ -3,7 +3,7 @@
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   ChevronRight,
   MailIcon,
@@ -59,6 +59,7 @@ interface NavMainProps {
 
 export function NavMain({ items, sections }: NavMainProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { isMobile, openMobile, setOpenMobile } = useSidebar();
   const containerRef = useRef<HTMLDivElement>(null);
   const lastPathnameRef = useRef<string>(pathname);
@@ -68,6 +69,26 @@ export function NavMain({ items, sections }: NavMainProps) {
 
   // Check if a given path is active
   const isActive = (url: string) => {
+    // If this is a same-origin URL with query params, match on pathname + query subset.
+    // This is important for routes like `/admin/edit?plugin=x&page=y` where pathname alone
+    // is not enough to determine active nav state.
+    if (url.includes("?")) {
+      try {
+        const parsed = new URL(url, "http://localhost");
+        if (parsed.pathname !== pathname) {
+          return false;
+        }
+        for (const [key, value] of parsed.searchParams.entries()) {
+          if (searchParams.get(key) !== value) {
+            return false;
+          }
+        }
+        return true;
+      } catch {
+        // fall through to pathname-based matching
+      }
+    }
+
     // Exact match for dashboard or root paths
     if (url === "/dashboard" || url === "/") {
       return pathname === url;

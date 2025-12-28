@@ -28,6 +28,11 @@ export const createLmsPluginDefinition = (
 
   return {
     ...base,
+    activation: {
+      optionKey: `plugin_${PLUGIN_ID}_enabled`,
+      optionType: "site",
+      defaultEnabled: false,
+    },
     providers: {
       ...(base.providers ?? {}),
       [LMS_COURSE_PROVIDER_ID]: courseProviderSpec,

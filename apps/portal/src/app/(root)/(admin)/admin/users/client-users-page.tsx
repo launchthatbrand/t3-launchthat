@@ -1,9 +1,9 @@
 "use client";
 
+import type { Id } from "@/convex/_generated/dataModel";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 import { formatDistanceToNow } from "date-fns";
 import { Check, PencilIcon, Plus, UserCog, X } from "lucide-react";
@@ -16,22 +16,27 @@ import type {
 } from "@acme/ui/entity-list/types";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { CopyText } from "@acme/ui/copy-text";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
 
+import {
+  AdminLayout,
+  AdminLayoutContent,
+  AdminLayoutHeader,
+  AdminLayoutMain,
+} from "~/components/admin/AdminLayout";
 import { UserForm } from "~/components/admin/UserForm";
 
-interface User {
+type UserRow = Record<string, unknown> & {
   _id: Id<"users">;
   _creationTime: number;
   name?: string;
   email: string;
-  role: "admin" | "user" | "customer";
+  role?: string;
   username?: string;
   isActive?: boolean;
   tokenIdentifier?: string;
-  addresses?: Array<{
+  addresses?: {
     addressLine1: string;
     addressLine2?: string;
     city: string;
@@ -40,8 +45,8 @@ interface User {
     phoneNumber?: string;
     postalCode: string;
     stateOrProvince: string;
-  }>;
-}
+  }[];
+};
 
 export default function ClientUsersPage() {
   const router = useRouter();
@@ -53,8 +58,6 @@ export default function ClientUsersPage() {
   // First get current user to confirm admin status
   const me = useQuery(api.core.users.queries.getMe);
 
-  console.log("me", me);
-
   const isMeAdmin = me?.role === "admin";
 
   // Fetch all users only if admin; otherwise skip
@@ -63,7 +66,7 @@ export default function ClientUsersPage() {
     isMeAdmin ? {} : "skip",
   );
 
-  const allUsers: User[] = allUsersResult ?? [];
+  const allUsers: UserRow[] = (allUsersResult ?? []) as UserRow[];
 
   const handleFormSuccess = () => {
     setIsFormOpen(false);
@@ -72,23 +75,35 @@ export default function ClientUsersPage() {
 
   if (me && !isMeAdmin) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed">
-        <X className="text-muted-foreground mb-4 h-12 w-12" />
-        <h3 className="text-lg font-medium">Access Denied</h3>
-        <p className="text-muted-foreground">
-          You must be an administrator to view this page.
-        </p>
-      </div>
+      <AdminLayout
+        title="User Management"
+        description="Manage users and roles."
+      >
+        <AdminLayoutHeader />
+        <AdminLayoutContent>
+          <AdminLayoutMain>
+            <div className="container py-4">
+              <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed">
+                <X className="text-muted-foreground mb-4 h-12 w-12" />
+                <h3 className="text-lg font-medium">Access Denied</h3>
+                <p className="text-muted-foreground">
+                  You must be an administrator to view this page.
+                </p>
+              </div>
+            </div>
+          </AdminLayoutMain>
+        </AdminLayoutContent>
+      </AdminLayout>
     );
   }
 
   // Define column configurations for EntityList
-  const columns: ColumnDefinition<User>[] = [
+  const columns: ColumnDefinition<UserRow>[] = [
     {
       id: "user",
       header: "User",
       accessorKey: "name",
-      cell: (user) => {
+      cell: (user: UserRow) => {
         return (
           <div className="flex flex-col">
             <span className="font-medium">{user.name ?? "Unnamed User"}</span>
@@ -108,7 +123,7 @@ export default function ClientUsersPage() {
       id: "email",
       header: "Email",
       accessorKey: "email",
-      cell: (user) => {
+      cell: (user: UserRow) => {
         return (
           <div className="flex flex-col gap-1">
             <CopyText value={user.email} className="max-w-fit">
@@ -125,7 +140,7 @@ export default function ClientUsersPage() {
       id: "status",
       header: "Status",
       accessorKey: "isActive",
-      cell: (user) => {
+      cell: (user: UserRow) => {
         return user.isActive !== false ? (
           <Badge
             variant="outline"
@@ -147,7 +162,7 @@ export default function ClientUsersPage() {
       id: "joined",
       header: "Joined",
       accessorKey: "_creationTime",
-      cell: (user) => {
+      cell: (user: UserRow) => {
         return (
           <span className="text-muted-foreground">
             {user._creationTime
@@ -163,13 +178,17 @@ export default function ClientUsersPage() {
       id: "role",
       header: "Role",
       accessorKey: "role",
-      cell: (user) => {
+      cell: (user: UserRow) => {
         const roleConfig = {
           admin: { variant: "default" as const, label: "Admin" },
           user: { variant: "secondary" as const, label: "User" },
           customer: { variant: "outline" as const, label: "Customer" },
         };
-        const config = roleConfig[user.role] || roleConfig.user;
+        const roleKey = typeof user.role === "string" ? user.role : "user";
+        const config =
+          roleKey === "admin" || roleKey === "user" || roleKey === "customer"
+            ? roleConfig[roleKey]
+            : roleConfig.user;
         return <Badge variant={config.variant}>{config.label}</Badge>;
       },
     },
@@ -177,11 +196,11 @@ export default function ClientUsersPage() {
       id: "address",
       header: "Address",
       accessorKey: "addresses",
-      cell: (user) => {
-        if (!user.addresses || user.addresses.length === 0) {
+      cell: (user: UserRow) => {
+        const address = user.addresses?.[0];
+        if (!address) {
           return <span className="text-muted-foreground">No address</span>;
         }
-        const address = user.addresses[0];
         return (
           <div className="flex flex-col">
             <span className="text-sm">{address.fullName}</span>
@@ -200,7 +219,7 @@ export default function ClientUsersPage() {
   ];
 
   // Define filter configurations
-  const filters: FilterConfig<User>[] = [
+  const filters: FilterConfig<UserRow>[] = [
     {
       id: "name",
       label: "Name",
@@ -239,7 +258,7 @@ export default function ClientUsersPage() {
   ];
 
   // Define entity actions
-  const entityActions: EntityAction<User>[] = [
+  const entityActions: EntityAction<UserRow>[] = [
     {
       id: "edit",
       label: "Edit User",
@@ -258,49 +277,53 @@ export default function ClientUsersPage() {
   ];
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">User Management</h1>
-          <p className="text-muted-foreground">Manage users and their roles</p>
-        </div>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add User
-        </Button>
-      </div>
+    <AdminLayout title="User Management" description="Manage users and roles.">
+      <AdminLayoutHeader />
+      <AdminLayoutContent>
+        <AdminLayoutMain>
+          <div className="container py-4">
+            <EntityList<UserRow>
+              data={allUsers}
+              columns={columns}
+              filters={filters}
+              isLoading={allUsersResult === undefined}
+              title="User Management"
+              description="Manage users and their roles"
+              actions={
+                <Button onClick={() => setIsFormOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add User
+                </Button>
+              }
+              defaultViewMode="list"
+              viewModes={["list"]}
+              entityActions={entityActions}
+              emptyState={
+                <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed">
+                  <UserCog className="text-muted-foreground mb-4 h-12 w-12" />
+                  <h3 className="text-lg font-medium">No Users Found</h3>
+                  <p className="text-muted-foreground">
+                    No users in the system yet
+                  </p>
+                  <Button className="mt-4" onClick={() => setIsFormOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add First User
+                  </Button>
+                </div>
+              }
+            />
 
-      <EntityList<User>
-        data={allUsers}
-        columns={columns}
-        filters={filters}
-        isLoading={allUsersResult === undefined}
-        title="User Management"
-        description="Manage users and their roles"
-        defaultViewMode="list"
-        viewModes={["list"]}
-        entityActions={entityActions}
-        emptyState={
-          <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed">
-            <UserCog className="text-muted-foreground mb-4 h-12 w-12" />
-            <h3 className="text-lg font-medium">No Users Found</h3>
-            <p className="text-muted-foreground">No users in the system yet</p>
-            <Button className="mt-4" onClick={() => setIsFormOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add First User
-            </Button>
+            {/* User Form Dialog */}
+            <UserForm
+              open={isFormOpen}
+              onOpenChange={setIsFormOpen}
+              userId={editingUserId ?? undefined}
+              onSuccess={handleFormSuccess}
+              mode="dialog"
+            />
           </div>
-        }
-      />
-
-      {/* User Form Dialog */}
-      <UserForm
-        open={isFormOpen}
-        onOpenChange={setIsFormOpen}
-        userId={editingUserId || undefined}
-        onSuccess={handleFormSuccess}
-        mode="dialog"
-      />
-    </div>
+        </AdminLayoutMain>
+      </AdminLayoutContent>
+    </AdminLayout>
   );
 }

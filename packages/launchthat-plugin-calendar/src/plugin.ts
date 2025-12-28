@@ -92,6 +92,11 @@ export const createCalendarPluginDefinition = (): PluginDefinition => ({
       },
     },
   ],
+  activation: {
+    optionKey: `plugin_${PLUGIN_ID}_enabled`,
+    optionType: "site",
+    defaultEnabled: false,
+  },
 });
 
 export const calendarPlugin: PluginDefinition = createCalendarPluginDefinition();

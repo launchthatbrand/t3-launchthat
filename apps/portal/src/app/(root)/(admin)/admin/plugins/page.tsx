@@ -50,6 +50,13 @@ import type {
   PluginDefinition,
   PluginPostTypeConfig,
 } from "~/lib/plugins/types";
+import {
+  AdminLayout,
+  AdminLayoutContent,
+  AdminLayoutHeader,
+  AdminLayoutMain,
+  AdminLayoutSidebar,
+} from "~/components/admin/AdminLayout";
 import { useTenant } from "~/context/TenantContext";
 import { pluginDefinitions } from "~/lib/plugins/definitions";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
@@ -410,181 +417,184 @@ export default function PluginsPage() {
   );
 
   return (
-    <div className="container space-y-6 py-4">
-      <div>
-        <h1 className="text-3xl font-bold">Portal Plugins</h1>
-        <p className="text-muted-foreground">
-          Enable suites of features for each organization. Plugins provision
-          post types, menu entries and API endpoints—similar to WordPress post
-          types.
-        </p>
-      </div>
-
-      <Separator />
-
-      <EntityList<PluginRow>
-        data={pluginRows}
-        columns={columns}
-        isLoading={isLoading}
-        enableSearch
-        enableFooter={false}
-        viewModes={["grid", "list"]}
-        defaultViewMode="list"
-        gridColumns={{ sm: 1, md: 3 }}
-        className="pt-2"
-        itemRender={(plugin: PluginRow) => (
-          <Card key={plugin.id} className="flex h-full flex-col">
-            <CardHeader className="space-y-2">
-              <div className="flex items-center justify-between">
-                <CardTitle>{plugin.name}</CardTitle>
-                <Badge variant={plugin.isEnabled ? "default" : "secondary"}>
-                  {plugin.isEnabled ? "Enabled" : "Disabled"}
-                </Badge>
-              </div>
-              <CardDescription>{plugin.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground text-sm">
-                {plugin.longDescription}
-              </p>
-              <div>
-                <p className="text-sm font-medium">Feature Highlights</p>
-                <ul className="text-muted-foreground mt-2 list-disc space-y-1 pl-5 text-sm">
-                  {plugin.features.map((feature) => (
-                    <li key={feature}>{feature}</li>
-                  ))}
-                </ul>
-              </div>
-              <Accordion type="single" collapsible value="post-types">
-                <AccordionItem value="post-types">
-                  <AccordionTrigger>
-                    <p className="text-sm font-medium">
-                      Provisioned Post Types
-                    </p>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <p className="text-sm font-medium">
-                      Provisioned Post Types
-                    </p>
-                    <div className="mt-2 grid gap-2">
-                      {plugin.postTypes.map((type) => {
-                        const exists = postTypes.some(
-                          (existing: Doc<"postTypes">) =>
-                            existing.slug === type.slug,
-                        );
-                        return (
-                          <div
-                            key={type.slug}
-                            className="flex flex-wrap items-center justify-between rounded-md border px-3 py-2 text-sm"
-                          >
-                            <div>
-                              <p className="font-medium">{type.name}</p>
-                              <p className="text-muted-foreground text-xs">
-                                Slug: {type.slug}
-                              </p>
-                            </div>
-                            <Badge
-                              variant={exists ? "outline" : "secondary"}
-                              className="mt-2 md:mt-0"
-                            >
-                              {exists ? "Exists" : "Will be created"}
-                            </Badge>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-              {plugin.settingsPages?.length ? (
-                <div className="rounded-md border px-3 py-2">
-                  <p className="text-sm font-medium">Plugin Settings</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {plugin.settingsPages.map((setting) => (
-                      <Button
-                        key={`${plugin.id}-${setting.id}`}
-                        variant="ghost"
-                        size="sm"
-                        className="justify-start"
-                        asChild
+    <AdminLayout
+      title={`Portal Plugins`}
+      description="Enable suites of features for each organization. Plugins provision post types, menu entries and API endpoints—similar to WordPress post types."
+    >
+      <AdminLayoutHeader />
+      <AdminLayoutContent>
+        <AdminLayoutMain>
+          <div className="container py-4">
+            <EntityList<PluginRow>
+              data={pluginRows}
+              columns={columns}
+              isLoading={isLoading}
+              enableSearch
+              enableFooter={false}
+              viewModes={["grid", "list"]}
+              defaultViewMode="list"
+              gridColumns={{ sm: 1, md: 3 }}
+              className="pt-2"
+              itemRender={(plugin: PluginRow) => (
+                <Card key={plugin.id} className="flex h-full flex-col">
+                  <CardHeader className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle>{plugin.name}</CardTitle>
+                      <Badge
+                        variant={plugin.isEnabled ? "default" : "secondary"}
                       >
-                        <Link
-                          href={`/admin/edit?plugin=${plugin.id}&page=${setting.slug}`}
-                        >
-                          {setting.label}
-                        </Link>
+                        {plugin.isEnabled ? "Enabled" : "Disabled"}
+                      </Badge>
+                    </div>
+                    <CardDescription>{plugin.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-muted-foreground text-sm">
+                      {plugin.longDescription}
+                    </p>
+                    <div>
+                      <p className="text-sm font-medium">Feature Highlights</p>
+                      <ul className="text-muted-foreground mt-2 list-disc space-y-1 pl-5 text-sm">
+                        {plugin.features.map((feature) => (
+                          <li key={feature}>{feature}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <Accordion type="single" collapsible value="post-types">
+                      <AccordionItem value="post-types">
+                        <AccordionTrigger>
+                          <p className="text-sm font-medium">
+                            Provisioned Post Types
+                          </p>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <p className="text-sm font-medium">
+                            Provisioned Post Types
+                          </p>
+                          <div className="mt-2 grid gap-2">
+                            {plugin.postTypes.map((type) => {
+                              const exists = postTypes.some(
+                                (existing: Doc<"postTypes">) =>
+                                  existing.slug === type.slug,
+                              );
+                              return (
+                                <div
+                                  key={type.slug}
+                                  className="flex flex-wrap items-center justify-between rounded-md border px-3 py-2 text-sm"
+                                >
+                                  <div>
+                                    <p className="font-medium">{type.name}</p>
+                                    <p className="text-muted-foreground text-xs">
+                                      Slug: {type.slug}
+                                    </p>
+                                  </div>
+                                  <Badge
+                                    variant={exists ? "outline" : "secondary"}
+                                    className="mt-2 md:mt-0"
+                                  >
+                                    {exists ? "Exists" : "Will be created"}
+                                  </Badge>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                    {plugin.settingsPages?.length ? (
+                      <div className="rounded-md border px-3 py-2">
+                        <p className="text-sm font-medium">Plugin Settings</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {plugin.settingsPages.map((setting) => (
+                            <Button
+                              key={`${plugin.id}-${setting.id}`}
+                              variant="ghost"
+                              size="sm"
+                              className="justify-start"
+                              asChild
+                            >
+                              <Link
+                                href={`/admin/edit?plugin=${plugin.id}&page=${setting.slug}`}
+                              >
+                                {setting.label}
+                              </Link>
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </CardContent>
+                  <CardFooter className="mt-auto flex items-center gap-3">
+                    {plugin.isEnabled ? (
+                      <Button
+                        variant="secondary"
+                        disabled={isPending || isLoading}
+                        onClick={() => setPluginToDisable(plugin)}
+                      >
+                        {isPending ? "Updating…" : "Disable Plugin"}
                       </Button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </CardContent>
-            <CardFooter className="mt-auto flex items-center gap-3">
-              {plugin.isEnabled ? (
-                <Button
-                  variant="secondary"
-                  disabled={isPending || isLoading}
-                  onClick={() => setPluginToDisable(plugin)}
-                >
-                  {isPending ? "Updating…" : "Disable Plugin"}
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    disabled={isPending || isLoading}
-                    onClick={() => handleEnablePlugin(plugin)}
-                  >
-                    {isPending ? "Provisioning…" : "Enable Plugin"}
-                  </Button>
-                  <p className="text-muted-foreground text-xs">
-                    {plugin.missingSlugs.length
-                      ? `Needs ${plugin.missingSlugs.length} post type(s)`
-                      : "Ready to enable"}
-                  </p>
-                </>
+                    ) : (
+                      <>
+                        <Button
+                          disabled={isPending || isLoading}
+                          onClick={() => handleEnablePlugin(plugin)}
+                        >
+                          {isPending ? "Provisioning…" : "Enable Plugin"}
+                        </Button>
+                        <p className="text-muted-foreground text-xs">
+                          {plugin.missingSlugs.length
+                            ? `Needs ${plugin.missingSlugs.length} post type(s)`
+                            : "Ready to enable"}
+                        </p>
+                      </>
+                    )}
+                  </CardFooter>
+                </Card>
               )}
-            </CardFooter>
-          </Card>
-        )}
-        emptyState={
-          <div className="text-muted-foreground rounded-md border p-6 text-center">
-            No plugins found.
-          </div>
-        }
-      />
-      <AlertDialog
-        open={pluginToDisable !== null}
-        onOpenChange={(open) => {
-          if (!open) setPluginToDisable(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Disable {pluginToDisable?.name}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Disabling removes the related post types and menu items for this
-              organization. Existing content is not deleted, but authors will
-              lose access until the plugin is enabled again.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (pluginToDisable) {
-                  handleDisablePlugin(pluginToDisable);
-                }
-                setPluginToDisable(null);
+              emptyState={
+                <div className="text-muted-foreground rounded-md border p-6 text-center">
+                  No plugins found.
+                </div>
+              }
+            />
+            <AlertDialog
+              open={pluginToDisable !== null}
+              onOpenChange={(open) => {
+                if (!open) setPluginToDisable(null);
               }}
-              disabled={isPending}
             >
-              Disable plugin
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Disable {pluginToDisable?.name}?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Disabling removes the related post types and menu items for
+                    this organization. Existing content is not deleted, but
+                    authors will lose access until the plugin is enabled again.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isPending}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      if (pluginToDisable) {
+                        handleDisablePlugin(pluginToDisable);
+                      }
+                      setPluginToDisable(null);
+                    }}
+                    disabled={isPending}
+                  >
+                    Disable plugin
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </AdminLayoutMain>
+      </AdminLayoutContent>
+    </AdminLayout>
   );
 }

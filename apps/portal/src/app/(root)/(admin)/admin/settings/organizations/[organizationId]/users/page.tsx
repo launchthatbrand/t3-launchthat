@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import type { EntityAction, FilterConfig } from "@acme/ui/entity-list/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,13 +35,9 @@ import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { CopyText } from "@acme/ui/copy-text";
-
-import type {
-  EntityAction,
-  FilterConfig,
-} from "@acme/ui/entity-list/types";
-import { UserForm } from "~/components/admin/UserForm";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
+
+import { UserForm } from "~/components/admin/UserForm";
 
 interface OrganizationMember {
   _id: Id<"userOrganizations">;
@@ -181,15 +178,15 @@ export default function OrganizationUsersPage() {
         const user = member.user;
         return (
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <UserCog className="h-5 w-5 text-primary" />
+            <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-lg">
+              <UserCog className="text-primary h-5 w-5" />
             </div>
             <div>
               <div className="font-medium">{user.name ?? "Unnamed User"}</div>
               {user.username && (
                 <div className="text-xs text-blue-600">@{user.username}</div>
               )}
-              <div className="text-xs text-muted-foreground">{user.email}</div>
+              <div className="text-muted-foreground text-xs">{user.email}</div>
             </div>
           </div>
         );
@@ -208,7 +205,7 @@ export default function OrganizationUsersPage() {
               <span className="font-mono text-sm">{user.email}</span>
             </CopyText>
             <CopyText value={user._id} className="max-w-fit">
-              <span className="text-xs text-muted-foreground">{user._id}</span>
+              <span className="text-muted-foreground text-xs">{user._id}</span>
             </CopyText>
           </div>
         );
@@ -406,7 +403,7 @@ export default function OrganizationUsersPage() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Organizations
             </Button>
-            <div className="text-sm text-muted-foreground">/</div>
+            <div className="text-muted-foreground text-sm">/</div>
             <Button
               variant="outline"
               size="sm"
@@ -434,7 +431,7 @@ export default function OrganizationUsersPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Members</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{membersData.length}</div>
@@ -445,7 +442,7 @@ export default function OrganizationUsersPage() {
             <CardTitle className="text-sm font-medium">
               Active Members
             </CardTitle>
-            <Check className="h-4 w-4 text-muted-foreground" />
+            <Check className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -456,7 +453,7 @@ export default function OrganizationUsersPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Admins</CardTitle>
-            <UserCog className="h-4 w-4 text-muted-foreground" />
+            <UserCog className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -483,7 +480,7 @@ export default function OrganizationUsersPage() {
         entityActions={entityActions}
         emptyState={
           <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed">
-            <Users className="mb-4 h-12 w-12 text-muted-foreground" />
+            <Users className="text-muted-foreground mb-4 h-12 w-12" />
             <h3 className="text-lg font-medium">No Users Found</h3>
             <p className="text-muted-foreground">
               This organization has no members yet

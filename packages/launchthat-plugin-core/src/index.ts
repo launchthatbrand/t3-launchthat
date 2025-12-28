@@ -242,7 +242,43 @@ export interface PluginSettingDefinition {
   slug: string;
   label: string;
   description?: string;
+  icon?: string;
+  order?: number;
   render: (props: PluginSettingComponentProps) => ReactNode;
+}
+
+export type PluginAdminMenuVisibility = "always" | "whenEnabled" | "never";
+
+export type PluginAdminMenuParent =
+  | "root"
+  | { kind: "plugin"; pluginId: string }
+  | { kind: "global"; key: string };
+
+export interface PluginAdminMenuItem {
+  id: string;
+  label: string;
+  slug: string;
+  icon?: string;
+  position?: number;
+  visibility?: PluginAdminMenuVisibility;
+  capability?: string;
+  parent?: PluginAdminMenuParent;
+  /**
+   * If you want a menu item to render a settings page, set `settingId` to a
+   * `settingsPages[].id`.
+   */
+  settingId?: string;
+}
+
+export interface PluginAdminMenuConfig {
+  title?: string;
+  icon?: string;
+  position?: number;
+  grouping?: "none" | "pluginGroup";
+  items?: PluginAdminMenuItem[];
+  postTypes?: {
+    defaultVisibility?: "nav" | "hidden";
+  };
 }
 
 export interface PluginActivationConfig {
@@ -386,6 +422,7 @@ export interface PluginDefinition {
   notificationEvents?: PluginNotificationEventDefinition[];
   activation?: PluginActivationConfig;
   adminMenus?: PluginAdminMenuEntry[];
+  adminMenu?: PluginAdminMenuConfig;
   providers?: Record<string, PluginProviderEntry>;
   hooks?: PluginHookConfig;
   admin?: PluginAdminConfig;
