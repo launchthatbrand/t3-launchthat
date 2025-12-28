@@ -99,7 +99,7 @@ export function Search({
   };
 
   return (
-    <div className={`relative w-full max-w-sm ${className}`}>
+    <div className={`relative w-full md:max-w-sm ${className}`}>
       <div className="text-muted-foreground pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
         <SearchIcon className="h-4 w-4" aria-hidden="true" />
       </div>

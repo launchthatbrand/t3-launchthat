@@ -1,11 +1,17 @@
 "use client";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "../avatar";
+import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { ChevronsUpDown, LogOut } from "lucide-react";
+
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@acme/ui/sidebar";
+
+import { Avatar, AvatarFallback, AvatarImage } from "../avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,15 +21,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../dropdown-menu";
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@acme/ui/sidebar";
-
-import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
 import { cn } from "../lib/utils";
 
 interface NavUserProps {
@@ -96,7 +93,7 @@ export function NavUser({
                   {fallbackInitial}
                 </AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
+              <div className="hidden flex-1 text-left text-sm leading-tight md:grid">
                 <span className="truncate font-semibold text-black">
                   {displayName}
                 </span>

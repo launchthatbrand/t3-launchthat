@@ -35,14 +35,14 @@ export function EntityListHeader({
         {description && <p className="text-muted-foreground">{description}</p>}
       </div>
 
-      <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 md:items-center">
+      <div className="flex flex-col items-end space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 md:items-center">
         {enableSearch && (
           <Search
             value={searchTerm}
             onChange={onSearchChange}
             isSearching={isSearching}
             placeholder="Search..."
-            className="max-w-xs"
+            className="w-full md:max-w-xs"
           />
         )}
 
@@ -59,31 +59,31 @@ export function EntityListHeader({
 
               if (mode === "list") {
                 return (
-              <Button
+                  <Button
                     key="list"
-                variant={viewMode === "list" ? "default" : "ghost"}
-                size="sm"
+                    variant={viewMode === "list" ? "default" : "ghost"}
+                    size="sm"
                     className={shapeClass}
-                onClick={() => onViewModeChange("list")}
-              >
-                <List className="h-4 w-4" />
-                <span className="sr-only">List view</span>
-              </Button>
+                    onClick={() => onViewModeChange("list")}
+                  >
+                    <List className="h-4 w-4" />
+                    <span className="sr-only">List view</span>
+                  </Button>
                 );
               }
 
               if (mode === "grid") {
                 return (
-              <Button
+                  <Button
                     key="grid"
-                variant={viewMode === "grid" ? "default" : "ghost"}
-                size="sm"
+                    variant={viewMode === "grid" ? "default" : "ghost"}
+                    size="sm"
                     className={shapeClass}
-                onClick={() => onViewModeChange("grid")}
-              >
-                <LayoutGrid className="h-4 w-4" />
-                <span className="sr-only">Grid view</span>
-              </Button>
+                    onClick={() => onViewModeChange("grid")}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                    <span className="sr-only">Grid view</span>
+                  </Button>
                 );
               }
 

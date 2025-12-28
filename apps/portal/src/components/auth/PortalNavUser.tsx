@@ -11,7 +11,7 @@ export function PortalNavUser() {
   if (!session) {
     return (
       <NavUser
-        className="!ml-auto"
+        className="ml-auto!"
         isAuthenticated={false}
         onSignIn={() => {
           if (openSignIn) {
@@ -24,7 +24,7 @@ export function PortalNavUser() {
 
   return (
     <NavUser
-      className="!ml-auto"
+      className="ml-auto!"
       isAuthenticated
       user={{
         name: session.user.fullName ?? session.user.username ?? undefined,
@@ -35,4 +35,3 @@ export function PortalNavUser() {
     />
   );
 }
-
