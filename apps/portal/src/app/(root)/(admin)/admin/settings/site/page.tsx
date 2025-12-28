@@ -1,5 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import { Save } from "lucide-react";
+import { useForm } from "react-hook-form";
+
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -8,7 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Save } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -18,6 +23,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@acme/ui/form";
+import { Input } from "@acme/ui/input";
 import {
   Select,
   SelectContent,
@@ -25,14 +31,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-
-import { Button } from "@acme/ui/button";
-import { Input } from "@acme/ui/input";
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
-import { useForm } from "react-hook-form";
-import { useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+
 import { useTenant } from "~/context/TenantContext";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { OrganizationDomainsCard } from "../organizations/_components/OrganizationDomainsCard";
@@ -64,12 +65,18 @@ export default function SiteSettingsPage() {
 
   const activeTab = useMemo(() => {
     const raw = searchParams.get("tab") ?? "general";
-    const allowed = ["general", "branding", "localization", "domains", "advanced"];
+    const allowed = [
+      "general",
+      "branding",
+      "localization",
+      "domains",
+      "advanced",
+    ];
     return allowed.includes(raw) ? raw : "general";
   }, [searchParams]);
 
   return (
-    <div className="container space-y-6 py-4">
+    <div className="space-y-6">
       {activeTab === "general" ? <GeneralSettings /> : null}
       {activeTab === "branding" ? <BrandingSettings /> : null}
       {activeTab === "localization" ? <LocalizationSettings /> : null}

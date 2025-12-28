@@ -281,7 +281,7 @@ interface AdminLayoutHeaderProps {
 }
 
 const AdminLayoutHeader: React.FC<AdminLayoutHeaderProps> = ({
-  className = "space-y-0 gap-2 rounded-none bg-muted/50 shadow-sm",
+  className = "space-y-0 h-46 gap-2 rounded-none bg-muted/50 shadow-sm",
   contentClassName = "",
   customTabs,
 }) => {
@@ -299,7 +299,7 @@ const AdminLayoutHeader: React.FC<AdminLayoutHeaderProps> = ({
 
   return (
     <Card className={className}>
-      <CardHeader className="container flex flex-col flex-wrap items-start justify-start gap-4 py-6">
+      <CardHeader className="container flex flex-col flex-wrap items-start justify-start gap-4">
         <div>
           <CardTitle className="text-2xl font-bold">{title}</CardTitle>
           <CardDescription>{description}</CardDescription>

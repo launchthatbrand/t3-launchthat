@@ -107,7 +107,7 @@ export default function AuditLogDetailPage({ params }: Props) {
   // Show loading state
   if (auditLogEntry === undefined) {
     return (
-      <div className="container mx-auto space-y-6 py-6">
+      <div className="space-y-6">
         <div className="flex h-64 items-center justify-center">
           <div className="text-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900" />
@@ -123,7 +123,7 @@ export default function AuditLogDetailPage({ params }: Props) {
   // Show not found state
   if (auditLogEntry === null) {
     return (
-      <div className="container mx-auto space-y-6 py-6">
+      <div className="space-y-6">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" asChild>
             <Link href="/admin/settings/auditLog">
@@ -145,7 +145,7 @@ export default function AuditLogDetailPage({ params }: Props) {
   }
 
   return (
-    <div className="container mx-auto space-y-6 py-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

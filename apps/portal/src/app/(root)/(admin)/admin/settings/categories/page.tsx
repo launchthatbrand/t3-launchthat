@@ -162,7 +162,7 @@ const CategoriesPage = () => {
   ];
 
   return (
-    <div className="container py-8">
+    <div className="space-y-6">
       <div className="mb-4 rounded-md border p-3 text-sm">
         Categories are now managed under{" "}
         <span className="font-medium">Settings → Taxonomies → Categories</span>.

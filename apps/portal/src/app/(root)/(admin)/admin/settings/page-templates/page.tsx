@@ -158,15 +158,9 @@ export default function PageTemplatesSettingsPage() {
     orgOptions.find((org) => org.id === selectedOrgId)?.name ?? "Current";
 
   return (
-    <div className="container space-y-6 py-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Page Templates</h1>
-          <p className="text-muted-foreground">
-            Control which page templates are available per organization.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="space-y-6">
+      <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end gap-2">
           <Button
             variant="outline"
             onClick={() => setAllowed([])}

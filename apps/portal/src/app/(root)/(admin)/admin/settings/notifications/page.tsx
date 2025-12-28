@@ -1,9 +1,10 @@
 "use client";
 
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { useMemo, useState } from "react";
 import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
 import { useClerk } from "@clerk/nextjs";
+import { useMutation, useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
@@ -19,9 +20,9 @@ export default function AdminNotificationSettingsPage() {
   const { user } = useClerk();
   const clerkId = user?.id;
   const tenant = useTenant();
-  const orgId = tenant?._id;
+  const orgId: Id<"organizations"> | undefined = tenant?._id;
 
-  const convexUser = useQuery(
+  const convexUser: Doc<"users"> | null | undefined = useQuery(
     api.core.users.queries.getUserByClerkId,
     clerkId ? { clerkId } : "skip",
   );
@@ -31,23 +32,23 @@ export default function AdminNotificationSettingsPage() {
 
   const orgDefaults = useQuery(
     api.notifications.settings.getOrgDefaults,
-    orgId ? { orgId: orgId as any } : "skip",
-  );
+    orgId ? { orgId } : "skip",
+  ) as { inAppDefaults?: Record<string, boolean> } | null | undefined;
 
   const setOrgDefaults = useMutation(api.notifications.settings.setOrgDefaults);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleToggle = async (eventKey: string, enabled: boolean) => {
-    if (!orgId || !convexUser) return;
-    const next = {
+    if (!orgId || !convexUser?._id) return;
+    const next: Record<string, boolean> = {
       ...(orgDefaults?.inAppDefaults ?? {}),
       [eventKey]: enabled,
     };
     setIsSaving(true);
     try {
       await setOrgDefaults({
-        orgId: orgId as any,
-        actorUserId: convexUser._id as any,
+        orgId,
+        actorUserId: convexUser._id,
         inAppDefaults: next,
       });
     } finally {
@@ -56,17 +57,8 @@ export default function AdminNotificationSettingsPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Organization notification defaults
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            These are the default in-app notification settings for this
-            organization.
-          </p>
-        </div>
+    <div className="mx-auto space-y-6">
+      <div className="flex items-center justify-end">
         <Button variant="outline" disabled>
           Saved automatically
         </Button>
@@ -81,10 +73,8 @@ export default function AdminNotificationSettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {items.map((item) => {
-                const defaultValue =
-                  orgDefaults?.inAppDefaults?.[item.eventKey] ??
-                  item.defaultInAppEnabled ??
-                  true;
+                const stored = orgDefaults?.inAppDefaults?.[item.eventKey];
+                const defaultValue = stored ?? item.defaultInAppEnabled ?? true;
 
                 return (
                   <div
@@ -119,5 +109,3 @@ export default function AdminNotificationSettingsPage() {
     </div>
   );
 }
-
-

@@ -322,7 +322,7 @@ export default function MenuItemsPage() {
   // The local `menuItems` state should always reflect what's passed from `fetchedMenuItems` initially,
   // and then be updated by DND logic.
   return (
-    <div className="container mx-auto py-10">
+    <div className="space-y-6">
       <div className="mb-6">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" asChild>

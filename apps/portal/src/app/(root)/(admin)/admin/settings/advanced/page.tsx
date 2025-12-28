@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { ChevronLeft, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@acme/ui/button";
@@ -71,21 +70,7 @@ export default function AdvancedSettingsPage() {
   };
 
   return (
-    <div className="container py-6">
-      <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/admin/settings">
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-3xl font-bold">Advanced Settings</h1>
-        </div>
-        <p className="mt-2 text-muted-foreground">
-          Configure advanced system settings and optimizations
-        </p>
-      </div>
-
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>System Configuration</CardTitle>

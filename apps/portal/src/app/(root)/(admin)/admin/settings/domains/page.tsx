@@ -8,14 +8,23 @@ import { Copy, Mail } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@acme/ui/card";
 
-import { OrganizationDomainsCard } from "../organizations/_components/OrganizationDomainsCard";
 import { useTenant } from "~/context/TenantContext";
+import { OrganizationDomainsCard } from "../organizations/_components/OrganizationDomainsCard";
 
 type DomainRecord = { type: string; name: string; value: string };
 
-type OrgEmailDomainMeta = Pick<Doc<"organizations">, "slug" | "customDomain"> & {
+type OrgEmailDomainMeta = Pick<
+  Doc<"organizations">,
+  "slug" | "customDomain"
+> & {
   emailDomain?: string;
   emailDomainStatus?: "unconfigured" | "pending" | "verified" | "error";
   emailDomainRecords?: DomainRecord[];
@@ -38,15 +47,15 @@ export default function AdminDomainsSettingsPage() {
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [syncMessage, setSyncMessage] = React.useState<string | null>(null);
   const [syncError, setSyncError] = React.useState<string | null>(null);
-  const [recordsOverride, setRecordsOverride] = React.useState<DomainRecord[] | null>(
-    null,
-  );
+  const [recordsOverride, setRecordsOverride] = React.useState<
+    DomainRecord[] | null
+  >(null);
   const [statusOverride, setStatusOverride] = React.useState<
     "unconfigured" | "pending" | "verified" | "error" | null
   >(null);
-  const [emailDomainOverride, setEmailDomainOverride] = React.useState<string | null>(
-    null,
-  );
+  const [emailDomainOverride, setEmailDomainOverride] = React.useState<
+    string | null
+  >(null);
 
   const handleCopy = async (value: string) => {
     try {
@@ -90,7 +99,7 @@ export default function AdminDomainsSettingsPage() {
 
   if (!orgId) {
     return (
-      <div className="container mx-auto max-w-4xl px-4 py-6 space-y-6">
+      <div className="mx-auto max-w-4xl space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Domains</CardTitle>
@@ -103,20 +112,13 @@ export default function AdminDomainsSettingsPage() {
   }
 
   const emailDomain = emailDomainOverride ?? org?.emailDomain ?? null;
-  const emailDomainStatus = statusOverride ?? org?.emailDomainStatus ?? "unconfigured";
+  const emailDomainStatus =
+    statusOverride ?? org?.emailDomainStatus ?? "unconfigured";
   const emailDomainRecords = recordsOverride ?? org?.emailDomainRecords ?? [];
   const emailDomainLastError = org?.emailDomainLastError ?? null;
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Domains</h1>
-        <p className="text-muted-foreground text-sm">
-          Configure your website routing domain (Vercel) and your email sending domain
-          (Resend).
-        </p>
-      </div>
-
+    <div className="mx-auto space-y-6">
       <OrganizationDomainsCard organizationId={orgId} />
 
       <Card>
@@ -126,14 +128,17 @@ export default function AdminDomainsSettingsPage() {
             Email domain (Resend)
           </CardTitle>
           <CardDescription>
-            Resend requires you to verify the sending domain before you can send emails from it.
-            We derive the apex domain from your website custom domain.
+            Resend requires you to verify the sending domain before you can send
+            emails from it. We derive the apex domain from your website custom
+            domain.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-muted-foreground text-sm">
             Derived domain:{" "}
-            <span className="font-mono">{emailDomain ?? "(not configured)"}</span>
+            <span className="font-mono">
+              {emailDomain ?? "(not configured)"}
+            </span>
           </div>
           <div className="text-muted-foreground text-sm">
             Status: <span className="font-mono">{emailDomainStatus}</span>
@@ -157,8 +162,12 @@ export default function AdminDomainsSettingsPage() {
             </Button>
           </div>
 
-          {syncMessage ? <p className="text-sm text-emerald-600">{syncMessage}</p> : null}
-          {syncError ? <p className="text-destructive text-sm">{syncError}</p> : null}
+          {syncMessage ? (
+            <p className="text-sm text-emerald-600">{syncMessage}</p>
+          ) : null}
+          {syncError ? (
+            <p className="text-destructive text-sm">{syncError}</p>
+          ) : null}
           {emailDomainLastError ? (
             <p className="text-destructive text-sm">{emailDomainLastError}</p>
           ) : null}
@@ -167,7 +176,8 @@ export default function AdminDomainsSettingsPage() {
             <p className="text-sm font-medium">DNS records (Resend)</p>
             {emailDomainRecords.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                Click “Start email setup” to generate DNS records for Resend verification.
+                Click “Start email setup” to generate DNS records for Resend
+                verification.
               </p>
             ) : (
               <div className="space-y-2">
@@ -198,13 +208,12 @@ export default function AdminDomainsSettingsPage() {
           </div>
 
           <div className="text-muted-foreground text-sm">
-            Tip: website routing DNS records (Vercel) and email DNS records (Resend) are separate.
-            You need both to fully set up <span className="font-mono">{emailDomain ?? ""}</span>.
+            Tip: website routing DNS records (Vercel) and email DNS records
+            (Resend) are separate. You need both to fully set up{" "}
+            <span className="font-mono">{emailDomain ?? ""}</span>.
           </div>
         </CardContent>
       </Card>
     </div>
   );
 }
-
-

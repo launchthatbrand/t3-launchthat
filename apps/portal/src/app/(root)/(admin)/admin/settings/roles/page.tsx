@@ -7,6 +7,7 @@ import { api } from "@convex-config/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { Edit, Loader2, Plus, Shield, Trash2, Users } from "lucide-react";
 
+import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
@@ -19,6 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
+import { EntityList } from "@acme/ui/entity-list";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import {
@@ -31,12 +33,6 @@ import {
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
-
-import {
-  EntityList,
-  type ColumnDefinition,
-  type EntityAction,
-} from "@acme/ui/entity-list";
 
 // Define the data structure for roles
 type RoleData = Doc<"roles"> & {
@@ -145,7 +141,7 @@ export default function RolesAdminPage() {
       accessorKey: "name",
       cell: (role) => (
         <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-muted-foreground" />
+          <Shield className="text-muted-foreground h-4 w-4" />
           <div>
             <div className="font-medium">{role.name}</div>
             {role.isSystem && (
@@ -162,7 +158,7 @@ export default function RolesAdminPage() {
       header: "Description",
       accessorKey: "description",
       cell: (role) => (
-        <div className="line-clamp-2 text-sm text-muted-foreground">
+        <div className="text-muted-foreground line-clamp-2 text-sm">
           {role.description || "No description"}
         </div>
       ),
@@ -343,14 +339,14 @@ export default function RolesAdminPage() {
                 }))
               }
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Higher priority roles can override lower priority permissions.
             </p>
           </div>
           <div className="flex items-center justify-between rounded-md border p-3">
             <div className="space-y-1">
               <Label htmlFor="role-assignable">Assignable</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Allow admins to assign this role to users.
               </p>
             </div>
@@ -378,51 +374,35 @@ export default function RolesAdminPage() {
   );
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Roles</h1>
-          <p className="text-muted-foreground">
-            Manage user roles and their permissions
-          </p>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Role Management</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <EntityList<RoleData>
-            data={roles}
-            columns={columns}
-            filters={[]}
-            hideFilters={true}
-            initialFilters={{}}
-            onFiltersChange={() => {}}
-            isLoading={rolesQuery === undefined}
-            title="Role Management"
-            description="Manage user roles and their permissions"
-            defaultViewMode="list"
-            viewModes={["list"]}
-            entityActions={entityActions}
-            actions={headerActions}
-            emptyState={
-              <div className="flex h-40 flex-col items-center justify-center gap-2 text-center">
-                <Shield className="h-8 w-8 text-muted-foreground" />
-                <p className="text-muted-foreground">No roles found</p>
-                <Button
-                  variant="outline"
-                  onClick={() => router.push("/admin/settings/roles/new")}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create your first role
-                </Button>
-              </div>
-            }
-          />
-        </CardContent>
-      </Card>
+    <div className="space-y-6">
+      <EntityList<RoleData>
+        data={roles}
+        columns={columns}
+        filters={[]}
+        hideFilters={true}
+        initialFilters={{}}
+        onFiltersChange={() => {}}
+        isLoading={rolesQuery === undefined}
+        title="Role Management"
+        description="Manage user roles and their permissions"
+        defaultViewMode="list"
+        viewModes={["list"]}
+        entityActions={entityActions}
+        actions={headerActions}
+        emptyState={
+          <div className="flex h-40 flex-col items-center justify-center gap-2 text-center">
+            <Shield className="text-muted-foreground h-8 w-8" />
+            <p className="text-muted-foreground">No roles found</p>
+            <Button
+              variant="outline"
+              onClick={() => router.push("/admin/settings/roles/new")}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create your first role
+            </Button>
+          </div>
+        }
+      />
     </div>
   );
 }

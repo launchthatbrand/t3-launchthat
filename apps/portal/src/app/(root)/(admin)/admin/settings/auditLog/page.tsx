@@ -7,27 +7,21 @@
 // } from "launchthat-plugin-commerce";
 // import type { AuditLog } from "launchthat-plugin-commerce";
 import React from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { api } from "@convex-config/_generated/api";
+import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import {
   Activity,
   AlertTriangle,
-  ChevronLeft,
   TrendingUp,
   Users,
 } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
 // Import shared utilities from AuditLogViewer
 
 export default function AuditLogPage() {
-  const router = useRouter();
-
   // Get audit log statistics
   const auditLogStats = useQuery(
     api.core.auditLog.queries.getAuditLogStats,
@@ -37,7 +31,7 @@ export default function AuditLogPage() {
   // Show loading state
   if (auditLogStats === undefined) {
     return (
-      <div className="container mx-auto space-y-6 py-6">
+      <div className="space-y-6">
         <div className="flex h-64 items-center justify-center">
           <div className="text-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900" />
@@ -51,23 +45,7 @@ export default function AuditLogPage() {
   }
 
   return (
-    <div className="container mx-auto space-y-6 py-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" asChild>
-              <Link href="/admin/settings">
-                <ChevronLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <h1 className="text-3xl font-bold">Audit Log</h1>
-          </div>
-          <p className="text-muted-foreground mt-2">
-            Monitor system activity and user actions across the portal
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
 
       {/* Statistics Overview */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-4">

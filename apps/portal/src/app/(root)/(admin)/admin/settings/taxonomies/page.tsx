@@ -179,147 +179,103 @@ export default function TaxonomiesSettingsPage() {
   };
 
   return (
-    <div className="container space-y-6 py-6">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <Link
-            href="/admin/settings"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            Settings
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <span className="text-sm font-medium text-foreground">
-            Taxonomies
-          </span>
+    <div className="space-y-6">
+      {isLoading ? (
+        <div className="text-muted-foreground flex items-center justify-center py-10">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          Loading taxonomies…
         </div>
-        <div>
-          <h1 className="text-3xl font-bold">Taxonomies</h1>
-          <p className="text-muted-foreground">
-            Manage built-in taxonomies like categories and tags, or register
-            custom taxonomies to attach to post types.
-          </p>
+      ) : sortedTaxonomies.length === 0 ? (
+        <div className="text-muted-foreground flex flex-col items-center justify-center gap-2 py-10">
+          <Tag className="h-6 w-6" />
+          <p>No taxonomies found. Create your first taxonomy.</p>
         </div>
-      </div>
-
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div>
-            <CardTitle>Registered Taxonomies</CardTitle>
-            <CardDescription>
-              Add new taxonomies or configure which post types they apply to.
-            </CardDescription>
-          </div>
-          <Button onClick={openCreateDialog}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Taxonomy
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-10 text-muted-foreground">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Loading taxonomies…
-            </div>
-          ) : sortedTaxonomies.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
-              <Tag className="h-6 w-6" />
-              <p>No taxonomies found. Create your first taxonomy.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Slug</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Post Types</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+      ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Slug</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Post Types</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedTaxonomies.map((taxonomy) => {
+                const manageUrl = `/admin/edit?taxonomy=${taxonomy.slug}&post_type=${encodeURIComponent(
+                  taxonomy.postTypeSlugs?.[0] ?? "posts",
+                )}`;
+                return (
+                  <TableRow key={taxonomy._id}>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{taxonomy.name}</span>
+                          {taxonomy.builtIn ? (
+                            <Badge variant="secondary">Built-in</Badge>
+                          ) : null}
+                        </div>
+                        {taxonomy.description ? (
+                          <p className="text-muted-foreground text-sm">
+                            {taxonomy.description}
+                          </p>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {taxonomy.slug}
+                    </TableCell>
+                    <TableCell>
+                      {taxonomy.hierarchical ? (
+                        <Badge variant="outline">Hierarchical</Badge>
+                      ) : (
+                        <Badge variant="outline">Flat</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {(taxonomy.postTypeSlugs ?? []).length === 0 ? (
+                          <Badge variant="secondary">All</Badge>
+                        ) : (
+                          taxonomy.postTypeSlugs?.map((slug) => (
+                            <Badge key={slug} variant="secondary">
+                              {slug}
+                            </Badge>
+                          ))
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="flex items-center justify-end gap-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={manageUrl}>Manage terms</Link>
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => openEditDialog(taxonomy)}
+                      >
+                        <BadgeCheck className="h-4 w-4" />
+                        <span className="sr-only">Edit {taxonomy.name}</span>
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        disabled={taxonomy.builtIn}
+                        onClick={() => handleDelete(taxonomy)}
+                      >
+                        <Trash className="h-4 w-4" />
+                        <span className="sr-only">Delete {taxonomy.name}</span>
+                      </Button>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedTaxonomies.map((taxonomy) => {
-                    const manageUrl = `/admin/edit?taxonomy=${taxonomy.slug}&post_type=${encodeURIComponent(
-                      taxonomy.postTypeSlugs?.[0] ?? "posts",
-                    )}`;
-                    return (
-                      <TableRow key={taxonomy._id}>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">
-                                {taxonomy.name}
-                              </span>
-                              {taxonomy.builtIn ? (
-                                <Badge variant="secondary">Built-in</Badge>
-                              ) : null}
-                            </div>
-                            {taxonomy.description ? (
-                              <p className="text-sm text-muted-foreground">
-                                {taxonomy.description}
-                              </p>
-                            ) : null}
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {taxonomy.slug}
-                        </TableCell>
-                        <TableCell>
-                          {taxonomy.hierarchical ? (
-                            <Badge variant="outline">Hierarchical</Badge>
-                          ) : (
-                            <Badge variant="outline">Flat</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {(taxonomy.postTypeSlugs ?? []).length === 0 ? (
-                              <Badge variant="secondary">All</Badge>
-                            ) : (
-                              taxonomy.postTypeSlugs?.map((slug) => (
-                                <Badge key={slug} variant="secondary">
-                                  {slug}
-                                </Badge>
-                              ))
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="flex items-center justify-end gap-2">
-                          <Button asChild size="sm" variant="outline">
-                            <Link href={manageUrl}>Manage terms</Link>
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => openEditDialog(taxonomy)}
-                          >
-                            <BadgeCheck className="h-4 w-4" />
-                            <span className="sr-only">
-                              Edit {taxonomy.name}
-                            </span>
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            disabled={taxonomy.builtIn}
-                            onClick={() => handleDelete(taxonomy)}
-                          >
-                            <Trash className="h-4 w-4" />
-                            <span className="sr-only">
-                              Delete {taxonomy.name}
-                            </span>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[520px]">
@@ -372,7 +328,7 @@ export default function TaxonomiesSettingsPage() {
             <div className="flex items-center justify-between rounded-md border p-3">
               <div className="space-y-1">
                 <span className="text-sm font-medium">Hierarchical</span>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Allow parent/child relationships like categories.
                 </p>
               </div>
@@ -391,7 +347,7 @@ export default function TaxonomiesSettingsPage() {
               <ScrollArea className="h-32 rounded-md border p-2">
                 <div className="flex flex-col gap-2">
                   {postTypeOptions.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       No post types available.
                     </p>
                   ) : (
@@ -428,7 +384,7 @@ export default function TaxonomiesSettingsPage() {
                   )}
                 </div>
               </ScrollArea>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Leave empty to expose taxonomy to all post types.
               </p>
             </div>
@@ -458,16 +414,16 @@ export default function TaxonomiesSettingsPage() {
             submenu item, such as “Categories”, beneath its admin menu entry.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex items-start gap-3 text-sm text-muted-foreground">
+        <CardContent className="text-muted-foreground flex items-start gap-3 text-sm">
           <AlertCircle className="mt-0.5 h-4 w-4" />
           <p>
             Example: if the Posts post type includes the built-in{" "}
-            <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+            <code className="bg-muted rounded px-1 py-0.5 font-mono text-xs">
               category
             </code>{" "}
             taxonomy, you&apos;ll see a “Categories” submenu beneath Posts that
             links to{" "}
-            <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+            <code className="bg-muted rounded px-1 py-0.5 font-mono text-xs">
               /admin/edit?taxonomy=category&amp;post_type=posts
             </code>
             .

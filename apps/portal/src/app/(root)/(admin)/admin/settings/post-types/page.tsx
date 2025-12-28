@@ -1213,96 +1213,76 @@ export default function PostTypesSettingsPage() {
   );
 
   return (
-    <div className="container space-y-6 py-4">
+    <div className="space-y-6">
       {activeTab === "types" ? (
-        <Card>
-          <CardContent className="p-6">
-            <EntityList<PostType>
-              data={postTypes}
-              columns={postTypeColumns}
-              title="All Post Types"
-              description="Overview of your built-in and custom content types"
-              actions={postTypeListActions}
-              isLoading={postTypesLoading}
-              enableSearch
-              viewModes={["list"]}
-              emptyState={postTypesEmptyState}
-            />
-          </CardContent>
-        </Card>
+        <EntityList<PostType>
+          data={postTypes}
+          columns={postTypeColumns}
+          title="All Post Types"
+          description="Overview of your built-in and custom content types"
+          actions={postTypeListActions}
+          isLoading={postTypesLoading}
+          enableSearch
+          viewModes={["list"]}
+          emptyState={postTypesEmptyState}
+        />
       ) : null}
 
       {activeTab === "taxonomies" ? (
         <>
-          <p className="text-muted-foreground mb-4 text-sm">
-            Assign hierarchical or flat taxonomies to each post type—just like
-            WordPress categories and tags.
-          </p>
-          <Card>
-            <CardContent className="p-6">
-              <EntityList<TaxonomyDefinition>
-                data={selectedTaxonomyPostType ? taxonomies : []}
-                columns={taxonomyColumns}
-                title={taxonomyTitle}
-                description={
-                  selectedTaxonomyPostType
-                    ? `Toggle which taxonomies apply to ${selectedTaxonomyPostType.name}.`
-                    : undefined
-                }
-                actions={taxonomyActions}
-                enableSearch={false}
-                viewModes={["list"]}
-                emptyState={
-                  <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
-                    <p className="text-muted-foreground">
-                      Choose a post type to manage taxonomy relationships.
-                    </p>
-                    <Button
-                      onClick={() =>
-                        updateQueryParams((params) => {
-                          params.set("tab", "types");
-                        })
-                      }
-                    >
-                      Go to Post Types
-                    </Button>
-                  </div>
-                }
-              />
-            </CardContent>
-          </Card>
+          <EntityList<TaxonomyDefinition>
+            data={selectedTaxonomyPostType ? taxonomies : []}
+            columns={taxonomyColumns}
+            title={taxonomyTitle}
+            description={
+              selectedTaxonomyPostType
+                ? `Toggle which taxonomies apply to ${selectedTaxonomyPostType.name}.`
+                : undefined
+            }
+            actions={taxonomyActions}
+            enableSearch={false}
+            viewModes={["list"]}
+            emptyState={
+              <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+                <p className="text-muted-foreground">
+                  Choose a post type to manage taxonomy relationships.
+                </p>
+                <Button
+                  onClick={() =>
+                    updateQueryParams((params) => {
+                      params.set("tab", "types");
+                    })
+                  }
+                >
+                  Go to Post Types
+                </Button>
+              </div>
+            }
+          />
         </>
       ) : null}
 
       {activeTab === "fields" ? (
         <>
-          <p className="text-muted-foreground mb-4 text-sm">
-            Define field metadata, meta keys, and storage options similar to
-            WordPress custom fields.
-          </p>
-          <Card>
-            <CardContent className="p-6">
-              <EntityList<Doc<"postTypeFields">>
-                data={selectedPostType ? currentFields : []}
-                columns={fieldColumns}
-                title={
-                  selectedPostType
-                    ? `Fields for ${selectedPostType.name}`
-                    : "Fields"
-                }
-                description={
-                  selectedPostType
-                    ? `Manage custom meta for ${selectedPostType.name}.`
-                    : undefined
-                }
-                actions={fieldActions}
-                isLoading={postTypeFieldsLoading}
-                enableSearch
-                viewModes={["list"]}
-                emptyState={fieldEmptyState}
-              />
-            </CardContent>
-          </Card>
+          <EntityList<Doc<"postTypeFields">>
+            data={selectedPostType ? currentFields : []}
+            columns={fieldColumns}
+            title={
+              selectedPostType
+                ? `Fields for ${selectedPostType.name}`
+                : "Fields"
+            }
+            description={
+              selectedPostType
+                ? `Manage custom meta for ${selectedPostType.name}.`
+                : undefined
+            }
+            actions={fieldActions}
+            isLoading={postTypeFieldsLoading}
+            enableSearch
+            viewModes={["list"]}
+            emptyState={fieldEmptyState}
+          />
         </>
       ) : null}
     </div>

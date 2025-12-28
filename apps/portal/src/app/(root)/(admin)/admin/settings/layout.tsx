@@ -270,7 +270,9 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
     >
       <AdminLayoutHeader />
       <AdminLayoutContent>
-        <AdminLayoutMain>{children}</AdminLayoutMain>
+        <AdminLayoutMain>
+          <div className="container py-4">{children}</div>
+        </AdminLayoutMain>
       </AdminLayoutContent>
     </AdminLayout>
   );

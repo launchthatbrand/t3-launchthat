@@ -324,14 +324,14 @@ export default function OrganizationsSettingsPage() {
   };
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="space-y-6">
       <EntityList<OrganizationData>
         data={organizationsData}
         columns={columns}
         filters={filters}
         isLoading={organizations === undefined}
-        title="Organizations"
-        description="Manage organizations, plans, and member access"
+        // title="Organizations"
+        // description="Manage organizations, plans, and member access"
         defaultViewMode="list"
         viewModes={["list"]}
         entityActions={entityActions}

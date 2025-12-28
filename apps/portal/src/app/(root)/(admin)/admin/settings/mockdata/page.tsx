@@ -214,15 +214,7 @@ export default function MockDataPage() {
   */
 
   return (
-    <div className="container mx-auto space-y-6 py-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Mock Data Management</h1>
-        <p className="text-muted-foreground">
-          Generate test data for development and testing purposes
-        </p>
-      </div>
-
+    <div className="space-y-6">
       {/* Warning Card */}
       <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
         <CardHeader>

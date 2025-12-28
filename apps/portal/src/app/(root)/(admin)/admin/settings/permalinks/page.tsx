@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { Info, Loader2, Save } from "lucide-react";
@@ -53,13 +53,13 @@ const defaultSettings: PermalinkSettings = {
   trailingSlash: true,
 };
 
-const STRUCTURE_OPTIONS: Array<{
+const STRUCTURE_OPTIONS: {
   value: PermalinkStructure;
   label: string;
   pattern: string;
   sample: string;
   description?: string;
-}> = [
+}[] = [
   {
     value: "plain",
     label: "Plain",
@@ -128,11 +128,6 @@ export default function PermalinkSettingsPage() {
     }
   }, [data]);
 
-  const currentStructure = useMemo(
-    () => STRUCTURE_OPTIONS.find((opt) => opt.value === settings.structure),
-    [settings.structure],
-  );
-
   const handleStructureChange = (value: PermalinkStructure) => {
     setSettings((prev) => ({
       ...prev,
@@ -170,17 +165,6 @@ export default function PermalinkSettingsPage() {
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            Admin / Settings / Permalinks
-          </p>
-          <h1 className="text-3xl font-bold">Permalink Settings</h1>
-          <p className="text-muted-foreground">
-            Configure how URLs are generated across your site, just like classic
-            WordPress installs.
-          </p>
-        </div>
-
         <Card>
           <CardHeader>
             <CardTitle>Common Settings</CardTitle>
@@ -191,7 +175,7 @@ export default function PermalinkSettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {isLoading ? (
-              <div className="flex h-32 items-center justify-center text-muted-foreground">
+              <div className="text-muted-foreground flex h-32 items-center justify-center">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading
                 current settings…
               </div>
@@ -214,11 +198,11 @@ export default function PermalinkSettingsPage() {
                         <Label htmlFor={option.value} className="text-base">
                           {option.label}
                         </Label>
-                        <p className="font-mono text-sm text-muted-foreground">
+                        <p className="text-muted-foreground font-mono text-sm">
                           {option.sample}
                         </p>
                         {option.description && (
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-muted-foreground text-sm">
                             {option.description}
                           </p>
                         )}
@@ -229,7 +213,7 @@ export default function PermalinkSettingsPage() {
                             </Label>
                             <div className="flex flex-col gap-3 md:flex-row">
                               <div className="relative flex-1">
-                                <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                                <div className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm">
                                   {SITE_BASE_URL}
                                 </div>
                                 <Input
@@ -270,12 +254,12 @@ export default function PermalinkSettingsPage() {
 
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-foreground text-sm font-medium">
                   Available tags
                 </p>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Info className="h-4 w-4 text-muted-foreground" />
+                    <Info className="text-muted-foreground h-4 w-4" />
                   </TooltipTrigger>
                   <TooltipContent>
                     Combine these placeholders inside your custom structure.
@@ -296,7 +280,7 @@ export default function PermalinkSettingsPage() {
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <p className="text-sm font-medium">Add trailing slash</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   Append a trailing slash to generated URLs for consistency.
                 </p>
               </div>
@@ -332,7 +316,7 @@ export default function PermalinkSettingsPage() {
                   }))
                 }
               />
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Example: topics → {SITE_BASE_URL}/topics/uncategorized/
               </p>
             </div>
@@ -355,7 +339,7 @@ export default function PermalinkSettingsPage() {
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           {statusMessage && (
-            <p className="text-sm text-muted-foreground">{statusMessage}</p>
+            <p className="text-muted-foreground text-sm">{statusMessage}</p>
           )}
           <div className="flex items-center gap-2">
             <Button

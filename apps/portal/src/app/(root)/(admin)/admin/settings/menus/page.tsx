@@ -183,21 +183,7 @@ export default function MenusSettingsPage() {
   );
 
   return (
-    <div className="container py-6">
-      <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/admin/settings">
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-3xl font-bold">Menus</h1>
-        </div>
-        <p className="text-muted-foreground mt-2">
-          Manage navigation structures and assign them to site locations
-        </p>
-      </div>
-
+    <div className="space-y-6">
       <Card className="mb-6">
         <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
           <div>
@@ -212,29 +198,24 @@ export default function MenusSettingsPage() {
           </Button>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardContent className="p-6">
-          <EntityList<Doc<"menus">>
-            data={menus}
-            columns={menuColumns}
-            title="All Menus"
-            description="Overview of your registered navigation menus"
-            actions={renderCreateMenuDialog()}
-            isLoading={menusLoading}
-            enableSearch
-            viewModes={["list"]}
-            emptyState={
-              <div className="flex flex-col items-center justify-center gap-2 py-6">
-                <p className="text-muted-foreground">
-                  No menus yet. Use &ldquo;Create Menu&rdquo; to add your first
-                  navigation.
-                </p>
-              </div>
-            }
-          />
-        </CardContent>
-      </Card>
+      <EntityList<Doc<"menus">>
+        data={menus}
+        columns={menuColumns}
+        // title="All Menus"
+        // description="Overview of your registered navigation menus"
+        actions={renderCreateMenuDialog()}
+        isLoading={menusLoading}
+        enableSearch
+        viewModes={["list"]}
+        emptyState={
+          <div className="flex flex-col items-center justify-center gap-2 py-6">
+            <p className="text-muted-foreground">
+              No menus yet. Use &ldquo;Create Menu&rdquo; to add your first
+              navigation.
+            </p>
+          </div>
+        }
+      />
 
       <Dialog open={!!editingMenuId} onOpenChange={closeEditDialog}>
         <DialogContent>

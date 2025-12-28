@@ -41,7 +41,7 @@ export default function OrganizationsSeedPage() {
   const hasPlans = existingPlans && existingPlans.length > 0;
 
   return (
-    <div className="container mx-auto max-w-2xl py-6">
+    <div className="mx-auto max-w-2xl space-y-6">
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Organization Setup</h1>
