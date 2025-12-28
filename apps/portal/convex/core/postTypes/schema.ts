@@ -185,6 +185,7 @@ export const postTypesTable = defineTable({
   storageTables: v.optional(postTypeStorageTablesValidator),
   metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
   frontendVisibility: v.optional(postTypeFrontendVisibilityValidator),
+  pageTemplateSlug: v.optional(v.string()),
 
   // Stats and Metadata
   fieldCount: v.optional(v.number()), // Number of fields (denormalized for performance)

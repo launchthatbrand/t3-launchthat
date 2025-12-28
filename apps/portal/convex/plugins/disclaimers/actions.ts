@@ -5,6 +5,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { v } from "convex/values";
+import { createHash } from "node:crypto";
 
 import {
   api as apiTyped,
@@ -16,12 +17,31 @@ const resolvePortalOrigin = () =>
   // eslint-disable-next-line turbo/no-undeclared-env-vars
   process.env.CLIENT_ORIGIN ?? "http://localhost:3024";
 
-const buildSignUrl = (issueId: string, token: string) => {
+const normalizeClientOrigin = (value: unknown) => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const u = new URL(trimmed);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+    return u.origin;
+  } catch {
+    return null;
+  }
+};
+
+const sha256Hex = (input: string) =>
+  createHash("sha256").update(input, "utf8").digest("hex");
+
+const buildSignUrl = (issueId: string, token: string, origin?: string | null) => {
   const url = new URL(
-    `/disclaimers/${encodeURIComponent(issueId)}`,
-    resolvePortalOrigin(),
+    `/disclaimer/${encodeURIComponent(issueId)}`,
+    origin ?? resolvePortalOrigin(),
   );
+  // Keep `token` for backwards-compat. Prefer `tokenHash` in new links so the
+  // client doesn't need to hash (and we avoid subtle encoding mismatches).
   url.searchParams.set("token", token);
+  url.searchParams.set("tokenHash", sha256Hex(token));
   return url.toString();
 };
 
@@ -32,28 +52,79 @@ const action = actionTyped as any;
 const disclaimersPostsQueries = components.launchthat_disclaimers.posts.queries;
 const disclaimersActions = components.launchthat_disclaimers.actions;
 
+export const importTemplatePdfAndAttach = action({
+  args: {
+    orgId: v.optional(v.string()),
+    templatePostId: v.string(),
+    sourceUrl: v.string(),
+    consentText: v.optional(v.string()),
+    description: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx: any, args: any) => {
+    const sourceUrl = String(args.sourceUrl ?? "").trim();
+    if (!sourceUrl) {
+      throw new Error("Missing source URL.");
+    }
+
+    // Copy the PDF into the Disclaimers component storage so `ctx.storage.getUrl`
+    // inside the component can resolve it (component storage is scoped).
+    const pdfFileId = await ctx.runAction(
+      components.launchthat_disclaimers.actions.importTemplatePdfFromUrl,
+      { sourceUrl },
+    );
+
+    await ctx.runMutation(api.plugins.disclaimers.mutations.upsertDisclaimerTemplateMeta, {
+      postId: args.templatePostId,
+      organizationId: args.orgId ? String(args.orgId) : undefined,
+      pdfFileId: String(pdfFileId),
+      consentText: args.consentText,
+      description: args.description,
+    });
+
+    return { pdfFileId: String(pdfFileId) };
+  },
+});
+
 export const issueDisclaimerAndSendEmail = action({
   args: {
     orgId: v.optional(v.string()),
+    issuePostId: v.optional(v.string()),
     templatePostId: v.string(),
     recipientEmail: v.string(),
     recipientName: v.optional(v.string()),
     recipientUserId: v.optional(v.string()),
+    clientOrigin: v.optional(v.string()),
   },
   returns: v.any(),
   handler: async (ctx: any, args: any) => {
     const created = (await ctx.runMutation(
-      api.plugins.disclaimers.mutations.createManualIssue,
-      {
-        organizationId: args.orgId ? String(args.orgId) : undefined,
-        templatePostId: args.templatePostId,
-        recipientEmail: args.recipientEmail,
-        recipientName: args.recipientName,
-        recipientUserId: args.recipientUserId,
-      },
+      args.issuePostId
+        ? api.plugins.disclaimers.mutations.createManualIssueFromPost
+        : api.plugins.disclaimers.mutations.createManualIssue,
+      args.issuePostId
+        ? {
+            organizationId: args.orgId ? String(args.orgId) : undefined,
+            issuePostId: args.issuePostId,
+            templatePostId: args.templatePostId,
+            recipientEmail: args.recipientEmail,
+            recipientName: args.recipientName,
+            recipientUserId: args.recipientUserId,
+          }
+        : {
+            organizationId: args.orgId ? String(args.orgId) : undefined,
+            templatePostId: args.templatePostId,
+            recipientEmail: args.recipientEmail,
+            recipientName: args.recipientName,
+            recipientUserId: args.recipientUserId,
+          },
     )) as { issueId: string; token: string };
 
-    const signUrl = buildSignUrl(created.issueId, created.token);
+    const signUrl = buildSignUrl(
+      created.issueId,
+      created.token,
+      normalizeClientOrigin(args.clientOrigin),
+    );
 
     const templatePost = await ctx.runQuery(
       disclaimersPostsQueries.getPostById,
@@ -88,6 +159,7 @@ export const resendDisclaimerAndSendEmail = action({
   args: {
     orgId: v.optional(v.string()),
     issueId: v.string(),
+    clientOrigin: v.optional(v.string()),
   },
   returns: v.any(),
   handler: async (ctx: any, args: any) => {
@@ -105,7 +177,11 @@ export const resendDisclaimerAndSendEmail = action({
       templatePostId: string;
     };
 
-    const signUrl = buildSignUrl(result.issueId, result.token);
+    const signUrl = buildSignUrl(
+      result.issueId,
+      result.token,
+      normalizeClientOrigin(args.clientOrigin),
+    );
 
     const templatePost = await ctx.runQuery(
       disclaimersPostsQueries.getPostById,
@@ -151,7 +227,15 @@ export const submitSignature = action({
   args: {
     issueId: v.string(),
     tokenHash: v.string(),
-    signatureDataUrl: v.string(),
+    signatureDataUrl: v.optional(v.string()),
+    fieldSignatures: v.optional(
+      v.array(
+        v.object({
+          fieldId: v.string(),
+          signatureDataUrl: v.string(),
+        }),
+      ),
+    ),
     signedName: v.string(),
     signedEmail: v.string(),
     consentText: v.string(),
@@ -163,6 +247,7 @@ export const submitSignature = action({
       issueId: args.issueId,
       tokenHash: args.tokenHash,
       signatureDataUrl: args.signatureDataUrl,
+      fieldSignatures: args.fieldSignatures,
       signedName: args.signedName,
       signedEmail: args.signedEmail,
       consentText: args.consentText,

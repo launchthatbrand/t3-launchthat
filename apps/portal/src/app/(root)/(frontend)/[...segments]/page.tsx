@@ -312,34 +312,54 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     );
   };
 
-  const pageTemplateSlug =
-    (postMetaMap.get("page_template") as string | undefined) ??
+  const configuredPostTypeTemplateSlug =
+    postType && typeof (postType as { pageTemplateSlug?: unknown }).pageTemplateSlug === "string"
+      ? ((postType as { pageTemplateSlug: string }).pageTemplateSlug ?? undefined)
+      : undefined;
+
+  // Back-compat: legacy pages may still have `page_template` stored as post meta.
+  // Once a post type template is set, we ignore per-post meta (no per-post override).
+  const legacyPageTemplateSlug =
+    post.postTypeSlug === "pages"
+      ? ((postMetaMap.get("page_template") as string | undefined) ?? undefined)
+      : undefined;
+
+  let effectivePageTemplateSlug =
+    configuredPostTypeTemplateSlug ??
+    legacyPageTemplateSlug ??
     DEFAULT_PAGE_TEMPLATE_SLUG;
+
   if (post.postTypeSlug === "pages") {
     const allowedSet =
       allowedPageTemplates && allowedPageTemplates.length > 0
-        ? new Set<string>([
-            ...allowedPageTemplates,
-            DEFAULT_PAGE_TEMPLATE_SLUG,
-            pageTemplateSlug,
-          ])
+        ? new Set<string>([...allowedPageTemplates, DEFAULT_PAGE_TEMPLATE_SLUG])
         : null;
-    const effectiveSlug =
-      allowedSet && !allowedSet.has(pageTemplateSlug)
-        ? DEFAULT_PAGE_TEMPLATE_SLUG
-        : pageTemplateSlug;
-    const pageTemplate = getPageTemplate(effectiveSlug, organizationId);
-    if (
-      pageTemplate &&
-      pageTemplate.slug !== DEFAULT_PAGE_TEMPLATE_SLUG &&
-      pageTemplate.render
-    ) {
-      const rendered = pageTemplate.render({
-        post,
-        postType,
-        meta: postMetaObject,
-        organizationId,
-      });
+
+    if (allowedSet && !allowedSet.has(effectivePageTemplateSlug)) {
+      effectivePageTemplateSlug = DEFAULT_PAGE_TEMPLATE_SLUG;
+    }
+  }
+
+  const resolvedPageTemplate = getPageTemplate(
+    effectivePageTemplateSlug,
+    organizationId,
+  );
+
+  if (
+    resolvedPageTemplate &&
+    resolvedPageTemplate.slug !== DEFAULT_PAGE_TEMPLATE_SLUG &&
+    resolvedPageTemplate.render
+  ) {
+    const rendered = resolvedPageTemplate.render({
+      post,
+      postType,
+      meta: postMetaObject,
+      organizationId,
+    });
+
+    // Some templates (like Canvas) are layout-only and return null to delegate to
+    // the standard renderer with layout overrides applied below.
+    if (rendered !== null) {
       const providerIds = getFrontendProvidersForPostType(post.postTypeSlug);
       return wrapWithFrontendProviderSpecsIfNeeded(rendered, providerIds);
     }
@@ -409,6 +429,7 @@ export default async function FrontendCatchAllPage(props: PageProps) {
       postMetaObject={postMetaObject}
       categoryBase={categoryBase}
       tagBase={tagBase}
+      layout={resolvedPageTemplate?.layout}
     />,
     providerIds,
   );
@@ -615,6 +636,11 @@ interface PostDetailProps {
   postMetaObject: Record<string, PostMetaValue>;
   categoryBase: string;
   tagBase: string;
+  layout?: {
+    showHeader?: boolean;
+    showSidebar?: boolean;
+    container?: "default" | "wide" | "full";
+  };
 }
 
 function PostDetail({
@@ -628,6 +654,7 @@ function PostDetail({
   postMetaObject,
   categoryBase,
   tagBase,
+  layout,
 }: PostDetailProps) {
   const contextLabel = resolveContextLabel(post, postType);
   const customFieldEntries = buildCustomFieldEntries({
@@ -661,13 +688,26 @@ function PostDetail({
     );
   }
 
+  const showHeader = layout?.showHeader ?? true;
+  const showSidebar = layout?.showSidebar ?? true;
+
   const hasSidebar =
-    pluginSlots.sidebarTop.length > 0 || pluginSlots.sidebarBottom.length > 0;
+    showSidebar &&
+    (pluginSlots.sidebarTop.length > 0 || pluginSlots.sidebarBottom.length > 0);
+
+  const containerClassName =
+    layout?.container === "full"
+      ? "w-full"
+      : layout?.container === "wide"
+        ? "relative mx-auto w-full max-w-7xl space-y-6 overflow-hidden py-10"
+        : "relative container mx-auto max-w-6xl space-y-6 overflow-hidden py-10";
 
   return (
     <main className="relative">
-      <BackgroundRippleEffect interactive={true} className="z-10 opacity-80" />
-      <div className="relative container mx-auto max-w-6xl space-y-6 overflow-hidden py-10">
+      {layout?.container !== "full" && (
+        <BackgroundRippleEffect interactive={true} className="z-10 opacity-80" />
+      )}
+      <div className={containerClassName}>
         {pluginSlots.beforeContent.length > 0 && (
           <div className="z-20 space-y-4">{pluginSlots.beforeContent}</div>
         )}
@@ -680,28 +720,30 @@ function PostDetail({
           )}
         >
           <article className="space-y-6">
-            <header className="space-y-3">
-              <p className="text-muted-foreground text-sm tracking-wide uppercase">
-                {contextLabel}
-              </p>
-              <h1 className="text-4xl font-bold">{post.title}</h1>
-              {post.excerpt && (
-                <p className="text-muted-foreground text-lg">{post.excerpt}</p>
-              )}
-              <PostMetaSummary post={post} postType={postType} />
-              {post.organizationId ? (
-                <TaxonomyBadges
-                  organizationId={post.organizationId as unknown as string}
-                  objectId={post._id as unknown as string}
-                  postTypeSlug={post.postTypeSlug ?? undefined}
-                  categoryBase={categoryBase}
-                  tagBase={tagBase}
-                />
-              ) : null}
-              {pluginSlots.header.length > 0 && (
-                <div className="space-y-3">{pluginSlots.header}</div>
-              )}
-            </header>
+            {showHeader && (
+              <header className="space-y-3">
+                <p className="text-muted-foreground text-sm tracking-wide uppercase">
+                  {contextLabel}
+                </p>
+                <h1 className="text-4xl font-bold">{post.title}</h1>
+                {post.excerpt && (
+                  <p className="text-muted-foreground text-lg">{post.excerpt}</p>
+                )}
+                <PostMetaSummary post={post} postType={postType} />
+                {post.organizationId ? (
+                  <TaxonomyBadges
+                    organizationId={post.organizationId as unknown as string}
+                    objectId={post._id as unknown as string}
+                    postTypeSlug={post.postTypeSlug ?? undefined}
+                    categoryBase={categoryBase}
+                    tagBase={tagBase}
+                  />
+                ) : null}
+                {pluginSlots.header.length > 0 && (
+                  <div className="space-y-3">{pluginSlots.header}</div>
+                )}
+              </header>
+            )}
             <FilteredContent
               lexicalContent={lexicalContent}
               rawContent={rawContent}

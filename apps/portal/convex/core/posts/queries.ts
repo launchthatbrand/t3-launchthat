@@ -28,13 +28,7 @@ export const getAllPosts = query({
     organizationId: v.optional(v.id("organizations")),
     filters: v.optional(
       v.object({
-        status: v.optional(
-          v.union(
-            v.literal("published"),
-            v.literal("draft"),
-            v.literal("archived"),
-          ),
-        ),
+        status: v.optional(v.string()),
         category: v.optional(v.string()),
         authorId: v.optional(v.id("users")),
         limit: v.optional(v.number()),

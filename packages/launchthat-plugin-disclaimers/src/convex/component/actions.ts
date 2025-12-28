@@ -16,6 +16,7 @@ type SigningContext = {
     pdfVersion: number;
     postId: string;
     title: string;
+    builderTemplateJson?: string;
   };
 } | null;
 
@@ -48,7 +49,15 @@ export const submitSignature = action({
   args: {
     issueId: v.id("disclaimerIssues"),
     tokenHash: v.string(),
-    signatureDataUrl: v.string(),
+    signatureDataUrl: v.optional(v.string()),
+    fieldSignatures: v.optional(
+      v.array(
+        v.object({
+          fieldId: v.string(),
+          signatureDataUrl: v.string(),
+        }),
+      ),
+    ),
     signedName: v.string(),
     signedEmail: v.string(),
     signedByUserId: v.optional(v.string()),
@@ -75,14 +84,6 @@ export const submitSignature = action({
       throw new Error("Issue is already complete.");
     }
 
-    const signatureBytes = parseSignatureDataUrl(args.signatureDataUrl);
-
-    // Store signature image.
-    const signatureAb = new ArrayBuffer(signatureBytes.byteLength);
-    new Uint8Array(signatureAb).set(signatureBytes);
-    const signatureBlob = new Blob([signatureAb], { type: "image/png" });
-    const signaturePngFileId = await ctx.storage.store(signatureBlob);
-
     // Load original PDF.
     const pdfRes = await fetch(signing.template.pdfUrl);
     if (!pdfRes.ok) {
@@ -94,83 +95,197 @@ export const submitSignature = action({
     const pdf = await PDFDocument.load(originalBytes);
     const pages = pdf.getPages();
     if (pages.length === 0) throw new Error("PDF has no pages.");
-    const page = pages[pages.length - 1]!;
-
-    const signaturePng = await pdf.embedPng(signatureBytes);
-    const signatureDims = signaturePng.scale(0.5);
-
-    const { width } = page.getSize();
-    const margin = 36;
-    const boxWidth = Math.min(360, width - margin * 2);
-    const boxHeight = 160;
-    const boxX = width - margin - boxWidth;
-    const boxY = margin;
-
-    page.drawRectangle({
-      x: boxX,
-      y: boxY,
-      width: boxWidth,
-      height: boxHeight,
-      borderColor: rgb(0.85, 0.85, 0.85),
-      borderWidth: 1,
-      color: rgb(1, 1, 1),
-    });
 
     const font = await pdf.embedFont(StandardFonts.Helvetica);
     const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-    const titleY = boxY + boxHeight - 18;
-    page.drawText("Signed acknowledgment", {
-      x: boxX + 12,
-      y: titleY,
-      size: 11,
-      font: fontBold,
-      color: rgb(0.1, 0.1, 0.1),
-    });
+    // If multi-sign is provided, stamp each field on its configured page.
+    // Otherwise, fallback to the legacy single-sign behavior (audit box on last page).
+    const fieldSignatures =
+      Array.isArray(args.fieldSignatures) && args.fieldSignatures.length > 0
+        ? (args.fieldSignatures as Array<{ fieldId: string; signatureDataUrl: string }>)
+        : null;
 
-    const signatureMaxWidth = boxWidth - 24;
-    const signatureScale =
-      signatureDims.width > signatureMaxWidth
-        ? signatureMaxWidth / signatureDims.width
-        : 1;
-    const sigW = signatureDims.width * signatureScale;
-    const sigH = signatureDims.height * signatureScale;
+    let signaturePngFileId: Id<"_storage"> | undefined;
 
-    const sigX = boxX + 12;
-    const sigY = boxY + boxHeight - 18 - sigH - 12;
-    page.drawImage(signaturePng, {
-      x: sigX,
-      y: sigY,
-      width: sigW,
-      height: sigH,
-    });
+    if (fieldSignatures) {
+      const rawBuilder =
+        typeof signing.template.builderTemplateJson === "string"
+          ? signing.template.builderTemplateJson
+          : "";
 
-    const lineY = sigY - 10;
-    page.drawLine({
-      start: { x: boxX + 12, y: lineY },
-      end: { x: boxX + boxWidth - 12, y: lineY },
-      thickness: 1,
-      color: rgb(0.75, 0.75, 0.75),
-    });
+      type BuilderField = {
+        id: string;
+        kind: "signature";
+        pageIndex: number;
+        xPct: number;
+        yPct: number; // from top
+        wPct: number;
+        hPct: number;
+        required: boolean;
+        label?: string;
+      };
+      type BuilderTemplate = { version: 1; fields: BuilderField[] };
 
-    const signedAtIso = new Date().toISOString();
-    const textY = lineY - 14;
-    const lines = [
-      `Name: ${args.signedName}`,
-      `Email: ${args.signedEmail}`,
-      `Signed at: ${signedAtIso}`,
-    ];
-    lines.forEach((line, idx) => {
-      page.drawText(line, {
-        x: boxX + 12,
-        y: textY - idx * 12,
-        size: 9,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
+      let builder: BuilderTemplate | null = null;
+      try {
+        const parsed = JSON.parse(rawBuilder) as BuilderTemplate;
+        if (parsed && parsed.version === 1 && Array.isArray(parsed.fields)) {
+          builder = parsed;
+        }
+      } catch {
+        builder = null;
+      }
+
+      const fields: BuilderField[] =
+        builder?.fields?.filter((f) => f && f.kind === "signature") ?? [];
+
+      if (fields.length === 0) {
+        throw new Error("No builder signature fields configured for this template.");
+      }
+
+      const fieldById = new Map(fields.map((f) => [String(f.id), f]));
+
+      for (const entry of fieldSignatures) {
+        const field = fieldById.get(String(entry.fieldId));
+        if (!field) {
+          throw new Error("Unknown signature field.");
+        }
+        if (field.pageIndex < 0 || field.pageIndex >= pages.length) {
+          throw new Error("Signature field page is out of range.");
+        }
+        const signatureBytes = parseSignatureDataUrl(entry.signatureDataUrl);
+        const signaturePng = await pdf.embedPng(signatureBytes);
+
+        if (!signaturePngFileId) {
+          // Store the first signature image for audit/reference.
+          const signatureAb = new ArrayBuffer(signatureBytes.byteLength);
+          new Uint8Array(signatureAb).set(signatureBytes);
+          const signatureBlob = new Blob([signatureAb], { type: "image/png" });
+          signaturePngFileId = await ctx.storage.store(signatureBlob);
+        }
+
+        const page = pages[field.pageIndex]!;
+        const { width: pageW, height: pageH } = page.getSize();
+        const boxW = Math.max(1, Math.min(pageW, field.wPct * pageW));
+        const boxH = Math.max(1, Math.min(pageH, field.hPct * pageH));
+        const boxX = Math.max(0, Math.min(pageW - boxW, field.xPct * pageW));
+        const boxYTop = Math.max(0, Math.min(pageH - boxH, field.yPct * pageH));
+        const boxY = pageH - boxYTop - boxH;
+
+        page.drawRectangle({
+          x: boxX,
+          y: boxY,
+          width: boxW,
+          height: boxH,
+          borderColor: rgb(0.2, 0.2, 0.2),
+          borderWidth: 1,
+          color: rgb(1, 1, 1),
+          opacity: 0,
+        });
+
+        const imgDims = signaturePng.scale(1);
+        const scale = Math.min(boxW / imgDims.width, boxH / imgDims.height, 1);
+        const imgW = imgDims.width * scale;
+        const imgH = imgDims.height * scale;
+
+        page.drawImage(signaturePng, {
+          x: boxX + (boxW - imgW) / 2,
+          y: boxY + (boxH - imgH) / 2,
+          width: imgW,
+          height: imgH,
+        });
+      }
+    } else {
+      const legacySignatureDataUrl = typeof args.signatureDataUrl === "string" ? args.signatureDataUrl : "";
+      if (!legacySignatureDataUrl) {
+        throw new Error("Missing signature.");
+      }
+
+      const signatureBytes = parseSignatureDataUrl(legacySignatureDataUrl);
+
+      // Store signature image.
+      const signatureAb = new ArrayBuffer(signatureBytes.byteLength);
+      new Uint8Array(signatureAb).set(signatureBytes);
+      const signatureBlob = new Blob([signatureAb], { type: "image/png" });
+      signaturePngFileId = await ctx.storage.store(signatureBlob);
+
+      const page = pages[pages.length - 1]!;
+      const signaturePng = await pdf.embedPng(signatureBytes);
+      const signatureDims = signaturePng.scale(0.5);
+
+      const { width } = page.getSize();
+      const margin = 36;
+      const boxWidth = Math.min(360, width - margin * 2);
+      const boxHeight = 160;
+      const boxX = width - margin - boxWidth;
+      const boxY = margin;
+
+      page.drawRectangle({
+        x: boxX,
+        y: boxY,
+        width: boxWidth,
+        height: boxHeight,
+        borderColor: rgb(0.85, 0.85, 0.85),
+        borderWidth: 1,
+        color: rgb(1, 1, 1),
       });
-    });
 
-    page.drawText(`Consent: ${args.consentText}`.slice(0, 500), {
+      const titleY = boxY + boxHeight - 18;
+      page.drawText("Signed acknowledgment", {
+        x: boxX + 12,
+        y: titleY,
+        size: 11,
+        font: fontBold,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+
+      const signatureMaxWidth = boxWidth - 24;
+      const signatureScale =
+        signatureDims.width > signatureMaxWidth
+          ? signatureMaxWidth / signatureDims.width
+          : 1;
+      const sigW = signatureDims.width * signatureScale;
+      const sigH = signatureDims.height * signatureScale;
+
+      const sigX = boxX + 12;
+      const sigY = boxY + boxHeight - 18 - sigH - 12;
+      page.drawImage(signaturePng, {
+        x: sigX,
+        y: sigY,
+        width: sigW,
+        height: sigH,
+      });
+
+      const lineY = sigY - 10;
+      page.drawLine({
+        start: { x: boxX + 12, y: lineY },
+        end: { x: boxX + boxWidth - 12, y: lineY },
+        thickness: 1,
+        color: rgb(0.75, 0.75, 0.75),
+      });
+
+      const signedAtIso = new Date().toISOString();
+      const textY = lineY - 14;
+      const lines = [
+        `Name: ${args.signedName}`,
+        `Email: ${args.signedEmail}`,
+        `Signed at: ${signedAtIso}`,
+      ];
+      lines.forEach((line, idx) => {
+        page.drawText(line, {
+          x: boxX + 12,
+          y: textY - idx * 12,
+          size: 9,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+      });
+    }
+
+    // Always embed consent as invisible text (audit).
+    const lastPage = pages[pages.length - 1]!;
+    lastPage.drawText(`Consent: ${args.consentText}`.slice(0, 500), {
       x: 0,
       y: 0,
       size: 1,
@@ -204,5 +319,28 @@ export const submitSignature = action({
     );
 
     return finalized;
+  },
+});
+
+export const importTemplatePdfFromUrl = action({
+  args: {
+    sourceUrl: v.string(),
+  },
+  returns: v.id("_storage"),
+  handler: async (ctx, args): Promise<Id<"_storage">> => {
+    const url = args.sourceUrl.trim();
+    if (!url) {
+      throw new Error("Missing source URL.");
+    }
+
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch PDF (${res.status}).`);
+    }
+
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const stored = await ctx.storage.store(blob);
+    return stored;
   },
 });

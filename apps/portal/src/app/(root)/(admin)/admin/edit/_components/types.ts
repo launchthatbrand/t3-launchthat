@@ -32,10 +32,10 @@ export type CustomFieldValue = string | number | boolean | null;
 
 export type CustomFieldSource = "schema" | "plugin" | "detected";
 
-export type AdminPostStatus = "draft" | "published" | "archived";
+export type AdminPostStatus = string;
 
 export interface PostStatusOption {
-  value: AdminPostStatus;
+  value: string;
   label: string;
   description?: string;
 }

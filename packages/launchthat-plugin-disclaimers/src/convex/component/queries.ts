@@ -26,11 +26,7 @@ export const listDisclaimerTemplates = query({
       id: v.id("posts"),
       title: v.string(),
       slug: v.string(),
-      status: v.union(
-        v.literal("published"),
-        v.literal("draft"),
-        v.literal("archived"),
-      ),
+      status: v.string(),
       createdAt: v.number(),
       updatedAt: v.optional(v.number()),
       meta: v.record(
@@ -166,6 +162,7 @@ export const getSigningContext = query({
         pdfUrl: v.string(),
         pdfVersion: v.number(),
         consentText: v.string(),
+        builderTemplateJson: v.optional(v.string()),
       }),
     }),
   ),
@@ -203,6 +200,10 @@ export const getSigningContext = query({
       typeof meta["disclaimer.consentText"] === "string"
         ? (meta["disclaimer.consentText"] as string)
         : "I agree to the terms of this disclaimer.";
+    const builderTemplateJson =
+      typeof meta["disclaimer.builderTemplate"] === "string"
+        ? (meta["disclaimer.builderTemplate"] as string)
+        : undefined;
     const pdfVersion =
       typeof meta["disclaimer.pdfVersion"] === "number"
         ? (meta["disclaimer.pdfVersion"] as number)
@@ -222,6 +223,187 @@ export const getSigningContext = query({
         pdfUrl,
         pdfVersion,
         consentText,
+        builderTemplateJson,
+      },
+    };
+  },
+});
+
+export const getTemplateBuilderContext = query({
+  args: {
+    templatePostId: v.id("posts"),
+    organizationId: v.optional(v.string()),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      pdfUrl: v.optional(v.string()),
+      pdfVersion: v.number(),
+      builderTemplateJson: v.optional(v.string()),
+      title: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const templatePost = await ctx.db.get(args.templatePostId);
+    if (!templatePost) return null;
+    if (
+      (templatePost.postTypeSlug ?? "").toLowerCase() !== "disclaimertemplates"
+    ) {
+      return null;
+    }
+    if (
+      !organizationMatches(
+        templatePost.organizationId,
+        args.organizationId ?? undefined,
+      )
+    ) {
+      return null;
+    }
+
+    const metaRows = await ctx.db
+      .query("postsMeta")
+      .withIndex("by_post", (q) => q.eq("postId", templatePost._id))
+      .collect();
+    const meta = metaToRecord(metaRows);
+    const pdfFileId =
+      typeof meta["disclaimer.pdfFileId"] === "string"
+        ? (meta["disclaimer.pdfFileId"] as string)
+        : "";
+    const pdfVersion =
+      typeof meta["disclaimer.pdfVersion"] === "number"
+        ? (meta["disclaimer.pdfVersion"] as number)
+        : 0;
+    const builderTemplateJson =
+      typeof meta["disclaimer.builderTemplate"] === "string"
+        ? (meta["disclaimer.builderTemplate"] as string)
+        : undefined;
+
+    const pdfUrl =
+      pdfFileId.trim().length > 0
+        ? await ctx.storage.getUrl(pdfFileId as any)
+        : null;
+
+    return {
+      pdfUrl: pdfUrl ?? undefined,
+      pdfVersion,
+      builderTemplateJson,
+      title: typeof templatePost.title === "string" ? templatePost.title : undefined,
+    };
+  },
+});
+
+export const getSigningContextDebug = query({
+  args: {
+    issueId: v.id("disclaimerIssues"),
+    tokenHash: v.string(),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    reason: v.string(),
+    checks: v.object({
+      issueFound: v.boolean(),
+      tokenMatch: v.boolean(),
+      templateFound: v.boolean(),
+      organizationMatch: v.boolean(),
+      templatePostTypeMatch: v.boolean(),
+      templatePdfFileIdPresent: v.boolean(),
+      templatePdfUrlResolved: v.boolean(),
+    }),
+    snapshot: v.object({
+      issueId: v.union(v.string(), v.null()),
+      issueOrganizationId: v.union(v.string(), v.null()),
+      templatePostId: v.union(v.string(), v.null()),
+      templateOrganizationId: v.union(v.string(), v.null()),
+      templatePostTypeSlug: v.union(v.string(), v.null()),
+      templatePdfFileId: v.union(v.string(), v.null()),
+    }),
+  }),
+  handler: async (ctx, args) => {
+    const issue = await ctx.db.get(args.issueId);
+    const issueFound = Boolean(issue);
+    const tokenMatch = Boolean(issue && issue.magicTokenHash === args.tokenHash);
+
+    const templatePost = issue ? await ctx.db.get(issue.templatePostId) : null;
+    const templateFound = Boolean(templatePost);
+
+    const organizationMatch = Boolean(
+      templatePost &&
+        issue &&
+        organizationMatches(
+          templatePost.organizationId,
+          issue.organizationId ?? undefined,
+        ),
+    );
+
+    const templatePostTypeMatch = Boolean(
+      templatePost &&
+        (templatePost.postTypeSlug ?? "").toLowerCase() === "disclaimertemplates",
+    );
+
+    let templatePdfFileId: string | null = null;
+    if (templatePost) {
+      const metaRows = await ctx.db
+        .query("postsMeta")
+        .withIndex("by_post", (q) => q.eq("postId", templatePost._id))
+        .collect();
+      const meta = metaToRecord(metaRows);
+      templatePdfFileId =
+        typeof meta["disclaimer.pdfFileId"] === "string"
+          ? (meta["disclaimer.pdfFileId"] as string)
+          : null;
+    }
+
+    const templatePdfFileIdPresent = Boolean(templatePdfFileId);
+    const templatePdfUrlResolved = Boolean(
+      templatePdfFileId && (await ctx.storage.getUrl(templatePdfFileId as any)),
+    );
+
+    const checks = {
+      issueFound,
+      tokenMatch,
+      templateFound,
+      organizationMatch,
+      templatePostTypeMatch,
+      templatePdfFileIdPresent,
+      templatePdfUrlResolved,
+    };
+
+    const ok =
+      checks.issueFound &&
+      checks.tokenMatch &&
+      checks.templateFound &&
+      checks.organizationMatch &&
+      checks.templatePostTypeMatch &&
+      checks.templatePdfFileIdPresent &&
+      checks.templatePdfUrlResolved;
+
+    const reason = !checks.issueFound
+      ? "issue_not_found"
+      : !checks.tokenMatch
+        ? "token_hash_mismatch"
+        : !checks.templateFound
+          ? "template_post_not_found"
+          : !checks.organizationMatch
+            ? "organization_mismatch"
+            : !checks.templatePostTypeMatch
+              ? "template_post_type_mismatch"
+              : !checks.templatePdfFileIdPresent
+                ? "template_pdf_missing"
+                : !checks.templatePdfUrlResolved
+                  ? "template_pdf_url_unavailable"
+                  : "ok";
+
+    return {
+      ok,
+      reason,
+      checks,
+      snapshot: {
+        issueId: issue ? String(issue._id) : null,
+        issueOrganizationId: issue?.organizationId ?? null,
+        templatePostId: issue ? String(issue.templatePostId) : null,
+        templateOrganizationId: templatePost?.organizationId ?? null,
+        templatePostTypeSlug: templatePost?.postTypeSlug ?? null,
+        templatePdfFileId,
       },
     };
   },
@@ -270,6 +452,50 @@ export const getLatestSignatureForIssue = query({
       signedPdfUrl,
       pdfSha256: signature.pdfSha256,
       createdAt: signature.createdAt,
+    };
+  },
+});
+
+export const getSigningReceipt = query({
+  args: {
+    issueId: v.id("disclaimerIssues"),
+    tokenHash: v.string(),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      signedAt: v.number(),
+      signedName: v.string(),
+      signedEmail: v.string(),
+      signedPdfUrl: v.union(v.string(), v.null()),
+      pdfSha256: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const issue = await ctx.db.get(args.issueId);
+    if (!issue) return null;
+    if (issue.magicTokenHash !== args.tokenHash) return null;
+    if (issue.status !== "complete") return null;
+
+    const signature = await ctx.db
+      .query("disclaimerSignatures")
+      .withIndex("by_org_and_issue", (q) =>
+        q
+          .eq("organizationId", issue.organizationId ?? undefined)
+          .eq("issueId", issue._id),
+      )
+      .order("desc")
+      .first();
+    if (!signature) return null;
+
+    const signedPdfUrl = await ctx.storage.getUrl(signature.signedPdfFileId);
+
+    return {
+      signedAt: signature.createdAt,
+      signedName: signature.signedName,
+      signedEmail: signature.signedEmail,
+      signedPdfUrl,
+      pdfSha256: signature.pdfSha256,
     };
   },
 });

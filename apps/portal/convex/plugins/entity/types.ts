@@ -1,4 +1,4 @@
-export type EntityStatus = "published" | "draft" | "archived";
+export type EntityStatus = string;
 
 export type EntityRecord = {
   id: string;

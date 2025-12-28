@@ -95,7 +95,6 @@ import {
 import {
   DEFAULT_PAGE_TEMPLATE_SLUG,
   listPageTemplates,
-  PAGE_TEMPLATE_ACCESS_OPTION_KEY,
 } from "~/lib/pageTemplates/registry";
 import { findPostTypeBySlug } from "~/lib/plugins/frontend";
 import {
@@ -125,6 +124,7 @@ import {
 import { getFrontendBaseUrl } from "./permalink";
 import { PlaceholderState } from "./PlaceholderState";
 import { SeoTab } from "./SeoTab";
+import { getPostStatusOptionsForPostType } from "~/lib/postStatuses/registry";
 
 const stripHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
 const resolveSupportFlag = (
@@ -695,34 +695,9 @@ export function AdminSinglePostView({
   const [customFieldValues, setCustomFieldValues] = useState<
     Record<string, CustomFieldValue>
   >({});
-  const pageTemplateAccessOption = useQuery(
-    api.core.options.get,
-    organizationId
-      ? ({
-          orgId: organizationId,
-          type: "site",
-          metaKey: PAGE_TEMPLATE_ACCESS_OPTION_KEY,
-        } as const)
-      : "skip",
-  ) as Doc<"options"> | null | undefined;
-  const allowedPageTemplateSlugs = useMemo<string[] | undefined>(() => {
-    const value = pageTemplateAccessOption?.metaValue;
-    if (value && typeof value === "object" && Array.isArray(value.allowed)) {
-      return value.allowed as string[];
-    }
-    return undefined;
-  }, [pageTemplateAccessOption]);
   const availablePageTemplates = useMemo(() => {
-    const templates = listPageTemplates(organizationId as string | undefined);
-    if (!allowedPageTemplateSlugs || allowedPageTemplateSlugs.length === 0) {
-      return templates;
-    }
-    const allowed = new Set<string>([
-      ...allowedPageTemplateSlugs,
-      DEFAULT_PAGE_TEMPLATE_SLUG,
-    ]);
-    return templates.filter((template) => allowed.has(template.slug));
-  }, [allowedPageTemplateSlugs, organizationId]);
+    return listPageTemplates(organizationId as string | undefined);
+  }, [organizationId]);
   const getMetaValue = useCallback(
     (key: string) => customFieldValues[key],
     [customFieldValues],
@@ -751,14 +726,7 @@ export function AdminSinglePostView({
     });
   }, []);
 
-  useEffect(() => {
-    if (slug === "pages") {
-      const current = getMetaValue("page_template");
-      if (current === undefined) {
-        setMetaValue("page_template", DEFAULT_PAGE_TEMPLATE_SLUG);
-      }
-    }
-  }, [getMetaValue, setMetaValue, slug]);
+  // Page templates are configured per post type (no per-post override).
   const {
     context: attachmentsContext,
     serializedValue: attachmentsSerializedValue,
@@ -966,24 +934,8 @@ export function AdminSinglePostView({
   );
 
   const statusOptions = useMemo<PostStatusOption[]>(
-    () => [
-      {
-        value: "draft",
-        label: "Draft",
-        description: "Keep editing privately until you're ready to share.",
-      },
-      {
-        value: "published",
-        label: "Published",
-        description: "Live and visible to anyone with access.",
-      },
-      {
-        value: "archived",
-        label: "Archived",
-        description: "Hidden from learners but retained for reference.",
-      },
-    ],
-    [],
+    () => getPostStatusOptionsForPostType(slug),
+    [slug],
   );
 
   const frontendProviders = useMemo(
@@ -2206,34 +2158,31 @@ export function AdminSinglePostView({
     const sidebarTopSlots = renderPluginSlots("sidebarTop");
     const sidebarBottomSlots = renderPluginSlots("sidebarBottom");
 
-    const pageTemplateSelect =
-      slug === "pages" ? (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Page Template</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Select
-              value={
-                (getMetaValue("page_template") as string) ??
-                DEFAULT_PAGE_TEMPLATE_SLUG
-              }
-              onValueChange={(value) => setMetaValue("page_template", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select template" />
-              </SelectTrigger>
-              <SelectContent>
-                {availablePageTemplates.map((template) => (
-                  <SelectItem key={template.slug} value={template.slug}>
-                    {template.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-      ) : null;
+    const pageTemplateSlug =
+      (postType as { pageTemplateSlug?: unknown } | null)?.pageTemplateSlug &&
+      typeof (postType as { pageTemplateSlug?: unknown }).pageTemplateSlug ===
+        "string"
+        ? ((postType as { pageTemplateSlug: string }).pageTemplateSlug ??
+            DEFAULT_PAGE_TEMPLATE_SLUG)
+        : DEFAULT_PAGE_TEMPLATE_SLUG;
+
+    const pageTemplateLabel =
+      availablePageTemplates.find((template) => template.slug === pageTemplateSlug)
+        ?.label ?? pageTemplateSlug;
+
+    const pageTemplateCard = (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Page Template</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-sm">{pageTemplateLabel}</p>
+          <p className="text-muted-foreground text-xs">
+            This is configured per post type (no per-post override).
+          </p>
+        </CardContent>
+      </Card>
+    );
 
     const categoriesMetaBox = supportsTaxonomy ? (
       <Card>
@@ -2317,7 +2266,7 @@ export function AdminSinglePostView({
     return (
       <div className="space-y-4">
         {sidebarTopSlots}
-        {pageTemplateSelect}
+        {pageTemplateCard}
         {categoriesMetaBox}
         {tagsMetaBox}
         {renderMetaBoxList(resolvedMetaBoxes, "sidebar")}

@@ -217,6 +217,11 @@ export interface PluginPostTypeConfig {
   includeTimestamps?: boolean;
   enableApi?: boolean;
   enableVersioning?: boolean;
+  /**
+   * Default page template to use for frontend single rendering of this post type.
+   * This is a post-type-level setting (no per-post override).
+   */
+  pageTemplateSlug?: string;
   supports?: PluginPostTypeSupports;
   rewrite?: PluginPostTypeRewrite;
   adminMenu: PluginPostTypeAdminMenu;
@@ -410,6 +415,20 @@ export interface PluginNotificationEventDefinition {
   defaultInAppEnabled?: boolean;
 }
 
+export interface PluginPostStatusDefinition {
+  /**
+   * Status value stored on the post record (e.g. "draft", "sent", "signed").
+   */
+  value: string;
+  label: string;
+  description?: string;
+  /**
+   * If set, this status will only be available for these post types.
+   * If omitted, it is considered globally available.
+   */
+  postTypeSlugs?: string[];
+}
+
 export interface PluginDefinition {
   id: string;
   name: string;
@@ -420,6 +439,7 @@ export interface PluginDefinition {
   fieldRegistrations?: PluginPostTypeFieldRegistration[];
   settingsPages?: PluginSettingDefinition[];
   notificationEvents?: PluginNotificationEventDefinition[];
+  postStatuses?: PluginPostStatusDefinition[];
   activation?: PluginActivationConfig;
   adminMenus?: PluginAdminMenuEntry[];
   adminMenu?: PluginAdminMenuConfig;

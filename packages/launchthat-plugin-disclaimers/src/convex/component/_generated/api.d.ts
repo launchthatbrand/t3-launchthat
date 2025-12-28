@@ -41,14 +41,21 @@ declare const fullApi: ApiFromModules<{
 }>;
 export type Mounts = {
   actions: {
+    importTemplatePdfFromUrl: FunctionReference<
+      "action",
+      "public",
+      { sourceUrl: string },
+      string
+    >;
     submitSignature: FunctionReference<
       "action",
       "public",
       {
         consentText: string;
+        fieldSignatures?: Array<{ fieldId: string; signatureDataUrl: string }>;
         ip?: string;
         issueId: string;
-        signatureDataUrl: string;
+        signatureDataUrl?: string;
         signedByUserId?: string;
         signedEmail: string;
         signedName: string;
@@ -63,6 +70,19 @@ export type Mounts = {
       "mutation",
       "public",
       {
+        organizationId?: string;
+        recipientEmail: string;
+        recipientName?: string;
+        recipientUserId?: string;
+        templatePostId: string;
+      },
+      { issueId: string; token: string }
+    >;
+    createManualIssueFromPost: FunctionReference<
+      "mutation",
+      "public",
+      {
+        issuePostId: string;
         organizationId?: string;
         recipientEmail: string;
         recipientName?: string;
@@ -106,6 +126,7 @@ export type Mounts = {
       "mutation",
       "public",
       {
+        builderTemplateJson?: string;
         consentText?: string;
         description?: string;
         organizationId?: string;
@@ -225,12 +246,62 @@ export type Mounts = {
         recipientName?: string;
         status: "incomplete" | "complete";
         template: {
+          builderTemplateJson?: string;
           consentText: string;
           pdfUrl: string;
           pdfVersion: number;
           postId: string;
           title: string;
         };
+      }
+    >;
+    getSigningContextDebug: FunctionReference<
+      "query",
+      "public",
+      { issueId: string; tokenHash: string },
+      {
+        checks: {
+          issueFound: boolean;
+          organizationMatch: boolean;
+          templateFound: boolean;
+          templatePdfFileIdPresent: boolean;
+          templatePdfUrlResolved: boolean;
+          templatePostTypeMatch: boolean;
+          tokenMatch: boolean;
+        };
+        ok: boolean;
+        reason: string;
+        snapshot: {
+          issueId: string | null;
+          issueOrganizationId: string | null;
+          templateOrganizationId: string | null;
+          templatePdfFileId: string | null;
+          templatePostId: string | null;
+          templatePostTypeSlug: string | null;
+        };
+      }
+    >;
+    getSigningReceipt: FunctionReference<
+      "query",
+      "public",
+      { issueId: string; tokenHash: string },
+      null | {
+        pdfSha256: string;
+        signedAt: number;
+        signedEmail: string;
+        signedName: string;
+        signedPdfUrl: string | null;
+      }
+    >;
+    getTemplateBuilderContext: FunctionReference<
+      "query",
+      "public",
+      { organizationId?: string; templatePostId: string },
+      null | {
+        builderTemplateJson?: string;
+        pdfUrl?: string;
+        pdfVersion: number;
+        title?: string;
       }
     >;
     listDisclaimerTemplates: FunctionReference<
@@ -243,7 +314,7 @@ export type Mounts = {
         meta: Record<string, string | number | boolean | null>;
         pdfUrl: string | null;
         slug: string;
-        status: "published" | "draft" | "archived";
+        status: string;
         title: string;
         updatedAt?: number;
       }>

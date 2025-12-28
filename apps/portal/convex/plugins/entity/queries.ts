@@ -5,9 +5,7 @@ import { query } from "../../_generated/server";
 import { entityResolvers } from "./resolvers";
 
 const filtersValidator = v.object({
-  status: v.optional(
-    v.union(v.literal("published"), v.literal("draft"), v.literal("archived")),
-  ),
+  status: v.optional(v.string()),
   category: v.optional(v.string()),
   authorId: v.optional(v.string()),
   limit: v.optional(v.number()),

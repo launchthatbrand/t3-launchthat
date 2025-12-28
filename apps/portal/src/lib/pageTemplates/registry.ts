@@ -11,6 +11,11 @@ export interface PageTemplateDefinition {
   slug: string;
   label: string;
   description?: string;
+  layout?: {
+    showHeader?: boolean;
+    showSidebar?: boolean;
+    container?: "default" | "wide" | "full";
+  };
   render: (ctx: PageTemplateContext) => React.ReactNode;
   order?: number;
 }
@@ -95,6 +100,18 @@ registerPageTemplate(
     description: "Use the standard page renderer",
     render: () => null,
     order: 0,
+  },
+  null,
+);
+
+registerPageTemplate(
+  {
+    slug: "canvas",
+    label: "Canvas",
+    description: "Full-width canvas without header or sidebar",
+    layout: { showHeader: false, showSidebar: false, container: "full" },
+    render: () => null,
+    order: 1,
   },
   null,
 );

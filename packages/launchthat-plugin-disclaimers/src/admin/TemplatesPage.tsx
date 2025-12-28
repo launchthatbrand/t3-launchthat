@@ -6,7 +6,7 @@
 import type { PluginSettingComponentProps } from "launchthat-plugin-core";
 import { useMemo, useState, useTransition } from "react";
 import { api } from "@portal/convexspec";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 
 import type { ColumnDefinition } from "@acme/ui/entity-list/types";
 import { Button } from "@acme/ui/button";
@@ -87,9 +87,25 @@ export const DisclaimersTemplatesPage = (
     description?: string;
   }) => Promise<string>;
 
+  const importTemplatePdfAndAttach = useAction(
+    apiAny.plugins.disclaimers.actions.importTemplatePdfAndAttach,
+  ) as (args: {
+    orgId?: string;
+    templatePostId: string;
+    sourceUrl: string;
+    consentText?: string;
+    description?: string;
+  }) => Promise<{ pdfFileId: string }>;
+
   const generateUploadUrl = useMutation(
     apiAny.core.media.mutations.generateUploadUrl,
   ) as () => Promise<string>;
+  const saveMedia = useMutation(apiAny.core.media.mutations.saveMedia) as (args: {
+    organizationId?: string;
+    storageId: string;
+    title?: string;
+    status?: "draft" | "published";
+  }) => Promise<{ url: string }>;
 
   const [isPending, startTransition] = useTransition();
   const [createOpen, setCreateOpen] = useState(false);
@@ -237,13 +253,17 @@ export const DisclaimersTemplatesPage = (
                             if (!res.ok) {
                               throw new Error("Upload failed");
                             }
-                            const json = (await res.json()) as {
-                              storageId: string;
-                            };
-                            await updateMeta({
-                              postId: template.id,
+                            const json = (await res.json()) as { storageId: string };
+                            const saved = await saveMedia({
                               organizationId: orgId,
-                              pdfFileId: json.storageId,
+                              storageId: json.storageId,
+                              title: file.name,
+                              status: "published",
+                            });
+                            await importTemplatePdfAndAttach({
+                              orgId,
+                              templatePostId: template.id,
+                              sourceUrl: saved.url,
                             });
                             toast.success("Replaced PDF");
                           })().catch((err: unknown) => {
@@ -269,7 +289,7 @@ export const DisclaimersTemplatesPage = (
         },
       },
     ],
-    [generateUploadUrl, orgId, updateMeta],
+    [generateUploadUrl, importTemplatePdfAndAttach, orgId, saveMedia],
   );
 
   const handleCreate = () => {
@@ -294,6 +314,12 @@ export const DisclaimersTemplatesPage = (
         });
         if (!res.ok) throw new Error("Upload failed");
         const json = (await res.json()) as { storageId: string };
+        const saved = await saveMedia({
+          organizationId: orgId,
+          storageId: json.storageId,
+          title: newFile.name,
+          status: "published",
+        });
 
         const slugBase = newTitle
           .trim()
@@ -302,18 +328,22 @@ export const DisclaimersTemplatesPage = (
           .replace(/[\s_-]+/g, "-")
           .replace(/^-+|-+$/g, "");
 
-        await createPost({
+        const createdPostId = await createPost({
           title: newTitle.trim(),
           slug: slugBase || `disclaimer-${Date.now()}`,
           status: "draft",
           postTypeSlug: "disclaimertemplates",
           organizationId: orgId,
           meta: {
-            "disclaimer.pdfFileId": json.storageId,
-            "disclaimer.pdfVersion": 1,
             "disclaimer.consentText": newConsentText,
             "disclaimer.description": newDescription,
           },
+        });
+
+        await importTemplatePdfAndAttach({
+          orgId,
+          templatePostId: createdPostId,
+          sourceUrl: saved.url,
         });
 
         toast.success("Created template");

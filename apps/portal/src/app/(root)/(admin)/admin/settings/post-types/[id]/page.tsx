@@ -26,11 +26,24 @@ import {
   FormMessage,
 } from "@acme/ui/form";
 import { Input } from "@acme/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@acme/ui/select";
 import { Separator } from "@acme/ui/separator";
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
 
+import { useTenant } from "~/context/TenantContext";
+import {
+  DEFAULT_PAGE_TEMPLATE_SLUG,
+  listPageTemplates,
+} from "~/lib/pageTemplates/registry";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { usePostType, useUpdatePostType } from "../_api/postTypes";
 
 const supportsOptions = [
@@ -81,6 +94,7 @@ const contentTypeFormSchema = z.object({
   enableApi: z.boolean(),
   includeTimestamps: z.boolean(),
   enableVersioning: z.boolean(),
+  pageTemplateSlug: z.string().min(1),
   supports: z.object(
     supportsOptions.reduce(
       (acc, option) => ({ ...acc, [option.key]: z.boolean() }),
@@ -154,6 +168,13 @@ export default function ContentTypeDetailPage() {
   const router = useRouter();
   const contentTypeId = params?.id as Id<"postTypes"> | undefined;
 
+  const tenant = useTenant();
+  const tenantOrgId = getTenantOrganizationId(tenant) as string | undefined;
+  const availablePageTemplates = useMemo(
+    () => listPageTemplates(tenantOrgId),
+    [tenantOrgId],
+  );
+
   const contentType = usePostType(contentTypeId);
   const updateContentType = useUpdatePostType();
 
@@ -167,6 +188,7 @@ export default function ContentTypeDetailPage() {
       enableApi: true,
       includeTimestamps: true,
       enableVersioning: false,
+      pageTemplateSlug: DEFAULT_PAGE_TEMPLATE_SLUG,
       supports: defaultSupports,
       rewrite: defaultRewrite,
       adminMenu: defaultAdminMenu,
@@ -184,6 +206,7 @@ export default function ContentTypeDetailPage() {
         enableApi: contentType.enableApi ?? true,
         includeTimestamps: contentType.includeTimestamps ?? true,
         enableVersioning: contentType.enableVersioning ?? false,
+        pageTemplateSlug: contentType.pageTemplateSlug ?? DEFAULT_PAGE_TEMPLATE_SLUG,
         supports: normalizeSupports(contentType.supports ?? undefined),
           frontendVisibility: {
             ...defaultFrontendVisibility,
@@ -324,6 +347,7 @@ export default function ContentTypeDetailPage() {
         enableApi: values.enableApi,
         includeTimestamps: values.includeTimestamps,
         enableVersioning: values.enableVersioning,
+        pageTemplateSlug: values.pageTemplateSlug,
         supports: supportsPayload,
         frontendVisibility: {
           showCustomFields: values.frontendVisibility.showCustomFields,
@@ -561,6 +585,36 @@ export default function ContentTypeDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="pageTemplateSlug"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Page Template</FormLabel>
+                    <FormControl>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger className="max-w-[360px]">
+                          <SelectValue placeholder="Select a template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availablePageTemplates.map((template) => (
+                            <SelectItem key={template.slug} value={template.slug}>
+                              {template.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <p className="text-muted-foreground text-sm">
+                      Applies to all frontend single pages for this post type.
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Separator />
+
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}

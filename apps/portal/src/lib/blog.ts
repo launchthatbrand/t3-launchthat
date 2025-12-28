@@ -24,7 +24,7 @@ const isLmsComponentPostTypeSlug = (value: string | undefined) => {
 
 // Posts Types - extend with more post metadata
 export interface PostFilter {
-  status?: "published" | "draft" | "archived";
+  status?: string;
   category?: string;
   authorId?: Id<"users">;
   limit?: number;
@@ -36,7 +36,7 @@ export interface CreatePostArgs {
   content?: string;
   excerpt?: string;
   slug: string;
-  status: "published" | "draft" | "archived";
+  status: string;
   category?: string;
   tags?: string[];
   featuredImage?: string;
@@ -50,7 +50,7 @@ export interface UpdatePostArgs {
   content?: string;
   excerpt?: string;
   slug?: string;
-  status?: "published" | "draft" | "archived";
+  status?: string;
   category?: string;
   tags?: string[];
   featuredImage?: string;
@@ -99,9 +99,7 @@ const adaptEntityToPost = (
     content: entity.content ?? undefined,
     excerpt: entity.excerpt ?? undefined,
     slug: entity.slug ?? undefined,
-    status:
-      (entity.status as "published" | "draft" | "archived" | undefined) ??
-      "draft",
+    status: (entity.status ?? "draft") as unknown as Doc<"posts">["status"],
     category: entity.category ?? undefined,
     tags: entity.tags ?? undefined,
     featuredImageUrl: entity.featuredImageUrl ?? undefined,

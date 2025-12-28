@@ -4,7 +4,7 @@ import type { PluginMetaBoxRendererProps } from "launchthat-plugin-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "@portal/convexspec";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { FileText, Loader2, Upload } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
@@ -126,6 +126,14 @@ export const DisclaimersTemplatePdfMetaBox = ({
     (apiAny.plugins.disclaimers.mutations as any).upsertDisclaimerTemplateMeta,
   ) as any;
 
+  const importTemplatePdfAndAttach = useAction(
+    apiAny.plugins.disclaimers.actions.importTemplatePdfAndAttach,
+  ) as (args: {
+    orgId?: string;
+    templatePostId: string;
+    sourceUrl: string;
+  }) => Promise<{ pdfFileId: string }>;
+
   const generateUploadUrl = useMutation(
     apiAny.core.media.mutations.generateUploadUrl,
   ) as any;
@@ -143,6 +151,7 @@ export const DisclaimersTemplatePdfMetaBox = ({
       paginationOpts: { numItems: 60, cursor: null },
       status: "published",
       searchTerm: search.trim().length > 0 ? search.trim() : undefined,
+      organizationId: organizationId ? String(organizationId) : undefined,
     },
   ) as
     | {
@@ -182,15 +191,20 @@ export const DisclaimersTemplatePdfMetaBox = ({
     }
   }, [consentText, description, organizationId, postId, updateTemplateMeta]);
 
-  const handleSelectStorageId = useCallback(
-    async (storageId: string) => {
+  const handleSelectMedia = useCallback(
+    async (media: Pick<MediaRow, "url">) => {
       if (!postId) return;
+      const sourceUrl = typeof media.url === "string" ? media.url : "";
+      if (!sourceUrl) {
+        toast.error("Selected media item has no URL.");
+        return;
+      }
       setIsWorking(true);
       try {
-        await updateTemplateMeta({
-          postId,
-          organizationId: organizationId ? String(organizationId) : undefined,
-          pdfFileId: storageId,
+        await importTemplatePdfAndAttach({
+          orgId: organizationId ? String(organizationId) : undefined,
+          templatePostId: postId,
+          sourceUrl,
         });
         toast.success("Template PDF updated.");
         setDialogOpen(false);
@@ -201,7 +215,7 @@ export const DisclaimersTemplatePdfMetaBox = ({
         setIsWorking(false);
       }
     },
-    [organizationId, postId, updateTemplateMeta],
+    [importTemplatePdfAndAttach, organizationId, postId],
   );
 
   const handleUpload = useCallback(async () => {
@@ -225,11 +239,12 @@ export const DisclaimersTemplatePdfMetaBox = ({
       }
       const json = (await res.json()) as { storageId: string };
       const saved = (await saveMedia({
+        organizationId: organizationId ? (String(organizationId) as any) : undefined,
         storageId: json.storageId as any,
         title: uploadFile.name,
         status: "published",
-      })) as { storageId: string };
-      await handleSelectStorageId(saved.storageId);
+      })) as { url?: string | null };
+      await handleSelectMedia({ url: saved.url ?? null });
       setUploadFile(null);
       toast.success("Uploaded to Media Library.");
     } catch (error) {
@@ -238,7 +253,7 @@ export const DisclaimersTemplatePdfMetaBox = ({
     } finally {
       setIsWorking(false);
     }
-  }, [generateUploadUrl, handleSelectStorageId, postId, saveMedia, uploadFile]);
+  }, [generateUploadUrl, handleSelectMedia, organizationId, postId, saveMedia, uploadFile]);
 
   if (!canEdit) {
     return (
@@ -333,7 +348,7 @@ export const DisclaimersTemplatePdfMetaBox = ({
                   ) : (
                     libraryItems.map((item) => {
                       const title = String(item.title ?? "Untitled");
-                      const canSelect = isNonEmptyString(item.storageId);
+                      const canSelect = isNonEmptyString(item.url);
                       return (
                         <div
                           key={item._id}
@@ -371,10 +386,10 @@ export const DisclaimersTemplatePdfMetaBox = ({
                               size="sm"
                               disabled={!canSelect || isWorking}
                               onClick={() =>
-                                item.storageId
-                                  ? void handleSelectStorageId(
-                                      String(item.storageId),
-                                    )
+                                item.url
+                                  ? void handleSelectMedia({
+                                      url: String(item.url),
+                                    })
                                   : null
                               }
                             >

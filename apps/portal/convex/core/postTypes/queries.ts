@@ -1,4 +1,18 @@
+/**
+ * Content Types Queries
+ *
+ * This module provides query endpoints for content types.
+ */
+import { v } from "convex/values";
+
+import type { Id } from "../../_generated/dataModel";
+import { query } from "../../_generated/server";
 import { PORTAL_TENANT_ID, PORTAL_TENANT_SLUG } from "../../constants";
+import {
+  getScopedPostTypeByArchiveSlugKey,
+  getScopedPostTypeBySingleSlugKey,
+  getScopedPostTypeBySlug,
+} from "./lib/contentTypes";
 import {
   postTypeAdminMenuValidator,
   postTypeFrontendVisibilityValidator,
@@ -8,20 +22,6 @@ import {
   postTypeStorageTablesValidator,
   postTypeSupportsValidator,
 } from "./schema";
-
-import type { Id } from "../../_generated/dataModel";
-import {
-  getScopedPostTypeByArchiveSlugKey,
-  getScopedPostTypeBySingleSlugKey,
-  getScopedPostTypeBySlug,
-} from "./lib/contentTypes";
-import { query } from "../../_generated/server";
-/**
- * Content Types Queries
- *
- * This module provides query endpoints for content types.
- */
-import { v } from "convex/values";
 
 const enabledOrgIdValidator = v.union(
   v.id("organizations"),
@@ -79,6 +79,7 @@ export const list = query({
       storageTables: v.optional(postTypeStorageTablesValidator),
       metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
       frontendVisibility: v.optional(postTypeFrontendVisibilityValidator),
+      pageTemplateSlug: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -178,6 +179,7 @@ export const get = query({
       storageTables: v.optional(postTypeStorageTablesValidator),
       metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
       frontendVisibility: v.optional(postTypeFrontendVisibilityValidator),
+      pageTemplateSlug: v.optional(v.string()),
     }),
     v.null(),
   ),
@@ -249,6 +251,7 @@ export const getBySlug = query({
       storageTables: v.optional(postTypeStorageTablesValidator),
       metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
       frontendVisibility: v.optional(postTypeFrontendVisibilityValidator),
+      pageTemplateSlug: v.optional(v.string()),
     }),
     v.null(),
   ),
@@ -315,6 +318,7 @@ export const getBySingleSlugKey = query({
       frontendVisibility: v.optional(postTypeFrontendVisibilityValidator),
       singleSlugKey: v.optional(v.string()),
       archiveSlugKey: v.optional(v.string()),
+      pageTemplateSlug: v.optional(v.string()),
     }),
     v.null(),
   ),
@@ -361,6 +365,7 @@ export const getByArchiveSlugKey = query({
       frontendVisibility: v.optional(postTypeFrontendVisibilityValidator),
       singleSlugKey: v.optional(v.string()),
       archiveSlugKey: v.optional(v.string()),
+      pageTemplateSlug: v.optional(v.string()),
     }),
     v.null(),
   ),

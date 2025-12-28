@@ -117,6 +117,7 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
 
   // Inject tenant headers so all routes/server components can read them
   const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", pathname);
   if (tenant) {
     requestHeaders.set("x-tenant-id", tenant._id);
     requestHeaders.set("x-tenant-slug", tenant.slug);
@@ -207,6 +208,7 @@ async function buildTenantResponse(req: NextRequest): Promise<TenantContext> {
   }
 
   const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", pathname);
   if (tenant) {
     requestHeaders.set("x-tenant-id", tenant._id);
     requestHeaders.set("x-tenant-slug", tenant.slug);

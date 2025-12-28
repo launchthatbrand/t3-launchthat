@@ -146,6 +146,7 @@ type PostTypeDefinitionPayload = Pick<
   | "enableApi"
   | "includeTimestamps"
   | "enableVersioning"
+  | "pageTemplateSlug"
   | "supports"
   | "rewrite"
   | "adminMenu"
@@ -163,6 +164,7 @@ const pickPostTypeDefinition = (
   enableApi: definition.enableApi,
   includeTimestamps: definition.includeTimestamps,
   enableVersioning: definition.enableVersioning,
+  pageTemplateSlug: definition.pageTemplateSlug,
   supports: definition.supports,
   rewrite: definition.rewrite,
   adminMenu: definition.adminMenu,

@@ -30,7 +30,7 @@ export default function StandardLayout(props: {
     //   } as React.CSSProperties
     // }
     >
-      {props.sidebar}
+      {shouldShowSidebar ? props.sidebar : null}
       {/* <AppSidebar sidebar={props.sidebar} /> */}
       <SidebarInset>
         {props.header !== undefined ? (
@@ -38,7 +38,7 @@ export default function StandardLayout(props: {
         ) : (
           <AppHeader
             appName={props.appName}
-            sidebarToggle={sidebarToggle}
+            sidebarToggle={shouldShowSidebar}
             className="bg-background sticky top-0 z-50"
             rightSlot={props.headerRightSlot}
           />

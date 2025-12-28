@@ -848,6 +848,7 @@ export const enableForOrganization = mutation({
         storageKind: v.optional(postTypeStorageKindValidator),
         storageTables: v.optional(postTypeStorageTablesValidator),
         metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
+        pageTemplateSlug: v.optional(v.string()),
       }),
     ),
   },
@@ -893,6 +894,7 @@ export const enableForOrganization = mutation({
           storageKind,
           storageTables,
           metaBoxes: args.definition.metaBoxes,
+          pageTemplateSlug: args.definition.pageTemplateSlug,
           fieldCount: 0,
           entryCount: 0,
           createdAt: timestamp,
@@ -929,6 +931,7 @@ export const enableForOrganization = mutation({
       const desiredAdminMenu = args.definition.adminMenu;
       const desiredSupports = args.definition.supports;
       const desiredRewrite = args.definition.rewrite;
+      const desiredPageTemplateSlug = args.definition.pageTemplateSlug;
       const desiredEnableApi = args.definition.enableApi ?? postType.enableApi;
       const desiredIncludeTimestamps =
         args.definition.includeTimestamps ?? postType.includeTimestamps;
@@ -937,6 +940,8 @@ export const enableForOrganization = mutation({
 
       // Force-sync all definition-backed fields on enable to match plugin JSON.
       const timestamp = Date.now();
+      const desiredRewriteKeys =
+        desiredRewrite !== undefined ? deriveRewriteKeys(desiredRewrite) : null;
       await ctx.db.patch(postType._id, {
         storageKind: desiredStorageKind,
         storageTables: desiredStorageTables,
@@ -948,6 +953,15 @@ export const enableForOrganization = mutation({
           : {}),
         ...(desiredSupports !== undefined ? { supports: desiredSupports } : {}),
         ...(desiredRewrite !== undefined ? { rewrite: desiredRewrite } : {}),
+        ...(desiredRewriteKeys
+          ? {
+              singleSlugKey: desiredRewriteKeys.singleSlugKey,
+              archiveSlugKey: desiredRewriteKeys.archiveSlugKey,
+            }
+          : {}),
+        ...(desiredPageTemplateSlug !== undefined
+          ? { pageTemplateSlug: desiredPageTemplateSlug }
+          : {}),
         enableApi: desiredEnableApi,
         includeTimestamps: desiredIncludeTimestamps,
         enableVersioning: desiredEnableVersioning,
@@ -975,6 +989,15 @@ export const enableForOrganization = mutation({
           : {}),
         ...(desiredSupports !== undefined ? { supports: desiredSupports } : {}),
         ...(desiredRewrite !== undefined ? { rewrite: desiredRewrite } : {}),
+        ...(desiredRewriteKeys
+          ? {
+              singleSlugKey: desiredRewriteKeys.singleSlugKey,
+              archiveSlugKey: desiredRewriteKeys.archiveSlugKey,
+            }
+          : {}),
+        ...(desiredPageTemplateSlug !== undefined
+          ? { pageTemplateSlug: desiredPageTemplateSlug }
+          : {}),
         enableApi: desiredEnableApi,
         includeTimestamps: desiredIncludeTimestamps,
         enableVersioning: desiredEnableVersioning,
@@ -1136,6 +1159,7 @@ export const update = mutation({
       storageTables: v.optional(postTypeStorageTablesValidator),
       metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
       frontendVisibility: v.optional(postTypeFrontendVisibilityValidator),
+      pageTemplateSlug: v.optional(v.string()),
     }),
   },
   handler: async (ctx, args) => {

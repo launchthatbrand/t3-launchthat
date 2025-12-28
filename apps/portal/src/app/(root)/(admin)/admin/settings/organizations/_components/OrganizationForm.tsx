@@ -39,7 +39,7 @@ import {
 import { Separator } from "@acme/ui/separator";
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
-import { MediaLibrary } from "~/components/media/MediaLibrary";
+import { MediaLibrarySingleSelectDialog } from "~/components/media/MediaLibrarySingleSelectDialog";
 
 // Form validation schema
 const organizationFormSchema = z.object({
@@ -122,8 +122,6 @@ export function OrganizationForm({
   const updateOrganization = useMutation(
     api.core.organizations.mutations.update,
   );
-  const generateUploadUrl = useMutation(api.core.media.mutations.generateUploadUrl);
-  const saveMedia = useMutation(api.core.media.mutations.saveMedia);
 
 
   // Check if current user is admin
@@ -291,168 +289,90 @@ export function OrganizationForm({
                 name="logo"
                 render={({ field }) => {
                   const currentLogo = field.value?.trim() || "";
-                  const canUpload = Boolean(organizationId);
-
-                  const handleUploadLogo = async (
-                    event: React.ChangeEvent<HTMLInputElement>,
-                  ) => {
-                    const file = event.target.files?.[0] ?? null;
-                    if (!file) return;
-                    if (!organizationId) {
-                      toast.error("Save the organization first to upload a logo.");
-                      return;
-                    }
-
-                    try {
-                      const uploadUrl = await generateUploadUrl({});
-                      const uploadResponse = await fetch(uploadUrl, {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": file.type || "application/octet-stream",
-                        },
-                        body: file,
-                      });
-                      if (!uploadResponse.ok) {
-                        throw new Error("Failed to upload logo.");
-                      }
-                      const { storageId } = (await uploadResponse.json()) as {
-                        storageId: string;
-                      };
-                      const saved = await saveMedia({
-                        organizationId,
-                        storageId: storageId as Id<"_storage">,
-                        title: `Organization Logo · ${file.name}`,
-                        status: "published",
-                      });
-                      // Persist immediately so the tenant header can pick it up without requiring a manual Save.
-                      await updateOrganization({
-                        organizationId,
-                        logo: saved.url,
-                      });
-                      field.onChange(saved.url);
-                      toast.success("Logo uploaded");
-                    } catch (error) {
-                      toast.error("Upload failed", {
-                        description:
-                          error instanceof Error ? error.message : "Unexpected error",
-                      });
-                    } finally {
-                      event.target.value = "";
-                    }
-                  };
+                  const [logoDialogOpen, setLogoDialogOpen] = useState(false);
+                  const canManageLogo = Boolean(organizationId);
 
                   return (
                     <FormItem>
                       <FormLabel>Logo</FormLabel>
                       <div className="flex flex-col gap-3">
-                        {currentLogo ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!canManageLogo) {
+                              toast.error(
+                                "Save the organization first to manage the logo.",
+                              );
+                              return;
+                            }
+                            setLogoDialogOpen(true);
+                          }}
+                          className="hover:border-primary bg-background flex items-center justify-between gap-3 rounded-md border border-dashed p-3 text-left transition"
+                        >
                           <div className="flex items-center gap-3">
                             <div className="bg-muted relative h-12 w-12 overflow-hidden rounded">
-                              <Image
-                                src={currentLogo}
-                                alt="Organization logo"
-                                fill
-                                sizes="48px"
-                                className="object-contain"
-                              />
+                              {currentLogo ? (
+                                <Image
+                                  src={currentLogo}
+                                  alt="Organization logo"
+                                  fill
+                                  sizes="48px"
+                                  className="object-contain"
+                                />
+                              ) : null}
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium">
-                                Current logo
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium">
+                                {currentLogo ? "Logo selected" : "Select logo"}
                               </p>
-                              <p className="text-muted-foreground truncate text-xs">
-                                {currentLogo}
+                              <p className="text-muted-foreground text-xs">
+                                {currentLogo
+                                  ? "Click to replace (keeps previous uploads in Media Library)"
+                                  : "Click to upload or choose from Media Library"}
                               </p>
                             </div>
+                          </div>
+                          <Button type="button" variant="outline" size="sm">
+                            {currentLogo ? "Change" : "Choose"}
+                          </Button>
+                        </button>
+
+                        {organizationId ? (
+                          <MediaLibrarySingleSelectDialog
+                            open={logoDialogOpen}
+                            onOpenChange={setLogoDialogOpen}
+                            organizationId={organizationId}
+                            title="Organization logo"
+                            description="Upload a logo or select one from your media library. Only one logo can be selected at a time."
+                            accept="image/*"
+                            onSelectUrl={async (url) => {
+                              await updateOrganization({
+                                organizationId,
+                                logo: url,
+                              });
+                              field.onChange(url);
+                            }}
+                          />
+                        ) : null}
+
+                        {currentLogo ? (
+                          <div>
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
                               onClick={async () => {
-                                if (!organizationId) {
-                                  field.onChange("");
-                                  return;
-                                }
-                                try {
-                                  await updateOrganization({
-                                    organizationId,
-                                    logo: null,
-                                  });
-                                  field.onChange("");
-                                  toast.success("Logo removed");
-                                } catch (error) {
-                                  toast.error("Failed to remove logo", {
-                                    description:
-                                      error instanceof Error
-                                        ? error.message
-                                        : "Unexpected error",
-                                  });
-                                }
+                                if (!organizationId) return;
+                                await updateOrganization({
+                                  organizationId,
+                                  logo: null,
+                                });
+                                field.onChange("");
+                                toast.success("Logo removed");
                               }}
                             >
-                              Remove
+                              Remove logo
                             </Button>
-                          </div>
-                        ) : null}
-
-                        <FormControl>
-                          <Input
-                            placeholder="Paste logo URL (or upload/select below)"
-                            {...field}
-                          />
-                        </FormControl>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button type="button" variant="outline" size="sm" asChild>
-                            <label className={canUpload ? "" : "pointer-events-none opacity-50"}>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={handleUploadLogo}
-                                disabled={!canUpload}
-                              />
-                              Upload logo
-                            </label>
-                          </Button>
-                          {!canUpload ? (
-                            <span className="text-muted-foreground text-xs">
-                              Save the organization first to upload/select media.
-                            </span>
-                          ) : null}
-                        </div>
-
-                        {organizationId ? (
-                          <div className="rounded-md border p-3">
-                            <p className="text-muted-foreground mb-2 text-xs">
-                              Or pick from this organization’s media library:
-                            </p>
-                            <MediaLibrary
-                              mode="select"
-                              organizationId={organizationId}
-                              onSelect={(media) => {
-                                if (!media.url) {
-                                  toast.error("Selected media item has no URL.");
-                                  return;
-                                }
-                                void updateOrganization({
-                                  organizationId,
-                                  logo: media.url,
-                                })
-                                  .then(() => {
-                                    field.onChange(media.url);
-                                    toast.success("Logo updated");
-                                  })
-                                  .catch((error: unknown) => {
-                                    toast.error("Failed to set logo", {
-                                      description:
-                                        error instanceof Error
-                                          ? error.message
-                                          : "Unexpected error",
-                                    });
-                                  });
-                              }}
-                            />
                           </div>
                         ) : null}
                       </div>

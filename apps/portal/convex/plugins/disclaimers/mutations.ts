@@ -16,6 +16,7 @@ export const upsertDisclaimerTemplateMeta = mutation({
     pdfFileId: v.optional(v.id("_storage")),
     consentText: v.optional(v.string()),
     description: v.optional(v.string()),
+    builderTemplateJson: v.optional(v.string()),
   },
   returns: v.string(),
   handler: async (ctx, args) => {
@@ -44,6 +45,29 @@ export const createManualIssue = mutation({
       disclaimersMutations.createManualIssue,
       {
         ...args,
+        templatePostId: args.templatePostId as any,
+      },
+    );
+    return { issueId: String(result.issueId), token: result.token };
+  },
+});
+
+export const createManualIssueFromPost = mutation({
+  args: {
+    organizationId: v.optional(v.string()),
+    issuePostId: v.string(),
+    templatePostId: v.string(),
+    recipientEmail: v.string(),
+    recipientName: v.optional(v.string()),
+    recipientUserId: v.optional(v.string()),
+  },
+  returns: v.object({ issueId: v.string(), token: v.string() }),
+  handler: async (ctx, args) => {
+    const result = await ctx.runMutation(
+      disclaimersMutations.createManualIssueFromPost,
+      {
+        ...args,
+        issuePostId: args.issuePostId as any,
         templatePostId: args.templatePostId as any,
       },
     );

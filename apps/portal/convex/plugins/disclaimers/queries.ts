@@ -41,6 +41,20 @@ export const getSigningContext = query({
   },
 });
 
+export const getSigningContextDebug = query({
+  args: {
+    issueId: v.string(),
+    tokenHash: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    return await ctx.runQuery(disclaimersQueries.getSigningContextDebug, {
+      issueId: args.issueId as any,
+      tokenHash: args.tokenHash,
+    });
+  },
+});
+
 export const getLatestSignatureForIssue = query({
   args: {
     organizationId: v.optional(v.string()),
@@ -51,6 +65,34 @@ export const getLatestSignatureForIssue = query({
     return await ctx.runQuery(disclaimersQueries.getLatestSignatureForIssue, {
       organizationId: args.organizationId,
       issueId: args.issueId as any,
+    });
+  },
+});
+
+export const getSigningReceipt = query({
+  args: {
+    issueId: v.string(),
+    tokenHash: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    return await ctx.runQuery(disclaimersQueries.getSigningReceipt, {
+      issueId: args.issueId as any,
+      tokenHash: args.tokenHash,
+    });
+  },
+});
+
+export const getTemplateBuilderContext = query({
+  args: {
+    templatePostId: v.string(),
+    organizationId: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    return await ctx.runQuery(disclaimersQueries.getTemplateBuilderContext, {
+      templatePostId: args.templatePostId as any,
+      organizationId: args.organizationId,
     });
   },
 });

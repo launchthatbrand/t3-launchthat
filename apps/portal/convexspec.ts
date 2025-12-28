@@ -2846,7 +2846,7 @@ export type PublicApiType = {
               category?: string;
               limit?: number;
               postTypeSlug?: string;
-              status?: "published" | "draft" | "archived";
+              status?: string;
             };
             organizationId?: Id<"organizations">;
           },
@@ -3092,6 +3092,7 @@ export type PublicApiType = {
             caption?: string;
             categories?: Array<string>;
             externalUrl?: string;
+            organizationId?: Id<"organizations">;
             status?: "draft" | "published";
             storageId?: Id<"_storage">;
             title?: string;
@@ -3175,6 +3176,7 @@ export type PublicApiType = {
             alt?: string;
             caption?: string;
             categories?: Array<string>;
+            organizationId?: Id<"organizations">;
             status?: "draft" | "published";
             storageId: Id<"_storage">;
             taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
@@ -3299,6 +3301,7 @@ export type PublicApiType = {
           "query",
           "public",
           {
+            organizationId?: Id<"organizations">;
             paginationOpts: {
               cursor: string | null;
               endCursor?: string | null;
@@ -3323,10 +3326,12 @@ export type PublicApiType = {
               externalUrl?: string;
               height?: number;
               mimeType?: string;
+              organizationId?: Id<"organizations">;
               status?: "draft" | "published";
               storageId?: Id<"_storage">;
               taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
               title?: string;
+              uploadedAt?: number;
               url?: string;
               width?: number;
             }>;
@@ -3482,7 +3487,7 @@ export type PublicApiType = {
             customDomain?: string;
             description?: string;
             isPublic?: boolean;
-            logo?: string;
+            logo?: string | null;
             name?: string;
             organizationId: Id<"organizations">;
             planId?: Id<"plans">;
@@ -4137,6 +4142,7 @@ export type PublicApiType = {
                 title: string;
               }>;
               name: string;
+              pageTemplateSlug?: string;
               rewrite?: {
                 archiveSlug?: string;
                 feeds?: boolean;
@@ -4206,6 +4212,7 @@ export type PublicApiType = {
                 title: string;
               }>;
               name?: string;
+              pageTemplateSlug?: string;
               rewrite?: {
                 archiveSlug?: string;
                 feeds?: boolean;
@@ -4233,6 +4240,12 @@ export type PublicApiType = {
             };
             id: Id<"postTypes">;
           },
+          any
+        >;
+        backfillRewriteKeys: FunctionReference<
+          "mutation",
+          "public",
+          { organizationId?: Id<"organizations"> },
           any
         >;
         remove: FunctionReference<
@@ -4317,6 +4330,7 @@ export type PublicApiType = {
               position?: number;
               slug?: string;
             };
+            archiveSlugKey?: string;
             createdAt: number;
             createdBy?: Id<"users">;
             description?: string;
@@ -4344,6 +4358,7 @@ export type PublicApiType = {
             }>;
             name: string;
             organizationId?: Id<"organizations"> | "portal-root";
+            pageTemplateSlug?: string;
             rewrite?: {
               archiveSlug?: string;
               feeds?: boolean;
@@ -4353,6 +4368,7 @@ export type PublicApiType = {
               singleSlug?: string;
               withFront?: boolean;
             };
+            singleSlugKey?: string;
             slug: string;
             storageKind?: "posts" | "custom" | "component";
             storageTables?: Array<string>;
@@ -4387,6 +4403,7 @@ export type PublicApiType = {
               position?: number;
               slug?: string;
             };
+            archiveSlugKey?: string;
             createdAt: number;
             createdBy?: Id<"users">;
             description?: string;
@@ -4414,6 +4431,7 @@ export type PublicApiType = {
             }>;
             name: string;
             organizationId?: Id<"organizations"> | "portal-root";
+            pageTemplateSlug?: string;
             rewrite?: {
               archiveSlug?: string;
               feeds?: boolean;
@@ -4423,6 +4441,7 @@ export type PublicApiType = {
               singleSlug?: string;
               withFront?: boolean;
             };
+            singleSlugKey?: string;
             slug: string;
             storageKind?: "posts" | "custom" | "component";
             storageTables?: Array<string>;
@@ -4457,6 +4476,7 @@ export type PublicApiType = {
               position?: number;
               slug?: string;
             };
+            archiveSlugKey?: string;
             createdAt: number;
             createdBy?: Id<"users">;
             description?: string;
@@ -4484,6 +4504,7 @@ export type PublicApiType = {
             }>;
             name: string;
             organizationId?: Id<"organizations"> | "portal-root";
+            pageTemplateSlug?: string;
             rewrite?: {
               archiveSlug?: string;
               feeds?: boolean;
@@ -4493,6 +4514,153 @@ export type PublicApiType = {
               singleSlug?: string;
               withFront?: boolean;
             };
+            singleSlugKey?: string;
+            slug: string;
+            storageKind?: "posts" | "custom" | "component";
+            storageTables?: Array<string>;
+            supports?: {
+              attachments?: boolean;
+              comments?: boolean;
+              customFields?: boolean;
+              editor?: boolean;
+              excerpt?: boolean;
+              featuredImage?: boolean;
+              postMeta?: boolean;
+              revisions?: boolean;
+              taxonomy?: boolean;
+              title?: boolean;
+            };
+            updatedAt?: number;
+          } | null
+        >;
+        getBySingleSlugKey: FunctionReference<
+          "query",
+          "public",
+          { organizationId?: Id<"organizations">; singleSlugKey: string },
+          {
+            _creationTime: number;
+            _id: Id<"postTypes">;
+            adminMenu?: {
+              enabled: boolean;
+              icon?: string;
+              label?: string;
+              menuId?: string;
+              parent?: string;
+              position?: number;
+              slug?: string;
+            };
+            archiveSlugKey?: string;
+            createdAt: number;
+            createdBy?: Id<"users">;
+            description?: string;
+            enableApi?: boolean;
+            enableVersioning?: boolean;
+            enabledOrganizationIds?: Array<Id<"organizations"> | "portal-root">;
+            entryCount?: number;
+            fieldCount?: number;
+            frontendVisibility?: {
+              disabledSingleSlotIds?: Array<string>;
+              showComments?: boolean;
+              showCustomFields?: boolean;
+            };
+            includeTimestamps?: boolean;
+            isBuiltIn: boolean;
+            isPublic: boolean;
+            metaBoxes?: Array<{
+              description?: string;
+              fieldKeys: Array<string>;
+              id: string;
+              location?: "main" | "sidebar";
+              priority?: number;
+              rendererKey?: string;
+              title: string;
+            }>;
+            name: string;
+            organizationId?: Id<"organizations"> | "portal-root";
+            pageTemplateSlug?: string;
+            rewrite?: {
+              archiveSlug?: string;
+              feeds?: boolean;
+              hasArchive?: boolean;
+              pages?: boolean;
+              permalink?: { aliases?: Array<string>; canonical: string };
+              singleSlug?: string;
+              withFront?: boolean;
+            };
+            singleSlugKey?: string;
+            slug: string;
+            storageKind?: "posts" | "custom" | "component";
+            storageTables?: Array<string>;
+            supports?: {
+              attachments?: boolean;
+              comments?: boolean;
+              customFields?: boolean;
+              editor?: boolean;
+              excerpt?: boolean;
+              featuredImage?: boolean;
+              postMeta?: boolean;
+              revisions?: boolean;
+              taxonomy?: boolean;
+              title?: boolean;
+            };
+            updatedAt?: number;
+          } | null
+        >;
+        getByArchiveSlugKey: FunctionReference<
+          "query",
+          "public",
+          { archiveSlugKey: string; organizationId?: Id<"organizations"> },
+          {
+            _creationTime: number;
+            _id: Id<"postTypes">;
+            adminMenu?: {
+              enabled: boolean;
+              icon?: string;
+              label?: string;
+              menuId?: string;
+              parent?: string;
+              position?: number;
+              slug?: string;
+            };
+            archiveSlugKey?: string;
+            createdAt: number;
+            createdBy?: Id<"users">;
+            description?: string;
+            enableApi?: boolean;
+            enableVersioning?: boolean;
+            enabledOrganizationIds?: Array<Id<"organizations"> | "portal-root">;
+            entryCount?: number;
+            fieldCount?: number;
+            frontendVisibility?: {
+              disabledSingleSlotIds?: Array<string>;
+              showComments?: boolean;
+              showCustomFields?: boolean;
+            };
+            includeTimestamps?: boolean;
+            isBuiltIn: boolean;
+            isPublic: boolean;
+            metaBoxes?: Array<{
+              description?: string;
+              fieldKeys: Array<string>;
+              id: string;
+              location?: "main" | "sidebar";
+              priority?: number;
+              rendererKey?: string;
+              title: string;
+            }>;
+            name: string;
+            organizationId?: Id<"organizations"> | "portal-root";
+            pageTemplateSlug?: string;
+            rewrite?: {
+              archiveSlug?: string;
+              feeds?: boolean;
+              hasArchive?: boolean;
+              pages?: boolean;
+              permalink?: { aliases?: Array<string>; canonical: string };
+              singleSlug?: string;
+              withFront?: boolean;
+            };
+            singleSlugKey?: string;
             slug: string;
             storageKind?: "posts" | "custom" | "component";
             storageTables?: Array<string>;
@@ -7705,7 +7873,7 @@ export type PublicApiType = {
               category?: string;
               limit?: number;
               slug?: string;
-              status?: "published" | "draft" | "archived";
+              status?: string;
             };
             organizationId?: string;
             postTypeSlug: string;
@@ -7820,6 +7988,7 @@ export type PublicApiType = {
           "mutation",
           "public",
           {
+            builderTemplateJson?: string;
             consentText?: string;
             description?: string;
             organizationId?: string;
@@ -7832,6 +8001,19 @@ export type PublicApiType = {
           "mutation",
           "public",
           {
+            organizationId?: string;
+            recipientEmail: string;
+            recipientName?: string;
+            recipientUserId?: string;
+            templatePostId: string;
+          },
+          { issueId: string; token: string }
+        >;
+        createManualIssueFromPost: FunctionReference<
+          "mutation",
+          "public",
+          {
+            issuePostId: string;
             organizationId?: string;
             recipientEmail: string;
             recipientName?: string;
@@ -7876,18 +8058,50 @@ export type PublicApiType = {
           { issueId: string; tokenHash: string },
           any
         >;
+        getSigningContextDebug: FunctionReference<
+          "query",
+          "public",
+          { issueId: string; tokenHash: string },
+          any
+        >;
         getLatestSignatureForIssue: FunctionReference<
           "query",
           "public",
           { issueId: string; organizationId?: string },
           any
         >;
+        getSigningReceipt: FunctionReference<
+          "query",
+          "public",
+          { issueId: string; tokenHash: string },
+          any
+        >;
+        getTemplateBuilderContext: FunctionReference<
+          "query",
+          "public",
+          { organizationId?: string; templatePostId: string },
+          any
+        >;
       };
       actions: {
+        importTemplatePdfAndAttach: FunctionReference<
+          "action",
+          "public",
+          {
+            consentText?: string;
+            description?: string;
+            orgId?: string;
+            sourceUrl: string;
+            templatePostId: string;
+          },
+          any
+        >;
         issueDisclaimerAndSendEmail: FunctionReference<
           "action",
           "public",
           {
+            clientOrigin?: string;
+            issuePostId?: string;
             orgId?: string;
             recipientEmail: string;
             recipientName?: string;
@@ -7899,7 +8113,7 @@ export type PublicApiType = {
         resendDisclaimerAndSendEmail: FunctionReference<
           "action",
           "public",
-          { issueId: string; orgId?: string },
+          { clientOrigin?: string; issueId: string; orgId?: string },
           any
         >;
         submitSignature: FunctionReference<
@@ -7907,8 +8121,12 @@ export type PublicApiType = {
           "public",
           {
             consentText: string;
+            fieldSignatures?: Array<{
+              fieldId: string;
+              signatureDataUrl: string;
+            }>;
             issueId: string;
-            signatureDataUrl: string;
+            signatureDataUrl?: string;
             signedEmail: string;
             signedName: string;
             tokenHash: string;

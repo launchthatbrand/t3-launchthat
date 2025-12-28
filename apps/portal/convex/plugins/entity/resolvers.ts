@@ -64,15 +64,7 @@ type Resolver = {
 
 const normalizeStatus = (status?: string | null): EntityStatus | undefined => {
   if (!status) return undefined;
-  const lowered = status.toLowerCase();
-  if (
-    lowered === "published" ||
-    lowered === "draft" ||
-    lowered === "archived"
-  ) {
-    return lowered;
-  }
-  return undefined;
+  return status.toLowerCase();
 };
 
 const adaptPortalPost = (post: Doc<"posts">): EntityRecord => ({

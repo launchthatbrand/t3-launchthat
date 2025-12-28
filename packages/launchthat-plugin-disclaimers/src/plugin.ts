@@ -1,9 +1,11 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
 import { createElement } from "react";
 
+import { DisclaimersIssueSendMetaBox } from "./admin/metaBoxes/DisclaimersIssueSendMetaBox";
 import { DisclaimersTemplatePdfMetaBox } from "./admin/metaBoxes/DisclaimersTemplatePdfMetaBox";
 import { DisclaimersOverviewPage } from "./admin/OverviewPage";
 import { DisclaimersSettingsPage } from "./admin/SettingsPage";
+import { DisclaimerTemplateBuilderTab } from "./tabs/DisclaimerTemplateBuilderTab";
 
 export const PLUGIN_ID = "disclaimers" as const;
 export type PluginId = typeof PLUGIN_ID;
@@ -31,6 +33,20 @@ export const createDisclaimersPluginDefinition = (
     "Signature capture and signed PDF generation",
     "Audit metadata and download evidence",
   ],
+  postStatuses: [
+    {
+      value: "sent",
+      label: "Sent",
+      description: "A signing request has been emailed but not yet signed.",
+      postTypeSlugs: ["disclaimers"],
+    },
+    {
+      value: "signed",
+      label: "Signed",
+      description: "This disclaimer has been completed and signed.",
+      postTypeSlugs: ["disclaimers"],
+    },
+  ],
   postTypes: [
     {
       name: "Disclaimers",
@@ -49,9 +65,25 @@ export const createDisclaimersPluginDefinition = (
         icon: "FileSignature",
         position: 60,
       },
+      pageTemplateSlug: "canvas",
       storageKind: "component",
       storageTables: DISCLAIMERS_COMPONENT_TABLES,
       includeTimestamps: true,
+      metaBoxes: [
+        {
+          id: "disclaimers-issue-send",
+          title: "Send Disclaimer",
+          description:
+            "Choose a template, enter a recipient, and email a signing request.",
+          location: "sidebar",
+          priority: 10,
+          fieldKeys: [],
+          rendererKey: "disclaimers.issue.send",
+        },
+      ],
+      metaBoxRenderers: {
+        "disclaimers.issue.send": DisclaimersIssueSendMetaBox,
+      },
     },
     {
       name: "Disclaimer Templates",
@@ -91,6 +123,27 @@ export const createDisclaimersPluginDefinition = (
       ],
       metaBoxRenderers: {
         "disclaimers.template.pdf": DisclaimersTemplatePdfMetaBox,
+      },
+      singleView: {
+        defaultTab: "edit",
+        tabs: [
+          {
+            id: "edit",
+            slug: "edit",
+            label: "Edit",
+            description: "Update the template details and metadata.",
+            usesDefaultEditor: true,
+          },
+          {
+            id: "builder",
+            slug: "builder",
+            label: "Builder",
+            description:
+              "Place signature fields on the PDF (multi-sign supported).",
+            render: (props) =>
+              createElement(DisclaimerTemplateBuilderTab, props),
+          },
+        ],
       },
     },
   ],

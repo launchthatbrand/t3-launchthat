@@ -41,6 +41,7 @@ export const upsertDisclaimerTemplateMeta = mutation({
     pdfFileId: v.optional(v.id("_storage")),
     consentText: v.optional(v.string()),
     description: v.optional(v.string()),
+    builderTemplateJson: v.optional(v.string()),
   },
   returns: v.id("posts"),
   handler: async (ctx, args) => {
@@ -75,6 +76,9 @@ export const upsertDisclaimerTemplateMeta = mutation({
     }
     if (typeof args.description === "string") {
       updates["disclaimer.description"] = args.description;
+    }
+    if (typeof args.builderTemplateJson === "string") {
+      updates["disclaimer.builderTemplate"] = args.builderTemplateJson;
     }
 
     if (Object.keys(updates).length > 0) {
@@ -139,10 +143,11 @@ export const createManualIssue = mutation({
       const now = Date.now();
       if (existing.issuePostId) {
         await ctx.db.patch(existing.issuePostId, {
+          status: "sent",
           updatedAt: now,
         });
         await upsertPostMeta(ctx, existing.issuePostId, {
-          "disclaimer.issueStatus": "incomplete",
+          "disclaimer.issueStatus": "sent",
           "disclaimer.lastSentAt": now,
           "disclaimer.sendCount": (existing.sendCount ?? 0) + 1,
         });
@@ -163,14 +168,14 @@ export const createManualIssue = mutation({
     const issuePostId = await ctx.db.insert("posts", {
       title: `${templateTitle} — ${recipientEmail}`,
       slug: `disclaimer-${Date.now()}`,
-      status: "draft",
+      status: "sent",
       postTypeSlug: "disclaimers",
       organizationId: orgId,
       createdAt: now,
       updatedAt: now,
     });
     await upsertPostMeta(ctx, issuePostId, {
-      "disclaimer.issueStatus": "incomplete",
+      "disclaimer.issueStatus": "sent",
       "disclaimer.templatePostId": String(args.templatePostId),
       "disclaimer.templateTitle": templateTitle,
       "disclaimer.recipientEmail": recipientEmail,
@@ -203,6 +208,136 @@ export const createManualIssue = mutation({
   },
 });
 
+export const createManualIssueFromPost = mutation({
+  args: {
+    organizationId: v.optional(v.string()),
+    issuePostId: v.id("posts"),
+    templatePostId: v.id("posts"),
+    recipientEmail: v.string(),
+    recipientName: v.optional(v.string()),
+    recipientUserId: v.optional(v.string()),
+  },
+  returns: v.object({
+    issueId: v.id("disclaimerIssues"),
+    token: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const orgId = args.organizationId ?? undefined;
+    const recipientEmail = args.recipientEmail.trim().toLowerCase();
+    if (!recipientEmail) throw new Error("Recipient email is required.");
+
+    const issuePost = await ctx.db.get(args.issuePostId);
+    if (!issuePost) throw new Error("Disclaimer post not found.");
+    if ((issuePost.postTypeSlug ?? "").toLowerCase() !== "disclaimers") {
+      throw new Error("Not a disclaimer post.");
+    }
+    if ((issuePost.organizationId ?? undefined) !== orgId) {
+      throw new Error("Disclaimer post does not belong to this organization.");
+    }
+
+    const templatePost = await ctx.db.get(args.templatePostId);
+    if (!templatePost) throw new Error("Template not found.");
+    if (
+      (templatePost.postTypeSlug ?? "").toLowerCase() !== "disclaimertemplates"
+    ) {
+      throw new Error("Not a disclaimer template.");
+    }
+    if ((templatePost.organizationId ?? undefined) !== orgId) {
+      throw new Error("Template does not belong to this organization.");
+    }
+
+    const templateMetaRows = await ctx.db
+      .query("postsMeta")
+      .withIndex("by_post", (q) => q.eq("postId", args.templatePostId))
+      .collect();
+    const templateMeta = metaToRecord(templateMetaRows);
+    const templateVersion =
+      typeof templateMeta["disclaimer.pdfVersion"] === "number"
+        ? (templateMeta["disclaimer.pdfVersion"] as number)
+        : 1;
+
+    const existing = await ctx.db
+      .query("disclaimerIssues")
+      .withIndex("by_org_template_and_recipientEmail", (q) =>
+        q
+          .eq("organizationId", orgId)
+          .eq("templatePostId", args.templatePostId)
+          .eq("recipientEmail", recipientEmail),
+      )
+      .order("desc")
+      .first();
+
+    const token = randomHex(32);
+    const tokenHash = await sha256Hex(token);
+    const now = Date.now();
+    const templateTitle = templatePost.title ?? "Disclaimer";
+
+    if (existing && existing.status === "incomplete") {
+      await ctx.db.patch(existing._id, {
+        issuePostId: args.issuePostId,
+        magicTokenHash: tokenHash,
+        lastSentAt: now,
+        sendCount: (existing.sendCount ?? 0) + 1,
+        updatedAt: now,
+      });
+
+      await ctx.db.patch(args.issuePostId, {
+        title: issuePost.title ?? `${templateTitle} — ${recipientEmail}`,
+        status: "sent",
+        updatedAt: now,
+      });
+      await upsertPostMeta(ctx, args.issuePostId, {
+        "disclaimer.issueStatus": "sent",
+        "disclaimer.issueId": String(existing._id),
+        "disclaimer.templatePostId": String(args.templatePostId),
+        "disclaimer.templateTitle": templateTitle,
+        "disclaimer.recipientEmail": recipientEmail,
+        "disclaimer.recipientName": args.recipientName ?? null,
+        "disclaimer.recipientUserId": args.recipientUserId ?? null,
+        "disclaimer.sendCount": (existing.sendCount ?? 0) + 1,
+        "disclaimer.lastSentAt": now,
+      });
+
+      return { issueId: existing._id, token };
+    }
+
+    const issueId = await ctx.db.insert("disclaimerIssues", {
+      organizationId: orgId,
+      issuePostId: args.issuePostId,
+      templatePostId: args.templatePostId,
+      templateVersion,
+      status: "incomplete",
+      recipientUserId: args.recipientUserId,
+      recipientEmail,
+      recipientName: args.recipientName,
+      magicTokenHash: tokenHash,
+      lastSentAt: now,
+      sendCount: 1,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await ctx.db.patch(args.issuePostId, {
+      title: issuePost.title ?? `${templateTitle} — ${recipientEmail}`,
+      status: "sent",
+      updatedAt: now,
+    });
+    await upsertPostMeta(ctx, args.issuePostId, {
+      "disclaimer.issueStatus": "sent",
+      "disclaimer.issueId": String(issueId),
+      "disclaimer.templatePostId": String(args.templatePostId),
+      "disclaimer.templateTitle": templateTitle,
+      "disclaimer.recipientEmail": recipientEmail,
+      "disclaimer.recipientName": args.recipientName ?? null,
+      "disclaimer.recipientUserId": args.recipientUserId ?? null,
+      "disclaimer.sendCount": 1,
+      "disclaimer.lastSentAt": now,
+    });
+
+    return { issueId, token };
+  },
+});
+
 export const resendIssue = mutation({
   args: {
     organizationId: v.optional(v.string()),
@@ -227,12 +362,25 @@ export const resendIssue = mutation({
     const token = randomHex(32);
     const tokenHash = await sha256Hex(token);
     const now = Date.now();
+    const nextSendCount = (issue.sendCount ?? 0) + 1;
     await ctx.db.patch(issue._id, {
       magicTokenHash: tokenHash,
       lastSentAt: now,
-      sendCount: (issue.sendCount ?? 0) + 1,
+      sendCount: nextSendCount,
       updatedAt: now,
     });
+
+    if (issue.issuePostId) {
+      await ctx.db.patch(issue.issuePostId, {
+        status: "sent",
+        updatedAt: now,
+      });
+      await upsertPostMeta(ctx, issue.issuePostId, {
+        "disclaimer.issueStatus": "sent",
+        "disclaimer.lastSentAt": now,
+        "disclaimer.sendCount": nextSendCount,
+      });
+    }
 
     return {
       issueId: issue._id,
@@ -307,11 +455,11 @@ export const finalizeSignature = mutation({
 
     if (issue.issuePostId) {
       await ctx.db.patch(issue.issuePostId, {
-        status: "published",
+        status: "signed",
         updatedAt: now,
       });
       await upsertPostMeta(ctx, issue.issuePostId, {
-        "disclaimer.issueStatus": "complete",
+        "disclaimer.issueStatus": "signed",
         "disclaimer.completedAt": now,
         "disclaimer.signedPdfFileId": String(args.signedPdfFileId),
         "disclaimer.pdfSha256": args.pdfSha256,
