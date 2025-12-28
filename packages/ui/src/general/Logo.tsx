@@ -21,7 +21,7 @@ export function Logo({
   return (
     <div className={cn("flex items-center gap-2", className)}>
       {image ? (
-        <Image src={image} alt={appName} width={50} height={50} />
+        <Image src={image} alt={appName} width={40} height={40} />
       ) : null}
       {appName ? (
         <div className="hidden gap-1 md:flex">

@@ -29,17 +29,20 @@ export interface MediaLibraryProps {
   mode?: "select" | "browse";
   onSelect?: (media: MediaItem) => void;
   className?: string;
+  organizationId?: Doc<"organizations">["_id"];
 }
 
 export function MediaLibrary({
   mode = "browse",
   onSelect,
   className,
+  organizationId,
 }: MediaLibraryProps) {
   const response: MediaQueryResult = useQuery(
     api.core.media.queries.listMediaItemsWithUrl,
     {
       paginationOpts: { numItems: 60, cursor: null },
+      organizationId,
     },
   );
   const mediaItems: MediaItem[] = response?.page ?? [];

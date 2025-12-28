@@ -48,6 +48,7 @@ export const linkMediaToPost = mutation({
  */
 export const createMediaForPost = mutation({
   args: {
+    organizationId: v.optional(v.id("organizations")),
     storageId: v.optional(v.id("_storage")),
     externalUrl: v.optional(v.string()),
     title: v.optional(v.string()),
@@ -79,6 +80,7 @@ export const createMediaForPost = mutation({
 
     // Create media item
     const mediaItemId = await ctx.db.insert("mediaItems", {
+      organizationId: args.organizationId,
       storageId: args.storageId,
       externalUrl: args.externalUrl,
       title: args.title,

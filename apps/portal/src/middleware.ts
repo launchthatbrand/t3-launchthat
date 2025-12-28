@@ -121,6 +121,7 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
     requestHeaders.set("x-tenant-id", tenant._id);
     requestHeaders.set("x-tenant-slug", tenant.slug);
     requestHeaders.set("x-tenant-name", tenant.name); // safe UTF-8
+    if (tenant.logo) requestHeaders.set("x-tenant-logo", tenant.logo);
     if (tenant.planId) requestHeaders.set("x-tenant-plan-id", tenant.planId);
     if (tenant.customDomain)
       requestHeaders.set("x-tenant-custom-domain", tenant.customDomain);

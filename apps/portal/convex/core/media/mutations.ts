@@ -26,6 +26,7 @@ export const generateUploadUrl = mutation({
  */
 export const saveMedia = mutation({
   args: {
+    organizationId: v.optional(v.id("organizations")),
     storageId: v.id("_storage"),
     title: v.optional(v.string()),
     caption: v.optional(v.string()),
@@ -53,7 +54,9 @@ export const saveMedia = mutation({
     }
 
     // Save metadata to mediaItems table
+    const uploadedAt = Date.now();
     const mediaId = await ctx.db.insert("mediaItems", {
+      organizationId: args.organizationId,
       storageId: args.storageId,
       title: args.title,
       caption: args.caption,
@@ -61,6 +64,7 @@ export const saveMedia = mutation({
       taxonomyTermIds: args.taxonomyTermIds,
       categories: args.categories,
       status: args.status ?? "draft",
+      uploadedAt,
     });
 
     return {

@@ -151,6 +151,31 @@ export function useTheme() {
   return context;
 }
 
+/**
+ * Single-button toggle between light and dark mode.
+ *
+ * - No dropdown
+ * - Icon animates (rotate/scale) when switching
+ * - Clicking always sets an explicit light/dark mode (exits "auto")
+ */
+export function ThemeToggleButton() {
+  const { resolvedTheme, setTheme } = useTheme();
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      className="relative [&>svg]:absolute [&>svg]:size-5"
+    >
+      <SunIcon className="scale-100 rotate-0 transition-all duration-300 dark:scale-0 dark:-rotate-90" />
+      <MoonIcon className="scale-0 rotate-90 transition-all duration-300 dark:scale-100 dark:rotate-0" />
+      <span className="sr-only">Toggle theme</span>
+    </Button>
+  );
+}
+
 export function ThemeToggle() {
   const { setTheme } = useTheme();
 

@@ -3,7 +3,7 @@
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { OrganizationMember } from "@/convex/core/organizations/types";
 import React from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { LoadingSpinner } from "launchthat-plugin-calendar";
@@ -13,7 +13,6 @@ import {
   Calendar,
   CreditCard,
   Crown,
-  Edit,
   Globe,
   Settings,
   Trash2,
@@ -77,10 +76,10 @@ const MEMBER_ROLE_OPTIONS = [
 export default function OrganizationDetailPage() {
   const params = useParams<{ organizationId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const organizationId = params.organizationId as Id<"organizations">;
 
   // State
-  const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [newMemberEmail, setNewMemberEmail] = React.useState("");
   const [newMemberRole, setNewMemberRole] = React.useState<
@@ -121,10 +120,6 @@ export default function OrganizationDetailPage() {
   );
 
   // Handlers
-  const handleEdit = () => {
-    setIsFormOpen(true);
-  };
-
   const handleDelete = async () => {
     try {
       setIsDeleting(true);
@@ -138,11 +133,21 @@ export default function OrganizationDetailPage() {
       setIsDeleting(false);
     }
   };
-
-  const handleFormSuccess = () => {
-    setIsFormOpen(false);
-    toast.success("Organization updated successfully");
-  };
+  const searchParamsString = searchParams.toString();
+  const activeTab = React.useMemo(() => {
+    const params = new URLSearchParams(searchParamsString);
+    const rawTab = params.get("tab") ?? "overview";
+    const allowedTabs = [
+      "overview",
+      "settings",
+      "domains",
+      "members",
+      "danger",
+    ] as const;
+    return allowedTabs.includes(rawTab as (typeof allowedTabs)[number])
+      ? rawTab
+      : "overview";
+  }, [searchParamsString]);
 
   const handleAddMember = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -331,309 +336,313 @@ export default function OrganizationDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/admin/settings/organizations")}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Organizations
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">{org.name}</h1>
-            <p className="text-muted-foreground">
-              Organization details and settings
-            </p>
+      <div>
+        <h1 className="text-2xl font-bold">{org.name}</h1>
+        <p className="text-muted-foreground">
+          Organization details and settings
+        </p>
+      </div>
+
+      {activeTab === "overview" ? (
+        <div className="mt-6 space-y-6">
+          {/* Organization Overview Cards */}
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+            {/* Basic Info */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Organization
+                </CardTitle>
+                <Building2 className="text-muted-foreground h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{organization.name}</div>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  {organization.slug}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Plan Info */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Current Plan
+                </CardTitle>
+                <CreditCard className="text-muted-foreground h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {currentPlan?.displayName ?? "No Plan"}
+                </div>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  {currentPlan
+                    ? `$${(currentPlan.priceMonthly / 100).toFixed(2)}/mo`
+                    : "Not assigned"}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Subscription Status */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Status</CardTitle>
+                <Settings className="text-muted-foreground h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold capitalize">
+                  {organization.subscriptionStatus}
+                </div>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Subscription status
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Owner */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Owner</CardTitle>
+                <Crown className="text-muted-foreground h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {organization.ownerId ? "Assigned" : "No Owner"}
+                </div>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Organization owner
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Organization Details */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* Settings (read-only badges; editing lives in Settings tab) */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Current Settings
+                </CardTitle>
+                <CardDescription>
+                  Current configuration snapshot
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Visibility</span>
+                  <div className="flex items-center gap-2">
+                    <Globe className="text-muted-foreground h-4 w-4" />
+                    <Badge
+                      variant={organization.isPublic ? "default" : "secondary"}
+                    >
+                      {organization.isPublic ? "Public" : "Private"}
+                    </Badge>
+                  </div>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Self Registration</span>
+                  <div className="flex items-center gap-2">
+                    <UserPlus className="text-muted-foreground h-4 w-4" />
+                    <Badge
+                      variant={
+                        organization.allowSelfRegistration
+                          ? "default"
+                          : "secondary"
+                      }
+                    >
+                      {organization.allowSelfRegistration
+                        ? "Enabled"
+                        : "Disabled"}
+                    </Badge>
+                  </div>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Description</span>
+                  <span className="text-muted-foreground text-sm">
+                    {organization.description ?? "No description"}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Metadata */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Organization Information
+                </CardTitle>
+                <CardDescription>Timestamps and metadata</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Created</span>
+                  <span className="text-sm">
+                    {new Date(organization._creationTime).toLocaleDateString()}
+                  </span>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Last Updated</span>
+                  <span className="text-sm">
+                    {new Date(organization.updatedAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Organization ID</span>
+                  <span className="bg-muted rounded px-2 py-1 font-mono text-xs">
+                    {organization._id}
+                  </span>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Slug</span>
+                  <span className="font-mono text-sm">{organization.slug}</span>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={handleEdit}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Organization
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" disabled={isDeleting}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Organization</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete "{org.name}"? This action
-                  cannot be undone and will remove all associated data.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Delete Organization
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+      ) : null}
+
+      {activeTab === "settings" ? (
+        <div className="mt-6 space-y-6">
+          <OrganizationForm
+            organizationId={organizationId}
+            mode="inline"
+            submitButtonText="Save changes"
+          />
         </div>
-      </div>
+      ) : null}
 
-      {/* Organization Overview Cards */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-        {/* Basic Info */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Organization</CardTitle>
-            <Building2 className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{organization.name}</div>
-            <p className="text-muted-foreground mt-1 text-xs">
-              {organization.slug}
-            </p>
-          </CardContent>
-        </Card>
+      {activeTab === "domains" ? (
+        <div className="mt-6 space-y-6">
+          <OrganizationDomainsCard organizationId={organizationId} />
+        </div>
+      ) : null}
 
-        {/* Plan Info */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Current Plan</CardTitle>
-            <CreditCard className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {currentPlan?.displayName ?? "No Plan"}
-            </div>
-            <p className="text-muted-foreground mt-1 text-xs">
-              {currentPlan
-                ? `$${(currentPlan.priceMonthly / 100).toFixed(2)}/mo`
-                : "Not assigned"}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Subscription Status */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Status</CardTitle>
-            <Settings className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold capitalize">
-              {organization.subscriptionStatus}
-            </div>
-            <p className="text-muted-foreground mt-1 text-xs">
-              Subscription status
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Owner */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Owner</CardTitle>
-            <Crown className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {organization.ownerId ? "Assigned" : "No Owner"}
-            </div>
-            <p className="text-muted-foreground mt-1 text-xs">
-              Organization owner
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Organization Details */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              Organization Settings
-            </CardTitle>
-            <CardDescription>Configuration and access settings</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Visibility</span>
-              <div className="flex items-center gap-2">
-                <Globe className="text-muted-foreground h-4 w-4" />
-                <Badge
-                  variant={organization.isPublic ? "default" : "secondary"}
-                >
-                  {organization.isPublic ? "Public" : "Private"}
-                </Badge>
+      {activeTab === "members" ? (
+        <div className="mt-6 space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserPlus className="h-5 w-5" />
+                    Organization Members
+                  </CardTitle>
+                  <CardDescription>
+                    Manage team members who can access this organization
+                  </CardDescription>
+                </div>
               </div>
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Self Registration</span>
-              <div className="flex items-center gap-2">
-                <UserPlus className="text-muted-foreground h-4 w-4" />
-                <Badge
-                  variant={
-                    organization.allowSelfRegistration ? "default" : "secondary"
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <form
+                onSubmit={handleAddMember}
+                className="grid gap-4 md:grid-cols-[1fr,200px,auto]"
+              >
+                <Input
+                  type="email"
+                  placeholder="user@example.com"
+                  value={newMemberEmail}
+                  onChange={(event) => setNewMemberEmail(event.target.value)}
+                  required
+                />
+                <Select
+                  value={newMemberRole}
+                  onValueChange={(value) =>
+                    setNewMemberRole(
+                      value as (typeof MEMBER_ROLE_OPTIONS)[number]["value"],
+                    )
                   }
                 >
-                  {organization.allowSelfRegistration ? "Enabled" : "Disabled"}
-                </Badge>
-              </div>
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Description</span>
-              <span className="text-muted-foreground text-sm">
-                {organization.description ?? "No description"}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MEMBER_ROLE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="submit" disabled={isAddingMember}>
+                  {isAddingMember ? "Adding..." : "Add Member"}
+                </Button>
+              </form>
+              <Separator />
+              {members === undefined ? (
+                <div className="py-8 text-center">
+                  <LoadingSpinner />
+                </div>
+              ) : memberList.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  No members yet. Add someone using their email address.
+                </p>
+              ) : (
+                <EntityList
+                  data={memberList}
+                  columns={memberColumns}
+                  entityActions={memberActions}
+                  enableFooter={false}
+                  viewModes={["list"]}
+                  defaultViewMode="list"
+                  enableSearch
+                  className="p-0"
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
-        <OrganizationDomainsCard organizationId={organizationId} />
-
-        {/* Metadata */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Organization Information
-            </CardTitle>
-            <CardDescription>Timestamps and metadata</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Created</span>
-              <span className="text-sm">
-                {new Date(organization._creationTime).toLocaleDateString()}
-              </span>
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Last Updated</span>
-              <span className="text-sm">
-                {new Date(organization.updatedAt).toLocaleDateString()}
-              </span>
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Organization ID</span>
-              <span className="bg-muted rounded px-2 py-1 font-mono text-xs">
-                {organization._id}
-              </span>
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Slug</span>
-              <span className="font-mono text-sm">{organization.slug}</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Members */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <UserPlus className="h-5 w-5" />
-                Organization Members
-              </CardTitle>
+      {activeTab === "danger" ? (
+        <div className="mt-6 space-y-6">
+          <Card className="border-destructive/30">
+            <CardHeader>
+              <CardTitle className="text-destructive">Danger Zone</CardTitle>
               <CardDescription>
-                Manage team members who can access this organization
+                Destructive actions for this organization.
               </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <form
-            onSubmit={handleAddMember}
-            className="grid gap-4 md:grid-cols-[1fr,200px,auto]"
-          >
-            <Input
-              type="email"
-              placeholder="user@example.com"
-              value={newMemberEmail}
-              onChange={(event) => setNewMemberEmail(event.target.value)}
-              required
-            />
-            <Select
-              value={newMemberRole}
-              onValueChange={(value) =>
-                setNewMemberRole(
-                  value as (typeof MEMBER_ROLE_OPTIONS)[number]["value"],
-                )
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent>
-                {MEMBER_ROLE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button type="submit" disabled={isAddingMember}>
-              {isAddingMember ? "Adding..." : "Add Member"}
-            </Button>
-          </form>
-          <Separator />
-          {members === undefined ? (
-            <div className="py-8 text-center">
-              <LoadingSpinner />
-            </div>
-          ) : memberList.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No members yet. Add someone using their email address.
-            </p>
-          ) : (
-            <EntityList
-              data={memberList}
-              columns={memberColumns}
-              entityActions={memberActions}
-              enableFooter={false}
-              viewModes={["list"]}
-              defaultViewMode="list"
-              enableSearch
-              className="p-0"
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Additional Information */}
-      {organization.description && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Description</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-sm">
-              {organization.description}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Edit Form Dialog */}
-      <OrganizationForm
-        open={isFormOpen}
-        onOpenChange={setIsFormOpen}
-        organizationId={organizationId}
-        onSuccess={handleFormSuccess}
-        mode="dialog"
-      />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" disabled={isDeleting}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete organization
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Organization</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete "{org.name}"? This action
+                      cannot be undone and will remove all associated data.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete Organization
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -298,27 +298,29 @@ const AdminLayoutHeader: React.FC<AdminLayoutHeaderProps> = ({
   const finalShowTabs = showTabs && finalTabs.length > 0;
 
   return (
-    <Card className={className}>
+    <Card
+      className={cn("relative flex items-center justify-center", className)}
+    >
       <CardHeader className="container flex flex-col flex-wrap items-start justify-start gap-4">
         <div>
           <CardTitle className="text-2xl font-bold">{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => router.back()}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
       </CardHeader>
       {finalShowTabs && (
         <CardContent
-          className={`container items-start justify-start ${contentClassName}`}
+          className={`absolute right-0 bottom-0 left-0 container flex items-center justify-start gap-3 ${contentClassName}`}
         >
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => router.back()}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+
           <TabsRenderer tabs={finalTabs} activeTab={activeTab} />
         </CardContent>
       )}

@@ -8,8 +8,8 @@ import { GeistSans } from "geist/font/sans";
 import { cn } from "@acme/ui";
 import StandardLayout from "@acme/ui/layout/StandardLayout";
 
-import { Providers } from "./providers";
 import { NotificationIcon } from "~/components/notifications/NotificationIcon";
+import { Providers } from "./providers";
 
 // const fontSans = Geist({
 //   subsets: ["latin"],

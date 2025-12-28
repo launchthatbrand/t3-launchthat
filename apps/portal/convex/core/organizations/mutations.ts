@@ -82,7 +82,7 @@ export const update = mutation({
     organizationId: v.id("organizations"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
-    logo: v.optional(v.string()),
+    logo: v.optional(v.union(v.string(), v.null())),
     primaryColor: v.optional(v.string()),
     customDomain: v.optional(v.string()),
     isPublic: v.optional(v.boolean()),

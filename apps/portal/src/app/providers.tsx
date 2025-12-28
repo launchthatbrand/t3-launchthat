@@ -65,9 +65,6 @@ export function Providers({ children, tenant }: ProvidersProps) {
                     isAdminRoute={isAdminRoute}
                   />
                 ) : null}
-                <div className="fixed right-4 bottom-20">
-                  <ThemeToggle />
-                </div>
                 <Toaster />
               </ThemeProvider>
             </TenantProvider>

@@ -11,6 +11,7 @@ export interface TenantSummary {
   _id: Id<"organizations">;
   slug: string;
   name: string;
+  logo?: string | null;
   planId?: Id<"plans"> | null;
   customDomain?: string | null;
 }
@@ -19,6 +20,7 @@ export const PORTAL_TENANT_SUMMARY: TenantSummary = {
   _id: PORTAL_TENANT_ID,
   slug: PORTAL_TENANT_SLUG,
   name: "Portal",
+  logo: null,
   planId: null,
   customDomain: null,
 };
@@ -33,7 +35,11 @@ export const getTenantOrganizationId = (
   tenant?: TenantSummary | null,
 ): Id<"organizations"> | undefined => tenant?._id ?? undefined;
 
-const TENANT_CACHE_TTL_MS = 60 * 1000; // 1 minute edge cache
+// In dev we want tenant branding changes (name/logo) to reflect immediately.
+// In production, a short edge cache helps reduce Convex lookups.
+const TENANT_CACHE_TTL_MS =
+  process.env.NODE_ENV === "development" ? 0 : 60 * 1000;
+const SHOULD_CACHE_TENANT = TENANT_CACHE_TTL_MS > 0;
 const tenantCache = new Map<
   string,
   { tenant: TenantSummary; expiresAt: number }
@@ -52,9 +58,11 @@ export async function fetchTenantBySlug(
 ): Promise<TenantSummary | null> {
   const normalizedSlug = (slug ?? PORTAL_TENANT_SLUG).toLowerCase();
 
-  const cached = tenantCache.get(normalizedSlug);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.tenant;
+  if (SHOULD_CACHE_TENANT) {
+    const cached = tenantCache.get(normalizedSlug);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.tenant;
+    }
   }
 
   const tenant = await getConvexClient()
@@ -76,14 +84,17 @@ export async function fetchTenantBySlug(
     _id: tenant._id,
     slug: tenant.slug,
     name: tenant.name,
+    logo: tenant.logo ?? null,
     planId: tenant.planId ?? null,
     customDomain: tenant.customDomain ?? null,
   };
 
-  tenantCache.set(normalizedSlug, {
-    tenant: summary,
-    expiresAt: Date.now() + TENANT_CACHE_TTL_MS,
-  });
+  if (SHOULD_CACHE_TENANT) {
+    tenantCache.set(normalizedSlug, {
+      tenant: summary,
+      expiresAt: Date.now() + TENANT_CACHE_TTL_MS,
+    });
+  }
 
   return summary;
 }
@@ -98,9 +109,11 @@ export async function fetchTenantByCustomDomain(
   if (!normalizedHost) return null;
 
   const cacheKey = `domain:${normalizedHost}`;
-  const cached = tenantCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.tenant;
+  if (SHOULD_CACHE_TENANT) {
+    const cached = tenantCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.tenant;
+    }
   }
 
   const tenant = await getConvexClient()
@@ -124,14 +137,17 @@ export async function fetchTenantByCustomDomain(
     _id: tenant._id,
     slug: tenant.slug,
     name: tenant.name,
+    logo: tenant.logo ?? null,
     planId: tenant.planId ?? null,
     customDomain: tenant.customDomain ?? null,
   };
 
-  tenantCache.set(cacheKey, {
-    tenant: summary,
-    expiresAt: Date.now() + TENANT_CACHE_TTL_MS,
-  });
+  if (SHOULD_CACHE_TENANT) {
+    tenantCache.set(cacheKey, {
+      tenant: summary,
+      expiresAt: Date.now() + TENANT_CACHE_TTL_MS,
+    });
+  }
 
   return summary;
 }

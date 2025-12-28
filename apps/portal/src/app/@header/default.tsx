@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import {
   Breadcrumb,
@@ -10,6 +12,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@acme/ui/breadcrumb";
+import AppHeader from "@acme/ui/layout/AppHeader";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -19,11 +22,11 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@acme/ui/navigation-menu";
+import { ThemeToggleButton } from "@acme/ui/theme";
 
-import AppHeader from "@acme/ui/layout/AppHeader";
-import Link from "next/link";
 import { PortalNavUser } from "~/components/auth/PortalNavUser";
-import { usePathname } from "next/navigation";
+import { NotificationIcon } from "~/components/notifications/NotificationIcon";
+import { useTenant } from "~/context/TenantContext";
 
 export default function HeaderLayout({
   children: _children,
@@ -43,17 +46,29 @@ export default function HeaderLayout({
 }
 
 const TopHeader = () => {
+  const tenant = useTenant();
+  const rawLogo: unknown = (tenant as { logo?: unknown } | null)?.logo;
+  const logoUrl = typeof rawLogo === "string" ? rawLogo : "";
+
   return (
     <AppHeader
-      appName="WallStreet Academy"
+      appName={tenant?.name ?? "WallStreet Academy"}
       sidebarToggle={true}
-      image="https://app.wsatraining.com/wp-content/uploads/2018/03/wsa_logo-01.png"
-      rightSlot={<PortalNavUser />}
+      image={logoUrl}
+      rightSlot={
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <ThemeToggleButton />
+            <NotificationIcon />
+          </div>
+          <PortalNavUser />
+        </div>
+      }
     />
   );
 };
 
-const MainHeader = () => {
+const _MainHeader = () => {
   return (
     <div className="bg-purple-900 px-6 py-4 text-white">
       <div className="flex items-center justify-between">
@@ -143,12 +158,12 @@ const MainHeader = () => {
                     <NavigationMenuLink asChild>
                       <Link
                         href="/target-zero-team/about"
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                        className="hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground block space-y-1 rounded-md p-3 leading-none no-underline transition-colors outline-none select-none"
                       >
-                        <div className="text-sm font-medium leading-none">
+                        <div className="text-sm leading-none font-medium">
                           About the Team
                         </div>
-                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                        <p className="text-muted-foreground line-clamp-2 text-sm leading-snug">
                           Learn about the Target Zero initiative and our team
                         </p>
                       </Link>
@@ -158,12 +173,12 @@ const MainHeader = () => {
                     <NavigationMenuLink asChild>
                       <Link
                         href="/target-zero-team/members"
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                        className="hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground block space-y-1 rounded-md p-3 leading-none no-underline transition-colors outline-none select-none"
                       >
-                        <div className="text-sm font-medium leading-none">
+                        <div className="text-sm leading-none font-medium">
                           Team Members
                         </div>
-                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                        <p className="text-muted-foreground line-clamp-2 text-sm leading-snug">
                           Meet the people working on Target Zero
                         </p>
                       </Link>

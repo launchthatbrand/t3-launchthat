@@ -11,6 +11,7 @@ export async function getActiveTenantFromHeaders(): Promise<TenantSummary | null
   const id: string | null = headerList.get("x-tenant-id");
   const slug: string | null = headerList.get("x-tenant-slug");
   const encodedName: string | null = headerList.get("x-tenant-name");
+  const logo: string | null = headerList.get("x-tenant-logo");
 
   if (!id || !slug || !encodedName) {
     return PORTAL_TENANT_SUMMARY;
@@ -23,6 +24,7 @@ export async function getActiveTenantFromHeaders(): Promise<TenantSummary | null
     _id: id as Id<"organizations">,
     slug,
     name: decodeURIComponent(encodedName),
+    logo,
     planId: planId ? (planId as Id<"plans">) : null,
     customDomain,
   };

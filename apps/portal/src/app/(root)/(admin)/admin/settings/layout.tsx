@@ -168,6 +168,39 @@ const getSettingsLayoutConfig = (
     };
   }
 
+  if (section === "organizations" && parts[1] && parts[1] !== "seed") {
+    const organizationId = parts[1];
+    const baseHref = `/admin/settings/organizations/${organizationId}`;
+    const rawTab = searchParams.get("tab") ?? "overview";
+    const allowedTabs = [
+      "overview",
+      "settings",
+      "domains",
+      "members",
+      "danger",
+    ] as const;
+
+    const derivedTab =
+      parts[2] === "users"
+        ? "members"
+        : allowedTabs.includes(rawTab as (typeof allowedTabs)[number])
+          ? rawTab
+          : "overview";
+
+    return {
+      title: "Organization",
+      description: "Manage organization settings, domains, and members",
+      tabs: [
+        { label: "Overview", value: "overview", href: `${baseHref}?tab=overview` },
+        { label: "Settings", value: "settings", href: `${baseHref}?tab=settings` },
+        { label: "Domains", value: "domains", href: `${baseHref}?tab=domains` },
+        { label: "Members", value: "members", href: `${baseHref}?tab=members` },
+        { label: "Danger", value: "danger", href: `${baseHref}?tab=danger` },
+      ],
+      activeTab: derivedTab,
+    };
+  }
+
   const sectionTitleMap: Record<
     string,
     { title: string; description: string }

@@ -200,6 +200,7 @@ export const getMediaById = query({
 export const listMediaItemsWithUrl = query({
   args: {
     paginationOpts: paginationOptsValidator,
+    organizationId: v.optional(v.id("organizations")),
     taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
     status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
     searchTerm: v.optional(v.string()),
@@ -209,6 +210,7 @@ export const listMediaItemsWithUrl = query({
       v.object({
         _id: v.id("mediaItems"),
         _creationTime: v.number(),
+        organizationId: v.optional(v.id("organizations")),
         storageId: v.optional(v.id("_storage")),
         externalUrl: v.optional(v.string()),
         url: v.optional(v.string()),
@@ -221,6 +223,7 @@ export const listMediaItemsWithUrl = query({
         mimeType: v.optional(v.string()),
         width: v.optional(v.number()),
         height: v.optional(v.number()),
+        uploadedAt: v.optional(v.number()),
       }),
     ),
     isDone: v.boolean(),
@@ -230,9 +233,24 @@ export const listMediaItemsWithUrl = query({
   }),
   handler: async (ctx, args) => {
     const base = ctx.db.query("mediaItems");
-    const indexed = args.status
-      ? base.withIndex("by_status", (qi) => qi.eq("status", args.status))
-      : base;
+    const indexed =
+      args.organizationId && args.status
+        ? base
+            .withIndex("by_organization_and_status_and_uploadedAt", (qi) =>
+              qi
+                .eq("organizationId", args.organizationId)
+                .eq("status", args.status),
+            )
+            .order("desc")
+        : args.organizationId
+          ? base
+              .withIndex("by_organization_and_uploadedAt", (qi) =>
+                qi.eq("organizationId", args.organizationId),
+              )
+              .order("desc")
+          : args.status
+            ? base.withIndex("by_status", (qi) => qi.eq("status", args.status))
+            : base;
 
     const result = await indexed.paginate(args.paginationOpts);
 

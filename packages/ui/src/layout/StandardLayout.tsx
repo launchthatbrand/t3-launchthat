@@ -33,12 +33,16 @@ export default function StandardLayout(props: {
       {props.sidebar}
       {/* <AppSidebar sidebar={props.sidebar} /> */}
       <SidebarInset>
-        <AppHeader
-          appName={props.appName}
-          sidebarToggle={sidebarToggle}
-          className="bg-background sticky top-0 z-50"
-          rightSlot={props.headerRightSlot}
-        />
+        {props.header !== undefined ? (
+          props.header
+        ) : (
+          <AppHeader
+            appName={props.appName}
+            sidebarToggle={sidebarToggle}
+            className="bg-background sticky top-0 z-50"
+            rightSlot={props.headerRightSlot}
+          />
+        )}
         {/* <div className="relative w-full max-w-full overflow-x-hidden"> */}
         {props.children}
         {/* </div> */}

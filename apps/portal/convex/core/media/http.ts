@@ -48,6 +48,7 @@ export const uploadMediaPost = httpAction(async (ctx, request) => {
   const title = url.searchParams.get("title") ?? undefined;
   const alt = url.searchParams.get("alt") ?? undefined;
   const caption = url.searchParams.get("caption") ?? undefined;
+  const organizationIdParam = url.searchParams.get("organizationId") ?? undefined;
   const categories =
     url.searchParams.get("categories")?.split(",") ?? undefined;
   const statusParam = url.searchParams.get("status");
@@ -56,6 +57,9 @@ export const uploadMediaPost = httpAction(async (ctx, request) => {
 
   const mediaItem = await ctx.runMutation(api.core.media.mutations.saveMedia, {
     storageId,
+    organizationId: organizationIdParam
+      ? (organizationIdParam as Id<"organizations">)
+      : undefined,
     title,
     alt,
     caption,

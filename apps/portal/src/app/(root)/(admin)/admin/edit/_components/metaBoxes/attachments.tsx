@@ -23,6 +23,8 @@ const AttachmentsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
     return null;
   }
 
+  const organizationId = context.organizationId ?? context.general?.organizationId;
+
   const {
     attachments,
     handleAttachmentRemove,
@@ -121,7 +123,11 @@ const AttachmentsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
               assets in another tab if needed.
             </DialogDescription>
           </DialogHeader>
-          <MediaLibrary mode="select" onSelect={handleAttachmentSelect} />
+          <MediaLibrary
+            mode="select"
+            onSelect={handleAttachmentSelect}
+            organizationId={organizationId}
+          />
         </DialogContent>
       </Dialog>
     </>

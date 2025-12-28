@@ -31,7 +31,7 @@ export const organizationsTable = defineTable({
   ownerId: v.id("users"), // Creator who owns this organization
 
   // Branding and customization
-  logo: v.optional(v.string()), // Logo URL or storage ID
+  logo: v.optional(v.union(v.string(), v.null())), // Logo URL
   primaryColor: v.optional(v.string()), // Hex color for branding
   customDomain: v.optional(v.string()), // Custom domain if configured
   customDomainStatus: v.optional(

@@ -11,6 +11,9 @@ const mediaItemMetaValueValidator = v.union(
 export const mediaSchema = {
   // Media Items table (metadata for Convex storage files and external URLs)
   mediaItems: defineTable({
+    // Organization scope (when set, this media item belongs to that org)
+    organizationId: v.optional(v.id("organizations")),
+
     // Storage reference (for Convex-hosted files)
     storageId: v.optional(v.id("_storage")),
 
@@ -47,6 +50,12 @@ export const mediaSchema = {
     uploadedAt: v.optional(v.number()),
   })
     .index("by_storage", ["storageId"])
+    .index("by_organization_and_uploadedAt", ["organizationId", "uploadedAt"])
+    .index("by_organization_and_status_and_uploadedAt", [
+      "organizationId",
+      "status",
+      "uploadedAt",
+    ])
     .index("by_status", ["status"])
     .index("by_category", ["categories"]) // legacy
     .index("by_taxonomyTermIds", ["taxonomyTermIds"])

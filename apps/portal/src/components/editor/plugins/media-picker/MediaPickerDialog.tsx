@@ -183,6 +183,7 @@ export function MediaPickerDialog({
     <MediaPickerLibraryPanel
       onSelect={handleSelection}
       isInserting={isInserting}
+      organizationId={organizationId}
     />
   );
 
@@ -263,11 +264,13 @@ export function MediaPickerDialog({
 interface MediaPickerLibraryPanelProps {
   onSelect: (selection: PluginMediaSelection) => Promise<void>;
   isInserting: boolean;
+  organizationId?: Id<"organizations">;
 }
 
 function MediaPickerLibraryPanel({
   onSelect,
   isInserting,
+  organizationId,
 }: MediaPickerLibraryPanelProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -286,11 +289,13 @@ function MediaPickerLibraryPanel({
         ? {
             paginationOpts: { numItems: 60, cursor: null },
             searchTerm: normalizedSearch,
+            organizationId,
           }
         : {
             paginationOpts: { numItems: 60, cursor: null },
+            organizationId,
           },
-    [normalizedSearch],
+    [normalizedSearch, organizationId],
   );
 
   const mediaResponse = useQuery(
@@ -330,6 +335,7 @@ function MediaPickerLibraryPanel({
             storageId: storageId as Id<"_storage">,
             title: file.name,
             status: "published",
+            organizationId,
           });
         }
         toast.success("Upload complete");
@@ -344,7 +350,7 @@ function MediaPickerLibraryPanel({
         }
       }
     },
-    [generateUploadUrl, saveMedia],
+    [generateUploadUrl, organizationId, saveMedia],
   );
 
   const handleSelectAttachment = useCallback(

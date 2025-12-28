@@ -17,6 +17,6 @@ export function TenantProvider({
   );
 }
 
-export function useTenant() {
+export function useTenant(): TenantSummary | null {
   return useContext(TenantContext);
 }

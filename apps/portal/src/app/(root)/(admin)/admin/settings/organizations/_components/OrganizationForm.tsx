@@ -2,6 +2,7 @@
 
 import type { Id } from "@/convex/_generated/dataModel";
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import { api } from "@/convex/_generated/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "convex/react";
@@ -35,13 +36,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
+import { Separator } from "@acme/ui/separator";
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
+import { MediaLibrary } from "~/components/media/MediaLibrary";
 
 // Form validation schema
 const organizationFormSchema = z.object({
   name: z.string().min(1, "Organization name is required"),
   description: z.string().optional(),
+  logo: z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (value) => {
+        if (!value) return true;
+        try {
+          // eslint-disable-next-line no-new
+          new URL(value);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Logo must be a valid URL" },
+    ),
   planId: z.string().optional(),
   isPublic: z.boolean().default(false),
   allowSelfRegistration: z.boolean().default(false),
@@ -102,6 +122,8 @@ export function OrganizationForm({
   const updateOrganization = useMutation(
     api.core.organizations.mutations.update,
   );
+  const generateUploadUrl = useMutation(api.core.media.mutations.generateUploadUrl);
+  const saveMedia = useMutation(api.core.media.mutations.saveMedia);
 
 
   // Check if current user is admin
@@ -113,6 +135,7 @@ export function OrganizationForm({
     defaultValues: {
       name: "",
       description: "",
+      logo: "",
       planId: "",
       isPublic: false,
       allowSelfRegistration: false,
@@ -125,6 +148,7 @@ export function OrganizationForm({
       form.reset({
         name: existingOrganization.name,
         description: existingOrganization.description || "",
+        logo: existingOrganization.logo ?? "",
         planId: existingOrganization.planId || "",
         isPublic: existingOrganization.isPublic,
         allowSelfRegistration: existingOrganization.allowSelfRegistration,
@@ -169,6 +193,7 @@ export function OrganizationForm({
           await updateOrganization({
             organizationId,
             ...submitData,
+            logo: data.logo?.trim() ? data.logo.trim() : null,
           });
           toast.success("Organization updated successfully");
         } else {
@@ -257,6 +282,188 @@ export function OrganizationForm({
                     <FormMessage />
                   </FormItem>
                 )}
+              />
+
+              <Separator />
+
+              <FormField
+                control={form.control}
+                name="logo"
+                render={({ field }) => {
+                  const currentLogo = field.value?.trim() || "";
+                  const canUpload = Boolean(organizationId);
+
+                  const handleUploadLogo = async (
+                    event: React.ChangeEvent<HTMLInputElement>,
+                  ) => {
+                    const file = event.target.files?.[0] ?? null;
+                    if (!file) return;
+                    if (!organizationId) {
+                      toast.error("Save the organization first to upload a logo.");
+                      return;
+                    }
+
+                    try {
+                      const uploadUrl = await generateUploadUrl({});
+                      const uploadResponse = await fetch(uploadUrl, {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": file.type || "application/octet-stream",
+                        },
+                        body: file,
+                      });
+                      if (!uploadResponse.ok) {
+                        throw new Error("Failed to upload logo.");
+                      }
+                      const { storageId } = (await uploadResponse.json()) as {
+                        storageId: string;
+                      };
+                      const saved = await saveMedia({
+                        organizationId,
+                        storageId: storageId as Id<"_storage">,
+                        title: `Organization Logo · ${file.name}`,
+                        status: "published",
+                      });
+                      // Persist immediately so the tenant header can pick it up without requiring a manual Save.
+                      await updateOrganization({
+                        organizationId,
+                        logo: saved.url,
+                      });
+                      field.onChange(saved.url);
+                      toast.success("Logo uploaded");
+                    } catch (error) {
+                      toast.error("Upload failed", {
+                        description:
+                          error instanceof Error ? error.message : "Unexpected error",
+                      });
+                    } finally {
+                      event.target.value = "";
+                    }
+                  };
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Logo</FormLabel>
+                      <div className="flex flex-col gap-3">
+                        {currentLogo ? (
+                          <div className="flex items-center gap-3">
+                            <div className="bg-muted relative h-12 w-12 overflow-hidden rounded">
+                              <Image
+                                src={currentLogo}
+                                alt="Organization logo"
+                                fill
+                                sizes="48px"
+                                className="object-contain"
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">
+                                Current logo
+                              </p>
+                              <p className="text-muted-foreground truncate text-xs">
+                                {currentLogo}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                if (!organizationId) {
+                                  field.onChange("");
+                                  return;
+                                }
+                                try {
+                                  await updateOrganization({
+                                    organizationId,
+                                    logo: null,
+                                  });
+                                  field.onChange("");
+                                  toast.success("Logo removed");
+                                } catch (error) {
+                                  toast.error("Failed to remove logo", {
+                                    description:
+                                      error instanceof Error
+                                        ? error.message
+                                        : "Unexpected error",
+                                  });
+                                }
+                              }}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        ) : null}
+
+                        <FormControl>
+                          <Input
+                            placeholder="Paste logo URL (or upload/select below)"
+                            {...field}
+                          />
+                        </FormControl>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button type="button" variant="outline" size="sm" asChild>
+                            <label className={canUpload ? "" : "pointer-events-none opacity-50"}>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleUploadLogo}
+                                disabled={!canUpload}
+                              />
+                              Upload logo
+                            </label>
+                          </Button>
+                          {!canUpload ? (
+                            <span className="text-muted-foreground text-xs">
+                              Save the organization first to upload/select media.
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {organizationId ? (
+                          <div className="rounded-md border p-3">
+                            <p className="text-muted-foreground mb-2 text-xs">
+                              Or pick from this organization’s media library:
+                            </p>
+                            <MediaLibrary
+                              mode="select"
+                              organizationId={organizationId}
+                              onSelect={(media) => {
+                                if (!media.url) {
+                                  toast.error("Selected media item has no URL.");
+                                  return;
+                                }
+                                void updateOrganization({
+                                  organizationId,
+                                  logo: media.url,
+                                })
+                                  .then(() => {
+                                    field.onChange(media.url);
+                                    toast.success("Logo updated");
+                                  })
+                                  .catch((error: unknown) => {
+                                    toast.error("Failed to set logo", {
+                                      description:
+                                        error instanceof Error
+                                          ? error.message
+                                          : "Unexpected error",
+                                    });
+                                  });
+                              }}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                      <FormDescription>
+                        Upload an image to your organization’s media library and use it
+                        as the portal header logo.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </CardContent>
           </Card>
