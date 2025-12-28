@@ -10,7 +10,6 @@ import { format } from "date-fns";
 import { AlertTriangle, CalendarIcon, Clock } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { z } from "zod";
 
 import { Alert, AlertDescription, AlertTitle } from "@acme/ui/alert";
 import { Button } from "@acme/ui/button";
@@ -44,14 +43,11 @@ import {
 } from "@acme/ui/select";
 import { Textarea } from "@acme/ui/textarea";
 
+import type { EventFormValues } from "./formSchema";
 import { DayString, eventFormSchema, EventType } from "./formSchema";
 import { RecurrenceSelector } from "./RecurrenceSelector";
 
-const formSchema = eventFormSchema.extend({
-  applyToSeries: z.boolean().default(true),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = EventFormValues & { applyToSeries: boolean };
 
 const EVENT_TYPE_OPTIONS: { value: EventType; label: string }[] = [
   { value: "meeting", label: "Meeting" },
@@ -103,7 +99,7 @@ export function EditEventDialog({
 
   // Setup form with default values from the event
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(eventFormSchema as any),
     mode: "onChange",
     defaultValues: {
       title: "",

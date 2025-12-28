@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Konva from "konva";
 import { api } from "@portal/convexspec";
 import { useAction, useQuery } from "convex/react";
+import { Konva } from "@acme/konva";
 
 import { Button } from "@acme/ui/button";
 import {

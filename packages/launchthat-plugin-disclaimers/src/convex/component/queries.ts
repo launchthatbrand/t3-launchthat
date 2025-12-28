@@ -513,3 +513,38 @@ export const getSigningReceipt = query({
     };
   },
 });
+
+export const getSigningViewEvents = query({
+  args: {
+    issueId: v.id("disclaimerIssues"),
+    tokenHash: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      at: v.number(),
+      ip: v.optional(v.string()),
+      userAgent: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const issue = await ctx.db.get(args.issueId);
+    if (!issue) return [];
+    if (issue.magicTokenHash !== args.tokenHash) return [];
+
+    const limit = Math.max(1, Math.min(20, args.limit ?? 10));
+    const rows = await ctx.db
+      .query("disclaimerAuditEvents")
+      .withIndex("by_issue_and_kind_and_at", (q) =>
+        q.eq("issueId", issue._id).eq("kind", "viewed"),
+      )
+      .order("desc")
+      .take(limit);
+
+    return rows.map((r) => ({
+      at: r.at,
+      ip: r.ip,
+      userAgent: r.userAgent,
+    }));
+  },
+});

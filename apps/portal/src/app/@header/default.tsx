@@ -37,11 +37,13 @@ export default function HeaderLayout({
   className?: string;
 }) {
   return (
-    <header className="flex w-full flex-col">
-      <TopHeader />
+    <>
+      <div className="bg-background sticky top-0 z-50">
+        <TopHeader />
+      </div>
       {/* <MainHeader /> */}
       <Breadcrumbs />
-    </header>
+    </>
   );
 }
 
@@ -55,6 +57,7 @@ const TopHeader = () => {
       appName={tenant?.name ?? "WallStreet Academy"}
       sidebarToggle={true}
       image={logoUrl}
+      className="bg-background"
       rightSlot={
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">

@@ -5768,6 +5768,12 @@ export declare const components: {
           signedPdfUrl: string | null;
         }
       >;
+      getSigningViewEvents: FunctionReference<
+        "query",
+        "internal",
+        { issueId: string; limit?: number; tokenHash: string },
+        Array<{ at: number; ip?: string; userAgent?: string }>
+      >;
       getTemplateBuilderContext: FunctionReference<
         "query",
         "internal",

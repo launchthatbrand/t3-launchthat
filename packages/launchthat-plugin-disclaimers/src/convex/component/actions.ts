@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import qrcode from "qrcode-generator";
 
 import type { Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
@@ -309,6 +310,12 @@ export const submitSignature = action({
 
     // Add a final certificate page (PandaDoc-style) with signing metadata.
     {
+      const viewEvents = await ctx.runQuery(api.queries.getSigningViewEvents, {
+        issueId: args.issueId,
+        tokenHash: args.tokenHash,
+        limit: 8,
+      });
+
       const lastSize = pages[pages.length - 1]!.getSize();
       const cert = pdf.addPage([lastSize.width, lastSize.height]);
       const { width: pageW, height: pageH } = cert.getSize();
@@ -528,6 +535,122 @@ export const submitSignature = action({
             color: rgb(0.2, 0.2, 0.2),
           });
         });
+      }
+
+      // View events table (most recent first)
+      if (Array.isArray(viewEvents) && viewEvents.length > 0) {
+        const startY = 140;
+        const colAtX = marginX;
+        const colIpX = Math.floor(pageW * 0.44);
+        const colUaX = Math.floor(pageW * 0.66);
+        const maxUaWidth = (pageW - marginX) - colUaX;
+
+        cert.drawText("VIEW EVENTS", {
+          x: marginX,
+          y: startY,
+          size: 10,
+          font: fontBold,
+          color: valueColor,
+        });
+
+        cert.drawLine({
+          start: { x: marginX, y: startY - 6 },
+          end: { x: pageW - marginX, y: startY - 6 },
+          thickness: 1,
+          color: lineColor,
+        });
+
+        cert.drawText("AT (UTC)", {
+          x: colAtX,
+          y: startY - 22,
+          size: 9,
+          font: fontBold,
+          color: valueColor,
+        });
+        cert.drawText("IP", {
+          x: colIpX,
+          y: startY - 22,
+          size: 9,
+          font: fontBold,
+          color: valueColor,
+        });
+        cert.drawText("USER AGENT", {
+          x: colUaX,
+          y: startY - 22,
+          size: 9,
+          font: fontBold,
+          color: valueColor,
+        });
+
+        let y = startY - 40;
+        for (const ev of viewEvents.slice(0, 8)) {
+          if (y < 48) break;
+          const at = typeof ev?.at === "number" ? formatUtc(ev.at) : "—";
+          const ip =
+            typeof ev?.ip === "string" && ev.ip.trim().length > 0 ? ev.ip.trim() : "—";
+          const uaRaw =
+            typeof ev?.userAgent === "string" && ev.userAgent.trim().length > 0
+              ? ev.userAgent.trim()
+              : "—";
+          const uaLine = wrapText(uaRaw, maxUaWidth, 8)[0] ?? uaRaw.slice(0, 60);
+
+          cert.drawText(at, { x: colAtX, y, size: 8, font, color: rgb(0.2, 0.2, 0.2) });
+          cert.drawText(ip, { x: colIpX, y, size: 8, font, color: rgb(0.2, 0.2, 0.2) });
+          cert.drawText(uaLine, {
+            x: colUaX,
+            y,
+            size: 8,
+            font,
+            color: rgb(0.2, 0.2, 0.2),
+          });
+          y -= 12;
+        }
+      }
+
+      // QR code (encodes a stable, domain-agnostic verification reference)
+      try {
+        const qrPayload = `disclaimer:${String(args.issueId)}?tokenHash=${args.tokenHash}`;
+        const qr = qrcode(0, "M");
+        qr.addData(qrPayload);
+        qr.make();
+        const modules = qr.getModuleCount();
+        const qrSize = 96; // points
+        const moduleSize = qrSize / modules;
+        const qrX = pageW - marginX - qrSize;
+        const qrY = 48;
+
+        // background
+        cert.drawRectangle({
+          x: qrX - 6,
+          y: qrY - 6,
+          width: qrSize + 12,
+          height: qrSize + 24,
+          color: rgb(1, 1, 1),
+          borderColor: lineColor,
+          borderWidth: 1,
+        });
+        cert.drawText("SCAN TO VIEW", {
+          x: qrX,
+          y: qrY + qrSize + 6,
+          size: 8,
+          font: fontBold,
+          color: valueColor,
+        });
+
+        for (let r = 0; r < modules; r++) {
+          for (let c = 0; c < modules; c++) {
+            if (!qr.isDark(r, c)) continue;
+            cert.drawRectangle({
+              x: qrX + c * moduleSize,
+              y: qrY + (modules - 1 - r) * moduleSize,
+              width: moduleSize,
+              height: moduleSize,
+              color: rgb(0, 0, 0),
+            });
+          }
+        }
+      } catch {
+        // If QR generation fails, certificate still valid.
       }
     }
 

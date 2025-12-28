@@ -484,19 +484,74 @@ export const recordSigningView = mutation({
     if (issue.magicTokenHash !== args.tokenHash) return null;
 
     const now = Date.now();
-    await ctx.db.insert("disclaimerAuditEvents", {
-      issueId: issue._id,
-      kind: "viewed",
-      at: now,
-      ip: args.ip,
-      userAgent: args.userAgent,
-    });
+    // Server-side dedupe: ignore rapid refresh spam from the same ip+ua.
+    const last = await ctx.db
+      .query("disclaimerAuditEvents")
+      .withIndex("by_issue_and_kind_and_at", (q) =>
+        q.eq("issueId", issue._id).eq("kind", "viewed"),
+      )
+      .order("desc")
+      .first();
+    const lastAt = typeof last?.at === "number" ? last.at : null;
+    const withinWindow = lastAt !== null ? now - lastAt < 15_000 : false;
+    const lastIp = typeof last?.ip === "string" ? last.ip : null;
+    const lastUa = typeof last?.userAgent === "string" ? last.userAgent : null;
+    const nextIp = typeof args.ip === "string" ? args.ip : null;
+    const nextUa = typeof args.userAgent === "string" ? args.userAgent : null;
+    const matches = withinWindow && lastIp === nextIp && lastUa === nextUa;
+
+    if (!matches) {
+      // Basic rate limit: max 60 view events / minute / issue
+      const since = now - 60_000;
+      const recentMinute = await ctx.db
+        .query("disclaimerAuditEvents")
+        .withIndex("by_issue_and_kind_and_at", (q) =>
+          q.eq("issueId", issue._id).eq("kind", "viewed"),
+        )
+        .order("desc")
+        .take(60);
+      const tooMany = recentMinute.filter((e) => e.at >= since).length >= 60;
+      if (tooMany) {
+        // Still update lastViewedAt, but do not insert a new event.
+        const currentCount =
+          typeof issue.viewCount === "number" ? issue.viewCount : 0;
+        await ctx.db.patch(issue._id, {
+          firstViewedAt: issue.firstViewedAt ?? now,
+          lastViewedAt: now,
+          viewCount: currentCount,
+          updatedAt: now,
+        });
+        return null;
+      }
+
+      await ctx.db.insert("disclaimerAuditEvents", {
+        issueId: issue._id,
+        kind: "viewed",
+        at: now,
+        ip: args.ip,
+        userAgent: args.userAgent,
+      });
+
+      // Retention: keep the last 100 view events per issue.
+      const recent = await ctx.db
+        .query("disclaimerAuditEvents")
+        .withIndex("by_issue_and_kind_and_at", (q) =>
+          q.eq("issueId", issue._id).eq("kind", "viewed"),
+        )
+        .order("desc")
+        .take(120);
+      if (recent.length > 100) {
+        for (const extra of recent.slice(100)) {
+          await ctx.db.delete(extra._id);
+        }
+      }
+    }
 
     const currentCount = typeof issue.viewCount === "number" ? issue.viewCount : 0;
     await ctx.db.patch(issue._id, {
       firstViewedAt: issue.firstViewedAt ?? now,
       lastViewedAt: now,
-      viewCount: currentCount + 1,
+      viewCount: matches ? currentCount : currentCount + 1,
       updatedAt: now,
     });
 

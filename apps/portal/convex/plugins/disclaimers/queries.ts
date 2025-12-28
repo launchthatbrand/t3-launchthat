@@ -83,6 +83,22 @@ export const getSigningReceipt = query({
   },
 });
 
+export const getSigningViewEvents = query({
+  args: {
+    issueId: v.string(),
+    tokenHash: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    return await ctx.runQuery(disclaimersQueries.getSigningViewEvents, {
+      issueId: args.issueId as any,
+      tokenHash: args.tokenHash,
+      limit: args.limit,
+    });
+  },
+});
+
 export const getTemplateBuilderContext = query({
   args: {
     templatePostId: v.string(),

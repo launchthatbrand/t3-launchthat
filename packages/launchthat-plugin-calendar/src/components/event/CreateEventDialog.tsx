@@ -82,7 +82,7 @@ export function CreateEventDialog({
     calendars.length > 0 && calendars[0] ? calendars[0]._id : "";
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema as any),
     mode: "onChange",
     defaultValues: {
       title: "",

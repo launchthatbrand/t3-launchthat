@@ -303,6 +303,12 @@ export type Mounts = {
         signedPdfUrl: string | null;
       }
     >;
+    getSigningViewEvents: FunctionReference<
+      "query",
+      "public",
+      { issueId: string; limit?: number; tokenHash: string },
+      Array<{ at: number; ip?: string; userAgent?: string }>
+    >;
     getTemplateBuilderContext: FunctionReference<
       "query",
       "public",

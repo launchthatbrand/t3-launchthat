@@ -3,17 +3,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@portal/convexspec";
 import { useAction, useMutation, useQuery } from "convex/react";
-import Konva from "konva";
 import { FileText } from "lucide-react";
 import {
   Group,
-  Image as KonvaImage,
+  Konva,
+  KonvaImage,
   Layer,
   Rect,
   Stage,
   Text,
   Transformer,
-} from "react-konva";
+  loadPdfJs,
+  toPdfJsUrl,
+} from "@acme/konva";
 
 import {
   Accordion,
@@ -86,35 +88,6 @@ const normalizeField = (
   hPct: clamp01(field.hPct),
 });
 
-type PdfJsModule = typeof import("pdfjs-dist");
-
-const loadPdfJs = async (): Promise<PdfJsModule> => {
-  const mod = (await import("pdfjs-dist")) as PdfJsModule;
-  // Configure worker (Next bundler-friendly).
-  try {
-    const candidates = [
-      "pdfjs-dist/build/pdf.worker.min.mjs",
-      "pdfjs-dist/build/pdf.worker.min.js",
-      "pdfjs-dist/build/pdf.worker.js",
-    ];
-    for (const candidate of candidates) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        (mod as any).GlobalWorkerOptions.workerSrc = new URL(
-          candidate,
-          import.meta.url,
-        ).toString();
-        break;
-      } catch {
-        // Try next candidate.
-      }
-    }
-  } catch {
-    // If worker config fails, pdf.js may still work in some environments,
-    // but rendering might be slower.
-  }
-  return mod;
-};
 
 const fmt = (v: unknown) => {
   if (v === null) return "null";
@@ -171,13 +144,16 @@ export const DisclaimerTemplateBuilderScreen = ({
   const initializedRef = useRef(false);
   useEffect(() => {
     if (initializedRef.current) return;
+    // Wait for the builder context to resolve (Convex `useQuery` returns `undefined` while loading).
+    // If we mark initialized too early, we can miss applying `storedTemplate` on refresh.
+    if (ctx === undefined) return;
     if (storedTemplate) {
       setDraft(storedTemplate);
       initializedRef.current = true;
       return;
     }
     initializedRef.current = true;
-  }, [storedTemplate]);
+  }, [ctx, storedTemplate]);
 
   const [pageCount, setPageCount] = useState<number>(1);
   const [activePageIndex, setActivePageIndex] = useState<number>(0);
@@ -196,21 +172,8 @@ export const DisclaimerTemplateBuilderScreen = ({
   const effectivePdfUrl = previewPdfUrl ?? (pdfUrl.length > 0 ? pdfUrl : null);
   const effectivePdfJsUrl = useMemo(() => {
     if (!effectivePdfUrl) return null;
-    // pdf.js fetches the PDF using XHR/fetch and is sensitive to CORS/range behavior.
-    // In dev, Convex storage URLs are cross-origin, so proxy them through the portal
-    // origin to make pdf.js reliable across refreshes.
-    try {
-      const u = new URL(effectivePdfUrl);
-      if (typeof window !== "undefined") {
-        const sameOrigin = u.origin === window.location.origin;
-        if (!sameOrigin) {
-          return `/api/pdf-proxy?url=${encodeURIComponent(u.toString())}`;
-        }
-      }
-      return u.toString();
-    } catch {
-      return effectivePdfUrl;
-    }
+    // pdf.js is sensitive to CORS/range behavior for cross-origin URLs.
+    return toPdfJsUrl(effectivePdfUrl);
   }, [effectivePdfUrl]);
 
   // If the user navigates to a different template (new `post_id`), reset all
@@ -636,6 +599,34 @@ export const DisclaimerTemplateBuilderScreen = ({
   }, [pageCount, pageGapBase, pageSizes, pageSize]);
   const stageHeight = Math.max(1, Math.ceil(docHeightBase * scale));
 
+  // Keep `activePageIndex` in sync with scroll position (continuous document).
+  useEffect(() => {
+    const node = frameRef.current;
+    if (!node) return;
+    let raf: number | null = null;
+    const onScroll = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = null;
+        const yBase = node.scrollTop / (scale || 1);
+        let idx = 0;
+        for (let i = 0; i < pageCount; i++) {
+          const top = pageOffsetsBase[i] ?? 0;
+          const size = pageSizes[i] ?? pageSize;
+          if (yBase >= top) idx = i;
+          if (yBase < top + size.height + pageGapBase) break;
+        }
+        setActivePageIndex((prev) => (prev === idx ? prev : idx));
+      });
+    };
+    node.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => {
+      node.removeEventListener("scroll", onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [pageCount, pageGapBase, pageOffsetsBase, pageSizes, pageSize, scale]);
+
   useEffect(() => {
     debugLog("layout:metrics", {
       frameSize,
@@ -983,6 +974,37 @@ export const DisclaimerTemplateBuilderScreen = ({
                                 ));
                               })()
                             : null}
+
+                          {/* page separator + label */}
+                          {pageIndex < pageCount - 1 ? (
+                            <>
+                              <Rect
+                                x={0}
+                                y={y0 + ps.height + pageGapBase / 2 - 0.75}
+                                width={ps.width}
+                                height={1.5}
+                                fill="rgba(0,0,0,0.10)"
+                                listening={false}
+                              />
+                              <Text
+                                x={ps.width - 86}
+                                y={y0 + ps.height + 6}
+                                text={`Page ${pageIndex + 1}`}
+                                fontSize={12}
+                                fill="#64748b"
+                                listening={false}
+                              />
+                            </>
+                          ) : (
+                            <Text
+                              x={ps.width - 86}
+                              y={y0 + ps.height + 6}
+                              text={`Page ${pageIndex + 1}`}
+                              fontSize={12}
+                              fill="#64748b"
+                              listening={false}
+                            />
+                          )}
                         </Group>
                       );
                     })}

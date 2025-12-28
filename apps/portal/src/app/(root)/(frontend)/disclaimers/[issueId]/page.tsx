@@ -16,7 +16,6 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { Image as KonvaImage, Layer, Rect, Stage, Text } from "react-konva";
 import { toast } from "sonner";
 
 import { Button } from "@acme/ui/button";
@@ -27,6 +26,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@acme/ui/dialog";
+import {
+  KonvaImage,
+  Layer,
+  Rect,
+  Stage,
+  Text,
+  createImageCache,
+  loadPdfJs,
+  toPdfJsUrl,
+} from "@acme/konva";
 
 const SignatureMaker = dynamic(
   async () => (await import("@docuseal/signature-maker-react")).SignatureMaker,
@@ -72,54 +81,6 @@ const sha256Hex = async (input: string): Promise<string> => {
     .join("");
 };
 
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-type PdfJsModule = typeof import("pdfjs-dist");
-
-const loadPdfJs = async (): Promise<PdfJsModule> => {
-  const mod = (await import("pdfjs-dist")) as PdfJsModule;
-  // Configure worker (Next bundler-friendly).
-  try {
-    const candidates = [
-      "pdfjs-dist/build/pdf.worker.min.mjs",
-      "pdfjs-dist/build/pdf.worker.min.js",
-      "pdfjs-dist/build/pdf.worker.js",
-    ];
-    for (const candidate of candidates) {
-      try {
-        mod.GlobalWorkerOptions.workerSrc = new URL(
-          candidate,
-          import.meta.url,
-        ).toString();
-        break;
-      } catch {
-        // try next
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return mod;
-};
-
-const toPdfJsUrl = (rawUrl: string) => {
-  try {
-    const u = new URL(rawUrl);
-    if (typeof window !== "undefined") {
-      if (u.origin !== window.location.origin) {
-        return `/api/pdf-proxy?url=${encodeURIComponent(u.toString())}`;
-      }
-    }
-    return u.toString();
-  } catch {
-    return rawUrl;
-  }
-};
-
-const parseSignatureDataUrlToImage = (dataUrl: string) => {
-  const img = new window.Image();
-  img.src = dataUrl;
-  return img;
-};
 
 const DisclaimerSigningCanvas = ({
   templateTitle,
@@ -232,27 +193,22 @@ const DisclaimerSigningCanvas = ({
         );
         setPageCanvases(Array.from({ length: count }, () => null));
 
-        for (let pageIndex = 0; pageIndex < count; pageIndex++) {
-          if (cancelled) return;
+        // Progressive render: do the first couple pages ASAP, then yield between pages.
+        const renderScale = 2;
+        const renderPage = async (pageIndex: number) => {
           const page = await doc.getPage(pageIndex + 1);
           const baseViewport = page.getViewport({ scale: 1 });
-          const renderScale = 2;
           const viewport = page.getViewport({ scale: renderScale });
           const canvas = document.createElement("canvas");
           const ctx2d = canvas.getContext("2d");
-          if (!ctx2d) continue;
+          if (!ctx2d) return;
           canvas.width = Math.floor(viewport.width);
           canvas.height = Math.floor(viewport.height);
           await page.render({ canvasContext: ctx2d, viewport }).promise;
           if (cancelled) return;
-
-          const baseSize = {
-            width: baseViewport.width,
-            height: baseViewport.height,
-          };
           setPageSizes((prev) => {
             const next = prev.slice();
-            next[pageIndex] = baseSize;
+            next[pageIndex] = { width: baseViewport.width, height: baseViewport.height };
             return next;
           });
           setPageCanvases((prev) => {
@@ -260,6 +216,20 @@ const DisclaimerSigningCanvas = ({
             next[pageIndex] = canvas;
             return next;
           });
+        };
+
+        const fastCount = Math.min(2, count);
+        for (let i = 0; i < fastCount; i++) {
+          if (cancelled) return;
+          await renderPage(i);
+        }
+
+        for (let pageIndex = fastCount; pageIndex < count; pageIndex++) {
+          if (cancelled) return;
+          // Yield to keep scroll/inputs responsive.
+          await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
+          if (cancelled) return;
+          await renderPage(pageIndex);
         }
       } catch {
         if (cancelled) return;
@@ -317,28 +287,18 @@ const DisclaimerSigningCanvas = ({
   // Used to force a re-render when signature images finish loading.
   const [_signatureImageTick, setSignatureImageTick] = useState(0);
 
-  const signatureImageCache = useRef<Record<string, HTMLImageElement | null>>(
-    {},
-  );
+  const signatureImageCache = useMemo(() => createImageCache(), []);
+
   const getSignatureImage = (fieldId: string) => {
     const base64 = signatureByFieldId[fieldId];
     if (!base64) return null;
     const dataUrl = base64.startsWith("data:")
       ? base64
       : `data:image/png;base64,${base64}`;
-    const existing = signatureImageCache.current[dataUrl];
-    if (existing) return existing;
-    if (existing === null) {
-      // Image is currently loading.
-      return null;
-    }
-    const img = parseSignatureDataUrlToImage(dataUrl);
-    img.onload = () => {
-      signatureImageCache.current[dataUrl] = img;
-      setSignatureImageTick((t) => t + 1);
-    };
-    signatureImageCache.current[dataUrl] = null;
-    return null;
+    const img = signatureImageCache.get(dataUrl, () =>
+      setSignatureImageTick((t) => t + 1),
+    );
+    return img;
   };
 
   const [hasStarted, setHasStarted] = useState(false);
@@ -647,7 +607,17 @@ export default function DisclaimerSignPage() {
       return;
     }
     void sha256Hex(token).then((hash) => {
-      if (!cancelled) setTokenHash(hash);
+      if (cancelled) return;
+      setTokenHash(hash);
+      // Remove the raw token from the URL once we have the hash to reduce leakage via referrers/logs.
+      try {
+        const u = new URL(window.location.href);
+        u.searchParams.delete("token");
+        u.searchParams.set("tokenHash", hash);
+        window.history.replaceState(null, "", u.toString());
+      } catch {
+        // ignore
+      }
     });
     return () => {
       cancelled = true;
@@ -761,6 +731,22 @@ export default function DisclaimerSignPage() {
     if (hasRecordedViewRef.current) return;
     if (!tokenHash || !issueId) return;
     if (!signingContext) return;
+
+    // Client-side cooldown to avoid spamming view events (StrictMode/dev + rapid refresh).
+    try {
+      const key = `disclaimer:view:${issueId}:${tokenHash}`;
+      const prev = window.localStorage.getItem(key);
+      const prevMs = prev ? Number(prev) : 0;
+      const now = Date.now();
+      if (Number.isFinite(prevMs) && prevMs > 0 && now - prevMs < 15_000) {
+        hasRecordedViewRef.current = true;
+        return;
+      }
+      window.localStorage.setItem(key, String(now));
+    } catch {
+      // ignore
+    }
+
     hasRecordedViewRef.current = true;
     void (async () => {
       const ip = await fetchClientIp();
@@ -890,9 +876,7 @@ export default function DisclaimerSignPage() {
               <div className="mt-4">
                 <Link
                   className="text-primary underline underline-offset-4"
-                  href={`?token=${encodeURIComponent(token)}&tokenHash=${encodeURIComponent(
-                    tokenHashFromUrl || (tokenHash ?? ""),
-                  )}&debug=1`}
+                  href={`?tokenHash=${encodeURIComponent(tokenHashFromUrl || (tokenHash ?? ""))}&debug=1`}
                 >
                   Show debug details
                 </Link>

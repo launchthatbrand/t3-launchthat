@@ -1,16 +1,16 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import Konva from "konva";
+
 import {
-  Image as KonvaImage,
+  Konva,
+  KonvaImage,
   Layer,
   Rect,
   Stage,
   Text,
   Transformer,
-} from "react-konva";
-
+} from "@acme/konva";
 import { cn } from "@acme/ui";
 import {
   ContextMenu,
@@ -88,14 +88,17 @@ export const CertificateCanvas = ({
     // If present, render it as an image element behind everything else.
     const elements = [...(template.elements ?? [])];
     const legacyStorageId =
-      template.background?.storageId && String(template.background.storageId).trim();
+      template.background?.storageId &&
+      String(template.background.storageId).trim();
     if (legacyStorageId) {
       const alreadyPresent = elements.some(
-        (el: any) => el?.kind === "image" && String(el.storageId) === legacyStorageId,
+        (el: any) =>
+          el?.kind === "image" && String(el.storageId) === legacyStorageId,
       );
       if (!alreadyPresent) {
         const minZ = elements.reduce(
-          (min, el: any) => Math.min(min, typeof el?.zIndex === "number" ? el.zIndex : 0),
+          (min, el: any) =>
+            Math.min(min, typeof el?.zIndex === "number" ? el.zIndex : 0),
           0,
         );
         elements.unshift({
@@ -121,14 +124,14 @@ export const CertificateCanvas = ({
     const existing = imageCache.current[url];
     if (existing) return existing;
     const tryLoad = (opts: { crossOrigin?: "anonymous" | undefined }) => {
-    const img = new window.Image();
+      const img = new window.Image();
       if (opts.crossOrigin) {
         img.crossOrigin = opts.crossOrigin;
       }
-    img.onload = () => {
-      imageCache.current[url] = img;
-      forceRender((n) => n + 1);
-    };
+      img.onload = () => {
+        imageCache.current[url] = img;
+        forceRender((n) => n + 1);
+      };
       img.onerror = () => {
         // Some storage/CDN URLs don't return CORS headers, which causes
         // `crossOrigin="anonymous"` loads to fail. Retry without CORS so the
@@ -137,7 +140,7 @@ export const CertificateCanvas = ({
           tryLoad({ crossOrigin: undefined });
         }
       };
-    img.src = url;
+      img.src = url;
     };
 
     imageCache.current[url] = null;
@@ -188,17 +191,17 @@ export const CertificateCanvas = ({
   const stageHeight = Math.max(1, Math.floor(frameSize.height));
 
   const stage = (
-      <Stage
+    <Stage
       ref={stageRef as any}
-        width={stageWidth}
-        height={stageHeight}
-        scaleX={scale}
-        scaleY={scale}
+      width={stageWidth}
+      height={stageHeight}
+      scaleX={scale}
+      scaleY={scale}
       onMouseDown={
         interactive
           ? (e) => {
-          // Deselect on empty space.
-          const clickedOnEmpty =
+              // Deselect on empty space.
+              const clickedOnEmpty =
                 e.target === e.target.getStage() ||
                 e.target.name() === "canvas-bg";
               if (clickedOnEmpty) handleSelect(null);
@@ -223,58 +226,59 @@ export const CertificateCanvas = ({
             }
           : undefined
       }
-      >
-        <Layer>
-          <Rect
+    >
+      <Layer>
+        <Rect
           id="canvas-bg"
-            name="canvas-bg"
-            x={0}
-            y={0}
-            width={width}
-            height={height}
-            fill="#ffffff"
-          />
+          name="canvas-bg"
+          x={0}
+          y={0}
+          width={width}
+          height={height}
+          fill="#ffffff"
+        />
 
         {safeShowGrid
-            ? gridLines.map((line, idx) => (
-                <Rect
-                  key={idx}
-                  x={line.x1}
-                  y={line.y1}
-                  width={line.x2 - line.x1 || 1}
-                  height={line.y2 - line.y1 || 1}
-                  fill="rgba(0,0,0,0.04)"
-                  listening={false}
-                />
-              ))
-            : null}
+          ? gridLines.map((line, idx) => (
+              <Rect
+                key={idx}
+                x={line.x1}
+                y={line.y1}
+                width={line.x2 - line.x1 || 1}
+                height={line.y2 - line.y1 || 1}
+                fill="rgba(0,0,0,0.04)"
+                listening={false}
+              />
+            ))
+          : null}
 
         {[...normalizedElements]
-            .slice()
-            .sort((a: any, b: any) => (a?.zIndex ?? 0) - (b?.zIndex ?? 0))
-            .map((el) => {
+          .slice()
+          .sort((a: any, b: any) => (a?.zIndex ?? 0) - (b?.zIndex ?? 0))
+          .map((el) => {
             const isSelected = interactive && el.id === safeSelectedId;
 
-              if (el.kind === "image") {
-                const url = imageUrlLookup.get(String(el.storageId)) ?? null;
-                const image = getCachedImage(url);
-                return (
-                  <KonvaImage
-                    key={el.id}
+            if (el.kind === "image") {
+              const url = imageUrlLookup.get(String(el.storageId)) ?? null;
+              const image = getCachedImage(url);
+              return (
+                <KonvaImage
+                  key={el.id}
                   id={el.id}
-                    ref={(node) => {
+                  ref={(node) => {
                     imageNodeRefs.current[el.id] =
                       node as unknown as Konva.Image | null;
-                      if (isSelected) {
-                        selectedNodeRef.current = node as unknown as Konva.Node | null;
-                      }
-                    }}
-                    image={image ?? undefined}
-                    x={el.x}
-                    y={el.y}
-                    width={el.width}
-                    height={el.height}
-                    rotation={el.rotation ?? 0}
+                    if (isSelected) {
+                      selectedNodeRef.current =
+                        node as unknown as Konva.Node | null;
+                    }
+                  }}
+                  image={image ?? undefined}
+                  x={el.x}
+                  y={el.y}
+                  width={el.width}
+                  height={el.height}
+                  rotation={el.rotation ?? 0}
                   draggable={interactive}
                   onClick={interactive ? () => handleSelect(el.id) : undefined}
                   onTap={interactive ? () => handleSelect(el.id) : undefined}
@@ -282,58 +286,61 @@ export const CertificateCanvas = ({
                     interactive
                       ? (e) => {
                           handleChangeElement(el.id, {
-                        x: e.target.x(),
-                        y: e.target.y(),
-                      } as any);
+                            x: e.target.x(),
+                            y: e.target.y(),
+                          } as any);
                         }
                       : undefined
                   }
                   onTransformEnd={
                     interactive
                       ? (e) => {
-                      const node = e.target as Konva.Image;
-                      const scaleX = node.scaleX();
-                      const scaleY = node.scaleY();
-                      node.scaleX(1);
-                      node.scaleY(1);
+                          const node = e.target as Konva.Image;
+                          const scaleX = node.scaleX();
+                          const scaleY = node.scaleY();
+                          node.scaleX(1);
+                          node.scaleY(1);
                           handleChangeElement(el.id, {
-                        x: node.x(),
-                        y: node.y(),
-                        width: Math.max(10, node.width() * scaleX),
-                        height: Math.max(10, node.height() * scaleY),
-                        rotation: node.rotation(),
-                      } as any);
+                            x: node.x(),
+                            y: node.y(),
+                            width: Math.max(10, node.width() * scaleX),
+                            height: Math.max(10, node.height() * scaleY),
+                            rotation: node.rotation(),
+                          } as any);
                         }
                       : undefined
                   }
-                  />
-                );
-              }
+                />
+              );
+            }
 
-              if (el.kind !== "placeholder") return null;
-              const token = PLACEHOLDER_TOKENS[el.placeholderKey];
-            const resolvedText = placeholderValues?.[el.placeholderKey] ?? token;
-              return (
-                <Text
-                  key={el.id}
+            if (el.kind !== "placeholder") return null;
+            const token = PLACEHOLDER_TOKENS[el.placeholderKey];
+            const resolvedText =
+              placeholderValues?.[el.placeholderKey] ?? token;
+            return (
+              <Text
+                key={el.id}
                 id={el.id}
-                  ref={(node) => {
-                    if (isSelected) {
-                    textNodeRefs.current[el.id] = node as unknown as Konva.Text | null;
-                      selectedNodeRef.current = node as unknown as Konva.Node | null;
-                    }
-                  }}
-                  x={el.x}
-                  y={el.y}
-                  width={el.width}
-                  height={el.height}
+                ref={(node) => {
+                  if (isSelected) {
+                    textNodeRefs.current[el.id] =
+                      node as unknown as Konva.Text | null;
+                    selectedNodeRef.current =
+                      node as unknown as Konva.Node | null;
+                  }
+                }}
+                x={el.x}
+                y={el.y}
+                width={el.width}
+                height={el.height}
                 text={resolvedText}
-                  fontFamily={el.style.fontFamily}
-                  fontSize={el.style.fontSize}
-                  fontStyle={el.style.fontWeight >= 600 ? "bold" : "normal"}
-                  fill={el.style.color}
-                  align={el.style.align}
-                  rotation={(el as any).rotation ?? 0}
+                fontFamily={el.style.fontFamily}
+                fontSize={el.style.fontSize}
+                fontStyle={el.style.fontWeight >= 600 ? "bold" : "normal"}
+                fill={el.style.color}
+                align={el.style.align}
+                rotation={(el as any).rotation ?? 0}
                 draggable={interactive}
                 onClick={interactive ? () => handleSelect(el.id) : undefined}
                 onTap={interactive ? () => handleSelect(el.id) : undefined}
@@ -341,38 +348,39 @@ export const CertificateCanvas = ({
                   interactive
                     ? (e) => {
                         handleChangeElement(el.id, {
-                      x: e.target.x(),
-                      y: e.target.y(),
-                    } as any);
+                          x: e.target.x(),
+                          y: e.target.y(),
+                        } as any);
                       }
                     : undefined
                 }
                 onTransformEnd={
                   interactive
                     ? (e) => {
-                    const node = e.target as Konva.Text;
-                    const scaleX = node.scaleX();
-                    const scaleY = node.scaleY();
-                    node.scaleX(1);
-                    node.scaleY(1);
+                        const node = e.target as Konva.Text;
+                        const scaleX = node.scaleX();
+                        const scaleY = node.scaleY();
+                        node.scaleX(1);
+                        node.scaleY(1);
                         handleChangeElement(el.id, {
-                      x: node.x(),
-                      y: node.y(),
-                      width: Math.max(20, node.width() * scaleX),
-                      height: Math.max(16, node.height() * scaleY),
-                      rotation: node.rotation(),
-                    } as any);
+                          x: node.x(),
+                          y: node.y(),
+                          width: Math.max(20, node.width() * scaleX),
+                          height: Math.max(16, node.height() * scaleY),
+                          rotation: node.rotation(),
+                        } as any);
                       }
                     : undefined
                 }
-                />
-              );
-            })}
+              />
+            );
+          })}
 
         {interactive ? (
           <Transformer
             ref={(node) => {
-              transformerRef.current = node as unknown as Konva.Transformer | null;
+              transformerRef.current =
+                node as unknown as Konva.Transformer | null;
             }}
             rotateEnabled={true}
             enabledAnchors={[
@@ -393,8 +401,8 @@ export const CertificateCanvas = ({
             }}
           />
         ) : null}
-        </Layer>
-      </Stage>
+      </Layer>
+    </Stage>
   );
 
   return (
