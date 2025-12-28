@@ -954,7 +954,9 @@ function buildPathFromTemplate(
         case "id":
           return ctx.post._id;
         default: {
-          const metaValue = ctx.meta.get(key);
+          // Support templates that namespace meta keys (e.g. `{meta.courseSlug}`).
+          const normalizedMetaKey = key.startsWith("meta.") ? key.slice(5) : key;
+          const metaValue = ctx.meta.get(normalizedMetaKey);
           if (metaValue === null || metaValue === undefined || metaValue === "") {
             return null;
           }
