@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@portal/convexspec";
-import { useMutation, useQuery } from "convex/react";
-import { useAction } from "convex/react";
-import { FileText } from "lucide-react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import Konva from "konva";
+import { FileText } from "lucide-react";
 import {
   Group,
   Image as KonvaImage,
@@ -16,6 +15,12 @@ import {
   Transformer,
 } from "react-konva";
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@acme/ui/accordion";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
@@ -23,24 +28,15 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@acme/ui/dialog";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import { Switch } from "@acme/ui/switch";
 import { toast } from "@acme/ui/toast";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@acme/ui/accordion";
 
+import type { SignatureFieldElement } from "../components/builder/SignatureInspector";
+import { SignatureInspector } from "../components/builder/SignatureInspector";
 import { SignaturePalette } from "../components/builder/SignaturePalette";
-import {
-  SignatureInspector,
-  type SignatureFieldElement,
-} from "../components/builder/SignatureInspector";
 
 type BuilderFieldKind = "signature";
 
@@ -80,7 +76,9 @@ const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
 const randomId = () => Math.random().toString(36).slice(2, 10);
 
-const normalizeField = (field: DisclaimerBuilderFieldV1): DisclaimerBuilderFieldV1 => ({
+const normalizeField = (
+  field: DisclaimerBuilderFieldV1,
+): DisclaimerBuilderFieldV1 => ({
   ...field,
   xPct: clamp01(field.xPct),
   yPct: clamp01(field.yPct),
@@ -220,8 +218,8 @@ export const DisclaimerTemplateBuilderScreen = ({
   useEffect(() => {
     debugLog("template:change", { templatePostId });
     setPreviewPdfUrl(null);
-    setPageCanvas(null);
-    setPageImageUrl(null);
+    setPageCanvases([]);
+    setPageSizes([]);
     setPageCount(1);
     setActivePageIndex(0);
     setActiveFieldId(null);
@@ -232,7 +230,10 @@ export const DisclaimerTemplateBuilderScreen = ({
     const run = async () => {
       if (!effectivePdfJsUrl) return;
       try {
-        debugLog("pdfjs:getDocument:start", { effectivePdfUrl, effectivePdfJsUrl });
+        debugLog("pdfjs:getDocument:start", {
+          effectivePdfUrl,
+          effectivePdfJsUrl,
+        });
         const pdfjs = await loadPdfJs();
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         const loadingTask = (pdfjs as any).getDocument({
@@ -243,7 +244,9 @@ export const DisclaimerTemplateBuilderScreen = ({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         const doc = (await (loadingTask as any).promise) as any;
         const count =
-          typeof doc?.numPages === "number" && doc.numPages > 0 ? doc.numPages : 1;
+          typeof doc?.numPages === "number" && doc.numPages > 0
+            ? doc.numPages
+            : 1;
         debugLog("pdfjs:getDocument:success", { numPages: count });
         if (!cancelled) {
           setPageCount(Math.max(1, count));
@@ -259,12 +262,6 @@ export const DisclaimerTemplateBuilderScreen = ({
       cancelled = true;
     };
   }, [effectivePdfJsUrl, effectivePdfUrl, pdfVersion]);
-
-  const fieldsOnActivePage = useMemo(() => {
-    return draft.fields
-      .filter((f) => f.pageIndex === activePageIndex)
-      .map(normalizeField);
-  }, [activePageIndex, draft.fields]);
 
   const activeField = useMemo(() => {
     if (!activeFieldId) return null;
@@ -451,10 +448,12 @@ export const DisclaimerTemplateBuilderScreen = ({
   );
 
   const frameRef = useRef<HTMLDivElement | null>(null);
-  const [frameSize, setFrameSize] = useState<{ width: number; height: number }>({
-    width: 0,
-    height: 0,
-  });
+  const [frameSize, setFrameSize] = useState<{ width: number; height: number }>(
+    {
+      width: 0,
+      height: 0,
+    },
+  );
 
   useEffect(() => {
     const node = frameRef.current;
@@ -506,24 +505,27 @@ export const DisclaimerTemplateBuilderScreen = ({
     };
   }, [ctx, frameSize.height, frameSize.width, templatePostId]);
 
-  const [pageCanvas, setPageCanvas] = useState<HTMLCanvasElement | null>(null);
-  const [pageImageUrl, setPageImageUrl] = useState<string | null>(null);
+  const [pageCanvases, setPageCanvases] = useState<
+    Array<HTMLCanvasElement | null>
+  >([]);
+  const [pageSizes, setPageSizes] = useState<
+    Array<{ width: number; height: number }>
+  >([]);
 
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
       if (!effectivePdfJsUrl) {
         if (!cancelled) {
-          setPageCanvas(null);
-          setPageImageUrl(null);
+          setPageCanvases([]);
+          setPageSizes([]);
         }
         return;
       }
       try {
-        debugLog("pdfjs:renderPage:start", {
+        debugLog("pdfjs:renderAllPages:start", {
           effectivePdfUrl,
           effectivePdfJsUrl,
-          activePageIndex,
         });
         const pdfjs = await loadPdfJs();
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -534,43 +536,56 @@ export const DisclaimerTemplateBuilderScreen = ({
         });
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         const doc = (await (loadingTask as any).promise) as any;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        const page = await doc.getPage(activePageIndex + 1);
-        const renderScale = 1.5;
-        const scaledViewport = page.getViewport({ scale: renderScale });
-        const canvas = document.createElement("canvas");
-        const ctx2d = canvas.getContext("2d");
-        if (!ctx2d) {
-          debugLog("pdfjs:renderPage:error", "missing_canvas_2d_context");
-          return;
-        }
-        canvas.width = Math.floor(scaledViewport.width);
-        canvas.height = Math.floor(scaledViewport.height);
+        const count =
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          typeof doc?.numPages === "number" && doc.numPages > 0
+            ? doc.numPages
+            : 1;
         if (!cancelled) {
-          // Use the same coordinate system as the rendered canvas, so Konva can
-          // draw the PDF canvas 1:1.
-          setPageSize({ width: canvas.width, height: canvas.height });
+          setPageCount(Math.max(1, count));
+          setActivePageIndex((prev) => Math.min(prev, Math.max(0, count - 1)));
+          setPageCanvases(Array.from({ length: count }, () => null));
+          setPageSizes(
+            Array.from({ length: count }, () => ({ width: 612, height: 792 })),
+          );
         }
-        await page.render({
-          canvasContext: ctx2d,
-          viewport: scaledViewport,
-        }).promise;
-        if (!cancelled) {
-          const dataUrl = canvas.toDataURL("image/png");
-          debugLog("pdfjs:renderPage:success", {
-            canvasW: canvas.width,
-            canvasH: canvas.height,
-            dataUrlPrefix: dataUrl.slice(0, 32),
+
+        for (let pageIndex = 0; pageIndex < count; pageIndex++) {
+          if (cancelled) return;
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          const page = await doc.getPage(pageIndex + 1);
+          const baseViewport = page.getViewport({ scale: 1 });
+          const renderScale = 1.5;
+          const viewport = page.getViewport({ scale: renderScale });
+          const canvas = document.createElement("canvas");
+          const ctx2d = canvas.getContext("2d");
+          if (!ctx2d) continue;
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
+          await page.render({ canvasContext: ctx2d, viewport }).promise;
+          if (cancelled) return;
+
+          const baseSize = {
+            width: baseViewport.width,
+            height: baseViewport.height,
+          };
+          setPageSizes((prev) => {
+            const next = prev.slice();
+            next[pageIndex] = baseSize;
+            return next;
           });
-          setPageCanvas(canvas);
-          setPageImageUrl(dataUrl);
+          setPageCanvases((prev) => {
+            const next = prev.slice();
+            next[pageIndex] = canvas;
+            return next;
+          });
         }
       } catch (error) {
-        debugLog("pdfjs:renderPage:error", error);
+        debugLog("pdfjs:renderAllPages:error", error);
         console.error(error);
         if (!cancelled) {
-          setPageCanvas(null);
-          setPageImageUrl(null);
+          setPageCanvases([]);
+          setPageSizes([]);
         }
       }
     };
@@ -578,32 +593,48 @@ export const DisclaimerTemplateBuilderScreen = ({
     return () => {
       cancelled = true;
     };
-  }, [activePageIndex, effectivePdfJsUrl, effectivePdfUrl, pdfVersion]);
+  }, [effectivePdfJsUrl, effectivePdfUrl, pdfVersion]);
 
   const selectedNodeRef = useRef<Konva.Node | null>(null);
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const layerRef = useRef<Konva.Layer | null>(null);
 
+  const activePageSize = pageSizes[activePageIndex] ?? pageSize;
+
   useEffect(() => {
-    if (!pageCanvas) return;
-    debugLog("konva:pageCanvas:set", {
-      w: pageCanvas.width,
-      h: pageCanvas.height,
-    });
-    // Ensure the Konva layer repaints after swapping the background source.
+    if (!activePageSize) return;
+    setPageSize({ width: activePageSize.width, height: activePageSize.height });
+  }, [activePageSize.height, activePageSize.width]);
+
+  useEffect(() => {
+    // Ensure the Konva layer repaints after PDF canvases stream in.
     layerRef.current?.batchDraw();
-  }, [pageCanvas]);
+  }, [pageCanvases, pageSizes]);
 
   // For PDF backgrounds, we render via pdf.js onto an HTMLCanvasElement and
   // pass that canvas directly to KonvaImage (more reliable than data URLs).
 
+  const baseDocWidth = pageSizes[0]?.width ?? pageSize.width;
   const scale = useMemo(() => {
-    if (frameSize.width <= 0 || frameSize.height <= 0) return 1;
-    return Math.min(frameSize.width / pageSize.width, frameSize.height / pageSize.height);
-  }, [frameSize.height, frameSize.width, pageSize.height, pageSize.width]);
+    if (frameSize.width <= 0) return 1;
+    return Math.min(2, frameSize.width / baseDocWidth);
+  }, [baseDocWidth, frameSize.width]);
 
   const stageWidth = Math.max(1, Math.floor(frameSize.width));
-  const stageHeight = Math.max(1, Math.floor(frameSize.height));
+  const pageGapPx = 16;
+  const pageGapBase = pageGapPx / (scale || 1);
+  const { pageOffsetsBase, docHeightBase } = useMemo(() => {
+    const offsets: number[] = [];
+    let y = 0;
+    for (let i = 0; i < pageCount; i++) {
+      offsets[i] = y;
+      const ps = pageSizes[i] ?? pageSize;
+      y += ps.height + pageGapBase;
+    }
+    if (y > 0) y -= pageGapBase;
+    return { pageOffsetsBase: offsets, docHeightBase: Math.max(1, y) };
+  }, [pageCount, pageGapBase, pageSizes, pageSize]);
+  const stageHeight = Math.max(1, Math.ceil(docHeightBase * scale));
 
   useEffect(() => {
     debugLog("layout:metrics", {
@@ -612,19 +643,19 @@ export const DisclaimerTemplateBuilderScreen = ({
       stageWidth,
       stageHeight,
       scale,
-      hasCanvas: Boolean(pageCanvas),
+      hasCanvas: pageCanvases.some(Boolean),
       effectivePdfUrl,
       effectivePdfJsUrl,
     });
   }, [
     frameSize.height,
     frameSize.width,
-    pageSize.height,
-    pageSize.width,
+    activePageSize.height,
+    activePageSize.width,
     stageHeight,
     stageWidth,
     scale,
-    pageCanvas,
+    pageCanvases,
     effectivePdfUrl,
     effectivePdfJsUrl,
   ]);
@@ -676,31 +707,9 @@ export const DisclaimerTemplateBuilderScreen = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button type="button" variant="outline">
-                  Page {activePageIndex + 1} of {pageCount}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Select page</DialogTitle>
-                </DialogHeader>
-                <div className="grid grid-cols-4 gap-2">
-                  {Array.from({ length: pageCount }).map((_, idx) => (
-                    <Button
-                      key={idx}
-                      type="button"
-                      variant={idx === activePageIndex ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setActivePageIndex(idx)}
-                    >
-                      {idx + 1}
-                    </Button>
-                  ))}
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Button type="button" variant="outline" disabled>
+              {pageCount} page{pageCount === 1 ? "" : "s"}
+            </Button>
 
             <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
               <input
@@ -726,7 +735,10 @@ export const DisclaimerTemplateBuilderScreen = ({
             collapsible
             value={metaBoxStates.inspector ? "inspector" : undefined}
             onValueChange={(value) =>
-              setMetaBoxStates((prev) => ({ ...prev, inspector: Boolean(value) }))
+              setMetaBoxStates((prev) => ({
+                ...prev,
+                inspector: Boolean(value),
+              }))
             }
             className="rounded-lg border"
           >
@@ -746,7 +758,9 @@ export const DisclaimerTemplateBuilderScreen = ({
                       setDraft((prev) => ({
                         ...prev,
                         fields: prev.fields.map((f) =>
-                          f.id === activeFieldId ? normalizeField({ ...f, ...patch }) : f,
+                          f.id === activeFieldId
+                            ? normalizeField({ ...f, ...patch })
+                            : f,
                         ),
                       }));
                     }}
@@ -762,7 +776,10 @@ export const DisclaimerTemplateBuilderScreen = ({
             collapsible
             value={metaBoxStates.document ? "document" : undefined}
             onValueChange={(value) =>
-              setMetaBoxStates((prev) => ({ ...prev, document: Boolean(value) }))
+              setMetaBoxStates((prev) => ({
+                ...prev,
+                document: Boolean(value),
+              }))
             }
             className="rounded-lg border"
           >
@@ -788,7 +805,9 @@ export const DisclaimerTemplateBuilderScreen = ({
                         void handleUploadAndAttachPdf(file).catch((err) => {
                           console.error(err);
                           toast.error(
-                            err instanceof Error ? err.message : "Upload failed",
+                            err instanceof Error
+                              ? err.message
+                              : "Upload failed",
                           );
                         });
                         e.target.value = "";
@@ -873,10 +892,9 @@ export const DisclaimerTemplateBuilderScreen = ({
           <div className="mx-auto h-full w-full max-w-[1200px]">
             <div
               ref={frameRef}
-              className="w-full overflow-hidden rounded-md border bg-white shadow-sm"
-              style={{ aspectRatio: `${pageSize.width} / ${pageSize.height}` }}
+              className="h-full w-full overflow-auto rounded-md border bg-white shadow-sm"
             >
-              {pageCanvas ? (
+              {effectivePdfUrl ? (
                 <Stage
                   width={stageWidth}
                   height={stageHeight}
@@ -890,139 +908,217 @@ export const DisclaimerTemplateBuilderScreen = ({
                   }}
                 >
                   <Layer ref={layerRef as any}>
-                    <Rect
-                      name="canvas-bg"
-                      x={0}
-                      y={0}
-                      width={pageSize.width}
-                      height={pageSize.height}
-                      fill="#ffffff"
+                    {Array.from({ length: pageCount }).map((_, pageIndex) => {
+                      const ps = pageSizes[pageIndex] ?? pageSize;
+                      const y0 = pageOffsetsBase[pageIndex] ?? 0;
+                      const canvas = pageCanvases[pageIndex] ?? null;
+                      return (
+                        <Group key={`page_${pageIndex}`}>
+                          <Rect
+                            name="canvas-bg"
+                            x={0}
+                            y={y0}
+                            width={ps.width}
+                            height={ps.height}
+                            fill="#ffffff"
+                          />
+
+                          {canvas ? (
+                            <KonvaImage
+                              image={canvas}
+                              x={0}
+                              y={y0}
+                              width={ps.width}
+                              height={ps.height}
+                              listening={false}
+                            />
+                          ) : (
+                            <Text
+                              x={24}
+                              y={y0 + 24}
+                              text={`Loading page ${pageIndex + 1}…`}
+                              fontSize={14}
+                              fill="#64748b"
+                              listening={false}
+                            />
+                          )}
+
+                          {showGrid
+                            ? (() => {
+                                const spacing = 20;
+                                const cols = Math.floor(ps.width / spacing);
+                                const rows = Math.floor(ps.height / spacing);
+                                const lines: Array<{
+                                  x: number;
+                                  y: number;
+                                  w: number;
+                                  h: number;
+                                }> = [];
+                                for (let i = 0; i <= cols; i++) {
+                                  lines.push({
+                                    x: i * spacing,
+                                    y: y0,
+                                    w: 1,
+                                    h: ps.height,
+                                  });
+                                }
+                                for (let j = 0; j <= rows; j++) {
+                                  lines.push({
+                                    x: 0,
+                                    y: y0 + j * spacing,
+                                    w: ps.width,
+                                    h: 1,
+                                  });
+                                }
+                                return lines.map((line, idx) => (
+                                  <Rect
+                                    key={`grid_${pageIndex}_${idx}`}
+                                    x={line.x}
+                                    y={line.y}
+                                    width={line.w}
+                                    height={line.h}
+                                    fill="rgba(0,0,0,0.04)"
+                                    listening={false}
+                                  />
+                                ));
+                              })()
+                            : null}
+                        </Group>
+                      );
+                    })}
+
+                    {draft.fields.map((rawField) => {
+                      const field = normalizeField(rawField);
+                      const ps = pageSizes[field.pageIndex] ?? pageSize;
+                      const y0 = pageOffsetsBase[field.pageIndex] ?? 0;
+                      const isSelected = field.id === activeFieldId;
+                      const x = field.xPct * ps.width;
+                      const y = y0 + field.yPct * ps.height;
+                      const w = Math.max(1, field.wPct * ps.width);
+                      const h = Math.max(1, field.hPct * ps.height);
+                      const label = `${field.label ?? "Signature"}${
+                        field.required ? " (Required)" : ""
+                      }`;
+
+                      const pageAtY = (yBase: number) => {
+                        for (let i = pageCount - 1; i >= 0; i--) {
+                          const top = pageOffsetsBase[i] ?? 0;
+                          const size = pageSizes[i] ?? pageSize;
+                          if (
+                            yBase >= top &&
+                            yBase < top + size.height + pageGapBase
+                          )
+                            return i;
+                        }
+                        return 0;
+                      };
+
+                      return (
+                        <Group key={field.id}>
+                          <Rect
+                            id={field.id}
+                            x={x}
+                            y={y}
+                            width={w}
+                            height={h}
+                            stroke={isSelected ? "#2563eb" : "#111827"}
+                            strokeWidth={2}
+                            dash={[6, 4]}
+                            draggable
+                            onClick={() => {
+                              setActiveFieldId(field.id);
+                              setActivePageIndex(field.pageIndex);
+                            }}
+                            onTap={() => {
+                              setActiveFieldId(field.id);
+                              setActivePageIndex(field.pageIndex);
+                            }}
+                            onDragEnd={(e) => {
+                              const node = e.target;
+                              const newPageIndex = pageAtY(node.y());
+                              const newPs = pageSizes[newPageIndex] ?? pageSize;
+                              const yStart = pageOffsetsBase[newPageIndex] ?? 0;
+                              const nextX = clamp01(node.x() / newPs.width);
+                              const nextY = clamp01(
+                                (node.y() - yStart) / newPs.height,
+                              );
+                              setDraft((prev) => ({
+                                ...prev,
+                                fields: prev.fields.map((f) =>
+                                  f.id === field.id
+                                    ? normalizeField({
+                                        ...f,
+                                        pageIndex: newPageIndex,
+                                        xPct: nextX,
+                                        yPct: nextY,
+                                      })
+                                    : f,
+                                ),
+                              }));
+                              setActivePageIndex(newPageIndex);
+                            }}
+                            onTransformEnd={(e) => {
+                              const node = e.target;
+                              const scaleX = node.scaleX();
+                              const scaleY = node.scaleY();
+                              node.scaleX(1);
+                              node.scaleY(1);
+                              const newPageIndex = pageAtY(node.y());
+                              const newPs = pageSizes[newPageIndex] ?? pageSize;
+                              const yStart = pageOffsetsBase[newPageIndex] ?? 0;
+                              const nextW = clamp01(
+                                (node.width() * scaleX) / newPs.width,
+                              );
+                              const nextH = clamp01(
+                                (node.height() * scaleY) / newPs.height,
+                              );
+                              const nextX = clamp01(node.x() / newPs.width);
+                              const nextY = clamp01(
+                                (node.y() - yStart) / newPs.height,
+                              );
+                              setDraft((prev) => ({
+                                ...prev,
+                                fields: prev.fields.map((f) =>
+                                  f.id === field.id
+                                    ? normalizeField({
+                                        ...f,
+                                        pageIndex: newPageIndex,
+                                        xPct: nextX,
+                                        yPct: nextY,
+                                        wPct: nextW,
+                                        hPct: nextH,
+                                      })
+                                    : f,
+                                ),
+                              }));
+                              setActivePageIndex(newPageIndex);
+                            }}
+                            ref={(node) => {
+                              if (isSelected) selectedNodeRef.current = node;
+                            }}
+                          />
+                          <Text
+                            x={x + 6}
+                            y={y + 6}
+                            text={label}
+                            fontSize={14}
+                            fill="#111827"
+                            listening={false}
+                          />
+                        </Group>
+                      );
+                    })}
+
+                    <Transformer
+                      ref={transformerRef}
+                      rotateEnabled={false}
+                      keepRatio={false}
+                      boundBoxFunc={(oldBox, newBox) => {
+                        if (newBox.width < 24 || newBox.height < 24)
+                          return oldBox;
+                        return newBox;
+                      }}
                     />
-
-                  {showGrid ? (
-                    (() => {
-                      const spacing = 20;
-                      const cols = Math.floor(pageSize.width / spacing);
-                      const rows = Math.floor(pageSize.height / spacing);
-                      const lines: Array<{ x: number; y: number; w: number; h: number }> = [];
-                      for (let i = 0; i <= cols; i++) {
-                        lines.push({ x: i * spacing, y: 0, w: 1, h: pageSize.height });
-                      }
-                      for (let j = 0; j <= rows; j++) {
-                        lines.push({ x: 0, y: j * spacing, w: pageSize.width, h: 1 });
-                      }
-                      return lines.map((line, idx) => (
-                        <Rect
-                          key={`grid_${idx}`}
-                          x={line.x}
-                          y={line.y}
-                          width={line.w}
-                          height={line.h}
-                          fill="rgba(0,0,0,0.04)"
-                          listening={false}
-                        />
-                      ));
-                    })()
-                  ) : null}
-
-                  {pageCanvas ? (
-                    <KonvaImage
-                      key={`${effectivePdfUrl ?? "none"}:${pdfVersion}:${activePageIndex}:${pageCanvas.width}x${pageCanvas.height}`}
-                      image={pageCanvas}
-                      x={0}
-                      y={0}
-                      width={pageSize.width}
-                      height={pageSize.height}
-                      listening={false}
-                    />
-                  ) : null}
-
-                  {fieldsOnActivePage.map((field) => {
-                    const isSelected = field.id === activeFieldId;
-                    const x = field.xPct * pageSize.width;
-                    const y = field.yPct * pageSize.height;
-                    const w = Math.max(1, field.wPct * pageSize.width);
-                    const h = Math.max(1, field.hPct * pageSize.height);
-                    const label = `${field.label ?? "Signature"}${
-                      field.required ? " (Required)" : ""
-                    }`;
-                    return (
-                      <Group key={field.id}>
-                        <Rect
-                          id={field.id}
-                          x={x}
-                          y={y}
-                          width={w}
-                          height={h}
-                          stroke={isSelected ? "#2563eb" : "#111827"}
-                          strokeWidth={2}
-                          dash={[6, 4]}
-                          draggable
-                          onClick={() => setActiveFieldId(field.id)}
-                          onTap={() => setActiveFieldId(field.id)}
-                          onDragEnd={(e) => {
-                            const node = e.target;
-                            const nextX = clamp01(node.x() / pageSize.width);
-                            const nextY = clamp01(node.y() / pageSize.height);
-                            setDraft((prev) => ({
-                              ...prev,
-                              fields: prev.fields.map((f) =>
-                                f.id === field.id ? normalizeField({ ...f, xPct: nextX, yPct: nextY }) : f,
-                              ),
-                            }));
-                          }}
-                          onTransformEnd={(e) => {
-                            const node = e.target;
-                            const scaleX = node.scaleX();
-                            const scaleY = node.scaleY();
-                            node.scaleX(1);
-                            node.scaleY(1);
-                            const nextW = clamp01((node.width() * scaleX) / pageSize.width);
-                            const nextH = clamp01((node.height() * scaleY) / pageSize.height);
-                            const nextX = clamp01(node.x() / pageSize.width);
-                            const nextY = clamp01(node.y() / pageSize.height);
-                            setDraft((prev) => ({
-                              ...prev,
-                              fields: prev.fields.map((f) =>
-                                f.id === field.id
-                                  ? normalizeField({
-                                      ...f,
-                                      xPct: nextX,
-                                      yPct: nextY,
-                                      wPct: nextW,
-                                      hPct: nextH,
-                                    })
-                                  : f,
-                              ),
-                            }));
-                          }}
-                          ref={(node) => {
-                            if (isSelected) {
-                              selectedNodeRef.current = node;
-                            }
-                          }}
-                        />
-                        <Text
-                          x={x + 6}
-                          y={y + 6}
-                          text={label}
-                          fontSize={14}
-                          fill="#111827"
-                          listening={false}
-                        />
-                      </Group>
-                    );
-                  })}
-
-                  <Transformer
-                    ref={transformerRef}
-                    rotateEnabled={false}
-                    keepRatio={false}
-                    boundBoxFunc={(oldBox, newBox) => {
-                      if (newBox.width < 24 || newBox.height < 24) return oldBox;
-                      return newBox;
-                    }}
-                  />
                   </Layer>
                 </Stage>
               ) : (
@@ -1037,5 +1133,3 @@ export const DisclaimerTemplateBuilderScreen = ({
     </div>
   );
 };
-
-

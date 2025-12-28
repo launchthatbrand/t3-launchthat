@@ -156,6 +156,13 @@ export const getSigningContext = query({
       status: v.union(v.literal("incomplete"), v.literal("complete")),
       recipientEmail: v.string(),
       recipientName: v.optional(v.string()),
+      audit: v.object({
+        sentAt: v.optional(v.number()),
+        firstViewedAt: v.optional(v.number()),
+        lastViewedAt: v.optional(v.number()),
+        viewCount: v.optional(v.number()),
+        completedAt: v.optional(v.number()),
+      }),
       template: v.object({
         postId: v.id("posts"),
         title: v.string(),
@@ -217,6 +224,13 @@ export const getSigningContext = query({
       status: issue.status,
       recipientEmail: issue.recipientEmail,
       recipientName: issue.recipientName,
+      audit: {
+        sentAt: issue.lastSentAt ?? issue.createdAt,
+        firstViewedAt: issue.firstViewedAt,
+        lastViewedAt: issue.lastViewedAt,
+        viewCount: issue.viewCount,
+        completedAt: issue.completedAt,
+      },
       template: {
         postId: templatePost._id,
         title: templatePost.title,

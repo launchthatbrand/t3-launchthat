@@ -46,6 +46,9 @@ const disclaimerIssuesTable = defineTable({
   magicTokenHash: v.string(),
   lastSentAt: v.optional(v.number()),
   sendCount: v.number(),
+  firstViewedAt: v.optional(v.number()),
+  lastViewedAt: v.optional(v.number()),
+  viewCount: v.optional(v.number()),
   completedAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
@@ -75,9 +78,18 @@ const disclaimerSignaturesTable = defineTable({
   createdAt: v.number(),
 }).index("by_org_and_issue", ["organizationId", "issueId"]);
 
+const disclaimerAuditEventsTable = defineTable({
+  issueId: v.id("disclaimerIssues"),
+  kind: v.union(v.literal("viewed")),
+  at: v.number(),
+  ip: v.optional(v.string()),
+  userAgent: v.optional(v.string()),
+}).index("by_issue_and_kind_and_at", ["issueId", "kind", "at"]);
+
 export default defineSchema({
   posts: postsTable,
   postsMeta: postsMetaTable,
   disclaimerIssues: disclaimerIssuesTable,
   disclaimerSignatures: disclaimerSignaturesTable,
+  disclaimerAuditEvents: disclaimerAuditEventsTable,
 });

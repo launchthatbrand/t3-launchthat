@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 "use client";
 
@@ -16,27 +15,18 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Image as KonvaImage, Layer, Rect, Stage, Text } from "react-konva";
 import { toast } from "sonner";
 
 import { Button } from "@acme/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@acme/ui/card";
-import { Checkbox } from "@acme/ui/checkbox";
+import { Card, CardContent } from "@acme/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@acme/ui/dialog";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
 
 const SignatureMaker = dynamic(
   async () => (await import("@docuseal/signature-maker-react")).SignatureMaker,
@@ -133,40 +123,36 @@ const parseSignatureDataUrlToImage = (dataUrl: string) => {
 
 const DisclaimerSigningCanvas = ({
   templateTitle,
+  recipientEmail,
+  recipientName,
   pdfUrl,
   pdfVersion,
-  consentText,
   signatureFields,
   requiredSignatureFields,
   signatureByFieldId,
   setSignatureByFieldId,
-  signedName,
-  setSignedName,
-  signedEmail,
-  setSignedEmail,
-  hasConsented,
-  setHasConsented,
   isPending,
-  onSubmit,
+  onFinish,
+  isComplete,
+  downloadUrl,
+  signedAt,
 }: {
   templateTitle: string;
+  recipientEmail: string;
+  recipientName?: string;
   pdfUrl: string;
   pdfVersion: number;
-  consentText: string;
   signatureFields: BuilderSignatureFieldV1[];
   requiredSignatureFields: BuilderSignatureFieldV1[];
   signatureByFieldId: Record<string, string | null>;
   setSignatureByFieldId: Dispatch<
     SetStateAction<Record<string, string | null>>
   >;
-  signedName: string;
-  setSignedName: Dispatch<SetStateAction<string>>;
-  signedEmail: string;
-  setSignedEmail: Dispatch<SetStateAction<string>>;
-  hasConsented: boolean;
-  setHasConsented: Dispatch<SetStateAction<boolean>>;
   isPending: boolean;
-  onSubmit: () => void;
+  onFinish: () => void;
+  isComplete: boolean;
+  downloadUrl: string | null;
+  signedAt: number | null;
 }) => {
   const pdfJsUrl = useMemo(() => toPdfJsUrl(pdfUrl), [pdfUrl]);
   const pdfKey = useMemo(
@@ -177,19 +163,12 @@ const DisclaimerSigningCanvas = ({
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
   const [pageCount, setPageCount] = useState(1);
-  const [activePageIndex, setActivePageIndex] = useState(0);
-  const [pageSize, setPageSize] = useState({ width: 612, height: 792 });
-  const [pageCanvas, setPageCanvas] = useState<HTMLCanvasElement | null>(null);
-
-  const pageCanvasCache = useRef<
-    Record<
-      string,
-      {
-        canvas: HTMLCanvasElement;
-        pageSize: { width: number; height: number };
-      } | null
-    >
-  >({});
+  const [pageSizes, setPageSizes] = useState<
+    Array<{ width: number; height: number }>
+  >([]);
+  const [pageCanvases, setPageCanvases] = useState<
+    Array<HTMLCanvasElement | null>
+  >([]);
 
   useEffect(() => {
     const node = frameRef.current;
@@ -230,6 +209,10 @@ const DisclaimerSigningCanvas = ({
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
+      setPageSizes([]);
+      setPageCanvases([]);
+      setPageCount(1);
+
       try {
         const pdfjs = await loadPdfJs();
         const loadingTask = pdfjs.getDocument({
@@ -242,9 +225,47 @@ const DisclaimerSigningCanvas = ({
           typeof doc?.numPages === "number" && doc.numPages > 0
             ? doc.numPages
             : 1;
-        if (!cancelled) setPageCount(count);
+        if (cancelled) return;
+        setPageCount(count);
+        setPageSizes(
+          Array.from({ length: count }, () => ({ width: 612, height: 792 })),
+        );
+        setPageCanvases(Array.from({ length: count }, () => null));
+
+        for (let pageIndex = 0; pageIndex < count; pageIndex++) {
+          if (cancelled) return;
+          const page = await doc.getPage(pageIndex + 1);
+          const baseViewport = page.getViewport({ scale: 1 });
+          const renderScale = 2;
+          const viewport = page.getViewport({ scale: renderScale });
+          const canvas = document.createElement("canvas");
+          const ctx2d = canvas.getContext("2d");
+          if (!ctx2d) continue;
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
+          await page.render({ canvasContext: ctx2d, viewport }).promise;
+          if (cancelled) return;
+
+          const baseSize = {
+            width: baseViewport.width,
+            height: baseViewport.height,
+          };
+          setPageSizes((prev) => {
+            const next = prev.slice();
+            next[pageIndex] = baseSize;
+            return next;
+          });
+          setPageCanvases((prev) => {
+            const next = prev.slice();
+            next[pageIndex] = canvas;
+            return next;
+          });
+        }
       } catch {
-        if (!cancelled) setPageCount(1);
+        if (cancelled) return;
+        setPageCount(1);
+        setPageSizes([{ width: 612, height: 792 }]);
+        setPageCanvases([null]);
       }
     };
     void run();
@@ -253,73 +274,25 @@ const DisclaimerSigningCanvas = ({
     };
   }, [pdfKey, pdfJsUrl]);
 
-  useEffect(() => {
-    const first = requiredSignatureFields.find(
-      (f) => !signatureByFieldId[f.id],
-    );
-    if (!first) return;
-    setActivePageIndex(Math.max(0, first.pageIndex));
-  }, [requiredSignatureFields, signatureByFieldId]);
+  const basePageSize = pageSizes[0] ?? { width: 612, height: 792 };
+  const pageGapPx = 16;
 
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      const cacheKey = `${pdfKey}:p${activePageIndex}`;
-      const cached = pageCanvasCache.current[cacheKey];
-      if (cached) {
-        setPageCanvas(cached.canvas);
-        setPageSize(cached.pageSize);
-        return;
-      }
-      pageCanvasCache.current[cacheKey] = null;
-      try {
-        const pdfjs = await loadPdfJs();
-        const loadingTask = pdfjs.getDocument({
-          url: pdfJsUrl,
-          disableRange: true,
-          disableStream: true,
-        });
-        const doc = await loadingTask.promise;
-        const page = await doc.getPage(activePageIndex + 1);
-        const baseViewport = page.getViewport({ scale: 1 });
-        const renderScale = 2;
-        const viewport = page.getViewport({ scale: renderScale });
-        const canvas = document.createElement("canvas");
-        const ctx2d = canvas.getContext("2d");
-        if (!ctx2d) return;
-        canvas.width = Math.floor(viewport.width);
-        canvas.height = Math.floor(viewport.height);
-        await page.render({ canvasContext: ctx2d, viewport }).promise;
-        if (cancelled) return;
-        pageCanvasCache.current[cacheKey] = {
-          canvas,
-          pageSize: { width: baseViewport.width, height: baseViewport.height },
-        };
-        setPageCanvas(canvas);
-        setPageSize({ width: baseViewport.width, height: baseViewport.height });
-      } catch {
-        if (!cancelled) setPageCanvas(null);
-      }
-    };
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [activePageIndex, pdfJsUrl, pdfKey]);
-
-  // Fit-to-width (desktop-friendly). Height can scroll inside the frame.
+  // Fit-to-width (desktop-friendly). Height scrolls in the frame (multi-page).
   const scale = useMemo(() => {
     if (frameSize.width <= 0) return 1;
-    // Clamp to 2x since we render the PDF canvas at 2x for crispness.
-    return Math.min(2, frameSize.width / pageSize.width);
-  }, [frameSize.width, pageSize.width]);
+    return Math.min(2, frameSize.width / basePageSize.width);
+  }, [basePageSize.width, frameSize.width]);
 
   const stageWidth = Math.max(1, Math.floor(frameSize.width));
-  const stageHeight = Math.max(1, Math.ceil(pageSize.height * scale));
 
-  const fieldsOnPage = useMemo(() => {
-    return signatureFields.filter((f) => f.pageIndex === activePageIndex);
-  }, [activePageIndex, signatureFields]);
+  const fieldsByPageIndex = useMemo(() => {
+    const map: Record<number, BuilderSignatureFieldV1[]> = {};
+    for (const f of signatureFields) {
+      const idx = Math.max(0, f.pageIndex);
+      (map[idx] ??= []).push(f);
+    }
+    return map;
+  }, [signatureFields]);
 
   const [activeFieldId, setActiveFieldId] = useState<string | null>(null);
   const [fieldDialogOpen, setFieldDialogOpen] = useState(false);
@@ -341,6 +314,9 @@ const DisclaimerSigningCanvas = ({
     setFieldDialogOpen(false);
   }, [activeFieldId, fieldSigBase64, setSignatureByFieldId]);
 
+  // Used to force a re-render when signature images finish loading.
+  const [_signatureImageTick, setSignatureImageTick] = useState(0);
+
   const signatureImageCache = useRef<Record<string, HTMLImageElement | null>>(
     {},
   );
@@ -352,13 +328,85 @@ const DisclaimerSigningCanvas = ({
       : `data:image/png;base64,${base64}`;
     const existing = signatureImageCache.current[dataUrl];
     if (existing) return existing;
+    if (existing === null) {
+      // Image is currently loading.
+      return null;
+    }
     const img = parseSignatureDataUrlToImage(dataUrl);
     img.onload = () => {
       signatureImageCache.current[dataUrl] = img;
+      setSignatureImageTick((t) => t + 1);
     };
     signatureImageCache.current[dataUrl] = null;
     return null;
   };
+
+  const [hasStarted, setHasStarted] = useState(false);
+  const [highlightFieldId, setHighlightFieldId] = useState<string | null>(null);
+  const [scrollTarget, setScrollTarget] = useState<{
+    fieldId: string;
+    pageIndex: number;
+    yPct: number;
+  } | null>(null);
+
+  const requiredSignedCount = useMemo(() => {
+    return requiredSignatureFields.filter((f) => signatureByFieldId[f.id])
+      .length;
+  }, [requiredSignatureFields, signatureByFieldId]);
+  const requiredCount = requiredSignatureFields.length;
+  const allRequiredSigned =
+    requiredCount > 0 ? requiredSignedCount >= requiredCount : false;
+
+  useEffect(() => {
+    if (isComplete) setHasStarted(true);
+  }, [isComplete]);
+
+  useEffect(() => {
+    if (!highlightFieldId) return;
+    const t = window.setTimeout(() => setHighlightFieldId(null), 2200);
+    return () => window.clearTimeout(t);
+  }, [highlightFieldId]);
+
+  useEffect(() => {
+    if (!scrollTarget) return;
+    const node = frameRef.current;
+    if (!node) return;
+    const idx = Math.max(0, scrollTarget.pageIndex);
+    if (!pageSizes[idx]) return;
+
+    let top = 0;
+    for (let i = 0; i < idx; i++) {
+      const ps = pageSizes[i] ?? basePageSize;
+      top += ps.height * scale + pageGapPx;
+    }
+    const ps = pageSizes[idx] ?? basePageSize;
+    top += scrollTarget.yPct * ps.height * scale;
+
+    node.scrollTo({ top: Math.max(0, top - 96), behavior: "smooth" });
+    setHighlightFieldId(scrollTarget.fieldId);
+    setScrollTarget(null);
+  }, [basePageSize, pageGapPx, pageSizes, scale, scrollTarget]);
+
+  const handleStart = useCallback(() => {
+    if (isComplete) return;
+    setHasStarted(true);
+    const firstUnsigned = requiredSignatureFields.find(
+      (f) => !signatureByFieldId[f.id],
+    );
+    if (!firstUnsigned) return;
+    setScrollTarget({
+      fieldId: firstUnsigned.id,
+      pageIndex: Math.max(0, firstUnsigned.pageIndex),
+      yPct: firstUnsigned.yPct,
+    });
+  }, [isComplete, requiredSignatureFields, signatureByFieldId]);
+
+  const handleDownload = useCallback(() => {
+    if (!downloadUrl) return;
+    window.open(downloadUrl, "_blank", "noreferrer");
+  }, [downloadUrl]);
+
+  const canInteract = hasStarted && !isComplete;
 
   return (
     <div className="bg-muted/10 relative h-svh w-full">
@@ -369,166 +417,172 @@ const DisclaimerSigningCanvas = ({
               {templateTitle}
             </div>
             <div className="text-muted-foreground text-xs">
-              Click a field to sign • Page {activePageIndex + 1} / {pageCount}
+              {(recipientName ? `${recipientName} • ` : "") + recipientEmail}
+              {" • "}
+              {isComplete
+                ? "Completed"
+                : !hasStarted
+                  ? `${requiredCount} required field${requiredCount === 1 ? "" : "s"}`
+                  : `${requiredSignedCount}/${requiredCount} required signed`}
+              {" • "}
+              {pageCount} page{pageCount === 1 ? "" : "s"}
+              {signedAt
+                ? ` • Signed ${new Date(signedAt).toLocaleString()}`
+                : ""}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={activePageIndex <= 0}
-              onClick={() => setActivePageIndex((p) => Math.max(0, p - 1))}
-            >
-              Prev
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={activePageIndex >= pageCount - 1}
-              onClick={() =>
-                setActivePageIndex((p) => Math.min(pageCount - 1, p + 1))
-              }
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute inset-0 pt-14 pb-44">
-        <div className="mx-auto h-full w-full max-w-5xl px-4">
-          <div
-            ref={frameRef}
-            className="h-full w-full overflow-auto rounded-md border bg-white shadow-sm"
-          >
-            {pageCanvas ? (
-              <Stage
-                width={stageWidth}
-                height={stageHeight}
-                scaleX={scale}
-                scaleY={scale}
+            {isComplete ? (
+              <Button
+                type="button"
+                onClick={handleDownload}
+                disabled={!downloadUrl}
               >
-                <Layer>
-                  <Rect
-                    name="canvas-bg"
-                    x={0}
-                    y={0}
-                    width={pageSize.width}
-                    height={pageSize.height}
-                    fill="#ffffff"
-                  />
-                  <KonvaImage
-                    image={pageCanvas}
-                    x={0}
-                    y={0}
-                    width={pageSize.width}
-                    height={pageSize.height}
-                    listening={false}
-                  />
-
-                  {fieldsOnPage.map((field) => {
-                    const x = field.xPct * pageSize.width;
-                    const y = field.yPct * pageSize.height;
-                    const w = field.wPct * pageSize.width;
-                    const h = field.hPct * pageSize.height;
-                    const done = Boolean(signatureByFieldId[field.id]);
-                    const img = done ? getSignatureImage(field.id) : null;
-                    const label = field.label ?? "Signature";
-                    return (
-                      <Fragment key={field.id}>
-                        <Rect
-                          x={x}
-                          y={y}
-                          width={w}
-                          height={h}
-                          fill={
-                            done
-                              ? "rgba(16,185,129,0.08)"
-                              : "rgba(59,130,246,0.08)"
-                          }
-                          stroke={done ? "#10b981" : "#3b82f6"}
-                          strokeWidth={2}
-                          dash={done ? undefined : [6, 4]}
-                          onClick={() => openField(field.id)}
-                          onTap={() => openField(field.id)}
-                        />
-                        <Text
-                          x={x + 6}
-                          y={y + 6}
-                          text={`${done ? "✓ " : ""}${label}`}
-                          fontSize={14}
-                          fill={done ? "#065f46" : "#1e3a8a"}
-                          listening={false}
-                        />
-                        {img ? (
-                          <KonvaImage
-                            image={img}
-                            x={x + 6}
-                            y={y + 22}
-                            width={Math.max(1, w - 12)}
-                            height={Math.max(1, h - 28)}
-                            listening={false}
-                          />
-                        ) : null}
-                      </Fragment>
-                    );
-                  })}
-                </Layer>
-              </Stage>
+                {downloadUrl ? "Download" : "Preparing…"}
+              </Button>
+            ) : !hasStarted ? (
+              <Button
+                type="button"
+                onClick={handleStart}
+                disabled={requiredCount === 0}
+              >
+                Start
+              </Button>
             ) : (
-              <div className="text-muted-foreground flex h-full w-full items-center justify-center p-6 text-sm">
-                Loading document…
-              </div>
+              <Button
+                type="button"
+                onClick={onFinish}
+                disabled={!allRequiredSigned || isPending}
+              >
+                Finish
+              </Button>
             )}
           </div>
         </div>
       </div>
 
-      <div className="bg-background/90 absolute inset-x-0 bottom-0 z-10 border-t px-4 py-4 backdrop-blur">
-        <div className="mx-auto w-full max-w-5xl space-y-3">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label>Name</Label>
-              <Input
-                value={signedName}
-                onChange={(e) => setSignedName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                value={signedEmail}
-                onChange={(e) => setSignedEmail(e.target.value)}
-                inputMode="email"
-              />
-            </div>
-            <div className="flex items-end justify-between gap-3">
-              <div className="text-muted-foreground text-xs">
-                {
-                  requiredSignatureFields.filter(
-                    (f) => signatureByFieldId[f.id],
-                  ).length
-                }{" "}
-                / {requiredSignatureFields.length} required fields signed
-              </div>
-              <Button onClick={onSubmit} disabled={isPending}>
-                Submit signature
-              </Button>
-            </div>
-          </div>
+      <div className="absolute inset-0 pt-14 pb-4">
+        <div className="mx-auto h-full w-full max-w-5xl px-4">
+          <div
+            ref={frameRef}
+            className="relative h-full w-full overflow-auto rounded-md border bg-white shadow-sm"
+          >
+            <div className="flex w-full flex-col gap-4 p-3">
+              {Array.from({ length: pageCount }).map((_, pageIndex) => {
+                const ps = pageSizes[pageIndex] ?? basePageSize;
+                const canvas = pageCanvases[pageIndex] ?? null;
+                const fieldsOnPage = fieldsByPageIndex[pageIndex] ?? [];
+                const stageHeight = Math.max(1, Math.ceil(ps.height * scale));
+                return (
+                  <div
+                    key={`${pdfKey}:p${pageIndex}`}
+                    className="mx-auto w-full max-w-5xl"
+                  >
+                    <Stage
+                      width={stageWidth}
+                      height={stageHeight}
+                      scaleX={scale}
+                      scaleY={scale}
+                    >
+                      <Layer>
+                        <Rect
+                          name="canvas-bg"
+                          x={0}
+                          y={0}
+                          width={ps.width}
+                          height={ps.height}
+                          fill="#ffffff"
+                        />
 
-          <div className="flex items-start gap-2">
-            <Checkbox
-              id="consent"
-              checked={hasConsented}
-              onCheckedChange={(v) => setHasConsented(Boolean(v))}
-            />
-            <Label htmlFor="consent" className="leading-snug">
-              {consentText}
-            </Label>
+                        {canvas ? (
+                          <KonvaImage
+                            image={canvas}
+                            x={0}
+                            y={0}
+                            width={ps.width}
+                            height={ps.height}
+                            listening={false}
+                          />
+                        ) : (
+                          <Text
+                            x={24}
+                            y={24}
+                            text={`Loading page ${pageIndex + 1}…`}
+                            fontSize={14}
+                            fill="#64748b"
+                            listening={false}
+                          />
+                        )}
+
+                        {fieldsOnPage.map((field) => {
+                          const x = field.xPct * ps.width;
+                          const y = field.yPct * ps.height;
+                          const w = field.wPct * ps.width;
+                          const h = field.hPct * ps.height;
+                          const done = Boolean(signatureByFieldId[field.id]);
+                          const img = done ? getSignatureImage(field.id) : null;
+                          const label = field.label ?? "Signature";
+                          const isHighlight = highlightFieldId === field.id;
+                          return (
+                            <Fragment key={field.id}>
+                              <Rect
+                                x={x}
+                                y={y}
+                                width={w}
+                                height={h}
+                                fill={
+                                  done
+                                    ? "rgba(16,185,129,0.08)"
+                                    : canInteract
+                                      ? "rgba(59,130,246,0.08)"
+                                      : "rgba(148,163,184,0.10)"
+                                }
+                                stroke={
+                                  isHighlight
+                                    ? "#f59e0b"
+                                    : done
+                                      ? "#10b981"
+                                      : "#3b82f6"
+                                }
+                                strokeWidth={isHighlight ? 3 : 2}
+                                dash={done ? undefined : [6, 4]}
+                                onClick={() => {
+                                  if (!canInteract) return;
+                                  openField(field.id);
+                                }}
+                                onTap={() => {
+                                  if (!canInteract) return;
+                                  openField(field.id);
+                                }}
+                              />
+                              <Text
+                                x={x + 6}
+                                y={y + 6}
+                                text={`${done ? "✓ " : ""}${label}`}
+                                fontSize={14}
+                                fill={done ? "#065f46" : "#1e3a8a"}
+                                listening={false}
+                              />
+                              {img ? (
+                                <KonvaImage
+                                  image={img}
+                                  x={x + 6}
+                                  y={y + 22}
+                                  width={Math.max(1, w - 12)}
+                                  height={Math.max(1, h - 28)}
+                                  listening={false}
+                                />
+                              ) : null}
+                            </Fragment>
+                          );
+                        })}
+                      </Layer>
+                    </Stage>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -608,6 +662,13 @@ export default function DisclaimerSignPage() {
         status: "incomplete" | "complete";
         recipientEmail: string;
         recipientName?: string | null;
+        audit?: {
+          sentAt?: number;
+          firstViewedAt?: number;
+          lastViewedAt?: number;
+          viewCount?: number;
+          completedAt?: number;
+        };
         template: {
           title: string;
           pdfUrl: string;
@@ -649,42 +710,72 @@ export default function DisclaimerSignPage() {
     | undefined;
 
   const submitSignature = useAction(
-    api.plugins.disclaimers.actions.submitSignature,
-  ) as (args: {
+    (
+      api as unknown as {
+        plugins: { disclaimers: { actions: { submitSignature: unknown } } };
+      }
+    ).plugins.disclaimers.actions.submitSignature as never,
+  ) as unknown as (args: {
     issueId: string;
     tokenHash: string;
     signatureDataUrl?: string;
     fieldSignatures?: { fieldId: string; signatureDataUrl: string }[];
-    signedName: string;
-    signedEmail: string;
-    consentText: string;
+    ip?: string;
     userAgent?: string;
   }) => Promise<{ signatureId: string; signedPdfFileId: string }>;
 
-  const [signedName, setSignedName] = useState("");
-  const [signedEmail, setSignedEmail] = useState("");
-  const [hasConsented, setHasConsented] = useState(false);
-  const [signatureBase64, _setSignatureBase64] = useState<string | null>(null);
+  const recordSigningView = useMutation(
+    api.plugins.disclaimers.mutations.recordSigningView,
+  ) as (args: {
+    issueId: string;
+    tokenHash: string;
+    ip?: string;
+    userAgent?: string;
+  }) => Promise<null>;
+
   const [signatureByFieldId, setSignatureByFieldId] = useState<
     Record<string, string | null>
   >({});
   const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (!signingContext) return;
-    if (signedEmail.trim().length === 0) {
-      setSignedEmail(signingContext.recipientEmail);
+  const fetchClientIp = useCallback(async (): Promise<string | undefined> => {
+    try {
+      const res = await fetch("/api/client-ip", { cache: "no-store" });
+      if (!res.ok) return undefined;
+      const json: unknown = await res.json();
+      const ip =
+        json &&
+        typeof json === "object" &&
+        "ip" in json &&
+        typeof (json as { ip?: unknown }).ip === "string"
+          ? (json as { ip: string }).ip.trim()
+          : "";
+      return ip.length > 0 ? ip : undefined;
+    } catch {
+      return undefined;
     }
-    if (signedName.trim().length === 0 && signingContext.recipientName) {
-      setSignedName(signingContext.recipientName);
-    }
-  }, [signingContext, signedEmail, signedName]);
+  }, []);
 
-  const signatureDataUrl = useMemo(() => {
-    if (!signatureBase64) return null;
-    if (signatureBase64.startsWith("data:")) return signatureBase64;
-    return `data:image/png;base64,${signatureBase64}`;
-  }, [signatureBase64]);
+  const hasRecordedViewRef = useRef(false);
+  useEffect(() => {
+    if (hasRecordedViewRef.current) return;
+    if (!tokenHash || !issueId) return;
+    if (!signingContext) return;
+    hasRecordedViewRef.current = true;
+    void (async () => {
+      const ip = await fetchClientIp();
+      await recordSigningView({
+        issueId,
+        tokenHash,
+        ip,
+        userAgent:
+          typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+      });
+    })().catch(() => {
+      // Allow retry if it failed due to transient network issues.
+      hasRecordedViewRef.current = false;
+    });
+  }, [fetchClientIp, issueId, recordSigningView, signingContext, tokenHash]);
 
   const builderTemplate = useMemo(() => {
     const raw = signingContext?.template?.builderTemplateJson ?? null;
@@ -724,58 +815,44 @@ export default function DisclaimerSignPage() {
       toast.error("This disclaimer has already been completed.");
       return;
     }
-    if (!hasConsented) {
-      toast.error("Please confirm consent.");
+    if (requiredSignatureFields.length === 0) {
+      toast.error("No signature fields configured.");
       return;
     }
-    if (!signedName.trim()) {
-      toast.error("Enter your name.");
+
+    const missing = requiredSignatureFields.some(
+      (f) => !signatureByFieldId[f.id],
+    );
+    if (missing) {
+      toast.error("Please sign all required fields.");
       return;
-    }
-    if (!signedEmail.trim()) {
-      toast.error("Enter your email.");
-      return;
-    }
-    const isMultiSign = requiredSignatureFields.length > 0;
-    if (isMultiSign) {
-      const missing = requiredSignatureFields.some(
-        (f) => !signatureByFieldId[f.id],
-      );
-      if (missing) {
-        toast.error("Please sign all required fields.");
-        return;
-      }
-    } else {
-      if (!signatureDataUrl) {
-        toast.error("Please add a signature.");
-        return;
-      }
     }
 
     startTransition(() => {
-      const fieldSignatures =
-        requiredSignatureFields.length > 0
-          ? requiredSignatureFields.map((f) => ({
-              fieldId: f.id,
-              signatureDataUrl: `data:image/png;base64,${String(
-                signatureByFieldId[f.id],
-              )}`,
-            }))
-          : undefined;
+      const fieldSignatures = signatureFields
+        .map((f) => {
+          const raw = signatureByFieldId[f.id];
+          if (!raw) return null;
+          const signatureDataUrl = raw.startsWith("data:")
+            ? raw
+            : `data:image/png;base64,${raw}`;
+          return { fieldId: f.id, signatureDataUrl };
+        })
+        .filter((x): x is { fieldId: string; signatureDataUrl: string } =>
+          Boolean(x),
+        );
 
-      void submitSignature({
-        issueId,
-        tokenHash,
-        signatureDataUrl: fieldSignatures
-          ? undefined
-          : (signatureDataUrl ?? undefined),
-        fieldSignatures,
-        signedName: signedName.trim(),
-        signedEmail: signedEmail.trim().toLowerCase(),
-        consentText: signingContext.template.consentText,
-        userAgent:
-          typeof navigator !== "undefined" ? navigator.userAgent : undefined,
-      })
+      void (async () => {
+        const ip = await fetchClientIp();
+        return await submitSignature({
+          issueId,
+          tokenHash,
+          fieldSignatures,
+          ip,
+          userAgent:
+            typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+        });
+      })()
         .then(() => {
           toast.success("Signed. Thank you!");
         })
@@ -793,13 +870,6 @@ export default function DisclaimerSignPage() {
 
   return (
     <div className="w-full">
-      <div className="space-y-1">
-        <div className="text-2xl font-semibold">Sign disclaimer</div>
-        <div className="text-muted-foreground text-sm">
-          Review the document and sign to complete.
-        </div>
-      </div>
-
       {isLoading ? (
         <Card>
           <CardContent className="text-muted-foreground py-10 text-center text-sm">
@@ -832,55 +902,23 @@ export default function DisclaimerSignPage() {
         </Card>
       ) : null}
 
-      {signingContext ? (
-        signingContext.status === "complete" ? (
-          <div className="mx-auto w-full max-w-2xl space-y-6 px-4 py-10">
-            <Card>
-              <CardHeader>
-                <CardTitle>Signed. Thank you!</CardTitle>
-                <CardDescription>
-                  This disclaimer has already been completed.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {receipt?.signedPdfUrl ? (
-                  <Button asChild variant="outline">
-                    <a
-                      href={receipt.signedPdfUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Download signed PDF
-                    </a>
-                  </Button>
-                ) : (
-                  <div className="text-muted-foreground text-sm">
-                    Signed PDF is processing.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        ) : (
-          <DisclaimerSigningCanvas
-            templateTitle={signingContext.template.title}
-            pdfUrl={signingContext.template.pdfUrl}
-            pdfVersion={signingContext.template.pdfVersion}
-            consentText={signingContext.template.consentText}
-            signatureFields={signatureFields}
-            requiredSignatureFields={requiredSignatureFields}
-            signatureByFieldId={signatureByFieldId}
-            setSignatureByFieldId={setSignatureByFieldId}
-            signedName={signedName}
-            setSignedName={setSignedName}
-            signedEmail={signedEmail}
-            setSignedEmail={setSignedEmail}
-            hasConsented={hasConsented}
-            setHasConsented={setHasConsented}
-            isPending={isPending}
-            onSubmit={handleSubmit}
-          />
-        )
+      {signingContext && signingContext !== null ? (
+        <DisclaimerSigningCanvas
+          templateTitle={signingContext.template.title}
+          recipientEmail={signingContext.recipientEmail}
+          recipientName={signingContext.recipientName ?? undefined}
+          pdfUrl={signingContext.template.pdfUrl}
+          pdfVersion={signingContext.template.pdfVersion}
+          signatureFields={signatureFields}
+          requiredSignatureFields={requiredSignatureFields}
+          signatureByFieldId={signatureByFieldId}
+          setSignatureByFieldId={setSignatureByFieldId}
+          isPending={isPending}
+          onFinish={handleSubmit}
+          isComplete={signingContext.status === "complete"}
+          downloadUrl={receipt?.signedPdfUrl ?? null}
+          signedAt={receipt?.signedAt ?? null}
+        />
       ) : null}
     </div>
   );

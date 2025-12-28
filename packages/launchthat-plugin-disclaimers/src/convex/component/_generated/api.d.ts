@@ -51,14 +51,11 @@ export type Mounts = {
       "action",
       "public",
       {
-        consentText: string;
         fieldSignatures?: Array<{ fieldId: string; signatureDataUrl: string }>;
         ip?: string;
         issueId: string;
         signatureDataUrl?: string;
         signedByUserId?: string;
-        signedEmail: string;
-        signedName: string;
         tokenHash: string;
         userAgent?: string;
       },
@@ -109,6 +106,12 @@ export type Mounts = {
         userAgent?: string;
       },
       { signatureId: string; signedPdfFileId: string }
+    >;
+    recordSigningView: FunctionReference<
+      "mutation",
+      "public",
+      { ip?: string; issueId: string; tokenHash: string; userAgent?: string },
+      null
     >;
     resendIssue: FunctionReference<
       "mutation",
@@ -241,6 +244,13 @@ export type Mounts = {
       "public",
       { issueId: string; tokenHash: string },
       null | {
+        audit: {
+          completedAt?: number;
+          firstViewedAt?: number;
+          lastViewedAt?: number;
+          sentAt?: number;
+          viewCount?: number;
+        };
         issueId: string;
         recipientEmail: string;
         recipientName?: string;

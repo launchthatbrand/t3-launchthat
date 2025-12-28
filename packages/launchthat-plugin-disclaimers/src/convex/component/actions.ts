@@ -10,6 +10,13 @@ type SigningContext = {
   status: "incomplete" | "complete";
   recipientEmail: string;
   recipientName?: string;
+  audit: {
+    sentAt?: number;
+    firstViewedAt?: number;
+    lastViewedAt?: number;
+    viewCount?: number;
+    completedAt?: number;
+  };
   template: {
     consentText: string;
     pdfUrl: string;
@@ -58,10 +65,7 @@ export const submitSignature = action({
         }),
       ),
     ),
-    signedName: v.string(),
-    signedEmail: v.string(),
     signedByUserId: v.optional(v.string()),
-    consentText: v.string(),
     ip: v.optional(v.string()),
     userAgent: v.optional(v.string()),
   },
@@ -84,6 +88,11 @@ export const submitSignature = action({
       throw new Error("Issue is already complete.");
     }
 
+    const signedEmail = signing.recipientEmail;
+    const signedName =
+      typeof signing.recipientName === "string" ? signing.recipientName : "";
+    const consentText = signing.template.consentText;
+
     // Load original PDF.
     const pdfRes = await fetch(signing.template.pdfUrl);
     if (!pdfRes.ok) {
@@ -98,6 +107,9 @@ export const submitSignature = action({
 
     const font = await pdf.embedFont(StandardFonts.Helvetica);
     const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
+
+    const signedAtIso = new Date().toISOString();
+    let auditSignatureBytes: Uint8Array | null = null;
 
     // If multi-sign is provided, stamp each field on its configured page.
     // Otherwise, fallback to the legacy single-sign behavior (audit box on last page).
@@ -155,6 +167,7 @@ export const submitSignature = action({
           throw new Error("Signature field page is out of range.");
         }
         const signatureBytes = parseSignatureDataUrl(entry.signatureDataUrl);
+        if (!auditSignatureBytes) auditSignatureBytes = signatureBytes;
         const signaturePng = await pdf.embedPng(signatureBytes);
 
         if (!signaturePngFileId) {
@@ -203,6 +216,7 @@ export const submitSignature = action({
       }
 
       const signatureBytes = parseSignatureDataUrl(legacySignatureDataUrl);
+      auditSignatureBytes = signatureBytes;
 
       // Store signature image.
       const signatureAb = new ArrayBuffer(signatureBytes.byteLength);
@@ -265,11 +279,10 @@ export const submitSignature = action({
         color: rgb(0.75, 0.75, 0.75),
       });
 
-      const signedAtIso = new Date().toISOString();
       const textY = lineY - 14;
       const lines = [
-        `Name: ${args.signedName}`,
-        `Email: ${args.signedEmail}`,
+        `Name: ${signedName}`,
+        `Email: ${signedEmail}`,
         `Signed at: ${signedAtIso}`,
       ];
       lines.forEach((line, idx) => {
@@ -285,7 +298,7 @@ export const submitSignature = action({
 
     // Always embed consent as invisible text (audit).
     const lastPage = pages[pages.length - 1]!;
-    lastPage.drawText(`Consent: ${args.consentText}`.slice(0, 500), {
+    lastPage.drawText(`Consent: ${consentText}`.slice(0, 500), {
       x: 0,
       y: 0,
       size: 1,
@@ -293,6 +306,230 @@ export const submitSignature = action({
       color: rgb(1, 1, 1),
       opacity: 0,
     });
+
+    // Add a final certificate page (PandaDoc-style) with signing metadata.
+    {
+      const lastSize = pages[pages.length - 1]!.getSize();
+      const cert = pdf.addPage([lastSize.width, lastSize.height]);
+      const { width: pageW, height: pageH } = cert.getSize();
+
+      const marginX = 54;
+      const labelColor = rgb(0.35, 0.35, 0.35);
+      const valueColor = rgb(0.08, 0.08, 0.08);
+      const lineColor = rgb(0.85, 0.85, 0.85);
+
+      const formatUtc = (ms: number) => {
+        const d = new Date(ms);
+        const yyyy = d.getUTCFullYear();
+        const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+        const dd = String(d.getUTCDate()).padStart(2, "0");
+        const hh = String(d.getUTCHours()).padStart(2, "0");
+        const mi = String(d.getUTCMinutes()).padStart(2, "0");
+        const ss = String(d.getUTCSeconds()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss} UTC`;
+      };
+
+      const wrapText = (text: string, maxWidth: number, size: number) => {
+        const words = text.split(/\s+/).filter(Boolean);
+        const lines: string[] = [];
+        let current = "";
+        for (const w of words) {
+          const next = current ? `${current} ${w}` : w;
+          const width = font.widthOfTextAtSize(next, size);
+          if (width <= maxWidth) {
+            current = next;
+            continue;
+          }
+          if (current) lines.push(current);
+          current = w;
+        }
+        if (current) lines.push(current);
+        return lines.length > 0 ? lines : [text];
+      };
+
+      // Header
+      const header = "CERTIFICATE OF SIGNATURE";
+      const headerSize = 22;
+      const headerW = fontBold.widthOfTextAtSize(header, headerSize);
+      cert.drawText(header, {
+        x: Math.max(marginX, (pageW - headerW) / 2),
+        y: pageH - 72,
+        size: headerSize,
+        font: fontBold,
+        color: valueColor,
+      });
+
+      // Document meta (left, under header)
+      const metaY = pageH - 110;
+      cert.drawText(`Document: ${signing.template.title}`, {
+        x: marginX,
+        y: metaY,
+        size: 11,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      cert.drawText(`Issue ID: ${String(args.issueId)}`, {
+        x: marginX,
+        y: metaY - 16,
+        size: 10,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+
+      // Table header
+      const tableTop = metaY - 54;
+      const signerX = marginX;
+      const timestampX = Math.floor(pageW * 0.44);
+      const signatureX = Math.floor(pageW * 0.66);
+      const tableRight = pageW - marginX;
+
+      cert.drawText("SIGNER", {
+        x: signerX,
+        y: tableTop + 14,
+        size: 10,
+        font: fontBold,
+        color: valueColor,
+      });
+      cert.drawText("TIMESTAMP", {
+        x: timestampX,
+        y: tableTop + 14,
+        size: 10,
+        font: fontBold,
+        color: valueColor,
+      });
+      cert.drawText("SIGNATURE", {
+        x: signatureX,
+        y: tableTop + 14,
+        size: 10,
+        font: fontBold,
+        color: valueColor,
+      });
+
+      cert.drawLine({
+        start: { x: marginX, y: tableTop },
+        end: { x: tableRight, y: tableTop },
+        thickness: 1,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+
+      // Row content
+      const rowTop = tableTop - 30;
+
+      // Signer column
+      cert.drawText("EMAIL", { x: signerX, y: rowTop, size: 9, font, color: labelColor });
+      cert.drawText(signedEmail, {
+        x: signerX,
+        y: rowTop - 14,
+        size: 11,
+        font: fontBold,
+        color: valueColor,
+      });
+
+      // Timestamp column
+      const sentAt = typeof signing.audit?.sentAt === "number" ? signing.audit.sentAt : null;
+      const viewedAt =
+        typeof signing.audit?.lastViewedAt === "number" ? signing.audit.lastViewedAt : null;
+      const signedAt = signedAtIso ? Date.parse(signedAtIso) : Date.now();
+
+      const timeLabelX = timestampX;
+      const timeValueX = timestampX;
+      let ty = rowTop;
+      const drawTime = (label: string, value: string) => {
+        cert.drawText(label, { x: timeLabelX, y: ty, size: 9, font, color: labelColor });
+        cert.drawText(value, {
+          x: timeValueX,
+          y: ty - 14,
+          size: 11,
+          font: fontBold,
+          color: valueColor,
+        });
+        ty -= 34;
+      };
+      drawTime("SENT", sentAt ? formatUtc(sentAt) : "—");
+      drawTime("VIEWED", viewedAt ? formatUtc(viewedAt) : "—");
+      drawTime("SIGNED", formatUtc(isFinite(signedAt) ? signedAt : Date.now()));
+
+      // Signature column (box + IP)
+      const sigBoxW = tableRight - signatureX;
+      const sigBoxH = 110;
+      const sigBoxX = signatureX;
+      const sigBoxY = rowTop - sigBoxH + 6;
+      cert.drawRectangle({
+        x: sigBoxX,
+        y: sigBoxY,
+        width: sigBoxW,
+        height: sigBoxH,
+        borderColor: rgb(0.2, 0.2, 0.2),
+        borderWidth: 1,
+        color: rgb(1, 1, 1),
+      });
+
+      if (auditSignatureBytes) {
+        const sigPng = await pdf.embedPng(auditSignatureBytes);
+        const dims = sigPng.scale(1);
+        const scale = Math.min((sigBoxW - 24) / dims.width, (sigBoxH - 24) / dims.height, 1);
+        const sigW = dims.width * scale;
+        const sigH = dims.height * scale;
+        cert.drawImage(sigPng, {
+          x: sigBoxX + (sigBoxW - sigW) / 2,
+          y: sigBoxY + (sigBoxH - sigH) / 2,
+          width: sigW,
+          height: sigH,
+        });
+      }
+
+      const ipValue =
+        typeof args.ip === "string" && args.ip.trim().length > 0 ? args.ip.trim() : "—";
+      cert.drawText("IP ADDRESS", {
+        x: signatureX,
+        y: sigBoxY - 18,
+        size: 9,
+        font,
+        color: labelColor,
+      });
+      cert.drawText(ipValue, {
+        x: signatureX,
+        y: sigBoxY - 32,
+        size: 11,
+        font: fontBold,
+        color: valueColor,
+      });
+
+      // Divider below table
+      const tableBottom = sigBoxY - 54;
+      cert.drawLine({
+        start: { x: marginX, y: tableBottom },
+        end: { x: tableRight, y: tableBottom },
+        thickness: 1,
+        color: lineColor,
+      });
+
+      // User agent (wrapped, below table)
+      const ua =
+        typeof args.userAgent === "string" && args.userAgent.trim().length > 0
+          ? args.userAgent.trim()
+          : "";
+      if (ua) {
+        const uaLabelY = tableBottom - 28;
+        cert.drawText("USER AGENT", {
+          x: marginX,
+          y: uaLabelY,
+          size: 9,
+          font,
+          color: labelColor,
+        });
+        const uaLines = wrapText(ua, tableRight - marginX, 10);
+        uaLines.slice(0, 3).forEach((line, idx) => {
+          cert.drawText(line, {
+            x: marginX,
+            y: uaLabelY - 14 - idx * 12,
+            size: 10,
+            font,
+            color: rgb(0.2, 0.2, 0.2),
+          });
+        });
+      }
+    }
 
     const signedBytes = await pdf.save();
     const signedBlob = new Blob([signedBytes as unknown as BufferSource], {
@@ -307,12 +544,12 @@ export const submitSignature = action({
         issueId: args.issueId,
         tokenHash: args.tokenHash,
         signedByUserId: args.signedByUserId,
-        signedName: args.signedName,
-        signedEmail: args.signedEmail,
+        signedName,
+        signedEmail,
         signaturePngFileId,
         signedPdfFileId,
         pdfSha256,
-        consentText: args.consentText,
+        consentText,
         ip: args.ip,
         userAgent: args.userAgent,
       },

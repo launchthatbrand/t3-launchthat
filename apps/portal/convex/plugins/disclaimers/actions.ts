@@ -236,9 +236,7 @@ export const submitSignature = action({
         }),
       ),
     ),
-    signedName: v.string(),
-    signedEmail: v.string(),
-    consentText: v.string(),
+    ip: v.optional(v.string()),
     userAgent: v.optional(v.string()),
   },
   returns: v.any(),
@@ -248,9 +246,7 @@ export const submitSignature = action({
       tokenHash: args.tokenHash,
       signatureDataUrl: args.signatureDataUrl,
       fieldSignatures: args.fieldSignatures,
-      signedName: args.signedName,
-      signedEmail: args.signedEmail,
-      consentText: args.consentText,
+      ip: args.ip,
       userAgent: args.userAgent,
     })) as { signatureId: string; signedPdfFileId: any };
 

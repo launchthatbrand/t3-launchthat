@@ -5508,7 +5508,6 @@ export declare const components: {
         "action",
         "internal",
         {
-          consentText: string;
           fieldSignatures?: Array<{
             fieldId: string;
             signatureDataUrl: string;
@@ -5517,8 +5516,6 @@ export declare const components: {
           issueId: string;
           signatureDataUrl?: string;
           signedByUserId?: string;
-          signedEmail: string;
-          signedName: string;
           tokenHash: string;
           userAgent?: string;
         },
@@ -5569,6 +5566,12 @@ export declare const components: {
           userAgent?: string;
         },
         { signatureId: string; signedPdfFileId: string }
+      >;
+      recordSigningView: FunctionReference<
+        "mutation",
+        "internal",
+        { ip?: string; issueId: string; tokenHash: string; userAgent?: string },
+        null
       >;
       resendIssue: FunctionReference<
         "mutation",
@@ -5706,6 +5709,13 @@ export declare const components: {
         "internal",
         { issueId: string; tokenHash: string },
         null | {
+          audit: {
+            completedAt?: number;
+            firstViewedAt?: number;
+            lastViewedAt?: number;
+            sentAt?: number;
+            viewCount?: number;
+          };
           issueId: string;
           recipientEmail: string;
           recipientName?: string;

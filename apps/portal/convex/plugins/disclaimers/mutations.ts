@@ -101,3 +101,22 @@ export const resendIssue = mutation({
     };
   },
 });
+
+export const recordSigningView = mutation({
+  args: {
+    issueId: v.string(),
+    tokenHash: v.string(),
+    ip: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.runMutation(disclaimersMutations.recordSigningView, {
+      issueId: args.issueId as any,
+      tokenHash: args.tokenHash,
+      ip: args.ip,
+      userAgent: args.userAgent,
+    });
+    return null;
+  },
+});

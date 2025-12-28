@@ -469,3 +469,37 @@ export const finalizeSignature = mutation({
     return { signatureId, signedPdfFileId: args.signedPdfFileId };
   },
 });
+
+export const recordSigningView = mutation({
+  args: {
+    issueId: v.id("disclaimerIssues"),
+    tokenHash: v.string(),
+    ip: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const issue = await ctx.db.get(args.issueId);
+    if (!issue) return null;
+    if (issue.magicTokenHash !== args.tokenHash) return null;
+
+    const now = Date.now();
+    await ctx.db.insert("disclaimerAuditEvents", {
+      issueId: issue._id,
+      kind: "viewed",
+      at: now,
+      ip: args.ip,
+      userAgent: args.userAgent,
+    });
+
+    const currentCount = typeof issue.viewCount === "number" ? issue.viewCount : 0;
+    await ctx.db.patch(issue._id, {
+      firstViewedAt: issue.firstViewedAt ?? now,
+      lastViewedAt: now,
+      viewCount: currentCount + 1,
+      updatedAt: now,
+    });
+
+    return null;
+  },
+});
