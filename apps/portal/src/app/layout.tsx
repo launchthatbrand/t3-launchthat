@@ -29,6 +29,7 @@ export default async function RootLayout(props: {
   children: React.ReactNode;
   sidebar: React.ReactNode;
   header: React.ReactNode;
+  footer: React.ReactNode;
 }) {
   const headerList = await headers();
   const pathnameHeader = headerList.get("x-pathname");
@@ -73,6 +74,7 @@ export default async function RootLayout(props: {
             appName={appName}
             sidebar={isCanvas ? undefined : props.sidebar}
             header={isCanvas ? null : props.header}
+            footer={isCanvas ? null : props.footer}
             sidebarVariant="inset"
             showSidebar={!isCanvas}
             headerRightSlot={<NotificationIcon />}

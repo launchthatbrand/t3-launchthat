@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@acme/ui/dropdown-menu";
+import { DrawerClose } from "@acme/ui/drawer";
 import { EmptyState } from "@acme/ui/entity-list/EmptyState";
 import { ScrollArea } from "@acme/ui/scroll-area";
 import { Skeleton } from "@acme/ui/skeleton";
@@ -32,6 +33,7 @@ export function NotificationDropdown({
   orgId,
   onClose,
   error,
+  variant = "dropdown",
 }: NotificationDropdownProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<NotificationCategory>("all");
@@ -203,8 +205,8 @@ export function NotificationDropdown({
     );
   };
 
-  return (
-    <div className="bg-background absolute top-full right-0 z-50 mt-1 w-[380px] rounded-md border shadow-md sm:w-[440px]">
+  const panel = (
+    <div className="w-full">
       <div className="flex items-center justify-between border-b px-4 py-2">
         <h2 className="text-sm font-semibold">Notifications</h2>
         <div className="flex items-center gap-2">
@@ -235,6 +237,13 @@ export function NotificationDropdown({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {variant === "drawer" ? (
+            <DrawerClose asChild>
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                Close
+              </Button>
+            </DrawerClose>
+          ) : null}
         </div>
       </div>
 
@@ -281,6 +290,14 @@ export function NotificationDropdown({
           </TabsContent>
         </ScrollArea>
       </Tabs>
+    </div>
+  );
+
+  if (variant === "drawer") return panel;
+
+  return (
+    <div className="bg-background absolute top-full right-0 z-50 mt-1 w-[380px] rounded-md border shadow-md sm:w-[440px]">
+      {panel}
     </div>
   );
 }

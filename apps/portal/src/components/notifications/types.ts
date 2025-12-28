@@ -173,4 +173,5 @@ export interface NotificationDropdownProps {
   orgId: string;
   onClose: () => void;
   error?: string | null;
+  variant?: "dropdown" | "drawer";
 }

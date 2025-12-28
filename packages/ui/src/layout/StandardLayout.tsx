@@ -13,6 +13,7 @@ export default function StandardLayout(props: {
   topbar?: React.ReactNode;
   className?: string;
   header?: React.ReactNode;
+  footer?: React.ReactNode;
   sidebarVariant?: "inset" | "floating" | "sidebar";
   showSidebar?: boolean;
   headerRightSlot?: React.ReactNode;
@@ -45,6 +46,7 @@ export default function StandardLayout(props: {
         )}
         {/* <div className="relative w-full max-w-full overflow-x-hidden"> */}
         {props.children}
+        {props.footer !== undefined ? props.footer : null}
         {/* </div> */}
       </SidebarInset>
     </SidebarProvider>
