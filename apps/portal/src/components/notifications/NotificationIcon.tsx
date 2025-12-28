@@ -21,6 +21,9 @@ export function NotificationIcon() {
   const [isOpen, setIsOpen] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
+  // Signed-out users shouldn't see notifications UI at all.
+  if (!clerkId) return null;
+
   const unreadCount = useQuery(
     api.notifications.queries.getUnreadCountByClerkIdAndOrgId,
     clerkId && orgId ? { clerkId, orgId } : "skip",
