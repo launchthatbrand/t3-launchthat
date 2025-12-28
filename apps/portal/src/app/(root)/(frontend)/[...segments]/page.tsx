@@ -49,6 +49,10 @@ import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { cn } from "~/lib/utils";
 import { PortalConvexProvider } from "~/providers/ConvexClientProvider";
 import { PuckContentRenderer } from "../../../../components/puckeditor/PuckContentRenderer";
+import {
+  loadAllowedPageTemplates,
+  renderFrontendResolvedPost,
+} from "~/lib/frontendRouting/renderFrontendSinglePost";
 
 export { generateMetadata } from "./metadata";
 
@@ -222,217 +226,26 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     typeof puckMetaEntry?.value === "string" ? puckMetaEntry.value : null,
   );
 
-  const pageTemplateAccessOption =
-    post.postTypeSlug === "pages"
-      ? await fetchQuery(api.core.options.get, {
-          orgId: organizationId ?? undefined,
-          type: "site",
-          metaKey: PAGE_TEMPLATE_ACCESS_OPTION_KEY,
-        })
-      : null;
-  const allowedPageTemplates = extractAllowedPageTemplates(
-    pageTemplateAccessOption?.metaValue,
-  );
+  const allowedPageTemplates =
+    post.postTypeSlug === "pages" ? await loadAllowedPageTemplates(organizationId) : undefined;
 
   const pluginMatch: PluginMatch = post.postTypeSlug
     ? findPostTypeBySlug(post.postTypeSlug)
     : null;
-  const permalinkConfig = pluginMatch?.postType.rewrite?.permalink;
-  const pathContext: PermalinkTemplateContext = {
+  return await renderFrontendResolvedPost({
     post,
     postType,
-    meta: postMetaMap,
-  };
-  const customCanonicalPath =
-    permalinkConfig?.canonical &&
-    buildPathFromTemplate(permalinkConfig.canonical, pathContext);
-  const customAliasPaths =
-    permalinkConfig?.aliases
-      ?.map((template) => buildPathFromTemplate(template, pathContext))
-      .filter(
-        (value): value is string =>
-          typeof value === "string" && value.length > 0,
-      ) ?? [];
-  const requestedPath = segments.join("/");
-
-  const shouldSkipCanonicalRedirect =
-    post.postTypeSlug === "certificates" &&
-    segments[0]?.toLowerCase() === "course" &&
-    segments.map((s) => s.toLowerCase()).includes("certificate");
-
-  if (!shouldSkipCanonicalRedirect && customCanonicalPath) {
-    const normalizedCanonical = normalizePath(customCanonicalPath);
-    const normalizedRequested = normalizePath(requestedPath);
-    const normalizedAliases = customAliasPaths.map((alias) =>
-      normalizePath(alias),
-    );
-    const matchesCanonical = normalizedRequested === normalizedCanonical;
-    const matchesAlias = normalizedAliases.includes(normalizedRequested);
-    if (!matchesCanonical && !matchesAlias) {
-      redirect(`/${normalizedCanonical}`);
-    }
-  } else if (!shouldSkipCanonicalRedirect) {
-    const postTypeSingleSlug = trimSlashes(postType?.rewrite?.singleSlug ?? "");
-    const pluginSingleSlug = trimSlashes(
-      pluginMatch?.postType.rewrite?.singleSlug ?? "",
-    );
-    const canonicalSegments =
-      postTypeSingleSlug.length > 0
-        ? getCanonicalPostSegments(post, postType)
-        : pluginSingleSlug.length > 0
-          ? [pluginSingleSlug, trimSlashes(post.slug ?? post._id)]
-          : getCanonicalPostSegments(post, postType);
-    if (canonicalSegments.length > 0) {
-      const canonicalPath = canonicalSegments.join("/");
-      if (canonicalPath !== requestedPath) {
-        redirect(`/${canonicalPath}`);
-      }
-    }
-  }
-  const providerCtx = {
-    routeKind: "frontend" as const,
-    pluginId: pluginMatch?.plugin.id,
+    postFields,
+    postMeta: postMeta as unknown as Doc<"postsMeta">[],
+    postMetaObject,
+    postMetaMap,
+    puckData,
+    pluginMatch,
     organizationId: organizationId ?? null,
-    postTypeSlug: post.postTypeSlug ?? null,
-    post,
-    postMeta: postMetaObject,
-  };
-
-  const wrapWithFrontendProviderSpecsIfNeeded = (
-    node: ReactNode,
-    providerIds?: string[],
-  ) => {
-    if (!providerIds || providerIds.length === 0) {
-      return node;
-    }
-    return (
-      <PortalConvexProvider>
-        {wrapWithFrontendProviders(node, providerIds, providerCtx)}
-      </PortalConvexProvider>
-    );
-  };
-
-  const configuredPostTypeTemplateSlug =
-    postType && typeof (postType as { pageTemplateSlug?: unknown }).pageTemplateSlug === "string"
-      ? ((postType as { pageTemplateSlug: string }).pageTemplateSlug ?? undefined)
-      : undefined;
-
-  // Back-compat: legacy pages may still have `page_template` stored as post meta.
-  // Once a post type template is set, we ignore per-post meta (no per-post override).
-  const legacyPageTemplateSlug =
-    post.postTypeSlug === "pages"
-      ? ((postMetaMap.get("page_template") as string | undefined) ?? undefined)
-      : undefined;
-
-  let effectivePageTemplateSlug =
-    configuredPostTypeTemplateSlug ??
-    legacyPageTemplateSlug ??
-    DEFAULT_PAGE_TEMPLATE_SLUG;
-
-  if (post.postTypeSlug === "pages") {
-    const allowedSet =
-      allowedPageTemplates && allowedPageTemplates.length > 0
-        ? new Set<string>([...allowedPageTemplates, DEFAULT_PAGE_TEMPLATE_SLUG])
-        : null;
-
-    if (allowedSet && !allowedSet.has(effectivePageTemplateSlug)) {
-      effectivePageTemplateSlug = DEFAULT_PAGE_TEMPLATE_SLUG;
-    }
-  }
-
-  const resolvedPageTemplate = getPageTemplate(
-    effectivePageTemplateSlug,
-    organizationId,
-  );
-
-  if (
-    resolvedPageTemplate &&
-    resolvedPageTemplate.slug !== DEFAULT_PAGE_TEMPLATE_SLUG &&
-    resolvedPageTemplate.render
-  ) {
-    const rendered = resolvedPageTemplate.render({
-      post,
-      postType,
-      meta: postMetaObject,
-      organizationId,
-    });
-
-    // Some templates (like Canvas) are layout-only and return null to delegate to
-    // the standard renderer with layout overrides applied below.
-    if (rendered !== null) {
-      const providerIds = getFrontendProvidersForPostType(post.postTypeSlug);
-      return wrapWithFrontendProviderSpecsIfNeeded(rendered, providerIds);
-    }
-  }
-
-  const pluginSingle = pluginMatch?.postType.frontend?.single;
-  if (pluginMatch && pluginSingle?.render) {
-    const rendered = pluginSingle.render({
-      post,
-      postType: pluginMatch.postType,
-    });
-    return wrapWithFrontendProviderSpecsIfNeeded(
-      rendered,
-      pluginMatch.postType.frontend?.providers,
-    );
-  }
-
-  const frontendSlotRegistrations: PluginFrontendSingleSlotRegistration[] =
-    post.postTypeSlug
-      ? getFrontendSingleSlotsForSlugTyped(post.postTypeSlug)
-      : [];
-  const disabledSlotIds = resolveDisabledFrontendSlotIds(postType);
-  const filteredSlotRegistrations = disabledSlotIds.length
-    ? frontendSlotRegistrations.filter(
-        (registration) => !disabledSlotIds.includes(registration.slot.id),
-      )
-    : frontendSlotRegistrations;
-  const pluginSlotNodes = buildFrontendSlotNodes({
-    registrations: filteredSlotRegistrations,
-    post,
-    postType,
-    organizationId,
-    postMeta: postMetaObject,
+    allowedPageTemplates,
+    segments,
+    enforceCanonicalRedirect: true,
   });
-  const frontendFilterRegistrations: FrontendFilterRegistration[] =
-    post.postTypeSlug && pluginMatch
-      ? getPluginFrontendFiltersForSlugTyped(post.postTypeSlug)
-      : [];
-  const contentFilterIds = frontendFilterRegistrations.reduce<string[]>(
-    (acc, registration) => {
-      if (
-        registration.filter.location === "content" &&
-        typeof registration.filter.id === "string"
-      ) {
-        acc.push(registration.filter.id);
-      }
-      return acc;
-    },
-    [],
-  );
-
-  const permalinkSettings = await loadPermalinkSettings(organizationId);
-  const categoryBase =
-    normalizeBaseSegment(permalinkSettings.categoryBase) ?? "categories";
-  const tagBase = normalizeBaseSegment(permalinkSettings.tagBase) ?? "tags";
-
-  const providerIds = getFrontendProvidersForPostType(post.postTypeSlug);
-  return wrapWithFrontendProviderSpecsIfNeeded(
-    <PostDetail
-      post={post}
-      postType={postType}
-      fields={postFields}
-      postMeta={postMeta as unknown as Doc<"postsMeta">[]}
-      puckData={puckData}
-      pluginSlots={pluginSlotNodes}
-      contentFilterIds={contentFilterIds}
-      postMetaObject={postMetaObject}
-      categoryBase={categoryBase}
-      tagBase={tagBase}
-      layout={resolvedPageTemplate?.layout}
-    />,
-    providerIds,
-  );
 }
 
 function normalizeSegments(segments: string[]) {

@@ -12,7 +12,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { SupportChatWidget } from "launchthat-plugin-support";
 import { useLocalStorage } from "usehooks-ts";
 
-import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
+import { ThemeProvider } from "@acme/ui/theme";
 import { Toaster } from "@acme/ui/toast";
 
 import { ContentProtectionProvider } from "~/components/access/ContentProtectionProvider";
@@ -106,6 +106,7 @@ function SupportChatWidgetBridge({
       organizationId={organizationId}
       tenantName={tenantName}
       defaultContact={defaultContact}
+      bubbleVariant="flush-right-square"
     />
   );
 }

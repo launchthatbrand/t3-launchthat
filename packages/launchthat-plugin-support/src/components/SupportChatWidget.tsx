@@ -9,6 +9,8 @@ import { useMutation, useQuery } from "convex/react";
 import { Loader2, MessageCircle } from "lucide-react";
 
 import { cn } from "@acme/ui";
+import { Drawer, DrawerContent, DrawerTrigger } from "@acme/ui/drawer";
+import { useMediaQuery } from "@acme/ui/hooks/use-media-query";
 
 import type {
   AssistantExperienceId,
@@ -57,6 +59,7 @@ export interface SupportChatWidgetProps {
   tenantName?: string;
   apiPath?: string;
   defaultContact?: StoredContact | null;
+  bubbleVariant?: "offset" | "flush-right-square";
 }
 
 type LiveMessage = {
@@ -94,6 +97,7 @@ export function SupportChatWidget({
   tenantName = "your organization",
   apiPath = "/api/support-chat",
   defaultContact = null,
+  bubbleVariant = "offset",
 }: SupportChatWidgetProps) {
   if (!organizationId) {
     return null;
@@ -105,6 +109,7 @@ export function SupportChatWidget({
       tenantName={tenantName}
       apiPath={apiPath}
       defaultContact={defaultContact}
+      bubbleVariant={bubbleVariant}
     />
   );
 }
@@ -114,6 +119,7 @@ interface SupportChatWidgetInnerProps {
   tenantName: string;
   apiPath: string;
   defaultContact: StoredContact | null;
+  bubbleVariant: "offset" | "flush-right-square";
 }
 
 function SupportChatWidgetInner({
@@ -121,6 +127,7 @@ function SupportChatWidgetInner({
   tenantName,
   apiPath,
   defaultContact,
+  bubbleVariant,
 }: SupportChatWidgetInnerProps) {
   const { sessionId } = useSupportChatSession(organizationId);
   const { contact, saveContact } = useSupportContactStorage(organizationId);
@@ -139,12 +146,21 @@ function SupportChatWidgetInner({
     return (
       <button
         type="button"
-        className="bg-muted text-muted-foreground fixed right-4 bottom-4 z-50 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-medium shadow-lg"
+        className={cn(
+          "bg-muted text-muted-foreground fixed bottom-4 z-50 flex items-center gap-2 text-sm font-medium shadow-lg",
+          bubbleVariant === "flush-right-square"
+            ? "right-0 h-12 w-12 justify-center rounded-l-xl p-0"
+            : "right-4 rounded-full px-4 py-3",
+        )}
         disabled
         aria-busy="true"
       >
         <Loader2 className="h-4 w-4 animate-spin" />
-        Loading support…
+        {bubbleVariant === "flush-right-square" ? (
+          <span className="sr-only">Loading support…</span>
+        ) : (
+          "Loading support…"
+        )}
       </button>
     );
   }
@@ -161,6 +177,7 @@ function SupportChatWidgetInner({
       onContactSaved={saveContact}
       helpdeskArticles={helpdeskArticles}
       defaultContact={defaultContact}
+      bubbleVariant={bubbleVariant}
     />
   );
 }
@@ -176,6 +193,7 @@ interface ChatSurfaceProps {
   onContactSaved: (contact: StoredContact) => void;
   helpdeskArticles: HelpdeskArticle[];
   defaultContact: StoredContact | null;
+  bubbleVariant: "offset" | "flush-right-square";
 }
 
 function ChatSurface({
@@ -189,7 +207,9 @@ function ChatSurface({
   onContactSaved,
   helpdeskArticles,
   defaultContact,
+  bubbleVariant,
 }: ChatSurfaceProps) {
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const normalizedContactId = useMemo(
     () =>
       contact?.contactId && isConvexId(contact.contactId)
@@ -677,66 +697,155 @@ function ChatSurface({
           onChange={handlePresenceChange}
         />
       )}
-      {isOpen && (
-        <div className="border-border/60 bg-card fixed right-4 bottom-20 z-50 w-full max-w-sm rounded-2xl border shadow-2xl">
-          <ChatWidgetHeader
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-            onClose={() => setIsOpen(false)}
-            shouldCollectContact={shouldCollectContact}
-            settings={settings}
-            resolvedAgentName={resolvedAgentName}
-            tenantName={tenantName}
-            onlineAgentCount={onlineAgentCount}
-            experienceLabel={
-              activeExperienceId === DEFAULT_ASSISTANT_EXPERIENCE_ID
-                ? undefined
-                : activeExperience.label
-            }
-          />
-          <ChatWidgetContent
-            activeTab={activeTab}
-            settings={settings}
-            shouldCollectContact={shouldCollectContact}
-            contactForm={contactForm}
-            contactError={contactError}
-            isSubmittingContact={isSubmittingContact}
-            onContactFieldChange={handleContactFieldChange}
-            onSubmitContact={submitContact}
-            messageListRef={messageListRef}
-            displayedMessages={displayedMessages as ChatHistoryMessage[]}
-            agentMetadataByMessageId={agentMetadataByMessageId}
-            assistantIsResponding={assistantIsResponding}
-            error={error}
-            reload={reload}
-            agentIsTyping={agentIsTyping && activeTab === "conversations"}
-            resolvedAgentName={resolvedAgentName}
-            tenantName={tenantName}
-            helpdeskArticles={helpdeskArticles}
-          />
-          <ChatWidgetFooter
-            activeTab={activeTab}
-            shouldCollectContact={shouldCollectContact}
-            composerDisabled={composerDisabled}
-            input={input}
-            onInputChange={handleComposerInputChange}
-            onSubmit={handleChatSubmit}
-            isSubmitDisabled={isSubmitDisabled}
-            showSubmitSpinner={showSubmitSpinner}
-          />
-        </div>
-      )}
+      {isMobile ? (
+        <Drawer open={isOpen} onOpenChange={setIsOpen}>
+          <DrawerTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "bg-primary text-primary-foreground shadow-primary/40 focus-visible:ring-primary/80 fixed bottom-4 z-50 flex items-center gap-2 text-sm font-medium shadow-lg transition hover:scale-105 focus-visible:ring-2 focus-visible:outline-none",
+                bubbleVariant === "flush-right-square"
+                  ? "right-0 h-12 w-12 justify-center rounded-l-xl p-0"
+                  : "right-4 rounded-full px-4 py-3",
+              )}
+              aria-label="Open support chat"
+            >
+              <MessageCircle className="h-4 w-4" />
+              {bubbleVariant === "flush-right-square" ? (
+                <span className="sr-only">Support</span>
+              ) : (
+                "Support"
+              )}
+            </button>
+          </DrawerTrigger>
+          <DrawerContent className="p-0">
+            <div className="border-border/60 bg-card mx-auto w-full max-w-sm rounded-t-2xl border shadow-2xl">
+              <ChatWidgetHeader
+                activeTab={activeTab}
+                onTabChange={handleTabChange}
+                onClose={() => setIsOpen(false)}
+                shouldCollectContact={shouldCollectContact}
+                settings={settings}
+                resolvedAgentName={resolvedAgentName}
+                tenantName={tenantName}
+                onlineAgentCount={onlineAgentCount}
+                experienceLabel={
+                  activeExperienceId === DEFAULT_ASSISTANT_EXPERIENCE_ID
+                    ? undefined
+                    : activeExperience.label
+                }
+              />
+              <ChatWidgetContent
+                activeTab={activeTab}
+                settings={settings}
+                shouldCollectContact={shouldCollectContact}
+                contactForm={contactForm}
+                contactError={contactError}
+                isSubmittingContact={isSubmittingContact}
+                onContactFieldChange={handleContactFieldChange}
+                onSubmitContact={submitContact}
+                messageListRef={messageListRef}
+                displayedMessages={displayedMessages as ChatHistoryMessage[]}
+                agentMetadataByMessageId={agentMetadataByMessageId}
+                assistantIsResponding={assistantIsResponding}
+                error={error}
+                reload={reload}
+                agentIsTyping={agentIsTyping && activeTab === "conversations"}
+                resolvedAgentName={resolvedAgentName}
+                tenantName={tenantName}
+                helpdeskArticles={helpdeskArticles}
+              />
+              <ChatWidgetFooter
+                activeTab={activeTab}
+                shouldCollectContact={shouldCollectContact}
+                composerDisabled={composerDisabled}
+                input={input}
+                onInputChange={handleComposerInputChange}
+                onSubmit={handleChatSubmit}
+                isSubmitDisabled={isSubmitDisabled}
+                showSubmitSpinner={showSubmitSpinner}
+              />
+            </div>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <>
+          {isOpen && (
+            <div
+              className={cn(
+                "border-border/60 bg-card fixed bottom-20 z-50 w-full max-w-sm rounded-2xl border shadow-2xl",
+                bubbleVariant === "flush-right-square" ? "right-0" : "right-4",
+              )}
+            >
+              <ChatWidgetHeader
+                activeTab={activeTab}
+                onTabChange={handleTabChange}
+                onClose={() => setIsOpen(false)}
+                shouldCollectContact={shouldCollectContact}
+                settings={settings}
+                resolvedAgentName={resolvedAgentName}
+                tenantName={tenantName}
+                onlineAgentCount={onlineAgentCount}
+                experienceLabel={
+                  activeExperienceId === DEFAULT_ASSISTANT_EXPERIENCE_ID
+                    ? undefined
+                    : activeExperience.label
+                }
+              />
+              <ChatWidgetContent
+                activeTab={activeTab}
+                settings={settings}
+                shouldCollectContact={shouldCollectContact}
+                contactForm={contactForm}
+                contactError={contactError}
+                isSubmittingContact={isSubmittingContact}
+                onContactFieldChange={handleContactFieldChange}
+                onSubmitContact={submitContact}
+                messageListRef={messageListRef}
+                displayedMessages={displayedMessages as ChatHistoryMessage[]}
+                agentMetadataByMessageId={agentMetadataByMessageId}
+                assistantIsResponding={assistantIsResponding}
+                error={error}
+                reload={reload}
+                agentIsTyping={agentIsTyping && activeTab === "conversations"}
+                resolvedAgentName={resolvedAgentName}
+                tenantName={tenantName}
+                helpdeskArticles={helpdeskArticles}
+              />
+              <ChatWidgetFooter
+                activeTab={activeTab}
+                shouldCollectContact={shouldCollectContact}
+                composerDisabled={composerDisabled}
+                input={input}
+                onInputChange={handleComposerInputChange}
+                onSubmit={handleChatSubmit}
+                isSubmitDisabled={isSubmitDisabled}
+                showSubmitSpinner={showSubmitSpinner}
+              />
+            </div>
+          )}
 
-      <button
-        type="button"
-        className="bg-primary text-primary-foreground shadow-primary/40 focus-visible:ring-primary/80 fixed right-4 bottom-4 z-50 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-medium shadow-lg transition hover:scale-105 focus-visible:ring-2 focus-visible:outline-none"
-        onClick={() => setIsOpen((prev) => !prev)}
-        aria-expanded={isOpen}
-        aria-label="Open support chat"
-      >
-        <MessageCircle className="h-4 w-4" />
-        Support
-      </button>
+          <button
+            type="button"
+            className={cn(
+              "bg-primary text-primary-foreground shadow-primary/40 focus-visible:ring-primary/80 fixed bottom-4 z-50 flex items-center gap-2 text-sm font-medium shadow-lg transition hover:scale-105 focus-visible:ring-2 focus-visible:outline-none",
+              bubbleVariant === "flush-right-square"
+                ? "right-0 h-12 w-12 justify-center rounded-l-xl p-0"
+                : "right-4 rounded-full px-4 py-3",
+            )}
+            onClick={() => setIsOpen((prev) => !prev)}
+            aria-expanded={isOpen}
+            aria-label="Open support chat"
+          >
+            <MessageCircle className="h-4 w-4" />
+            {bubbleVariant === "flush-right-square" ? (
+              <span className="sr-only">Support</span>
+            ) : (
+              "Support"
+            )}
+          </button>
+        </>
+      )}
     </>
   );
 }

@@ -1,7 +1,10 @@
 "use client";
 
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import { api } from "@/convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
 import { Save } from "lucide-react";
 import { useForm } from "react-hook-form";
 
@@ -35,6 +38,7 @@ import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 
 import { useTenant } from "~/context/TenantContext";
+import { SITE_OPTION_KEYS } from "~/lib/site/options";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { OrganizationDomainsCard } from "../organizations/_components/OrganizationDomainsCard";
 
@@ -67,6 +71,7 @@ export default function SiteSettingsPage() {
     const raw = searchParams.get("tab") ?? "general";
     const allowed = [
       "general",
+      "homepage",
       "branding",
       "localization",
       "domains",
@@ -78,6 +83,25 @@ export default function SiteSettingsPage() {
   return (
     <div className="space-y-6">
       {activeTab === "general" ? <GeneralSettings /> : null}
+      {activeTab === "homepage" ? (
+        organizationId ? (
+          <HomepageSettings organizationId={organizationId} />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Homepage</CardTitle>
+              <CardDescription>
+                Homepage is scoped to the current organization.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-sm">
+                No organization is currently selected.
+              </p>
+            </CardContent>
+          </Card>
+        )
+      ) : null}
       {activeTab === "branding" ? <BrandingSettings /> : null}
       {activeTab === "localization" ? <LocalizationSettings /> : null}
       {activeTab === "advanced" ? <AdvancedSettings /> : null}
@@ -101,6 +125,119 @@ export default function SiteSettingsPage() {
         )
       ) : null}
     </div>
+  );
+}
+
+function HomepageSettings({
+  organizationId,
+}: {
+  organizationId: Id<"organizations">;
+}) {
+  const frontPageOption = useQuery(api.core.options.get, {
+    orgId: organizationId,
+    type: "site",
+    metaKey: SITE_OPTION_KEYS.frontPage,
+  }) as { metaValue?: unknown } | undefined;
+
+  const pages = useQuery(api.core.posts.queries.getAllPosts, {
+    organizationId,
+    filters: {
+      postTypeSlug: "pages",
+      status: "published",
+      limit: 200,
+    },
+  }) as Doc<"posts">[] | undefined;
+
+  const setOption = useMutation(api.core.options.set);
+
+  const currentPostId = useMemo(() => {
+    const metaValue = frontPageOption?.metaValue;
+    if (metaValue && typeof metaValue === "object") {
+      const postId = (metaValue as { postId?: unknown }).postId;
+      if (typeof postId === "string" && postId.length > 0) {
+        return postId;
+      }
+    }
+    return "placeholder";
+  }, [frontPageOption?.metaValue]);
+
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async (postId: string) => {
+    setSaving(true);
+    try {
+      await setOption({
+        orgId: organizationId,
+        type: "site",
+        metaKey: SITE_OPTION_KEYS.frontPage,
+        metaValue: postId === "placeholder" ? null : { postId },
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const selectedPageTitle = useMemo(() => {
+    if (!pages?.length) return undefined;
+    const match = pages.find((page) => page._id === (currentPostId as any));
+    return match?.title ?? undefined;
+  }, [pages, currentPostId]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Homepage</CardTitle>
+        <CardDescription>
+          Choose which published Page renders at{" "}
+          <code className="font-mono">/</code>. If unset, visitors see a
+          placeholder with organization branding.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-2">
+          <FormLabel>Front page</FormLabel>
+          <Select
+            value={currentPostId}
+            onValueChange={(value) => {
+              void handleSave(value);
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue
+                placeholder={
+                  selectedPageTitle
+                    ? `Front page: ${selectedPageTitle}`
+                    : "Select a page"
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="placeholder">Use placeholder</SelectItem>
+              {(pages ?? []).map((page) => (
+                <SelectItem key={page._id} value={page._id}>
+                  {page.title || page.slug}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-muted-foreground text-sm">
+            This updates immediately; no separate Save button is required.
+          </p>
+          {saving ? (
+            <p className="text-muted-foreground text-sm">Saving…</p>
+          ) : null}
+        </div>
+      </CardContent>
+      <CardFooter className="justify-end">
+        <Button
+          variant="outline"
+          onClick={() => void handleSave("placeholder")}
+          disabled={saving}
+        >
+          Use placeholder
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }
 
