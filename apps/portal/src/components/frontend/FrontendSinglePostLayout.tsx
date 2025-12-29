@@ -16,7 +16,10 @@ export const FrontendSinglePostLayout = React.forwardRef<
   FrontendSinglePostLayoutProps
 >(({ children, className }, ref) => {
   return (
-    <div ref={ref} className={`container flex gap-10 ${className ?? ""}`}>
+    <div
+      ref={ref}
+      className={`container flex flex-1 gap-10 ${className ?? ""}`}
+    >
       {children}
     </div>
   );
@@ -64,7 +67,7 @@ export const FrontendSinglePostHeader = React.forwardRef<
           <div className="grid gap-8 md:grid-cols-12">
             <div className="md:col-span-7 lg:col-span-6">
               {breadcrumbs && breadcrumbs.length > 0 && (
-                <div className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="text-muted-foreground mb-3 flex items-center gap-2 text-sm">
                   {breadcrumbs.map((b, i) => (
                     <React.Fragment key={`${b}-${i}`}>
                       {i > 0 && <span className="opacity-60">→</span>}
@@ -74,12 +77,12 @@ export const FrontendSinglePostHeader = React.forwardRef<
                 </div>
               )}
               {dateString && (
-                <div className="mb-4 text-sm text-muted-foreground">
+                <div className="text-muted-foreground mb-4 text-sm">
                   {dateString}
                 </div>
               )}
               {title ? (
-                <h1 className="mb-4 text-4xl font-extrabold leading-tight tracking-tight md:text-5xl">
+                <h1 className="mb-4 text-4xl leading-tight font-extrabold tracking-tight md:text-5xl">
                   {title}
                 </h1>
               ) : null}
@@ -93,7 +96,7 @@ export const FrontendSinglePostHeader = React.forwardRef<
                       className="h-10 w-10 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="h-10 w-10 rounded-full bg-muted" />
+                    <div className="bg-muted h-10 w-10 rounded-full" />
                   )}
                   <div className="text-sm">
                     <div className="font-medium">{author.name}</div>
@@ -106,14 +109,14 @@ export const FrontendSinglePostHeader = React.forwardRef<
                 </div>
               )}
               {subtitle ? (
-                <div className="mt-4 text-base text-muted-foreground">
+                <div className="text-muted-foreground mt-4 text-base">
                   {subtitle}
                 </div>
               ) : null}
             </div>
             <div className="md:col-span-5 lg:col-span-6">
               {rightImageUrl ? (
-                <div className="overflow-hidden rounded-2xl border bg-muted">
+                <div className="bg-muted overflow-hidden rounded-2xl border">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={rightImageUrl}

@@ -1,8 +1,9 @@
 "use node";
 
-import { action } from "../../_generated/server";
-import { internal } from "../../_generated/api";
 import { v } from "convex/values";
+
+import { internal } from "../../_generated/api";
+import { action } from "../../_generated/server";
 
 export const create = action({
   args: {
@@ -122,10 +123,26 @@ export const upsertForOwner = action({
         },
       );
 
+      if (
+        args.nodeType === "vimeo" &&
+        (args.status ?? "connected") === "connected"
+      ) {
+        try {
+          await ctx.runAction(
+            internal.vimeo.actions.ensureWebhookSubscription,
+            {
+              connectionId: existing._id,
+            },
+          );
+        } catch (error) {
+          console.error("Failed to ensure Vimeo webhook subscription:", error);
+        }
+      }
+
       return existing._id;
     }
 
-    return await ctx.runAction(
+    const connectionId = await ctx.runAction(
       internal.integrations.connections.cryptoActions
         .createWithEncryptedSecrets,
       {
@@ -138,5 +155,65 @@ export const upsertForOwner = action({
         createdAt: now,
       },
     );
+
+    if (
+      args.nodeType === "vimeo" &&
+      (args.status ?? "connected") === "connected"
+    ) {
+      try {
+        await ctx.runAction(internal.vimeo.actions.ensureWebhookSubscription, {
+          connectionId,
+        });
+      } catch (error) {
+        console.error("Failed to ensure Vimeo webhook subscription:", error);
+      }
+    }
+
+    return connectionId;
+  },
+});
+
+export const remove = action({
+  args: { id: v.id("connections") },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const connection = await ctx.runQuery(
+      internal.integrations.connections.queries.get,
+      { id: args.id },
+    );
+
+    if (!connection) {
+      throw new Error("Connection not found");
+    }
+
+    if (connection.nodeType === "vimeo") {
+      try {
+        await ctx.runAction(internal.vimeo.actions.removeWebhookSubscription, {
+          connectionId: args.id,
+        });
+      } catch (error) {
+        console.error("Failed to remove Vimeo webhook subscription:", error);
+      }
+
+      // IMPORTANT: wipe per-connection Vimeo library rows so reconnecting doesn’t duplicate videos.
+      try {
+        await ctx.runMutation(
+          internal.vimeo.internalMutations.deleteVimeoDataForConnection,
+          {
+            connectionId: args.id,
+          },
+        );
+      } catch (error) {
+        console.error("Failed to delete Vimeo connection data:", error);
+      }
+    }
+
+    await ctx.runMutation(
+      internal.integrations.connections.internalConnections
+        .deleteConnectionById,
+      { id: args.id },
+    );
+
+    return true;
   },
 });

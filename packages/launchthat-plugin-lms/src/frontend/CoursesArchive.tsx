@@ -55,7 +55,7 @@ export function CoursesArchive({
 
   if (!courses) {
     return (
-      <div className="py-12 text-center text-muted-foreground">
+      <div className="text-muted-foreground py-12 text-center">
         {loadingLabel}
       </div>
     );
@@ -63,22 +63,22 @@ export function CoursesArchive({
 
   if (courses.length === 0) {
     return (
-      <div className="py-12 text-center text-muted-foreground">
+      <div className="text-muted-foreground py-12 text-center">
         {emptyLabel}
       </div>
     );
   }
 
   return (
-    <div className="bg-muted/30 py-10">
+    <div className="bg-muted/30 flex flex-1 py-10">
       <div className="container space-y-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-wider text-muted-foreground">
+            <p className="text-muted-foreground text-sm tracking-wider uppercase">
               Learn with confidence
             </p>
             <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Curated courses for every stage of your learning journey.
             </p>
           </div>
@@ -110,7 +110,7 @@ export function CoursesArchive({
             return (
               <Card
                 key={cardKey}
-                className="group flex h-full flex-col border-border/80 bg-background shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                className="group border-border/80 bg-background flex h-full flex-col shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
               >
                 <Link href={derivedHref} className="flex h-full flex-col">
                   <CardHeader className="space-y-1 pb-3">
@@ -118,15 +118,15 @@ export function CoursesArchive({
                       <Badge variant="secondary" className="text-xs uppercase">
                         Course
                       </Badge>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-muted-foreground text-xs">
                         Updated recently
                       </span>
                     </div>
-                    <CardTitle className="text-xl font-semibold leading-tight">
+                    <CardTitle className="text-xl leading-tight font-semibold">
                       {course.title}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="flex-1 space-y-4 text-sm text-muted-foreground">
+                  <CardContent className="text-muted-foreground flex-1 space-y-4 text-sm">
                     <p className="line-clamp-3">
                       {course.description ?? "No description available."}
                     </p>
@@ -142,7 +142,7 @@ export function CoursesArchive({
                       ))}
                     </div>
                   </CardContent>
-                  <CardFooter className="border-t border-border/60">
+                  <CardFooter className="border-border/60 border-t">
                     <div className="flex w-full items-center justify-between pt-3 text-sm font-medium">
                       <span>View details</span>
                       <span className="text-primary">Get started →</span>

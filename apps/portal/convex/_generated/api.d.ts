@@ -215,6 +215,8 @@ import type * as tasks_boards_queries from "../tasks/boards/queries.js";
 import type * as tasks_mutations from "../tasks/mutations.js";
 import type * as tasks_queries from "../tasks/queries.js";
 import type * as vimeo_actions from "../vimeo/actions.js";
+import type * as vimeo_crons from "../vimeo/crons.js";
+import type * as vimeo_internalMutations from "../vimeo/internalMutations.js";
 import type * as vimeo_mutations from "../vimeo/mutations.js";
 import type * as vimeo_queries from "../vimeo/queries.js";
 import type * as vimeo_syncState from "../vimeo/syncState.js";
@@ -443,6 +445,8 @@ declare const fullApi: ApiFromModules<{
   "tasks/mutations": typeof tasks_mutations;
   "tasks/queries": typeof tasks_queries;
   "vimeo/actions": typeof vimeo_actions;
+  "vimeo/crons": typeof vimeo_crons;
+  "vimeo/internalMutations": typeof vimeo_internalMutations;
   "vimeo/mutations": typeof vimeo_mutations;
   "vimeo/queries": typeof vimeo_queries;
   "vimeo/syncState": typeof vimeo_syncState;

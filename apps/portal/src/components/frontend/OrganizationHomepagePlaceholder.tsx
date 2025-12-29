@@ -6,7 +6,7 @@ export function OrganizationHomepagePlaceholder({
   tenant: TenantSummary;
 }) {
   return (
-    <main className="container mx-auto max-w-5xl space-y-6 py-16">
+    <div className="container mx-auto max-w-5xl space-y-6 py-16">
       <div className="space-y-3 text-center">
         {tenant.logo ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -25,8 +25,8 @@ export function OrganizationHomepagePlaceholder({
       <div className="bg-card rounded-lg border p-8">
         <h2 className="text-xl font-semibold">Coming soon</h2>
         <p className="text-muted-foreground mt-2">
-          Check back later, or ask an administrator to configure the site’s front
-          page.
+          Check back later, or ask an administrator to configure the site’s
+          front page.
         </p>
         <div className="mt-4">
           <a
@@ -37,8 +37,6 @@ export function OrganizationHomepagePlaceholder({
           </a>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
-
-

@@ -312,6 +312,111 @@ http.route({
   handler: startVimeoOAuth,
 });
 
+// Vimeo webhooks: best-effort receiver (Vimeo does not send CORS requests)
+http.route({
+  path: "/api/vimeo/webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const url = new URL(request.url);
+    const connectionId = url.searchParams.get("connectionId");
+    const secret = url.searchParams.get("secret");
+
+    if (!connectionId || !secret) {
+      return new Response(JSON.stringify({ error: "Missing connectionId/secret" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const state = await ctx.runQuery(
+      internalAny.vimeo.syncState.getSyncStateByConnection,
+      { connectionId: connectionId as Id<"connections"> },
+    );
+
+    if (!state?.webhookSecret || state.webhookSecret !== secret) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    let payload: unknown = null;
+    try {
+      payload = await request.json();
+    } catch {
+      payload = null;
+    }
+
+    const headerEvent =
+      request.headers.get("x-vimeo-event") ??
+      request.headers.get("x-vimeo-webhook-event") ??
+      request.headers.get("x-event-type");
+    const bodyEvent =
+      payload && typeof payload === "object"
+        ? ((payload as any).event ??
+            (payload as any).type ??
+            (payload as any).event_type ??
+            (payload as any).name)
+        : undefined;
+    const eventType = String(headerEvent ?? bodyEvent ?? "unknown");
+
+    const pickNumericSegment = (value: string | undefined) => {
+      if (!value) return null;
+      const segments = value.split(/[/?#]/).filter(Boolean);
+      for (let i = segments.length - 1; i >= 0; i -= 1) {
+        if (/^\d+$/.test(segments[i] ?? "")) return segments[i] ?? null;
+      }
+      return null;
+    };
+
+    const extractVideoId = (obj: any): string | null => {
+      if (!obj || typeof obj !== "object") return null;
+      const candidates: Array<string | undefined> = [
+        obj.uri,
+        obj.videoUri,
+        obj.resourceUri,
+        obj.link,
+        obj.video?.uri,
+        obj.video?.link,
+        obj.resource?.uri,
+        obj.data?.uri,
+        obj.data?.video?.uri,
+        obj.entity?.uri,
+      ];
+      for (const candidate of candidates) {
+        const numeric = pickNumericSegment(candidate);
+        if (numeric) return numeric;
+      }
+      return null;
+    };
+
+    const videoId = extractVideoId(payload as any);
+
+    // Update last seen info even if we couldn't parse the videoId.
+    await ctx.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+      connectionId: connectionId as Id<"connections">,
+      webhookLastEventAt: Date.now(),
+      webhookStatus: "active",
+      webhookLastError: null,
+    });
+
+    if (videoId) {
+      await ctx.scheduler.runAfter(0, internalAny.vimeo.actions.handleWebhookEvent, {
+        connectionId: connectionId as Id<"connections">,
+        eventType,
+        videoId,
+        receivedAt: Date.now(),
+      });
+    }
+
+    // Vimeo expects a quick 2xx.
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
 // Webhook endpoint removed - was dependent on apps system which has been removed
 // New webhook system will be implemented based on node types and connections
 

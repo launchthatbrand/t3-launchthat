@@ -33,7 +33,7 @@ export default function StandardLayout(props: {
     >
       {shouldShowSidebar ? props.sidebar : null}
       {/* <AppSidebar sidebar={props.sidebar} /> */}
-      <SidebarInset>
+      <SidebarInset className="min-h-screen">
         {props.header !== undefined ? (
           props.header
         ) : (

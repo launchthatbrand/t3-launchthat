@@ -46,6 +46,7 @@ export const listVideos = queryAny({
     }
 
     const search = args.search?.trim() ?? "";
+    const isActive = (row: any) => (row.status ?? "active") === "active";
 
     const normalizeRow = (row: any) => ({
       _id: row._id,
@@ -65,7 +66,7 @@ export const listVideos = queryAny({
         )
         .paginate(args.paginationOpts);
       return {
-        page: result.page.map(normalizeRow),
+        page: result.page.filter(isActive).map(normalizeRow),
         isDone: result.isDone,
         continueCursor: result.continueCursor,
       };
@@ -73,13 +74,11 @@ export const listVideos = queryAny({
 
     const result = await ctx.db
       .query("vimeoVideos")
-      .withIndex("by_connection", (q: any) =>
-        q.eq("connectionId", connection._id),
-      )
+      .withIndex("by_connection", (q: any) => q.eq("connectionId", connection._id))
       .order("desc")
       .paginate(args.paginationOpts);
     return {
-      page: result.page.map(normalizeRow),
+      page: result.page.filter(isActive).map(normalizeRow),
       isDone: result.isDone,
       continueCursor: result.continueCursor,
     };

@@ -106,9 +106,7 @@ export default function ConnectionDetailPage() {
   const testConnection = useMutation(
     api.integrations.connections.mutations.test,
   );
-  const removeConnection = useMutation(
-    api.integrations.connections.mutations.remove,
-  );
+  const removeConnection = useAction(api.integrations.connections.actions.remove);
 
   // Form setup
   const form = useForm<FormValues>({

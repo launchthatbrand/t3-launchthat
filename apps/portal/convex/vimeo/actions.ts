@@ -5,6 +5,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use node";
 
+import { randomBytes } from "node:crypto";
 import { v } from "convex/values";
 
 import type { Id } from "../_generated/dataModel";
@@ -85,6 +86,211 @@ const resolveVimeoAccessToken = async (
 
   return { accessToken };
 };
+
+const resolveVimeoAccessTokenByConnectionId = async (
+  ctx: ActionCtx,
+  connectionId: Id<"connections">,
+) => {
+  const connection = await ctx.runQuery(
+    internalAny.integrations.connections.queries.get,
+    { id: connectionId },
+  );
+
+  if (!connection) {
+    throw new Error("Connection not found");
+  }
+
+  const decrypted = await ctx.runAction(
+    internalAny.integrations.connections.cryptoActions.getDecryptedSecrets,
+    { connectionId },
+  );
+
+  const accessToken =
+    decrypted?.credentials?.accessToken ??
+    decrypted?.credentials?.access_token ??
+    decrypted?.credentials?.token;
+
+  if (!accessToken) {
+    throw new Error("Access token missing in Vimeo credentials.");
+  }
+
+  return { accessToken };
+};
+
+const resolveConvexHttpUrl = () => {
+  // eslint-disable-next-line turbo/no-undeclared-env-vars
+  const url =
+    process.env.NEXT_PUBLIC_CONVEX_HTTP_URL ??
+    // eslint-disable-next-line turbo/no-undeclared-env-vars
+    process.env.CONVEX_HTTP_URL ??
+    "";
+  if (!url) {
+    throw new Error(
+      "Missing Convex HTTP URL. Set NEXT_PUBLIC_CONVEX_HTTP_URL (preferred) or CONVEX_HTTP_URL in Convex env.",
+    );
+  }
+  return url.replace(/\/+$/, "");
+};
+
+const normalizeVimeoApiUrl = (uriOrUrl: string) => {
+  if (uriOrUrl.startsWith("http")) return uriOrUrl;
+  if (uriOrUrl.startsWith("/")) return `https://api.vimeo.com${uriOrUrl}`;
+  return `https://api.vimeo.com/${uriOrUrl}`;
+};
+
+const pickFirstOkWebhookEndpoint = async (
+  accessToken: string,
+  payload: Record<string, unknown>,
+) => {
+  const candidates = [
+    "https://api.vimeo.com/me/webhooks",
+    "https://api.vimeo.com/users/me/webhooks",
+  ];
+
+  let lastError: string | null = null;
+  for (const endpoint of candidates) {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `bearer ${accessToken}`,
+        Accept: "application/vnd.vimeo.*+json;version=3.4",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      const json = (await response.json()) as any;
+      return { endpoint, json };
+    }
+
+    const text = await response.text().catch(() => "");
+    lastError = `${response.status} ${text}`.trim();
+  }
+
+  throw new Error(lastError ?? "Failed to create Vimeo webhook subscription");
+};
+
+export const ensureWebhookSubscription = internalActionAny({
+  args: {
+    connectionId: vAny.id("connections"),
+  },
+  returns: vAny.null(),
+  handler: async (ctx: any, args: any) => {
+    const state = await ctx.runQuery(
+      internalAny.vimeo.syncState.getSyncStateByConnection,
+      { connectionId: args.connectionId },
+    );
+
+    if (state?.webhookStatus === "active" && state.webhookId) {
+      return null;
+    }
+
+    const { accessToken } = await resolveVimeoAccessTokenByConnectionId(
+      ctx,
+      args.connectionId,
+    );
+
+    const webhookSecret =
+      state?.webhookSecret ?? randomBytes(24).toString("hex");
+
+    const callbackUrl = new URL(`${resolveConvexHttpUrl()}/api/vimeo/webhook`);
+    callbackUrl.searchParams.set("connectionId", String(args.connectionId));
+    callbackUrl.searchParams.set("secret", webhookSecret);
+
+    try {
+      // NOTE: Vimeo webhook API details vary by account/features. We try the common endpoints,
+      // and store a helpful error on failure so the UI can prompt for manual setup if needed.
+      const { json } = await pickFirstOkWebhookEndpoint(accessToken, {
+        url: callbackUrl.toString(),
+        // Best-effort event list; receiver also handles unknown events safely.
+        events: ["video.added", "video.deleted", "video.updated"],
+      });
+
+      const webhookId = (json?.uri ?? json?.id ?? json?.webhook_id) as
+        | string
+        | undefined;
+      const normalizedWebhookId = webhookId ? String(webhookId) : undefined;
+
+      await ctx.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+        connectionId: args.connectionId,
+        webhookSecret,
+        webhookId: normalizedWebhookId ?? null,
+        webhookStatus: "active",
+        webhookLastError: null,
+      });
+    } catch (error: unknown) {
+      await ctx.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+        connectionId: args.connectionId,
+        webhookSecret,
+        webhookStatus: "error",
+        webhookLastError:
+          error instanceof Error ? error.message : "Failed to create webhook",
+      });
+    }
+
+    return null;
+  },
+});
+
+export const removeWebhookSubscription = internalActionAny({
+  args: {
+    connectionId: vAny.id("connections"),
+  },
+  returns: vAny.null(),
+  handler: async (ctx: any, args: any) => {
+    const state = await ctx.runQuery(
+      internalAny.vimeo.syncState.getSyncStateByConnection,
+      { connectionId: args.connectionId },
+    );
+
+    const webhookId = state?.webhookId;
+    if (!webhookId) {
+      await ctx.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+        connectionId: args.connectionId,
+        webhookStatus: "disabled",
+        webhookLastError: null,
+      });
+      return null;
+    }
+
+    const { accessToken } = await resolveVimeoAccessTokenByConnectionId(
+      ctx,
+      args.connectionId,
+    );
+
+    try {
+      const response = await fetch(normalizeVimeoApiUrl(webhookId), {
+        method: "DELETE",
+        headers: {
+          Authorization: `bearer ${accessToken}`,
+          Accept: "application/vnd.vimeo.*+json;version=3.4",
+        },
+      });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        throw new Error(`${response.status} ${text}`.trim());
+      }
+
+      await ctx.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+        connectionId: args.connectionId,
+        webhookId: null,
+        webhookStatus: "disabled",
+        webhookLastError: null,
+      });
+    } catch (error: unknown) {
+      await ctx.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+        connectionId: args.connectionId,
+        webhookStatus: "error",
+        webhookLastError:
+          error instanceof Error ? error.message : "Failed to remove webhook",
+      });
+    }
+
+    return null;
+  },
+});
 
 const pickPreferredTextTrack = (tracks: VimeoTextTrack[]) => {
   if (!tracks.length) {
@@ -289,6 +495,8 @@ export const fetchVimeoVideosPage = internalActionAny({
     videos: vAny.array(vimeoUpsertVideoValidator),
     page: vAny.number(),
     perPage: vAny.number(),
+    total: vAny.optional(vAny.number()),
+    hasMore: vAny.boolean(),
   }),
   handler: async (ctx: any, args: any) => {
     const connection = await ctx.runQuery(
@@ -329,14 +537,33 @@ export const fetchVimeoVideosPage = internalActionAny({
     });
 
     if (!response.ok) {
-      const text = await response.text();
+      const rawText = await response.text();
+      let parsed: any = null;
+      try {
+        parsed = rawText ? (JSON.parse(rawText) as any) : null;
+      } catch {
+        parsed = null;
+      }
+
+      // Vimeo returns a 400 with error_code=2286 when the page is out of range.
+      // Treat it as end-of-pagination (equivalent to an empty page).
+      if (response.status === 400 && parsed?.error_code === 2286) {
+        return {
+          videos: [],
+          page: args.page,
+          perPage: args.perPage,
+          total: typeof parsed?.total === "number" ? parsed.total : undefined,
+          hasMore: false,
+        };
+      }
+
       throw new Error(
-        `Failed to fetch Vimeo videos (page=${args.page}): ${response.status} ${text}`,
+        `Failed to fetch Vimeo videos (page=${args.page}): ${response.status} ${rawText}`,
       );
     }
 
-    const data = (await response.json()) as { data?: VimeoApiVideo[] };
-    const videos = (data.data ?? []).map((video) => {
+    const data = (await response.json()) as any;
+    const videos = ((data?.data ?? []) as VimeoApiVideo[]).map((video) => {
       const videoId = video.uri.replace("/videos/", "");
       const thumbnailUrl =
         video.pictures?.sizes?.[video.pictures.sizes.length - 1]?.link ??
@@ -353,7 +580,153 @@ export const fetchVimeoVideosPage = internalActionAny({
       };
     });
 
-    return { videos, page: args.page, perPage: args.perPage };
+    const total = typeof data?.total === "number" ? data.total : undefined;
+    const hasMore = Boolean(data?.paging?.next);
+
+    return { videos, page: args.page, perPage: args.perPage, total, hasMore };
+  },
+});
+
+export const fetchVimeoVideoById = internalActionAny({
+  args: {
+    connectionId: vAny.id("connections"),
+    videoId: vAny.string(),
+  },
+  returns: vimeoUpsertVideoValidator,
+  handler: async (ctx: any, args: any) => {
+    const { accessToken } = await resolveVimeoAccessTokenByConnectionId(
+      ctx,
+      args.connectionId,
+    );
+
+    const url = new URL(`https://api.vimeo.com/videos/${args.videoId}`);
+    url.search = new URLSearchParams({
+      fields: "uri,name,description,link,created_time,pictures.sizes",
+    }).toString();
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        Authorization: `bearer ${accessToken}`,
+        Accept: "application/vnd.vimeo.*+json;version=3.4",
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(
+        `Failed to fetch Vimeo video (${args.videoId}): ${response.status} ${text}`,
+      );
+    }
+
+    const video = (await response.json()) as VimeoApiVideo;
+    const thumbnailUrl =
+      video.pictures?.sizes?.[video.pictures.sizes.length - 1]?.link ??
+      video.pictures?.sizes?.[0]?.link ??
+      undefined;
+
+    return {
+      videoId: String(args.videoId),
+      title: video.name,
+      description: video.description ?? undefined,
+      embedUrl: video.link,
+      thumbnailUrl,
+      publishedAt: new Date(video.created_time).getTime(),
+    };
+  },
+});
+
+export const handleWebhookEvent = internalActionAny({
+  args: {
+    connectionId: vAny.id("connections"),
+    eventType: vAny.string(),
+    videoId: vAny.string(),
+    receivedAt: vAny.number(),
+  },
+  returns: vAny.null(),
+  handler: async (ctx: any, args: any) => {
+    const eventType = String(args.eventType ?? "unknown").toLowerCase();
+    const now = Number(args.receivedAt) || Date.now();
+
+    try {
+      const isDelete =
+        eventType.includes("delete") ||
+        eventType.includes("removed") ||
+        eventType.includes("unavailable");
+
+      if (isDelete) {
+        await ctx.runMutation(internalAny.vimeo.mutations.markVideoDeleted, {
+          connectionId: args.connectionId,
+          videoId: args.videoId,
+          deletedAt: now,
+        });
+      } else {
+        const video = await ctx.runAction(internalAny.vimeo.actions.fetchVimeoVideoById, {
+          connectionId: args.connectionId,
+          videoId: args.videoId,
+        });
+
+        await ctx.runMutation(internalAny.vimeo.mutations.upsertVideo, {
+          connectionId: args.connectionId,
+          video,
+          now,
+        });
+      }
+
+      await ctx.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+        connectionId: args.connectionId,
+        webhookStatus: "active",
+        webhookLastEventAt: now,
+        webhookLastError: null,
+      });
+    } catch (error: unknown) {
+      await ctx.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+        connectionId: args.connectionId,
+        webhookStatus: "error",
+        webhookLastError:
+          error instanceof Error ? error.message : "Webhook handling failed",
+      });
+    }
+
+    return null;
+  },
+});
+
+export const runNightlyBackstopSync = internalActionAny({
+  args: {},
+  returns: vAny.null(),
+  handler: async (ctx: any) => {
+    const connections = await ctx.runQuery(
+      internalAny.integrations.connections.queries.list,
+      { nodeType: "vimeo" },
+    );
+
+    // Safety: only process a limited number of pages per connection per run.
+    const maxPagesPerConnection = 3;
+
+    for (const conn of connections) {
+      // Best-effort: ensure webhooks exist so most updates are real-time.
+      try {
+        await ctx.runAction(internalAny.vimeo.actions.ensureWebhookSubscription, {
+          connectionId: conn._id,
+        });
+      } catch {
+        // ignore
+      }
+
+      try {
+        await ctx.runMutation(internalAny.vimeo.mutations.startVimeoSyncForConnection, {
+          connectionId: conn._id,
+          maxPages: maxPagesPerConnection,
+        });
+      } catch (error) {
+        console.error("Nightly backstop Vimeo sync failed", {
+          connectionId: conn._id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    return null;
   },
 });
 
@@ -412,6 +785,45 @@ export const refreshVimeoLibrary = actionAny({
     );
 
     return result;
+  },
+});
+
+export const syncNewestForConnection = actionAny({
+  args: {
+    connectionId: vAny.id("connections"),
+  },
+  returns: vAny.object({
+    inserted: vAny.number(),
+    updated: vAny.number(),
+  }),
+  handler: async (ctx: any, args: any) => {
+    const pageResult = await ctx.runAction(
+      internalAny.vimeo.actions.fetchVimeoVideosPage,
+      {
+        connectionId: args.connectionId,
+        page: 1,
+        perPage: 100,
+      },
+    );
+
+    const now = Date.now();
+    const upsertResult = await ctx.runMutation(
+      internalAny.vimeo.mutations.upsertVideosPage,
+      {
+        connectionId: args.connectionId,
+        videos: pageResult.videos,
+        now,
+      },
+    );
+
+    await ctx.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+      connectionId: args.connectionId,
+      status: "idle",
+      lastError: null,
+      finishedAt: now,
+    });
+
+    return upsertResult;
   },
 });
 

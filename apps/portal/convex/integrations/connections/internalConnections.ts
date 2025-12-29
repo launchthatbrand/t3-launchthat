@@ -366,3 +366,12 @@ export const updateConnectionMetadata = internalMutation({
     return null;
   },
 });
+
+export const deleteConnectionById = internalMutation({
+  args: { id: v.id("connections") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+    return null;
+  },
+});

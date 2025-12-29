@@ -116,13 +116,9 @@ export const remove = mutation({
     id: v.id("connections"),
   },
   returns: v.boolean(),
-  handler: async (ctx, args) => {
-    const connection = await ctx.db.get(args.id);
-    if (!connection) {
-      throw new Error(`Connection with ID ${args.id} not found`);
-    }
-
-    await ctx.db.delete(args.id);
-    return true;
+  handler: () => {
+    throw new Error(
+      "This mutation is deprecated. Use connections.actions.remove instead.",
+    );
   },
 });

@@ -17,7 +17,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import { Label } from "@acme/ui/label";
 import { Progress } from "@acme/ui/progress";
+import { RadioGroup, RadioGroupItem } from "@acme/ui/radio-group";
 import { Separator } from "@acme/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
@@ -39,6 +41,8 @@ type VimeoSyncStatusResult =
       perPage: number;
       syncedCount: number;
       pagesFetched: number;
+      totalVideos?: number;
+      estimatedTotalPages?: number;
       workflowId?: string;
       lastError?: string;
       startedAt?: number;
@@ -105,10 +109,13 @@ export default function MediaSettingsPage() {
   const upsertConnection = useAction(
     api.integrations.connections.actions.upsertForOwner,
   );
-  const removeConnection = useMutation(
-    api.integrations.connections.mutations.remove,
+  const removeConnection = useAction(
+    api.integrations.connections.actions.remove,
   );
   const startVimeoSync = useMutation(api.vimeo.mutations.startVimeoSync);
+  const syncNewestForConnection = useAction(
+    api.vimeo.actions.syncNewestForConnection,
+  );
 
   const vimeoSyncStatus = useQuery(
     api.vimeo.syncState.getVimeoSyncStatus,
@@ -268,19 +275,9 @@ export default function MediaSettingsPage() {
           }),
         );
 
-        if (organizationId) {
-          try {
-            await Promise.resolve(
-              startVimeoSync({
-                organizationId: organizationId as Id<"organizations">,
-              }),
-            );
-          } catch (syncError) {
-            console.error("Failed to start Vimeo sync", syncError);
-          }
-        }
-
-        setExchangeMessage("Vimeo connection saved successfully.");
+        setExchangeMessage(
+          "Vimeo connection saved successfully. Choose what to sync, then start the initial sync.",
+        );
         exchangedCodeRef.current = code;
       } catch (err) {
         setExchangeError(
@@ -337,6 +334,8 @@ export default function MediaSettingsPage() {
   }, [activeConnection, removeConnection]);
 
   const [isStartingSync, setIsStartingSync] = useState(false);
+  const [isSyncingNewest, setIsSyncingNewest] = useState(false);
+  const [syncScope, setSyncScope] = useState<"all">("all");
   const handleStartSync = useCallback(
     async (restart: boolean) => {
       if (!organizationId) {
@@ -369,6 +368,49 @@ export default function MediaSettingsPage() {
     },
     [organizationId, startVimeoSync],
   );
+
+  const handleSyncNewest = useCallback(async () => {
+    if (!activeConnection) return;
+    try {
+      setIsSyncingNewest(true);
+      setExchangeError(null);
+      const result = await Promise.resolve(
+        syncNewestForConnection({ connectionId: activeConnection._id }),
+      );
+      setExchangeMessage(
+        `Synced newest Vimeo page: ${result.updated} updated, ${result.inserted} inserted.`,
+      );
+    } catch (error) {
+      setExchangeError(
+        error instanceof Error
+          ? error.message
+          : "Failed to sync newest videos.",
+      );
+    } finally {
+      setIsSyncingNewest(false);
+    }
+  }, [activeConnection, syncNewestForConnection]);
+
+  const vimeoProgressValue = useMemo(() => {
+    const status = vimeoSyncStatus?.status ?? "idle";
+    if (status === "done") return 100;
+    if (status === "error") return 0;
+
+    const totalVideos = vimeoSyncStatus?.totalVideos;
+    if (typeof totalVideos === "number" && totalVideos > 0) {
+      const pct = (vimeoSyncStatus?.syncedCount ?? 0) / totalVideos;
+      // Keep some visual headroom while running; completion flips to 100% on done.
+      return Math.max(0, Math.min(99, Math.round(pct * 100)));
+    }
+
+    const estimatedTotalPages = vimeoSyncStatus?.estimatedTotalPages;
+    if (typeof estimatedTotalPages === "number" && estimatedTotalPages > 0) {
+      const pct = (vimeoSyncStatus?.pagesFetched ?? 0) / estimatedTotalPages;
+      return Math.max(0, Math.min(99, Math.round(pct * 100)));
+    }
+
+    return status === "running" ? 10 : 0;
+  }, [vimeoSyncStatus]);
 
   return (
     <AdminLayout
@@ -515,12 +557,49 @@ export default function MediaSettingsPage() {
                             </Button>
                             <Button
                               type="button"
+                              variant="outline"
+                              onClick={() => void handleSyncNewest()}
+                              disabled={!isConnected || isSyncingNewest}
+                            >
+                              {isSyncingNewest
+                                ? "Syncing newest…"
+                                : "Sync newest"}
+                            </Button>
+                            <Button
+                              type="button"
                               variant="secondary"
                               onClick={() => void handleStartSync(true)}
                               disabled={!isConnected || isStartingSync}
                             >
                               Resync from start
                             </Button>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border p-4">
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">Sync scope</p>
+                            <p className="text-muted-foreground text-xs">
+                              For now, Vimeo syncing supports importing all
+                              videos. We’ll add folder/showcase targeting next.
+                            </p>
+                            <RadioGroup
+                              value={syncScope}
+                              onValueChange={(value) =>
+                                setSyncScope(value as "all")
+                              }
+                              className="mt-2"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="all"
+                                  id="vimeo-scope-all"
+                                />
+                                <Label htmlFor="vimeo-scope-all">
+                                  All videos in this Vimeo account
+                                </Label>
+                              </div>
+                            </RadioGroup>
                           </div>
                         </div>
 
@@ -571,15 +650,7 @@ export default function MediaSettingsPage() {
                             </div>
 
                             <div className="mt-3 space-y-2">
-                              <Progress
-                                value={
-                                  vimeoSyncStatus?.status === "running"
-                                    ? 50
-                                    : vimeoSyncStatus?.status === "done"
-                                      ? 100
-                                      : 0
-                                }
-                              />
+                              <Progress value={vimeoProgressValue} />
                               <div className="text-muted-foreground flex flex-wrap justify-between gap-2 text-xs">
                                 <span>
                                   Started:{" "}
@@ -604,6 +675,20 @@ export default function MediaSettingsPage() {
                                   </span>
                                 </span>
                               </div>
+                              {typeof vimeoSyncStatus?.totalVideos ===
+                              "number" ? (
+                                <p className="text-muted-foreground text-xs">
+                                  Synced{" "}
+                                  <span className="font-mono">
+                                    {vimeoSyncStatus.syncedCount}
+                                  </span>{" "}
+                                  /{" "}
+                                  <span className="font-mono">
+                                    {vimeoSyncStatus.totalVideos}
+                                  </span>{" "}
+                                  videos
+                                </p>
+                              ) : null}
                               {vimeoSyncStatus?.status === "error" &&
                               vimeoSyncStatus.lastError ? (
                                 <p className="text-destructive text-xs">

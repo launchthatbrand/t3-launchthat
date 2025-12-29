@@ -37,7 +37,20 @@ export const createVideo = mutationAny({
   },
   returns: vAny.id("vimeoVideos"),
   handler: async (ctx: any, args: any) => {
-    return await ctx.db.insert("vimeoVideos", args);
+    return await ctx.db.insert("vimeoVideos", {
+      connectionId: args.connectionId,
+      videoId: args.videoId,
+      title: args.title,
+      description: args.description ?? undefined,
+      embedUrl: args.embedUrl,
+      thumbnailUrl: args.thumbnailUrl ?? undefined,
+      publishedAt: args.publishedAt,
+      status: "active",
+      deletedAt: undefined,
+      lastSyncedAt: args.updatedAt,
+      createdAt: args.createdAt,
+      updatedAt: args.updatedAt,
+    });
   },
 });
 
@@ -54,7 +67,13 @@ export const updateVideo = mutationAny({
   returns: vAny.id("vimeoVideos"),
   handler: async (ctx: any, args: any) => {
     const { id, ...data } = args;
-    await ctx.db.patch(id, data);
+    await ctx.db.patch(id, {
+      ...data,
+      // Any update from the sync process should revive the video if it was previously soft-deleted.
+      status: "active",
+      deletedAt: undefined,
+      lastSyncedAt: args.updatedAt,
+    });
     return id;
   },
 });
@@ -99,6 +118,9 @@ export const upsertVideosPage = mutationAny({
           embedUrl: video.embedUrl,
           thumbnailUrl: video.thumbnailUrl ?? undefined,
           publishedAt: video.publishedAt,
+          status: "active",
+          deletedAt: undefined,
+          lastSyncedAt: args.now,
           updatedAt: args.now,
         });
         updated += 1;
@@ -111,6 +133,9 @@ export const upsertVideosPage = mutationAny({
           embedUrl: video.embedUrl,
           thumbnailUrl: video.thumbnailUrl ?? undefined,
           publishedAt: video.publishedAt,
+          status: "active",
+          deletedAt: undefined,
+          lastSyncedAt: args.now,
           createdAt: args.now,
           updatedAt: args.now,
         });
@@ -119,6 +144,91 @@ export const upsertVideosPage = mutationAny({
     }
 
     return { inserted, updated };
+  },
+});
+
+export const upsertVideo = mutationAny({
+  args: {
+    connectionId: vAny.id("connections"),
+    video: vAny.object({
+      videoId: vAny.string(),
+      title: vAny.string(),
+      description: vAny.optional(vAny.string()),
+      embedUrl: vAny.string(),
+      thumbnailUrl: vAny.optional(vAny.string()),
+      publishedAt: vAny.number(),
+    }),
+    now: vAny.number(),
+  },
+  returns: vAny.object({
+    id: vAny.id("vimeoVideos"),
+    inserted: vAny.boolean(),
+  }),
+  handler: async (ctx: any, args: any) => {
+    const existing = await ctx.db
+      .query("vimeoVideos")
+      .withIndex("by_connection_and_videoId", (q: any) =>
+        q.eq("connectionId", args.connectionId).eq("videoId", args.video.videoId),
+      )
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        title: args.video.title,
+        description: args.video.description ?? undefined,
+        embedUrl: args.video.embedUrl,
+        thumbnailUrl: args.video.thumbnailUrl ?? undefined,
+        publishedAt: args.video.publishedAt,
+        status: "active",
+        deletedAt: undefined,
+        lastSyncedAt: args.now,
+        updatedAt: args.now,
+      });
+      return { id: existing._id, inserted: false };
+    }
+
+    const id = await ctx.db.insert("vimeoVideos", {
+      connectionId: args.connectionId,
+      videoId: args.video.videoId,
+      title: args.video.title,
+      description: args.video.description ?? undefined,
+      embedUrl: args.video.embedUrl,
+      thumbnailUrl: args.video.thumbnailUrl ?? undefined,
+      publishedAt: args.video.publishedAt,
+      status: "active",
+      deletedAt: undefined,
+      lastSyncedAt: args.now,
+      createdAt: args.now,
+      updatedAt: args.now,
+    });
+    return { id, inserted: true };
+  },
+});
+
+export const markVideoDeleted = mutationAny({
+  args: {
+    connectionId: vAny.id("connections"),
+    videoId: vAny.string(),
+    deletedAt: vAny.number(),
+  },
+  returns: vAny.boolean(),
+  handler: async (ctx: any, args: any) => {
+    const existing = await ctx.db
+      .query("vimeoVideos")
+      .withIndex("by_connection_and_videoId", (q: any) =>
+        q.eq("connectionId", args.connectionId).eq("videoId", args.videoId),
+      )
+      .unique();
+
+    if (!existing) return false;
+
+    await ctx.db.patch(existing._id, {
+      status: "deleted",
+      deletedAt: args.deletedAt,
+      lastSyncedAt: args.deletedAt,
+      updatedAt: args.deletedAt,
+    });
+    return true;
   },
 });
 
@@ -186,6 +296,60 @@ export const startVimeoSync = mutationAny({
     });
 
     return { connectionId: connection._id, workflowId };
+  },
+});
+
+// Internal/backstop-oriented starter that works directly from a connectionId.
+export const startVimeoSyncForConnection = mutationAny({
+  args: {
+    connectionId: vAny.id("connections"),
+    restart: vAny.optional(vAny.boolean()),
+    maxPages: vAny.optional(vAny.number()),
+  },
+  returns: vAny.object({
+    connectionId: vAny.id("connections"),
+    workflowId: vAny.string(),
+  }),
+  handler: async (ctx: any, args: any) => {
+    const existingState = await ctx.db
+      .query("vimeoSyncState")
+      .withIndex("by_connectionId", (q: any) => q.eq("connectionId", args.connectionId))
+      .unique();
+
+    const shouldRestart =
+      Boolean(args.restart) || (existingState?.status ?? "idle") === "done";
+
+    if (existingState && shouldRestart) {
+      await ctx.db.patch(existingState._id, {
+        status: "idle",
+        nextPage: 1,
+        syncedCount: 0,
+        pagesFetched: 0,
+        workflowId: undefined,
+        lastError: undefined,
+        startedAt: undefined,
+        finishedAt: undefined,
+        updatedAt: Date.now(),
+      });
+    }
+
+    const workflowId = await workflowAny.start(
+      ctx,
+      internalAny.vimeo.workflow.vimeoSyncWorkflow,
+      { connectionId: args.connectionId, maxPages: args.maxPages },
+    );
+
+    await ctx.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+      connectionId: args.connectionId,
+      status: "running",
+      workflowId,
+      startedAt: existingState?.startedAt ?? Date.now(),
+      finishedAt: null,
+      lastError: null,
+      nextPage: existingState?.nextPage ?? 1,
+    });
+
+    return { connectionId: args.connectionId, workflowId };
   },
 });
 

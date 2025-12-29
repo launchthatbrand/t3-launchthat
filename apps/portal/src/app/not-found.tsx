@@ -4,7 +4,7 @@ import { Button } from "@acme/ui/button";
 
 export default function NotFound() {
   return (
-    <main className="container mx-auto flex min-h-[70vh] max-w-3xl flex-col items-center justify-center gap-4 py-16 text-center">
+    <main className="container mx-auto flex min-h-[70vh] max-w-3xl flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
       <div className="space-y-2">
         <p className="text-muted-foreground text-sm tracking-wide uppercase">
           404
@@ -26,5 +26,3 @@ export default function NotFound() {
     </main>
   );
 }
-
-

@@ -6,7 +6,7 @@ import { Button } from "@acme/ui/button";
 
 export default function FooterLayout() {
   return (
-    <div className="bg-sidebar absolute bottom-0 flex h-20 w-full items-center border-t p-6">
+    <div className="bg-sidebar flex h-20 items-center border-t p-6">
       <div className="flex items-center gap-2">
         <Button variant="outline">
           <Link href="/">
