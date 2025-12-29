@@ -590,6 +590,63 @@ export const deleteRagSourceConfig = mutation({
   },
 });
 
+export const triggerRagReindexForPost = mutation({
+  args: {
+    organizationId: supportOrganizationIdValidator,
+    postTypeSlug: v.string(),
+    postId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const org = args.organizationId as Id<"organizations">;
+    const normalizedPostTypeSlug = args.postTypeSlug.toLowerCase();
+
+    const lmsConfig = await ctx.db
+      .query("supportRagSources")
+      .withIndex("by_org_type_and_postTypeSlug", (q) =>
+        q
+          .eq("organizationId", org)
+          .eq("sourceType", "lmsPostType")
+          .eq("postTypeSlug", normalizedPostTypeSlug),
+      )
+      .unique();
+
+    const postConfig =
+      lmsConfig ??
+      (await ctx.db
+        .query("supportRagSources")
+        .withIndex("by_org_type_and_postTypeSlug", (q) =>
+          q
+            .eq("organizationId", org)
+            .eq("sourceType", "postType")
+            .eq("postTypeSlug", normalizedPostTypeSlug),
+        )
+        .unique());
+
+    if (!postConfig?.isEnabled) {
+      throw new Error("This post type is not enabled for AI indexing.");
+    }
+
+    if (postConfig.sourceType === "lmsPostType") {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.plugins.support.rag.ingestLmsPostIfConfigured,
+        {
+          id: args.postId,
+          postTypeSlug: normalizedPostTypeSlug,
+          organizationId: org,
+        },
+      );
+      return null;
+    }
+
+    await ctx.scheduler.runAfter(0, internal.plugins.support.rag.ingestPostIfConfigured, {
+      postId: args.postId as any,
+    });
+    return null;
+  },
+});
+
 export const setConversationAgentThread = internalMutation({
   args: {
     organizationId: v.string(),
@@ -627,4 +684,5 @@ export const mutations = {
   beginDomainVerification,
   saveRagSourceConfig,
   deleteRagSourceConfig,
+  triggerRagReindexForPost,
 };

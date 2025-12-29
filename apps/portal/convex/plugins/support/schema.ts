@@ -125,6 +125,24 @@ const supportRagSourcesTable = defineTable({
     "postTypeSlug",
   ]);
 
+const supportRagIndexStatusTable = defineTable({
+  organizationId: supportOrganizationIdValidator,
+  sourceType: v.union(v.literal("postType"), v.literal("lmsPostType")),
+  postTypeSlug: v.string(),
+  postId: v.string(),
+  entryKey: v.string(),
+  lastStatus: v.string(),
+  lastAttemptAt: v.number(),
+  lastSuccessAt: v.optional(v.number()),
+  lastError: v.optional(v.string()),
+  lastEntryId: v.optional(v.string()),
+  lastEntryStatus: v.optional(
+    v.union(v.literal("pending"), v.literal("ready"), v.literal("replaced")),
+  ),
+})
+  .index("by_org_post", ["organizationId", "postTypeSlug", "postId"])
+  .index("by_org_entryKey", ["organizationId", "entryKey"]);
+
 const supportAgentPresenceTable = defineTable({
   organizationId: supportOrganizationIdValidator,
   sessionId: v.string(),
@@ -140,4 +158,5 @@ export const supportSchema = {
   supportEmailSettings: supportEmailSettingsTable,
   supportAgentPresence: supportAgentPresenceTable,
   supportRagSources: supportRagSourcesTable,
+  supportRagIndexStatus: supportRagIndexStatusTable,
 };

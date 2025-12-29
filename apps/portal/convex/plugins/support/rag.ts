@@ -73,6 +73,59 @@ const ensureApiKey = () => {
 const POST_ENTRY_PREFIX = "post:";
 const LMS_ENTRY_PREFIX = "lms:";
 
+export const upsertRagIndexStatusInternal = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    sourceType: v.union(v.literal("postType"), v.literal("lmsPostType")),
+    postTypeSlug: v.string(),
+    postId: v.string(),
+    entryKey: v.string(),
+    lastStatus: v.string(),
+    lastAttemptAt: v.number(),
+    lastSuccessAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    lastEntryId: v.optional(v.string()),
+    lastEntryStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("ready"), v.literal("replaced")),
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const normalizedPostTypeSlug = args.postTypeSlug.toLowerCase();
+    const existing = await ctx.db
+      .query("supportRagIndexStatus")
+      .withIndex("by_org_post", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("postTypeSlug", normalizedPostTypeSlug)
+          .eq("postId", args.postId),
+      )
+      .unique();
+
+    const payload = {
+      organizationId: args.organizationId,
+      sourceType: args.sourceType,
+      postTypeSlug: normalizedPostTypeSlug,
+      postId: args.postId,
+      entryKey: args.entryKey,
+      lastStatus: args.lastStatus,
+      lastAttemptAt: args.lastAttemptAt,
+      lastSuccessAt: args.lastSuccessAt,
+      lastError: args.lastError,
+      lastEntryId: args.lastEntryId,
+      lastEntryStatus: args.lastEntryStatus,
+    };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, payload);
+      return null;
+    }
+
+    await ctx.db.insert("supportRagIndexStatus", payload);
+    return null;
+  },
+});
+
 const deleteEntryByKey = async (
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
@@ -428,11 +481,21 @@ export const ingestPostIfConfigured = internalAction({
     });
 
     const entryKey = `${POST_ENTRY_PREFIX}${post._id}`;
+    const attemptAt = Date.now();
 
     if (!config?.isEnabled) {
       await ctx.runMutation(internal.plugins.support.rag.deleteEntryByKeyInternal, {
         organizationId,
         key: entryKey,
+      });
+      await ctx.runMutation(internal.plugins.support.rag.upsertRagIndexStatusInternal, {
+        organizationId,
+        sourceType: "postType",
+        postTypeSlug: normalizedSlug,
+        postId: String(post._id),
+        entryKey,
+        lastStatus: "disabled",
+        lastAttemptAt: attemptAt,
       });
       return { status: "disabled" };
     }
@@ -442,6 +505,15 @@ export const ingestPostIfConfigured = internalAction({
         organizationId,
         key: entryKey,
       });
+      await ctx.runMutation(internal.plugins.support.rag.upsertRagIndexStatusInternal, {
+        organizationId,
+        sourceType: "postType",
+        postTypeSlug: normalizedSlug,
+        postId: String(post._id),
+        entryKey,
+        lastStatus: "notPublished",
+        lastAttemptAt: attemptAt,
+      });
       return { status: "notPublished" };
     }
 
@@ -450,6 +522,15 @@ export const ingestPostIfConfigured = internalAction({
       await ctx.runMutation(internal.plugins.support.rag.deleteEntryByKeyInternal, {
         organizationId,
         key: entryKey,
+      });
+      await ctx.runMutation(internal.plugins.support.rag.upsertRagIndexStatusInternal, {
+        organizationId,
+        sourceType: "postType",
+        postTypeSlug: normalizedSlug,
+        postId: String(post._id),
+        entryKey,
+        lastStatus: "empty",
+        lastAttemptAt: attemptAt,
       });
       return { status: "empty" };
     }
@@ -466,7 +547,7 @@ export const ingestPostIfConfigured = internalAction({
       metadata.slug = post.slug;
     }
 
-    await supportRag.add(ctx, {
+    const addResult = await supportRag.add(ctx, {
       namespace,
       key: entryKey,
       text,
@@ -484,6 +565,19 @@ export const ingestPostIfConfigured = internalAction({
 
     await ctx.runMutation(internal.plugins.support.rag.touchRagSourceIndexedAtInternal, {
       sourceId: config._id as any,
+    });
+
+    await ctx.runMutation(internal.plugins.support.rag.upsertRagIndexStatusInternal, {
+      organizationId,
+      sourceType: "postType",
+      postTypeSlug: normalizedSlug,
+      postId: String(post._id),
+      entryKey,
+      lastStatus: "indexed",
+      lastAttemptAt: attemptAt,
+      lastSuccessAt: attemptAt,
+      lastEntryId: addResult.entryId,
+      lastEntryStatus: addResult.status,
     });
 
     return { status: "indexed" };
@@ -533,11 +627,21 @@ export const ingestLmsPostIfConfigured = internalAction({
     });
 
     const entryKey = `${LMS_ENTRY_PREFIX}${normalizedPostTypeSlug}:${args.id}`;
+    const attemptAt = Date.now();
 
     if (!config?.isEnabled) {
       await ctx.runMutation(internal.plugins.support.rag.deleteEntryByKeyInternal, {
         organizationId,
         key: entryKey,
+      });
+      await ctx.runMutation(internal.plugins.support.rag.upsertRagIndexStatusInternal, {
+        organizationId,
+        sourceType: "lmsPostType",
+        postTypeSlug: normalizedPostTypeSlug,
+        postId: args.id,
+        entryKey,
+        lastStatus: "disabled",
+        lastAttemptAt: attemptAt,
       });
       return { status: "disabled" };
     }
@@ -547,6 +651,15 @@ export const ingestLmsPostIfConfigured = internalAction({
       await ctx.runMutation(internal.plugins.support.rag.deleteEntryByKeyInternal, {
         organizationId,
         key: entryKey,
+      });
+      await ctx.runMutation(internal.plugins.support.rag.upsertRagIndexStatusInternal, {
+        organizationId,
+        sourceType: "lmsPostType",
+        postTypeSlug: normalizedPostTypeSlug,
+        postId: args.id,
+        entryKey,
+        lastStatus: "notPublished",
+        lastAttemptAt: attemptAt,
       });
       return { status: "notPublished" };
     }
@@ -566,6 +679,15 @@ export const ingestLmsPostIfConfigured = internalAction({
         organizationId,
         key: entryKey,
       });
+      await ctx.runMutation(internal.plugins.support.rag.upsertRagIndexStatusInternal, {
+        organizationId,
+        sourceType: "lmsPostType",
+        postTypeSlug: normalizedPostTypeSlug,
+        postId: args.id,
+        entryKey,
+        lastStatus: "empty",
+        lastAttemptAt: attemptAt,
+      });
       return { status: "empty" };
     }
 
@@ -581,7 +703,7 @@ export const ingestLmsPostIfConfigured = internalAction({
       metadata.slug = lmsPost.slug;
     }
 
-    await supportRag.add(ctx, {
+    const addResult = await supportRag.add(ctx, {
       namespace,
       key: entryKey,
       text,
@@ -599,6 +721,19 @@ export const ingestLmsPostIfConfigured = internalAction({
 
     await ctx.runMutation(internal.plugins.support.rag.touchRagSourceIndexedAtInternal, {
       sourceId: config._id as any,
+    });
+
+    await ctx.runMutation(internal.plugins.support.rag.upsertRagIndexStatusInternal, {
+      organizationId,
+      sourceType: "lmsPostType",
+      postTypeSlug: normalizedPostTypeSlug,
+      postId: args.id,
+      entryKey,
+      lastStatus: "indexed",
+      lastAttemptAt: attemptAt,
+      lastSuccessAt: attemptAt,
+      lastEntryId: addResult.entryId,
+      lastEntryStatus: addResult.status,
     });
 
     return { status: "indexed" };

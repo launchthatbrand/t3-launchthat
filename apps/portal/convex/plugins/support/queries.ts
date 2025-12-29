@@ -365,6 +365,103 @@ export const listMessages = query({
   },
 });
 
+export const getRagIndexStatusForPost = query({
+  args: {
+    organizationId: v.string(),
+    postTypeSlug: v.string(),
+    postId: v.string(),
+  },
+  returns: v.object({
+    isEnabledForPostType: v.boolean(),
+    sourceType: v.optional(v.union(v.literal("postType"), v.literal("lmsPostType"))),
+    entryKey: v.optional(v.string()),
+    lastStatus: v.optional(v.string()),
+    lastAttemptAt: v.optional(v.number()),
+    lastSuccessAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    lastEntryId: v.optional(v.string()),
+    lastEntryStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("ready"), v.literal("replaced")),
+    ),
+    config: v.optional(
+      v.object({
+        displayName: v.optional(v.string()),
+        fields: v.optional(v.array(v.string())),
+        includeTags: v.optional(v.boolean()),
+        metaFieldKeys: v.optional(v.array(v.string())),
+        additionalMetaKeys: v.optional(v.string()),
+        lastIndexedAt: v.optional(v.number()),
+      }),
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const normalizedPostTypeSlug = args.postTypeSlug.toLowerCase();
+    const org = args.organizationId as Id<"organizations">;
+
+    const lmsConfig = await ctx.db
+      .query("supportRagSources")
+      .withIndex("by_org_type_and_postTypeSlug", (q) =>
+        q
+          .eq("organizationId", org)
+          .eq("sourceType", "lmsPostType")
+          .eq("postTypeSlug", normalizedPostTypeSlug),
+      )
+      .unique();
+
+    const postConfig =
+      lmsConfig ??
+      (await ctx.db
+        .query("supportRagSources")
+        .withIndex("by_org_type_and_postTypeSlug", (q) =>
+          q
+            .eq("organizationId", org)
+            .eq("sourceType", "postType")
+            .eq("postTypeSlug", normalizedPostTypeSlug),
+        )
+        .unique());
+
+    if (!postConfig?.isEnabled) {
+      return { isEnabledForPostType: false };
+    }
+
+    const sourceType = postConfig.sourceType;
+    const entryKey =
+      sourceType === "lmsPostType"
+        ? `lms:${normalizedPostTypeSlug}:${args.postId}`
+        : `post:${args.postId}`;
+
+    const status = await ctx.db
+      .query("supportRagIndexStatus")
+      .withIndex("by_org_post", (q) =>
+        q
+          .eq("organizationId", org)
+          .eq("postTypeSlug", normalizedPostTypeSlug)
+          .eq("postId", args.postId),
+      )
+      .unique();
+
+    return {
+      isEnabledForPostType: true,
+      sourceType,
+      entryKey,
+      lastStatus: status?.lastStatus,
+      lastAttemptAt: status?.lastAttemptAt,
+      lastSuccessAt: status?.lastSuccessAt,
+      lastError: status?.lastError,
+      lastEntryId: status?.lastEntryId,
+      lastEntryStatus: status?.lastEntryStatus,
+      config: {
+        displayName: postConfig.displayName,
+        fields: postConfig.fields as unknown as string[],
+        includeTags: postConfig.includeTags,
+        metaFieldKeys: postConfig.metaFieldKeys,
+        additionalMetaKeys: postConfig.additionalMetaKeys,
+        lastIndexedAt: postConfig.lastIndexedAt,
+      },
+    };
+  },
+});
+
 export const getAgentPresence = query({
   args: {
     organizationId: v.string(),

@@ -12,6 +12,7 @@ import "./metaBoxes/downloads";
 import "~/lib/pageTemplates";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { AdminSaveStatus } from "@/lib/postTypes/adminSave";
 import type { SerializedEditorState } from "lexical";
 import type { ReactNode } from "react";
 import {
@@ -106,6 +107,7 @@ import {
   getPluginSingleViewSlotsForSlug,
   wrapWithPluginProviders,
 } from "~/lib/plugins/helpers";
+import { getPostStatusOptionsForPostType } from "~/lib/postStatuses/registry";
 import { decodeSyntheticId } from "~/lib/postTypes/adminAdapters";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import { adaptCommercePostMetaToPortal } from "~/lib/postTypes/customAdapters";
@@ -114,6 +116,7 @@ import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
 import { useMetaBoxState } from "../_state/useMetaBoxState";
 import { usePostTypeFields } from "../../settings/post-types/_api/postTypes";
 import { useEnsureBuiltInTaxonomies } from "../../settings/taxonomies/_api/taxonomies";
+import { AiIndexTab } from "./AiIndexTab";
 import { useAttachmentsMetaBox } from "./hooks/useAttachmentsMetaBox";
 import { ATTACHMENTS_META_KEY } from "./metaBoxes/constants";
 import {
@@ -124,7 +127,6 @@ import {
 import { getFrontendBaseUrl } from "./permalink";
 import { PlaceholderState } from "./PlaceholderState";
 import { SeoTab } from "./SeoTab";
-import { getPostStatusOptionsForPostType } from "~/lib/postStatuses/registry";
 
 const stripHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
 const resolveSupportFlag = (
@@ -404,6 +406,7 @@ export function AdminSinglePostView({
   const pluginTabs: PluginSingleViewTabDefinition[] =
     pluginSingleView?.config.tabs ?? [];
   const seoTabValue = "seo";
+  const aiTabValue = "ai";
   const pluginSlotRegistrations = useMemo<PluginSingleViewSlotRegistration[]>(
     () => getPluginSingleViewSlotsForSlug(slug),
     [slug],
@@ -420,11 +423,13 @@ export function AdminSinglePostView({
   const queriedTab = (tabParam ?? defaultTab).toLowerCase();
   const normalizedTab =
     queriedTab === seoTabValue ||
+    queriedTab === aiTabValue ||
     pluginTabs.some((tab) => tab.slug === queriedTab) ||
     queriedTab === "edit"
       ? queriedTab
       : defaultTab;
   const [activeTab, setActiveTab] = useState(normalizedTab);
+  const isAiTab = activeTab === aiTabValue;
   const derivedEditorState = useMemo<SerializedEditorState | undefined>(() => {
     console.log("[AdminSinglePostView] deriving editor state", {
       postId: post?._id,
@@ -467,6 +472,40 @@ export function AdminSinglePostView({
   useEffect(() => {
     setActiveTab(normalizedTab);
   }, [normalizedTab]);
+
+  const ragStatusArgs =
+    organizationId && post?._id && !isNewRecord
+      ? {
+          organizationId,
+          postTypeSlug: slug,
+          postId: String(post._id),
+        }
+      : "skip";
+  const ragIndexStatus = useQuery(
+    api.plugins.support.queries.getRagIndexStatusForPost,
+    ragStatusArgs as any,
+  ) as
+    | {
+        isEnabledForPostType: boolean;
+        sourceType?: "postType" | "lmsPostType";
+        entryKey?: string;
+        lastStatus?: string;
+        lastAttemptAt?: number;
+        lastSuccessAt?: number;
+        lastError?: string;
+        lastEntryId?: string;
+        lastEntryStatus?: "pending" | "ready" | "replaced";
+        config?: {
+          displayName?: string;
+          fields?: string[];
+          includeTags?: boolean;
+          metaFieldKeys?: string[];
+          additionalMetaKeys?: string;
+          lastIndexedAt?: number;
+        };
+      }
+    | undefined;
+  const showAiTab = Boolean(ragIndexStatus?.isEnabledForPostType);
 
   useEffect(() => {
     setTaxonomyTermIds(
@@ -1813,7 +1852,7 @@ export function AdminSinglePostView({
         content,
         excerpt,
         slugValue,
-        status: postStatus,
+        status: postStatus as AdminSaveStatus,
         metaPayload,
         saveEntity,
         updateEntity,
@@ -2163,12 +2202,13 @@ export function AdminSinglePostView({
       typeof (postType as { pageTemplateSlug?: unknown }).pageTemplateSlug ===
         "string"
         ? ((postType as { pageTemplateSlug: string }).pageTemplateSlug ??
-            DEFAULT_PAGE_TEMPLATE_SLUG)
+          DEFAULT_PAGE_TEMPLATE_SLUG)
         : DEFAULT_PAGE_TEMPLATE_SLUG;
 
     const pageTemplateLabel =
-      availablePageTemplates.find((template) => template.slug === pageTemplateSlug)
-        ?.label ?? pageTemplateSlug;
+      availablePageTemplates.find(
+        (template) => template.slug === pageTemplateSlug,
+      )?.label ?? pageTemplateSlug;
 
     const pageTemplateCard = (
       <Card>
@@ -2341,6 +2381,15 @@ export function AdminSinglePostView({
         label: "SEO",
         onClick: () => handleTabChange(seoTabValue),
       },
+      ...(showAiTab
+        ? [
+            {
+              value: aiTabValue,
+              label: "AI",
+              onClick: () => handleTabChange(aiTabValue),
+            },
+          ]
+        : []),
     ];
 
     return wrapWithPostTypeProviders(
@@ -2357,6 +2406,15 @@ export function AdminSinglePostView({
               <div className="">
                 {isSeoTab ? (
                   <SeoTab context={metaBoxContext} post={post ?? null} />
+                ) : isAiTab ? (
+                  <div className="container py-6">
+                    <AiIndexTab
+                      organizationId={organizationId}
+                      postTypeSlug={slug}
+                      postId={String(post?._id ?? "")}
+                      ragIndexStatus={ragIndexStatus}
+                    />
+                  </div>
                 ) : activeTabDefinition?.usesDefaultEditor ? (
                   renderDefaultContent(defaultTabOptions)
                 ) : activeTabDefinition?.render ? (
@@ -2386,6 +2444,15 @@ export function AdminSinglePostView({
       label: "SEO",
       onClick: () => handleTabChange(seoTabValue),
     },
+    ...(showAiTab
+      ? [
+          {
+            value: aiTabValue,
+            label: "AI",
+            onClick: () => handleTabChange(aiTabValue),
+          },
+        ]
+      : []),
   ];
   const isSeoTab = activeTab === seoTabValue;
 
@@ -2404,6 +2471,13 @@ export function AdminSinglePostView({
             <div className="container py-6">
               {isSeoTab ? (
                 <SeoTab context={metaBoxContext} post={post ?? null} />
+              ) : isAiTab ? (
+                <AiIndexTab
+                  organizationId={organizationId}
+                  postTypeSlug={slug}
+                  postId={String(post?._id ?? "")}
+                  ragIndexStatus={ragIndexStatus}
+                />
               ) : (
                 renderDefaultContent()
               )}
