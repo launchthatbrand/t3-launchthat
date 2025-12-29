@@ -495,6 +495,8 @@ export const saveRagSourceConfig = mutation({
     additionalMetaKeys: v.optional(v.string()),
     displayName: v.optional(v.string()),
     isEnabled: v.optional(v.boolean()),
+    useCustomBaseInstructions: v.optional(v.boolean()),
+    baseInstructions: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const timestamp = Date.now();
@@ -529,6 +531,8 @@ export const saveRagSourceConfig = mutation({
         additionalMetaKeys: args.additionalMetaKeys ?? "",
         displayName: args.displayName ?? slug,
         isEnabled: args.isEnabled ?? true,
+        useCustomBaseInstructions: args.useCustomBaseInstructions ?? false,
+        baseInstructions: args.baseInstructions ?? "",
         updatedAt: timestamp,
       });
       return { ragSourceId: args.sourceId };
@@ -552,6 +556,8 @@ export const saveRagSourceConfig = mutation({
         additionalMetaKeys: args.additionalMetaKeys ?? "",
         displayName: args.displayName ?? slug,
         isEnabled: args.isEnabled ?? true,
+        useCustomBaseInstructions: args.useCustomBaseInstructions ?? false,
+        baseInstructions: args.baseInstructions ?? "",
         updatedAt: timestamp,
       });
       return { ragSourceId: existing._id };
@@ -567,6 +573,8 @@ export const saveRagSourceConfig = mutation({
       additionalMetaKeys: args.additionalMetaKeys ?? "",
       displayName: args.displayName ?? slug,
       isEnabled: args.isEnabled ?? true,
+      useCustomBaseInstructions: args.useCustomBaseInstructions ?? false,
+      baseInstructions: args.baseInstructions ?? "",
       createdAt: timestamp,
       updatedAt: timestamp,
     });

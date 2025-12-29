@@ -50,6 +50,9 @@ export const SupportPluginPage = ({ page }: SupportPluginPageProps) => {
       const targetPage =
         NAV_SLUG_TO_PAGE[slug as keyof typeof NAV_SLUG_TO_PAGE] ?? "dashboard";
       params.set("page", targetPage);
+      if (targetPage !== "settings") {
+        params.delete("tab");
+      }
       if (slug !== "conversations") {
         params.delete("sessionId");
       }

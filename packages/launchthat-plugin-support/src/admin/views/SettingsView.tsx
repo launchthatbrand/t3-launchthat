@@ -3,6 +3,7 @@
 // @ts-nocheck
 import type { GenericId as Id } from "convex/values";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@portal/convexspec";
 import { useMutation, useQuery } from "convex/react";
 import { Copy, Loader2, PencilLine, Plus, Trash2 } from "lucide-react";
@@ -37,7 +38,9 @@ import {
   SUPPORT_OPENAI_NODE_TYPE,
 } from "../../assistant/openai";
 import {
+  defaultSupportAssistantBaseInstructions,
   defaultSupportChatSettings,
+  supportAssistantBaseInstructionsKey,
   supportContactCaptureFieldsKey,
   supportContactCaptureKey,
   supportIntroHeadlineKey,
@@ -75,6 +78,8 @@ interface RagSourceFormState {
   additionalMetaKeys: string;
   displayName: string;
   isEnabled: boolean;
+  useCustomBaseInstructions: boolean;
+  baseInstructions: string;
 }
 
 const createDefaultRagFormState = (): RagSourceFormState => ({
@@ -84,6 +89,8 @@ const createDefaultRagFormState = (): RagSourceFormState => ({
   additionalMetaKeys: "",
   displayName: "",
   isEnabled: true,
+  useCustomBaseInstructions: false,
+  baseInstructions: "",
 });
 
 const mergeSupportSettings = (
@@ -149,6 +156,8 @@ interface SettingsViewProps {
 }
 
 export function SettingsView({ organizationId }: SettingsViewProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const requireContactOption = useQuery(
     api.plugins.support.options.getSupportOption,
     {
@@ -184,6 +193,13 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
       key: supportPrivacyMessageKey,
     },
   );
+  const assistantBaseInstructionsOption = useQuery(
+    api.plugins.support.options.getSupportOption,
+    {
+      organizationId,
+      key: supportAssistantBaseInstructionsKey,
+    },
+  );
   const saveSupportOption = useMutation(
     api.plugins.support.options.saveSupportOption,
   );
@@ -200,20 +216,62 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
     mergeSupportSettings(),
   );
   const [isSaving, setIsSaving] = useState(false);
-  const [tabValue, setTabValue] = useState<
+  const tabParam = (searchParams?.get("tab") ?? "").toLowerCase().trim();
+  const normalizedTabValue = useMemo<
     "general" | "copy" | "email" | "assistant" | "knowledge"
-  >("general");
+  >(() => {
+    const map: Record<
+      string,
+      "general" | "copy" | "email" | "assistant" | "knowledge"
+    > = {
+      general: "general",
+      copy: "copy",
+      email: "email",
+      assistant: "assistant",
+      knowledge: "knowledge",
+      knowledge_sources: "knowledge",
+      "knowledge-sources": "knowledge",
+    };
+    return map[tabParam] ?? "general";
+  }, [tabParam]);
   const [domainInput, setDomainInput] = useState("");
   const [isEmailTogglePending, setIsEmailTogglePending] = useState(false);
   const [isDomainMutationPending, setIsDomainMutationPending] = useState(false);
   const [isTestingInbound, setIsTestingInbound] = useState(false);
+  const [assistantBaseInstructions, setAssistantBaseInstructions] = useState(
+    defaultSupportAssistantBaseInstructions,
+  );
+  const [isSavingAssistantInstructions, setIsSavingAssistantInstructions] =
+    useState(false);
+
+  const handleTabChange = (value: string) => {
+    if (
+      value !== "general" &&
+      value !== "copy" &&
+      value !== "email" &&
+      value !== "assistant" &&
+      value !== "knowledge"
+    ) {
+      return;
+    }
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    if (value === "general") {
+      params.delete("tab");
+    } else if (value === "knowledge") {
+      params.set("tab", "knowledge_sources");
+    } else {
+      params.set("tab", value);
+    }
+    router.replace(`?${params.toString()}`);
+  };
   useEffect(() => {
     if (
       requireContactOption === undefined ||
       contactFieldsOption === undefined ||
       introHeadlineOption === undefined ||
       welcomeMessageOption === undefined ||
-      privacyMessageOption === undefined
+      privacyMessageOption === undefined ||
+      assistantBaseInstructionsOption === undefined
     ) {
       return;
     }
@@ -240,12 +298,19 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
       ),
     });
     setFormState(next);
+    setAssistantBaseInstructions(
+      parseStringOption(
+        assistantBaseInstructionsOption,
+        defaultSupportAssistantBaseInstructions,
+      ),
+    );
   }, [
     requireContactOption,
     contactFieldsOption,
     introHeadlineOption,
     welcomeMessageOption,
     privacyMessageOption,
+    assistantBaseInstructionsOption,
   ]);
   const ragSources = useQuery(api.plugins.support.queries.listRagSources, {
     organizationId,
@@ -254,13 +319,15 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
     (useQuery(api.core.postTypes.queries.list, {
       organizationId,
       includeBuiltIn: true,
-    }) as Array<{
-      slug?: string;
-      name?: string;
-      _id?: string;
-      supports?: { customFields?: boolean } | undefined;
-      storageKind?: string;
-    }> | undefined) ?? [];
+    }) as
+      | Array<{
+          slug?: string;
+          name?: string;
+          _id?: string;
+          supports?: { customFields?: boolean } | undefined;
+          storageKind?: string;
+        }>
+      | undefined) ?? [];
   const saveRagSource: any = useMutation(
     api.plugins.support.mutations.saveRagSourceConfig,
   );
@@ -367,6 +434,8 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
       additionalMetaKeys: "",
       displayName: source.displayName ?? "",
       isEnabled: source.isEnabled,
+      useCustomBaseInstructions: Boolean(source.useCustomBaseInstructions),
+      baseInstructions: source.baseInstructions ?? "",
     });
   };
 
@@ -417,12 +486,15 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
 
       await (saveRagSource as any)({
         organizationId,
+        sourceId: knowledgeForm.sourceId,
         postTypeSlug: knowledgeForm.postTypeSlug ?? "",
         fields: selectedFields,
         includeTags: knowledgeForm.includeTags,
         metaFieldKeys: metaFields,
         displayName: knowledgeForm.displayName.trim() || undefined,
         isEnabled: knowledgeForm.isEnabled,
+        useCustomBaseInstructions: knowledgeForm.useCustomBaseInstructions,
+        baseInstructions: knowledgeForm.baseInstructions,
       });
 
       toast.success(
@@ -502,12 +574,15 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
     try {
       await (saveRagSource as any)({
         organizationId,
+        sourceId: source._id,
         postTypeSlug: source.postTypeSlug ?? "",
         fields: source.fields as RagField[],
         includeTags: source.includeTags,
         metaFieldKeys: source.metaFieldKeys ?? [],
         displayName: source.displayName ?? undefined,
         isEnabled: nextValue,
+        useCustomBaseInstructions: Boolean(source.useCustomBaseInstructions),
+        baseInstructions: source.baseInstructions ?? "",
       });
     } catch (error) {
       console.error(error);
@@ -530,7 +605,7 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
     try {
       await (deleteRagSource as any)({
         organizationId,
-        postTypeSlug: sourceId ?? "",
+        sourceId: sourceId as any,
       });
       if (knowledgeForm.sourceId === sourceId) {
         handleResetKnowledgeForm();
@@ -582,6 +657,26 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
       toast.error("Unable to save settings. Please try again.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveAssistantBaseInstructions = async () => {
+    setIsSavingAssistantInstructions(true);
+    try {
+      await saveSupportOption({
+        organizationId,
+        key: supportAssistantBaseInstructionsKey,
+        value: assistantBaseInstructions.trim(),
+      });
+      toast.success("Assistant base instructions updated.");
+    } catch (error) {
+      console.error(
+        "[support-settings] save assistant instructions error",
+        error,
+      );
+      toast.error("Unable to save base instructions. Please try again.");
+    } finally {
+      setIsSavingAssistantInstructions(false);
     }
   };
 
@@ -719,18 +814,8 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
         </p>
       </div>
       <Tabs
-        value={tabValue}
-        onValueChange={(value) => {
-          if (
-            value === "general" ||
-            value === "copy" ||
-            value === "email" ||
-            value === "assistant" ||
-            value === "knowledge"
-          ) {
-            setTabValue(value);
-          }
-        }}
+        value={normalizedTabValue}
+        onValueChange={handleTabChange}
         className="space-y-6"
       >
         <TabsList>
@@ -1153,6 +1238,63 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
         <TabsContent value="knowledge" className="space-y-6">
           <Card>
             <CardHeader>
+              <CardTitle>Assistant prompt</CardTitle>
+              <CardDescription>
+                Global base instructions used when no post-type-specific prompt
+                override is active.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="support-assistant-base-instructions">
+                  Global base instructions
+                </Label>
+                <Textarea
+                  id="support-assistant-base-instructions"
+                  value={assistantBaseInstructions}
+                  onChange={(event) =>
+                    setAssistantBaseInstructions(event.target.value)
+                  }
+                  rows={6}
+                  placeholder={defaultSupportAssistantBaseInstructions}
+                />
+                <p className="text-muted-foreground text-xs">
+                  Tip: Add grounding rules like “only use the transcript” and a
+                  consistent output format (overview, bullets, action steps).
+                </p>
+              </div>
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    setAssistantBaseInstructions(
+                      defaultSupportAssistantBaseInstructions,
+                    )
+                  }
+                  disabled={isSavingAssistantInstructions}
+                >
+                  Reset to default
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSaveAssistantBaseInstructions}
+                  disabled={isSavingAssistantInstructions}
+                >
+                  {isSavingAssistantInstructions ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    "Save"
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
               <CardTitle>Knowledge sources</CardTitle>
               <CardDescription>
                 Control which post types should be indexed for RAG so the agent
@@ -1194,10 +1336,17 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
                             className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
                           >
                             <div className="space-y-1">
-                              <p className="font-medium">
-                                {postTypeLabelMap.get(source.postTypeSlug) ??
-                                  source.postTypeSlug}
-                              </p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-medium">
+                                  {postTypeLabelMap.get(source.postTypeSlug) ??
+                                    source.postTypeSlug}
+                                </p>
+                                {source.useCustomBaseInstructions ? (
+                                  <Badge variant="secondary">
+                                    Custom prompt
+                                  </Badge>
+                                ) : null}
+                              </div>
                               <p className="text-muted-foreground text-xs">
                                 Fields: {source.fields.join(", ")}
                                 {source.includeTags ? ", tags" : ""}
@@ -1358,6 +1507,52 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
                       />
                       Include post tags in the search prompt
                     </label>
+                    <div className="space-y-3 rounded-md border p-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">
+                            Post-type prompt override
+                          </p>
+                          <p className="text-muted-foreground text-xs">
+                            If enabled, the assistant will use this prompt when
+                            answering questions on pages for this post type.
+                            Otherwise, it uses the global base instructions.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={knowledgeForm.useCustomBaseInstructions}
+                          onCheckedChange={(checked) =>
+                            setKnowledgeForm((prev) => ({
+                              ...prev,
+                              useCustomBaseInstructions: Boolean(checked),
+                            }))
+                          }
+                        />
+                      </div>
+                      {knowledgeForm.useCustomBaseInstructions ? (
+                        <div className="space-y-2">
+                          <Label htmlFor="rag-base-instructions">
+                            Base instructions for this post type
+                          </Label>
+                          <Textarea
+                            id="rag-base-instructions"
+                            value={knowledgeForm.baseInstructions}
+                            onChange={(event) =>
+                              setKnowledgeForm((prev) => ({
+                                ...prev,
+                                baseInstructions: event.target.value,
+                              }))
+                            }
+                            rows={6}
+                            placeholder={assistantBaseInstructions}
+                          />
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground text-xs">
+                          Using the global base instructions for this post type.
+                        </p>
+                      )}
+                    </div>
                     <div className="space-y-2">
                       <Label>Custom fields to include</Label>
                       {knowledgeForm.postTypeSlug ? (

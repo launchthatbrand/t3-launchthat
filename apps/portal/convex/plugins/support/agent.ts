@@ -2,15 +2,20 @@
 
 import type { Id } from "@convex-config/_generated/dataModel";
 import type { ActionCtx } from "@convex-config/_generated/server";
+import type { ModelMessage } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
-import { api, components, internal } from "@convex-config/_generated/api";
+import { api, internal } from "@convex-config/_generated/api";
 import { action } from "@convex-config/_generated/server";
-import { generateText, type ModelMessage } from "ai";
+import { generateText } from "ai";
 import { v } from "convex/values";
 import {
   buildSupportOpenAiOwnerKey,
   SUPPORT_OPENAI_NODE_TYPE,
 } from "launchthat-plugin-support/assistant/openai";
+import {
+  defaultSupportAssistantBaseInstructions,
+  supportAssistantBaseInstructionsKey,
+} from "launchthat-plugin-support/settings";
 
 import { normalizeOrganizationId } from "../../constants";
 import { supportOrganizationIdValidator } from "./schema";
@@ -21,11 +26,7 @@ import { supportOrganizationIdValidator } from "./schema";
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
-const BASE_INSTRUCTIONS = [
-  "You are a helpful support assistant for LaunchThat customers.",
-  "Use the provided knowledge sources whenever they are available.",
-  "If the answer is unclear, ask for clarification or suggest contacting a human representative.",
-].join("\n");
+const FALLBACK_BASE_INSTRUCTIONS = defaultSupportAssistantBaseInstructions;
 
 const KNOWN_MISSING_KEY_MESSAGE =
   "Support assistant is not fully configured yet (missing OpenAI API key). Add one in Support → Settings → AI Assistant.";
@@ -53,17 +54,37 @@ const buildKnowledgeContext = (
 };
 
 const buildConversationMessages = (args: {
-  history: Array<{ role: "user" | "assistant"; content: string }>;
+  history: { role: "user" | "assistant"; content: string }[];
   latestUserMessage: string;
 }): ModelMessage[] => {
   const messages: ModelMessage[] = [];
   for (const message of args.history.slice(-12)) {
-    const content = message.content?.trim();
+    const content = message.content.trim();
     if (!content) continue;
     messages.push({ role: message.role, content });
   }
   messages.push({ role: "user", content: args.latestUserMessage });
   return messages;
+};
+
+const inferPostTypeSlugFromContextTags = (tags?: string[]) => {
+  if (!Array.isArray(tags)) return null;
+  for (const rawTag of tags) {
+    const tag = rawTag.trim();
+    if (!tag) continue;
+    const parts = tag.split(":").map((p) => p.trim());
+    // Expected: lms:<postTypeSlug>:<postId>
+    if (parts.length >= 3 && parts[0] === "lms") {
+      const slug = parts[1];
+      if (slug) return slug.toLowerCase();
+    }
+  }
+  return null;
+};
+
+const parseStringOption = (value: unknown) => {
+  if (typeof value === "string") return value;
+  return null;
 };
 
 const resolveOrganizationOpenAiKey = async (
@@ -156,13 +177,16 @@ export const generateAgentReply = action({
         .slice(0, 10);
       knowledgeEntries =
         tags.length > 0
-          ? await ctx.runAction(internal.plugins.support.rag.searchKnowledgeForContext, {
-              organizationId,
-              query: trimmedPrompt,
-              tags,
-              limit: 5,
-            })
-          : await ctx.runAction(internal.plugins.support.rag.searchKnowledge, {
+          ? await ctx.runAction(
+              api.plugins.support.rag.searchKnowledgeForContext,
+              {
+                organizationId,
+                query: trimmedPrompt,
+                tags,
+                limit: 5,
+              },
+            )
+          : await ctx.runAction(api.plugins.support.rag.searchKnowledge, {
               organizationId,
               query: trimmedPrompt,
               limit: 5,
@@ -189,12 +213,62 @@ export const generateAgentReply = action({
       })),
     );
 
+    // Determine effective base instructions: post-type override (if enabled) else global.
+    let globalBaseInstructions = FALLBACK_BASE_INSTRUCTIONS;
+    try {
+      const stored = await ctx.runQuery(
+        api.plugins.support.options.getSupportOption,
+        {
+          organizationId,
+          key: supportAssistantBaseInstructionsKey,
+        },
+      );
+      const asString = parseStringOption(stored);
+      if (asString && asString.trim().length > 0) {
+        globalBaseInstructions = asString.trim();
+      }
+    } catch (error) {
+      console.warn(
+        "[support-agent] failed to load global base instructions",
+        error,
+      );
+    }
+
+    let effectiveBaseInstructions = globalBaseInstructions;
+    const inferredPostTypeSlug = inferPostTypeSlugFromContextTags(
+      args.contextTags,
+    );
+    if (inferredPostTypeSlug) {
+      try {
+        const config = await ctx.runQuery(
+          api.plugins.support.queries.getRagSourceConfigForPostType,
+          { organizationId, postTypeSlug: inferredPostTypeSlug },
+        );
+        if (
+          config?.isEnabled &&
+          config.useCustomBaseInstructions &&
+          config.baseInstructions.trim().length > 0
+        ) {
+          effectiveBaseInstructions = config.baseInstructions.trim();
+        }
+      } catch (error) {
+        console.warn(
+          "[support-agent] failed to load post-type base instructions",
+          { inferredPostTypeSlug },
+          error,
+        );
+      }
+    }
+
     let text = "";
     try {
-      const history = await ctx.runQuery(api.plugins.support.queries.listMessages, {
-        organizationId,
-        sessionId: args.sessionId,
-      });
+      const history = (await ctx.runQuery(
+        api.plugins.support.queries.listMessages,
+        {
+          organizationId,
+          sessionId: args.sessionId,
+        },
+      )) as { role: "user" | "assistant"; content: string }[];
 
       const messages = buildConversationMessages({
         history: history.map((m) => ({
@@ -205,8 +279,8 @@ export const generateAgentReply = action({
       });
 
       const result = await generateText({
-        model,
-        system: [BASE_INSTRUCTIONS, knowledgeContext].join("\n\n"),
+        model: model as any,
+        system: [effectiveBaseInstructions, knowledgeContext].join("\n\n"),
         messages,
       });
 

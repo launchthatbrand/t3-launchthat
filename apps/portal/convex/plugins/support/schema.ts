@@ -113,6 +113,8 @@ const supportRagSourcesTable = defineTable({
   additionalMetaKeys: v.optional(v.string()),
   displayName: v.optional(v.string()),
   isEnabled: v.boolean(),
+  useCustomBaseInstructions: v.optional(v.boolean()),
+  baseInstructions: v.optional(v.string()),
   lastIndexedAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),

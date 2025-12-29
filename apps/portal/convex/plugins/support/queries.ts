@@ -31,6 +31,8 @@ type RagSourceRecord = {
   metaFieldKeys?: string[];
   additionalMetaKeys?: string;
   fields?: string[];
+  useCustomBaseInstructions?: boolean;
+  baseInstructions?: string;
 };
 
 type EmailSettings = {
@@ -636,7 +638,65 @@ export const listRagSources = query({
       metaFieldKeys: source.metaFieldKeys ?? [],
       additionalMetaKeys: source.additionalMetaKeys,
       fields: source.fields,
+      useCustomBaseInstructions: source.useCustomBaseInstructions ?? false,
+      baseInstructions: source.baseInstructions ?? "",
     })) satisfies RagSourceRecord[];
+  },
+});
+
+export const getRagSourceConfigForPostType = query({
+  args: {
+    organizationId: v.string(),
+    postTypeSlug: v.string(),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("supportRagSources"),
+      postTypeSlug: v.string(),
+      sourceType: v.union(v.literal("postType"), v.literal("lmsPostType")),
+      isEnabled: v.boolean(),
+      useCustomBaseInstructions: v.boolean(),
+      baseInstructions: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const org = args.organizationId as Id<"organizations">;
+    const postTypeSlug = args.postTypeSlug.toLowerCase().trim();
+    if (!postTypeSlug) return null;
+
+    const lmsConfig = await ctx.db
+      .query("supportRagSources")
+      .withIndex("by_org_type_and_postTypeSlug", (q) =>
+        q
+          .eq("organizationId", org)
+          .eq("sourceType", "lmsPostType")
+          .eq("postTypeSlug", postTypeSlug),
+      )
+      .unique();
+
+    const postConfig =
+      lmsConfig ??
+      (await ctx.db
+        .query("supportRagSources")
+        .withIndex("by_org_type_and_postTypeSlug", (q) =>
+          q
+            .eq("organizationId", org)
+            .eq("sourceType", "postType")
+            .eq("postTypeSlug", postTypeSlug),
+        )
+        .unique());
+
+    if (!postConfig) return null;
+
+    return {
+      _id: postConfig._id,
+      postTypeSlug: postConfig.postTypeSlug,
+      sourceType: postConfig.sourceType,
+      isEnabled: postConfig.isEnabled,
+      useCustomBaseInstructions: postConfig.useCustomBaseInstructions ?? false,
+      baseInstructions: postConfig.baseInstructions ?? "",
+    };
   },
 });
 

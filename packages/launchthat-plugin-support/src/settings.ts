@@ -19,6 +19,14 @@ export const supportContactCaptureFieldsKey = "support_contact_capture_fields";
 export const supportIntroHeadlineKey = "support_intro_headline";
 export const supportWelcomeMessageKey = "support_welcome_message";
 export const supportPrivacyMessageKey = "support_privacy_message";
+export const supportAssistantBaseInstructionsKey =
+  "support_assistant_base_instructions";
+
+export const defaultSupportAssistantBaseInstructions = [
+  "You are a helpful support assistant for LaunchThat customers.",
+  "Use the provided knowledge sources whenever they are available.",
+  "If the answer is unclear, ask for clarification or suggest contacting a human representative.",
+].join("\n");
 
 export const defaultSupportChatSettings: SupportChatSettings = {
   requireContact: true,

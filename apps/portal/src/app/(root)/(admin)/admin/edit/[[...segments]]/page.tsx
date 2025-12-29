@@ -253,7 +253,7 @@ function AdminEditPageBody() {
         content: undefined,
         excerpt: undefined,
         slug: String(mediaItemRecord._id),
-        status: (mediaItemRecord.status ?? "draft") as "draft" | "published",
+        status: mediaItemRecord.status ?? "draft",
         postTypeSlug: "attachments",
         organizationId,
         createdAt: mediaItemRecord.uploadedAt ?? mediaItemRecord._creationTime,
@@ -408,28 +408,60 @@ function AdminEditPageBody() {
   }
 
   if (pluginParam && pluginDefinition && pluginSetting) {
+    const pluginPages = pluginDefinition.settingsPages ?? [];
+    const pluginTabs: {
+      value: string;
+      label: string;
+      onClick: () => void;
+    }[] = pluginPages.map((setting) => ({
+      value: setting.slug,
+      label: setting.label,
+      onClick: () => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("plugin", pluginParam);
+        params.set("page", setting.slug);
+        // Settings sub-tabs are plugin-specific; don't leak across pages.
+        params.delete("tab");
+        // Conversation selection is only relevant on the conversations page.
+        if (setting.slug !== "conversations") {
+          params.delete("sessionId");
+        }
+        router.replace(`/admin/edit?${params.toString()}`);
+      },
+    }));
+
     return (
-      <AdminLayoutContent className="flex flex-1">
-        <AdminLayoutMain className="flex flex-1 flex-col space-y-6">
-          {renderPluginSettingsHeaderContent(
-            pluginSettingsHeaderBefore,
-            "before",
-          )}
-          <Card className="flex flex-1 flex-col border-none p-0 shadow-none">
-            <CardContent className="flex flex-1 flex-col p-0">
-              {pluginSettingContent ?? (
-                <p className="text-muted-foreground text-sm">
-                  This plugin does not expose configurable settings yet.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-          {renderPluginSettingsHeaderContent(
-            pluginSettingsHeaderAfter,
-            "after",
-          )}
-        </AdminLayoutMain>
-      </AdminLayoutContent>
+      <AdminLayout
+        title={`${pluginDefinition.name} settings`}
+        description={
+          pluginSetting.description ?? pluginDefinition.description ?? ""
+        }
+        activeTab={pluginSetting.slug}
+        pathname={`/admin/edit?plugin=${pluginParam}&page=${pluginSetting.slug}`}
+      >
+        <AdminLayoutContent className="flex flex-1">
+          <AdminLayoutMain className="flex flex-1 flex-col space-y-6">
+            {renderPluginSettingsHeaderContent(
+              pluginSettingsHeaderBefore,
+              "before",
+            )}
+            <AdminLayoutHeader customTabs={pluginTabs} />
+            <Card className="flex flex-1 flex-col border-none p-0 shadow-none">
+              <CardContent className="flex flex-1 flex-col p-0">
+                {pluginSettingContent ?? (
+                  <p className="text-muted-foreground text-sm">
+                    This plugin does not expose configurable settings yet.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+            {renderPluginSettingsHeaderContent(
+              pluginSettingsHeaderAfter,
+              "after",
+            )}
+          </AdminLayoutMain>
+        </AdminLayoutContent>
+      </AdminLayout>
     );
   }
 
@@ -473,7 +505,7 @@ function AdminEditPageBody() {
   const rawSidebarPreference =
     pluginArchiveView &&
     typeof pluginArchiveView.config?.showSidebar === "boolean"
-      ? (pluginArchiveView.config.showSidebar as boolean)
+      ? pluginArchiveView.config.showSidebar
       : undefined;
   const normalizedSidebarPreference = rawSidebarPreference;
 

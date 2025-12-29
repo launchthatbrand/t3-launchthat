@@ -28,6 +28,8 @@ export {
 export {
   defaultSupportChatSettings,
   supportChatSettingsOptionKey,
+  supportAssistantBaseInstructionsKey,
+  defaultSupportAssistantBaseInstructions,
 } from "./settings";
 
 
