@@ -4,6 +4,7 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { useDeletePost, useGetAllPosts } from "@/lib/blog";
 import { formatDistanceToNow } from "date-fns";
@@ -47,6 +48,7 @@ import {
   ADMIN_ARCHIVE_HEADER_AFTER,
   ADMIN_ARCHIVE_HEADER_BEFORE,
   ADMIN_ARCHIVE_HEADER_SUPPRESS,
+  ADMIN_ATTACHMENTS_ARCHIVE_TABS_FILTER,
 } from "~/lib/plugins/hookSlots";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import { buildPermalink } from "./permalink";
@@ -122,10 +124,73 @@ export function GenericArchiveView({
   pluginMenus,
   organizationId,
 }: GenericArchiveViewProps) {
+  const searchParams = useSearchParams();
   const label = postType?.name ?? slug.replace(/-/g, " ");
   const description =
     postType?.description ?? "Manage structured entries for this post type.";
   const normalizedSlug = slug.toLowerCase();
+  const isAttachmentsArchive = normalizedSlug === "attachments";
+
+  type AttachmentsArchiveTab = {
+    id: string;
+    label: string;
+    order?: number;
+    condition?: (ctx: { organizationId?: Id<"organizations">; postTypeSlug: string }) => boolean;
+    component?: (props: { organizationId?: Id<"organizations"> }) => ReactNode;
+  };
+
+  const attachmentsHookContext = useMemo(
+    () => ({ postTypeSlug: normalizedSlug, organizationId }),
+    [normalizedSlug, organizationId],
+  );
+
+  const attachmentsTabs = useApplyFilters<AttachmentsArchiveTab[]>(
+    ADMIN_ATTACHMENTS_ARCHIVE_TABS_FILTER,
+    [
+      { id: "list", label: "Attachments", order: 0 },
+      { id: "drafts", label: "Drafts", order: 1 },
+      { id: "scheduled", label: "Scheduled", order: 2 },
+    ],
+    attachmentsHookContext,
+  );
+
+  const attachmentsTabsFinal = useMemo(() => {
+    if (!attachmentsTabs || attachmentsTabs.length === 0) {
+      return [
+        { id: "list", label: "Attachments", order: 0 },
+        { id: "drafts", label: "Drafts", order: 1 },
+        { id: "scheduled", label: "Scheduled", order: 2 },
+      ] satisfies AttachmentsArchiveTab[];
+    }
+
+    return [...attachmentsTabs]
+      .filter((tab) => !tab.condition || tab.condition(attachmentsHookContext))
+      .sort((a, b) => (a.order ?? 10) - (b.order ?? 10));
+  }, [attachmentsHookContext, attachmentsTabs]);
+
+  const activeAttachmentsTab = useMemo(() => {
+    const raw = searchParams.get("tab");
+    const normalized = typeof raw === "string" ? raw.toLowerCase().trim() : "";
+    if (!isAttachmentsArchive) return "list";
+    if (!normalized) return "list";
+    return attachmentsTabsFinal.some((t) => t.id === normalized) ? normalized : "list";
+  }, [attachmentsTabsFinal, isAttachmentsArchive, searchParams]);
+
+  const attachmentsHeaderTabs = useMemo(() => {
+    if (!isAttachmentsArchive) return undefined;
+    return attachmentsTabsFinal.map((tab) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("post_type", "attachments");
+      params.set("tab", tab.id);
+      params.delete("page");
+      return {
+        value: tab.id,
+        label: tab.label,
+        href: `/admin/edit?${params.toString()}`,
+        order: tab.order,
+      };
+    });
+  }, [attachmentsTabsFinal, isAttachmentsArchive, searchParams]);
 
   const shouldLoadPosts = Boolean(postType) || isBuiltInPostTypeSlug(normalizedSlug);
   const postsQuery = useGetAllPosts(
@@ -369,48 +434,100 @@ export function GenericArchiveView({
         </Button>
       </div>
 
-      <Tabs defaultValue="list">
-        <TabsList>
-          <TabsTrigger value="list">List</TabsTrigger>
-          <TabsTrigger value="drafts">Drafts</TabsTrigger>
-          <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
-        </TabsList>
-        <TabsContent value="list">
-          <Card>
-            <CardHeader>
-              <CardTitle>{label} overview</CardTitle>
-              <CardDescription>
-                WordPress-style management powered by reusable post type
-                scaffolding.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <EntityList
-                data={displayRows}
-                columns={columns}
-                entityActions={entityActions}
-                isLoading={tableLoading}
-                enableFooter={false}
-                viewModes={["list", "grid"]}
-                defaultViewMode="list"
-                enableSearch
-                emptyState={
-                  <div className="text-muted-foreground py-8 text-center">
-                    No entries yet. Click “Add New” to get started.
-                  </div>
-                }
-                className="p-4"
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="drafts">
-          <PlaceholderState label="Drafts" />
-        </TabsContent>
-        <TabsContent value="scheduled">
-          <PlaceholderState label="Scheduled" />
-        </TabsContent>
-      </Tabs>
+      {isAttachmentsArchive ? (
+        (() => {
+          const listTab = (
+            <Card>
+              <CardHeader>
+                <CardTitle>{label} overview</CardTitle>
+                <CardDescription>
+                  WordPress-style management powered by reusable post type
+                  scaffolding.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <EntityList
+                  data={displayRows}
+                  columns={columns}
+                  entityActions={entityActions}
+                  isLoading={tableLoading}
+                  enableFooter={false}
+                  viewModes={["list", "grid"]}
+                  defaultViewMode="list"
+                  enableSearch
+                  emptyState={
+                    <div className="text-muted-foreground py-8 text-center">
+                      No entries yet. Click “Add New” to get started.
+                    </div>
+                  }
+                  className="p-4"
+                />
+              </CardContent>
+            </Card>
+          );
+
+          if (activeAttachmentsTab === "drafts") {
+            return <PlaceholderState label="Drafts" />;
+          }
+          if (activeAttachmentsTab === "scheduled") {
+            return <PlaceholderState label="Scheduled" />;
+          }
+          if (activeAttachmentsTab === "list") {
+            return listTab;
+          }
+
+          const injected = attachmentsTabsFinal.find(
+            (tab) => tab.id === activeAttachmentsTab,
+          );
+          if (injected?.component) {
+            return <>{injected.component({ organizationId })}</>;
+          }
+          return <PlaceholderState label={injected?.label ?? "Tab"} />;
+        })()
+      ) : (
+        <Tabs defaultValue="list">
+          <TabsList>
+            <TabsTrigger value="list">List</TabsTrigger>
+            <TabsTrigger value="drafts">Drafts</TabsTrigger>
+            <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
+          </TabsList>
+          <TabsContent value="list">
+            <Card>
+              <CardHeader>
+                <CardTitle>{label} overview</CardTitle>
+                <CardDescription>
+                  WordPress-style management powered by reusable post type
+                  scaffolding.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <EntityList
+                  data={displayRows}
+                  columns={columns}
+                  entityActions={entityActions}
+                  isLoading={tableLoading}
+                  enableFooter={false}
+                  viewModes={["list", "grid"]}
+                  defaultViewMode="list"
+                  enableSearch
+                  emptyState={
+                    <div className="text-muted-foreground py-8 text-center">
+                      No entries yet. Click “Add New” to get started.
+                    </div>
+                  }
+                  className="p-4"
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="drafts">
+            <PlaceholderState label="Drafts" />
+          </TabsContent>
+          <TabsContent value="scheduled">
+            <PlaceholderState label="Scheduled" />
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 
@@ -451,6 +568,9 @@ export function GenericArchiveView({
       title={`${label} Archive`}
       description={description}
       pathname={`/admin/edit?post_type=${slug}`}
+      showTabs={isAttachmentsArchive}
+      activeTab={isAttachmentsArchive ? activeAttachmentsTab : undefined}
+      tabs={isAttachmentsArchive ? attachmentsHeaderTabs : undefined}
     >
       <AdminLayoutContent
         className="flex flex-1 flex-col"

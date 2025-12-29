@@ -215,5 +215,5 @@ export function CourseNav({
     return null;
   }
 
-  return <NavMain sections={navSections} />;
+  return <NavMain sections={navSections} labelBehavior="ticker" />;
 }

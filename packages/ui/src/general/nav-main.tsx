@@ -1,7 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -55,9 +55,86 @@ interface NavSection {
 interface NavMainProps {
   items?: NavItem[];
   sections?: NavSection[];
+  labelBehavior?: "default" | "ticker";
 }
 
-export function NavMain({ items, sections }: NavMainProps) {
+const TickerText = ({
+  text,
+  enabled,
+  className,
+}: {
+  text: string;
+  enabled: boolean;
+  className?: string;
+}) => {
+  const containerRef = useRef<HTMLSpanElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [overflow, setOverflow] = useState(0);
+
+  useEffect(() => {
+    if (!enabled) {
+      setOverflow(0);
+      return;
+    }
+    const container = containerRef.current;
+    const inner = textRef.current;
+    if (!container || !inner) return;
+
+    const recompute = () => {
+      const nextOverflow = Math.max(0, inner.scrollWidth - container.clientWidth);
+      setOverflow(nextOverflow);
+    };
+
+    recompute();
+
+    const ro =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(recompute) : null;
+    if (ro) {
+      ro.observe(container);
+      ro.observe(inner);
+    } else if (typeof window !== "undefined") {
+      window.addEventListener("resize", recompute);
+    }
+
+    return () => {
+      if (ro) ro.disconnect();
+      else if (typeof window !== "undefined") window.removeEventListener("resize", recompute);
+    };
+  }, [enabled, text]);
+
+  const pxPerSecond = 60;
+  const durationSeconds =
+    overflow > 0 ? Math.max(1.0, overflow / pxPerSecond) : 0;
+
+  const animateClass =
+    enabled && overflow > 0
+      ? "group-hover:[animation:ticker-reveal_var(--ticker-duration)_linear_forwards]"
+      : "";
+
+  return (
+    <span
+      ref={containerRef}
+      className={cn("min-w-0 overflow-hidden whitespace-nowrap", className)}
+    >
+      <span
+        ref={textRef}
+        className={cn("inline-block will-change-transform", animateClass)}
+        style={
+          enabled && overflow > 0
+            ? ({
+                ["--ticker-shift" as any]: `-${overflow}px`,
+                ["--ticker-duration" as any]: `${durationSeconds}s`,
+              } as React.CSSProperties)
+            : undefined
+        }
+      >
+        {text}
+      </span>
+    </span>
+  );
+};
+
+export function NavMain({ items, sections, labelBehavior = "default" }: NavMainProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { isMobile, openMobile, setOpenMobile } = useSidebar();
@@ -195,6 +272,8 @@ export function NavMain({ items, sections }: NavMainProps) {
     };
   }, []);
 
+  const useTickerLabels = labelBehavior === "ticker";
+
   const renderMenuItems = (menuItems: NavItem[]) => (
     <SidebarMenu>
       {menuItems.map((item) => {
@@ -221,10 +300,10 @@ export function NavMain({ items, sections }: NavMainProps) {
                     <Link
                       href={item.url}
                       onClick={handleNavigate}
-                      className="flex flex-1 items-center gap-2 [&>svg]:size-4 [&>svg]:shrink-0"
+                      className="group flex flex-1 items-center gap-2 [&>svg]:size-4 [&>svg]:shrink-0"
                     >
                       {item.icon && <item.icon />}
-                      <span>{item.title}</span>
+                      <TickerText enabled={useTickerLabels} text={item.title} className="flex-1" />
                     </Link>
                     <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                   </SidebarMenuButton>
@@ -245,8 +324,12 @@ export function NavMain({ items, sections }: NavMainProps) {
                             data-nav-active={subItemActive ? "true" : undefined}
                             data-nav-exact={subItemActive ? "true" : undefined}
                           >
-                            <Link href={subItem.url} onClick={handleNavigate}>
-                              <span>{subItem.title}</span>
+                            <Link
+                              href={subItem.url}
+                              onClick={handleNavigate}
+                              className="group flex min-w-0 items-center"
+                            >
+                              <TickerText enabled={useTickerLabels} text={subItem.title} className="flex-1" />
                             </Link>
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>
@@ -268,9 +351,9 @@ export function NavMain({ items, sections }: NavMainProps) {
               data-nav-active={itemActive ? "true" : undefined}
               data-nav-exact={itemActive ? "true" : undefined}
             >
-              <Link href={item.url} onClick={handleNavigate}>
+              <Link href={item.url} onClick={handleNavigate} className="group flex min-w-0 items-center gap-2">
                 {item.icon && <item.icon />}
-                <span>{item.title}</span>
+                <TickerText enabled={useTickerLabels} text={item.title} className="flex-1" />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -284,6 +367,22 @@ export function NavMain({ items, sections }: NavMainProps) {
       if (isActive(item.url)) return true;
       return item.items?.some((sub) => isActive(sub.url));
     });
+
+  const tickerStyle = useMemo(() => {
+    if (!useTickerLabels) return null;
+    return (
+      <style jsx global>{`
+        @keyframes ticker-reveal {
+          from {
+            transform: translateX(0);
+          }
+          to {
+            transform: translateX(var(--ticker-shift));
+          }
+        }
+      `}</style>
+    );
+  }, [useTickerLabels]);
 
   return (
     <SidebarGroup className="mb-20 overflow-y-auto">
@@ -332,6 +431,7 @@ export function NavMain({ items, sections }: NavMainProps) {
             </div>
           );
         })}
+        {tickerStyle}
       </SidebarGroupContent>
     </SidebarGroup>
   );

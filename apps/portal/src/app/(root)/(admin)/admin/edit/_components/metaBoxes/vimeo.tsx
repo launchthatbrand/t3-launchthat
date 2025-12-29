@@ -38,7 +38,10 @@ const VimeoTranscriptMetaBox = ({
 }: {
   context: AdminMetaBoxContext;
 }) => {
-  const postId = context.post?._id;
+  const rawPostId: string | null =
+    typeof (context.post as { _id?: unknown } | null | undefined)?._id === "string"
+      ? (context.post as { _id: string })._id
+      : null;
   const organizationId: Id<"organizations"> | null =
     context.organizationId ??
     (context.post?.organizationId as Id<"organizations"> | undefined) ??
@@ -51,7 +54,7 @@ const VimeoTranscriptMetaBox = ({
       ? videoIdRaw.trim()
       : null;
 
-  if (!videoId || !postId) {
+  if (!videoId || !rawPostId) {
     return null;
   }
 
@@ -70,7 +73,20 @@ const VimeoTranscriptMetaBox = ({
   const isVimeoEnabled = Boolean(vimeoOption?.metaValue);
 
   const fetchTranscript = useAction(api.vimeo.actions.fetchTranscript);
-  const updatePost = useMutation(api.core.posts.mutations.updatePost);
+  const updateCorePost = useMutation(api.core.posts.mutations.updatePost);
+  const updateLmsPost = useMutation(api.plugins.lms.posts.mutations.updatePost);
+
+  const isLmsPostType = useMemo(() => {
+    const slug = typeof context.slug === "string" ? context.slug : "";
+    return slug === "lessons" || slug === "topics" || slug === "quizzes";
+  }, [context.slug]);
+
+  const corePostId = useMemo<Id<"posts"> | null>(() => {
+    if (isLmsPostType) return null;
+    if (!rawPostId) return null;
+    // Convex Ids for root tables are 32 chars (a-z0-9).
+    return /^[a-z0-9]{32}$/.test(rawPostId) ? (rawPostId as Id<"posts">) : null;
+  }, [isLmsPostType, rawPostId]);
 
   const transcript =
     typeof postMetaMap.vimeoTranscript === "string"
@@ -114,6 +130,12 @@ const VimeoTranscriptMetaBox = ({
       );
       return;
     }
+    if (!isLmsPostType && !corePostId) {
+      setErrorMessage(
+        "This post uses a non-core ID format. Saving Vimeo transcripts is currently supported for LMS lessons/topics/quizzes and core posts.",
+      );
+      return;
+    }
     setIsFetching(true);
     setErrorMessage(null);
     try {
@@ -121,16 +143,26 @@ const VimeoTranscriptMetaBox = ({
         ownerId,
         videoId,
       });
-      await updatePost({
-        id: postId,
-        meta: {
-          vimeoTranscript: result.transcript,
-          vimeoTranscriptVtt: result.rawVtt,
-          vimeoTranscriptLanguage: result.track.language ?? "",
-          vimeoTranscriptTrackLabel: result.track.label ?? "",
-          vimeoTranscriptLastFetchedAt: Date.now(),
-        },
-      });
+
+      const metaPayload = {
+        vimeoTranscript: result.transcript,
+        vimeoTranscriptVtt: result.rawVtt,
+        vimeoTranscriptLanguage: result.track.language ?? "",
+        vimeoTranscriptTrackLabel: result.track.label ?? "",
+        vimeoTranscriptLastFetchedAt: Date.now(),
+      } as const;
+
+      if (isLmsPostType) {
+        await updateLmsPost({
+          id: rawPostId,
+          meta: metaPayload,
+        });
+      } else if (corePostId) {
+        await updateCorePost({
+          id: corePostId,
+          meta: metaPayload,
+        });
+      }
       toast("Transcript saved", {
         description: "The latest subtitles were fetched from Vimeo.",
       });
@@ -141,7 +173,16 @@ const VimeoTranscriptMetaBox = ({
     } finally {
       setIsFetching(false);
     }
-  }, [fetchTranscript, ownerId, postId, updatePost, videoId]);
+  }, [
+    corePostId,
+    fetchTranscript,
+    isLmsPostType,
+    ownerId,
+    rawPostId,
+    updateCorePost,
+    updateLmsPost,
+    videoId,
+  ]);
 
   const handleCopyTranscript = useCallback(async () => {
     if (!transcript) return;
@@ -170,18 +211,18 @@ const VimeoTranscriptMetaBox = ({
   }, [rawTranscriptVtt]);
 
   const handleLaunchQuizAssistant = useCallback(() => {
-    if (!postId || !ownerId) {
+    if (!rawPostId || !ownerId) {
       return;
     }
     openSupportAssistantExperience({
       experienceId: LMS_QUIZ_ASSISTANT_EXPERIENCE_ID,
       context: {
-        lessonId: postId,
+        lessonId: rawPostId,
         organizationId: ownerId,
         lessonTitle: context.post?.title ?? undefined,
       },
     });
-  }, [context.post?.title, ownerId, postId]);
+  }, [context.post?.title, ownerId, rawPostId]);
 
   if (vimeoOption !== undefined && !isVimeoEnabled) {
     return null;
@@ -312,7 +353,7 @@ const VimeoTranscriptMetaBox = ({
           variant="secondary"
           className="w-full"
           onClick={handleLaunchQuizAssistant}
-          disabled={!transcript || !ownerId || !postId}
+          disabled={!transcript || !ownerId || !rawPostId}
         >
           Generate quiz for this lesson
         </Button>
@@ -325,6 +366,20 @@ const registerVimeoMetaBox = () =>
   registerMetaBoxHook<AdminMetaBoxContext>(
     "sidebar",
     (context): RegisteredMetaBox<AdminMetaBoxContext> | null => {
+      // IMPORTANT:
+      // The Attachments editor reuses the Admin post editor chrome but "posts" are not
+      // actually stored in the `posts` table (they're `mediaItems` / `downloads`).
+      // This meta box saves transcripts via `core.posts.mutations.updatePost`, so it must
+      // only run for real post types (e.g. LMS lessons/topics/quizzes).
+      const postTypeSlug =
+        context.postType && typeof (context.postType as any).slug === "string"
+          ? ((context.postType as any).slug as string)
+          : context.slug;
+
+      if (postTypeSlug === "attachments" || postTypeSlug === "downloads") {
+        return null;
+      }
+
       const postMetaMap = context.customFields?.postMetaMap ?? {};
       const videoId = postMetaMap.vimeoVideoId;
       const hasVideoId =

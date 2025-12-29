@@ -10,16 +10,23 @@ const updateEntityInput = v.any();
 export const saveEntity = mutation({
   args: {
     postTypeSlug: v.string(),
+    organizationId: v.optional(v.string()),
     data: baseEntityInput,
   },
   handler: async (ctx, args) => {
     const data = args.data as Record<string, unknown>;
     const organizationId =
-      typeof data.organizationId === "string" ? data.organizationId : undefined;
+      args.organizationId ??
+      (typeof data.organizationId === "string" ? data.organizationId : undefined);
+    const {
+      organizationId: _omitOrganizationId,
+      postTypeSlug: _omitPostTypeSlug,
+      ...sanitizedData
+    } = data;
     const resolver = await entityResolvers.get(ctx, args.postTypeSlug, organizationId);
     return await resolver.create(ctx, {
       postTypeSlug: args.postTypeSlug,
-      data: args.data as EntitySaveInput,
+      data: sanitizedData as EntitySaveInput,
       organizationId,
     });
   },
@@ -29,17 +36,24 @@ export const updateEntity = mutation({
   args: {
     postTypeSlug: v.string(),
     id: v.string(),
+    organizationId: v.optional(v.string()),
     data: updateEntityInput,
   },
   handler: async (ctx, args) => {
     const data = args.data as Record<string, unknown>;
     const organizationId =
-      typeof data.organizationId === "string" ? data.organizationId : undefined;
+      args.organizationId ??
+      (typeof data.organizationId === "string" ? data.organizationId : undefined);
+    const {
+      organizationId: _omitOrganizationId,
+      postTypeSlug: _omitPostTypeSlug,
+      ...sanitizedData
+    } = data;
     const resolver = await entityResolvers.get(ctx, args.postTypeSlug, organizationId);
     return await resolver.update(ctx, {
       postTypeSlug: args.postTypeSlug,
       id: args.id,
-      data: args.data as Partial<EntitySaveInput>,
+      data: sanitizedData as Partial<EntitySaveInput>,
       organizationId,
     });
   },
