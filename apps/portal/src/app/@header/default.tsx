@@ -256,7 +256,7 @@ const Breadcrumbs = () => {
   };
 
   return (
-    <Breadcrumb className="hidden items-center border-b bg-gray-100 px-6 py-2 shadow-sm md:flex">
+    <Breadcrumb className="bg-sidebar hidden items-center border-b px-6 py-2 shadow-sm md:flex">
       <BreadcrumbList>{getBreadcrumbItems()}</BreadcrumbList>
     </Breadcrumb>
   );

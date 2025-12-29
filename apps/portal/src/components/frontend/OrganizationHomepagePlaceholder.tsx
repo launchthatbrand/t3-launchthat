@@ -6,7 +6,7 @@ export function OrganizationHomepagePlaceholder({
   tenant: TenantSummary;
 }) {
   return (
-    <div className="container mx-auto max-w-5xl space-y-6 py-16">
+    <div className="container mx-auto max-w-5xl flex-1 space-y-6 py-16">
       <div className="space-y-3 text-center">
         {tenant.logo ? (
           // eslint-disable-next-line @next/next/no-img-element
