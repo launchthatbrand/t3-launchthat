@@ -120,7 +120,7 @@ export const createPost = mutation({
       await upsertPostMeta(ctx, postId, args.meta);
     }
 
-    await ctx.runMutation(internal.plugins.support.rag.ingestPostIfConfigured, {
+    await ctx.scheduler.runAfter(0, internal.plugins.support.rag.ingestPostIfConfigured, {
       postId,
     });
 
@@ -248,7 +248,7 @@ export const updatePost = mutation({
       await upsertPostMeta(ctx, id, meta);
     }
 
-    await ctx.runMutation(internal.plugins.support.rag.ingestPostIfConfigured, {
+    await ctx.scheduler.runAfter(0, internal.plugins.support.rag.ingestPostIfConfigured, {
       postId: id,
     });
 
@@ -306,10 +306,9 @@ export const updatePostStatus = mutation({
 
     if (post.organizationId) {
       if (args.status === "published") {
-        await ctx.runMutation(
-          internal.plugins.support.rag.ingestPostIfConfigured,
-          { postId: args.id },
-        );
+        await ctx.scheduler.runAfter(0, internal.plugins.support.rag.ingestPostIfConfigured, {
+          postId: args.id,
+        });
       } else {
         await ctx.runMutation(internal.plugins.support.rag.removePostEntry, {
           organizationId: post.organizationId as Id<"organizations">,
@@ -346,10 +345,9 @@ export const bulkUpdatePostStatus = mutation({
         });
         if (post.organizationId) {
           if (args.status === "published") {
-            await ctx.runMutation(
-              internal.plugins.support.rag.ingestPostIfConfigured,
-              { postId: id },
-            );
+            await ctx.scheduler.runAfter(0, internal.plugins.support.rag.ingestPostIfConfigured, {
+              postId: id,
+            });
           } else {
             await ctx.runMutation(
               internal.plugins.support.rag.removePostEntry,

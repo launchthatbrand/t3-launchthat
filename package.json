@@ -39,6 +39,7 @@
     "@swc/jest": "0.2.37",
     "@turbo/gen": "^2.4.4",
     "@types/d3-hierarchy": "^3.1.7",
+    "ai": "^6.0.3",
     "convex-helpers": "^0.1.95",
     "d3-hierarchy": "^3.1.2",
     "dependency-cruiser": "^12.10.0",

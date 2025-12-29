@@ -3,7 +3,7 @@ import { LMS_QUIZ_ASSISTANT_EXPERIENCE_ID } from "launchthat-plugin-support/assi
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { api } from "@/convex/_generated/api";
-import { formatDataStreamPart } from "@ai-sdk/ui-utils";
+import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { getConvex } from "~/lib/convex";
 import { resolveSupportOrganizationId } from "~/lib/support/resolveOrganizationId";
 
@@ -29,6 +29,24 @@ interface SupportRequestPayload {
   experienceContext?: Record<string, unknown>;
 }
 
+const buildContextTags = (args: {
+  experienceId: string;
+  experienceContext: Record<string, unknown>;
+}): string[] => {
+  const tags: string[] = [];
+  const ctx = args.experienceContext;
+
+  // Generic LMS contextual tag support (used by planned `lms-content` experience).
+  const postTypeSlug =
+    typeof ctx.postTypeSlug === "string" ? ctx.postTypeSlug.toLowerCase() : null;
+  const postId = typeof ctx.postId === "string" ? ctx.postId : null;
+  if (postTypeSlug && postId) {
+    tags.push(`lms:${postTypeSlug}:${postId}`);
+  }
+
+  return tags;
+};
+
 const parseRequest = (payload: unknown): SupportRequestPayload => {
   if (!payload || typeof payload !== "object") {
     throw new Error("Invalid request payload");
@@ -42,6 +60,30 @@ const parseRequest = (payload: unknown): SupportRequestPayload => {
     throw new Error("organizationId is required");
   }
   const messagesRaw = Array.isArray(body.messages) ? body.messages : [];
+
+  const extractContent = (message: unknown): string => {
+    if (!message || typeof message !== "object") {
+      return "";
+    }
+    const m = message as Record<string, unknown>;
+    if (typeof m.content === "string") {
+      return m.content;
+    }
+    if (typeof m.text === "string") {
+      return m.text;
+    }
+    if (Array.isArray(m.parts)) {
+      return m.parts
+        .map((part) => {
+          if (!part || typeof part !== "object") return "";
+          const p = part as Record<string, unknown>;
+          return p.type === "text" && typeof p.text === "string" ? p.text : "";
+        })
+        .join("");
+    }
+    return "";
+  };
+
   const messages: SupportMessage[] = messagesRaw
     .map((message) => ({
       id: typeof message?.id === "string" ? message.id : undefined,
@@ -51,7 +93,7 @@ const parseRequest = (payload: unknown): SupportRequestPayload => {
         message?.role === "user"
           ? (message.role as SupportMessage["role"])
           : "user",
-      content: typeof message?.content === "string" ? message.content : "",
+      content: extractContent(message),
     }))
     .filter((message) => message.content.length > 0);
   return {
@@ -97,6 +139,7 @@ export async function POST(req: Request) {
     const contactName = parsed.contactName;
     const experienceId = parsed.experienceId ?? "support";
     const experienceContext = parsed.experienceContext ?? {};
+    const contextTags = buildContextTags({ experienceId, experienceContext });
 
     const userMessages = parsed.messages.filter(
       (message: SupportMessage) => message.role === "user",
@@ -167,20 +210,9 @@ export async function POST(req: Request) {
         contactId,
         contactEmail,
         contactName,
+        contextTags: contextTags.length > 0 ? contextTags : undefined,
       },
     );
-
-    if (agentResult?.text) {
-      await convex.mutation(api.plugins.support.mutations.recordMessage, {
-        organizationId,
-        sessionId,
-        role: "assistant",
-        content: agentResult.text,
-        contactId,
-        contactEmail,
-        contactName,
-      });
-    }
 
     return streamTextResponse(agentResult?.text ?? "");
   } catch (error) {
@@ -249,23 +281,24 @@ export async function GET(req: NextRequest) {
 }
 
 function streamTextResponse(content = "") {
-  const normalized = content;
+  const normalized = content ?? "";
+  const textPartId = crypto.randomUUID();
 
-  const payload =
-    formatDataStreamPart("text", normalized) +
-    formatDataStreamPart("finish_message", {
-      finishReason: "stop",
-      usage: {
-        promptTokens: 0,
-        completionTokens: Math.max(1, Math.ceil(normalized.length / 4)),
-      },
-    });
+  const stream = createUIMessageStream({
+    execute: ({ writer }) => {
+      writer.write({ type: "start" });
 
-  return new Response(payload, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
+      if (normalized.length > 0) {
+        writer.write({ type: "text-start", id: textPartId });
+        writer.write({ type: "text-delta", id: textPartId, delta: normalized });
+        writer.write({ type: "text-end", id: textPartId });
+      }
+
+      writer.write({ type: "finish", finishReason: "stop" });
     },
   });
+
+  return createUIMessageStreamResponse({ stream });
 }
 
 interface QuizExperienceArgs {

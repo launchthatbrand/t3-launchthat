@@ -105,11 +105,12 @@ const ragFieldSelection = v.union(
 
 const supportRagSourcesTable = defineTable({
   organizationId: supportOrganizationIdValidator,
-  sourceType: v.literal("postType"),
+  sourceType: v.union(v.literal("postType"), v.literal("lmsPostType")),
   postTypeSlug: v.string(),
   fields: v.array(ragFieldSelection),
   includeTags: v.boolean(),
   metaFieldKeys: v.optional(v.array(v.string())),
+  additionalMetaKeys: v.optional(v.string()),
   displayName: v.optional(v.string()),
   isEnabled: v.boolean(),
   lastIndexedAt: v.optional(v.number()),
@@ -117,7 +118,12 @@ const supportRagSourcesTable = defineTable({
   updatedAt: v.number(),
 })
   .index("by_org_type", ["organizationId", "sourceType"])
-  .index("by_org_postType", ["organizationId", "postTypeSlug"]);
+  .index("by_org_postType", ["organizationId", "postTypeSlug"])
+  .index("by_org_type_and_postTypeSlug", [
+    "organizationId",
+    "sourceType",
+    "postTypeSlug",
+  ]);
 
 const supportAgentPresenceTable = defineTable({
   organizationId: supportOrganizationIdValidator,

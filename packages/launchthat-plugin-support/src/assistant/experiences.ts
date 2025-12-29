@@ -1,4 +1,4 @@
-export type AssistantExperienceId = "support" | "lms-quiz";
+export type AssistantExperienceId = "support" | "lms-quiz" | "lms-content";
 
 export interface AssistantExperienceDefinition {
   id: AssistantExperienceId;
@@ -19,6 +19,8 @@ export const SUPPORT_ASSISTANT_EVENT = "launchthat-support-assistant-open";
 export const DEFAULT_ASSISTANT_EXPERIENCE_ID: AssistantExperienceId = "support";
 export const LMS_QUIZ_ASSISTANT_EXPERIENCE_ID: AssistantExperienceId =
   "lms-quiz";
+export const LMS_CONTENT_ASSISTANT_EXPERIENCE_ID: AssistantExperienceId =
+  "lms-content";
 
 const registry = new Map<
   AssistantExperienceId,
@@ -90,5 +92,31 @@ registerAssistantExperience({
         ? ` "${context.lessonTitle}"`
         : "";
     return `Generate a quiz for lesson${title}.`;
+  },
+});
+
+registerAssistantExperience({
+  id: "lms-content",
+  label: "Course Assistant",
+  description:
+    "Answers questions about the current course/lesson/topic using the organization's indexed content and transcripts.",
+  buildDefaultMessage: (context) => {
+    const postTypeSlug =
+      typeof context.postTypeSlug === "string" ? context.postTypeSlug : null;
+    const title = typeof context.title === "string" ? context.title : null;
+    const kind =
+      postTypeSlug === "courses"
+        ? "course"
+        : postTypeSlug === "lessons"
+          ? "lesson"
+          : postTypeSlug === "topics"
+            ? "topic"
+            : "content";
+
+    if (title && title.trim().length > 0) {
+      return `Tell me about this ${kind}: "${title.trim()}".`;
+    }
+
+    return `Tell me about this ${kind}.`;
   },
 });

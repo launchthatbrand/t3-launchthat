@@ -371,7 +371,7 @@ export function NavMain({ items, sections, labelBehavior = "default" }: NavMainP
   const tickerStyle = useMemo(() => {
     if (!useTickerLabels) return null;
     return (
-      <style jsx global>{`
+      <style>{`
         @keyframes ticker-reveal {
           from {
             transform: translateX(0);

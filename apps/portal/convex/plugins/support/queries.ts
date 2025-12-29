@@ -2,7 +2,7 @@ import { v } from "convex/values";
 
 import type { Id } from "../../_generated/dataModel";
 import { components } from "../../_generated/api";
-import { query } from "../../_generated/server";
+import { internalQuery, query } from "../../_generated/server";
 
 interface SupportPostRecord {
   _id: string;
@@ -439,6 +439,7 @@ export const getConversationMode = query({
 export const listHelpdeskArticles = query({
   args: {
     organizationId: v.string(),
+    query: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -450,7 +451,11 @@ export const listHelpdeskArticles = query({
         limit: args.limit ?? 50,
       },
     })) as SupportPostRecord[];
-    return posts.map((entry) => ({
+
+    const normalizedQuery =
+      typeof args.query === "string" ? args.query.trim().toLowerCase() : "";
+
+    const mapped = posts.map((entry) => ({
       _id: entry._id,
       entryId: entry._id,
       title: entry.title ?? "Untitled article",
@@ -464,6 +469,24 @@ export const listHelpdeskArticles = query({
       updatedAt: entry.updatedAt ?? entry._creationTime,
       createdAt: entry.createdAt,
     }));
+
+    if (!normalizedQuery) {
+      return mapped;
+    }
+
+    // In-memory filtering for now (component doesn't expose a search index here).
+    return mapped
+      .map((entry) => {
+        const haystack =
+          `${entry.title}\n${entry.excerpt ?? ""}\n${entry.content}`
+            .toLowerCase()
+            .trim();
+        const score = haystack.includes(normalizedQuery) ? 1 : 0;
+        return { entry, score };
+      })
+      .filter((row) => row.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((row) => row.entry);
   },
 });
 
@@ -489,43 +512,34 @@ export const listRagSources = query({
     organizationId: v.string(),
   },
   handler: async (ctx, args) => {
-    const posts = (await ctx.runQuery(supportQueries.listSupportPosts, {
-      organizationId: args.organizationId,
-      filters: { postTypeSlug: "support_rag_source" },
-    })) as SupportPostRecord[];
+    const postTypeSources = await ctx.db
+      .query("supportRagSources")
+      .withIndex("by_org_type", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("sourceType", "postType"),
+      )
+      .collect();
+    const lmsSources = await ctx.db
+      .query("supportRagSources")
+      .withIndex("by_org_type", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("sourceType", "lmsPostType"),
+      )
+      .collect();
 
-    const results: RagSourceRecord[] = [];
-    for (const post of posts) {
-      const meta = await fetchMetaMap(
-        ctx,
-        post._id as Id<"posts">,
-        args.organizationId,
-      );
-      const config = parseMetaJson<Partial<RagSourceRecord>>(meta.config);
-      results.push({
-        _id: post._id,
-        _creationTime: post._creationTime,
-        postTypeSlug: post.slug ?? post.postTypeSlug,
-        displayName:
-          (meta.displayName as string | undefined) ?? config?.displayName,
-        isEnabled:
-          (meta.isEnabled as boolean | undefined) ?? config?.isEnabled ?? true,
-        includeTags:
-          (meta.includeTags as boolean | undefined) ??
-          config?.includeTags ??
-          false,
-        metaFieldKeys:
-          (meta.metaFieldKeys as string[]) ??
-          (config?.metaFieldKeys as string[]) ??
-          [],
-        additionalMetaKeys:
-          (meta.additionalMetaKeys as string | undefined) ??
-          config?.additionalMetaKeys,
-        fields: (meta.fields as string[]) ??
-          (config?.fields as string[]) ?? ["title", "content"],
-      });
-    }
-    return results;
+    return [...postTypeSources, ...lmsSources].map((source) => ({
+      _id: source._id,
+      _creationTime: source._creationTime,
+      postTypeSlug: source.postTypeSlug,
+      displayName: source.displayName,
+      isEnabled: source.isEnabled,
+      includeTags: source.includeTags,
+      metaFieldKeys: source.metaFieldKeys ?? [],
+      additionalMetaKeys: source.additionalMetaKeys,
+      fields: source.fields,
+    })) satisfies RagSourceRecord[];
   },
 });
 

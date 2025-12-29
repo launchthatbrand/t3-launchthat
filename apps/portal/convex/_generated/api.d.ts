@@ -192,6 +192,7 @@ import type * as plugins_socialfeed_queries from "../plugins/socialfeed/queries.
 import type * as plugins_support_agent from "../plugins/support/agent.js";
 import type * as plugins_support_helpers from "../plugins/support/helpers.js";
 import type * as plugins_support_http from "../plugins/support/http.js";
+import type * as plugins_support_internalQueries from "../plugins/support/internalQueries.js";
 import type * as plugins_support_mutations from "../plugins/support/mutations.js";
 import type * as plugins_support_options from "../plugins/support/options.js";
 import type * as plugins_support_queries from "../plugins/support/queries.js";
@@ -422,6 +423,7 @@ declare const fullApi: ApiFromModules<{
   "plugins/support/agent": typeof plugins_support_agent;
   "plugins/support/helpers": typeof plugins_support_helpers;
   "plugins/support/http": typeof plugins_support_http;
+  "plugins/support/internalQueries": typeof plugins_support_internalQueries;
   "plugins/support/mutations": typeof plugins_support_mutations;
   "plugins/support/options": typeof plugins_support_options;
   "plugins/support/queries": typeof plugins_support_queries;

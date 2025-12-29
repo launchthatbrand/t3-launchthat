@@ -13,6 +13,7 @@ import { LmsBadgesMetaBox } from "./admin/metaBoxes/LmsBadgesMetaBox";
 import { LmsQuizPassPercentMetaBox } from "./admin/metaBoxes/LmsQuizPassPercentMetaBox";
 import { AdminLessonCompletionCallout } from "./components/AdminLessonCompletionCallout";
 import { CourseProgress } from "./components/CourseProgress";
+import { FrontendLmsAssistantButton } from "./components/FrontendLmsAssistantButton";
 import { FrontendLessonCompletionCallout } from "./components/FrontendLessonCompletionCallout";
 import { CertificateViewer } from "./frontend/CertificateViewer";
 import { CourseNav } from "./frontend/CourseNav";
@@ -77,6 +78,14 @@ const buildFrontendProgressSlot = (slug: string) => ({
   location: "header" as const,
   render: (props: PluginFrontendSingleSlotProps) => (
     <CourseProgress {...props} />
+  ),
+});
+
+const buildFrontendAssistantSlot = (slug: string) => ({
+  id: `lms-frontend-${slug}-assistant-slot`,
+  location: "header" as const,
+  render: (props: PluginFrontendSingleSlotProps) => (
+    <FrontendLmsAssistantButton {...props} />
   ),
 });
 
@@ -186,6 +195,7 @@ export const createLmsPluginDefinitionImpl = ({
         },
         singleSlots: [
           buildFrontendProgressSlot("courses"),
+          buildFrontendAssistantSlot("courses"),
           buildFrontendCompletionSlot("courses"),
         ],
         filters: [
@@ -416,6 +426,7 @@ export const createLmsPluginDefinitionImpl = ({
         providers: ["lms-course"],
         singleSlots: [
           buildFrontendProgressSlot("lessons"),
+          buildFrontendAssistantSlot("lessons"),
           buildFrontendCompletionSlot("lessons"),
         ],
         filters: [
@@ -479,6 +490,7 @@ export const createLmsPluginDefinitionImpl = ({
         providers: ["lms-course"],
         singleSlots: [
           buildFrontendProgressSlot("topics"),
+          buildFrontendAssistantSlot("topics"),
           buildFrontendCompletionSlot("topics"),
         ],
         filters: [

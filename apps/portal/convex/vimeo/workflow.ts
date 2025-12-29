@@ -34,12 +34,12 @@ export const vimeoSyncWorkflow = workflowAny.define({
       let pageResult: any;
       try {
         pageResult = await step.runAction(
-          internalAny.vimeo.actions.fetchVimeoVideosPage,
-          {
-            connectionId: args.connectionId,
-            page: nextPage,
-            perPage,
-          },
+        internalAny.vimeo.actions.fetchVimeoVideosPage,
+        {
+          connectionId: args.connectionId,
+          page: nextPage,
+          perPage,
+        },
           // Vimeo can return deterministic errors for out-of-range pages; we handle those in the action.
           // Avoid workflow-level retry loops for non-transient errors.
           { retry: false },
@@ -58,7 +58,7 @@ export const vimeoSyncWorkflow = workflowAny.define({
         const estimatedTotalPages = Math.max(
           1,
           Math.ceil(pageResult.total / Math.max(perPage, 1)),
-        );
+      );
         await step.runMutation(internalAny.vimeo.syncState.updateSyncState, {
           connectionId: args.connectionId,
           totalVideos: pageResult.total,

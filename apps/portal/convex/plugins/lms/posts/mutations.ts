@@ -1,9 +1,12 @@
 import { v } from "convex/values";
 
-import { components } from "../../../_generated/api";
+import { components, internal } from "../../../_generated/api";
 import { mutation } from "../../../_generated/server";
 
 const lmsPostsMutations = components.launchthat_lms.posts.mutations;
+const lmsPostsQueries = components.launchthat_lms.posts.queries as unknown as {
+  getPostByIdInternal: unknown;
+};
 
 export const createPost = mutation({
   args: {
@@ -30,7 +33,12 @@ export const createPost = mutation({
   },
   returns: v.string(),
   handler: async (ctx, args) => {
-    return await ctx.runMutation(lmsPostsMutations.createPost, args);
+    const id = await ctx.runMutation(lmsPostsMutations.createPost, args);
+    await ctx.scheduler.runAfter(0, internal.plugins.support.rag.ingestLmsPostIfConfigured, {
+      id,
+      postTypeSlug: args.postTypeSlug,
+    });
+    return id;
   },
 });
 
@@ -60,7 +68,18 @@ export const updatePost = mutation({
   },
   returns: v.string(),
   handler: async (ctx, args) => {
-    return await ctx.runMutation(lmsPostsMutations.updatePost, args);
+    const id = await ctx.runMutation(lmsPostsMutations.updatePost, args);
+    const post = (await ctx.runQuery(
+      lmsPostsQueries.getPostByIdInternal as any,
+      { id },
+    )) as { postTypeSlug?: string } | null;
+    if (post?.postTypeSlug) {
+      await ctx.scheduler.runAfter(0, internal.plugins.support.rag.ingestLmsPostIfConfigured, {
+        id,
+        postTypeSlug: post.postTypeSlug,
+      });
+    }
+    return id;
   },
 });
 
@@ -70,7 +89,19 @@ export const deletePost = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    return await ctx.runMutation(lmsPostsMutations.deletePost, args);
+    const post = (await ctx.runQuery(
+      lmsPostsQueries.getPostByIdInternal as any,
+      { id: args.id },
+    )) as { postTypeSlug?: string; organizationId?: string } | null;
+    await ctx.runMutation(lmsPostsMutations.deletePost, args);
+    if (post?.postTypeSlug && post?.organizationId) {
+      await ctx.scheduler.runAfter(0, internal.plugins.support.rag.removeLmsEntry, {
+        organizationId: post.organizationId as any,
+        postTypeSlug: post.postTypeSlug,
+        id: args.id,
+      });
+    }
+    return null;
   },
 });
 
@@ -85,7 +116,18 @@ export const updatePostStatus = mutation({
   },
   returns: v.string(),
   handler: async (ctx, args) => {
-    return await ctx.runMutation(lmsPostsMutations.updatePostStatus, args);
+    const id = await ctx.runMutation(lmsPostsMutations.updatePostStatus, args);
+    const post = (await ctx.runQuery(
+      lmsPostsQueries.getPostByIdInternal as any,
+      { id },
+    )) as { postTypeSlug?: string } | null;
+    if (post?.postTypeSlug) {
+      await ctx.scheduler.runAfter(0, internal.plugins.support.rag.ingestLmsPostIfConfigured, {
+        id,
+        postTypeSlug: post.postTypeSlug,
+      });
+    }
+    return id;
   },
 });
 

@@ -1,10 +1,12 @@
 "use client";
 
+import type { UIMessage } from "ai";
 import type { GenericId as Id } from "convex/values";
 import type { ChangeEvent, FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { api } from "@portal/convexspec";
+import { DefaultChatTransport, isTextUIPart } from "ai";
 import { useMutation, useQuery } from "convex/react";
 import { Loader2, MessageCircle } from "lucide-react";
 
@@ -288,31 +290,92 @@ function ChatSurface({
 
   const shouldCollectContact = settings.requireContact && !contact;
 
-  const {
-    messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    isLoading,
-    error,
-    reload,
-    setMessages,
-    setInput,
-  } = useChat({
-    api: apiPath,
-    id: sessionId,
-    initialMessages,
-    body: {
+  const requestBodyRef = useRef({
+    organizationId,
+    sessionId,
+    contactId: normalizedContactId,
+    experienceId: activeExperienceId,
+    experienceContext,
+  });
+
+  useEffect(() => {
+    requestBodyRef.current = {
       organizationId,
       sessionId,
       contactId: normalizedContactId,
       experienceId: activeExperienceId,
       experienceContext,
+    };
+  }, [
+    activeExperienceId,
+    experienceContext,
+    normalizedContactId,
+    organizationId,
+    sessionId,
+  ]);
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: apiPath,
+        body: () => requestBodyRef.current,
+      }),
+    [apiPath],
+  );
+
+  const initialUiMessages = useMemo((): UIMessage[] => {
+    return (initialMessages ?? []).map((message) => ({
+      id: message.id,
+      role: message.role,
+      parts: [
+        {
+          type: "text",
+          text:
+            typeof message.content === "string"
+              ? message.content
+              : JSON.stringify(message.content),
+        },
+      ],
+    }));
+  }, [initialMessages]);
+
+  const { messages, setMessages, sendMessage, regenerate, status, error } =
+    useChat({
+      id: sessionId,
+      messages: initialUiMessages,
+      transport,
+      onError: (err) => {
+        console.error("[support-chat] streaming error", err);
+      },
+    });
+
+  const [input, setInput] = useState("");
+
+  const handleInputChange = useCallback(
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      setInput(event.target.value);
     },
-    onError: (err) => {
-      console.error("[support-chat] streaming error", err);
+    [],
+  );
+
+  const handleSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const trimmed = input.trim();
+      if (!trimmed) {
+        return;
+      }
+      void sendMessage({ text: trimmed });
+      setInput("");
     },
-  });
+    [input, sendMessage],
+  );
+
+  const isLoading = status === "submitted" || status === "streaming";
+
+  const reload = useCallback(() => {
+    void regenerate();
+  }, [regenerate]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -328,14 +391,23 @@ function ChatSurface({
       const nextExperienceId =
         detail.experienceId ?? DEFAULT_ASSISTANT_EXPERIENCE_ID;
       setActiveExperienceId(nextExperienceId);
-      setExperienceContext(detail.context ?? {});
+      const nextContext = detail.context ?? {};
+      setExperienceContext(nextContext);
+
+      requestBodyRef.current = {
+        organizationId,
+        sessionId,
+        contactId: normalizedContactId,
+        experienceId: nextExperienceId,
+        experienceContext: nextContext,
+      };
+
       if (detail.message && detail.message.length > 0) {
-        setInput(detail.message);
-        window.requestAnimationFrame(() => {
-          handleSubmit(
-            new Event("submit") as unknown as FormEvent<HTMLFormElement>,
-          );
-        });
+        if (!shouldCollectContact) {
+          window.requestAnimationFrame(() => {
+            void sendMessage({ text: detail.message ?? "" });
+          });
+        }
       }
     };
 
@@ -346,19 +418,30 @@ function ChatSurface({
         handler as EventListener,
       );
     };
-  }, [handleSubmit, setInput]);
+  }, [
+    normalizedContactId,
+    organizationId,
+    sendMessage,
+    sessionId,
+    shouldCollectContact,
+  ]);
 
   const displayedMessages = useMemo(
     () =>
       messages
         .filter((message) => message.role !== "system")
-        .map((message) => ({
-          ...message,
-          content:
-            typeof message.content === "string"
-              ? stripFormattedPayload(message.content)
-              : message.content,
-        })),
+        .map((message) => {
+          const rawText = message.parts
+            .filter(isTextUIPart)
+            .map((part) => part.text)
+            .join("");
+
+          return {
+            id: message.id,
+            role: message.role,
+            content: stripFormattedPayload(rawText),
+          };
+        }),
     [messages],
   );
   const previousMessageCountRef = useRef(displayedMessages.length);
@@ -379,48 +462,17 @@ function ChatSurface({
       return;
     }
 
-    const normalized = liveMessages.map((message) => {
-      const fallbackTimestamp =
-        ("createdAt" in message
-          ? (message as { createdAt?: number }).createdAt
-          : undefined) ?? Date.now();
+    const incomingUiMessages: UIMessage[] = liveMessages.map((message) => ({
+      id: message._id,
+      role: message.role,
+      parts: [{ type: "text", text: message.content }],
+    }));
 
-      return {
-        id: message._id ?? `${message.role}-${fallbackTimestamp}`,
-        role: message.role as "user" | "assistant" | "system",
-        content: message.content,
-      };
-    });
-
-    setMessages((current) => {
-      let next = current;
-      const existingIds = new Set(current.map((message) => message.id));
-
-      normalized.forEach((incoming) => {
-        if (existingIds.has(incoming.id)) {
-          return;
-        }
-
-        const duplicateIndex = next.findIndex(
-          (message) =>
-            message.role === incoming.role &&
-            message.content.trim() === incoming.content.trim(),
-        );
-
-        if (duplicateIndex >= 0) {
-          const updated = [...next];
-          updated[duplicateIndex] = incoming;
-          next = updated;
-          existingIds.add(incoming.id);
-          return;
-        }
-
-        next = [...next, incoming];
-        existingIds.add(incoming.id);
-      });
-
-      return next;
-    });
+    // Use Convex-persisted messages as the source of truth to avoid duplicates.
+    // (The chat transport also keeps an in-memory message list for streaming.)
+    // This replacement keeps the UI stable and prevents "double send / triple reply"
+    // when the same message exists both in-memory and in Convex.
+    setMessages(incomingUiMessages);
   }, [liveMessages, setMessages]);
 
   const agentMetadataByMessageId = useMemo(() => {
@@ -557,7 +609,7 @@ function ChatSurface({
         {
           id: optimisticId,
           role: "user" as const,
-          content,
+          parts: [{ type: "text", text: content }],
         },
       ]);
       setInput("");
@@ -698,7 +750,7 @@ function ChatSurface({
         />
       )}
       {isMobile ? (
-        <Drawer open={isOpen} onOpenChange={setIsOpen}>
+        <Drawer open={isOpen} onOpenChange={setIsOpen} repositionInputs={false}>
           <DrawerTrigger asChild>
             <button
               type="button"

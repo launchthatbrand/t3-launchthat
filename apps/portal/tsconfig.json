@@ -47,6 +47,12 @@
       "launchthat-plugin-support": [
         "../../packages/launchthat-plugin-support/src/index"
       ],
+      "launchthat-plugin-support/assistant": [
+        "../../packages/launchthat-plugin-support/src/assistant/experiences.ts"
+      ],
+      "launchthat-plugin-support/assistant/openai": [
+        "../../packages/launchthat-plugin-support/src/assistant/openai.ts"
+      ],
       "launchthat-plugin-support/*": [
         "../../packages/launchthat-plugin-support/src/*"
       ],

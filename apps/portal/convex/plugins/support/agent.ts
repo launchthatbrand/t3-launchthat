@@ -5,7 +5,7 @@ import type { ActionCtx } from "@convex-config/_generated/server";
 import { createOpenAI } from "@ai-sdk/openai";
 import { api, components, internal } from "@convex-config/_generated/api";
 import { action } from "@convex-config/_generated/server";
-import { Agent } from "@convex-dev/agent";
+import { generateText, type ModelMessage } from "ai";
 import { v } from "convex/values";
 import {
   buildSupportOpenAiOwnerKey,
@@ -32,56 +32,10 @@ const KNOWN_MISSING_KEY_MESSAGE =
 
 const SUPPORT_MODEL_ID = "gpt-4.1-mini";
 
-const createSupportAgent = (apiKey: string) => {
+const createSupportModel = (apiKey: string) => {
   const openai = createOpenAI({ apiKey });
-  return new Agent(components.agent, {
-    name: "LaunchThat Support Assistant",
-    instructions: BASE_INSTRUCTIONS,
-    // Use a v2-compatible OpenAI model ID (AI SDK 5 requires v2 spec names)
-    languageModel: openai.chat(SUPPORT_MODEL_ID),
-  });
-};
-
-interface EnsureThreadArgs {
-  organizationId: Id<"organizations">;
-  sessionId: string;
-}
-
-const ensureAgentThreadId = async (
-  ctx: ActionCtx,
-  args: EnsureThreadArgs,
-  agent: Agent,
-): Promise<string> => {
-  const conversationMetadata = await ctx.runQuery(
-    internal.plugins.support.queries.getConversationMetadata,
-    {
-      organizationId: args.organizationId,
-      sessionId: args.sessionId,
-    },
-  );
-
-  if (conversationMetadata?.agentThreadId) {
-    return conversationMetadata.agentThreadId;
-  }
-
-  const userId =
-    conversationMetadata?.contactId ??
-    `${args.organizationId}:${args.sessionId}`;
-  const { threadId } = await agent.createThread(ctx, {
-    userId,
-    title: `support-${args.sessionId}`,
-  });
-
-  await ctx.runMutation(
-    internal.plugins.support.mutations.setConversationAgentThread,
-    {
-      organizationId: args.organizationId,
-      sessionId: args.sessionId,
-      agentThreadId: threadId,
-    },
-  );
-
-  return threadId;
+  // Bypass @convex-dev/agent thread machinery (currently crashing in stripUnknownFields).
+  return openai.chat(SUPPORT_MODEL_ID);
 };
 
 const buildKnowledgeContext = (
@@ -96,6 +50,20 @@ const buildKnowledgeContext = (
       (entry, index) => `Source ${index + 1}: ${entry.title}\n${entry.content}`,
     )
     .join("\n\n");
+};
+
+const buildConversationMessages = (args: {
+  history: Array<{ role: "user" | "assistant"; content: string }>;
+  latestUserMessage: string;
+}): ModelMessage[] => {
+  const messages: ModelMessage[] = [];
+  for (const message of args.history.slice(-12)) {
+    const content = message.content?.trim();
+    if (!content) continue;
+    messages.push({ role: message.role, content });
+  }
+  messages.push({ role: "user", content: args.latestUserMessage });
+  return messages;
 };
 
 const resolveOrganizationOpenAiKey = async (
@@ -140,6 +108,7 @@ export const generateAgentReply = action({
     contactId: v.optional(v.id("contacts")),
     contactEmail: v.optional(v.string()),
     contactName: v.optional(v.string()),
+    contextTags: v.optional(v.array(v.string())),
   },
   returns: v.object({
     text: v.string(),
@@ -169,20 +138,11 @@ export const generateAgentReply = action({
       return { text: KNOWN_MISSING_KEY_MESSAGE };
     }
 
-    const supportAgent = createSupportAgent(apiKey);
+    const model = createSupportModel(apiKey);
     const trimmedPrompt = args.prompt.trim();
     if (!trimmedPrompt) {
       return { text: "" };
     }
-
-    const threadId = await ensureAgentThreadId(
-      ctx,
-      {
-        ...args,
-        organizationId,
-      },
-      supportAgent,
-    );
 
     let knowledgeEntries: {
       title: string;
@@ -190,14 +150,23 @@ export const generateAgentReply = action({
     }[] = [];
 
     try {
-      knowledgeEntries = await ctx.runAction(
-        internal.plugins.support.rag.searchKnowledge,
-        {
-          organizationId,
-          query: trimmedPrompt,
-          limit: 5,
-        },
-      );
+      const tags = (args.contextTags ?? [])
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0)
+        .slice(0, 10);
+      knowledgeEntries =
+        tags.length > 0
+          ? await ctx.runAction(internal.plugins.support.rag.searchKnowledgeForContext, {
+              organizationId,
+              query: trimmedPrompt,
+              tags,
+              limit: 5,
+            })
+          : await ctx.runAction(internal.plugins.support.rag.searchKnowledge, {
+              organizationId,
+              query: trimmedPrompt,
+              limit: 5,
+            });
     } catch (searchError) {
       console.error("[support-agent] rag search failed", searchError);
     }
@@ -221,13 +190,27 @@ export const generateAgentReply = action({
     );
 
     let text = "";
-    const { thread } = await supportAgent.continueThread(ctx, { threadId });
     try {
-      const result = await thread.generateText({
-        system: [BASE_INSTRUCTIONS, knowledgeContext].join("\n\n"),
-        messages: [{ role: "user", content: trimmedPrompt }],
+      const history = await ctx.runQuery(api.plugins.support.queries.listMessages, {
+        organizationId,
+        sessionId: args.sessionId,
       });
-      text = result.text ?? "";
+
+      const messages = buildConversationMessages({
+        history: history.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+        latestUserMessage: trimmedPrompt,
+      });
+
+      const result = await generateText({
+        model,
+        system: [BASE_INSTRUCTIONS, knowledgeContext].join("\n\n"),
+        messages,
+      });
+
+      text = typeof result.text === "string" ? result.text : "";
     } catch (modelError) {
       console.error("[support-agent] model error", modelError);
       text =

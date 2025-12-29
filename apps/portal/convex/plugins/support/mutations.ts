@@ -2,8 +2,9 @@ import { v } from "convex/values";
 
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
-import { components } from "../../_generated/api";
+import { api, components } from "../../_generated/api";
 import { internalMutation, mutation } from "../../_generated/server";
+import { supportOrganizationIdValidator } from "./schema";
 
 // Narrow overly deep types from generated bindings to keep TS fast/stable.
 const supportMutations = components.launchthat_support.mutations;
@@ -251,17 +252,29 @@ export const recordMessage = mutation({
       timestamp,
     );
 
-    const metaEntries = [
-      { key: "sessionId", value: args.sessionId },
-      { key: "role", value: args.role },
-      { key: "contactId", value: args.contactId },
-      { key: "contactName", value: args.contactName },
-      { key: "contactEmail", value: args.contactEmail },
-      { key: "messageType", value: args.messageType },
-      { key: "subject", value: args.subject },
-      { key: "htmlBody", value: args.htmlBody },
-      { key: "textBody", value: args.textBody },
-    ].filter((entry) => entry.value !== undefined);
+    const metaEntries: Array<{
+      key: string;
+      value: string | number | boolean | null;
+    }> = [];
+    const maybePush = (key: string, value: unknown) => {
+      if (
+        value === null ||
+        typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean"
+      ) {
+        metaEntries.push({ key, value });
+      }
+    };
+    maybePush("sessionId", args.sessionId);
+    maybePush("role", args.role);
+    maybePush("contactId", args.contactId);
+    maybePush("contactName", args.contactName);
+    maybePush("contactEmail", args.contactEmail);
+    maybePush("messageType", args.messageType);
+    maybePush("subject", args.subject);
+    maybePush("htmlBody", args.htmlBody);
+    maybePush("textBody", args.textBody);
 
     await ctx.runMutation(supportMutations.createSupportPost, {
       organizationId: args.organizationId,
@@ -272,7 +285,7 @@ export const recordMessage = mutation({
       content: args.content,
       parentId: convoId as Id<"posts">,
       parentTypeSlug: "support_conversation",
-      meta: metaEntries as { key: string; value: unknown }[],
+      meta: metaEntries,
     });
     return null;
   },
@@ -281,7 +294,10 @@ export const recordMessage = mutation({
 export const recordMessageInternal = internalMutation({
   args: recordMessageArgs,
   handler: async (ctx, args) => {
-    await ctx.runMutation(recordMessage, args);
+    const _result: null = await ctx.runMutation(
+      api.plugins.support.mutations.recordMessage,
+      args,
+    );
     return null;
   },
 });
@@ -467,9 +483,12 @@ export const beginDomainVerification = mutation({
 // RAG sources
 export const saveRagSourceConfig = mutation({
   args: {
-    organizationId: v.string(),
-    sourceId: v.optional(v.id("posts")),
+    organizationId: supportOrganizationIdValidator,
+    sourceId: v.optional(v.id("supportRagSources")),
     postTypeSlug: v.string(),
+    sourceType: v.optional(
+      v.union(v.literal("postType"), v.literal("lmsPostType")),
+    ),
     fields: v.optional(v.array(v.string())),
     includeTags: v.optional(v.boolean()),
     metaFieldKeys: v.optional(v.array(v.string())),
@@ -480,81 +499,93 @@ export const saveRagSourceConfig = mutation({
   handler: async (ctx, args) => {
     const timestamp = Date.now();
     const slug = args.postTypeSlug.toLowerCase();
-    const metaEntries = [
-      { key: "displayName", value: args.displayName ?? slug },
-      { key: "isEnabled", value: args.isEnabled ?? true },
-      { key: "includeTags", value: args.includeTags ?? false },
-      {
-        key: "metaFieldKeys",
-        value: (args.metaFieldKeys ?? []).join(","),
-      },
-      {
-        key: "additionalMetaKeys",
-        value: args.additionalMetaKeys ?? "",
-      },
-      {
-        key: "fields",
-        value: JSON.stringify(args.fields ?? ["title", "content"]),
-      },
-      {
-        key: "config",
-        value: JSON.stringify({
-          displayName: args.displayName ?? slug,
-          isEnabled: args.isEnabled ?? true,
-          includeTags: args.includeTags ?? false,
-          metaFieldKeys: args.metaFieldKeys ?? [],
-          additionalMetaKeys: args.additionalMetaKeys ?? "",
-          fields: args.fields ?? ["title", "content"],
-        }),
-      },
-    ];
+    const organizationId = args.organizationId as
+      | Id<"organizations">
+      | "portal-root";
+    const inferredSourceType =
+      args.sourceType ??
+      ([
+        "courses",
+        "lessons",
+        "topics",
+        "quizzes",
+        "certificates",
+        "badges",
+      ].includes(slug)
+        ? "lmsPostType"
+        : "postType");
+    const fields = (args.fields ?? ["title", "content"]).filter(
+      (field): field is "title" | "excerpt" | "content" =>
+        field === "title" || field === "excerpt" || field === "content",
+    );
 
     if (args.sourceId) {
-      await ctx.runMutation(supportMutations.updateSupportPost, {
-        id: args.sourceId,
-        organizationId: args.organizationId,
-        title: args.displayName ?? slug,
-        postTypeSlug: "support_rag_source",
-        content: null,
-        excerpt: null,
-        slug,
-        status: "published",
-        meta: metaEntries,
+      await ctx.db.patch(args.sourceId, {
+        postTypeSlug: slug,
+        sourceType: inferredSourceType,
+        fields,
+        includeTags: args.includeTags ?? false,
+        metaFieldKeys: args.metaFieldKeys ?? [],
+        additionalMetaKeys: args.additionalMetaKeys ?? "",
+        displayName: args.displayName ?? slug,
+        isEnabled: args.isEnabled ?? true,
+        updatedAt: timestamp,
       });
       return { ragSourceId: args.sourceId };
     }
 
-    const id = await ctx.runMutation(supportMutations.createSupportPost, {
-      organizationId: args.organizationId,
-      title: args.displayName ?? slug,
-      postTypeSlug: "support_rag_source",
-      content: null,
-      excerpt: null,
-      slug,
-      status: "published",
-      meta: metaEntries,
+    const existing = await ctx.db
+      .query("supportRagSources")
+      .withIndex("by_org_type_and_postTypeSlug", (q) =>
+        q
+          .eq("organizationId", organizationId)
+          .eq("sourceType", inferredSourceType)
+          .eq("postTypeSlug", slug),
+      )
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        fields,
+        includeTags: args.includeTags ?? false,
+        metaFieldKeys: args.metaFieldKeys ?? [],
+        additionalMetaKeys: args.additionalMetaKeys ?? "",
+        displayName: args.displayName ?? slug,
+        isEnabled: args.isEnabled ?? true,
+        updatedAt: timestamp,
+      });
+      return { ragSourceId: existing._id };
+    }
+
+    const id = await ctx.db.insert("supportRagSources", {
+      organizationId,
+      sourceType: inferredSourceType,
+      postTypeSlug: slug,
+      fields,
+      includeTags: args.includeTags ?? false,
+      metaFieldKeys: args.metaFieldKeys ?? [],
+      additionalMetaKeys: args.additionalMetaKeys ?? "",
+      displayName: args.displayName ?? slug,
+      isEnabled: args.isEnabled ?? true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     });
+
     return { ragSourceId: id };
   },
 });
 
 export const deleteRagSourceConfig = mutation({
   args: {
-    organizationId: v.string(),
-    sourceId: v.id("posts"),
+    organizationId: supportOrganizationIdValidator,
+    sourceId: v.id("supportRagSources"),
   },
   handler: async (ctx, args) => {
-    await ctx.runMutation(supportMutations.updateSupportPost, {
-      id: args.sourceId,
-      organizationId: args.organizationId,
-      title: "archived",
-      postTypeSlug: "support_rag_source",
-      content: null,
-      excerpt: null,
-      slug: `${args.sourceId}-archived`,
-      status: "archived",
-      meta: [{ key: "archivedAt", value: Date.now() }],
-    });
+    const doc = await ctx.db.get(args.sourceId);
+    if (!doc || doc.organizationId !== args.organizationId) {
+      return null;
+    }
+    await ctx.db.delete(args.sourceId);
     return null;
   },
 });

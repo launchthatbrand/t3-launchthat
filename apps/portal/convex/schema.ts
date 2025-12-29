@@ -8,7 +8,7 @@ import { integrationsSchema } from "./integrations/schema";
 // Add integrations schema
 // import { integrationsSchema } from "./integrations/schema";
 import { notificationsSchema } from "./notifications/schema";
-// import { supportSchema } from "./plugins/support/schema";
+import { supportSchema } from "./plugins/support/schema";
 import { lmsSchema } from "./plugins/lms/schema";
 import { tasksSchema } from "./tasks/schema";
 import { vimeoSchema } from "./vimeo/schema";
@@ -16,7 +16,7 @@ import { vimeoSchema } from "./vimeo/schema";
 // Define the main schema that includes all tables
 export default defineSchema({
   // Support plugin tables
-  // ...supportSchema,
+  ...supportSchema,
 
   // Ecommerce tables
   ...ecommerceSchema,

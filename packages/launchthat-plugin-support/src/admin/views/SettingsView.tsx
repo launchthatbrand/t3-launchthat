@@ -250,13 +250,17 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
   const ragSources = useQuery(api.plugins.support.queries.listRagSources, {
     organizationId,
   });
-  const postTypes: Array<{
-    slug?: string;
-    name?: string;
-    _id?: string;
-    isSystem?: boolean;
-    fields?: Array<{ key: string; name?: string; isSystem?: boolean }>;
-  }> = [];
+  const postTypes =
+    (useQuery(api.core.postTypes.queries.list, {
+      organizationId,
+      includeBuiltIn: true,
+    }) as Array<{
+      slug?: string;
+      name?: string;
+      _id?: string;
+      supports?: { customFields?: boolean } | undefined;
+      storageKind?: string;
+    }> | undefined) ?? [];
   const saveRagSource: any = useMutation(
     api.plugins.support.mutations.saveRagSourceConfig,
   );
@@ -1266,6 +1270,10 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
                             setKnowledgeForm((prev) => ({
                               ...prev,
                               postTypeSlug: value,
+                              additionalMetaKeys:
+                                value === "lessons"
+                                  ? "vimeoTranscript,vimeoTranscriptVtt"
+                                  : prev.additionalMetaKeys,
                             }))
                           }
                         >

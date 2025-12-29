@@ -89,9 +89,9 @@ function SupportChatWidgetBridge({
   const { user } = useUser();
 
   const defaultContact =
-    isAdminRoute && user
+    user
       ? {
-          contactId: user.id,
+          contactId: `clerk:${user.id}`,
           fullName:
             user.fullName ??
             user.username ??

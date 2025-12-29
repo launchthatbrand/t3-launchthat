@@ -413,8 +413,8 @@ export const DisclaimerTemplateBuilderScreen = ({
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [frameSize, setFrameSize] = useState<{ width: number; height: number }>(
     {
-      width: 0,
-      height: 0,
+    width: 0,
+    height: 0,
     },
   );
 
@@ -500,7 +500,7 @@ export const DisclaimerTemplateBuilderScreen = ({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         const doc = (await (loadingTask as any).promise) as any;
         const count =
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           typeof doc?.numPages === "number" && doc.numPages > 0
             ? doc.numPages
             : 1;
@@ -518,10 +518,10 @@ export const DisclaimerTemplateBuilderScreen = ({
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           const page = await doc.getPage(pageIndex + 1);
           const baseViewport = page.getViewport({ scale: 1 });
-          const renderScale = 1.5;
+        const renderScale = 1.5;
           const viewport = page.getViewport({ scale: renderScale });
-          const canvas = document.createElement("canvas");
-          const ctx2d = canvas.getContext("2d");
+        const canvas = document.createElement("canvas");
+        const ctx2d = canvas.getContext("2d");
           if (!ctx2d) continue;
           canvas.width = Math.floor(viewport.width);
           canvas.height = Math.floor(viewport.height);
@@ -700,7 +700,7 @@ export const DisclaimerTemplateBuilderScreen = ({
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="outline" disabled>
               {pageCount} page{pageCount === 1 ? "" : "s"}
-            </Button>
+                </Button>
 
             <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
               <input
@@ -905,14 +905,14 @@ export const DisclaimerTemplateBuilderScreen = ({
                       const canvas = pageCanvases[pageIndex] ?? null;
                       return (
                         <Group key={`page_${pageIndex}`}>
-                          <Rect
-                            name="canvas-bg"
-                            x={0}
+                    <Rect
+                      name="canvas-bg"
+                      x={0}
                             y={y0}
                             width={ps.width}
                             height={ps.height}
-                            fill="#ffffff"
-                          />
+                      fill="#ffffff"
+                    />
 
                           {canvas ? (
                             <KonvaImage
@@ -936,7 +936,7 @@ export const DisclaimerTemplateBuilderScreen = ({
 
                           {showGrid
                             ? (() => {
-                                const spacing = 20;
+                      const spacing = 20;
                                 const cols = Math.floor(ps.width / spacing);
                                 const rows = Math.floor(ps.height / spacing);
                                 const lines: Array<{
@@ -945,47 +945,47 @@ export const DisclaimerTemplateBuilderScreen = ({
                                   w: number;
                                   h: number;
                                 }> = [];
-                                for (let i = 0; i <= cols; i++) {
+                      for (let i = 0; i <= cols; i++) {
                                   lines.push({
                                     x: i * spacing,
                                     y: y0,
                                     w: 1,
                                     h: ps.height,
                                   });
-                                }
-                                for (let j = 0; j <= rows; j++) {
+                      }
+                      for (let j = 0; j <= rows; j++) {
                                   lines.push({
                                     x: 0,
                                     y: y0 + j * spacing,
                                     w: ps.width,
                                     h: 1,
                                   });
-                                }
-                                return lines.map((line, idx) => (
-                                  <Rect
+                      }
+                      return lines.map((line, idx) => (
+                        <Rect
                                     key={`grid_${pageIndex}_${idx}`}
-                                    x={line.x}
-                                    y={line.y}
-                                    width={line.w}
-                                    height={line.h}
-                                    fill="rgba(0,0,0,0.04)"
-                                    listening={false}
-                                  />
-                                ));
-                              })()
+                          x={line.x}
+                          y={line.y}
+                          width={line.w}
+                          height={line.h}
+                          fill="rgba(0,0,0,0.04)"
+                          listening={false}
+                        />
+                      ));
+                    })()
                             : null}
 
                           {/* page separator + label */}
                           {pageIndex < pageCount - 1 ? (
                             <>
                               <Rect
-                                x={0}
+                      x={0}
                                 y={y0 + ps.height + pageGapBase / 2 - 0.75}
                                 width={ps.width}
                                 height={1.5}
                                 fill="rgba(0,0,0,0.10)"
-                                listening={false}
-                              />
+                      listening={false}
+                    />
                               <Text
                                 x={ps.width - 86}
                                 y={y0 + ps.height + 6}
@@ -1013,14 +1013,14 @@ export const DisclaimerTemplateBuilderScreen = ({
                       const field = normalizeField(rawField);
                       const ps = pageSizes[field.pageIndex] ?? pageSize;
                       const y0 = pageOffsetsBase[field.pageIndex] ?? 0;
-                      const isSelected = field.id === activeFieldId;
+                    const isSelected = field.id === activeFieldId;
                       const x = field.xPct * ps.width;
                       const y = y0 + field.yPct * ps.height;
                       const w = Math.max(1, field.wPct * ps.width);
                       const h = Math.max(1, field.hPct * ps.height);
-                      const label = `${field.label ?? "Signature"}${
-                        field.required ? " (Required)" : ""
-                      }`;
+                    const label = `${field.label ?? "Signature"}${
+                      field.required ? " (Required)" : ""
+                    }`;
 
                       const pageAtY = (yBase: number) => {
                         for (let i = pageCount - 1; i >= 0; i--) {
@@ -1035,18 +1035,18 @@ export const DisclaimerTemplateBuilderScreen = ({
                         return 0;
                       };
 
-                      return (
-                        <Group key={field.id}>
-                          <Rect
-                            id={field.id}
-                            x={x}
-                            y={y}
-                            width={w}
-                            height={h}
-                            stroke={isSelected ? "#2563eb" : "#111827"}
-                            strokeWidth={2}
-                            dash={[6, 4]}
-                            draggable
+                    return (
+                      <Group key={field.id}>
+                        <Rect
+                          id={field.id}
+                          x={x}
+                          y={y}
+                          width={w}
+                          height={h}
+                          stroke={isSelected ? "#2563eb" : "#111827"}
+                          strokeWidth={2}
+                          dash={[6, 4]}
+                          draggable
                             onClick={() => {
                               setActiveFieldId(field.id);
                               setActivePageIndex(field.pageIndex);
@@ -1055,8 +1055,8 @@ export const DisclaimerTemplateBuilderScreen = ({
                               setActiveFieldId(field.id);
                               setActivePageIndex(field.pageIndex);
                             }}
-                            onDragEnd={(e) => {
-                              const node = e.target;
+                          onDragEnd={(e) => {
+                            const node = e.target;
                               const newPageIndex = pageAtY(node.y());
                               const newPs = pageSizes[newPageIndex] ?? pageSize;
                               const yStart = pageOffsetsBase[newPageIndex] ?? 0;
@@ -1064,9 +1064,9 @@ export const DisclaimerTemplateBuilderScreen = ({
                               const nextY = clamp01(
                                 (node.y() - yStart) / newPs.height,
                               );
-                              setDraft((prev) => ({
-                                ...prev,
-                                fields: prev.fields.map((f) =>
+                            setDraft((prev) => ({
+                              ...prev,
+                              fields: prev.fields.map((f) =>
                                   f.id === field.id
                                     ? normalizeField({
                                         ...f,
@@ -1075,16 +1075,16 @@ export const DisclaimerTemplateBuilderScreen = ({
                                         yPct: nextY,
                                       })
                                     : f,
-                                ),
-                              }));
+                              ),
+                            }));
                               setActivePageIndex(newPageIndex);
-                            }}
-                            onTransformEnd={(e) => {
-                              const node = e.target;
-                              const scaleX = node.scaleX();
-                              const scaleY = node.scaleY();
-                              node.scaleX(1);
-                              node.scaleY(1);
+                          }}
+                          onTransformEnd={(e) => {
+                            const node = e.target;
+                            const scaleX = node.scaleX();
+                            const scaleY = node.scaleY();
+                            node.scaleX(1);
+                            node.scaleY(1);
                               const newPageIndex = pageAtY(node.y());
                               const newPs = pageSizes[newPageIndex] ?? pageSize;
                               const yStart = pageOffsetsBase[newPageIndex] ?? 0;
@@ -1098,49 +1098,49 @@ export const DisclaimerTemplateBuilderScreen = ({
                               const nextY = clamp01(
                                 (node.y() - yStart) / newPs.height,
                               );
-                              setDraft((prev) => ({
-                                ...prev,
-                                fields: prev.fields.map((f) =>
-                                  f.id === field.id
-                                    ? normalizeField({
-                                        ...f,
+                            setDraft((prev) => ({
+                              ...prev,
+                              fields: prev.fields.map((f) =>
+                                f.id === field.id
+                                  ? normalizeField({
+                                      ...f,
                                         pageIndex: newPageIndex,
-                                        xPct: nextX,
-                                        yPct: nextY,
-                                        wPct: nextW,
-                                        hPct: nextH,
-                                      })
-                                    : f,
-                                ),
-                              }));
+                                      xPct: nextX,
+                                      yPct: nextY,
+                                      wPct: nextW,
+                                      hPct: nextH,
+                                    })
+                                  : f,
+                              ),
+                            }));
                               setActivePageIndex(newPageIndex);
-                            }}
-                            ref={(node) => {
+                          }}
+                          ref={(node) => {
                               if (isSelected) selectedNodeRef.current = node;
-                            }}
-                          />
-                          <Text
-                            x={x + 6}
-                            y={y + 6}
-                            text={label}
-                            fontSize={14}
-                            fill="#111827"
-                            listening={false}
-                          />
-                        </Group>
-                      );
-                    })}
+                          }}
+                        />
+                        <Text
+                          x={x + 6}
+                          y={y + 6}
+                          text={label}
+                          fontSize={14}
+                          fill="#111827"
+                          listening={false}
+                        />
+                      </Group>
+                    );
+                  })}
 
-                    <Transformer
-                      ref={transformerRef}
-                      rotateEnabled={false}
-                      keepRatio={false}
-                      boundBoxFunc={(oldBox, newBox) => {
+                  <Transformer
+                    ref={transformerRef}
+                    rotateEnabled={false}
+                    keepRatio={false}
+                    boundBoxFunc={(oldBox, newBox) => {
                         if (newBox.width < 24 || newBox.height < 24)
                           return oldBox;
-                        return newBox;
-                      }}
-                    />
+                      return newBox;
+                    }}
+                  />
                   </Layer>
                 </Stage>
               ) : (
