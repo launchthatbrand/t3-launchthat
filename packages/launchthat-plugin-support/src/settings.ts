@@ -21,6 +21,7 @@ export const supportWelcomeMessageKey = "support_welcome_message";
 export const supportPrivacyMessageKey = "support_privacy_message";
 export const supportAssistantBaseInstructionsKey =
   "support_assistant_base_instructions";
+export const supportAssistantModelIdKey = "support_assistant_model_id";
 
 export const defaultSupportAssistantBaseInstructions = [
   "You are a helpful support assistant for LaunchThat customers.",

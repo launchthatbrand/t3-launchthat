@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import type { Id } from "../../_generated/dataModel";
 import { components } from "../../_generated/api";
 import { internalQuery, query } from "../../_generated/server";
+import { requireAdmin } from "../../lib/permissions/requirePermission";
 
 interface SupportPostRecord {
   _id: string;
@@ -102,6 +103,16 @@ export const listSupportPosts = query({
     return (await ctx.runQuery(supportQueries.listSupportPosts, args)) as
       | SupportPostRecord[]
       | [];
+  },
+});
+
+// Used by Node actions (e.g. OpenAI model list) that must be admin-only.
+export const assertSupportAdmin = internalQuery({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    return null;
   },
 });
 

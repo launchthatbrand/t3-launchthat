@@ -194,6 +194,7 @@ import type * as plugins_support_helpers from "../plugins/support/helpers.js";
 import type * as plugins_support_http from "../plugins/support/http.js";
 import type * as plugins_support_internalQueries from "../plugins/support/internalQueries.js";
 import type * as plugins_support_mutations from "../plugins/support/mutations.js";
+import type * as plugins_support_openaiModels from "../plugins/support/openaiModels.js";
 import type * as plugins_support_options from "../plugins/support/options.js";
 import type * as plugins_support_queries from "../plugins/support/queries.js";
 import type * as plugins_support_rag from "../plugins/support/rag.js";
@@ -425,6 +426,7 @@ declare const fullApi: ApiFromModules<{
   "plugins/support/http": typeof plugins_support_http;
   "plugins/support/internalQueries": typeof plugins_support_internalQueries;
   "plugins/support/mutations": typeof plugins_support_mutations;
+  "plugins/support/openaiModels": typeof plugins_support_openaiModels;
   "plugins/support/options": typeof plugins_support_options;
   "plugins/support/queries": typeof plugins_support_queries;
   "plugins/support/rag": typeof plugins_support_rag;

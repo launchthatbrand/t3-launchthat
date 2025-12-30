@@ -41,6 +41,7 @@ import {
   defaultSupportAssistantBaseInstructions,
   defaultSupportChatSettings,
   supportAssistantBaseInstructionsKey,
+  supportAssistantModelIdKey,
   supportContactCaptureFieldsKey,
   supportContactCaptureKey,
   supportIntroHeadlineKey,
@@ -370,12 +371,27 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
   const deleteConnection = useAction(
     (api as any).integrations.connections.actions.remove,
   );
+  const listOpenAiModels = useAction(
+    (api as any).plugins.support.openaiModels.listAvailableModels,
+  );
   const [knowledgeForm, setKnowledgeForm] = useState<RagSourceFormState>(
     createDefaultRagFormState(),
   );
   const [openAiKeyInput, setOpenAiKeyInput] = useState("");
   const [isSavingOpenAiKey, setIsSavingOpenAiKey] = useState(false);
   const [isRemovingOpenAiKey, setIsRemovingOpenAiKey] = useState(false);
+  const [availableOpenAiModels, setAvailableOpenAiModels] = useState<string[]>(
+    [],
+  );
+  const [isLoadingOpenAiModels, setIsLoadingOpenAiModels] = useState(false);
+  const openAiModelOption = useQuery(api.plugins.support.options.getSupportOption, {
+    organizationId,
+    key: supportAssistantModelIdKey,
+  });
+  const selectedOpenAiModelId =
+    typeof openAiModelOption === "string" && openAiModelOption.trim().length > 0
+      ? openAiModelOption.trim()
+      : "gpt-4o-mini";
   const openAiConnection = Array.isArray(openAiConnections)
     ? openAiConnections[0]
     : undefined;
@@ -596,6 +612,36 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
       );
     } finally {
       setIsRemovingOpenAiKey(false);
+    }
+  };
+
+  const handleRefreshOpenAiModels = async () => {
+    setIsLoadingOpenAiModels(true);
+    try {
+      const models = await listOpenAiModels({ organizationId });
+      setAvailableOpenAiModels(Array.isArray(models) ? models : []);
+      toast.success("Model list refreshed.");
+    } catch (error) {
+      console.error("[support-settings] load openai models", error);
+      toast.error(
+        error instanceof Error ? error.message : "Unable to load OpenAI models.",
+      );
+    } finally {
+      setIsLoadingOpenAiModels(false);
+    }
+  };
+
+  const handleSelectOpenAiModel = async (modelId: string) => {
+    try {
+      await saveSupportOption({
+        organizationId,
+        key: supportAssistantModelIdKey,
+        value: modelId,
+      });
+      toast.success("Assistant model updated.");
+    } catch (error) {
+      console.error("[support-settings] save assistant model error", error);
+      toast.error("Unable to save assistant model. Please try again.");
     }
   };
 
@@ -1142,6 +1188,49 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
                 <p className="text-muted-foreground text-xs">
                   Paste a secret key with access to GPT-4o-mini or higher. The
                   key stays scoped to this organization.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Assistant model</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select
+                    value={selectedOpenAiModelId}
+                    onValueChange={handleSelectOpenAiModel}
+                    disabled={!isOpenAiConnected}
+                  >
+                    <SelectTrigger className="w-[18rem]">
+                      <SelectValue placeholder="Select a model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(availableOpenAiModels.length > 0
+                        ? availableOpenAiModels
+                        : ["gpt-4o-mini", "gpt-4.1-mini"]
+                      ).map((modelId) => (
+                        <SelectItem key={modelId} value={modelId}>
+                          {modelId}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleRefreshOpenAiModels}
+                    disabled={!isOpenAiConnected || isLoadingOpenAiModels}
+                  >
+                    {isLoadingOpenAiModels ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Loading…
+                      </>
+                    ) : (
+                      "Refresh models"
+                    )}
+                  </Button>
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  The model list is loaded from OpenAI using the saved key for
+                  this organization.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">

@@ -16,16 +16,17 @@ import {
 import {
   defaultSupportAssistantBaseInstructions,
   supportAssistantBaseInstructionsKey,
+  supportAssistantModelIdKey,
 } from "launchthat-plugin-support/settings";
 
-import { normalizeOrganizationId } from "../../constants";
-import { supportOrganizationIdValidator } from "./schema";
+import { PORTAL_TENANT_ID, PORTAL_TENANT_SLUG } from "../../constants";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 const FALLBACK_BASE_INSTRUCTIONS = defaultSupportAssistantBaseInstructions;
 
@@ -38,12 +39,8 @@ const PRIMARY_SUPPORT_MODEL_ID = "gpt-4.1-mini";
 const FALLBACK_SUPPORT_MODEL_ID = "gpt-4o-mini";
 
 // Narrow overly deep types from generated bindings to keep TS fast/stable.
-type AnyInternalQueryRef = FunctionReference<
-  "query",
-  "internal",
-  unknown,
-  unknown
->;
+// (Type-level inference here can get expensive; keep it loose.)
+type AnyInternalQueryRef = FunctionReference<"query", "internal", any, any>;
 
 const agentMessages = (
   components as unknown as {
@@ -141,7 +138,7 @@ const resolveOrganizationOpenAiKey = async (
 
 export const generateAgentReply = action({
   args: {
-    organizationId: supportOrganizationIdValidator,
+    organizationId: v.string(),
     threadId: v.string(),
     prompt: v.string(),
     contactId: v.optional(v.string()),
@@ -153,7 +150,10 @@ export const generateAgentReply = action({
     text: v.string(),
   }),
   handler: async (ctx, args) => {
-    const organizationId = normalizeOrganizationId(args.organizationId);
+    const organizationId =
+      args.organizationId === PORTAL_TENANT_SLUG
+        ? PORTAL_TENANT_ID
+        : (args.organizationId as Id<"organizations">);
     const apiKey = await resolveOrganizationOpenAiKey(ctx, organizationId);
 
     if (!apiKey) {
@@ -177,7 +177,28 @@ export const generateAgentReply = action({
       return { text: KNOWN_MISSING_KEY_MESSAGE };
     }
 
-    const primaryModel = createSupportModel(apiKey, PRIMARY_SUPPORT_MODEL_ID);
+    let configuredModelId: string | null = null;
+    try {
+      const stored = await ctx.runQuery(
+        api.plugins.support.options.getSupportOption,
+        {
+          organizationId,
+          key: supportAssistantModelIdKey,
+        },
+      );
+      const asString = parseStringOption(stored);
+      if (asString && asString.trim().length > 0) {
+        configuredModelId = asString.trim();
+      }
+    } catch (error) {
+      console.warn(
+        "[support-agent] failed to load assistant model option",
+        error,
+      );
+    }
+
+    const primaryModelId = configuredModelId ?? PRIMARY_SUPPORT_MODEL_ID;
+    const primaryModel = createSupportModel(apiKey, primaryModelId);
     const trimmedPrompt = args.prompt.trim();
     if (!trimmedPrompt) {
       return { text: "" };
@@ -294,7 +315,7 @@ export const generateAgentReply = action({
     }
 
     let text = "";
-    const runModel = async (model: unknown) => {
+    const runModel = async (model: any) => {
       const threadMessagesPageUnknown = await ctx.runQuery(
         agentMessages.listMessagesByThreadId,
         {
@@ -302,7 +323,7 @@ export const generateAgentReply = action({
           order: "asc",
           paginationOpts: { cursor: null, numItems: 200 },
           excludeToolMessages: true,
-        } as unknown,
+        } as any,
       );
 
       const threadMessagesPage = threadMessagesPageUnknown as {
@@ -354,7 +375,7 @@ export const generateAgentReply = action({
       });
 
       const result = await generateText({
-        model: model as unknown,
+        model,
         system: [effectiveBaseInstructions, knowledgeContext].join("\n\n"),
         messages,
       });
@@ -369,7 +390,7 @@ export const generateAgentReply = action({
         modelError instanceof Error ? modelError.message : String(modelError);
       console.error("[support-agent] model error", {
         organizationId,
-        model: PRIMARY_SUPPORT_MODEL_ID,
+        model: primaryModelId,
         errorMessage,
       });
 
@@ -381,12 +402,14 @@ export const generateAgentReply = action({
           errorMessage.toLowerCase().includes("does not exist") ||
           errorMessage.toLowerCase().includes("not available"));
 
+      const fallbackModelId =
+        primaryModelId === FALLBACK_SUPPORT_MODEL_ID
+          ? PRIMARY_SUPPORT_MODEL_ID
+          : FALLBACK_SUPPORT_MODEL_ID;
+
       if (shouldRetryWithFallback) {
         try {
-          const fallbackModel = createSupportModel(
-            apiKey,
-            FALLBACK_SUPPORT_MODEL_ID,
-          );
+          const fallbackModel = createSupportModel(apiKey, fallbackModelId);
           text = await runModel(fallbackModel);
         } catch (fallbackError) {
           const fallbackMessage =
@@ -395,7 +418,7 @@ export const generateAgentReply = action({
               : String(fallbackError);
           console.error("[support-agent] fallback model error", {
             organizationId,
-            model: FALLBACK_SUPPORT_MODEL_ID,
+            model: fallbackModelId,
             errorMessage: fallbackMessage,
           });
           text =
