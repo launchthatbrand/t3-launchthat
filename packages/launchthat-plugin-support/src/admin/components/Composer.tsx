@@ -58,7 +58,7 @@ export function ConversationComposer({
       lastPresenceUpdateRef.current = now;
       void setAgentPresence({
         organizationId: organizationId as unknown as string,
-        threadId,
+        sessionId: threadId,
         status,
         agentUserId: "agent",
         agentName: contactName ?? "Agent",
@@ -114,7 +114,7 @@ export function ConversationComposer({
       setIsSending(true);
       await recordMessage({
         organizationId,
-        threadId,
+        sessionId: threadId,
         role: "assistant",
         content: plainText,
         contactId,

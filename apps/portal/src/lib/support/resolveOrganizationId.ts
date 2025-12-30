@@ -20,11 +20,10 @@ export async function resolveSupportOrganizationId(
     return PORTAL_TENANT_ID;
   }
 
-  const looksLikeId =
-    candidate.length >= 24 &&
-    !candidate.includes(" ") &&
-    !candidate.includes("/");
-  if (looksLikeId) {
+  // Convex document IDs are typically 32 characters (e.g. "ns7d...").
+  // We accept both 24 (older/test fixtures) and 32 to avoid mis-classifying IDs as slugs.
+  const isConvexId = /^[a-z0-9]{24}$/i.test(candidate) || /^[a-z0-9]{32}$/i.test(candidate);
+  if (isConvexId) {
     return candidate as Id<"organizations">;
   }
 

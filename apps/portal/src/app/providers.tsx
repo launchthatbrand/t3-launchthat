@@ -7,16 +7,19 @@ import React from "react";
 import { usePathname } from "next/navigation";
 import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
 import { SessionProvider } from "convex-helpers/react/sessions";
+import { useQuery } from "convex/react";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { SupportChatWidget } from "launchthat-plugin-support";
 import { useLocalStorage } from "usehooks-ts";
+import { useEffect } from "react";
 
 import { ThemeProvider } from "@acme/ui/theme";
 import { Toaster } from "@acme/ui/toast";
 
 import { ContentProtectionProvider } from "~/components/access/ContentProtectionProvider";
 import { TenantProvider } from "~/context/TenantContext";
+import { api } from "@/convex/_generated/api";
 import { env } from "~/env";
 import { PORTAL_TENANT_ID, PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
 import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
@@ -87,6 +90,36 @@ function SupportChatWidgetBridge({
   isAdminRoute,
 }: SupportChatWidgetBridgeProps) {
   const { user } = useUser();
+  const widgetKeyRaw = useQuery(api.plugins.support.options.getSupportOption, {
+    organizationId,
+    key: "supportWidgetKey",
+  });
+  const widgetKey = typeof widgetKeyRaw === "string" ? widgetKeyRaw : null;
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    const rawType = widgetKeyRaw === null ? "null" : typeof widgetKeyRaw;
+    const widgetKeyPreview =
+      typeof widgetKey === "string" && widgetKey.length > 8
+        ? `${widgetKey.slice(0, 4)}…${widgetKey.slice(-4)}`
+        : widgetKey;
+    console.info(
+      "[support-chat] widget bridge",
+      JSON.stringify({
+        organizationId,
+        tenantName,
+        isAdminRoute,
+        widgetKeyRawType: rawType,
+        widgetKeyPresent: Boolean(widgetKey),
+        widgetKeyPreview,
+      }),
+    );
+    if (!widgetKey) {
+      console.warn(
+        "[support-chat] missing supportWidgetKey for organization; chat send will be disabled until configured",
+      );
+    }
+  }, [organizationId, tenantName, isAdminRoute, widgetKey, widgetKeyRaw]);
 
   const defaultContact =
     user
@@ -105,6 +138,7 @@ function SupportChatWidgetBridge({
     <SupportChatWidget
       organizationId={organizationId}
       tenantName={tenantName}
+      widgetKey={widgetKey}
       defaultContact={defaultContact}
       bubbleVariant="flush-right-square"
     />

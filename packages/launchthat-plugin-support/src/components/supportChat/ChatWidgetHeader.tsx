@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Maximize2, Minimize2, X } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
@@ -13,6 +13,8 @@ interface ChatWidgetHeaderProps {
   activeTab: ChatWidgetTab;
   onTabChange: (tab: ChatWidgetTab) => void;
   onClose: () => void;
+  isExpanded?: boolean;
+  onToggleExpanded?: () => void;
   shouldCollectContact: boolean;
   settings: SupportChatSettings;
   resolvedAgentName: string;
@@ -25,6 +27,8 @@ export const ChatWidgetHeader = ({
   activeTab,
   onTabChange,
   onClose,
+  isExpanded,
+  onToggleExpanded,
   shouldCollectContact,
   settings,
   resolvedAgentName,
@@ -57,14 +61,31 @@ export const ChatWidgetHeader = ({
             </p>
           ) : null}
         </div>
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={onClose}
-          aria-label="Close support chat"
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {onToggleExpanded ? (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onToggleExpanded}
+              aria-label={isExpanded ? "Collapse chat" : "Expand chat"}
+              aria-pressed={Boolean(isExpanded)}
+            >
+              {isExpanded ? (
+                <Minimize2 className="h-4 w-4" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+            </Button>
+          ) : null}
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={onClose}
+            aria-label="Close support chat"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       <Tabs
         value={activeTab}

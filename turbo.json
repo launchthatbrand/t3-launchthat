@@ -53,6 +53,7 @@
     "AUTH_SECRET",
     "PORT",
     "STRIPE_SECRET_KEY",
+    "SUPPORT_EMAIL_DOMAIN",
     "SITE_URL"
   ],
   "globalPassThroughEnv": [

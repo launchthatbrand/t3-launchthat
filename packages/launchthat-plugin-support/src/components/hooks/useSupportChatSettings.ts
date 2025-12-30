@@ -10,6 +10,7 @@ interface UseSupportChatSettingsResult {
 
 export const useSupportChatSettings = (
   organizationId: string,
+  widgetKey?: string | null,
 ): UseSupportChatSettingsResult => {
   const [settings, setSettings] = useState<SupportChatSettings>(
     defaultSupportChatSettings,
@@ -20,11 +21,24 @@ export const useSupportChatSettings = (
     let cancelled = false;
     async function fetchSettings() {
       try {
+        if (typeof widgetKey !== "string" || widgetKey.trim().length === 0) {
+          setSettings(defaultSupportChatSettings);
+          return;
+        }
         const response = await fetch(
-          `/api/support-chat/settings?organizationId=${organizationId}`,
+          `/api/support-chat/settings?organizationId=${encodeURIComponent(
+            organizationId,
+          )}&widgetKey=${encodeURIComponent(widgetKey)}`,
         );
         if (!response.ok) {
-          throw new Error("Failed to load support settings");
+          const errorBody = (await response
+            .json()
+            .catch(() => null)) as { error?: unknown } | null;
+          const message =
+            typeof errorBody?.error === "string" && errorBody.error.trim().length > 0
+              ? errorBody.error
+              : "Failed to load support settings";
+          throw new Error(message);
         }
         const data = await response.json();
         if (!cancelled) {
@@ -48,7 +62,7 @@ export const useSupportChatSettings = (
     return () => {
       cancelled = true;
     };
-  }, [organizationId]);
+  }, [organizationId, widgetKey]);
 
   return { settings, isLoading };
 };

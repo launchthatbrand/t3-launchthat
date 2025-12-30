@@ -2,13 +2,20 @@ import { v } from "convex/values";
 
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
-import { api, components } from "../../_generated/api";
+import { api, components, internal } from "../../_generated/api";
 import { internalMutation, mutation } from "../../_generated/server";
 import { supportOrganizationIdValidator } from "./schema";
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+
 // Narrow overly deep types from generated bindings to keep TS fast/stable.
-const supportMutations = components.launchthat_support.mutations;
-const supportQueries = components.launchthat_support.queries;
+const supportMutations = components.launchthat_support.mutations as any;
+const supportQueries = components.launchthat_support.queries as any;
 
 interface SupportPostRecord {
   _id: string;
@@ -21,8 +28,7 @@ interface SupportPostRecord {
 }
 
 // ---------- helpers ----------
-const DEFAULT_EMAIL_DOMAIN =
-  process.env.SUPPORT_EMAIL_DOMAIN ?? "support.launchthat.dev";
+const DEFAULT_EMAIL_DOMAIN = "support.launchthat.dev";
 
 const buildDefaultAlias = (organizationId: string) =>
   `support-${organizationId}`.toLowerCase() + `@${DEFAULT_EMAIL_DOMAIN}`;
@@ -37,6 +43,51 @@ const buildDnsRecords = (domain: string) => {
       value: "dkim.resend.net",
     },
   ];
+};
+
+const rateLimitOrThrow = async (
+  ctx: MutationCtx,
+  args: { key: string; limit: number; windowMs: number },
+) => {
+  const now = Date.now();
+  const windowStart = Math.floor(now / args.windowMs);
+  const bucketKey = `${args.key}:${windowStart}`;
+  // This table is used for runtime guardrails; keep it loosely typed to avoid deep type instantiation issues.
+  const db = ctx.db as unknown as {
+    query: (table: string) => {
+      withIndex: (
+        indexName: string,
+        builder: (q: {
+          eq: (field: string, value: unknown) => unknown;
+        }) => unknown,
+      ) => { unique: () => Promise<{ _id: unknown; count: number } | null> };
+    };
+    insert: (table: string, value: Record<string, unknown>) => Promise<unknown>;
+    patch: (id: unknown, value: Record<string, unknown>) => Promise<unknown>;
+  };
+  const existing = await db
+    .query("supportRateLimits")
+    .withIndex("by_key", (q) => q.eq("key", bucketKey))
+    .unique();
+
+  if (!existing) {
+    await db.insert("supportRateLimits", {
+      key: bucketKey,
+      count: 1,
+      expiresAt: now + args.windowMs,
+      updatedAt: now,
+    });
+    return;
+  }
+
+  if (existing.count >= args.limit) {
+    throw new Error("Rate limited");
+  }
+
+  await db.patch(existing._id, {
+    count: existing.count + 1,
+    updatedAt: now,
+  });
 };
 
 const touchConversationPost = async (
@@ -94,9 +145,9 @@ const touchConversationPost = async (
     organizationId: args.organizationId,
   });
   const existingTotal =
-    (existingMeta.find((m) => m.key === "totalMessages")?.value as
-      | number
-      | undefined) ?? 0;
+    ((existingMeta as { key: string; value: unknown }[]).find(
+      (m: { key: string; value: unknown }) => m.key === "totalMessages",
+    )?.value as number | undefined) ?? 0;
   const nextTotal = (typeof existingTotal === "number" ? existingTotal : 0) + 1;
 
   await ctx.runMutation(supportMutations.upsertSupportPostMeta, {
@@ -146,9 +197,122 @@ const recordMessageArgs = {
 
 // ---------- mutations ----------
 
+const requireActor = async (ctx: MutationCtx) => {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new Error("Unauthorized");
+  }
+  const obj: Record<string, unknown> =
+    typeof identity === "object" && identity !== null
+      ? (identity as Record<string, unknown>)
+      : {};
+  const actorId =
+    typeof obj.tokenIdentifier === "string"
+      ? obj.tokenIdentifier
+      : typeof obj.subject === "string"
+        ? obj.subject
+        : undefined;
+  const actorName =
+    typeof obj.name === "string"
+      ? obj.name
+      : typeof obj.email === "string"
+        ? obj.email
+        : undefined;
+  return { actorId, actorName };
+};
+
+const resolveConversationBySessionOrThread = async (
+  ctx: MutationCtx,
+  args: {
+    organizationId: string;
+    threadId?: string;
+    sessionId?: string;
+  },
+) => {
+  const resolved = args.threadId ?? args.sessionId;
+  if (!resolved) {
+    throw new Error("threadId is required");
+  }
+  const orgId = args.organizationId as any;
+  const byThread = args.threadId
+    ? await ctx.db
+        .query("supportConversations")
+        .withIndex("by_org_agentThreadId", (q) =>
+          q.eq("organizationId", orgId).eq("agentThreadId", resolved),
+        )
+        .first()
+    : null;
+  const bySession = !byThread
+    ? await ctx.db
+        .query("supportConversations")
+        .withIndex("by_org_session", (q) =>
+          q.eq("organizationId", orgId).eq("sessionId", resolved),
+        )
+        .first()
+    : null;
+  const conversation = byThread ?? bySession;
+  if (!conversation) {
+    throw new Error("Conversation not found");
+  }
+  return { conversation, resolved };
+};
+
+const appendConversationEvent = async (
+  ctx: MutationCtx,
+  args: {
+    organizationId: string;
+    sessionId: string;
+    agentThreadId?: string;
+    eventType: string;
+    actorId?: string;
+    actorName?: string;
+    payload?: unknown;
+  },
+) => {
+  const timestamp = Date.now();
+  await ctx.db.insert("supportConversationEvents", {
+    organizationId: args.organizationId as any,
+    sessionId: args.sessionId,
+    agentThreadId: args.agentThreadId,
+    eventType: args.eventType,
+    actorId: args.actorId,
+    actorName: args.actorName,
+    payload:
+      args.payload === undefined ? undefined : JSON.stringify(args.payload),
+    createdAt: timestamp,
+  });
+};
+
+const upsertConversationCmsMeta = async (
+  ctx: MutationCtx,
+  args: {
+    organizationId: string;
+    threadId: string;
+    entries: {
+      key: string;
+      value: string | number | boolean | null | undefined;
+    }[];
+  },
+) => {
+  const posts = (await ctx.runQuery(supportQueries.listSupportPosts, {
+    organizationId: args.organizationId,
+    filters: { postTypeSlug: "supportconversations", limit: 500 },
+  })) as SupportPostRecord[];
+  const post = posts.find((p) => p.slug === args.threadId);
+  if (!post) {
+    return;
+  }
+  await ctx.runMutation(supportMutations.upsertSupportPostMeta, {
+    postId: post._id as unknown as Id<"posts">,
+    organizationId: args.organizationId,
+    entries: args.entries.map((e) => ({ key: e.key, value: e.value })),
+  });
+};
+
 export const createThread = mutation({
   args: {
     organizationId: v.string(),
+    clientSessionId: v.optional(v.string()),
     contactId: v.optional(v.string()),
     contactEmail: v.optional(v.string()),
     contactName: v.optional(v.string()),
@@ -157,13 +321,79 @@ export const createThread = mutation({
   returns: v.object({ threadId: v.string() }),
   handler: async (ctx, args) => {
     const timestamp = Date.now();
-    const thread = await ctx.runMutation(components.agent.threads.createThread, {
-      title: args.contactName
-        ? `Support: ${args.contactName}`
-        : "Support conversation",
-      userId: args.contactId,
-    });
+
+    if (args.clientSessionId) {
+      await rateLimitOrThrow(ctx, {
+        key: `support:createThread:${args.organizationId}:${args.clientSessionId}`,
+        limit: 5,
+        windowMs: 60_000,
+      });
+    }
+
+    if (args.clientSessionId) {
+      const existing = await ctx.db
+        .query("supportConversations")
+        .withIndex("by_org_session", (q) =>
+          q
+            .eq("organizationId", args.organizationId as any)
+            .eq("sessionId", args.clientSessionId!),
+        )
+        .unique();
+
+      if (existing?.agentThreadId) {
+        return { threadId: existing.agentThreadId };
+      }
+    }
+
+    const thread = await ctx.runMutation(
+      components.agent.threads.createThread,
+      {
+        title: args.contactName
+          ? `Support: ${args.contactName}`
+          : "Support conversation",
+        userId: args.contactId,
+      },
+    );
     const threadId = thread._id as unknown as string;
+
+    if (args.clientSessionId) {
+      const existing = await ctx.db
+        .query("supportConversations")
+        .withIndex("by_org_session", (q) =>
+          q
+            .eq("organizationId", args.organizationId as any)
+            .eq("sessionId", args.clientSessionId!),
+        )
+        .unique();
+
+      if (existing) {
+        await ctx.db.patch(existing._id, {
+          origin: "chat",
+          status: existing.status ?? "open",
+          mode: args.mode ?? existing.mode ?? "agent",
+          contactEmail: args.contactEmail ?? existing.contactEmail,
+          contactName: args.contactName ?? existing.contactName,
+          agentThreadId: threadId,
+          updatedAt: timestamp,
+        });
+      } else {
+        await ctx.db.insert("supportConversations", {
+          organizationId: args.organizationId as any,
+          sessionId: args.clientSessionId,
+          origin: "chat",
+          status: "open",
+          mode: args.mode ?? "agent",
+          contactEmail: args.contactEmail,
+          contactName: args.contactName,
+          agentThreadId: threadId,
+          firstMessageAt: timestamp,
+          lastMessageAt: timestamp,
+          totalMessages: 0,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+    }
 
     await ctx.runMutation(supportMutations.createSupportPost, {
       organizationId: args.organizationId,
@@ -174,6 +404,7 @@ export const createThread = mutation({
       meta: [
         { key: "threadId", value: threadId },
         { key: "agentThreadId", value: threadId },
+        { key: "sessionId", value: args.clientSessionId },
         { key: "contactId", value: args.contactId },
         { key: "contactName", value: args.contactName },
         { key: "contactEmail", value: args.contactEmail },
@@ -186,6 +417,186 @@ export const createThread = mutation({
     });
 
     return { threadId };
+  },
+});
+
+export const setConversationStatus = mutation({
+  args: {
+    organizationId: v.string(),
+    threadId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+    status: v.union(
+      v.literal("open"),
+      v.literal("snoozed"),
+      v.literal("closed"),
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { actorId, actorName } = await requireActor(ctx);
+    const { conversation, resolved } =
+      await resolveConversationBySessionOrThread(ctx, args);
+
+    const current = conversation.status ?? "open";
+    const next = args.status;
+
+    const allowed: Record<
+      typeof current,
+      readonly ("open" | "snoozed" | "closed")[]
+    > = {
+      open: ["snoozed", "closed"],
+      snoozed: ["open", "closed"],
+      closed: ["open"],
+    };
+    if (next !== current && !allowed[current].includes(next)) {
+      throw new Error(`Invalid status transition: ${current} -> ${next}`);
+    }
+
+    if (next !== current) {
+      await ctx.db.patch(conversation._id, {
+        status: next,
+        updatedAt: Date.now(),
+      });
+      await appendConversationEvent(ctx, {
+        organizationId: args.organizationId,
+        sessionId: conversation.sessionId,
+        agentThreadId: conversation.agentThreadId ?? resolved,
+        eventType: "status_changed",
+        actorId,
+        actorName,
+        payload: { from: current, to: next },
+      });
+      await upsertConversationCmsMeta(ctx, {
+        organizationId: args.organizationId,
+        threadId: conversation.agentThreadId ?? resolved,
+        entries: [{ key: "status", value: next }],
+      });
+    }
+
+    return null;
+  },
+});
+
+export const assignConversation = mutation({
+  args: {
+    organizationId: v.string(),
+    threadId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+    assignedAgentId: v.string(),
+    assignedAgentName: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { actorId, actorName } = await requireActor(ctx);
+    const { conversation, resolved } =
+      await resolveConversationBySessionOrThread(ctx, args);
+
+    await ctx.db.patch(conversation._id, {
+      assignedAgentId: args.assignedAgentId,
+      assignedAgentName: args.assignedAgentName,
+      updatedAt: Date.now(),
+    });
+
+    await appendConversationEvent(ctx, {
+      organizationId: args.organizationId,
+      sessionId: conversation.sessionId,
+      agentThreadId: conversation.agentThreadId ?? resolved,
+      eventType: "assignment_changed",
+      actorId,
+      actorName,
+      payload: {
+        assignedAgentId: args.assignedAgentId,
+        assignedAgentName: args.assignedAgentName,
+      },
+    });
+
+    await upsertConversationCmsMeta(ctx, {
+      organizationId: args.organizationId,
+      threadId: conversation.agentThreadId ?? resolved,
+      entries: [
+        { key: "assignedAgentId", value: args.assignedAgentId },
+        { key: "assignedAgentName", value: args.assignedAgentName },
+      ],
+    });
+
+    return null;
+  },
+});
+
+export const unassignConversation = mutation({
+  args: {
+    organizationId: v.string(),
+    threadId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { actorId, actorName } = await requireActor(ctx);
+    const { conversation, resolved } =
+      await resolveConversationBySessionOrThread(ctx, args);
+
+    await ctx.db.patch(conversation._id, {
+      assignedAgentId: undefined,
+      assignedAgentName: undefined,
+      updatedAt: Date.now(),
+    });
+
+    await appendConversationEvent(ctx, {
+      organizationId: args.organizationId,
+      sessionId: conversation.sessionId,
+      agentThreadId: conversation.agentThreadId ?? resolved,
+      eventType: "assignment_cleared",
+      actorId,
+      actorName,
+    });
+
+    await upsertConversationCmsMeta(ctx, {
+      organizationId: args.organizationId,
+      threadId: conversation.agentThreadId ?? resolved,
+      entries: [
+        { key: "assignedAgentId", value: null },
+        { key: "assignedAgentName", value: null },
+      ],
+    });
+
+    return null;
+  },
+});
+
+export const addConversationNote = mutation({
+  args: {
+    organizationId: v.string(),
+    threadId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+    note: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { actorId, actorName } = await requireActor(ctx);
+    const { conversation, resolved } =
+      await resolveConversationBySessionOrThread(ctx, args);
+
+    const timestamp = Date.now();
+    await ctx.db.insert("supportConversationNotes", {
+      organizationId: args.organizationId as any,
+      sessionId: conversation.sessionId,
+      agentThreadId: conversation.agentThreadId ?? resolved,
+      note: args.note,
+      actorId,
+      actorName,
+      createdAt: timestamp,
+    });
+
+    await appendConversationEvent(ctx, {
+      organizationId: args.organizationId,
+      sessionId: conversation.sessionId,
+      agentThreadId: conversation.agentThreadId ?? resolved,
+      eventType: "note_added",
+      actorId,
+      actorName,
+    });
+
+    return null;
   },
 });
 
@@ -295,6 +706,13 @@ export const recordMessage = mutation({
       throw new Error("threadId is required");
     }
     const timestamp = Date.now();
+    const normalizedSessionId = args.sessionId ?? resolvedThreadId;
+
+    await rateLimitOrThrow(ctx, {
+      key: `support:recordMessage:${args.organizationId}:${normalizedSessionId}`,
+      limit: 30,
+      windowMs: 60_000,
+    });
     const convoId = await touchConversationPost(
       ctx,
       {
@@ -315,6 +733,54 @@ export const recordMessage = mutation({
       timestamp,
     );
 
+    // Maintain fast native indexes for list views + ownership checks.
+    // NOTE: `sessionId` is a stable browser session id when provided, otherwise fallback to thread id.
+    const existingConversation = await ctx.db
+      .query("supportConversations")
+      .withIndex("by_org_session", (q) =>
+        q
+          .eq("organizationId", args.organizationId as any)
+          .eq("sessionId", normalizedSessionId),
+      )
+      .unique();
+
+    const snippet = args.content.slice(0, 240);
+    if (existingConversation) {
+      await ctx.db.patch(existingConversation._id, {
+        contactEmail: args.contactEmail ?? existingConversation.contactEmail,
+        contactName: args.contactName ?? existingConversation.contactName,
+        agentThreadId: resolvedThreadId,
+        lastMessageSnippet: snippet,
+        lastMessageAuthor: args.role,
+        lastMessageAt: timestamp,
+        totalMessages: (existingConversation.totalMessages ?? 0) + 1,
+        updatedAt: timestamp,
+      });
+    } else {
+      await ctx.db.insert("supportConversations", {
+        organizationId: args.organizationId as any,
+        sessionId: normalizedSessionId,
+        origin: "chat",
+        status: "open",
+        mode:
+          args.source === "admin"
+            ? "manual"
+            : args.source === "agent"
+              ? "agent"
+              : "agent",
+        contactEmail: args.contactEmail,
+        contactName: args.contactName,
+        agentThreadId: resolvedThreadId,
+        lastMessageSnippet: snippet,
+        lastMessageAuthor: args.role,
+        firstMessageAt: timestamp,
+        lastMessageAt: timestamp,
+        totalMessages: 1,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+
     // Store the canonical message in the agent component tables.
     await ctx.runMutation(components.agent.messages.addMessages, {
       threadId: resolvedThreadId,
@@ -333,7 +799,10 @@ export const recordMessage = mutation({
     await ctx.runMutation(supportMutations.upsertSupportPostMeta, {
       postId: convoId as Id<"posts">,
       organizationId: args.organizationId,
-      entries: [{ key: "agentThreadId", value: resolvedThreadId }],
+      entries: [
+        { key: "agentThreadId", value: resolvedThreadId },
+        { key: "sessionId", value: normalizedSessionId },
+      ],
     });
     return null;
   },
@@ -430,6 +899,58 @@ export const setConversationMode = mutation({
     const resolvedThreadId = args.threadId ?? args.sessionId;
     if (!resolvedThreadId) {
       return null;
+    }
+    const identity = await ctx.auth.getUserIdentity();
+    const identityObj: Record<string, unknown> =
+      typeof identity === "object" && identity !== null
+        ? (identity as Record<string, unknown>)
+        : {};
+    const actorId =
+      typeof identityObj.tokenIdentifier === "string"
+        ? identityObj.tokenIdentifier
+        : typeof identityObj.subject === "string"
+          ? identityObj.subject
+          : undefined;
+    const actorName =
+      typeof identityObj.name === "string"
+        ? identityObj.name
+        : typeof identityObj.email === "string"
+          ? identityObj.email
+          : undefined;
+
+    // Native state machine update (fast path).
+    const orgId = args.organizationId as any;
+    const conversation =
+      (await ctx.db
+        .query("supportConversations")
+        .withIndex("by_org_agentThreadId", (q) =>
+          q.eq("organizationId", orgId).eq("agentThreadId", resolvedThreadId),
+        )
+        .first()) ??
+      (await ctx.db
+        .query("supportConversations")
+        .withIndex("by_org_session", (q) =>
+          q.eq("organizationId", orgId).eq("sessionId", resolvedThreadId),
+        )
+        .first());
+
+    if (conversation) {
+      const previousMode = conversation.mode ?? "agent";
+      if (previousMode !== args.mode) {
+        await ctx.db.patch(conversation._id, {
+          mode: args.mode,
+          updatedAt: Date.now(),
+        });
+        await appendConversationEvent(ctx, {
+          organizationId: args.organizationId,
+          sessionId: conversation.sessionId,
+          agentThreadId: conversation.agentThreadId ?? resolvedThreadId,
+          eventType: "mode_changed",
+          actorId,
+          actorName,
+          payload: { from: previousMode, to: args.mode },
+        });
+      }
     }
     const conversations = (await ctx.runQuery(supportQueries.listSupportPosts, {
       organizationId: args.organizationId,
@@ -598,7 +1119,7 @@ export const saveRagSourceConfig = mutation({
 
     const existing = await ctx.db
       .query("supportRagSources")
-      .withIndex("by_org_type_and_postTypeSlug", (q) =>
+      .withIndex("by_org_type_and_postTypeSlug", (q: any) =>
         q
           .eq("organizationId", organizationId)
           .eq("sourceType", inferredSourceType)
@@ -706,9 +1227,13 @@ export const triggerRagReindexForPost = mutation({
       return null;
     }
 
-    await ctx.scheduler.runAfter(0, internal.plugins.support.rag.ingestPostIfConfigured, {
-      postId: args.postId as any,
-    });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.plugins.support.rag.ingestPostIfConfigured,
+      {
+        postId: args.postId as any,
+      },
+    );
     return null;
   },
 });

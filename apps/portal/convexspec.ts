@@ -2284,6 +2284,12 @@ export type PublicApiType = {
           syncedCount: number;
         }
       >;
+      syncNewestForConnection: FunctionReference<
+        "action",
+        "public",
+        { connectionId: Id<"connections"> },
+        { inserted: number; updated: number }
+      >;
       listFolders: FunctionReference<
         "action",
         "public",
@@ -2360,10 +2366,43 @@ export type PublicApiType = {
         },
         { inserted: number; updated: number }
       >;
+      upsertVideo: FunctionReference<
+        "mutation",
+        "public",
+        {
+          connectionId: Id<"connections">;
+          now: number;
+          video: {
+            description?: string;
+            embedUrl: string;
+            publishedAt: number;
+            thumbnailUrl?: string;
+            title: string;
+            videoId: string;
+          };
+        },
+        { id: Id<"vimeoVideos">; inserted: boolean }
+      >;
+      markVideoDeleted: FunctionReference<
+        "mutation",
+        "public",
+        { connectionId: Id<"connections">; deletedAt: number; videoId: string },
+        boolean
+      >;
       startVimeoSync: FunctionReference<
         "mutation",
         "public",
         { organizationId: Id<"organizations">; restart?: boolean },
+        { connectionId: Id<"connections">; workflowId: string }
+      >;
+      startVimeoSyncForConnection: FunctionReference<
+        "mutation",
+        "public",
+        {
+          connectionId: Id<"connections">;
+          maxPages?: number;
+          restart?: boolean;
+        },
         { connectionId: Id<"connections">; workflowId: string }
       >;
       triggerSync: FunctionReference<
@@ -2426,6 +2465,7 @@ export type PublicApiType = {
         null | {
           _id: Id<"vimeoSyncState">;
           connectionId: Id<"connections">;
+          estimatedTotalPages?: number;
           finishedAt?: number;
           lastError?: string;
           nextPage: number;
@@ -2434,7 +2474,13 @@ export type PublicApiType = {
           startedAt?: number;
           status: "idle" | "running" | "error" | "done";
           syncedCount: number;
+          totalVideos?: number;
           updatedAt: number;
+          webhookId?: string;
+          webhookLastError?: string;
+          webhookLastEventAt?: number;
+          webhookSecret?: string;
+          webhookStatus?: "idle" | "active" | "error" | "disabled";
           workflowId?: string;
         }
       >;
@@ -5988,6 +6034,12 @@ export type PublicApiType = {
           },
           Id<"connections">
         >;
+        remove: FunctionReference<
+          "action",
+          "public",
+          { id: Id<"connections"> },
+          boolean
+        >;
       };
     };
     triggers: {
@@ -6867,63 +6919,72 @@ export type PublicApiType = {
             mode?: "agent" | "manual";
             origin?: "chat" | "email";
             postId: string;
-            sessionId: string;
             status?: "open" | "snoozed" | "closed";
+            threadId: string;
             totalMessages?: number;
           }>
         >;
         listMessages: FunctionReference<
           "query",
           "public",
-          { organizationId: string; sessionId: string },
+          { organizationId: string; sessionId?: string; threadId?: string },
           Array<{
-            _creationTime: number;
             _id: string;
             agentName?: string;
-            agentUserId?: string;
-            attachments?: Array<string>;
-            contactEmail?: string;
-            contactId?: string;
-            contactName?: string;
             content: string;
             createdAt: number;
-            emailMessageId?: string;
-            htmlBody?: string;
-            inReplyToId?: string;
-            messageType?: "chat" | "email_inbound" | "email_outbound";
-            organizationId: string;
             role: "user" | "assistant";
-            sessionId: string;
-            source?: "agent" | "admin" | "system";
-            subject?: string;
-            textBody?: string;
           }>
+        >;
+        getRagIndexStatusForPost: FunctionReference<
+          "query",
+          "public",
+          { organizationId: string; postId: string; postTypeSlug: string },
+          {
+            config?: {
+              additionalMetaKeys?: string;
+              displayName?: string;
+              fields?: Array<string>;
+              includeTags?: boolean;
+              lastIndexedAt?: number;
+              metaFieldKeys?: Array<string>;
+            };
+            entryKey?: string;
+            isEnabledForPostType: boolean;
+            lastAttemptAt?: number;
+            lastEntryId?: string;
+            lastEntryStatus?: "pending" | "ready" | "replaced";
+            lastError?: string;
+            lastStatus?: string;
+            lastSuccessAt?: number;
+            sourceType?: "postType" | "lmsPostType";
+          }
         >;
         getAgentPresence: FunctionReference<
           "query",
           "public",
-          { organizationId: string; sessionId: string },
+          { organizationId: string; sessionId?: string; threadId?: string },
           {
             _creationTime: number;
             _id: string;
             agentName?: string;
             agentUserId?: string;
             organizationId: string;
-            sessionId: string;
             status?: "typing" | "idle";
+            threadId: string;
             updatedAt?: number;
           } | null
         >;
         getConversationMode: FunctionReference<
           "query",
           "public",
-          { organizationId: string; sessionId: string },
+          { organizationId: string; sessionId?: string; threadId?: string },
           "agent" | "manual"
         >;
         listHelpdeskArticles: FunctionReference<
           "query",
           "public",
-          { limit?: number; organizationId: string },
+          { limit?: number; organizationId: string; query?: string },
           any
         >;
         getHelpdeskArticleById: FunctionReference<
@@ -6937,6 +6998,19 @@ export type PublicApiType = {
           "public",
           { organizationId: string },
           any
+        >;
+        getRagSourceConfigForPostType: FunctionReference<
+          "query",
+          "public",
+          { organizationId: string; postTypeSlug: string },
+          null | {
+            _id: Id<"supportRagSources">;
+            baseInstructions: string;
+            isEnabled: boolean;
+            postTypeSlug: string;
+            sourceType: "postType" | "lmsPostType";
+            useCustomBaseInstructions: boolean;
+          }
         >;
         getEmailSettings: FunctionReference<
           "query",
@@ -6957,11 +7031,12 @@ export type PublicApiType = {
           "public",
           {
             contactEmail?: string;
-            contactId?: Id<"contacts">;
+            contactId?: string;
             contactName?: string;
+            contextTags?: Array<string>;
             organizationId: Id<"organizations"> | "portal-root";
             prompt: string;
-            sessionId: string;
+            threadId: string;
           },
           { text: string }
         >;
@@ -6982,8 +7057,36 @@ export type PublicApiType = {
             title: string;
           }>
         >;
+        searchKnowledgeForContext: FunctionReference<
+          "action",
+          "public",
+          {
+            limit?: number;
+            organizationId: Id<"organizations">;
+            query: string;
+            tags?: Array<string>;
+          },
+          Array<{
+            content: string;
+            slug?: string;
+            source?: string;
+            title: string;
+          }>
+        >;
       };
       mutations: {
+        createThread: FunctionReference<
+          "mutation",
+          "public",
+          {
+            contactEmail?: string;
+            contactId?: string;
+            contactName?: string;
+            mode?: "agent" | "manual";
+            organizationId: string;
+          },
+          { threadId: string }
+        >;
         createSupportPost: FunctionReference<
           "mutation",
           "public",
@@ -7054,10 +7157,11 @@ export type PublicApiType = {
             messageType?: "chat" | "email_inbound" | "email_outbound";
             organizationId: string;
             role: "user" | "assistant";
-            sessionId: string;
+            sessionId?: string;
             source?: "agent" | "admin" | "system";
             subject?: string;
             textBody?: string;
+            threadId?: string;
           },
           null
         >;
@@ -7068,8 +7172,9 @@ export type PublicApiType = {
             agentName?: string;
             agentUserId: string;
             organizationId: string;
-            sessionId: string;
+            sessionId?: string;
             status: "typing" | "idle";
+            threadId?: string;
           },
           null
         >;
@@ -7079,7 +7184,8 @@ export type PublicApiType = {
           {
             mode: "agent" | "manual";
             organizationId: string;
-            sessionId: string;
+            sessionId?: string;
+            threadId?: string;
           },
           null
         >;
@@ -7105,22 +7211,38 @@ export type PublicApiType = {
           "public",
           {
             additionalMetaKeys?: string;
+            baseInstructions?: string;
             displayName?: string;
             fields?: Array<string>;
             includeTags?: boolean;
             isEnabled?: boolean;
             metaFieldKeys?: Array<string>;
-            organizationId: string;
+            organizationId: Id<"organizations"> | "portal-root";
             postTypeSlug: string;
-            sourceId?: Id<"posts">;
+            sourceId?: Id<"supportRagSources">;
+            sourceType?: "postType" | "lmsPostType";
+            useCustomBaseInstructions?: boolean;
           },
           any
         >;
         deleteRagSourceConfig: FunctionReference<
           "mutation",
           "public",
-          { organizationId: string; sourceId: Id<"posts"> },
+          {
+            organizationId: Id<"organizations"> | "portal-root";
+            sourceId: Id<"supportRagSources">;
+          },
           any
+        >;
+        triggerRagReindexForPost: FunctionReference<
+          "mutation",
+          "public",
+          {
+            organizationId: Id<"organizations"> | "portal-root";
+            postId: string;
+            postTypeSlug: string;
+          },
+          null
         >;
       };
       options: {
@@ -7885,13 +8007,18 @@ export type PublicApiType = {
         saveEntity: FunctionReference<
           "mutation",
           "public",
-          { data: any; postTypeSlug: string },
+          { data: any; organizationId?: string; postTypeSlug: string },
           any
         >;
         updateEntity: FunctionReference<
           "mutation",
           "public",
-          { data: any; id: string; postTypeSlug: string },
+          {
+            data: any;
+            id: string;
+            organizationId?: string;
+            postTypeSlug: string;
+          },
           any
         >;
         deleteEntity: FunctionReference<
@@ -8034,6 +8161,17 @@ export type PublicApiType = {
             token: string;
           }
         >;
+        recordSigningView: FunctionReference<
+          "mutation",
+          "public",
+          {
+            ip?: string;
+            issueId: string;
+            tokenHash: string;
+            userAgent?: string;
+          },
+          null
+        >;
       };
       queries: {
         listDisclaimerTemplates: FunctionReference<
@@ -8074,6 +8212,12 @@ export type PublicApiType = {
           "query",
           "public",
           { issueId: string; tokenHash: string },
+          any
+        >;
+        getSigningViewEvents: FunctionReference<
+          "query",
+          "public",
+          { issueId: string; limit?: number; tokenHash: string },
           any
         >;
         getTemplateBuilderContext: FunctionReference<
@@ -8120,15 +8264,13 @@ export type PublicApiType = {
           "action",
           "public",
           {
-            consentText: string;
             fieldSignatures?: Array<{
               fieldId: string;
               signatureDataUrl: string;
             }>;
+            ip?: string;
             issueId: string;
             signatureDataUrl?: string;
-            signedEmail: string;
-            signedName: string;
             tokenHash: string;
             userAgent?: string;
           },

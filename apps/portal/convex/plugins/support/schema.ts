@@ -66,7 +66,9 @@ const supportConversationsTable = defineTable({
   updatedAt: v.number(),
 })
   .index("by_organization", ["organizationId"])
-  .index("by_org_session", ["organizationId", "sessionId"]);
+  .index("by_org_session", ["organizationId", "sessionId"])
+  .index("by_org_agentThreadId", ["organizationId", "agentThreadId"])
+  .index("by_org_lastMessageAt", ["organizationId", "lastMessageAt"]);
 
 const dnsRecordValidator = v.object({
   type: v.string(),
@@ -154,11 +156,46 @@ const supportAgentPresenceTable = defineTable({
   updatedAt: v.number(),
 }).index("by_org_session", ["organizationId", "sessionId"]);
 
+const supportConversationNoteTable = defineTable({
+  organizationId: supportOrganizationIdValidator,
+  sessionId: v.string(),
+  agentThreadId: v.optional(v.string()),
+  note: v.string(),
+  actorId: v.optional(v.string()),
+  actorName: v.optional(v.string()),
+  createdAt: v.number(),
+})
+  .index("by_org_session", ["organizationId", "sessionId"])
+  .index("by_org_session_createdAt", ["organizationId", "sessionId", "createdAt"]);
+
+const supportConversationEventTable = defineTable({
+  organizationId: supportOrganizationIdValidator,
+  sessionId: v.string(),
+  agentThreadId: v.optional(v.string()),
+  eventType: v.string(),
+  actorId: v.optional(v.string()),
+  actorName: v.optional(v.string()),
+  payload: v.optional(v.string()),
+  createdAt: v.number(),
+})
+  .index("by_org_session", ["organizationId", "sessionId"])
+  .index("by_org_session_createdAt", ["organizationId", "sessionId", "createdAt"]);
+
+const supportRateLimitTable = defineTable({
+  key: v.string(),
+  count: v.number(),
+  expiresAt: v.number(),
+  updatedAt: v.number(),
+}).index("by_key", ["key"]);
+
 export const supportSchema = {
   supportMessages: supportMessagesTable,
   supportConversations: supportConversationsTable,
   supportEmailSettings: supportEmailSettingsTable,
   supportAgentPresence: supportAgentPresenceTable,
+  supportConversationNotes: supportConversationNoteTable,
+  supportConversationEvents: supportConversationEventTable,
+  supportRateLimits: supportRateLimitTable,
   supportRagSources: supportRagSourcesTable,
   supportRagIndexStatus: supportRagIndexStatusTable,
 };

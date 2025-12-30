@@ -1,11 +1,16 @@
 import type { Id } from "@/convex/_generated/dataModel";
-import { LMS_QUIZ_ASSISTANT_EXPERIENCE_ID } from "launchthat-plugin-support/assistant";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { api } from "@/convex/_generated/api";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
+import { LMS_QUIZ_ASSISTANT_EXPERIENCE_ID } from "launchthat-plugin-support/assistant";
+
 import { getConvex } from "~/lib/convex";
-import { resolveSupportOrganizationId } from "~/lib/support/resolveOrganizationId";
+import { checkIpRateLimit, getClientIp } from "~/lib/support/ipRateLimit";
+import {
+  requireSupportWidgetAuth,
+  SupportWidgetAuthError,
+} from "~/lib/support/widgetAuth";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -20,6 +25,8 @@ interface SupportMessage {
 
 interface SupportRequestPayload {
   organizationId: string;
+  widgetKey: string;
+  clientSessionId?: string;
   threadId?: string;
   contactId?: string;
   contactEmail?: string;
@@ -27,6 +34,10 @@ interface SupportRequestPayload {
   messages: SupportMessage[];
   experienceId?: string;
   experienceContext?: Record<string, unknown>;
+}
+
+class SupportChatBadRequestError extends Error {
+  status = 400 as const;
 }
 
 const buildContextTags = (args: {
@@ -38,7 +49,9 @@ const buildContextTags = (args: {
 
   // Generic LMS contextual tag support (used by planned `lms-content` experience).
   const postTypeSlug =
-    typeof ctx.postTypeSlug === "string" ? ctx.postTypeSlug.toLowerCase() : null;
+    typeof ctx.postTypeSlug === "string"
+      ? ctx.postTypeSlug.toLowerCase()
+      : null;
   const postId = typeof ctx.postId === "string" ? ctx.postId : null;
   if (postTypeSlug && postId) {
     tags.push(`lms:${postTypeSlug}:${postId}`);
@@ -49,15 +62,20 @@ const buildContextTags = (args: {
 
 const parseRequest = (payload: unknown): SupportRequestPayload => {
   if (!payload || typeof payload !== "object") {
-    throw new Error("Invalid request payload");
+    throw new SupportChatBadRequestError("Invalid request payload");
   }
   const body = payload as Record<string, unknown>;
   const organizationId = body.organizationId;
+  const widgetKey = body.widgetKey;
+  const clientSessionId = body.clientSessionId;
   if (
     typeof organizationId !== "string" ||
     organizationId.trim().length === 0
   ) {
-    throw new Error("organizationId is required");
+    throw new SupportChatBadRequestError("organizationId is required");
+  }
+  if (typeof widgetKey !== "string" || widgetKey.trim().length === 0) {
+    throw new SupportChatBadRequestError("widgetKey is required");
   }
   const messagesRaw = Array.isArray(body.messages) ? body.messages : [];
 
@@ -98,6 +116,11 @@ const parseRequest = (payload: unknown): SupportRequestPayload => {
     .filter((message) => message.content.length > 0);
   return {
     organizationId,
+    widgetKey,
+    clientSessionId:
+      typeof clientSessionId === "string" && clientSessionId.trim().length > 0
+        ? clientSessionId
+        : undefined,
     threadId: typeof body.threadId === "string" ? body.threadId : undefined,
     contactId: typeof body.contactId === "string" ? body.contactId : undefined,
     contactEmail:
@@ -118,28 +141,88 @@ const parseRequest = (payload: unknown): SupportRequestPayload => {
 
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req);
+    const ipLimit = checkIpRateLimit({
+      key: `support-chat:message:ip:${ip}`,
+      limit: 60,
+      windowMs: 60_000,
+    });
+    if (!ipLimit.allowed) {
+      console.warn(
+        JSON.stringify({
+          event: "support_chat_rate_limited",
+          route: "message",
+          scope: "ip",
+          ip,
+          retryAfterMs: ipLimit.retryAfterMs,
+        }),
+      );
+      return NextResponse.json(
+        { error: "Rate limited" },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil(ipLimit.retryAfterMs / 1000)),
+          },
+        },
+      );
+    }
+
     console.log("[support-chat] incoming request");
     const parsed = parseRequest(await req.json());
     const convex = getConvex();
-    const organizationId = await resolveSupportOrganizationId(
+    const { organizationId } = await requireSupportWidgetAuth({
+      req,
       convex,
-      parsed.organizationId,
-    );
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: "organization not found" },
-        { status: 404 },
-      );
+      organizationIdParam: parsed.organizationId,
+      widgetKey: parsed.widgetKey,
+    });
+
+    if (parsed.clientSessionId) {
+      const sessionLimit = checkIpRateLimit({
+        key: `support-chat:message:session:${organizationId}:${parsed.clientSessionId}`,
+        limit: 30,
+        windowMs: 60_000,
+      });
+      if (!sessionLimit.allowed) {
+        console.warn(
+          JSON.stringify({
+            event: "support_chat_rate_limited",
+            route: "message",
+            scope: "clientSessionId",
+            organizationId,
+            clientSessionId: parsed.clientSessionId,
+            retryAfterMs: sessionLimit.retryAfterMs,
+          }),
+        );
+        return NextResponse.json(
+          { error: "Rate limited" },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": String(
+                Math.ceil(sessionLimit.retryAfterMs / 1000),
+              ),
+            },
+          },
+        );
+      }
     }
     const threadId =
       parsed.threadId ??
-      (await convex.mutation(api.plugins.support.mutations.createThread, {
-        organizationId,
-        contactId: parsed.contactId ?? undefined,
-        contactEmail: parsed.contactEmail ?? undefined,
-        contactName: parsed.contactName ?? undefined,
-        mode: undefined,
-      })).threadId;
+      (
+        await convex.mutation(
+          (api as any).plugins.support.mutations.createThread,
+          {
+            organizationId,
+            clientSessionId: parsed.clientSessionId,
+            contactId: parsed.contactId ?? undefined,
+            contactEmail: parsed.contactEmail ?? undefined,
+            contactName: parsed.contactName ?? undefined,
+            mode: undefined,
+          },
+        )
+      ).threadId;
     const contactId = parsed.contactId ?? undefined;
     const contactEmail = parsed.contactEmail;
     const contactName = parsed.contactName;
@@ -175,13 +258,20 @@ export async function POST(req: Request) {
         contactName,
         source: "system",
       });
+      console.log(
+        JSON.stringify({
+          event: "support_chat_manual_mode",
+          organizationId,
+          threadId,
+        }),
+      );
       return streamTextResponse(fallbackMessage);
     }
 
     if (experienceId === LMS_QUIZ_ASSISTANT_EXPERIENCE_ID) {
       return await handleQuizAssistantExperience({
         convex,
-        organizationId,
+        organizationId: organizationId as Id<"organizations">,
         threadId,
         contactEmail,
         contactName,
@@ -190,6 +280,7 @@ export async function POST(req: Request) {
     }
 
     // TODO: add component-native helpdesk matching; currently skip to agent reply.
+    const agentStart = Date.now();
     const agentResult = await convex.action(
       api.plugins.support.agent.generateAgentReply,
       {
@@ -202,9 +293,39 @@ export async function POST(req: Request) {
         contextTags: contextTags.length > 0 ? contextTags : undefined,
       },
     );
+    console.log(
+      JSON.stringify({
+        event: "support_chat_agent_reply",
+        organizationId,
+        threadId,
+        durationMs: Date.now() - agentStart,
+      }),
+    );
 
     return streamTextResponse(agentResult?.text ?? "");
   } catch (error) {
+    if (error instanceof SupportChatBadRequestError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
+    if (error instanceof SupportWidgetAuthError) {
+      console.warn(
+        JSON.stringify({
+          event: "support_chat_auth_failed",
+          route: "message",
+          status: error.status,
+          message: error.message,
+          origin: req.headers.get("origin"),
+          host: req.headers.get("host"),
+        }),
+      );
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     console.error("[support-chat] error", error);
     return NextResponse.json(
       { error: "Unable to generate a response at this time." },
@@ -215,8 +336,36 @@ export async function POST(req: Request) {
 
 export async function GET(req: NextRequest) {
   try {
+    const ip = getClientIp(req);
+    const ipLimit = checkIpRateLimit({
+      key: `support-chat:history:ip:${ip}`,
+      limit: 60,
+      windowMs: 60_000,
+    });
+    if (!ipLimit.allowed) {
+      console.warn(
+        JSON.stringify({
+          event: "support_chat_rate_limited",
+          route: "history",
+          scope: "ip",
+          ip,
+          retryAfterMs: ipLimit.retryAfterMs,
+        }),
+      );
+      return NextResponse.json(
+        { error: "Rate limited" },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil(ipLimit.retryAfterMs / 1000)),
+          },
+        },
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const organizationIdParam = searchParams.get("organizationId");
+    const widgetKey = searchParams.get("widgetKey");
     const view = searchParams.get("view") ?? "history";
 
     if (!organizationIdParam) {
@@ -227,23 +376,20 @@ export async function GET(req: NextRequest) {
     }
 
     const convex = getConvex();
-    const organizationId = await resolveSupportOrganizationId(
+    const { organizationId } = await requireSupportWidgetAuth({
+      req,
       convex,
       organizationIdParam,
-    );
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: "organization not found" },
-        { status: 404 },
-      );
-    }
+      widgetKey,
+    });
 
     if (view === "helpdesk") {
       // Component-based helpdesk listing not yet implemented; return empty.
       return NextResponse.json({ articles: [] });
     }
 
-    const threadId = searchParams.get("threadId") ?? searchParams.get("sessionId");
+    const threadId =
+      searchParams.get("threadId") ?? searchParams.get("sessionId");
     if (!threadId) {
       return NextResponse.json(
         { error: "threadId is required for history view" },
@@ -261,6 +407,24 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ messages });
   } catch (error) {
+    if (error instanceof SupportWidgetAuthError) {
+      const { searchParams } = new URL(req.url);
+      console.warn(
+        JSON.stringify({
+          event: "support_chat_auth_failed",
+          route: "history",
+          status: error.status,
+          message: error.message,
+          organizationIdParam: searchParams.get("organizationId"),
+          origin: req.headers.get("origin"),
+          host: req.headers.get("host"),
+        }),
+      );
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     console.error("[support-chat] history error", error);
     return NextResponse.json(
       { error: "Unable to load chat history." },

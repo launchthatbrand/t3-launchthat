@@ -163,77 +163,68 @@ export const listConversations = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const conversations = (await ctx.runQuery(supportQueries.listSupportPosts, {
-      organizationId: args.organizationId,
-      filters: {
-        postTypeSlug: "supportconversations",
-        limit: args.limit ?? 200,
-      },
-    })) as SupportPostRecord[];
+    const limit = args.limit ?? 200;
+    const orgId = args.organizationId as any;
 
-    const metaByPostId = new Map<
-      string,
-      Record<string, string | number | boolean | null | undefined>
-    >();
-    for (const conv of conversations) {
-      const metas = (await ctx.runQuery(supportQueries.getSupportPostMeta, {
-        postId: conv._id as Id<"posts">,
-        organizationId: args.organizationId,
-      })) as {
-        key: string;
-        value: string | number | boolean | null | undefined;
-      }[];
-      const metaMap: Record<
-        string,
-        string | number | boolean | null | undefined
-      > = {};
-      metas.forEach((m) => {
-        metaMap[m.key] = m.value ?? null;
-      });
-      metaByPostId.set(conv._id, metaMap);
-    }
+    const nativeRows = await ctx.db
+      .query("supportConversations")
+      .withIndex("by_org_lastMessageAt", (q) => q.eq("organizationId", orgId))
+      .order("desc")
+      .take(limit);
 
-    return conversations.map((conv) => {
-      const meta = metaByPostId.get(conv._id) ?? {};
-      const firstAt = (meta.firstAt as number | undefined) ?? conv.createdAt;
-      const lastAt =
-        (meta.lastAt as number | undefined) ?? conv.updatedAt ?? conv.createdAt;
-      const lastMessage =
-        (meta.lastMessage as string | undefined) ?? conv.content ?? undefined;
+    const seenThreadIds = new Set<string>();
+    const native = nativeRows.map((row) => {
+      const threadId = row.agentThreadId ?? row.sessionId;
+      seenThreadIds.add(threadId);
       return {
-        threadId:
-          (meta.agentThreadId as string | undefined) ??
-          (meta.threadId as string | undefined) ??
-          conv.slug,
-        lastMessage,
-        lastRole: (meta.lastRole as "user" | "assistant" | undefined) ?? "user",
-        lastAt,
-        firstAt,
-        totalMessages: (meta.totalMessages as number | undefined) ?? 0,
-        contactId:
-          typeof meta.contactId === "string" ? meta.contactId : undefined,
-        contactName:
-          typeof meta.contactName === "string" ? meta.contactName : undefined,
-        contactEmail:
-          typeof meta.contactEmail === "string" ? meta.contactEmail : undefined,
-        origin: (meta.origin as "chat" | "email" | undefined) ?? "chat",
-        status: meta.status as "open" | "snoozed" | "closed" | undefined,
-        mode: meta.mode as "agent" | "manual" | undefined,
-        assignedAgentId:
-          typeof meta.assignedAgentId === "string"
-            ? meta.assignedAgentId
-            : undefined,
-        assignedAgentName:
-          typeof meta.assignedAgentName === "string"
-            ? meta.assignedAgentName
-            : undefined,
-        agentThreadId:
-          typeof meta.agentThreadId === "string"
-            ? meta.agentThreadId
-            : undefined,
-        postId: conv._id,
+        threadId,
+        lastMessage: row.lastMessageSnippet ?? undefined,
+        lastRole: row.lastMessageAuthor ?? undefined,
+        lastAt: row.lastMessageAt ?? undefined,
+        firstAt: row.firstMessageAt ?? undefined,
+        totalMessages: row.totalMessages ?? undefined,
+        contactId: row.contactId ? String(row.contactId) : undefined,
+        contactName: row.contactName ?? undefined,
+        contactEmail: row.contactEmail ?? undefined,
+        origin: row.origin ?? undefined,
+        status: row.status ?? undefined,
+        mode: row.mode ?? undefined,
+        assignedAgentId: row.assignedAgentId ?? undefined,
+        assignedAgentName: row.assignedAgentName ?? undefined,
+        agentThreadId: row.agentThreadId ?? undefined,
+        // Back-compat: callers historically used this only as an opaque reference.
+        postId: threadId,
       };
     });
+
+    // Back-compat fallback (no N+1): include CMS conversations that haven't been written to the native index yet.
+    const legacy = (await ctx.runQuery(supportQueries.listSupportPosts, {
+      organizationId: args.organizationId,
+      filters: { postTypeSlug: "supportconversations", limit },
+    })) as SupportPostRecord[];
+
+    const legacyMapped = legacy
+      .filter((post) => !seenThreadIds.has(post.slug))
+      .map((post) => ({
+        threadId: post.slug,
+        lastMessage: post.content ?? undefined,
+        lastRole: "user" as const,
+        lastAt: post.updatedAt ?? post.createdAt,
+        firstAt: post.createdAt,
+        totalMessages: undefined,
+        contactId: undefined,
+        contactName: undefined,
+        contactEmail: undefined,
+        origin: "chat" as const,
+        status: undefined,
+        mode: undefined,
+        assignedAgentId: undefined,
+        assignedAgentName: undefined,
+        agentThreadId: undefined,
+        postId: post._id,
+      }));
+
+    return [...native, ...legacyMapped].slice(0, limit);
   },
 });
 
@@ -255,21 +246,38 @@ export const listMessages = query({
   handler: async (ctx, args) => {
     const resolvedThreadId = args.threadId ?? args.sessionId;
     if (!resolvedThreadId) return [];
-    // Verify this thread belongs to the org by requiring a matching supportconversations post.
-    const threads: SupportPostRecord[] = (await ctx.runQuery(
-      supportQueries.listSupportPosts,
-      {
-        organizationId: args.organizationId,
-        filters: { postTypeSlug: "supportconversations", limit: 500 },
-      },
-    )) as SupportPostRecord[];
-    const thread = threads.find((c) => c.slug === resolvedThreadId);
-    if (!thread) return [];
+    const orgId = args.organizationId as any;
+
+    // Verify thread ownership via native index (no scans).
+    const conversationByThread = args.threadId
+      ? await ctx.db
+          .query("supportConversations")
+          .withIndex("by_org_agentThreadId", (q) =>
+            q.eq("organizationId", orgId).eq("agentThreadId", resolvedThreadId),
+          )
+          .first()
+      : null;
+    const conversationBySession = !conversationByThread
+      ? await ctx.db
+          .query("supportConversations")
+          .withIndex("by_org_session", (q) =>
+            q.eq("organizationId", orgId).eq("sessionId", resolvedThreadId),
+          )
+          .first()
+      : null;
+    const agentThreadId =
+      conversationByThread?.agentThreadId ??
+      conversationBySession?.agentThreadId ??
+      (args.threadId ? resolvedThreadId : null);
+
+    if (!agentThreadId) {
+      return [];
+    }
 
     const page = await ctx.runQuery(
       components.agent.messages.listMessagesByThreadId,
       {
-        threadId: resolvedThreadId,
+        threadId: agentThreadId,
         order: "asc",
         paginationOpts: { cursor: null, numItems: 200 },
         excludeToolMessages: true,
@@ -308,6 +316,132 @@ export const listMessages = query({
         },
       ];
     });
+  },
+});
+
+export const listConversationNotes = query({
+  args: {
+    organizationId: v.string(),
+    threadId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.string(),
+      note: v.string(),
+      actorId: v.optional(v.string()),
+      actorName: v.optional(v.string()),
+      createdAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const resolved = args.threadId ?? args.sessionId;
+    if (!resolved) {
+      return [];
+    }
+    const orgId = args.organizationId as any;
+    const conversationByThread = args.threadId
+      ? await ctx.db
+          .query("supportConversations")
+          .withIndex("by_org_agentThreadId", (q) =>
+            q.eq("organizationId", orgId).eq("agentThreadId", resolved),
+          )
+          .first()
+      : null;
+    const conversationBySession = !conversationByThread
+      ? await ctx.db
+          .query("supportConversations")
+          .withIndex("by_org_session", (q) =>
+            q.eq("organizationId", orgId).eq("sessionId", resolved),
+          )
+          .first()
+      : null;
+    const conversation = conversationByThread ?? conversationBySession;
+    if (!conversation) {
+      return [];
+    }
+
+    const rows = await ctx.db
+      .query("supportConversationNotes")
+      .withIndex("by_org_session_createdAt", (q) =>
+        q
+          .eq("organizationId", args.organizationId as any)
+          .eq("sessionId", conversation.sessionId),
+      )
+      .order("desc")
+      .take(200);
+
+    return rows.map((row) => ({
+      _id: String(row._id),
+      note: row.note,
+      actorId: row.actorId ?? undefined,
+      actorName: row.actorName ?? undefined,
+      createdAt: row.createdAt,
+    }));
+  },
+});
+
+export const listConversationEvents = query({
+  args: {
+    organizationId: v.string(),
+    threadId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.string(),
+      eventType: v.string(),
+      actorId: v.optional(v.string()),
+      actorName: v.optional(v.string()),
+      payload: v.optional(v.string()),
+      createdAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const resolved = args.threadId ?? args.sessionId;
+    if (!resolved) {
+      return [];
+    }
+    const orgId = args.organizationId as any;
+    const conversationByThread = args.threadId
+      ? await ctx.db
+          .query("supportConversations")
+          .withIndex("by_org_agentThreadId", (q) =>
+            q.eq("organizationId", orgId).eq("agentThreadId", resolved),
+          )
+          .first()
+      : null;
+    const conversationBySession = !conversationByThread
+      ? await ctx.db
+          .query("supportConversations")
+          .withIndex("by_org_session", (q) =>
+            q.eq("organizationId", orgId).eq("sessionId", resolved),
+          )
+          .first()
+      : null;
+    const conversation = conversationByThread ?? conversationBySession;
+    if (!conversation) {
+      return [];
+    }
+
+    const rows = await ctx.db
+      .query("supportConversationEvents")
+      .withIndex("by_org_session_createdAt", (q) =>
+        q
+          .eq("organizationId", args.organizationId as any)
+          .eq("sessionId", conversation.sessionId),
+      )
+      .order("desc")
+      .take(200);
+
+    return rows.map((row) => ({
+      _id: String(row._id),
+      eventType: row.eventType,
+      actorId: row.actorId ?? undefined,
+      actorName: row.actorName ?? undefined,
+      payload: row.payload ?? undefined,
+      createdAt: row.createdAt,
+    }));
   },
 });
 

@@ -8,6 +8,7 @@ import { useChat } from "@ai-sdk/react";
 import { api } from "@portal/convexspec";
 import { DefaultChatTransport, isTextUIPart } from "ai";
 import { useMutation, useQuery } from "convex/react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Loader2, MessageCircle } from "lucide-react";
 
 import { cn } from "@acme/ui";
@@ -60,6 +61,7 @@ export interface SupportChatWidgetProps {
   organizationId?: string | null;
   tenantName?: string;
   apiPath?: string;
+  widgetKey?: string | null;
   defaultContact?: StoredContact | null;
   bubbleVariant?: "offset" | "flush-right-square";
 }
@@ -98,6 +100,7 @@ export function SupportChatWidget({
   organizationId,
   tenantName = "your organization",
   apiPath = "/api/support-chat",
+  widgetKey = null,
   defaultContact = null,
   bubbleVariant = "offset",
 }: SupportChatWidgetProps) {
@@ -110,6 +113,7 @@ export function SupportChatWidget({
       organizationId={organizationId}
       tenantName={tenantName}
       apiPath={apiPath}
+      widgetKey={widgetKey}
       defaultContact={defaultContact}
       bubbleVariant={bubbleVariant}
     />
@@ -120,6 +124,7 @@ interface SupportChatWidgetInnerProps {
   organizationId: string;
   tenantName: string;
   apiPath: string;
+  widgetKey: string | null;
   defaultContact: StoredContact | null;
   bubbleVariant: "offset" | "flush-right-square";
 }
@@ -128,16 +133,23 @@ function SupportChatWidgetInner({
   organizationId,
   tenantName,
   apiPath,
+  widgetKey,
   defaultContact,
   bubbleVariant,
 }: SupportChatWidgetInnerProps) {
-  const { threadId } = useSupportChatThread(organizationId);
+  const { threadId, clientSessionId } = useSupportChatThread(
+    organizationId,
+    widgetKey,
+  );
   const { contact, saveContact } = useSupportContactStorage(organizationId);
-  const { settings, isLoading: settingsLoading } =
-    useSupportChatSettings(organizationId);
+  const { settings, isLoading: settingsLoading } = useSupportChatSettings(
+    organizationId,
+    widgetKey,
+  );
   const { articles: helpdeskArticles } = useHelpdeskArticles(
     apiPath,
     organizationId,
+    widgetKey,
   );
   const { initialMessages, isBootstrapped } = useSupportChatHistory(
     organizationId,
@@ -173,6 +185,8 @@ function SupportChatWidgetInner({
       organizationId={organizationId}
       threadId={threadId ?? ""}
       tenantName={tenantName}
+      widgetKey={widgetKey}
+      clientSessionId={clientSessionId}
       initialMessages={initialMessages}
       settings={settings}
       contact={contact}
@@ -189,6 +203,8 @@ interface ChatSurfaceProps {
   threadId: string;
   tenantName: string;
   apiPath: string;
+  widgetKey: string | null;
+  clientSessionId: string | null;
   initialMessages: ChatHistoryMessage[];
   settings: SupportChatSettings;
   contact: StoredContact | null;
@@ -203,6 +219,8 @@ function ChatSurface({
   threadId,
   tenantName,
   apiPath,
+  widgetKey,
+  clientSessionId,
   initialMessages,
   settings,
   contact,
@@ -212,6 +230,23 @@ function ChatSurface({
   bubbleVariant,
 }: ChatSurfaceProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const prefersReducedMotion = useReducedMotion();
+  const hasWidgetKey =
+    typeof widgetKey === "string" && widgetKey.trim().length > 0;
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    if (hasWidgetKey) return;
+    console.warn(
+      "[support-chat] widgetKey missing (chat disabled)",
+      JSON.stringify({
+        organizationId,
+        apiPath,
+        hasThreadId: Boolean(threadId),
+        hasClientSessionId: Boolean(clientSessionId),
+      }),
+    );
+  }, [apiPath, clientSessionId, hasWidgetKey, organizationId, threadId]);
   const normalizedContactId = useMemo(
     () =>
       contact?.contactId && isConvexId(contact.contactId)
@@ -231,6 +266,7 @@ function ChatSurface({
     const stored = window.localStorage.getItem(openStorageKey);
     return stored === "true";
   });
+  const [isExpanded, setIsExpanded] = useState(false);
   const [contactForm, setContactForm] =
     useState<ContactFormState>(defaultContactForm);
   const [contactError, setContactError] = useState<string | null>(null);
@@ -292,6 +328,8 @@ function ChatSurface({
 
   const requestBodyRef = useRef({
     organizationId,
+    widgetKey,
+    clientSessionId,
     threadId,
     contactId: normalizedContactId,
     contactEmail: contact?.email ?? defaultContact?.email ?? undefined,
@@ -303,6 +341,8 @@ function ChatSurface({
   useEffect(() => {
     requestBodyRef.current = {
       organizationId,
+      widgetKey,
+      clientSessionId,
       threadId,
       contactId: normalizedContactId,
       contactEmail: contact?.email ?? defaultContact?.email ?? undefined,
@@ -312,6 +352,7 @@ function ChatSurface({
     };
   }, [
     activeExperienceId,
+    clientSessionId,
     contact?.email,
     contact?.fullName,
     defaultContact?.email,
@@ -319,6 +360,7 @@ function ChatSurface({
     experienceContext,
     normalizedContactId,
     organizationId,
+    widgetKey,
     threadId,
   ]);
 
@@ -369,6 +411,12 @@ function ChatSurface({
   const handleSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
+      if (!hasWidgetKey) {
+        console.error(
+          "[support-chat] widgetKey is missing; unable to send message",
+        );
+        return;
+      }
       const trimmed = input.trim();
       if (!trimmed) {
         return;
@@ -376,7 +424,7 @@ function ChatSurface({
       void sendMessage({ text: trimmed });
       setInput("");
     },
-    [input, sendMessage],
+    [hasWidgetKey, input, sendMessage],
   );
 
   const isLoading = status === "submitted" || status === "streaming";
@@ -404,6 +452,8 @@ function ChatSurface({
 
       requestBodyRef.current = {
         organizationId,
+        widgetKey,
+        clientSessionId,
         threadId,
         contactId: normalizedContactId,
         contactEmail: contact?.email ?? defaultContact?.email ?? undefined,
@@ -466,7 +516,7 @@ function ChatSurface({
       organizationId && threadId
         ? {
             organizationId: organizationId as Id<"organizations">,
-          threadId,
+            sessionId: threadId,
           }
         : "skip",
     ) as LiveMessage[] | undefined) ?? [];
@@ -523,7 +573,7 @@ function ChatSurface({
     organizationId && threadId
       ? {
           organizationId: organizationId as Id<"organizations">,
-          threadId,
+          sessionId: threadId,
         }
       : "skip",
   ) as AgentPresenceResult | null | undefined;
@@ -542,7 +592,7 @@ function ChatSurface({
     organizationId && threadId
       ? {
           organizationId: organizationId as Id<"organizations">,
-          threadId,
+          sessionId: threadId,
         }
       : "skip",
   );
@@ -550,9 +600,7 @@ function ChatSurface({
   const isManualMode = conversationMode === "manual";
 
   const presenceRoomId =
-    organizationId && threadId
-      ? `support:${organizationId}:${threadId}`
-      : null;
+    organizationId && threadId ? `support:${organizationId}:${threadId}` : null;
 
   const visitorPresenceMetadata = useMemo(
     () => ({
@@ -631,7 +679,7 @@ function ChatSurface({
       try {
         await recordMessage({
           organizationId: organizationId as Id<"organizations">,
-          threadId,
+          sessionId: threadId,
           role: "user",
           content,
           contactId: normalizedContactId,
@@ -703,6 +751,7 @@ function ChatSurface({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           organizationId,
+          widgetKey,
           threadId,
           fullName: contactForm.fullName.trim() || undefined,
           email: contactForm.email.trim() || undefined,
@@ -746,6 +795,19 @@ function ChatSurface({
     handleInputChange(event);
   };
 
+  const chatTransition = useMemo(
+    () =>
+      prefersReducedMotion
+        ? ({ duration: 0 } as const)
+        : ({
+            type: "spring",
+            stiffness: 340,
+            damping: 36,
+            mass: 0.9,
+          } as const),
+    [prefersReducedMotion],
+  );
+
   return (
     <>
       {isOpen && presenceRoomId && (
@@ -778,7 +840,7 @@ function ChatSurface({
             </button>
           </DrawerTrigger>
           <DrawerContent className="p-0">
-            <div className="border-border/60 bg-card mx-auto w-full max-w-sm rounded-t-2xl border shadow-2xl">
+            <div className="border-border/60 bg-card flex h-svh w-screen flex-col border shadow-2xl">
               <ChatWidgetHeader
                 activeTab={activeTab}
                 onTabChange={handleTabChange}
@@ -798,6 +860,7 @@ function ChatSurface({
                 activeTab={activeTab}
                 settings={settings}
                 shouldCollectContact={shouldCollectContact}
+                isExpanded
                 contactForm={contactForm}
                 contactError={contactError}
                 isSubmittingContact={isSubmittingContact}
@@ -829,80 +892,102 @@ function ChatSurface({
         </Drawer>
       ) : (
         <>
-          {isOpen && (
-            <div
-              className={cn(
-                "border-border/60 bg-card fixed bottom-20 z-50 w-full max-w-sm rounded-2xl border shadow-2xl",
-                bubbleVariant === "flush-right-square" ? "right-0" : "right-4",
-              )}
-            >
-              <ChatWidgetHeader
-                activeTab={activeTab}
-                onTabChange={handleTabChange}
-                onClose={() => setIsOpen(false)}
-                shouldCollectContact={shouldCollectContact}
-                settings={settings}
-                resolvedAgentName={resolvedAgentName}
-                tenantName={tenantName}
-                onlineAgentCount={onlineAgentCount}
-                experienceLabel={
-                  activeExperienceId === DEFAULT_ASSISTANT_EXPERIENCE_ID
-                    ? undefined
-                    : activeExperience.label
-                }
-              />
-              <ChatWidgetContent
-                activeTab={activeTab}
-                settings={settings}
-                shouldCollectContact={shouldCollectContact}
-                contactForm={contactForm}
-                contactError={contactError}
-                isSubmittingContact={isSubmittingContact}
-                onContactFieldChange={handleContactFieldChange}
-                onSubmitContact={submitContact}
-                messageListRef={messageListRef}
-                displayedMessages={displayedMessages as ChatHistoryMessage[]}
-                agentMetadataByMessageId={agentMetadataByMessageId}
-                assistantIsResponding={assistantIsResponding}
-                error={error}
-                reload={reload}
-                agentIsTyping={agentIsTyping && activeTab === "conversations"}
-                resolvedAgentName={resolvedAgentName}
-                tenantName={tenantName}
-                helpdeskArticles={helpdeskArticles}
-              />
-              <ChatWidgetFooter
-                activeTab={activeTab}
-                shouldCollectContact={shouldCollectContact}
-                composerDisabled={composerDisabled}
-                input={input}
-                onInputChange={handleComposerInputChange}
-                onSubmit={handleChatSubmit}
-                isSubmitDisabled={isSubmitDisabled}
-                showSubmitSpinner={showSubmitSpinner}
-              />
-            </div>
-          )}
+          <AnimatePresence>
+            {isOpen ? (
+              <motion.div
+                key="support-chat-window"
+                layout
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 12 }}
+                transition={chatTransition}
+                style={{
+                  borderRadius: isExpanded ? "20px 0px 0px 20px" : "16px",
+                }}
+                className={cn(
+                  "border-border/60 bg-card fixed z-50 flex flex-col overflow-hidden border shadow-2xl",
+                  isExpanded ? "inset-y-0 w-1/2" : "bottom-20 w-[24rem]",
+                  bubbleVariant === "flush-right-square" || isExpanded
+                    ? "right-0"
+                    : "right-4",
+                )}
+              >
+                <ChatWidgetHeader
+                  activeTab={activeTab}
+                  onTabChange={handleTabChange}
+                  onClose={() => {
+                    setIsOpen(false);
+                    setIsExpanded(false);
+                  }}
+                  isExpanded={isExpanded}
+                  onToggleExpanded={() => setIsExpanded((prev) => !prev)}
+                  shouldCollectContact={shouldCollectContact}
+                  settings={settings}
+                  resolvedAgentName={resolvedAgentName}
+                  tenantName={tenantName}
+                  onlineAgentCount={onlineAgentCount}
+                  experienceLabel={
+                    activeExperienceId === DEFAULT_ASSISTANT_EXPERIENCE_ID
+                      ? undefined
+                      : activeExperience.label
+                  }
+                />
+                <ChatWidgetContent
+                  activeTab={activeTab}
+                  settings={settings}
+                  shouldCollectContact={shouldCollectContact}
+                  isExpanded={isExpanded}
+                  contactForm={contactForm}
+                  contactError={contactError}
+                  isSubmittingContact={isSubmittingContact}
+                  onContactFieldChange={handleContactFieldChange}
+                  onSubmitContact={submitContact}
+                  messageListRef={messageListRef}
+                  displayedMessages={displayedMessages as ChatHistoryMessage[]}
+                  agentMetadataByMessageId={agentMetadataByMessageId}
+                  assistantIsResponding={assistantIsResponding}
+                  error={error}
+                  reload={reload}
+                  agentIsTyping={agentIsTyping && activeTab === "conversations"}
+                  resolvedAgentName={resolvedAgentName}
+                  tenantName={tenantName}
+                  helpdeskArticles={helpdeskArticles}
+                />
+                <ChatWidgetFooter
+                  activeTab={activeTab}
+                  shouldCollectContact={shouldCollectContact}
+                  composerDisabled={composerDisabled}
+                  input={input}
+                  onInputChange={handleComposerInputChange}
+                  onSubmit={handleChatSubmit}
+                  isSubmitDisabled={isSubmitDisabled}
+                  showSubmitSpinner={showSubmitSpinner}
+                />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
 
-          <button
-            type="button"
-            className={cn(
-              "bg-primary text-primary-foreground shadow-primary/40 focus-visible:ring-primary/80 fixed bottom-4 z-50 flex items-center gap-2 text-sm font-medium shadow-lg transition hover:scale-105 focus-visible:ring-2 focus-visible:outline-none",
-              bubbleVariant === "flush-right-square"
-                ? "right-0 h-12 w-12 justify-center rounded-l-xl p-0"
-                : "right-4 rounded-full px-4 py-3",
-            )}
-            onClick={() => setIsOpen((prev) => !prev)}
-            aria-expanded={isOpen}
-            aria-label="Open support chat"
-          >
-            <MessageCircle className="h-4 w-4" />
-            {bubbleVariant === "flush-right-square" ? (
-              <span className="sr-only">Support</span>
-            ) : (
-              "Support"
-            )}
-          </button>
+          {!isExpanded ? (
+            <button
+              type="button"
+              className={cn(
+                "bg-primary text-primary-foreground shadow-primary/40 focus-visible:ring-primary/80 fixed bottom-4 z-50 flex items-center gap-2 text-sm font-medium shadow-lg transition hover:scale-105 focus-visible:ring-2 focus-visible:outline-none",
+                bubbleVariant === "flush-right-square"
+                  ? "right-0 h-12 w-12 justify-center rounded-l-xl p-0"
+                  : "right-4 rounded-full px-4 py-3",
+              )}
+              onClick={() => setIsOpen((prev) => !prev)}
+              aria-expanded={isOpen}
+              aria-label="Open support chat"
+            >
+              <MessageCircle className="h-4 w-4" />
+              {bubbleVariant === "flush-right-square" ? (
+                <span className="sr-only">Support</span>
+              ) : (
+                "Support"
+              )}
+            </button>
+          ) : null}
         </>
       )}
     </>

@@ -23,6 +23,7 @@ interface ChatWidgetContentProps {
   activeTab: ChatWidgetTab;
   settings: SupportChatSettings;
   shouldCollectContact: boolean;
+  isExpanded?: boolean;
   contactForm: ContactFormState;
   contactError: string | null;
   isSubmittingContact: boolean;
@@ -44,6 +45,7 @@ export const ChatWidgetContent = ({
   activeTab,
   settings,
   shouldCollectContact,
+  isExpanded,
   contactForm,
   contactError,
   isSubmittingContact,
@@ -60,9 +62,16 @@ export const ChatWidgetContent = ({
   tenantName,
   helpdeskArticles,
 }: ChatWidgetContentProps) => {
+  const contentHeightClass = isExpanded ? "flex-1 min-h-0" : "h-80";
+
   if (activeTab === "helpdesk") {
     return (
-      <div className="flex h-80 flex-col gap-3 overflow-y-auto px-4 py-4">
+      <div
+        className={cn(
+          "flex flex-col gap-3 overflow-y-auto px-4 py-4",
+          contentHeightClass,
+        )}
+      >
         {helpdeskArticles.map((article) => {
           const articleUrl = article.slug
             ? `/helpdesk/${article.slug}`
@@ -107,7 +116,10 @@ export const ChatWidgetContent = ({
   if (shouldCollectContact) {
     return (
       <form
-        className="flex h-80 flex-col gap-3 overflow-y-auto px-4 py-4"
+        className={cn(
+          "flex flex-col gap-3 overflow-y-auto px-4 py-4",
+          contentHeightClass,
+        )}
         onSubmit={onSubmitContact}
       >
         {settings.fields.fullName && (
@@ -190,7 +202,10 @@ export const ChatWidgetContent = ({
 
   return (
     <div
-      className="flex h-80 flex-col gap-4 overflow-y-auto px-4 py-4"
+      className={cn(
+        "flex flex-col gap-4 overflow-y-auto px-4 py-4",
+        contentHeightClass,
+      )}
       ref={messageListRef}
     >
       {displayedMessages.length === 0 && (

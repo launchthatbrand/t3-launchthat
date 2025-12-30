@@ -84,7 +84,7 @@ export function TestView({
       selectedThreadId
         ? {
             organizationId,
-            threadId: selectedThreadId,
+          sessionId: selectedThreadId,
           }
         : "skip",
     ) as SupportMessage[] | undefined) ?? [];

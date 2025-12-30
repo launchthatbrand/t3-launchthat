@@ -2,7 +2,7 @@ import type { FunctionReference } from "convex/server";
 import type { GenericId as Id } from "convex/values";
 import * as React from "react";
 import { api } from "@portal/convexspec";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import {
   BadgeCheck,
   Bot,
@@ -142,6 +142,18 @@ export function ConversationRightSidebar({
   const setConversationMode = useMutation(
     api.plugins.support.mutations.setConversationMode,
   );
+  const setConversationStatus = useMutation(
+    (api.plugins.support.mutations as any).setConversationStatus,
+  );
+  const assignConversation = useMutation(
+    (api.plugins.support.mutations as any).assignConversation,
+  );
+  const unassignConversation = useMutation(
+    (api.plugins.support.mutations as any).unassignConversation,
+  );
+  const addConversationNote = useMutation(
+    (api.plugins.support.mutations as any).addConversationNote,
+  );
   const contactName = contact?.fullName ?? fallbackName ?? "Unknown visitor";
   const contactEmail = contact?.email ?? fallbackEmail;
   const company = contact?.company;
@@ -169,6 +181,7 @@ export function ConversationRightSidebar({
   }, [contactId, hasContactRecord]);
   const currentMode = conversation?.mode ?? "agent";
   const isAgentMode = currentMode === "agent";
+  const currentStatus = conversation?.status ?? "open";
   const assignedAgentName =
     conversation?.assignedAgentName ??
     (conversation?.assignedAgentId ? "Agent" : undefined);
@@ -199,6 +212,103 @@ export function ConversationRightSidebar({
     }
   }, [conversation, isAgentMode, organizationId, setConversationMode]);
 
+  const notes = useQuery(
+    (api.plugins.support.queries as any).listConversationNotes,
+    conversation && organizationId
+      ? { organizationId, threadId: conversation.threadId }
+      : "skip",
+  ) as
+    | Array<{
+        _id: string;
+        note: string;
+        actorName?: string;
+        createdAt: number;
+      }>
+    | undefined;
+
+  const events = useQuery(
+    (api.plugins.support.queries as any).listConversationEvents,
+    conversation && organizationId
+      ? { organizationId, threadId: conversation.threadId }
+      : "skip",
+  ) as
+    | Array<{
+        _id: string;
+        eventType: string;
+        actorName?: string;
+        payload?: string;
+        createdAt: number;
+      }>
+    | undefined;
+
+  const [noteDraft, setNoteDraft] = React.useState("");
+
+  const handleStatusChange = React.useCallback(
+    async (status: "open" | "snoozed" | "closed") => {
+      if (!conversation || !organizationId) return;
+      try {
+        await setConversationStatus({
+          organizationId,
+          threadId: conversation.threadId,
+          status,
+        });
+        toast.success(`Conversation marked ${status}.`);
+      } catch (error) {
+        console.error("[conversation-sidebar] status change", error);
+        toast.error("Unable to update conversation status.");
+      }
+    },
+    [conversation, organizationId, setConversationStatus],
+  );
+
+  const handleAssignToMe = React.useCallback(async () => {
+    if (!conversation || !organizationId || !currentAgent) return;
+    try {
+      await assignConversation({
+        organizationId,
+        threadId: conversation.threadId,
+        assignedAgentId: currentAgent.id,
+        assignedAgentName: currentAgent.name,
+      });
+      toast.success("Assigned conversation to you.");
+    } catch (error) {
+      console.error("[conversation-sidebar] assign", error);
+      toast.error("Unable to assign conversation.");
+    }
+  }, [assignConversation, conversation, currentAgent, organizationId]);
+
+  const handleUnassign = React.useCallback(async () => {
+    if (!conversation || !organizationId) return;
+    try {
+      await unassignConversation({
+        organizationId,
+        threadId: conversation.threadId,
+      });
+      toast.success("Unassigned conversation.");
+    } catch (error) {
+      console.error("[conversation-sidebar] unassign", error);
+      toast.error("Unable to unassign conversation.");
+    }
+  }, [conversation, organizationId, unassignConversation]);
+
+  const handleAddNote = React.useCallback(async () => {
+    if (!conversation || !organizationId) return;
+    const trimmed = noteDraft.trim();
+    if (!trimmed) return;
+    try {
+      await addConversationNote({
+        organizationId,
+        threadId: conversation.threadId,
+        note: trimmed,
+      });
+      setNoteDraft("");
+      toast.success("Note added.");
+    } catch (error) {
+      console.error("[conversation-sidebar] add note", error);
+      toast.error("Unable to add note.");
+    }
+  }, [addConversationNote, conversation, noteDraft, organizationId]);
+
   return (
     <Sidebar {...props}>
       <SidebarContent className="space-y-4 p-4">
@@ -208,6 +318,145 @@ export function ConversationRightSidebar({
           disabled={!conversation || !organizationId}
           onToggle={() => void handleToggleMode()}
         />
+        <Card>
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-sm">Workflow</CardTitle>
+            <CardDescription className="text-xs">
+              Status and assignment controls
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={currentStatus === "open" ? "default" : "outline"}
+                onClick={() => void handleStatusChange("open")}
+                disabled={!conversation || !organizationId}
+              >
+                Open
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={currentStatus === "snoozed" ? "default" : "outline"}
+                onClick={() => void handleStatusChange("snoozed")}
+                disabled={!conversation || !organizationId}
+              >
+                Snoozed
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={currentStatus === "closed" ? "default" : "outline"}
+                onClick={() => void handleStatusChange("closed")}
+                disabled={!conversation || !organizationId}
+              >
+                Closed
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {currentAgent ? (
+                conversation?.assignedAgentId === currentAgent.id ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => void handleUnassign()}
+                    disabled={!conversation || !organizationId}
+                  >
+                    Unassign
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void handleAssignToMe()}
+                    disabled={!conversation || !organizationId}
+                  >
+                    Assign to me
+                  </Button>
+                )
+              ) : null}
+              {conversation?.assignedAgentName ? (
+                <Badge variant="outline">
+                  Assigned: {conversation.assignedAgentName}
+                </Badge>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-sm">Internal notes</CardTitle>
+            <CardDescription className="text-xs">
+              Visible to your team only
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <textarea
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              placeholder="Add a note…"
+              className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring min-h-20 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              disabled={!conversation || !organizationId}
+            />
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void handleAddNote()}
+              disabled={!conversation || !organizationId || noteDraft.trim().length === 0}
+            >
+              Add note
+            </Button>
+            {notes && notes.length > 0 ? (
+              <div className="space-y-2">
+                {notes.slice(0, 8).map((note) => (
+                  <div key={note._id} className="rounded-md border p-2 text-xs">
+                    <div className="text-muted-foreground flex items-center justify-between">
+                      <span>{note.actorName ?? "Agent"}</span>
+                      <span>{new Date(note.createdAt).toLocaleString()}</span>
+                    </div>
+                    <div className="mt-1 whitespace-pre-wrap text-sm">{note.note}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-xs">No notes yet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-sm">Audit trail</CardTitle>
+            <CardDescription className="text-xs">
+              Recent workflow changes
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {events && events.length > 0 ? (
+              events.slice(0, 10).map((event) => (
+                <div key={event._id} className="flex items-start justify-between gap-3 text-xs">
+                  <div className="min-w-0">
+                    <p className="font-medium">{event.eventType}</p>
+                    <p className="text-muted-foreground truncate">
+                      {event.actorName ?? "Agent"}
+                      {event.payload ? ` • ${event.payload}` : ""}
+                    </p>
+                  </div>
+                  <span className="text-muted-foreground whitespace-nowrap">
+                    {new Date(event.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-muted-foreground text-xs">No events yet.</p>
+            )}
+          </CardContent>
+        </Card>
         {presenceRoomId && currentAgent ? (
           <ConversationPresenceCard
             roomId={presenceRoomId}

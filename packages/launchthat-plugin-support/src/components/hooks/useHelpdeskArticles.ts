@@ -10,6 +10,7 @@ interface UseHelpdeskArticlesResult {
 export const useHelpdeskArticles = (
   apiPath: string,
   organizationId: string,
+  widgetKey?: string | null,
   limit = 6,
 ): UseHelpdeskArticlesResult => {
   const [articles, setArticles] = useState<HelpdeskArticle[]>([]);
@@ -17,6 +18,12 @@ export const useHelpdeskArticles = (
 
   useEffect(() => {
     if (!organizationId || typeof window === "undefined") {
+      return;
+    }
+    const widgetKeyValue =
+      typeof widgetKey === "string" ? widgetKey.trim() : "";
+    if (widgetKeyValue.length === 0) {
+      setArticles([]);
       return;
     }
 
@@ -27,11 +34,19 @@ export const useHelpdeskArticles = (
       try {
         const url = new URL(apiPath, window.location.origin);
         url.searchParams.set("organizationId", organizationId);
+        url.searchParams.set("widgetKey", widgetKeyValue);
         url.searchParams.set("view", "helpdesk");
         url.searchParams.set("limit", String(limit));
         const response = await fetch(url.toString());
         if (!response.ok) {
-          throw new Error("Failed to load helpdesk articles");
+          const errorBody = (await response
+            .json()
+            .catch(() => null)) as { error?: unknown } | null;
+          const message =
+            typeof errorBody?.error === "string" && errorBody.error.trim().length > 0
+              ? errorBody.error
+              : "Failed to load helpdesk articles";
+          throw new Error(message);
         }
         const data: { articles?: HelpdeskArticle[] } = await response.json();
         if (!cancelled) {
@@ -54,7 +69,7 @@ export const useHelpdeskArticles = (
     return () => {
       cancelled = true;
     };
-  }, [apiPath, organizationId, limit]);
+  }, [apiPath, organizationId, limit, widgetKey]);
 
   return { articles, isLoading };
 };

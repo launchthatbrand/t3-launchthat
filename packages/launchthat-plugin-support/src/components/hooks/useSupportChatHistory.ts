@@ -22,7 +22,7 @@ export const useSupportChatHistory = (
     organizationId && threadId
       ? {
           organizationId,
-          threadId,
+          sessionId: threadId,
         }
       : "skip",
   );

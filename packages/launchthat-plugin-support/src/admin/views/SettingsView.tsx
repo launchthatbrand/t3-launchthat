@@ -200,6 +200,10 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
       key: supportAssistantBaseInstructionsKey,
     },
   );
+  const widgetKeyOption = useQuery(api.plugins.support.options.getSupportOption, {
+    organizationId,
+    key: "supportWidgetKey",
+  });
   const saveSupportOption = useMutation(
     api.plugins.support.options.saveSupportOption,
   );
@@ -243,6 +247,12 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
   );
   const [isSavingAssistantInstructions, setIsSavingAssistantInstructions] =
     useState(false);
+  const [isGeneratingWidgetKey, setIsGeneratingWidgetKey] = useState(false);
+
+  const widgetKey =
+    typeof widgetKeyOption === "string" && widgetKeyOption.trim().length > 0
+      ? widgetKeyOption
+      : null;
 
   const handleTabChange = (value: string) => {
     if (
@@ -702,6 +712,37 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
     }
   };
 
+  const generateWidgetKey = () => {
+    if (typeof window === "undefined") return "";
+    if (typeof window.crypto?.getRandomValues !== "function") {
+      return `support_${Date.now()}`;
+    }
+    const bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    return Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  };
+
+  const handleGenerateWidgetKey = async () => {
+    setIsGeneratingWidgetKey(true);
+    try {
+      const nextKey = generateWidgetKey();
+      await saveSupportOption({
+        organizationId,
+        key: "supportWidgetKey",
+        value: nextKey,
+      });
+      await handleCopyToClipboard(nextKey);
+      toast.success("Widget key generated.");
+    } catch (error) {
+      console.error("[support-settings] generate widget key error", error);
+      toast.error("Unable to generate widget key. Please try again.");
+    } finally {
+      setIsGeneratingWidgetKey(false);
+    }
+  };
+
   const handleToggleEmailIntake = async (checked: boolean) => {
     setIsEmailTogglePending(true);
     try {
@@ -826,6 +867,60 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
           ))}
         </TabsList>
         <TabsContent value="general" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Public widget key</CardTitle>
+              <CardDescription>
+                Required for the public support chat endpoints. Keep this secret.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground text-xs">
+                Organization ID: <span className="font-mono">{organizationId}</span>
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="flex-1">
+                  <Label htmlFor="support-widget-key">Widget key</Label>
+                  <Input
+                    id="support-widget-key"
+                    value={widgetKey ?? ""}
+                    readOnly
+                    placeholder="Click generate to create a widget key"
+                  />
+                </div>
+                <div className="flex gap-2 sm:pt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void handleCopyToClipboard(widgetKey ?? undefined)}
+                    disabled={!widgetKey}
+                  >
+                    Copy
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => void handleGenerateWidgetKey()}
+                    disabled={isGeneratingWidgetKey}
+                  >
+                    {isGeneratingWidgetKey ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating…
+                      </>
+                    ) : widgetKey ? (
+                      "Rotate"
+                    ) : (
+                      "Generate"
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                If you rotate this key, any embedded widgets using the old key
+                will stop working until updated.
+              </p>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
