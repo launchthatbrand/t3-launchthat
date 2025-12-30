@@ -43,7 +43,7 @@ const touchConversationPost = async (
   ctx: MutationCtx,
   args: {
     organizationId: string;
-    sessionId: string;
+    threadId: string;
     contactId?: string;
     contactName?: string;
     contactEmail?: string;
@@ -55,18 +55,19 @@ const touchConversationPost = async (
 ): Promise<string> => {
   const conversations = (await ctx.runQuery(supportQueries.listSupportPosts, {
     organizationId: args.organizationId,
-    filters: { postTypeSlug: "support_conversation" },
+    filters: { postTypeSlug: "supportconversations" },
   })) as SupportPostRecord[];
-  let convo = conversations.find((c) => c.slug === args.sessionId);
+  let convo = conversations.find((c) => c.slug === args.threadId);
   if (!convo) {
     const convoId = await ctx.runMutation(supportMutations.createSupportPost, {
       organizationId: args.organizationId,
-      postTypeSlug: "support_conversation",
-      title: `Conversation ${args.sessionId}`,
-      slug: args.sessionId,
+      postTypeSlug: "supportconversations",
+      title: `Conversation ${args.threadId.slice(-8)}`,
+      slug: args.threadId,
       status: "published",
       meta: [
-        { key: "sessionId", value: args.sessionId },
+        { key: "threadId", value: args.threadId },
+        { key: "agentThreadId", value: args.threadId },
         { key: "contactId", value: args.contactId },
         { key: "contactName", value: args.contactName },
         { key: "contactEmail", value: args.contactEmail },
@@ -75,17 +76,28 @@ const touchConversationPost = async (
           value: args.mode === "manual" ? "email" : "chat",
         },
         { key: "firstAt", value: timestamp },
+        { key: "totalMessages", value: 0 },
       ],
     });
     convo = {
       _id: convoId as string,
       _creationTime: timestamp,
       organizationId: args.organizationId,
-      postTypeSlug: "support_conversation",
-      slug: args.sessionId,
+      postTypeSlug: "supportconversations",
+      slug: args.threadId,
       createdAt: timestamp,
     };
   }
+
+  const existingMeta = await ctx.runQuery(supportQueries.getSupportPostMeta, {
+    postId: convo._id as Id<"posts">,
+    organizationId: args.organizationId,
+  });
+  const existingTotal =
+    (existingMeta.find((m) => m.key === "totalMessages")?.value as
+      | number
+      | undefined) ?? 0;
+  const nextTotal = (typeof existingTotal === "number" ? existingTotal : 0) + 1;
 
   await ctx.runMutation(supportMutations.upsertSupportPostMeta, {
     postId: convo._id as Id<"posts">,
@@ -95,10 +107,13 @@ const touchConversationPost = async (
       { key: "lastRole", value: args.role },
       { key: "lastAt", value: timestamp },
       { key: "firstAt", value: convo.createdAt ?? timestamp },
+      { key: "threadId", value: args.threadId },
+      { key: "agentThreadId", value: args.threadId },
       { key: "contactId", value: args.contactId },
       { key: "contactName", value: args.contactName },
       { key: "contactEmail", value: args.contactEmail },
       { key: "mode", value: args.mode ?? "agent" },
+      { key: "totalMessages", value: nextTotal },
     ],
   });
 
@@ -107,7 +122,8 @@ const touchConversationPost = async (
 
 const recordMessageArgs = {
   organizationId: v.string(),
-  sessionId: v.string(),
+  threadId: v.optional(v.string()),
+  sessionId: v.optional(v.string()),
   role: v.union(v.literal("user"), v.literal("assistant")),
   content: v.string(),
   contactId: v.optional(v.string()),
@@ -129,6 +145,49 @@ const recordMessageArgs = {
 } as const;
 
 // ---------- mutations ----------
+
+export const createThread = mutation({
+  args: {
+    organizationId: v.string(),
+    contactId: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    contactName: v.optional(v.string()),
+    mode: v.optional(v.union(v.literal("agent"), v.literal("manual"))),
+  },
+  returns: v.object({ threadId: v.string() }),
+  handler: async (ctx, args) => {
+    const timestamp = Date.now();
+    const thread = await ctx.runMutation(components.agent.threads.createThread, {
+      title: args.contactName
+        ? `Support: ${args.contactName}`
+        : "Support conversation",
+      userId: args.contactId,
+    });
+    const threadId = thread._id as unknown as string;
+
+    await ctx.runMutation(supportMutations.createSupportPost, {
+      organizationId: args.organizationId,
+      postTypeSlug: "supportconversations",
+      title: `Conversation ${threadId.slice(-8)}`,
+      slug: threadId,
+      status: "published",
+      meta: [
+        { key: "threadId", value: threadId },
+        { key: "agentThreadId", value: threadId },
+        { key: "contactId", value: args.contactId },
+        { key: "contactName", value: args.contactName },
+        { key: "contactEmail", value: args.contactEmail },
+        { key: "origin", value: args.mode === "manual" ? "email" : "chat" },
+        { key: "mode", value: args.mode ?? "agent" },
+        { key: "firstAt", value: timestamp },
+        { key: "lastAt", value: timestamp },
+        { key: "totalMessages", value: 0 },
+      ],
+    });
+
+    return { threadId };
+  },
+});
 
 export const createSupportPost = mutation({
   args: {
@@ -231,12 +290,16 @@ export const recordMessage = mutation({
   args: recordMessageArgs,
   returns: v.null(),
   handler: async (ctx, args) => {
+    const resolvedThreadId = args.threadId ?? args.sessionId;
+    if (!resolvedThreadId) {
+      throw new Error("threadId is required");
+    }
     const timestamp = Date.now();
     const convoId = await touchConversationPost(
       ctx,
       {
         organizationId: args.organizationId,
-        sessionId: args.sessionId,
+        threadId: resolvedThreadId,
         contactId: args.contactId ?? undefined,
         contactName: args.contactName ?? undefined,
         contactEmail: args.contactEmail ?? undefined,
@@ -252,40 +315,25 @@ export const recordMessage = mutation({
       timestamp,
     );
 
-    const metaEntries: Array<{
-      key: string;
-      value: string | number | boolean | null;
-    }> = [];
-    const maybePush = (key: string, value: unknown) => {
-      if (
-        value === null ||
-        typeof value === "string" ||
-        typeof value === "number" ||
-        typeof value === "boolean"
-      ) {
-        metaEntries.push({ key, value });
-      }
-    };
-    maybePush("sessionId", args.sessionId);
-    maybePush("role", args.role);
-    maybePush("contactId", args.contactId);
-    maybePush("contactName", args.contactName);
-    maybePush("contactEmail", args.contactEmail);
-    maybePush("messageType", args.messageType);
-    maybePush("subject", args.subject);
-    maybePush("htmlBody", args.htmlBody);
-    maybePush("textBody", args.textBody);
+    // Store the canonical message in the agent component tables.
+    await ctx.runMutation(components.agent.messages.addMessages, {
+      threadId: resolvedThreadId,
+      messages: [
+        {
+          message: {
+            role: args.role,
+            content: args.content,
+          } as any,
+          status: "success",
+        },
+      ],
+    });
 
-    await ctx.runMutation(supportMutations.createSupportPost, {
+    // Keep the support conversation record's meta linked.
+    await ctx.runMutation(supportMutations.upsertSupportPostMeta, {
+      postId: convoId as Id<"posts">,
       organizationId: args.organizationId,
-      postTypeSlug: "support_conversation_message",
-      title: `Message ${timestamp}`,
-      slug: `${args.sessionId}-${timestamp}`,
-      status: "published",
-      content: args.content,
-      parentId: convoId as Id<"posts">,
-      parentTypeSlug: "support_conversation",
-      meta: metaEntries,
+      entries: [{ key: "agentThreadId", value: resolvedThreadId }],
     });
     return null;
   },
@@ -305,32 +353,37 @@ export const recordMessageInternal = internalMutation({
 export const setAgentPresence = mutation({
   args: {
     organizationId: v.string(),
-    sessionId: v.string(),
+    threadId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
     agentUserId: v.string(),
     agentName: v.optional(v.string()),
     status: v.union(v.literal("typing"), v.literal("idle")),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const resolvedThreadId = args.threadId ?? args.sessionId;
+    if (!resolvedThreadId) {
+      return null;
+    }
     const presencePosts: SupportPostRecord[] = (await ctx.runQuery(
       supportQueries.listSupportPosts,
       {
         organizationId: args.organizationId,
-        filters: { postTypeSlug: "support_presence" },
+        filters: { postTypeSlug: "supportpresence" },
       },
     )) as SupportPostRecord[];
 
     let presence: SupportPostRecord | undefined = presencePosts.find(
-      (p) => p.slug === args.sessionId,
+      (p) => p.slug === resolvedThreadId,
     );
     if (!presence) {
       const presenceId = await ctx.runMutation(
         supportMutations.createSupportPost,
         {
           organizationId: args.organizationId,
-          postTypeSlug: "support_presence",
-          title: `Presence ${args.sessionId}`,
-          slug: args.sessionId,
+          postTypeSlug: "supportpresence",
+          title: `Presence ${resolvedThreadId.slice(-8)}`,
+          slug: resolvedThreadId,
           status: "published",
           meta: [
             { key: "agentUserId", value: args.agentUserId },
@@ -368,16 +421,21 @@ export const setAgentPresence = mutation({
 export const setConversationMode = mutation({
   args: {
     organizationId: v.string(),
-    sessionId: v.string(),
+    threadId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
     mode: v.union(v.literal("agent"), v.literal("manual")),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const resolvedThreadId = args.threadId ?? args.sessionId;
+    if (!resolvedThreadId) {
+      return null;
+    }
     const conversations = (await ctx.runQuery(supportQueries.listSupportPosts, {
       organizationId: args.organizationId,
-      filters: { postTypeSlug: "support_conversation" },
+      filters: { postTypeSlug: "supportconversations" },
     })) as SupportPostRecord[];
-    const convo = conversations.find((c) => c.slug === args.sessionId);
+    const convo = conversations.find((c) => c.slug === resolvedThreadId);
     if (!convo) {
       return null;
     }
@@ -658,15 +716,15 @@ export const triggerRagReindexForPost = mutation({
 export const setConversationAgentThread = internalMutation({
   args: {
     organizationId: v.string(),
-    sessionId: v.string(),
+    threadId: v.string(),
     agentThreadId: v.string(),
   },
   handler: async (ctx, args) => {
     const conversations = (await ctx.runQuery(supportQueries.listSupportPosts, {
       organizationId: args.organizationId,
-      filters: { postTypeSlug: "support_conversation" },
+      filters: { postTypeSlug: "supportconversations" },
     })) as SupportPostRecord[];
-    const convo = conversations.find((c) => c.slug === args.sessionId);
+    const convo = conversations.find((c) => c.slug === args.threadId);
     if (!convo) {
       return null;
     }
@@ -680,6 +738,7 @@ export const setConversationAgentThread = internalMutation({
 });
 
 export const mutations = {
+  createThread,
   createSupportPost,
   updateSupportPost,
   upsertSupportPostMeta,

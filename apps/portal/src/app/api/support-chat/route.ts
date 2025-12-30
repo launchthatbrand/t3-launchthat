@@ -20,7 +20,7 @@ interface SupportMessage {
 
 interface SupportRequestPayload {
   organizationId: string;
-  sessionId?: string;
+  threadId?: string;
   contactId?: string;
   contactEmail?: string;
   contactName?: string;
@@ -98,7 +98,7 @@ const parseRequest = (payload: unknown): SupportRequestPayload => {
     .filter((message) => message.content.length > 0);
   return {
     organizationId,
-    sessionId: typeof body.sessionId === "string" ? body.sessionId : undefined,
+    threadId: typeof body.threadId === "string" ? body.threadId : undefined,
     contactId: typeof body.contactId === "string" ? body.contactId : undefined,
     contactEmail:
       typeof body.contactEmail === "string" ? body.contactEmail : undefined,
@@ -131,9 +131,15 @@ export async function POST(req: Request) {
         { status: 404 },
       );
     }
-    const sessionId =
-      parsed.sessionId ??
-      `support-${organizationId}-${crypto.randomUUID().slice(0, 8)}`;
+    const threadId =
+      parsed.threadId ??
+      (await convex.mutation(api.plugins.support.mutations.createThread, {
+        organizationId,
+        contactId: parsed.contactId ?? undefined,
+        contactEmail: parsed.contactEmail ?? undefined,
+        contactName: parsed.contactName ?? undefined,
+        mode: undefined,
+      })).threadId;
     const contactId = parsed.contactId ?? undefined;
     const contactEmail = parsed.contactEmail;
     const contactName = parsed.contactName;
@@ -146,28 +152,11 @@ export async function POST(req: Request) {
     );
     const latestUserMessage = userMessages.at(-1)?.content ?? "";
 
-    if (latestUserMessage) {
-      console.log("[support-chat] recording user message", {
-        organizationId,
-        sessionId,
-        messagePreview: latestUserMessage.slice(0, 120),
-      });
-      await convex.mutation(api.plugins.support.mutations.recordMessage, {
-        organizationId,
-        sessionId,
-        role: "user",
-        content: latestUserMessage,
-        contactId,
-        contactEmail,
-        contactName,
-      });
-    }
-
     const conversationMode = await convex.query(
       api.plugins.support.queries.getConversationMode,
       {
         organizationId,
-        sessionId,
+        threadId,
       },
     );
 
@@ -178,12 +167,13 @@ export async function POST(req: Request) {
         "Support assistant is not fully configured yet (missing API key).";
       await convex.mutation(api.plugins.support.mutations.recordMessage, {
         organizationId,
-        sessionId,
+        threadId,
         role: "assistant",
         content: fallbackMessage,
         contactId,
         contactEmail,
         contactName,
+        source: "system",
       });
       return streamTextResponse(fallbackMessage);
     }
@@ -192,8 +182,7 @@ export async function POST(req: Request) {
       return await handleQuizAssistantExperience({
         convex,
         organizationId,
-        sessionId,
-        contactId: contactId as Id<"contacts"> | undefined,
+        threadId,
         contactEmail,
         contactName,
         experienceContext,
@@ -205,9 +194,9 @@ export async function POST(req: Request) {
       api.plugins.support.agent.generateAgentReply,
       {
         organizationId,
-        sessionId,
+        threadId,
         prompt: latestUserMessage,
-        contactId,
+        contactId: contactId ?? undefined,
         contactEmail,
         contactName,
         contextTags: contextTags.length > 0 ? contextTags : undefined,
@@ -254,10 +243,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ articles: [] });
     }
 
-    const sessionId = searchParams.get("sessionId");
-    if (!sessionId) {
+    const threadId = searchParams.get("threadId") ?? searchParams.get("sessionId");
+    if (!threadId) {
       return NextResponse.json(
-        { error: "sessionId is required for history view" },
+        { error: "threadId is required for history view" },
         { status: 400 },
       );
     }
@@ -266,7 +255,7 @@ export async function GET(req: NextRequest) {
       api.plugins.support.queries.listMessages,
       {
         organizationId,
-        sessionId,
+        threadId,
       },
     );
 
@@ -304,8 +293,7 @@ function streamTextResponse(content = "") {
 interface QuizExperienceArgs {
   convex: ReturnType<typeof getConvex>;
   organizationId: Id<"organizations">;
-  sessionId: string;
-  contactId?: Id<"contacts">;
+  threadId: string;
   contactEmail?: string;
   contactName?: string;
   experienceContext: Record<string, unknown>;
@@ -360,10 +348,9 @@ async function recordAssistantMessage(
 ) {
   await args.convex.mutation(api.plugins.support.mutations.recordMessage, {
     organizationId: args.organizationId,
-    sessionId: args.sessionId,
+    threadId: args.threadId,
     role: "assistant",
     content,
-    contactId: args.contactId,
     contactEmail: args.contactEmail,
     contactName: args.contactName,
   });

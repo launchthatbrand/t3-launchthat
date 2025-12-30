@@ -13,14 +13,14 @@ import { useMutation } from "convex/react";
 
 interface ConversationComposerProps {
   organizationId: Id<"organizations">;
-  sessionId: string;
+  threadId: string;
   conversation: ConversationSummary;
   contact: ContactDoc | null;
 }
 
 export function ConversationComposer({
   organizationId,
-  sessionId,
+  threadId,
   conversation,
   contact,
 }: ConversationComposerProps) {
@@ -58,13 +58,13 @@ export function ConversationComposer({
       lastPresenceUpdateRef.current = now;
       void setAgentPresence({
         organizationId: organizationId as unknown as string,
-        sessionId,
+        threadId,
         status,
         agentUserId: "agent",
         agentName: contactName ?? "Agent",
       });
     },
-    [organizationId, sessionId, setAgentPresence],
+    [organizationId, threadId, setAgentPresence],
   );
 
   const handleTextChange = (text: string) => {
@@ -114,7 +114,7 @@ export function ConversationComposer({
       setIsSending(true);
       await recordMessage({
         organizationId,
-        sessionId,
+        threadId,
         role: "assistant",
         content: plainText,
         contactId,

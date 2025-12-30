@@ -59,13 +59,13 @@ export function SupportSystem({
 }: SupportSystemProps) {
   const segments = params?.segments ?? [];
   const routeKey = segments[0] ?? "";
-  const sessionIdParam = searchParams?.sessionId;
-  const initialSessionId =
-    typeof sessionIdParam === "string" ? sessionIdParam : undefined;
+  const threadIdParam = searchParams?.threadId ?? searchParams?.sessionId;
+  const initialThreadId =
+    typeof threadIdParam === "string" ? threadIdParam : undefined;
 
   const conversations = useSupportConversations(organizationId, 100);
-  const [testSessionId, setTestSessionId] = useState<string | undefined>(
-    initialSessionId,
+  const [testThreadId, setTestThreadId] = useState<string | undefined>(
+    initialThreadId,
   );
   const [sidebarConversation, setSidebarConversation] = useState<
     ConversationSummary | undefined
@@ -80,17 +80,18 @@ export function SupportSystem({
     [],
   );
 
-  const updateTestSessionId = useCallback(
+  const updateTestThreadId = useCallback(
     (next?: string) => {
-      setTestSessionId(next);
+      setTestThreadId(next);
       if (routeKey !== "test" || typeof window === "undefined") {
         return;
       }
 
       const url = new URL(window.location.href);
       if (next) {
-        url.searchParams.set("sessionId", next);
+        url.searchParams.set("threadId", next);
       } else {
+        url.searchParams.delete("threadId");
         url.searchParams.delete("sessionId");
       }
       window.history.replaceState(null, "", url.toString());
@@ -99,10 +100,10 @@ export function SupportSystem({
   );
 
   useEffect(() => {
-    if (routeKey === "test" && !testSessionId && conversations.length > 0) {
-      updateTestSessionId(conversations[0]?.sessionId);
+    if (routeKey === "test" && !testThreadId && conversations.length > 0) {
+      updateTestThreadId(conversations[0]?.threadId);
     }
-  }, [routeKey, conversations, testSessionId, updateTestSessionId]);
+  }, [routeKey, conversations, testThreadId, updateTestThreadId]);
 
   useEffect(() => {
     if (routeKey !== "conversations" && routeKey !== "test") {
@@ -119,7 +120,7 @@ export function SupportSystem({
             organizationId={organizationId}
             tenantName={tenantName}
             conversations={conversations}
-            activeSessionId={testSessionId}
+            activeThreadId={testThreadId}
             onConversationChange={handleConversationChange}
           />
         );
@@ -133,7 +134,7 @@ export function SupportSystem({
             organizationId={organizationId}
             tenantName={tenantName}
             conversations={conversations}
-            activeSessionId={testSessionId}
+            activeThreadId={testThreadId}
             onConversationChange={handleConversationChange}
           />
         );
@@ -151,7 +152,7 @@ export function SupportSystem({
     organizationId,
     tenantName,
     conversations,
-    testSessionId,
+    testThreadId,
     handleConversationChange,
     buildNavHref,
   ]);
@@ -201,8 +202,8 @@ export function SupportSystem({
           {routeKey === "conversations" && (
             <ConversationLeftSidebar
               conversations={conversations}
-              activeSessionId={testSessionId}
-              onSelect={updateTestSessionId}
+              activeThreadId={testThreadId}
+              onSelect={updateTestThreadId}
               className="h-auto"
             />
           )}
@@ -216,7 +217,7 @@ export function SupportSystem({
               fallbackName={
                 sidebarConversation?.contactName ??
                 (sidebarConversation
-                  ? `Session ${sidebarConversation.sessionId.slice(-6)}`
+                  ? `Thread ${sidebarConversation.threadId.slice(-6)}`
                   : undefined)
               }
               fallbackEmail={sidebarConversation?.contactEmail}

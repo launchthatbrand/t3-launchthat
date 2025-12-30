@@ -29,7 +29,7 @@ import {
 } from "../assistant/experiences";
 import { useHelpdeskArticles } from "./hooks/useHelpdeskArticles";
 import { useSupportChatHistory } from "./hooks/useSupportChatHistory";
-import { useSupportChatSession } from "./hooks/useSupportChatSession";
+import { useSupportChatThread } from "./hooks/useSupportChatSession";
 import { useSupportChatSettings } from "./hooks/useSupportChatSettings";
 import { useSupportContactStorage } from "./hooks/useSupportContactStorage";
 import { ChatWidgetContent } from "./supportChat/ChatWidgetContent";
@@ -131,7 +131,7 @@ function SupportChatWidgetInner({
   defaultContact,
   bubbleVariant,
 }: SupportChatWidgetInnerProps) {
-  const { sessionId } = useSupportChatSession(organizationId);
+  const { threadId } = useSupportChatThread(organizationId);
   const { contact, saveContact } = useSupportContactStorage(organizationId);
   const { settings, isLoading: settingsLoading } =
     useSupportChatSettings(organizationId);
@@ -141,7 +141,7 @@ function SupportChatWidgetInner({
   );
   const { initialMessages, isBootstrapped } = useSupportChatHistory(
     organizationId,
-    sessionId,
+    threadId,
   );
 
   if (!isBootstrapped || settingsLoading) {
@@ -171,7 +171,7 @@ function SupportChatWidgetInner({
     <ChatSurface
       apiPath={apiPath}
       organizationId={organizationId}
-      sessionId={sessionId}
+      threadId={threadId ?? ""}
       tenantName={tenantName}
       initialMessages={initialMessages}
       settings={settings}
@@ -186,7 +186,7 @@ function SupportChatWidgetInner({
 
 interface ChatSurfaceProps {
   organizationId: string;
-  sessionId: string;
+  threadId: string;
   tenantName: string;
   apiPath: string;
   initialMessages: ChatHistoryMessage[];
@@ -200,7 +200,7 @@ interface ChatSurfaceProps {
 
 function ChatSurface({
   organizationId,
-  sessionId,
+  threadId,
   tenantName,
   apiPath,
   initialMessages,
@@ -258,8 +258,8 @@ function ChatSurface({
 
   const fallbackContactId = useMemo(
     () =>
-      contact?.contactId ?? defaultContact?.contactId ?? `visitor-${sessionId}`,
-    [contact?.contactId, defaultContact?.contactId, sessionId],
+      contact?.contactId ?? defaultContact?.contactId ?? `visitor-${threadId}`,
+    [contact?.contactId, defaultContact?.contactId, threadId],
   );
 
   useEffect(() => {
@@ -292,8 +292,10 @@ function ChatSurface({
 
   const requestBodyRef = useRef({
     organizationId,
-    sessionId,
+    threadId,
     contactId: normalizedContactId,
+    contactEmail: contact?.email ?? defaultContact?.email ?? undefined,
+    contactName: contact?.fullName ?? defaultContact?.fullName ?? undefined,
     experienceId: activeExperienceId,
     experienceContext,
   });
@@ -301,17 +303,23 @@ function ChatSurface({
   useEffect(() => {
     requestBodyRef.current = {
       organizationId,
-      sessionId,
+      threadId,
       contactId: normalizedContactId,
+      contactEmail: contact?.email ?? defaultContact?.email ?? undefined,
+      contactName: contact?.fullName ?? defaultContact?.fullName ?? undefined,
       experienceId: activeExperienceId,
       experienceContext,
     };
   }, [
     activeExperienceId,
+    contact?.email,
+    contact?.fullName,
+    defaultContact?.email,
+    defaultContact?.fullName,
     experienceContext,
     normalizedContactId,
     organizationId,
-    sessionId,
+    threadId,
   ]);
 
   const transport = useMemo(
@@ -341,7 +349,7 @@ function ChatSurface({
 
   const { messages, setMessages, sendMessage, regenerate, status, error } =
     useChat({
-      id: sessionId,
+      id: threadId,
       messages: initialUiMessages,
       transport,
       onError: (err) => {
@@ -396,8 +404,10 @@ function ChatSurface({
 
       requestBodyRef.current = {
         organizationId,
-        sessionId,
+        threadId,
         contactId: normalizedContactId,
+        contactEmail: contact?.email ?? defaultContact?.email ?? undefined,
+        contactName: contact?.fullName ?? defaultContact?.fullName ?? undefined,
         experienceId: nextExperienceId,
         experienceContext: nextContext,
       };
@@ -419,10 +429,14 @@ function ChatSurface({
       );
     };
   }, [
+    contact?.email,
+    contact?.fullName,
+    defaultContact?.email,
+    defaultContact?.fullName,
     normalizedContactId,
     organizationId,
     sendMessage,
-    sessionId,
+    threadId,
     shouldCollectContact,
   ]);
 
@@ -449,10 +463,10 @@ function ChatSurface({
   const liveMessages =
     (useQuery(
       api.plugins.support.queries.listMessages,
-      organizationId && sessionId
+      organizationId && threadId
         ? {
             organizationId: organizationId as Id<"organizations">,
-            sessionId,
+          threadId,
           }
         : "skip",
     ) as LiveMessage[] | undefined) ?? [];
@@ -506,10 +520,10 @@ function ChatSurface({
   };
   const agentPresence = useQuery(
     api.plugins.support.queries.getAgentPresence,
-    organizationId && sessionId
+    organizationId && threadId
       ? {
           organizationId: organizationId as Id<"organizations">,
-          sessionId,
+          threadId,
         }
       : "skip",
   ) as AgentPresenceResult | null | undefined;
@@ -525,10 +539,10 @@ function ChatSurface({
 
   const conversationMode = useQuery(
     api.plugins.support.queries.getConversationMode,
-    organizationId && sessionId
+    organizationId && threadId
       ? {
           organizationId: organizationId as Id<"organizations">,
-          sessionId,
+          threadId,
         }
       : "skip",
   );
@@ -536,8 +550,8 @@ function ChatSurface({
   const isManualMode = conversationMode === "manual";
 
   const presenceRoomId =
-    organizationId && sessionId
-      ? `support:${organizationId}:${sessionId}`
+    organizationId && threadId
+      ? `support:${organizationId}:${threadId}`
       : null;
 
   const visitorPresenceMetadata = useMemo(
@@ -617,7 +631,7 @@ function ChatSurface({
       try {
         const insertedId = await recordMessage({
           organizationId: organizationId as Id<"organizations">,
-          sessionId,
+          threadId,
           role: "user",
           content,
           contactId: normalizedContactId,
@@ -696,7 +710,7 @@ function ChatSurface({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           organizationId,
-          sessionId,
+          threadId,
           fullName: contactForm.fullName.trim() || undefined,
           email: contactForm.email.trim() || undefined,
           phone: contactForm.phone.trim() || undefined,
@@ -744,7 +758,7 @@ function ChatSurface({
       {isOpen && presenceRoomId && (
         <ConversationPresenceBridge
           roomId={presenceRoomId}
-          userId={`visitor:${sessionId}`}
+          userId={`visitor:${threadId}`}
           metadata={visitorPresenceMetadata}
           onChange={handlePresenceChange}
         />

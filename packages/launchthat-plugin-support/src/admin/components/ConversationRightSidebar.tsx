@@ -53,7 +53,7 @@ import {
 } from "./shared/contactUtils";
 
 export interface ConversationSummary {
-  sessionId: string;
+  threadId: string;
   lastMessage: string;
   lastRole: "user" | "assistant";
   lastAt: number;
@@ -174,7 +174,7 @@ export function ConversationRightSidebar({
     (conversation?.assignedAgentId ? "Agent" : undefined);
   const presenceRoomId =
     organizationId && conversation
-      ? `support:${organizationId}:${conversation.sessionId}`
+      ? `support:${organizationId}:${conversation.threadId}`
       : null;
 
   const handleToggleMode = React.useCallback(async () => {
@@ -185,7 +185,7 @@ export function ConversationRightSidebar({
     try {
       await setConversationMode({
         organizationId,
-        sessionId: conversation.sessionId,
+        sessionId: conversation.threadId,
         mode: isAgentMode ? "manual" : "agent",
       });
       toast.success(
@@ -299,10 +299,10 @@ export function ConversationRightSidebar({
               <div className="space-y-3 px-4 pt-1 pb-4 text-sm">
                 <ContactInfoRow
                   icon={Hash}
-                  label="Session"
+                  label="Thread"
                   value={
                     conversation
-                      ? conversation.sessionId.slice(-12)
+                      ? conversation.threadId.slice(-12)
                       : SUPPORT_COPY.inspector.sessionPlaceholder
                   }
                 />

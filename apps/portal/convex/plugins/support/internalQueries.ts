@@ -17,7 +17,7 @@ const supportQueries = components.launchthat_support.queries as unknown as {
 export const getConversationMetadata = internalQuery({
   args: {
     organizationId: v.id("organizations"),
-    sessionId: v.string(),
+    threadId: v.string(),
   },
   returns: v.union(
     v.null(),
@@ -31,9 +31,9 @@ export const getConversationMetadata = internalQuery({
   handler: async (ctx, args) => {
     const conversations = (await ctx.runQuery(supportQueries.listSupportPosts as any, {
       organizationId: args.organizationId,
-      filters: { postTypeSlug: "support_conversation" },
+      filters: { postTypeSlug: "supportconversations" },
     })) as SupportPostRecord[];
-    const convo = conversations.find((c) => c.slug === args.sessionId);
+    const convo = conversations.find((c) => c.slug === args.threadId);
     if (!convo) {
       return null;
     }

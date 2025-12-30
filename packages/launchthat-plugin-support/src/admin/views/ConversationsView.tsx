@@ -26,8 +26,8 @@ interface TestViewProps {
   organizationId: Id<"organizations">;
   tenantName?: string;
   conversations: ConversationSummary[];
-  activeSessionId?: string;
-  onSelectSession?: (sessionId: string) => void;
+  activeThreadId?: string;
+  onSelectThread?: (threadId: string) => void;
   onConversationChange?: (
     conversation?: ConversationSummary,
     contact?: ContactDoc | null,
@@ -38,23 +38,23 @@ export function TestView({
   organizationId,
   tenantName,
   conversations,
-  activeSessionId,
-  onSelectSession,
+  activeThreadId,
+  onSelectThread,
   onConversationChange,
 }: TestViewProps) {
   const selectedConversation = useMemo(() => {
     if (!conversations.length) {
       return undefined;
     }
-    if (activeSessionId) {
+    if (activeThreadId) {
       return (
         conversations.find(
-          (conversation) => conversation.sessionId === activeSessionId,
+          (conversation) => conversation.threadId === activeThreadId,
         ) ?? conversations[0]
       );
     }
     return conversations[0];
-  }, [conversations, activeSessionId]);
+  }, [conversations, activeThreadId]);
 
   const contactDoc = useSupportContact(
     selectedConversation?.contactId
@@ -76,15 +76,15 @@ export function TestView({
         }
       : null);
 
-  const selectedSessionId = selectedConversation?.sessionId ?? null;
+  const selectedThreadId = selectedConversation?.threadId ?? null;
 
   const messages =
     (useQuery(
       api.plugins.support.queries.listMessages,
-      selectedSessionId
+      selectedThreadId
         ? {
             organizationId,
-            sessionId: selectedSessionId,
+            threadId: selectedThreadId,
           }
         : "skip",
     ) as SupportMessage[] | undefined) ?? [];
@@ -101,7 +101,7 @@ export function TestView({
   useEffect(() => {
     if (!listRef.current) return;
     listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [renderedMessages.length, selectedSessionId]);
+  }, [renderedMessages.length, selectedThreadId]);
 
   useEffect(() => {
     onConversationChange?.(selectedConversation, contactDoc ?? null);
@@ -155,7 +155,7 @@ export function TestView({
           {selectedConversation ? (
             <ConversationComposer
               organizationId={organizationId}
-              sessionId={selectedConversation.sessionId}
+              threadId={selectedConversation.threadId}
               conversation={selectedConversation}
               contact={contactForComposer}
             />

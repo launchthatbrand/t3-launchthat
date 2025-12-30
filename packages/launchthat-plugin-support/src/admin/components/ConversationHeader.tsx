@@ -118,7 +118,7 @@ export const ConversationHeader = ({
               {conversation ? (
                 <>
                   <span>•</span>
-                  <span>Session {conversation.sessionId.slice(-6)}</span>
+                  <span>Thread {conversation.threadId.slice(-6)}</span>
                 </>
               ) : null}
             </div>

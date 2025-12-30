@@ -142,7 +142,7 @@ export const listConversations = query({
   },
   returns: v.array(
     v.object({
-      sessionId: v.string(),
+      threadId: v.string(),
       lastMessage: v.optional(v.string()),
       lastRole: v.optional(v.union(v.literal("user"), v.literal("assistant"))),
       lastAt: v.optional(v.number()),
@@ -166,7 +166,7 @@ export const listConversations = query({
     const conversations = (await ctx.runQuery(supportQueries.listSupportPosts, {
       organizationId: args.organizationId,
       filters: {
-        postTypeSlug: "support_conversation",
+        postTypeSlug: "supportconversations",
         limit: args.limit ?? 200,
       },
     })) as SupportPostRecord[];
@@ -201,7 +201,10 @@ export const listConversations = query({
       const lastMessage =
         (meta.lastMessage as string | undefined) ?? conv.content ?? undefined;
       return {
-        sessionId: (meta.sessionId as string | undefined) ?? conv.slug,
+        threadId:
+          (meta.agentThreadId as string | undefined) ??
+          (meta.threadId as string | undefined) ??
+          conv.slug,
         lastMessage,
         lastRole: (meta.lastRole as "user" | "assistant" | undefined) ?? "user",
         lastAt,
@@ -237,133 +240,74 @@ export const listConversations = query({
 export const listMessages = query({
   args: {
     organizationId: v.string(),
-    sessionId: v.string(),
+    threadId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
   },
   returns: v.array(
     v.object({
       _id: v.string(),
-      _creationTime: v.number(),
-      organizationId: v.string(),
-      sessionId: v.string(),
       role: v.union(v.literal("user"), v.literal("assistant")),
       content: v.string(),
       createdAt: v.number(),
-      contactId: v.optional(v.string()),
-      contactEmail: v.optional(v.string()),
-      contactName: v.optional(v.string()),
-      agentUserId: v.optional(v.string()),
       agentName: v.optional(v.string()),
-      source: v.optional(
-        v.union(v.literal("agent"), v.literal("admin"), v.literal("system")),
-      ),
-      messageType: v.optional(
-        v.union(
-          v.literal("chat"),
-          v.literal("email_inbound"),
-          v.literal("email_outbound"),
-        ),
-      ),
-      subject: v.optional(v.string()),
-      emailMessageId: v.optional(v.string()),
-      inReplyToId: v.optional(v.string()),
-      attachments: v.optional(v.array(v.string())),
-      htmlBody: v.optional(v.string()),
-      textBody: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
-    const conversations: SupportPostRecord[] = (await ctx.runQuery(
+    const resolvedThreadId = args.threadId ?? args.sessionId;
+    if (!resolvedThreadId) return [];
+    // Verify this thread belongs to the org by requiring a matching supportconversations post.
+    const threads: SupportPostRecord[] = (await ctx.runQuery(
       supportQueries.listSupportPosts,
       {
         organizationId: args.organizationId,
-        filters: { postTypeSlug: "support_conversation" },
+        filters: { postTypeSlug: "supportconversations", limit: 500 },
       },
     )) as SupportPostRecord[];
-    const convo = conversations.find((c) => c.slug === args.sessionId);
-    if (!convo) {
-      return [];
-    }
+    const thread = threads.find((c) => c.slug === resolvedThreadId);
+    if (!thread) return [];
 
-    const messages: SupportPostRecord[] = (await ctx.runQuery(
-      supportQueries.listSupportPosts,
+    const page = await ctx.runQuery(
+      components.agent.messages.listMessagesByThreadId,
       {
-        organizationId: args.organizationId,
-        filters: {
-          postTypeSlug: "support_conversation_message",
-          parentId: convo._id as Id<"posts">,
-          limit: 500,
+        threadId: resolvedThreadId,
+        order: "asc",
+        paginationOpts: { cursor: null, numItems: 200 },
+        excludeToolMessages: true,
+      },
+    );
+
+    const extractText = (value: unknown): string => {
+      if (typeof value === "string") return value;
+      if (!Array.isArray(value)) return "";
+      return value
+        .map((part) => {
+          if (!part || typeof part !== "object") return "";
+          const p = part as Record<string, unknown>;
+          return p.type === "text" && typeof p.text === "string" ? p.text : "";
+        })
+        .filter(Boolean)
+        .join("\n");
+    };
+
+    return (page.page ?? []).flatMap((row: any) => {
+      const role = row?.message?.role;
+      if (role !== "user" && role !== "assistant") {
+        return [];
+      }
+      const contentRaw = row?.message?.content;
+      const content = extractText(contentRaw).trim();
+      if (!content) return [];
+      return [
+        {
+          _id: String(row._id ?? row.id ?? ""),
+          role,
+          content,
+          createdAt:
+            typeof row._creationTime === "number" ? row._creationTime : Date.now(),
+          agentName: typeof row.agentName === "string" ? row.agentName : undefined,
         },
-      },
-    )) as SupportPostRecord[];
-
-    const metaByPostId = new Map<
-      string,
-      Record<string, string | number | boolean | null | undefined>
-    >();
-    for (const msg of messages) {
-      const metas = (await ctx.runQuery(supportQueries.getSupportPostMeta, {
-        postId: msg._id as Id<"posts">,
-        organizationId: args.organizationId,
-      })) as {
-        key: string;
-        value: string | number | boolean | null | undefined;
-      }[];
-      const metaMap: Record<
-        string,
-        string | number | boolean | null | undefined
-      > = {};
-      metas.forEach((m) => {
-        metaMap[m.key] = m.value ?? null;
-      });
-      metaByPostId.set(msg._id, metaMap);
-    }
-
-    return messages
-      .map((msg) => {
-        const meta = metaByPostId.get(msg._id) ?? {};
-        return {
-          _id: msg._id,
-          _creationTime: msg._creationTime,
-          organizationId: msg.organizationId,
-          sessionId: args.sessionId,
-          role: (meta.role as "user" | "assistant" | undefined) ?? "user",
-          content: msg.content ?? "",
-          createdAt: msg.createdAt,
-          contactId:
-            typeof meta.contactId === "string" ? meta.contactId : undefined,
-          contactEmail:
-            typeof meta.contactEmail === "string"
-              ? meta.contactEmail
-              : undefined,
-          contactName:
-            typeof meta.contactName === "string" ? meta.contactName : undefined,
-          agentUserId:
-            typeof meta.agentUserId === "string" ? meta.agentUserId : undefined,
-          agentName:
-            typeof meta.agentName === "string" ? meta.agentName : undefined,
-          source: meta.source as ("agent" | "admin" | "system") | undefined,
-          messageType: meta.messageType as
-            | "chat"
-            | "email_inbound"
-            | "email_outbound"
-            | undefined,
-          subject: typeof meta.subject === "string" ? meta.subject : undefined,
-          emailMessageId:
-            typeof meta.emailMessageId === "string"
-              ? meta.emailMessageId
-              : undefined,
-          inReplyToId:
-            typeof meta.inReplyToId === "string" ? meta.inReplyToId : undefined,
-          attachments: meta.attachments
-            ? String(meta.attachments).split(",")
-            : undefined,
-          htmlBody:
-            typeof meta.htmlBody === "string" ? meta.htmlBody : undefined,
-          textBody:
-            typeof meta.textBody === "string" ? meta.textBody : undefined,
-        };
-      })
-      .sort((a, b) => a.createdAt - b.createdAt);
+      ];
+    });
   },
 });
 
@@ -467,14 +411,15 @@ export const getRagIndexStatusForPost = query({
 export const getAgentPresence = query({
   args: {
     organizationId: v.string(),
-    sessionId: v.string(),
+    threadId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
   },
   returns: v.union(
     v.object({
       _id: v.string(),
       _creationTime: v.number(),
       organizationId: v.string(),
-      sessionId: v.string(),
+      threadId: v.string(),
       agentUserId: v.optional(v.string()),
       agentName: v.optional(v.string()),
       status: v.optional(v.union(v.literal("typing"), v.literal("idle"))),
@@ -483,11 +428,13 @@ export const getAgentPresence = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
+    const resolvedThreadId = args.threadId ?? args.sessionId;
+    if (!resolvedThreadId) return null;
     const presencePosts = (await ctx.runQuery(supportQueries.listSupportPosts, {
       organizationId: args.organizationId,
-      filters: { postTypeSlug: "support_presence" },
+      filters: { postTypeSlug: "supportpresence" },
     })) as SupportPostRecord[];
-    const match = presencePosts.find((p) => p.slug === args.sessionId);
+    const match = presencePosts.find((p) => p.slug === resolvedThreadId);
     if (!match) return null;
     const meta = await ctx.runQuery(supportQueries.getSupportPostMeta, {
       postId: match._id,
@@ -504,7 +451,7 @@ export const getAgentPresence = query({
       _id: match._id,
       _creationTime: match._creationTime,
       organizationId: match.organizationId,
-      sessionId: args.sessionId,
+      threadId: resolvedThreadId,
       agentUserId: metaMap.agentUserId as string | undefined,
       agentName: metaMap.agentName as string | undefined,
       status: (metaMap.status as "typing" | "idle" | undefined) ?? "idle",
@@ -516,15 +463,18 @@ export const getAgentPresence = query({
 export const getConversationMode = query({
   args: {
     organizationId: v.string(),
-    sessionId: v.string(),
+    threadId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
   },
   returns: v.union(v.literal("agent"), v.literal("manual")),
   handler: async (ctx, args) => {
+    const resolvedThreadId = args.threadId ?? args.sessionId;
+    if (!resolvedThreadId) return "agent";
     const conversations = (await ctx.runQuery(supportQueries.listSupportPosts, {
       organizationId: args.organizationId,
-      filters: { postTypeSlug: "support_conversation" },
+      filters: { postTypeSlug: "supportconversations" },
     })) as SupportPostRecord[];
-    const convo = conversations.find((c) => c.slug === args.sessionId);
+    const convo = conversations.find((c) => c.slug === resolvedThreadId);
     if (!convo) return "agent";
     const meta = (await ctx.runQuery(supportQueries.getSupportPostMeta, {
       postId: convo._id,

@@ -23,7 +23,7 @@ import { api } from "@portal/convexspec";
 import { useQuery } from "convex/react";
 
 interface ConversationSummary {
-  sessionId: string;
+  threadId: string;
   lastMessage: string;
   lastRole: "user" | "assistant";
   lastAt: number;
@@ -133,12 +133,12 @@ export function DashboardView({
             {safeConversations.length > 0 ? (
               safeConversations.slice(0, 5).map((conversation) => (
                 <div
-                  key={conversation.sessionId}
+                  key={conversation.threadId}
                   className="flex items-start justify-between rounded-md border p-3 text-sm"
                 >
                   <div className="space-y-1">
                     <p className="font-medium">
-                      Session {conversation.sessionId.slice(-6)}
+                      Thread {conversation.threadId.slice(-6)}
                     </p>
                     <p className="text-muted-foreground line-clamp-2">
                       {conversation.lastMessage}

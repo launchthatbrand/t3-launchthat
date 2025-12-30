@@ -15,14 +15,14 @@ interface UseSupportChatHistoryResult {
 
 export const useSupportChatHistory = (
   organizationId: string,
-  sessionId: string,
+  threadId: string | null,
 ): UseSupportChatHistoryResult => {
   const messages = useQuery(
     api.plugins.support.queries.listMessages,
-    organizationId && sessionId
+    organizationId && threadId
       ? {
           organizationId,
-          sessionId,
+          threadId,
         }
       : "skip",
   );

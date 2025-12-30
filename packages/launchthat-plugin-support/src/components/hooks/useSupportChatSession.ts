@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { generateSessionId } from "../supportChat/utils";
-
 const getStoredValue = (key: string) => {
   if (typeof window === "undefined") {
     return null;
@@ -9,27 +7,23 @@ const getStoredValue = (key: string) => {
   return window.localStorage.getItem(key);
 };
 
-export const useSupportChatSession = (organizationId: string) => {
+export const useSupportChatThread = (organizationId: string) => {
   const storageKey = useMemo(
-    () => `support-session-${organizationId}`,
+    () => `support-thread-${organizationId}`,
     [organizationId],
   );
 
-  const [sessionId, setSessionId] = useState(() => {
+  const [threadId, setThreadId] = useState<string | null>(() => {
     const stored = getStoredValue(storageKey);
     if (stored) {
       return stored;
     }
-    const generated = generateSessionId(organizationId);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(storageKey, generated);
-    }
-    return generated;
+    return null;
   });
 
   const persist = useCallback(
     (value: string) => {
-      setSessionId(value);
+      setThreadId(value);
       if (typeof window !== "undefined") {
         window.localStorage.setItem(storageKey, value);
       }
@@ -40,17 +34,43 @@ export const useSupportChatSession = (organizationId: string) => {
   useEffect(() => {
     const stored = getStoredValue(storageKey);
     if (stored) {
-      setSessionId(stored);
+      setThreadId(stored);
       return;
     }
-    const generated = generateSessionId(organizationId);
-    persist(generated);
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await fetch(
+          `/api/support-chat/thread?organizationId=${encodeURIComponent(
+            organizationId,
+          )}`,
+        );
+        if (!res.ok) {
+          throw new Error(`Failed to create support thread (${res.status})`);
+        }
+        const data = (await res.json()) as { threadId?: string };
+        if (!data.threadId) {
+          throw new Error("Missing threadId from support thread endpoint");
+        }
+        if (!cancelled) {
+          persist(data.threadId);
+        }
+      } catch (error) {
+        console.error("[support-chat] failed to create thread", error);
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
   }, [organizationId, persist, storageKey]);
 
-  const resetSession = useCallback(() => {
-    const next = generateSessionId(organizationId);
-    persist(next);
+  const resetThread = useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(storageKey);
+    }
+    setThreadId(null);
   }, [organizationId, persist]);
 
-  return { sessionId, resetSession };
+  return { threadId, resetThread };
 };

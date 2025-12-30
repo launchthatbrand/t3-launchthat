@@ -3,42 +3,43 @@
 import { useCallback, useEffect, useState } from "react";
 
 export const useSupportSessionState = (
-  initialSessionId?: string,
+  initialThreadId?: string,
   basePath?: string,
 ) => {
-  const [activeSessionId, setActiveSessionId] = useState<string | undefined>(
-    initialSessionId,
+  const [activeThreadId, setActiveThreadId] = useState<string | undefined>(
+    initialThreadId,
   );
 
   useEffect(() => {
-    setActiveSessionId((prev) => prev ?? initialSessionId);
-  }, [initialSessionId]);
+    setActiveThreadId((prev) => prev ?? initialThreadId);
+  }, [initialThreadId]);
 
   const syncHistory = useCallback(
-    (sessionId: string) => {
+    (threadId: string) => {
       if (typeof window === "undefined" || !basePath) {
         return;
       }
       const url = new URL(window.location.href);
       const targetPath = basePath ?? url.pathname;
       url.pathname = targetPath;
-      url.searchParams.set("sessionId", sessionId);
+      url.searchParams.set("threadId", threadId);
+      url.searchParams.delete("sessionId");
       window.history.replaceState(null, "", url.toString());
     },
     [basePath],
   );
 
   const handleSelectConversation = useCallback(
-    (sessionId: string) => {
-      setActiveSessionId(sessionId);
-      syncHistory(sessionId);
+    (threadId: string) => {
+      setActiveThreadId(threadId);
+      syncHistory(threadId);
     },
     [syncHistory],
   );
 
   return {
-    activeSessionId,
-    setActiveSessionId,
+    activeSessionId: activeThreadId,
+    setActiveSessionId: setActiveThreadId,
     handleSelectConversation,
   };
 };

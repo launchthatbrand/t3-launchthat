@@ -38,7 +38,7 @@ import {
 } from "./shared/contactUtils";
 
 export interface ConversationSummary {
-  sessionId: string;
+  threadId: string;
   lastMessage: string;
   lastRole: "user" | "assistant";
   lastAt: number;
@@ -169,10 +169,10 @@ export const ConversationInspector = ({
                 <div className="space-y-3 px-4 pt-1 pb-4 text-sm">
                   <ContactInfoRow
                     icon={Hash}
-                    label="Session"
+                    label="Thread"
                     value={
                       conversation
-                        ? conversation.sessionId.slice(-12)
+                        ? conversation.threadId.slice(-12)
                         : SUPPORT_COPY.inspector.sessionPlaceholder
                     }
                   />

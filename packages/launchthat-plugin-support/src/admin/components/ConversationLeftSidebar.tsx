@@ -21,14 +21,14 @@ type SidebarFilter = "mine" | "unassigned" | "all";
 
 interface ConversationSidebarProps {
   conversations: ConversationSummary[];
-  activeSessionId?: string;
-  onSelect: (sessionId: string) => void;
+  activeThreadId?: string;
+  onSelect: (threadId: string) => void;
   className?: string;
 }
 
 export function ConversationLeftSidebar({
   conversations,
-  activeSessionId,
+  activeThreadId,
   onSelect,
   className,
 }: ConversationSidebarProps) {
@@ -85,15 +85,15 @@ export function ConversationLeftSidebar({
               {filteredConversations?.length > 0 ? (
                 filteredConversations.map((conversation) => {
                   const isActive =
-                    activeSessionId === conversation.sessionId ||
-                    (!activeSessionId &&
-                      filteredConversations[0]?.sessionId ===
-                        conversation.sessionId);
+                    activeThreadId === conversation.threadId ||
+                    (!activeThreadId &&
+                      filteredConversations[0]?.threadId ===
+                        conversation.threadId);
                   return (
                     <button
-                      key={conversation.sessionId}
+                      key={conversation.threadId}
                       type="button"
-                      onClick={() => onSelect(conversation.sessionId)}
+                      onClick={() => onSelect(conversation.threadId)}
                       className={`hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex w-full flex-col gap-1 border-b p-4 text-left text-sm last:border-b-0 ${
                         isActive ? "bg-sidebar-accent/60" : ""
                       }`}
@@ -102,7 +102,7 @@ export function ConversationLeftSidebar({
                         <div className="flex flex-col">
                           <span className="font-medium">
                             {conversation.contactName ??
-                              `Session ${conversation.sessionId.slice(-6)}`}
+                              `Thread ${conversation.threadId.slice(-6)}`}
                           </span>
                           {conversation.contactEmail && (
                             <span className="text-muted-foreground text-[11px]">

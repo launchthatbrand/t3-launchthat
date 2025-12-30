@@ -8,6 +8,7 @@ import { z } from "zod";
 
 const contactSchema = z.object({
   organizationId: z.string(),
+  threadId: z.string().optional(),
   sessionId: z.string().optional(),
   email: z.string().email().optional(),
   firstName: z.string().optional(),

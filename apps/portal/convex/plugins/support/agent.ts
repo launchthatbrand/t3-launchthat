@@ -3,8 +3,9 @@
 import type { Id } from "@convex-config/_generated/dataModel";
 import type { ActionCtx } from "@convex-config/_generated/server";
 import type { ModelMessage } from "ai";
+import type { FunctionReference } from "convex/server";
 import { createOpenAI } from "@ai-sdk/openai";
-import { api, internal } from "@convex-config/_generated/api";
+import { api, components, internal } from "@convex-config/_generated/api";
 import { action } from "@convex-config/_generated/server";
 import { generateText } from "ai";
 import { v } from "convex/values";
@@ -32,6 +33,20 @@ const KNOWN_MISSING_KEY_MESSAGE =
   "Support assistant is not fully configured yet (missing OpenAI API key). Add one in Support → Settings → AI Assistant.";
 
 const SUPPORT_MODEL_ID = "gpt-4.1-mini";
+
+// Narrow overly deep types from generated bindings to keep TS fast/stable.
+type AnyInternalQueryRef = FunctionReference<
+  "query",
+  "internal",
+  unknown,
+  unknown
+>;
+
+const agentMessages = (
+  components as unknown as {
+    agent: { messages: { listMessagesByThreadId: AnyInternalQueryRef } };
+  }
+).agent.messages;
 
 const createSupportModel = (apiKey: string) => {
   const openai = createOpenAI({ apiKey });
@@ -124,9 +139,9 @@ const resolveOrganizationOpenAiKey = async (
 export const generateAgentReply = action({
   args: {
     organizationId: supportOrganizationIdValidator,
-    sessionId: v.string(),
+    threadId: v.string(),
     prompt: v.string(),
-    contactId: v.optional(v.id("contacts")),
+    contactId: v.optional(v.string()),
     contactEmail: v.optional(v.string()),
     contactName: v.optional(v.string()),
     contextTags: v.optional(v.array(v.string())),
@@ -147,7 +162,7 @@ export const generateAgentReply = action({
         internal.plugins.support.mutations.recordMessageInternal,
         {
           organizationId,
-          sessionId: args.sessionId,
+          threadId: args.threadId,
           role: "assistant",
           content: KNOWN_MISSING_KEY_MESSAGE,
           contactId: args.contactId ?? undefined,
@@ -165,6 +180,21 @@ export const generateAgentReply = action({
       return { text: "" };
     }
 
+    // Persist the user message to the canonical agent thread storage first.
+    await ctx.runMutation(
+      internal.plugins.support.mutations.recordMessageInternal,
+      {
+        organizationId,
+        threadId: args.threadId,
+        role: "user",
+        content: trimmedPrompt,
+        contactId: args.contactId ?? undefined,
+        contactEmail: args.contactEmail ?? undefined,
+        contactName: args.contactName ?? undefined,
+        source: "agent",
+      },
+    );
+
     let knowledgeEntries: {
       title: string;
       content: string;
@@ -172,8 +202,8 @@ export const generateAgentReply = action({
 
     try {
       const tags = (args.contextTags ?? [])
-        .map((tag) => tag.trim())
-        .filter((tag) => tag.length > 0)
+        .map((tag: string) => tag.trim())
+        .filter((tag: string) => tag.length > 0)
         .slice(0, 10);
       knowledgeEntries =
         tags.length > 0
@@ -262,24 +292,66 @@ export const generateAgentReply = action({
 
     let text = "";
     try {
-      const history = (await ctx.runQuery(
-        api.plugins.support.queries.listMessages,
+      const threadMessagesPageUnknown = await ctx.runQuery(
+        agentMessages.listMessagesByThreadId,
         {
-          organizationId,
-          sessionId: args.sessionId,
+          threadId: args.threadId,
+          order: "asc",
+          paginationOpts: { cursor: null, numItems: 200 },
+          excludeToolMessages: true,
+        } as unknown,
+      );
+
+      const threadMessagesPage = threadMessagesPageUnknown as {
+        page?: unknown[];
+      };
+
+      const extractText = (value: unknown): string => {
+        if (typeof value === "string") return value;
+        if (!Array.isArray(value)) return "";
+        return value
+          .map((part) => {
+            if (!part || typeof part !== "object") return "";
+            const p = part as Record<string, unknown>;
+            return p.type === "text" && typeof p.text === "string"
+              ? p.text
+              : "";
+          })
+          .filter(Boolean)
+          .join("\n");
+      };
+
+      type Role = "user" | "assistant";
+      type HistoryItem = { role: Role; content: string };
+
+      const historyRaw = (threadMessagesPage.page ?? []).flatMap(
+        (row): HistoryItem[] => {
+          const r = row as {
+            message?: { role?: unknown; content?: unknown };
+          } | null;
+          const role = r?.message?.role;
+          if (role !== "user" && role !== "assistant") return [];
+          const content = extractText(r?.message?.content).trim();
+          if (!content) return [];
+          return [{ role: role as Role, content }];
         },
-      )) as { role: "user" | "assistant"; content: string }[];
+      );
+
+      // Avoid duplicating the latest message if we just persisted it.
+      const history =
+        historyRaw.length > 0 &&
+        historyRaw.at(-1)?.role === "user" &&
+        historyRaw.at(-1)?.content === trimmedPrompt
+          ? historyRaw.slice(0, -1)
+          : historyRaw;
 
       const messages = buildConversationMessages({
-        history: history.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
+        history,
         latestUserMessage: trimmedPrompt,
       });
 
       const result = await generateText({
-        model: model as any,
+        model: model as unknown,
         system: [effectiveBaseInstructions, knowledgeContext].join("\n\n"),
         messages,
       });
@@ -296,7 +368,7 @@ export const generateAgentReply = action({
         internal.plugins.support.mutations.recordMessageInternal,
         {
           organizationId,
-          sessionId: args.sessionId,
+          threadId: args.threadId,
           role: "assistant",
           content: text,
           contactId: args.contactId ?? undefined,
