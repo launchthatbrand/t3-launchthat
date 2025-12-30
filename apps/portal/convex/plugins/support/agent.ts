@@ -32,7 +32,10 @@ const FALLBACK_BASE_INSTRUCTIONS = defaultSupportAssistantBaseInstructions;
 const KNOWN_MISSING_KEY_MESSAGE =
   "Support assistant is not fully configured yet (missing OpenAI API key). Add one in Support → Settings → AI Assistant.";
 
-const SUPPORT_MODEL_ID = "gpt-4.1-mini";
+// Prefer the newer small model, but fall back to a broadly-available model ID
+// if the tenant's OpenAI account doesn't have access yet.
+const PRIMARY_SUPPORT_MODEL_ID = "gpt-4.1-mini";
+const FALLBACK_SUPPORT_MODEL_ID = "gpt-4o-mini";
 
 // Narrow overly deep types from generated bindings to keep TS fast/stable.
 type AnyInternalQueryRef = FunctionReference<
@@ -48,10 +51,10 @@ const agentMessages = (
   }
 ).agent.messages;
 
-const createSupportModel = (apiKey: string) => {
+const createSupportModel = (apiKey: string, modelId: string) => {
   const openai = createOpenAI({ apiKey });
   // Bypass @convex-dev/agent thread machinery (currently crashing in stripUnknownFields).
-  return openai.chat(SUPPORT_MODEL_ID);
+  return openai.chat(modelId);
 };
 
 const buildKnowledgeContext = (
@@ -174,7 +177,7 @@ export const generateAgentReply = action({
       return { text: KNOWN_MISSING_KEY_MESSAGE };
     }
 
-    const model = createSupportModel(apiKey);
+    const primaryModel = createSupportModel(apiKey, PRIMARY_SUPPORT_MODEL_ID);
     const trimmedPrompt = args.prompt.trim();
     if (!trimmedPrompt) {
       return { text: "" };
@@ -291,7 +294,7 @@ export const generateAgentReply = action({
     }
 
     let text = "";
-    try {
+    const runModel = async (model: unknown) => {
       const threadMessagesPageUnknown = await ctx.runQuery(
         agentMessages.listMessagesByThreadId,
         {
@@ -356,11 +359,59 @@ export const generateAgentReply = action({
         messages,
       });
 
-      text = typeof result.text === "string" ? result.text : "";
+      return typeof result.text === "string" ? result.text : "";
+    };
+
+    try {
+      text = await runModel(primaryModel);
     } catch (modelError) {
-      console.error("[support-agent] model error", modelError);
-      text =
-        "Support assistant is not fully configured yet (model unavailable). Please contact an administrator.";
+      const errorMessage =
+        modelError instanceof Error ? modelError.message : String(modelError);
+      console.error("[support-agent] model error", {
+        organizationId,
+        model: PRIMARY_SUPPORT_MODEL_ID,
+        errorMessage,
+      });
+
+      // Best-effort: if the model isn't available for the org's OpenAI account yet,
+      // retry with a broadly-available model.
+      const shouldRetryWithFallback =
+        errorMessage.toLowerCase().includes("model") &&
+        (errorMessage.toLowerCase().includes("not found") ||
+          errorMessage.toLowerCase().includes("does not exist") ||
+          errorMessage.toLowerCase().includes("not available"));
+
+      if (shouldRetryWithFallback) {
+        try {
+          const fallbackModel = createSupportModel(
+            apiKey,
+            FALLBACK_SUPPORT_MODEL_ID,
+          );
+          text = await runModel(fallbackModel);
+        } catch (fallbackError) {
+          const fallbackMessage =
+            fallbackError instanceof Error
+              ? fallbackError.message
+              : String(fallbackError);
+          console.error("[support-agent] fallback model error", {
+            organizationId,
+            model: FALLBACK_SUPPORT_MODEL_ID,
+            errorMessage: fallbackMessage,
+          });
+          text =
+            "Support assistant is not fully configured yet (model unavailable). Please contact an administrator.";
+        }
+      } else if (
+        errorMessage.toLowerCase().includes("unauthorized") ||
+        errorMessage.toLowerCase().includes("invalid api key") ||
+        errorMessage.toLowerCase().includes("incorrect api key")
+      ) {
+        text =
+          "Support assistant is not fully configured yet (invalid OpenAI API key). Please contact an administrator.";
+      } else {
+        text =
+          "Support assistant is not fully configured yet (model unavailable). Please contact an administrator.";
+      }
     }
 
     if (text.trim()) {
