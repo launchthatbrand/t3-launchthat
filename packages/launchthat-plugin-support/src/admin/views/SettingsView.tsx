@@ -5,7 +5,7 @@ import type { GenericId as Id } from "convex/values";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@portal/convexspec";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Copy, Loader2, PencilLine, Plus, Trash2 } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
@@ -344,25 +344,47 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
   const deleteRagSource: any = useMutation(
     api.plugins.support.mutations.deleteRagSourceConfig,
   );
-  const upsertConnection: any = async (_args?: unknown) => null;
-  const deleteConnection: any = async (_args?: unknown) => null;
+  const openAiOwnerKey = useMemo(
+    () => buildSupportOpenAiOwnerKey(organizationId as string),
+    [organizationId],
+  );
+  const openAiConnections = useQuery(
+    (api as any).integrations.connections.queries.list,
+    openAiOwnerKey
+      ? {
+          nodeType: SUPPORT_OPENAI_NODE_TYPE,
+          ownerId: openAiOwnerKey,
+        }
+      : "skip",
+  ) as
+    | Array<{
+        _id: string;
+        status?: string;
+        metadata?: { maskedCredentials?: Record<string, string> } | null;
+      }>
+    | undefined;
+
+  const upsertConnection = useAction(
+    (api as any).integrations.connections.actions.upsertForOwner,
+  );
+  const deleteConnection = useAction(
+    (api as any).integrations.connections.actions.remove,
+  );
   const [knowledgeForm, setKnowledgeForm] = useState<RagSourceFormState>(
     createDefaultRagFormState(),
   );
   const [openAiKeyInput, setOpenAiKeyInput] = useState("");
   const [isSavingOpenAiKey, setIsSavingOpenAiKey] = useState(false);
   const [isRemovingOpenAiKey, setIsRemovingOpenAiKey] = useState(false);
-  const openAiOwnerKey = useMemo(
-    () => buildSupportOpenAiOwnerKey(organizationId as string),
-    [organizationId],
-  );
-  const openAiConnections: Array<{
-    _id: string;
-    metadata?: { maskedCredentials?: Record<string, string> } | null;
-  }> = [];
-  const openAiConnection = undefined;
-  const openAiMaskedCredential = undefined;
-  const isOpenAiConnected = false;
+  const openAiConnection = Array.isArray(openAiConnections)
+    ? openAiConnections[0]
+    : undefined;
+  const openAiMaskedCredential = openAiConnection?.metadata?.maskedCredentials
+    ? Object.values(openAiConnection.metadata?.maskedCredentials ?? {})[0]
+    : undefined;
+  const isOpenAiConnected = openAiConnection
+    ? (openAiConnection.status ?? "connected") === "connected"
+    : false;
   const activePostTypeSlug = knowledgeForm.postTypeSlug;
   const postTypeFields: Array<{
     key: string;
