@@ -629,7 +629,7 @@ function ChatSurface({
       setInput("");
       setIsManualSending(true);
       try {
-        const insertedId = await recordMessage({
+        await recordMessage({
           organizationId: organizationId as Id<"organizations">,
           threadId,
           role: "user",
@@ -638,13 +638,6 @@ function ChatSurface({
           contactName: contact?.fullName,
           contactEmail: contact?.email,
         });
-        setMessages((prev) =>
-          prev.map((message) =>
-            message.id === optimisticId
-              ? { ...message, id: String(insertedId) }
-              : message,
-          ),
-        );
       } catch (manualError) {
         console.error("[support-chat] manual send failed", manualError);
       } finally {
