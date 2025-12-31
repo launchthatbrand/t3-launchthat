@@ -627,7 +627,7 @@ export function AdminSinglePostView({
     });
   }, []);
 
-  // Page templates are configured per post type (no per-post override).
+  // Page templates: post type provides the default, per-post `page_template` meta can override.
   const {
     context: attachmentsContext,
     serializedValue: attachmentsSerializedValue,
@@ -1535,14 +1535,19 @@ export function AdminSinglePostView({
       }
     }
 
-    // Persist page template selection for pages even though it's not part of schema fields
-    if (slug === "pages") {
-      const selectedTemplate = customFieldValues.page_template;
-      if (typeof selectedTemplate === "string" && selectedTemplate.trim()) {
-        payload.page_template = selectedTemplate;
+    // Persist per-post page template override (defaults come from post type settings).
+    const selectedTemplate = customFieldValues.page_template;
+    if (typeof selectedTemplate === "string" && selectedTemplate.trim()) {
+      const trimmed = selectedTemplate.trim();
+      if (trimmed !== DEFAULT_PAGE_TEMPLATE_SLUG) {
+        payload.page_template = trimmed;
       } else if (postMetaMap.page_template !== undefined) {
-        payload.page_template = DEFAULT_PAGE_TEMPLATE_SLUG;
+        // clearing override
+        payload.page_template = null;
       }
+    } else if (postMetaMap.page_template !== undefined) {
+      // clearing override
+      payload.page_template = null;
     }
 
     if (shouldTrackVimeoMeta) {
@@ -1939,7 +1944,7 @@ export function AdminSinglePostView({
       enqueueScript,
       enqueueStyle,
       // --- Core "special" sidebar panels that should behave like meta boxes ---
-      // Page template is configured per post type.
+      // Page template has a post type default, but can be overridden per post.
       pageTemplateLabel,
       // Taxonomy is stored outside post meta; editor owns selection state so it can
       // apply terms on first save for new records.

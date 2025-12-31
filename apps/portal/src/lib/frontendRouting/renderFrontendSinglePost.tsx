@@ -171,29 +171,26 @@ export async function renderFrontendResolvedPost(
   };
 
   const configuredPostTypeTemplateSlug =
-    postType && typeof (postType as { pageTemplateSlug?: unknown }).pageTemplateSlug === "string"
+    postType &&
+    typeof (postType as { pageTemplateSlug?: unknown }).pageTemplateSlug === "string"
       ? ((postType as { pageTemplateSlug: string }).pageTemplateSlug ?? undefined)
       : undefined;
 
-  const legacyPageTemplateSlug =
-    post.postTypeSlug === "pages"
-      ? ((postMetaMap.get("page_template") as string | undefined) ?? undefined)
-      : undefined;
+  const perPostTemplateSlug =
+    (postMetaMap.get("page_template") as string | undefined) ?? undefined;
 
   let effectivePageTemplateSlug =
+    perPostTemplateSlug ??
     configuredPostTypeTemplateSlug ??
-    legacyPageTemplateSlug ??
     DEFAULT_PAGE_TEMPLATE_SLUG;
 
-  if (post.postTypeSlug === "pages") {
-    const allowedSet =
-      allowedPageTemplates && allowedPageTemplates.length > 0
-        ? new Set<string>([...allowedPageTemplates, DEFAULT_PAGE_TEMPLATE_SLUG])
-        : null;
+  const allowedSet =
+    allowedPageTemplates && allowedPageTemplates.length > 0
+      ? new Set<string>([...allowedPageTemplates, DEFAULT_PAGE_TEMPLATE_SLUG])
+      : null;
 
-    if (allowedSet && !allowedSet.has(effectivePageTemplateSlug)) {
-      effectivePageTemplateSlug = DEFAULT_PAGE_TEMPLATE_SLUG;
-    }
+  if (allowedSet && !allowedSet.has(effectivePageTemplateSlug)) {
+    effectivePageTemplateSlug = DEFAULT_PAGE_TEMPLATE_SLUG;
   }
 
   const resolvedPageTemplate = getPageTemplate(
