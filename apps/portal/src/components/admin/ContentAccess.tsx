@@ -61,7 +61,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
   // );
   const marketingTags = undefined;
   const currentRules = useQuery(
-    api.lms.contentAccess.queries.getContentAccessRules,
+    api.plugins.lms.contentAccess.queries.getContentAccessRules,
     {
       contentType,
       contentId,
@@ -69,10 +69,10 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
   );
 
   const saveRules = useMutation(
-    api.lms.contentAccess.mutations.saveContentAccessRules,
+    api.plugins.lms.contentAccess.mutations.saveContentAccessRules,
   );
   const clearRules = useMutation(
-    api.lms.contentAccess.mutations.clearContentAccessRules,
+    api.plugins.lms.contentAccess.mutations.clearContentAccessRules,
   );
 
   // Load existing rules when data is available

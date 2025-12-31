@@ -147,6 +147,8 @@ import type * as plugins_entity_queries from "../plugins/entity/queries.js";
 import type * as plugins_entity_resolvers from "../plugins/entity/resolvers.js";
 import type * as plugins_entity_types from "../plugins/entity/types.js";
 import type * as plugins_lms_actions from "../plugins/lms/actions.js";
+import type * as plugins_lms_contentAccess_mutations from "../plugins/lms/contentAccess/mutations.js";
+import type * as plugins_lms_contentAccess_queries from "../plugins/lms/contentAccess/queries.js";
 import type * as plugins_lms_helpers from "../plugins/lms/helpers.js";
 import type * as plugins_lms_mutations from "../plugins/lms/mutations.js";
 import type * as plugins_lms_posts_mutations from "../plugins/lms/posts/mutations.js";
@@ -348,6 +350,8 @@ declare const fullApi: ApiFromModules<{
   "plugins/entity/resolvers": typeof plugins_entity_resolvers;
   "plugins/entity/types": typeof plugins_entity_types;
   "plugins/lms/actions": typeof plugins_lms_actions;
+  "plugins/lms/contentAccess/mutations": typeof plugins_lms_contentAccess_mutations;
+  "plugins/lms/contentAccess/queries": typeof plugins_lms_contentAccess_queries;
   "plugins/lms/helpers": typeof plugins_lms_helpers;
   "plugins/lms/mutations": typeof plugins_lms_mutations;
   "plugins/lms/posts/mutations": typeof plugins_lms_posts_mutations;

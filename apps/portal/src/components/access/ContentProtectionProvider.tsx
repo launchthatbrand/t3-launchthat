@@ -105,7 +105,7 @@ export function ContentProtectionProvider({
     currentPageContent.contentType && currentPageContent.contentId
   );
   const currentPageRules = useQuery(
-    api.lms.contentAccess.queries.getContentAccessRules,
+    api.plugins.lms.contentAccess.queries.getContentAccessRules,
     shouldLoadPageRules
       ? {
           contentType: currentPageContent.contentType,

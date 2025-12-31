@@ -91,7 +91,7 @@ export const useContentAccess = ({
 
   // Hooks (never conditional)
   const contentRules = useQuery(
-    api.lms.contentAccess.queries.getContentAccessRules,
+    api.plugins.lms.contentAccess.queries.getContentAccessRules,
     normalizedContentId
       ? {
           contentType,
@@ -101,7 +101,7 @@ export const useContentAccess = ({
   );
 
   const parentRules = useQuery(
-    api.lms.contentAccess.queries.getContentAccessRules,
+    api.plugins.lms.contentAccess.queries.getContentAccessRules,
     parentQueryParams,
   );
 
