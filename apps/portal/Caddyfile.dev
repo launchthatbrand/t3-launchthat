@@ -1,0 +1,6 @@
+wall-street-academy.localhost:3025 {
+  tls internal
+  reverse_proxy 127.0.0.1:3024
+}
+
+

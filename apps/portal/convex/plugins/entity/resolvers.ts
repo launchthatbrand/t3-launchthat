@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-definitions */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-definitions, @typescript-eslint/no-unnecessary-type-assertion */
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import type {
@@ -21,7 +21,13 @@ const components: any = componentsGenerated;
 const DOWNLOADS_SLUGS = new Set<string>(["downloads", "download"]);
 const ATTACHMENTS_SLUGS = new Set<string>(["attachments", "attachment"]);
 
-type PostStatus = "draft" | "published" | "archived";
+type PostStatus =
+  | "draft"
+  | "published"
+  | "archived"
+  | "paid"
+  | "unpaid"
+  | "failed";
 
 type ResolverContext = {
   postTypeSlug: string;
@@ -90,7 +96,7 @@ const adaptCommercePost = (record: any): EntityRecord => ({
   updatedAt: record.updatedAt ?? record._creationTime ?? null,
 });
 
-const adaptLmsPost = (record: any): EntityRecord => ({
+const _adaptLmsPost = (record: any): EntityRecord => ({
   id: record._id,
   postTypeSlug: record.postTypeSlug ?? "",
   title: record.title ?? null,
@@ -107,7 +113,7 @@ const adaptLmsPost = (record: any): EntityRecord => ({
   updatedAt: record.updatedAt ?? record._creationTime ?? null,
 });
 
-const adaptSupportPost = (record: any): EntityRecord => ({
+const _adaptSupportPost = (record: any): EntityRecord => ({
   id: record._id,
   postTypeSlug: record.postTypeSlug ?? "",
   title: record.title ?? null,
@@ -189,7 +195,10 @@ const makeComponentPostsResolver = (storageComponent: string): Resolver => {
     const status: PostStatus =
       raw.status === "published" ||
       raw.status === "draft" ||
-      raw.status === "archived"
+      raw.status === "archived" ||
+      raw.status === "paid" ||
+      raw.status === "unpaid" ||
+      raw.status === "failed"
         ? (raw.status as PostStatus)
         : "draft";
 
@@ -224,7 +233,10 @@ const makeComponentPostsResolver = (storageComponent: string): Resolver => {
     const status: PostStatus | undefined =
       raw.status === "published" ||
       raw.status === "draft" ||
-      raw.status === "archived"
+      raw.status === "archived" ||
+      raw.status === "paid" ||
+      raw.status === "unpaid" ||
+      raw.status === "failed"
         ? (raw.status as PostStatus)
         : undefined;
     return {
@@ -519,7 +531,7 @@ const downloadsResolver: Resolver = {
     );
     return result ? adaptDownload(result.download) : null;
   },
-  remove: async () => {
+  remove: () => {
     throw new Error("Delete is not yet supported for downloads.");
   },
 };
@@ -554,7 +566,7 @@ const attachmentsResolver: Resolver = {
     );
     return (page?.page ?? []).map(adaptAttachment);
   },
-  create: async () => {
+  create: () => {
     throw new Error("Attachments must be created via upload.");
   },
   update: async (ctx, { id, data }) => {

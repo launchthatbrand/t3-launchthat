@@ -16,7 +16,7 @@ import {
   useState,
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { api } from "@/convex/_generated/api";
+import { api as apiGenerated } from "@/convex/_generated/api";
 import { generateSlugFromTitle, useCreatePost } from "@/lib/blog";
 import { saveAdminEntry } from "@/lib/postTypes/adminSave";
 import { useAction, useMutation, useQuery } from "convex/react";
@@ -27,10 +27,9 @@ import type { MetaBoxLocation, RegisteredMetaBox } from "@acme/admin-runtime";
 import { collectRegisteredMetaBoxes } from "@acme/admin-runtime";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Card, CardContent } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
-import { MultiSelect } from "@acme/ui/multi-select";
 import {
   Select,
   SelectContent,
@@ -93,7 +92,6 @@ import {
   wrapWithPluginProviders,
 } from "~/lib/plugins/helpers";
 import { getPostStatusOptionsForPostType } from "~/lib/postStatuses/registry";
-import { decodeSyntheticId } from "~/lib/postTypes/adminAdapters";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import { getCanonicalPostPath } from "~/lib/postTypes/routing";
 import { useAdminPostMeta } from "~/lib/postTypes/useAdminPostMeta";
@@ -113,6 +111,10 @@ import {
 import { getFrontendBaseUrl } from "./permalink";
 import { PlaceholderState } from "./PlaceholderState";
 import { SeoTab } from "./SeoTab";
+
+// The generated `api` types are extremely deep; in this component we prefer
+// runtime safety/flexibility over full static typing.
+const api: any = apiGenerated;
 
 const stripHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
 const resolveSupportFlag = (
@@ -365,9 +367,6 @@ export function AdminSinglePostView({
       resolveSupportFlag(postType?.supports, "featuredImage"));
   const supportsTaxonomy =
     canSaveRecord && resolveSupportFlag(postType?.supports, "taxonomy");
-  const commerceOrganizationId = organizationId
-    ? (organizationId as unknown as string)
-    : undefined;
   const pluginTabs: PluginSingleViewTabDefinition[] =
     pluginSingleView?.config.tabs ?? [];
   const seoTabValue = "seo";
@@ -448,7 +447,7 @@ export function AdminSinglePostView({
       : "skip";
   const ragIndexStatus = useQuery(
     api.plugins.support.queries.getRagIndexStatusForPost,
-    ragStatusArgs as any,
+    ragStatusArgs,
   ) as
     | {
         isEnabledForPostType: boolean;
@@ -490,15 +489,6 @@ export function AdminSinglePostView({
       organizationId,
       storageKind,
     });
-
-  const postMeta = useMemo<
-    { key: string; value: unknown }[] | undefined
-  >(() => {
-    if (postMetaEntries === undefined) {
-      return undefined;
-    }
-    return postMetaEntries;
-  }, [postMetaEntries]);
 
   const ensureBuiltInTaxonomies = useEnsureBuiltInTaxonomies();
   const categoryTaxonomy = useQuery(
@@ -1811,11 +1801,14 @@ export function AdminSinglePostView({
       const duplicateSlug =
         generateSlugFromTitle(`${baseSlug}-copy`) ||
         `${baseSlug}-${Date.now()}`;
-      const allowedStatuses = new Set(["draft", "published", "archived"]);
-      const duplicateStatus: "draft" | "published" | "archived" =
-        allowedStatuses.has(post.status ?? "")
-          ? (post.status as "draft" | "published" | "archived")
-          : "draft";
+      const allowedStatuses = new Set(
+        statusOptions.map((option) => option.value),
+      );
+      const duplicateStatus: AdminSaveStatus = allowedStatuses.has(
+        post.status ?? "",
+      )
+        ? (post.status as AdminSaveStatus)
+        : "draft";
       const metaPayload = buildMetaPayload();
       const hasMetaEntries = Object.keys(metaPayload).length > 0;
       const newId = await createPost({
@@ -1918,8 +1911,9 @@ export function AdminSinglePostView({
         : DEFAULT_PAGE_TEMPLATE_SLUG;
 
     return (
-      availablePageTemplates.find((template) => template.slug === pageTemplateSlug)
-        ?.label ?? pageTemplateSlug
+      availablePageTemplates.find(
+        (template) => template.slug === pageTemplateSlug,
+      )?.label ?? pageTemplateSlug
     );
   }, [availablePageTemplates, postType]);
 

@@ -118,7 +118,13 @@ export type Mounts = {
           organizationId?: string;
           postTypeSlug: string;
           slug: string;
-          status: "published" | "draft" | "archived";
+          status:
+            | "published"
+            | "draft"
+            | "archived"
+            | "unpaid"
+            | "paid"
+            | "failed";
           tags?: Array<string>;
           title: string;
           updatedAt?: number;
@@ -150,7 +156,13 @@ export type Mounts = {
           organizationId?: string;
           patch?: any;
           slug?: string;
-          status?: "published" | "draft" | "archived";
+          status?:
+            | "published"
+            | "draft"
+            | "archived"
+            | "unpaid"
+            | "paid"
+            | "failed";
           tags?: Array<string>;
           title?: string;
         },
@@ -167,7 +179,13 @@ export type Mounts = {
             category?: string;
             limit?: number;
             postTypeSlug?: string;
-            status?: "published" | "draft" | "archived";
+            status?:
+              | "published"
+              | "draft"
+              | "archived"
+              | "unpaid"
+              | "paid"
+              | "failed";
           };
           organizationId?: string;
         },

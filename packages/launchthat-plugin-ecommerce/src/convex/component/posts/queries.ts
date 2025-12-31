@@ -12,6 +12,10 @@ export const getAllPosts = query({
             v.literal("published"),
             v.literal("draft"),
             v.literal("archived"),
+            // Orders: ecommerce-specific lifecycle statuses (stored in post.status)
+            v.literal("unpaid"),
+            v.literal("paid"),
+            v.literal("failed"),
           ),
         ),
         category: v.optional(v.string()),

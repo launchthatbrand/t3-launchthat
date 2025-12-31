@@ -4,7 +4,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { api } from "@portal/convexspec";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
+import { Loader2 } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
 import {
@@ -21,6 +22,10 @@ import { Separator } from "@acme/ui/separator";
 import { toast } from "@acme/ui/toast";
 
 import { getPaymentMethods } from "../../payments/registry";
+import {
+  EMPTY_CHECKOUT_DRAFT,
+  useCheckoutDraftStore,
+} from "../state/useCheckoutDraftStore";
 
 const apiAny = api as any;
 
@@ -143,22 +148,22 @@ export function CheckoutClient({
 }: {
   organizationId?: string;
 }) {
+  const orgKey = organizationId ?? "portal-root";
   const [guestSessionId, setGuestSessionId] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
-  const [paymentMethodId, setPaymentMethodId] = useState<string>("");
+  const draft = useCheckoutDraftStore(
+    (s) => s.draftsByOrg[orgKey] ?? EMPTY_CHECKOUT_DRAFT,
+  );
+  const setEmail = useCheckoutDraftStore((s) => s.setEmail);
+  const setPaymentMethodId = useCheckoutDraftStore((s) => s.setPaymentMethodId);
+  const setShippingDraft = useCheckoutDraftStore((s) => s.setShipping);
+  const resetDraft = useCheckoutDraftStore((s) => s.resetDraft);
+
+  const email = draft.email;
+  const paymentMethodId = draft.paymentMethodId;
   const [paymentData, setPaymentData] = useState<unknown | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [shipping, setShipping] = useState({
-    country: "",
-    firstName: "",
-    lastName: "",
-    phone: "",
-    address1: "",
-    address2: "",
-    city: "",
-    state: "",
-    postcode: "",
-  });
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const shipping = draft.shipping;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -180,8 +185,8 @@ export function CheckoutClient({
     guestSessionId ? { guestSessionId } : "skip",
   ) as { items?: CartItem[] } | undefined;
 
-  const placeOrder = useMutation(
-    apiAny.plugins.commerce.checkout.mutations.placeOrder,
+  const placeOrder = useAction(
+    apiAny.plugins.commerce.checkout.actions.placeOrder,
   ) as (args: any) => Promise<any>;
 
   const items = useMemo(
@@ -250,7 +255,7 @@ export function CheckoutClient({
   useEffect(() => {
     if (paymentMethodId) return;
     if (enabledPaymentMethods.length === 0) return;
-    setPaymentMethodId(enabledPaymentMethods[0]!.id);
+    setPaymentMethodId(orgKey, enabledPaymentMethods[0]!.id);
   }, [enabledPaymentMethods, paymentMethodId]);
 
   const mustSelectPaymentMethod = enabledPaymentMethods.length > 0;
@@ -259,6 +264,7 @@ export function CheckoutClient({
     items.length > 0 &&
     email.trim().length > 3 &&
     !isPending &&
+    !isPlacingOrder &&
     (!mustSelectPaymentMethod || paymentMethodId.trim().length > 0) &&
     (!requiresPaymentData || paymentData !== null);
 
@@ -266,6 +272,7 @@ export function CheckoutClient({
 
   const handlePlaceOrder = () => {
     if (!guestSessionId) return;
+    setIsPlacingOrder(true);
     startTransition(() => {
       const fullName = `${shipping.firstName} ${shipping.lastName}`.trim();
       void placeOrder({
@@ -296,15 +303,34 @@ export function CheckoutClient({
         paymentMethodId,
         paymentData,
       })
-        .then((_result: any) => toast.success("Payment successful."))
-        .catch((err: unknown) =>
-          toast.error(err instanceof Error ? err.message : "Payment failed"),
-        );
+        .then((_result: any) => {
+          toast.success("Payment successful.");
+          resetDraft(orgKey);
+          setPaymentData(null);
+          setIsPlacingOrder(false);
+        })
+        .catch((err: unknown) => {
+          toast.error(err instanceof Error ? err.message : "Payment failed");
+          setIsPlacingOrder(false);
+        });
     });
   };
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8">
+      {isPlacingOrder ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-lg border bg-background p-6 shadow-lg">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <div className="text-sm font-medium">Processing payment…</div>
+            </div>
+            <div className="text-muted-foreground mt-2 text-sm">
+              Please don’t refresh or close this page.
+            </div>
+          </div>
+        </div>
+      ) : null}
       {/* Mobile: order summary toggle */}
       <div className="lg:hidden">
         <Card>
@@ -357,8 +383,9 @@ export function CheckoutClient({
                   id="checkout-email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.currentTarget.value)}
+                  onChange={(e) => setEmail(orgKey, e.currentTarget.value)}
                   placeholder="you@example.com"
+                  disabled={isPlacingOrder}
                 />
               </div>
             </CardContent>
@@ -378,13 +405,11 @@ export function CheckoutClient({
                   id="ship-country"
                   value={shipping.country}
                   onChange={(e) =>
-                    setShipping((prev) => ({
-                      ...prev,
-                      country: e.currentTarget.value,
-                    }))
+                    setShippingDraft(orgKey, { country: e.currentTarget.value })
                   }
                   placeholder="United States"
                   autoComplete="country-name"
+                  disabled={isPlacingOrder}
                 />
               </div>
               <div className="space-y-2">
@@ -393,13 +418,13 @@ export function CheckoutClient({
                   id="ship-first"
                   value={shipping.firstName}
                   onChange={(e) =>
-                    setShipping((prev) => ({
-                      ...prev,
+                    setShippingDraft(orgKey, {
                       firstName: e.currentTarget.value,
-                    }))
+                    })
                   }
                   placeholder="Jane"
                   autoComplete="given-name"
+                  disabled={isPlacingOrder}
                 />
               </div>
               <div className="space-y-2">
@@ -408,13 +433,13 @@ export function CheckoutClient({
                   id="ship-last"
                   value={shipping.lastName}
                   onChange={(e) =>
-                    setShipping((prev) => ({
-                      ...prev,
+                    setShippingDraft(orgKey, {
                       lastName: e.currentTarget.value,
-                    }))
+                    })
                   }
                   placeholder="Doe"
                   autoComplete="family-name"
+                  disabled={isPlacingOrder}
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
@@ -423,13 +448,13 @@ export function CheckoutClient({
                   id="ship-phone"
                   value={shipping.phone}
                   onChange={(e) =>
-                    setShipping((prev) => ({
-                      ...prev,
+                    setShippingDraft(orgKey, {
                       phone: e.currentTarget.value,
-                    }))
+                    })
                   }
                   placeholder="(555) 555-5555"
                   autoComplete="tel"
+                  disabled={isPlacingOrder}
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
@@ -438,13 +463,13 @@ export function CheckoutClient({
                   id="ship-address"
                   value={shipping.address1}
                   onChange={(e) =>
-                    setShipping((prev) => ({
-                      ...prev,
+                    setShippingDraft(orgKey, {
                       address1: e.currentTarget.value,
-                    }))
+                    })
                   }
                   placeholder="123 Main St"
                   autoComplete="street-address"
+                  disabled={isPlacingOrder}
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
@@ -453,13 +478,13 @@ export function CheckoutClient({
                   id="ship-address2"
                   value={shipping.address2}
                   onChange={(e) =>
-                    setShipping((prev) => ({
-                      ...prev,
+                    setShippingDraft(orgKey, {
                       address2: e.currentTarget.value,
-                    }))
+                    })
                   }
                   placeholder="Apt 4B"
                   autoComplete="address-line2"
+                  disabled={isPlacingOrder}
                 />
               </div>
               <div className="space-y-2">
@@ -468,13 +493,13 @@ export function CheckoutClient({
                   id="ship-city"
                   value={shipping.city}
                   onChange={(e) =>
-                    setShipping((prev) => ({
-                      ...prev,
+                    setShippingDraft(orgKey, {
                       city: e.currentTarget.value,
-                    }))
+                    })
                   }
                   placeholder="New York"
                   autoComplete="address-level2"
+                  disabled={isPlacingOrder}
                 />
               </div>
               <div className="space-y-2">
@@ -483,13 +508,13 @@ export function CheckoutClient({
                   id="ship-state"
                   value={shipping.state}
                   onChange={(e) =>
-                    setShipping((prev) => ({
-                      ...prev,
+                    setShippingDraft(orgKey, {
                       state: e.currentTarget.value,
-                    }))
+                    })
                   }
                   placeholder="NY"
                   autoComplete="address-level1"
+                  disabled={isPlacingOrder}
                 />
               </div>
               <div className="space-y-2">
@@ -498,13 +523,13 @@ export function CheckoutClient({
                   id="ship-zip"
                   value={shipping.postcode}
                   onChange={(e) =>
-                    setShipping((prev) => ({
-                      ...prev,
+                    setShippingDraft(orgKey, {
                       postcode: e.currentTarget.value,
-                    }))
+                    })
                   }
                   placeholder="10001"
                   autoComplete="postal-code"
+                  disabled={isPlacingOrder}
                 />
               </div>
             </CardContent>
@@ -562,7 +587,7 @@ export function CheckoutClient({
               ) : (
                 <RadioGroup
                   value={paymentMethodId}
-                  onValueChange={setPaymentMethodId}
+                  onValueChange={(value) => setPaymentMethodId(orgKey, value)}
                   className="gap-2"
                 >
                   {enabledPaymentMethods.map((method) => (
@@ -609,7 +634,14 @@ export function CheckoutClient({
                 onClick={handlePlaceOrder}
                 disabled={!canSubmit}
               >
-                Pay {formatMoney(subtotal)}
+                {isPlacingOrder ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing…
+                  </>
+                ) : (
+                  <>Pay {formatMoney(subtotal)}</>
+                )}
               </Button>
               <div className="text-muted-foreground text-xs">
                 By placing your order, you agree to our terms and privacy

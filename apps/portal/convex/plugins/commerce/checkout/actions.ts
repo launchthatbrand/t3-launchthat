@@ -1,8 +1,12 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
 import { v } from "convex/values";
 
 import { api, components } from "../../../_generated/api";
-import { mutation } from "../../../_generated/server";
+import { action } from "../../../_generated/server";
+
+// Avoid TS "type instantiation is excessively deep" from the generated `api` types
+// when used with ctx.runQuery/runMutation/runAction in large orchestration functions.
+const apiAny = api as any;
 
 interface CommercePostsMutations {
   createPost: unknown;
@@ -47,7 +51,6 @@ const asString = (value: unknown): string =>
   typeof value === "string" ? value : "";
 const asNumber = (value: unknown): number =>
   typeof value === "number" ? value : 0;
-
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -57,7 +60,6 @@ const computeSubtotal = (items: LineItem[]): number =>
   items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
 
 const ORDER_META_KEYS = {
-  // Admin meta box keys
   itemsJson: "order.itemsJson",
   itemsSubtotal: "order.itemsSubtotal",
   orderTotal: "order.orderTotal",
@@ -70,8 +72,6 @@ const ORDER_META_KEYS = {
   gateway: "order.gateway",
   gatewayTransactionId: "order.gatewayTransactionId",
   paymentResponseJson: "order.paymentResponseJson",
-
-  // Billing / shipping
   billingName: "billing.name",
   billingEmail: "billing.email",
   billingPhone: "billing.phone",
@@ -81,7 +81,6 @@ const ORDER_META_KEYS = {
   billingState: "billing.state",
   billingPostcode: "billing.postcode",
   billingCountry: "billing.country",
-
   shippingName: "shipping.name",
   shippingPhone: "shipping.phone",
   shippingAddress1: "shipping.address1",
@@ -90,8 +89,6 @@ const ORDER_META_KEYS = {
   shippingState: "shipping.state",
   shippingPostcode: "shipping.postcode",
   shippingCountry: "shipping.country",
-
-  // Legacy keys used by existing order list queries
   legacyPayload: "order:payload",
   legacySubtotal: "order:subtotal",
   legacyTotal: "order:total",
@@ -99,7 +96,7 @@ const ORDER_META_KEYS = {
   legacyUserId: "order:userId",
 } as const;
 
-export const placeOrder = mutation({
+export const placeOrder = action({
   args: {
     organizationId: v.optional(v.string()),
     userId: v.optional(v.string()),
@@ -131,27 +128,20 @@ export const placeOrder = mutation({
     paymentMethodId: v.string(),
     paymentData: v.optional(v.any()),
   },
-  returns: v.any(),
+  returns: v.object({
+    success: v.boolean(),
+    orderId: v.string(),
+  }),
   handler: async (ctx, args) => {
-    // This flow requires calling a Node action (payment gateway). In this codebase,
-    // mutation ctx does not support ctx.runAction, so the real implementation lives in:
-    // api.plugins.commerce.checkout.actions.placeOrder
-    throw new Error(
-      "placeOrder moved: call api.plugins.commerce.checkout.actions.placeOrder (useAction) instead of mutations.placeOrder.",
-    );
-
     if (!args.userId && !args.guestSessionId) {
       throw new Error("Missing cart identity");
     }
 
-    const ecommerceSettings: any = await ctx.runQuery(
-      api.core.options.get as any,
-      {
-        metaKey: "plugin.ecommerce.settings",
-        type: "site",
-        orgId: args.organizationId ?? null,
-      },
-    );
+    const ecommerceSettings: any = await ctx.runQuery(apiAny.core.options.get, {
+      metaKey: "plugin.ecommerce.settings",
+      type: "site",
+      orgId: args.organizationId ?? null,
+    });
     const settingsValue = asRecord(ecommerceSettings?.metaValue);
     const currencyRaw = settingsValue.defaultCurrency;
     const currency = asString(currencyRaw).trim() || "USD";
@@ -173,7 +163,6 @@ export const placeOrder = mutation({
       guestSessionId: args.guestSessionId,
     });
     const cartItems: any[] = Array.isArray(cart?.items) ? cart.items : [];
-
     if (cartItems.length === 0) {
       throw new Error("Cart is empty");
     }
@@ -204,7 +193,7 @@ export const placeOrder = mutation({
         slug: `order-${now}`,
         content: "",
         excerpt: "",
-        status: "published",
+        status: "unpaid",
         createdAt: now,
       },
     )) as string;
@@ -213,9 +202,10 @@ export const placeOrder = mutation({
       key: string;
       value: string | number | boolean | null;
     }[] = [];
-
-    const itemsJson = JSON.stringify(lineItems);
-    metaEntries.push({ key: ORDER_META_KEYS.itemsJson, value: itemsJson });
+    metaEntries.push({
+      key: ORDER_META_KEYS.itemsJson,
+      value: JSON.stringify(lineItems),
+    });
     metaEntries.push({ key: ORDER_META_KEYS.itemsSubtotal, value: subtotal });
     metaEntries.push({ key: ORDER_META_KEYS.orderTotal, value: subtotal });
     metaEntries.push({ key: ORDER_META_KEYS.currency, value: currency });
@@ -230,7 +220,6 @@ export const placeOrder = mutation({
       value: args.email.trim(),
     });
 
-    // Billing / shipping (full capture; store nulls only if explicitly empty)
     if (args.billing.name)
       metaEntries.push({
         key: ORDER_META_KEYS.billingName,
@@ -343,7 +332,6 @@ export const placeOrder = mutation({
       }),
     });
 
-    // Persist initial meta
     for (const entry of metaEntries) {
       await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
         postId: orderId,
@@ -352,18 +340,22 @@ export const placeOrder = mutation({
       });
     }
 
-    // Process payment
     if (args.paymentMethodId === "authorizenet") {
       const paymentData = asRecord(args.paymentData);
       const opaqueData = asRecord(paymentData.opaqueData);
+      const opaqueDataPayload = {
+        dataDescriptor: asString(opaqueData.dataDescriptor),
+        dataValue: asString(opaqueData.dataValue),
+      };
 
       const chargeResult = await ctx.runAction(
-        api.plugins.commerce.payments.authorizenet.actions.chargeWithOpaqueData,
+        api.plugins.commerce.payments.authorizenet.actions
+          .chargeWithOpaqueData as any,
         {
           organizationId: args.organizationId,
           amount: subtotal,
           currency,
-          opaqueData,
+          opaqueData: opaqueDataPayload,
           billing: {
             name: args.billing.name ?? undefined,
             postcode: args.billing.postcode ?? undefined,
@@ -372,11 +364,12 @@ export const placeOrder = mutation({
         },
       );
 
-      const success = Boolean((chargeResult as any)?.success);
+      const charge = asRecord(chargeResult);
+      const success = Boolean(charge.success);
       const paymentStatus = success ? "paid" : "failed";
       const orderStatus = success ? "processing" : "failed";
       const gatewayTransactionId = success
-        ? asString((chargeResult as any)?.transactionId)
+        ? asString(charge.transactionId)
         : "";
 
       await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
@@ -408,12 +401,22 @@ export const placeOrder = mutation({
       });
 
       if (!success) {
-        const msg =
-          asString((chargeResult as any)?.errorMessage) || "Payment failed";
+        const msg = asString(charge.errorMessage) || "Payment failed";
+        await ctx.runMutation(commercePostsMutations.updatePost as any, {
+          id: orderId,
+          organizationId: args.organizationId,
+          status: "failed",
+        });
         throw new Error(msg);
       }
 
-      // Clear cart on success
+      // Align post status with payment result (admin lists / filters).
+      await ctx.runMutation(commercePostsMutations.updatePost as any, {
+        id: orderId,
+        organizationId: args.organizationId,
+        status: "paid",
+      });
+
       await ctx.runMutation(commerceCartMutations.clearCart as any, {
         userId: args.userId,
         guestSessionId: args.guestSessionId,

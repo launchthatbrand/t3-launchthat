@@ -37,6 +37,11 @@ const asString = (value: unknown): string => {
   return "";
 };
 
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+
 const fieldKey = (
   scope: "order" | "billing" | "shipping",
   key: string,
@@ -65,6 +70,11 @@ export function OrderDetailsMetaBox({
   setValue,
 }: PluginMetaBoxRendererProps) {
   const canEdit = Boolean(context.postId) || context.isNewRecord;
+  const postStatus = useMemo(() => {
+    const post = asRecord(context.post);
+    const raw = post.status;
+    return typeof raw === "string" ? raw : "";
+  }, [context.post]);
 
   const status = useMemo<OrderStatus>(() => {
     const raw = asString(getValue(fieldKey("order", "status"))) as OrderStatus;
@@ -72,6 +82,16 @@ export function OrderDetailsMetaBox({
       ? raw
       : "pending";
   }, [getValue]);
+
+  const paymentMethodId = asString(getValue(fieldKey("order", "paymentMethodId")));
+  const paymentStatus = asString(getValue(fieldKey("order", "paymentStatus")));
+  const gateway = asString(getValue(fieldKey("order", "gateway")));
+  const gatewayTransactionId = asString(
+    getValue(fieldKey("order", "gatewayTransactionId")),
+  );
+  const paymentResponseJson = asString(
+    getValue(fieldKey("order", "paymentResponseJson")),
+  );
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -134,17 +154,61 @@ export function OrderDetailsMetaBox({
           <Label htmlFor="order-payment">Payment method</Label>
           <Input
             id="order-payment"
-            value={asString(getValue(fieldKey("order", "paymentMethod")))}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setValue(
-                fieldKey("order", "paymentMethod"),
-                e.currentTarget.value.trim() || null,
-              )
-            }
-            placeholder="e.g. Coinbase Commerce, Stripe"
-            disabled={!canEdit}
+            value={paymentMethodId}
+            placeholder="e.g. authorizenet"
+            disabled
+            readOnly
           />
         </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="order-payment-status">Payment status</Label>
+          <Input
+            id="order-payment-status"
+            value={paymentStatus || "(unknown)"}
+            disabled
+            readOnly
+          />
+          {postStatus ? (
+            <p className="text-muted-foreground text-xs">
+              Post status: <span className="font-medium">{postStatus}</span>
+            </p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="order-gateway">Gateway</Label>
+          <Input
+            id="order-gateway"
+            value={gateway || "(none)"}
+            disabled
+            readOnly
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="order-transaction-id">Transaction ID</Label>
+          <Input
+            id="order-transaction-id"
+            value={gatewayTransactionId || "(none)"}
+            disabled
+            readOnly
+          />
+        </div>
+
+        {paymentResponseJson ? (
+          <details className="rounded-md border p-3">
+            <summary className="cursor-pointer text-sm font-medium">
+              Gateway response
+            </summary>
+            <div className="mt-3 space-y-2">
+              <p className="text-muted-foreground text-xs">
+                Stored for debugging/auditing. Contains no raw card data.
+              </p>
+              <Textarea value={paymentResponseJson} rows={8} readOnly disabled />
+            </div>
+          </details>
+        ) : null}
 
         <div className="space-y-2">
           <Label htmlFor="order-notes">Order notes</Label>

@@ -20,6 +20,23 @@ If you are not familiar with the different technologies used in this project, pl
 
 This application requires several environment variables to be set up correctly.
 
+## Local HTTPS (Authorize.Net Accept.js testing)
+
+Authorize.Net Accept.js requires a **secure browser context**. Your org-level dev URLs like `wall-street-academy.localhost` are **not** treated as `localhost`, so you’ll typically want HTTPS while testing checkout.
+
+We run Portal normally on HTTP (microfrontends assigns the port; commonly `3024`) and run a local HTTPS reverse-proxy on `3025`:
+
+- Install Caddy:
+  - `brew install caddy`
+- Trust Caddy’s local CA (one-time):
+  - `caddy trust`
+- Start Portal (HTTP):
+  - `pnpm --filter portal dev`
+- In another terminal, start HTTPS proxy:
+  - `pnpm --filter portal dev:https`
+- Test checkout over HTTPS:
+  - `https://wall-street-academy.localhost:3025/checkout`
+
 ### Clerk session cookies for multi-tenant admin
 
 When developing with tenant subdomains (e.g., `wall-street-academy.localhost:3004`), Clerk must share its session cookie across every subdomain. Set the following in your frontend `.env.local` (or your deployment environment) and restart the dev server:

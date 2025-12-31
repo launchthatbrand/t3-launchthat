@@ -61,6 +61,10 @@ export const createPost = mutation({
       v.literal("published"),
       v.literal("draft"),
       v.literal("archived"),
+      // Orders: ecommerce-specific lifecycle statuses (stored in post.status)
+      v.literal("unpaid"),
+      v.literal("paid"),
+      v.literal("failed"),
     ),
     category: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
@@ -129,6 +133,10 @@ export const updatePost = mutation({
         v.literal("published"),
         v.literal("draft"),
         v.literal("archived"),
+        // Orders: ecommerce-specific lifecycle statuses (stored in post.status)
+        v.literal("unpaid"),
+        v.literal("paid"),
+        v.literal("failed"),
       ),
     ),
     category: v.optional(v.string()),

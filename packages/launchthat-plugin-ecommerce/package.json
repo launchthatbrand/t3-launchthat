@@ -30,7 +30,8 @@
     "@acme/ui": "workspace:*",
     "convex": "^1.23.0",
     "dev": "^0.1.3",
-    "launchthat-plugin-core": "workspace:*"
+    "launchthat-plugin-core": "workspace:*",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@acme/eslint-config": "workspace:*",

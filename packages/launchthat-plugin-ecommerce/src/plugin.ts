@@ -34,6 +34,26 @@ export const createEcommercePluginDefinition = (
   longDescription:
     "Adds a component-scoped ecommerce content layer (products + orders) backed by Convex Components.",
   features: ["Products post type", "Orders post type"],
+  postStatuses: [
+    {
+      value: "unpaid",
+      label: "Unpaid",
+      description: "Order created but not yet paid.",
+      postTypeSlugs: ["orders"],
+    },
+    {
+      value: "paid",
+      label: "Paid",
+      description: "Payment captured successfully.",
+      postTypeSlugs: ["orders"],
+    },
+    {
+      value: "failed",
+      label: "Failed",
+      description: "Payment failed or was declined.",
+      postTypeSlugs: ["orders"],
+    },
+  ],
   adminMenus: [
     {
       label: "Ecommerce",

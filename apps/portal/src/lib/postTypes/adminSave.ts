@@ -2,12 +2,20 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { findEntityAdapter, findPostSaveAdapter } from "@/lib/postTypes/adminAdapters";
 
 import { generateSlugFromTitle } from "@/lib/blog";
-export type AdminSaveStatus = "published" | "draft" | "archived";
+// NOTE: Portal core uses draft/published/archived, but plugins can extend the
+// allowed statuses per post type. Ecommerce orders use paid/unpaid/failed.
+export type AdminSaveStatus =
+  | "published"
+  | "draft"
+  | "archived"
+  | "paid"
+  | "unpaid"
+  | "failed";
 
-export type AdminSaveResult = {
+export interface AdminSaveResult {
   entityId: string;
   resolvedSlug: string;
-};
+}
 
 type SaveEntityFn = (args: {
   postTypeSlug: string;
@@ -57,9 +65,9 @@ export async function saveAdminEntry(args: {
     organizationId: Id<"organizations">;
     objectId: string;
     postTypeSlug: string;
-    termIds: Array<Id<"taxonomyTerms">>;
+    termIds: Id<"taxonomyTerms">[];
   }) => Promise<unknown>;
-  taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
+  taxonomyTermIds?: Id<"taxonomyTerms">[];
   supportsTaxonomy?: boolean;
 }): Promise<AdminSaveResult> {
   const normalizedTitle = args.title.trim();

@@ -130,6 +130,7 @@ import type * as plugins_commerce_cart_mutations from "../plugins/commerce/cart/
 import type * as plugins_commerce_cart_queries from "../plugins/commerce/cart/queries.js";
 import type * as plugins_commerce_chargebacks_evidence_mutations from "../plugins/commerce/chargebacks/evidence/mutations.js";
 import type * as plugins_commerce_chargebacks_evidence_queries from "../plugins/commerce/chargebacks/evidence/queries.js";
+import type * as plugins_commerce_checkout_actions from "../plugins/commerce/checkout/actions.js";
 import type * as plugins_commerce_checkout_mutations from "../plugins/commerce/checkout/mutations.js";
 import type * as plugins_commerce_mutations from "../plugins/commerce/mutations.js";
 import type * as plugins_commerce_orders_mutations from "../plugins/commerce/orders/mutations.js";
@@ -335,6 +336,7 @@ declare const fullApi: ApiFromModules<{
   "plugins/commerce/cart/queries": typeof plugins_commerce_cart_queries;
   "plugins/commerce/chargebacks/evidence/mutations": typeof plugins_commerce_chargebacks_evidence_mutations;
   "plugins/commerce/chargebacks/evidence/queries": typeof plugins_commerce_chargebacks_evidence_queries;
+  "plugins/commerce/checkout/actions": typeof plugins_commerce_checkout_actions;
   "plugins/commerce/checkout/mutations": typeof plugins_commerce_checkout_mutations;
   "plugins/commerce/mutations": typeof plugins_commerce_mutations;
   "plugins/commerce/orders/mutations": typeof plugins_commerce_orders_mutations;
@@ -5826,7 +5828,13 @@ export declare const components: {
             organizationId?: string;
             postTypeSlug: string;
             slug: string;
-            status: "published" | "draft" | "archived";
+            status:
+              | "published"
+              | "draft"
+              | "archived"
+              | "unpaid"
+              | "paid"
+              | "failed";
             tags?: Array<string>;
             title: string;
             updatedAt?: number;
@@ -5863,7 +5871,13 @@ export declare const components: {
             organizationId?: string;
             patch?: any;
             slug?: string;
-            status?: "published" | "draft" | "archived";
+            status?:
+              | "published"
+              | "draft"
+              | "archived"
+              | "unpaid"
+              | "paid"
+              | "failed";
             tags?: Array<string>;
             title?: string;
           },
@@ -5880,7 +5894,13 @@ export declare const components: {
               category?: string;
               limit?: number;
               postTypeSlug?: string;
-              status?: "published" | "draft" | "archived";
+              status?:
+                | "published"
+                | "draft"
+                | "archived"
+                | "unpaid"
+                | "paid"
+                | "failed";
             };
             organizationId?: string;
           },

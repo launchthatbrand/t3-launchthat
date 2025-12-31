@@ -6,7 +6,8 @@ const postsTable = defineTable({
   content: v.optional(v.string()),
   excerpt: v.optional(v.string()),
   slug: v.string(),
-  status: v.union(v.literal("published"), v.literal("draft"), v.literal("archived")),
+  // Allow plugin-defined/custom statuses (e.g. orders: paid/unpaid/failed).
+  status: v.string(),
   category: v.optional(v.string()),
   tags: v.optional(v.array(v.string())),
   featuredImageUrl: v.optional(v.string()),
