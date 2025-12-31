@@ -152,6 +152,7 @@ type PostTypeDefinitionPayload = Pick<
   | "adminMenu"
   | "storageKind"
   | "storageTables"
+  | "storageComponent"
   | "metaBoxes"
 >;
 
@@ -170,6 +171,7 @@ const pickPostTypeDefinition = (
   adminMenu: definition.adminMenu,
   storageKind: definition.storageKind,
   storageTables: definition.storageTables,
+  storageComponent: definition.storageComponent,
   metaBoxes: definition.metaBoxes,
 });
 

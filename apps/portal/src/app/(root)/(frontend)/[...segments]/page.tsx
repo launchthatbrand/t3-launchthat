@@ -27,6 +27,10 @@ import {
   parseLexicalSerializedState,
 } from "~/lib/editor/lexical";
 import {
+  loadAllowedPageTemplates,
+  renderFrontendResolvedPost,
+} from "~/lib/frontendRouting/renderFrontendSinglePost";
+import {
   DEFAULT_PAGE_TEMPLATE_SLUG,
   getPageTemplate,
   PAGE_TEMPLATE_ACCESS_OPTION_KEY,
@@ -49,10 +53,6 @@ import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 import { cn } from "~/lib/utils";
 import { PortalConvexProvider } from "~/providers/ConvexClientProvider";
 import { PuckContentRenderer } from "../../../../components/puckeditor/PuckContentRenderer";
-import {
-  loadAllowedPageTemplates,
-  renderFrontendResolvedPost,
-} from "~/lib/frontendRouting/renderFrontendSinglePost";
 
 export { generateMetadata } from "./metadata";
 
@@ -227,7 +227,9 @@ export default async function FrontendCatchAllPage(props: PageProps) {
   );
 
   const allowedPageTemplates =
-    post.postTypeSlug === "pages" ? await loadAllowedPageTemplates(organizationId) : undefined;
+    post.postTypeSlug === "pages"
+      ? await loadAllowedPageTemplates(organizationId)
+      : undefined;
 
   const pluginMatch: PluginMatch = post.postTypeSlug
     ? findPostTypeBySlug(post.postTypeSlug)
@@ -518,7 +520,10 @@ function PostDetail({
   return (
     <main className="relative">
       {layout?.container !== "full" && (
-        <BackgroundRippleEffect interactive={true} className="z-10 opacity-80" />
+        <BackgroundRippleEffect
+          interactive={true}
+          className="z-10 opacity-80"
+        />
       )}
       <div className={containerClassName}>
         {pluginSlots.beforeContent.length > 0 && (
@@ -540,7 +545,9 @@ function PostDetail({
                 </p>
                 <h1 className="text-4xl font-bold">{post.title}</h1>
                 {post.excerpt && (
-                  <p className="text-muted-foreground text-lg">{post.excerpt}</p>
+                  <p className="text-muted-foreground text-lg">
+                    {post.excerpt}
+                  </p>
                 )}
                 <PostMetaSummary post={post} postType={postType} />
                 {post.organizationId ? (

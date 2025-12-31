@@ -3,7 +3,6 @@ import { defineSchema } from "convex/server";
 import { postsSchema } from "./core/posts/schema";
 import { coreSchema } from "./core/schema";
 import { usersSchema } from "./core/users/schema";
-import { ecommerceSchema } from "./ecommerce/schema";
 import { integrationsSchema } from "./integrations/schema";
 // Add integrations schema
 // import { integrationsSchema } from "./integrations/schema";
@@ -17,9 +16,6 @@ import { vimeoSchema } from "./vimeo/schema";
 export default defineSchema({
   // Support plugin tables
   ...supportSchema,
-
-  // Ecommerce tables
-  ...ecommerceSchema,
 
   // Integrations tables
   ...integrationsSchema,

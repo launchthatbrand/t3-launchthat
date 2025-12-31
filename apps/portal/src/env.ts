@@ -24,6 +24,7 @@ export const env = createEnv({
     VIMEO_REDIRECT_URI: z.string().url(),
     CLERK_JWT_ISSUER_DOMAIN: z.string().url(),
     OPENAI_API_KEY: z.string().min(1).optional(),
+    STRIPE_SECRET_KEY: z.string().min(1).optional(),
   },
 
   /**
@@ -37,6 +38,7 @@ export const env = createEnv({
     NEXT_PUBLIC_CONVEX_HTTP_URL: z.string().url(),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().min(1),
+    NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID: z.string().min(1).optional(),
     NEXT_PUBLIC_VIMEO_CLIENT_ID: z.string().min(1),
     NEXT_PUBLIC_ROOT_DOMAIN: z.string().min(1),
   },
@@ -56,6 +58,8 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID:
+      process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID,
     // Server vars like CLERK_SECRET_KEY are validated but not explicitly mapped here
     // as they are usually accessed directly by server-side libraries.
     NEXT_PUBLIC_VIMEO_CLIENT_ID: process.env.NEXT_PUBLIC_VIMEO_CLIENT_ID,

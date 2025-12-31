@@ -10,6 +10,9 @@
 
 import type * as helpers from "../helpers.js";
 import type * as mutations from "../mutations.js";
+import type * as posts_helpers from "../posts/helpers.js";
+import type * as posts_mutations from "../posts/mutations.js";
+import type * as posts_queries from "../posts/queries.js";
 import type * as queries from "../queries.js";
 
 import type {
@@ -29,6 +32,9 @@ import type {
 declare const fullApi: ApiFromModules<{
   helpers: typeof helpers;
   mutations: typeof mutations;
+  "posts/helpers": typeof posts_helpers;
+  "posts/mutations": typeof posts_mutations;
+  "posts/queries": typeof posts_queries;
   queries: typeof queries;
 }>;
 export type Mounts = {
@@ -95,6 +101,82 @@ export type Mounts = {
       },
       any
     >;
+  };
+  posts: {
+    mutations: {
+      createPost: FunctionReference<
+        "mutation",
+        "public",
+        {
+          category?: string;
+          content?: string;
+          excerpt?: string;
+          featuredImage?: string;
+          meta?: Record<string, string | number | boolean | null>;
+          organizationId?: string;
+          postTypeSlug: string;
+          slug: string;
+          status: "published" | "draft" | "archived";
+          tags?: Array<string>;
+          title: string;
+        },
+        string
+      >;
+      deletePost: FunctionReference<"mutation", "public", { id: string }, null>;
+      updatePost: FunctionReference<
+        "mutation",
+        "public",
+        {
+          category?: string;
+          content?: string;
+          excerpt?: string;
+          featuredImage?: string;
+          id: string;
+          meta?: Record<string, string | number | boolean | null>;
+          organizationId?: string;
+          slug?: string;
+          status?: "published" | "draft" | "archived";
+          tags?: Array<string>;
+          title?: string;
+        },
+        null
+      >;
+    };
+    queries: {
+      getAllPosts: FunctionReference<
+        "query",
+        "public",
+        {
+          filters?: {
+            authorId?: string;
+            category?: string;
+            limit?: number;
+            postTypeSlug?: string;
+            status?: "published" | "draft" | "archived";
+          };
+          organizationId?: string;
+        },
+        any
+      >;
+      getPostById: FunctionReference<
+        "query",
+        "public",
+        { id: string; organizationId?: string },
+        any
+      >;
+      getPostBySlug: FunctionReference<
+        "query",
+        "public",
+        { organizationId?: string; slug: string },
+        any
+      >;
+      getPostMeta: FunctionReference<
+        "query",
+        "public",
+        { organizationId?: string; postId: string },
+        any
+      >;
+    };
   };
   queries: {
     getSupportOption: FunctionReference<

@@ -66,6 +66,15 @@ const buildPortalCallbackUrl = (origin: string) => {
   return destination;
 };
 
+const buildPortalStripeCallbackUrl = (origin: string) => {
+  const destination = new URL("/admin/edit", origin);
+  destination.searchParams.set("plugin", "commerce");
+  destination.searchParams.set("page", "settings");
+  destination.searchParams.set("tab", "payments");
+  destination.searchParams.set("gateway", "stripe");
+  return destination;
+};
+
 const resolveVimeoClientId = () =>
   // eslint-disable-next-line turbo/no-undeclared-env-vars
   process.env.NEXT_PUBLIC_VIMEO_CLIENT_ID ??
@@ -74,6 +83,17 @@ const resolveVimeoClientId = () =>
   "";
 
 const VIMEO_SCOPE = "public private video_files";
+
+const resolveStripeConnectClientId = () =>
+  // eslint-disable-next-line turbo/no-undeclared-env-vars
+  process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID ??
+  // eslint-disable-next-line turbo/no-undeclared-env-vars
+  process.env.STRIPE_CONNECT_CLIENT_ID ??
+  "";
+
+// Stripe connect OAuth scopes:
+// - read_write: needed for creating payments and managing connected account resources
+const STRIPE_CONNECT_SCOPE = "read_write";
 
 /**
  * HTTP action handler for creating an Authorize.Net transaction.
@@ -228,6 +248,66 @@ const relayVimeoOAuth = httpAction(async (_, request) => {
   });
 });
 
+const startStripeOAuth = httpAction(async (_, request) => {
+  const requestUrl = new URL(request.url);
+  const clientId = resolveStripeConnectClientId();
+  if (!clientId) {
+    return new Response(
+      JSON.stringify({ error: "Stripe connect client id not configured" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+
+  const baseOrigin = sanitizeOrigin(requestUrl.searchParams.get("origin"));
+  const redirectUri = `${requestUrl.origin}/api/integrations/stripe`;
+  const params = new URLSearchParams({
+    response_type: "code",
+    client_id: clientId,
+    scope: STRIPE_CONNECT_SCOPE,
+    redirect_uri: redirectUri,
+    state: baseOrigin,
+  });
+
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: `https://connect.stripe.com/oauth/authorize?${params.toString()}`,
+    },
+  });
+});
+
+const relayStripeOAuth = httpAction(async (_, request) => {
+  const requestUrl = new URL(request.url);
+  const code = requestUrl.searchParams.get("code");
+  const error = requestUrl.searchParams.get("error");
+  const errorDescription = requestUrl.searchParams.get("error_description");
+  const state = requestUrl.searchParams.get("state");
+
+  const baseOrigin = sanitizeOrigin(state);
+  const destination = buildPortalStripeCallbackUrl(baseOrigin);
+
+  if (code) {
+    destination.searchParams.set("code", code);
+  }
+
+  if (error) {
+    destination.searchParams.set("error", error);
+    if (errorDescription) {
+      destination.searchParams.set("error_description", errorDescription);
+    }
+  }
+
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: destination.toString(),
+    },
+  });
+});
+
 http.route({
   path: "/healthz",
   method: "GET",
@@ -310,6 +390,18 @@ http.route({
   path: "/api/integrations/vimeo/start",
   method: "GET",
   handler: startVimeoOAuth,
+});
+
+http.route({
+  path: "/api/integrations/stripe",
+  method: "GET",
+  handler: relayStripeOAuth,
+});
+
+http.route({
+  path: "/api/integrations/stripe/start",
+  method: "GET",
+  handler: startStripeOAuth,
 });
 
 // Vimeo webhooks: best-effort receiver (Vimeo does not send CORS requests)

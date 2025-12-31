@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
     "launchthat-plugin-calendar",
     "launchthat-plugin-cms",
     "launchthat-plugin-core",
-    "launchthat-plugin-commerce",
+    "launchthat-plugin-ecommerce",
     "launchthat-plugin-disclaimers",
     "launchthat-plugin-helpdesk",
     "launchthat-plugin-support",

@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
             retryAfterMs: sessionLimit.retryAfterMs,
           }),
         );
-        return NextResponse.json(
+      return NextResponse.json(
           { error: "Rate limited" },
           {
             status: 429,
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
               "Retry-After": String(Math.ceil(sessionLimit.retryAfterMs / 1000)),
             },
           },
-        );
+      );
       }
     }
 

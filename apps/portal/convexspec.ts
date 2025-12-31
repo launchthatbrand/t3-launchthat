@@ -5,1904 +5,6 @@ export const api: PublicApiType = anyApi as unknown as PublicApiType;
 export const internal: InternalApiType = anyApi as unknown as InternalApiType;
 
 export type PublicApiType = {
-  ecommerce: {
-    orders: {
-      mockData: {
-        createMockOrder: FunctionReference<
-          "mutation",
-          "public",
-          Record<string, never>,
-          {
-            orderAmount: number;
-            orderDbId?: Id<"orders">;
-            orderId?: string;
-            success: boolean;
-          }
-        >;
-        createMockOrders: FunctionReference<
-          "mutation",
-          "public",
-          { quantity: number },
-          { count: number; orderIds: Array<string>; success: boolean }
-        >;
-      };
-      mutations: {
-        updateOrderStatus: FunctionReference<
-          "mutation",
-          "public",
-          {
-            notes?: string;
-            orderId: Id<"orders">;
-            status:
-              | "pending"
-              | "processing"
-              | "shipped"
-              | "delivered"
-              | "completed"
-              | "cancelled"
-              | "refunded"
-              | "partially_refunded"
-              | "on_hold"
-              | "chargeback";
-          },
-          null
-        >;
-        createOrder: FunctionReference<
-          "mutation",
-          "public",
-          {
-            customerInfo: {
-              company?: string;
-              firstName: string;
-              lastName: string;
-              phone?: string;
-            };
-            email: string;
-            items: Array<{
-              price: number;
-              productId: Id<"products">;
-              quantity: number;
-            }>;
-            notes?: string;
-            totalAmount: number;
-            userId?: Id<"users">;
-          },
-          { orderNumber: string; recordId: Id<"orders"> }
-        >;
-        deleteOrder: FunctionReference<
-          "mutation",
-          "public",
-          { orderId: Id<"orders"> },
-          any
-        >;
-        updateOrder: FunctionReference<
-          "mutation",
-          "public",
-          {
-            adminNotes?: string;
-            billingAddress: {
-              addressLine1: string;
-              addressLine2?: string;
-              city: string;
-              country: string;
-              fullName: string;
-              phoneNumber?: string;
-              postalCode: string;
-              stateOrProvince: string;
-            };
-            company?: string;
-            couponCode?: string;
-            createdAt?: number;
-            differentShippingAddress?: boolean;
-            discount?: number;
-            email: string;
-            firstName: string;
-            id: Id<"orders">;
-            lastName: string;
-            lineItems: Array<{
-              id: string;
-              lineTotal: number;
-              price: number;
-              productId: Id<"products">;
-              productSnapshot: {
-                description: string;
-                imageUrl?: string;
-                name: string;
-                price: number;
-              };
-              quantity: number;
-              variantId?: Id<"productVariants">;
-              variantSnapshot?: {
-                attributes: any;
-                name: string;
-                price: number;
-              };
-            }>;
-            notes?: string;
-            paymentMethod:
-              | "credit_card"
-              | "paypal"
-              | "apple_pay"
-              | "google_pay"
-              | "bank_transfer"
-              | "crypto"
-              | "other";
-            paymentStatus?:
-              | "pending"
-              | "processing"
-              | "paid"
-              | "failed"
-              | "refunded"
-              | "partially_refunded";
-            phone?: string;
-            shipping?: number;
-            shippingAddress: {
-              addressLine1: string;
-              addressLine2?: string;
-              city: string;
-              country: string;
-              fullName: string;
-              phoneNumber?: string;
-              postalCode: string;
-              stateOrProvince: string;
-            };
-            shippingDetails?: {
-              cost: number;
-              description: string;
-              method: string;
-            } | null;
-            status?:
-              | "pending"
-              | "processing"
-              | "shipped"
-              | "delivered"
-              | "completed"
-              | "cancelled"
-              | "refunded"
-              | "partially_refunded"
-              | "on_hold"
-              | "chargeback";
-            tax?: number;
-            userId?: Id<"users">;
-          },
-          any
-        >;
-      };
-      notes: {
-        addOrderNote: FunctionReference<
-          "mutation",
-          "public",
-          {
-            authorId?: Id<"users">;
-            authorName?: string;
-            content: string;
-            isPrivate?: boolean;
-            orderId: Id<"orders">;
-          },
-          any
-        >;
-        updateOrderNote: FunctionReference<
-          "mutation",
-          "public",
-          {
-            content: string;
-            isPrivate?: boolean;
-            noteId: string;
-            orderId: Id<"orders">;
-          },
-          any
-        >;
-        deleteOrderNote: FunctionReference<
-          "mutation",
-          "public",
-          { noteId: string; orderId: Id<"orders"> },
-          any
-        >;
-        getOrderNotes: FunctionReference<
-          "query",
-          "public",
-          { includePrivate?: boolean; orderId: Id<"orders"> },
-          any
-        >;
-      };
-      queries: {
-        getOrder: FunctionReference<
-          "query",
-          "public",
-          { orderId: Id<"orders"> },
-          any
-        >;
-        listOrders: FunctionReference<
-          "query",
-          "public",
-          {
-            limit?: number;
-            offset?: number;
-            organizationId?: Id<"organizations">;
-            status?: string;
-            userId?: Id<"users">;
-          },
-          any
-        >;
-        getOrdersCount: FunctionReference<
-          "query",
-          "public",
-          { status?: string; userId?: Id<"users"> },
-          any
-        >;
-      };
-    };
-    products: {
-      queries: {
-        listProducts: FunctionReference<
-          "query",
-          "public",
-          {
-            categoryId?: Id<"categories">;
-            isVisible?: boolean;
-            status?: "draft" | "active" | "archived";
-          },
-          any
-        >;
-        getProductById: FunctionReference<
-          "query",
-          "public",
-          { productId: Id<"products"> },
-          any
-        >;
-        getProductCount: FunctionReference<
-          "query",
-          "public",
-          Record<string, never>,
-          any
-        >;
-        getCategoryCount: FunctionReference<
-          "query",
-          "public",
-          Record<string, never>,
-          any
-        >;
-      };
-      uploads: {
-        generateUploadUrl: FunctionReference<
-          "mutation",
-          "public",
-          Record<string, never>,
-          string
-        >;
-        saveProductImage: FunctionReference<
-          "mutation",
-          "public",
-          {
-            alt?: string;
-            isPrimary?: boolean;
-            position?: number;
-            productId?: Id<"products">;
-            storageId: Id<"_storage">;
-          },
-          {
-            alt?: string;
-            isPrimary?: boolean;
-            position?: number;
-            storageId: Id<"_storage">;
-            url: string;
-          }
-        >;
-        deleteProductImage: FunctionReference<
-          "mutation",
-          "public",
-          { storageId: Id<"_storage"> },
-          null
-        >;
-      };
-      media: {
-        addProductMedia: FunctionReference<
-          "mutation",
-          "public",
-          {
-            mediaItems: Array<{
-              alt?: string;
-              isPrimary?: boolean;
-              mediaItemId: Id<"mediaItems">;
-              position?: number;
-            }>;
-            productId: Id<"products">;
-          },
-          { imagesAdded: number; success: boolean }
-        >;
-        replaceProductMedia: FunctionReference<
-          "mutation",
-          "public",
-          {
-            mediaItems: Array<{
-              alt?: string;
-              isPrimary?: boolean;
-              mediaItemId: Id<"mediaItems">;
-              position?: number;
-            }>;
-            productId: Id<"products">;
-          },
-          { success: boolean; totalImages: number }
-        >;
-        removeProductMedia: FunctionReference<
-          "mutation",
-          "public",
-          { mediaItemIds: Array<Id<"mediaItems">>; productId: Id<"products"> },
-          { removedCount: number; success: boolean }
-        >;
-        getProductWithMedia: FunctionReference<
-          "query",
-          "public",
-          { productId: Id<"products"> },
-          null | {
-            _id: Id<"products">;
-            description?: string;
-            images: Array<{
-              alt?: string;
-              isPrimary?: boolean;
-              position?: number;
-              url: string;
-            }>;
-            mediaItems?: Array<{
-              _id: Id<"mediaItems">;
-              alt?: string;
-              isPrimary?: boolean;
-              position?: number;
-              title?: string;
-              url?: string;
-            }>;
-            name: string;
-            price: number;
-          }
-        >;
-        createProductWithMedia: FunctionReference<
-          "mutation",
-          "public",
-          {
-            categoryIds: Array<Id<"productCategories">>;
-            description?: string;
-            hasVariants: boolean;
-            isDigital: boolean;
-            isFeatured: boolean;
-            isVisible: boolean;
-            mediaMetadata?: Array<{
-              alt?: string;
-              caption?: string;
-              isPrimary?: boolean;
-              position?: number;
-              title?: string;
-            }>;
-            name: string;
-            price: number;
-            primaryCategoryId: Id<"productCategories">;
-            sku: string;
-            slug: string;
-            status: string;
-            storageIds?: Array<Id<"_storage">>;
-            taxable: boolean;
-          },
-          { mediaItemIds: Array<Id<"mediaItems">>; productId: Id<"products"> }
-        >;
-      };
-      mutations: {
-        createProduct: FunctionReference<
-          "mutation",
-          "public",
-          {
-            basePrice?: number;
-            categoryIds: Array<Id<"productCategories">>;
-            costPrice?: number;
-            customSlug?: string;
-            description?: string;
-            hasVariants: boolean;
-            images: Array<{
-              alt?: string;
-              isPrimary?: boolean;
-              name?: string;
-              position?: number;
-              size?: number;
-              storageId?: Id<"_storage">;
-              url: string;
-            }>;
-            inventoryLevel?: number;
-            isDigital: boolean;
-            isFeatured?: boolean;
-            isVisible: boolean;
-            metaDescription?: string;
-            metaKeywords?: Array<string>;
-            metaTitle?: string;
-            name: string;
-            price?: number;
-            primaryCategoryId?: Id<"productCategories">;
-            salePrice?: number;
-            shortDescription?: string;
-            sku: string;
-            status: "draft" | "active" | "archived";
-            stockQuantity?: number;
-            stockStatus?: "in_stock" | "out_of_stock";
-            tags?: Array<string>;
-            taxable: boolean;
-          },
-          any
-        >;
-        updateProduct: FunctionReference<
-          "mutation",
-          "public",
-          {
-            categoryIds?: Array<Id<"productCategories">>;
-            costPrice?: number;
-            customSlug?: string;
-            description?: string;
-            hasVariants?: boolean;
-            images?: Array<{
-              alt?: string;
-              isPrimary?: boolean;
-              name?: string;
-              position?: number;
-              size?: number;
-              storageId?: Id<"_storage">;
-              url: string;
-            }>;
-            isDigital?: boolean;
-            isFeatured?: boolean;
-            isVisible?: boolean;
-            metaDescription?: string;
-            metaKeywords?: Array<string>;
-            metaTitle?: string;
-            name?: string;
-            price?: number;
-            primaryCategoryId?: Id<"productCategories">;
-            productId: Id<"products">;
-            salePrice?: number;
-            shortDescription?: string;
-            sku?: string;
-            status?: "draft" | "active" | "archived";
-            stockQuantity?: number;
-            stockStatus?: "in_stock" | "out_of_stock";
-            tags?: Array<string>;
-            taxable?: boolean;
-          },
-          any
-        >;
-        deleteProduct: FunctionReference<
-          "mutation",
-          "public",
-          { productId: Id<"products"> },
-          any
-        >;
-      };
-    };
-    balances: {
-      queries: {
-        getTransferWithOrders: FunctionReference<
-          "query",
-          "public",
-          { transferId: Id<"transfers"> },
-          any
-        >;
-        getBankAccount: FunctionReference<
-          "query",
-          "public",
-          { bankAccountId: Id<"bankAccounts"> },
-          any
-        >;
-        getStoreBalance: FunctionReference<
-          "query",
-          "public",
-          { storeId?: string },
-          {
-            _creationTime: number;
-            _id: Id<"storeBalances">;
-            availableBalance: number;
-            currency: string;
-            lastUpdated: number;
-            paymentProcessor: string;
-            pendingBalance: number;
-            processorAccountId?: string;
-            storeId?: string;
-            storeName?: string;
-            totalBalance: number;
-            updatedBy?: Id<"users">;
-          } | null
-        >;
-        listStoreBalances: FunctionReference<
-          "query",
-          "public",
-          Record<string, never>,
-          Array<{
-            _creationTime: number;
-            _id: Id<"storeBalances">;
-            availableBalance: number;
-            currency: string;
-            lastUpdated: number;
-            paymentProcessor: string;
-            pendingBalance: number;
-            processorAccountId?: string;
-            storeId?: string;
-            storeName?: string;
-            totalBalance: number;
-            updatedBy?: Id<"users">;
-          }>
-        >;
-        getTransfers: FunctionReference<
-          "query",
-          "public",
-          {
-            limit?: number;
-            status?:
-              | "pending"
-              | "in_transit"
-              | "completed"
-              | "failed"
-              | "cancelled"
-              | "reversed";
-          },
-          Array<{
-            _creationTime: number;
-            _id: Id<"transfers">;
-            amount: number;
-            bankAccountId: Id<"bankAccounts">;
-            completedAt?: number;
-            currency: string;
-            description?: string;
-            expectedArrival?: number;
-            failureReason?: string;
-            fees?: number;
-            initiatedAt: number;
-            initiatedBy: Id<"users">;
-            notes?: string;
-            paymentProcessor: string;
-            processorTransferId?: string;
-            status:
-              | "pending"
-              | "in_transit"
-              | "completed"
-              | "failed"
-              | "cancelled"
-              | "reversed";
-            transferId: string;
-          }>
-        >;
-        getBankAccounts: FunctionReference<
-          "query",
-          "public",
-          {
-            status?:
-              | "pending_verification"
-              | "verified"
-              | "failed_verification"
-              | "disabled";
-          },
-          Array<{
-            _creationTime: number;
-            _id: Id<"bankAccounts">;
-            accountName: string;
-            accountNumber: string;
-            accountType: "checking" | "savings";
-            address: {
-              city: string;
-              country: string;
-              postalCode: string;
-              state: string;
-              street1: string;
-              street2?: string;
-            };
-            bankName: string;
-            createdAt: number;
-            createdBy: Id<"users">;
-            isDefault: boolean;
-            paymentProcessor: string;
-            providerAccountId?: string;
-            routingNumber: string;
-            status:
-              | "pending_verification"
-              | "verified"
-              | "failed_verification"
-              | "disabled";
-            updatedAt: number;
-          }>
-        >;
-      };
-      mutations: {
-        createJunctionTableEntries: FunctionReference<
-          "mutation",
-          "public",
-          { orderIds: Array<Id<"orders">>; transferId: Id<"transfers"> },
-          any
-        >;
-        addOrdersToTransfer: FunctionReference<
-          "mutation",
-          "public",
-          { orderIds: Array<Id<"orders">>; transferId: Id<"transfers"> },
-          any
-        >;
-        removeOrdersFromTransfer: FunctionReference<
-          "mutation",
-          "public",
-          { orderIds: Array<Id<"orders">>; transferId: Id<"transfers"> },
-          any
-        >;
-        createBankAccount: FunctionReference<
-          "mutation",
-          "public",
-          {
-            accountHolderName: string;
-            accountNumber: string;
-            accountType: "checking" | "savings";
-            bankName: string;
-            isDefault?: boolean;
-            routingNumber: string;
-          },
-          any
-        >;
-        updateBankAccount: FunctionReference<
-          "mutation",
-          "public",
-          {
-            accountHolderName?: string;
-            bankAccountId: Id<"bankAccounts">;
-            bankName?: string;
-            isDefault?: boolean;
-          },
-          any
-        >;
-        createTransfer: FunctionReference<
-          "mutation",
-          "public",
-          {
-            amount: number;
-            bankAccountId: Id<"bankAccounts">;
-            currency: string;
-            description?: string;
-          },
-          any
-        >;
-        updateStoreBalance: FunctionReference<
-          "mutation",
-          "public",
-          {
-            availableBalance: number;
-            currency: string;
-            paymentProcessor: string;
-            pendingBalance: number;
-            processorAccountId?: string;
-            storeBalanceId?: Id<"storeBalances">;
-            storeId?: string;
-            storeName?: string;
-          },
-          any
-        >;
-        deleteBankAccount: FunctionReference<
-          "mutation",
-          "public",
-          { bankAccountId: Id<"bankAccounts"> },
-          any
-        >;
-        deleteStoreBalance: FunctionReference<
-          "mutation",
-          "public",
-          { storeBalanceId: Id<"storeBalances"> },
-          any
-        >;
-      };
-    };
-    categories: {
-      mutations: {
-        createCategory: FunctionReference<
-          "mutation",
-          "public",
-          {
-            description?: string;
-            displayOrder?: number;
-            iconUrl?: string;
-            imageUrl?: string;
-            isActive: boolean;
-            isVisible: boolean;
-            metaDescription?: string;
-            metaKeywords?: Array<string>;
-            metaTitle?: string;
-            name: string;
-            parentId?: Id<"productCategories">;
-          },
-          any
-        >;
-        updateCategory: FunctionReference<
-          "mutation",
-          "public",
-          {
-            categoryId: Id<"productCategories">;
-            description?: string;
-            displayOrder?: number;
-            iconUrl?: string;
-            imageUrl?: string;
-            isActive?: boolean;
-            isVisible?: boolean;
-            metaDescription?: string;
-            metaKeywords?: Array<string>;
-            metaTitle?: string;
-            name?: string;
-            parentId?: Id<"productCategories"> | null;
-          },
-          any
-        >;
-        deleteCategory: FunctionReference<
-          "mutation",
-          "public",
-          { categoryId: Id<"productCategories"> },
-          any
-        >;
-      };
-      queries: {
-        getProductCategories: FunctionReference<
-          "query",
-          "public",
-          {
-            isActive?: boolean;
-            isVisible?: boolean;
-            parentId?: Id<"productCategories">;
-          },
-          Array<{
-            _creationTime: number;
-            _id: Id<"productCategories">;
-            createdAt: number;
-            description?: string;
-            displayOrder?: number;
-            iconUrl?: string;
-            imageUrl?: string;
-            isActive: boolean;
-            isVisible: boolean;
-            level: number;
-            metaDescription?: string;
-            metaKeywords?: Array<string>;
-            metaTitle?: string;
-            name: string;
-            parentId?: Id<"productCategories">;
-            path: Array<Id<"productCategories">>;
-            slug: string;
-            updatedAt: number;
-          }>
-        >;
-        getCategoryTree: FunctionReference<
-          "query",
-          "public",
-          Record<string, never>,
-          Array<any>
-        >;
-        getCategory: FunctionReference<
-          "query",
-          "public",
-          { categoryId: Id<"productCategories"> },
-          null | any
-        >;
-        getCategoryBySlug: FunctionReference<
-          "query",
-          "public",
-          { slug: string },
-          null | any
-        >;
-        getCategoryBreadcrumbs: FunctionReference<
-          "query",
-          "public",
-          { categoryId: Id<"productCategories"> },
-          any
-        >;
-        getCategoryCount: FunctionReference<
-          "query",
-          "public",
-          Record<string, never>,
-          number
-        >;
-      };
-    };
-    cart: {
-      mutations: {
-        addToCart: FunctionReference<
-          "mutation",
-          "public",
-          {
-            guestSessionId?: string;
-            productId: Id<"products">;
-            quantity: number;
-            savedForLater?: boolean;
-            userId?: Id<"users">;
-            variationId?: Id<"productVariants">;
-          },
-          any
-        >;
-        updateCartItemQuantity: FunctionReference<
-          "mutation",
-          "public",
-          {
-            cartItemId: Id<"cartItems">;
-            guestSessionId?: string;
-            quantity: number;
-            userId?: Id<"users">;
-          },
-          any
-        >;
-        removeFromCart: FunctionReference<
-          "mutation",
-          "public",
-          {
-            cartItemId: Id<"cartItems">;
-            guestSessionId?: string;
-            userId?: Id<"users">;
-          },
-          any
-        >;
-        clearCart: FunctionReference<
-          "mutation",
-          "public",
-          { guestSessionId?: string; userId?: Id<"users"> },
-          any
-        >;
-      };
-      queries: {
-        getCart: FunctionReference<
-          "query",
-          "public",
-          { guestSessionId?: string; sessionId?: string; userId?: Id<"users"> },
-          {
-            items: Array<{
-              _creationTime: number;
-              _id: Id<"cartItems">;
-              addedAt: number;
-              guestSessionId?: string;
-              price: number;
-              productId: Id<"products">;
-              productSnapshot: {
-                description?: string;
-                image?: string;
-                name: string;
-                sku?: string;
-                slug?: string;
-              };
-              quantity: number;
-              savedForLater: boolean;
-              updatedAt: number;
-              userId?: string;
-              variationId?: Id<"productVariants">;
-              variationSnapshot?: {
-                attributes: Record<string, string>;
-                name: string;
-              };
-            }>;
-            savedItems: Array<{
-              _creationTime: number;
-              _id: Id<"cartItems">;
-              addedAt: number;
-              guestSessionId?: string;
-              price: number;
-              productId: Id<"products">;
-              productSnapshot: {
-                description?: string;
-                image?: string;
-                name: string;
-                sku?: string;
-                slug?: string;
-              };
-              quantity: number;
-              savedForLater: boolean;
-              updatedAt: number;
-              userId?: string;
-              variationId?: Id<"productVariants">;
-              variationSnapshot?: {
-                attributes: Record<string, string>;
-                name: string;
-              };
-            }>;
-            summary: {
-              _creationTime?: number;
-              _id?: Id<"cartSummary">;
-              estimatedShipping: number;
-              estimatedTax: number;
-              guestSessionId?: string;
-              itemCount: number;
-              subtotal: number;
-              updatedAt: number;
-              userId?: string;
-            };
-          }
-        >;
-      };
-    };
-    chargebacks: {
-      evidence: {
-        getChargebackEvidence: FunctionReference<
-          "query",
-          "public",
-          {
-            chargebackId: Id<"chargebacks">;
-            documentType?: string;
-            submissionStatus?: string;
-          },
-          Array<{
-            _creationTime: number;
-            _id: Id<"chargebackEvidence">;
-            chargebackId: Id<"chargebacks">;
-            description?: string;
-            documentType:
-              | "receipt"
-              | "shipping_proof"
-              | "customer_communication"
-              | "refund_policy"
-              | "terms_of_service"
-              | "product_description"
-              | "customer_signature"
-              | "billing_statement"
-              | "transaction_history"
-              | "dispute_response"
-              | "audit_log"
-              | "other";
-            fileStorageId?: Id<"_storage">;
-            importance: "critical" | "high" | "medium" | "low";
-            metadata?: Record<string, string | number | boolean>;
-            processorRelevance?: {
-              authorizeNet?: boolean;
-              paypal?: boolean;
-              square?: boolean;
-              stripe?: boolean;
-            };
-            submissionStatus:
-              | "draft"
-              | "ready"
-              | "submitted"
-              | "accepted"
-              | "rejected";
-            submittedAt?: number;
-            submittedBy?: string;
-            tags?: Array<string>;
-            textContent?: string;
-            title: string;
-            url?: string;
-          }>
-        >;
-        getEvidence: FunctionReference<
-          "query",
-          "public",
-          { evidenceId: Id<"chargebackEvidence"> },
-          null | {
-            _creationTime: number;
-            _id: Id<"chargebackEvidence">;
-            chargebackId: Id<"chargebacks">;
-            description?: string;
-            documentType:
-              | "receipt"
-              | "shipping_proof"
-              | "customer_communication"
-              | "refund_policy"
-              | "terms_of_service"
-              | "product_description"
-              | "customer_signature"
-              | "billing_statement"
-              | "transaction_history"
-              | "dispute_response"
-              | "other";
-            fileStorageId?: Id<"_storage">;
-            importance: "critical" | "high" | "medium" | "low";
-            metadata?: Record<string, string | number | boolean>;
-            processorRelevance?: {
-              authorizeNet?: boolean;
-              paypal?: boolean;
-              square?: boolean;
-              stripe?: boolean;
-            };
-            submissionStatus:
-              | "draft"
-              | "ready"
-              | "submitted"
-              | "accepted"
-              | "rejected";
-            submittedAt?: number;
-            submittedBy?: string;
-            tags?: Array<string>;
-            textContent?: string;
-            title: string;
-            url?: string;
-          }
-        >;
-        createEvidence: FunctionReference<
-          "mutation",
-          "public",
-          {
-            chargebackId: Id<"chargebacks">;
-            description?: string;
-            documentType:
-              | "receipt"
-              | "shipping_proof"
-              | "customer_communication"
-              | "refund_policy"
-              | "terms_of_service"
-              | "product_description"
-              | "customer_signature"
-              | "billing_statement"
-              | "transaction_history"
-              | "dispute_response"
-              | "other";
-            fileStorageId?: Id<"_storage">;
-            importance: "critical" | "high" | "medium" | "low";
-            metadata?: Record<string, string | number | boolean>;
-            processorRelevance?: {
-              authorizeNet?: boolean;
-              paypal?: boolean;
-              square?: boolean;
-              stripe?: boolean;
-            };
-            submittedBy?: string;
-            tags?: Array<string>;
-            textContent?: string;
-            title: string;
-            url?: string;
-          },
-          Id<"chargebackEvidence">
-        >;
-        updateEvidence: FunctionReference<
-          "mutation",
-          "public",
-          {
-            description?: string;
-            fileStorageId?: Id<"_storage">;
-            id: Id<"chargebackEvidence">;
-            importance?: "critical" | "high" | "medium" | "low";
-            metadata?: Record<string, string | number | boolean>;
-            processorRelevance?: {
-              authorizeNet?: boolean;
-              paypal?: boolean;
-              square?: boolean;
-              stripe?: boolean;
-            };
-            submissionStatus?:
-              | "draft"
-              | "ready"
-              | "submitted"
-              | "accepted"
-              | "rejected";
-            tags?: Array<string>;
-            textContent?: string;
-            title?: string;
-            url?: string;
-          },
-          null
-        >;
-        submitEvidence: FunctionReference<
-          "mutation",
-          "public",
-          { evidenceIds: Array<Id<"chargebackEvidence">>; submittedBy: string },
-          { error?: string; submittedCount: number; success: boolean }
-        >;
-        deleteEvidence: FunctionReference<
-          "mutation",
-          "public",
-          { id: Id<"chargebackEvidence"> },
-          null
-        >;
-        generateUploadUrl: FunctionReference<
-          "mutation",
-          "public",
-          Record<string, never>,
-          string
-        >;
-        getEvidenceSummary: FunctionReference<
-          "query",
-          "public",
-          { chargebackId: Id<"chargebacks"> },
-          {
-            acceptedCount: number;
-            criticalCount: number;
-            documentsWithFiles: number;
-            documentsWithText: number;
-            documentsWithUrls: number;
-            draftCount: number;
-            readyCount: number;
-            rejectedCount: number;
-            submittedCount: number;
-            totalCount: number;
-          }
-        >;
-      };
-      mockData: {
-        createMockChargeback: FunctionReference<
-          "mutation",
-          "public",
-          Record<string, never>,
-          {
-            chargebackId?: string;
-            error?: string;
-            orderId?: string;
-            success: boolean;
-          }
-        >;
-      };
-      mutations: {
-        updateChargebackStatus: FunctionReference<
-          "mutation",
-          "public",
-          {
-            chargebackId: Id<"chargebacks">;
-            status:
-              | "accepted"
-              | "won"
-              | "lost"
-              | "expired"
-              | "received"
-              | "under_review"
-              | "disputed";
-          },
-          any
-        >;
-        addChargebackEvidence: FunctionReference<
-          "mutation",
-          "public",
-          { chargebackId: Id<"chargebacks">; evidence: string },
-          any
-        >;
-        createChargeback: FunctionReference<
-          "mutation",
-          "public",
-          {
-            amount: number;
-            chargebackFee: number;
-            currency: string;
-            customerInfo: { customerId?: string; email: string; name: string };
-            internalNotes?: string;
-            orderId: Id<"orders">;
-            processorName: string;
-            reasonCode: string;
-            reasonDescription: string;
-            transactionId?: string;
-          },
-          any
-        >;
-        updateChargebackDetails: FunctionReference<
-          "mutation",
-          "public",
-          {
-            amount?: number;
-            chargebackFee?: number;
-            chargebackId: Id<"chargebacks">;
-            currency?: string;
-            disputeDeadline?: number;
-            internalNotes?: string;
-            processorName?: string;
-            reasonCode?: string;
-            reasonDescription?: string;
-            refundAmount?: number;
-          },
-          any
-        >;
-        deleteChargeback: FunctionReference<
-          "mutation",
-          "public",
-          { id: Id<"chargebacks"> },
-          null
-        >;
-      };
-      queries: {
-        getChargebacks: FunctionReference<
-          "query",
-          "public",
-          Record<string, never>,
-          Array<{
-            _creationTime: number;
-            _id: Id<"chargebacks">;
-            amount: number;
-            caseId?: string;
-            chargebackDate: number;
-            chargebackFee?: number;
-            chargebackId: string;
-            currency: string;
-            customerCommunication?: string;
-            customerInfo: { customerId?: string; email: string; name: string };
-            disputeDeadline?: number;
-            evidenceDetails?: string;
-            evidenceSubmitted?: boolean;
-            internalNotes?: string;
-            metadata?: Record<string, string | number | boolean>;
-            orderId: Id<"orders">;
-            previousChargebacks?: number;
-            processorName: string;
-            reasonCode: string;
-            reasonDescription: string;
-            receivedDate: number;
-            refundAmount?: number;
-            resolvedDate?: number;
-            riskScore?: number;
-            status:
-              | "received"
-              | "under_review"
-              | "accepted"
-              | "disputed"
-              | "won"
-              | "lost"
-              | "expired";
-            transactionId?: string;
-          }>
-        >;
-        getChargeback: FunctionReference<
-          "query",
-          "public",
-          { chargebackId: Id<"chargebacks"> },
-          {
-            _creationTime: number;
-            _id: Id<"chargebacks">;
-            amount: number;
-            caseId?: string;
-            chargebackDate: number;
-            chargebackFee?: number;
-            chargebackId: string;
-            currency: string;
-            customerCommunication?: string;
-            customerInfo: { customerId?: string; email: string; name: string };
-            disputeDeadline?: number;
-            evidenceDetails?: string;
-            evidenceSubmitted?: boolean;
-            internalNotes?: string;
-            metadata?: Record<string, string | number | boolean>;
-            orderId: Id<"orders">;
-            previousChargebacks?: number;
-            processorName: string;
-            reasonCode: string;
-            reasonDescription: string;
-            receivedDate: number;
-            refundAmount?: number;
-            resolvedDate?: number;
-            riskScore?: number;
-            status:
-              | "received"
-              | "under_review"
-              | "accepted"
-              | "disputed"
-              | "won"
-              | "lost"
-              | "expired";
-            transactionId?: string;
-          } | null
-        >;
-      };
-    };
-    checkout: {
-      mutations: {
-        createCheckoutSession: FunctionReference<
-          "mutation",
-          "public",
-          { items: Array<{ productId: Id<"products">; quantity: number }> },
-          any
-        >;
-        completeCheckout: FunctionReference<
-          "mutation",
-          "public",
-          { paymentMethodId: string; sessionId: string },
-          any
-        >;
-      };
-      queries: {
-        getCheckoutSession: FunctionReference<
-          "query",
-          "public",
-          { sessionId: string },
-          any
-        >;
-      };
-    };
-    payments: {
-      mutations: {
-        processPayment: FunctionReference<
-          "mutation",
-          "public",
-          { amount: number; orderId: Id<"orders">; paymentMethodId: string },
-          any
-        >;
-        refundPayment: FunctionReference<
-          "mutation",
-          "public",
-          { amount?: number; paymentId: string },
-          any
-        >;
-      };
-      queries: {
-        getPaymentMethods: FunctionReference<
-          "query",
-          "public",
-          Record<string, never>,
-          any
-        >;
-        getPayment: FunctionReference<
-          "query",
-          "public",
-          { paymentId: string },
-          any
-        >;
-      };
-    };
-    transfers: {
-      mockData: {
-        createMockTransfer: FunctionReference<
-          "mutation",
-          "public",
-          { orderCount?: number },
-          {
-            orderIds: Array<string>;
-            success: boolean;
-            totalAmount: number;
-            transferId: string;
-          }
-        >;
-      };
-      mutations: {
-        createTransfer: FunctionReference<
-          "mutation",
-          "public",
-          {
-            amount: number;
-            bankAccountId: Id<"bankAccounts">;
-            currency: string;
-            description?: string;
-            expectedArrival?: number;
-            fees?: number;
-            notes?: string;
-          },
-          any
-        >;
-        updateTransferStatus: FunctionReference<
-          "mutation",
-          "public",
-          {
-            failureReason?: string;
-            status:
-              | "pending"
-              | "completed"
-              | "failed"
-              | "cancelled"
-              | "in_transit"
-              | "reversed";
-            transferId: Id<"transfers">;
-          },
-          any
-        >;
-        updateTransferDetails: FunctionReference<
-          "mutation",
-          "public",
-          {
-            description?: string;
-            expectedArrival?: number;
-            fees?: number;
-            notes?: string;
-            transferId: Id<"transfers">;
-          },
-          any
-        >;
-        deleteTransfer: FunctionReference<
-          "mutation",
-          "public",
-          { transferId: Id<"transfers"> },
-          any
-        >;
-      };
-      queries: {
-        getTransfers: FunctionReference<
-          "query",
-          "public",
-          Record<string, never>,
-          any
-        >;
-        getTransfer: FunctionReference<
-          "query",
-          "public",
-          { transferId: Id<"transfers"> },
-          any
-        >;
-        getTransferDetails: FunctionReference<
-          "query",
-          "public",
-          { transferId: Id<"transfers"> },
-          any
-        >;
-      };
-    };
-    variations: {
-      mutations: {
-        createProductVariant: FunctionReference<
-          "mutation",
-          "public",
-          {
-            name: string;
-            price: number;
-            productId: Id<"products">;
-            sku?: string;
-          },
-          any
-        >;
-        updateProductVariant: FunctionReference<
-          "mutation",
-          "public",
-          { name?: string; price?: number; variantId: Id<"productVariants"> },
-          any
-        >;
-        deleteProductVariant: FunctionReference<
-          "mutation",
-          "public",
-          { variantId: Id<"productVariants"> },
-          any
-        >;
-      };
-      queries: {
-        getProductVariations: FunctionReference<
-          "query",
-          "public",
-          { productId: Id<"products"> },
-          any
-        >;
-        getVariation: FunctionReference<
-          "query",
-          "public",
-          { variationId: Id<"productVariants"> },
-          any
-        >;
-      };
-    };
-    funnels: {
-      queries: {
-        getAllFunnels: FunctionReference<
-          "query",
-          "public",
-          { status?: string },
-          any
-        >;
-        getFunnelCheckoutBySlug: FunctionReference<
-          "query",
-          "public",
-          { slug: string },
-          any
-        >;
-        getFunnelEdges: FunctionReference<
-          "query",
-          "public",
-          { funnelId: Id<"funnels"> },
-          any
-        >;
-        getFunnelSession: FunctionReference<
-          "query",
-          "public",
-          { sessionId: Id<"funnelSessions"> },
-          any
-        >;
-        getFunnelStepById: FunctionReference<
-          "query",
-          "public",
-          { stepId: Id<"funnelSteps"> },
-          any
-        >;
-        getFunnelSteps: FunctionReference<
-          "query",
-          "public",
-          { funnelId: Id<"funnels"> },
-          any
-        >;
-      };
-      mutations: {
-        createCustomCheckoutSession: FunctionReference<
-          "mutation",
-          "public",
-          { checkoutSlug: string; email?: string; name?: string },
-          any
-        >;
-        updateCustomCheckoutSessionInfo: FunctionReference<
-          "mutation",
-          "public",
-          {
-            email: string;
-            name?: string;
-            phone?: string;
-            sessionId: Id<"funnelSessions">;
-            shippingAddress?: {
-              addressLine1: string;
-              addressLine2?: string;
-              city: string;
-              country: string;
-              fullName: string;
-              phoneNumber?: string;
-              postalCode: string;
-              stateOrProvince: string;
-            };
-          },
-          any
-        >;
-        completeCustomCheckoutSession: FunctionReference<
-          "mutation",
-          "public",
-          {
-            billingAddress?: {
-              addressLine1: string;
-              addressLine2?: string;
-              city: string;
-              country: string;
-              fullName: string;
-              phoneNumber?: string;
-              postalCode: string;
-              stateOrProvince: string;
-            };
-            paymentIntentId?: string;
-            paymentMethod: string;
-            sessionId: Id<"funnelSessions">;
-          },
-          any
-        >;
-        createFunnel: FunctionReference<
-          "mutation",
-          "public",
-          {
-            allowCoupons?: boolean;
-            cancelUrl?: string;
-            collectBillingAddress?: boolean;
-            collectEmail: boolean;
-            collectName: boolean;
-            collectPhone?: boolean;
-            collectShippingAddress?: boolean;
-            contentTypeId?: Id<"contentTypes">;
-            description?: string;
-            slug: string;
-            status: string;
-            successUrl?: string;
-            title: string;
-          },
-          any
-        >;
-        updateCustomCheckout: FunctionReference<
-          "mutation",
-          "public",
-          {
-            allowCoupons?: boolean;
-            cancelUrl?: string;
-            collectBillingAddress?: boolean;
-            collectEmail?: boolean;
-            collectName?: boolean;
-            collectPhone?: boolean;
-            collectShippingAddress?: boolean;
-            description?: string;
-            id: Id<"funnels">;
-            productIds?: Array<Id<"products">>;
-            status?: string;
-            successUrl?: string;
-            title?: string;
-          },
-          any
-        >;
-        deleteCustomCheckout: FunctionReference<
-          "mutation",
-          "public",
-          { id: Id<"funnels"> },
-          any
-        >;
-        addFunnelStep: FunctionReference<
-          "mutation",
-          "public",
-          {
-            config?: {
-              allowCoupons?: boolean;
-              cancelUrl?: string;
-              checkoutLayout?: "one_step" | "two_step";
-              collectBillingAddress?: boolean;
-              collectEmail?: boolean;
-              collectName?: boolean;
-              collectPhone?: boolean;
-              collectShippingAddress?: boolean;
-              productIds?: Array<Id<"products">>;
-              successUrl?: string;
-            };
-            funnelId: Id<"funnels">;
-            label?: string;
-            position?: number;
-            type:
-              | "landing"
-              | "funnelCheckout"
-              | "upsell"
-              | "order_confirmation";
-          },
-          any
-        >;
-        updateFunnelStep: FunctionReference<
-          "mutation",
-          "public",
-          {
-            config?: {
-              allowCoupons?: boolean;
-              cancelUrl?: string;
-              checkoutLayout?: "one_step" | "two_step";
-              collectBillingAddress?: boolean;
-              collectEmail?: boolean;
-              collectName?: boolean;
-              collectPhone?: boolean;
-              collectShippingAddress?: boolean;
-              productIds?: Array<Id<"products">>;
-              successUrl?: string;
-              uiPosition?: { x: number; y: number };
-            };
-            label?: string;
-            position?: number;
-            slug?: string;
-            stepId: Id<"funnelSteps">;
-            type?:
-              | "landing"
-              | "funnelCheckout"
-              | "upsell"
-              | "order_confirmation";
-          },
-          any
-        >;
-        deleteFunnelStep: FunctionReference<
-          "mutation",
-          "public",
-          { stepId: Id<"funnelSteps"> },
-          any
-        >;
-        setCheckoutSessionItems: FunctionReference<
-          "mutation",
-          "public",
-          {
-            productIds: Array<Id<"products">>;
-            sessionId: Id<"funnelSessions">;
-          },
-          any
-        >;
-        addFunnelEdge: FunctionReference<
-          "mutation",
-          "public",
-          {
-            funnelId: Id<"funnels">;
-            label?: string;
-            source: Id<"funnelSteps">;
-            target: Id<"funnelSteps">;
-          },
-          any
-        >;
-        deleteFunnelEdge: FunctionReference<
-          "mutation",
-          "public",
-          { edgeId: Id<"funnelEdges"> },
-          any
-        >;
-        updateFunnelEdge: FunctionReference<
-          "mutation",
-          "public",
-          {
-            edgeId: Id<"funnelEdges">;
-            label?: string;
-            source?: Id<"funnelSteps">;
-            target?: Id<"funnelSteps">;
-          },
-          any
-        >;
-      };
-    };
-    checkouts: {
-      queries: {
-        getCheckoutBySlug: FunctionReference<
-          "query",
-          "public",
-          { slug: string },
-          any
-        >;
-        getCheckoutSession: FunctionReference<
-          "query",
-          "public",
-          { sessionId: Id<"funnelSessions"> },
-          any
-        >;
-      };
-      mutations: {
-        createCheckoutSession: FunctionReference<
-          "mutation",
-          "public",
-          { checkoutSlug: string; email?: string; name?: string },
-          any
-        >;
-        updateCheckoutSessionInfo: FunctionReference<
-          "mutation",
-          "public",
-          {
-            email: string;
-            name?: string;
-            phone?: string;
-            sessionId: Id<"funnelSessions">;
-            shippingAddress?: {
-              addressLine1: string;
-              addressLine2?: string;
-              city: string;
-              country: string;
-              fullName: string;
-              phoneNumber?: string;
-              postalCode: string;
-              stateOrProvince: string;
-            };
-          },
-          any
-        >;
-        completeCheckoutSession: FunctionReference<
-          "mutation",
-          "public",
-          {
-            billingAddress?: {
-              addressLine1: string;
-              addressLine2?: string;
-              city: string;
-              country: string;
-              fullName: string;
-              phoneNumber?: string;
-              postalCode: string;
-              stateOrProvince: string;
-            };
-            paymentIntentId?: string;
-            paymentMethod: string;
-            sessionId: Id<"funnelSessions">;
-          },
-          any
-        >;
-        setCheckoutSessionItems: FunctionReference<
-          "mutation",
-          "public",
-          {
-            productIds: Array<Id<"products">>;
-            sessionId: Id<"funnelSessions">;
-          },
-          any
-        >;
-      };
-    };
-    coupons: {
-      mutations: {
-        createCoupon: FunctionReference<
-          "mutation",
-          "public",
-          {
-            applicableCategoryIds?: Array<Id<"productCategories">>;
-            applicableProductIds?: Array<Id<"products">>;
-            code: string;
-            description?: string;
-            discountType: "percentage" | "fixed_amount";
-            discountValue: number;
-            endDate?: number;
-            excludeCategoryIds?: Array<Id<"productCategories">>;
-            excludeProductIds?: Array<Id<"products">>;
-            isAutomatic?: boolean;
-            isEnabled?: boolean;
-            isStackable?: boolean;
-            maximumSpend?: number;
-            minimumSpend?: number;
-            startDate?: number;
-            usageLimit?: number;
-            usageLimitPerUser?: number;
-          },
-          any
-        >;
-        updateCoupon: FunctionReference<
-          "mutation",
-          "public",
-          {
-            applicableCategoryIds?: Array<Id<"productCategories">>;
-            applicableProductIds?: Array<Id<"products">>;
-            code?: string;
-            couponId: Id<"coupons">;
-            description?: string;
-            discountType: "percentage" | "fixed_amount";
-            discountValue: number;
-            endDate?: number;
-            excludeCategoryIds?: Array<Id<"productCategories">>;
-            excludeProductIds?: Array<Id<"products">>;
-            isAutomatic?: boolean;
-            isEnabled?: boolean;
-            isStackable?: boolean;
-            maximumSpend?: number;
-            minimumSpend?: number;
-            startDate?: number;
-            usageLimit?: number;
-            usageLimitPerUser?: number;
-          },
-          any
-        >;
-        incrementCouponUsage: FunctionReference<
-          "mutation",
-          "public",
-          { couponId: Id<"coupons"> },
-          any
-        >;
-        deleteCoupon: FunctionReference<
-          "mutation",
-          "public",
-          { couponId: Id<"coupons"> },
-          any
-        >;
-      };
-      queries: {
-        listCoupons: FunctionReference<
-          "query",
-          "public",
-          { includeDisabled?: boolean; search?: string },
-          Array<{
-            _creationTime: number;
-            _id: Id<"coupons">;
-            applicableCategoryIds?: Array<Id<"productCategories">>;
-            applicableProductIds?: Array<Id<"products">>;
-            code: string;
-            createdAt: number;
-            description?: string;
-            discountType: "percentage" | "fixed_amount";
-            discountValue: number;
-            endDate?: number;
-            excludeCategoryIds?: Array<Id<"productCategories">>;
-            excludeProductIds?: Array<Id<"products">>;
-            isAutomatic?: boolean;
-            isEnabled: boolean;
-            isStackable?: boolean;
-            maximumSpend?: number;
-            minimumSpend?: number;
-            startDate?: number;
-            timesUsed: number;
-            updatedAt: number;
-            usageLimit?: number;
-            usageLimitPerUser?: number;
-          }>
-        >;
-        getCouponById: FunctionReference<
-          "query",
-          "public",
-          { id: Id<"coupons"> },
-          {
-            _creationTime: number;
-            _id: Id<"coupons">;
-            applicableCategoryIds?: Array<Id<"productCategories">>;
-            applicableProductIds?: Array<Id<"products">>;
-            code: string;
-            createdAt: number;
-            description?: string;
-            discountType: "percentage" | "fixed_amount";
-            discountValue: number;
-            endDate?: number;
-            excludeCategoryIds?: Array<Id<"productCategories">>;
-            excludeProductIds?: Array<Id<"products">>;
-            isAutomatic?: boolean;
-            isEnabled: boolean;
-            isStackable?: boolean;
-            maximumSpend?: number;
-            minimumSpend?: number;
-            startDate?: number;
-            timesUsed: number;
-            updatedAt: number;
-            usageLimit?: number;
-            usageLimitPerUser?: number;
-          } | null
-        >;
-        getCouponByCode: FunctionReference<
-          "query",
-          "public",
-          { code: string },
-          {
-            _creationTime: number;
-            _id: Id<"coupons">;
-            applicableCategoryIds?: Array<Id<"productCategories">>;
-            applicableProductIds?: Array<Id<"products">>;
-            code: string;
-            createdAt: number;
-            description?: string;
-            discountType: "percentage" | "fixed_amount";
-            discountValue: number;
-            endDate?: number;
-            excludeCategoryIds?: Array<Id<"productCategories">>;
-            excludeProductIds?: Array<Id<"products">>;
-            isAutomatic?: boolean;
-            isEnabled: boolean;
-            isStackable?: boolean;
-            maximumSpend?: number;
-            minimumSpend?: number;
-            startDate?: number;
-            timesUsed: number;
-            updatedAt: number;
-            usageLimit?: number;
-            usageLimitPerUser?: number;
-          } | null
-        >;
-      };
-    };
-  };
   env: { get: FunctionReference<"query", "public", { name: string }, any> };
   notifications: {
     mutations: {
@@ -5948,6 +4050,18 @@ export type PublicApiType = {
             updatedAt: number;
           }>
         >;
+        listForOwners: FunctionReference<
+          "query",
+          "public",
+          {
+            filters: Array<{ nodeType: string; ownerId: Id<"users"> | string }>;
+          },
+          Array<{
+            nodeType: string;
+            ownerId: Id<"users"> | string;
+            status: string | null;
+          }>
+        >;
         get: FunctionReference<
           "query",
           "public",
@@ -6936,6 +5050,31 @@ export type PublicApiType = {
             role: "user" | "assistant";
           }>
         >;
+        listConversationNotes: FunctionReference<
+          "query",
+          "public",
+          { organizationId: string; sessionId?: string; threadId?: string },
+          Array<{
+            _id: string;
+            actorId?: string;
+            actorName?: string;
+            createdAt: number;
+            note: string;
+          }>
+        >;
+        listConversationEvents: FunctionReference<
+          "query",
+          "public",
+          { organizationId: string; sessionId?: string; threadId?: string },
+          Array<{
+            _id: string;
+            actorId?: string;
+            actorName?: string;
+            createdAt: number;
+            eventType: string;
+            payload?: string;
+          }>
+        >;
         getRagIndexStatusForPost: FunctionReference<
           "query",
           "public",
@@ -7034,7 +5173,7 @@ export type PublicApiType = {
             contactId?: string;
             contactName?: string;
             contextTags?: Array<string>;
-            organizationId: Id<"organizations"> | "portal-root";
+            organizationId: string;
             prompt: string;
             threadId: string;
           },
@@ -7079,6 +5218,7 @@ export type PublicApiType = {
           "mutation",
           "public",
           {
+            clientSessionId?: string;
             contactEmail?: string;
             contactId?: string;
             contactName?: string;
@@ -7086,6 +5226,46 @@ export type PublicApiType = {
             organizationId: string;
           },
           { threadId: string }
+        >;
+        setConversationStatus: FunctionReference<
+          "mutation",
+          "public",
+          {
+            organizationId: string;
+            sessionId?: string;
+            status: "open" | "snoozed" | "closed";
+            threadId?: string;
+          },
+          null
+        >;
+        assignConversation: FunctionReference<
+          "mutation",
+          "public",
+          {
+            assignedAgentId: string;
+            assignedAgentName?: string;
+            organizationId: string;
+            sessionId?: string;
+            threadId?: string;
+          },
+          null
+        >;
+        unassignConversation: FunctionReference<
+          "mutation",
+          "public",
+          { organizationId: string; sessionId?: string; threadId?: string },
+          null
+        >;
+        addConversationNote: FunctionReference<
+          "mutation",
+          "public",
+          {
+            note: string;
+            organizationId: string;
+            sessionId?: string;
+            threadId?: string;
+          },
+          null
         >;
         createSupportPost: FunctionReference<
           "mutation",
@@ -7261,6 +5441,14 @@ export type PublicApiType = {
             value?: string | number | boolean | null;
           },
           null
+        >;
+      };
+      openaiModels: {
+        listAvailableModels: FunctionReference<
+          "action",
+          "public",
+          { organizationId: string },
+          Array<string>
         >;
       };
     };
@@ -7863,121 +6051,6 @@ export type PublicApiType = {
         >;
       };
     };
-    commerce: {
-      queries: {
-        getAllPosts: FunctionReference<
-          "query",
-          "public",
-          {
-            filters?: {
-              authorId?: string;
-              category?: string;
-              limit?: number;
-              postTypeSlug?: string;
-              status?: "published" | "draft" | "archived";
-            };
-            organizationId?: string;
-          },
-          any
-        >;
-        getPostById: FunctionReference<
-          "query",
-          "public",
-          { id: string; organizationId?: string },
-          any
-        >;
-        getPostBySlug: FunctionReference<
-          "query",
-          "public",
-          { organizationId?: string; slug: string },
-          any
-        >;
-        getPostMeta: FunctionReference<
-          "query",
-          "public",
-          { organizationId?: string; postId: string },
-          any
-        >;
-        searchPosts: FunctionReference<
-          "query",
-          "public",
-          {
-            limit?: number;
-            organizationId?: string;
-            postTypeSlug?: string;
-            searchTerm: string;
-          },
-          any
-        >;
-        getPostTags: FunctionReference<
-          "query",
-          "public",
-          { organizationId?: string; postTypeSlug?: string },
-          any
-        >;
-        getPostCategories: FunctionReference<
-          "query",
-          "public",
-          { organizationId?: string; postTypeSlug?: string },
-          any
-        >;
-      };
-      mutations: {
-        createPost: FunctionReference<
-          "mutation",
-          "public",
-          {
-            category?: string;
-            content?: string;
-            excerpt?: string;
-            featuredImage?: string;
-            meta?: Record<string, string | number | boolean | null>;
-            organizationId?: string;
-            postTypeSlug: string;
-            slug: string;
-            status: "published" | "draft" | "archived";
-            tags?: Array<string>;
-            title: string;
-          },
-          string
-        >;
-        updatePost: FunctionReference<
-          "mutation",
-          "public",
-          {
-            category?: string;
-            content?: string;
-            excerpt?: string;
-            featuredImage?: string;
-            id: string;
-            meta?: Record<string, string | number | boolean | null>;
-            slug?: string;
-            status?: "published" | "draft" | "archived";
-            tags?: Array<string>;
-            title?: string;
-          },
-          string
-        >;
-        deletePost: FunctionReference<
-          "mutation",
-          "public",
-          { id: string },
-          null
-        >;
-        updatePostStatus: FunctionReference<
-          "mutation",
-          "public",
-          { id: string; status: "published" | "draft" | "archived" },
-          string
-        >;
-        bulkUpdatePostStatus: FunctionReference<
-          "mutation",
-          "public",
-          { ids: Array<string>; status: "published" | "draft" | "archived" },
-          Array<string>
-        >;
-      };
-    };
     entity: {
       queries: {
         readEntity: FunctionReference<
@@ -8278,6 +6351,278 @@ export type PublicApiType = {
         >;
       };
     };
+    commerce: {
+      cart: {
+        mutations: {
+          addToCart: FunctionReference<
+            "mutation",
+            "public",
+            {
+              productPostId: string;
+              quantity: number;
+              userId: string;
+              variationId?: string;
+            },
+            any
+          >;
+          addToGuestCart: FunctionReference<
+            "mutation",
+            "public",
+            {
+              guestSessionId: string;
+              productPostId: string;
+              quantity: number;
+              variationId?: string;
+            },
+            any
+          >;
+          removeFromCart: FunctionReference<
+            "mutation",
+            "public",
+            { cartItemId: string; userId: string },
+            any
+          >;
+          removeFromGuestCart: FunctionReference<
+            "mutation",
+            "public",
+            { cartItemId: string; guestSessionId: string },
+            any
+          >;
+          updateCartItemQuantity: FunctionReference<
+            "mutation",
+            "public",
+            {
+              cartItemId: string;
+              guestSessionId?: string;
+              quantity: number;
+              userId?: string;
+            },
+            any
+          >;
+          clearCart: FunctionReference<
+            "mutation",
+            "public",
+            { guestSessionId?: string; userId?: string },
+            any
+          >;
+        };
+        queries: {
+          getCart: FunctionReference<
+            "query",
+            "public",
+            { guestSessionId?: string; userId?: string },
+            any
+          >;
+        };
+      };
+      chargebacks: {
+        evidence: {
+          mutations: {
+            createEvidence: FunctionReference<
+              "mutation",
+              "public",
+              {
+                chargebackPostId: string;
+                description?: string;
+                documentType: string;
+                fileStorageId?: Id<"_storage">;
+                importance: string;
+                status?: string;
+                tags?: Array<string>;
+                textContent?: string;
+                title: string;
+                urls?: Array<string>;
+              },
+              any
+            >;
+            deleteEvidence: FunctionReference<
+              "mutation",
+              "public",
+              { id: string },
+              any
+            >;
+          };
+          queries: {
+            getChargebackEvidence: FunctionReference<
+              "query",
+              "public",
+              { chargebackPostId: string },
+              any
+            >;
+            getEvidenceSummary: FunctionReference<
+              "query",
+              "public",
+              { chargebackPostId: string },
+              any
+            >;
+          };
+        };
+      };
+      orders: {
+        mutations: {
+          createOrder: FunctionReference<
+            "mutation",
+            "public",
+            {
+              email?: string;
+              organizationId?: string;
+              payload?: string;
+              shipping?: number;
+              slug?: string;
+              subtotal?: number;
+              tax?: number;
+              title?: string;
+              total?: number;
+              userId?: string;
+            },
+            any
+          >;
+          updateOrder: FunctionReference<
+            "mutation",
+            "public",
+            {
+              email?: string;
+              id: string;
+              organizationId?: string;
+              payload?: string;
+              shipping?: number;
+              slug?: string;
+              subtotal?: number;
+              tax?: number;
+              title?: string;
+              total?: number;
+              userId?: string;
+            },
+            any
+          >;
+          deleteOrder: FunctionReference<
+            "mutation",
+            "public",
+            { orderId: string },
+            any
+          >;
+        };
+        notes: {
+          getOrderNotes: FunctionReference<
+            "query",
+            "public",
+            { orderId: string },
+            any
+          >;
+          addOrderNote: FunctionReference<
+            "mutation",
+            "public",
+            {
+              content: string;
+              createdBy?: string;
+              isPrivate?: boolean;
+              orderId: string;
+            },
+            any
+          >;
+          deleteOrderNote: FunctionReference<
+            "mutation",
+            "public",
+            { noteId: string; orderId: string },
+            any
+          >;
+        };
+        queries: {
+          listOrders: FunctionReference<
+            "query",
+            "public",
+            { limit?: number; organizationId?: string },
+            any
+          >;
+          getOrder: FunctionReference<
+            "query",
+            "public",
+            { orderId: string; organizationId?: string },
+            null | any
+          >;
+        };
+      };
+      products: {
+        queries: {
+          listProducts: FunctionReference<
+            "query",
+            "public",
+            { limit?: number; organizationId?: string },
+            any
+          >;
+          getProductById: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string; postId: string },
+            null | any
+          >;
+        };
+      };
+      mutations: {
+        ensureDefaultPagesAndAssign: FunctionReference<
+          "mutation",
+          "public",
+          { organizationId?: Id<"organizations"> },
+          { success: boolean }
+        >;
+      };
+      getAllPosts: FunctionReference<
+        "query",
+        "public",
+        {
+          filters?: {
+            authorId?: string;
+            category?: string;
+            limit?: number;
+            postTypeSlug?: string;
+            status?: "published" | "draft" | "archived";
+          };
+          organizationId?: string;
+        },
+        any
+      >;
+      getPostById: FunctionReference<
+        "query",
+        "public",
+        { id: string; organizationId?: string },
+        any
+      >;
+      getPostBySlug: FunctionReference<
+        "query",
+        "public",
+        { organizationId?: string; slug: string },
+        any
+      >;
+      getPostMeta: FunctionReference<
+        "query",
+        "public",
+        { organizationId?: string; postId: string },
+        any
+      >;
+      searchPosts: FunctionReference<
+        "query",
+        "public",
+        {
+          limit?: number;
+          organizationId?: string;
+          postTypeSlug?: string;
+          searchTerm: string;
+        },
+        any
+      >;
+      getPostTags: FunctionReference<
+        "query",
+        "public",
+        { organizationId?: string; postTypeSlug?: string },
+        any
+      >;
+      getPostCategories: FunctionReference<
+        "query",
+        "public",
+        { organizationId?: string; postTypeSlug?: string },
+        any
+      >;
+    };
   };
   puckEditor: {
     queries: {
@@ -8342,64 +6687,6 @@ export type PublicApiType = {
         Record<string, never>,
         any
       >;
-    };
-  };
-  lms: {
-    contentAccess: {
-      queries: {
-        getContentAccessRules: FunctionReference<
-          "query",
-          "public",
-          {
-            contentId: string;
-            contentType:
-              | "course"
-              | "lesson"
-              | "topic"
-              | "download"
-              | "product"
-              | "quiz";
-          },
-          any
-        >;
-      };
-      mutations: {
-        saveContentAccessRules: FunctionReference<
-          "mutation",
-          "public",
-          {
-            contentId: string;
-            contentType:
-              | "course"
-              | "lesson"
-              | "topic"
-              | "download"
-              | "product"
-              | "quiz";
-            excludedTags: { mode: "all" | "some"; tagIds: Array<string> };
-            isActive?: boolean;
-            isPublic?: boolean;
-            priority?: number;
-            requiredTags: { mode: "all" | "some"; tagIds: Array<string> };
-          },
-          any
-        >;
-        clearContentAccessRules: FunctionReference<
-          "mutation",
-          "public",
-          {
-            contentId: string;
-            contentType:
-              | "course"
-              | "lesson"
-              | "topic"
-              | "download"
-              | "product"
-              | "quiz";
-          },
-          any
-        >;
-      };
     };
   };
 };

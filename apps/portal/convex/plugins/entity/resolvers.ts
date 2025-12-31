@@ -7,32 +7,21 @@ import type {
   EntitySaveInput,
   EntityStatus,
 } from "./types";
-import { api } from "../../_generated/api";
+import {
+  api as apiGenerated,
+  components as componentsGenerated,
+} from "../../_generated/api";
 import { getScopedPostTypeBySlug } from "../../core/postTypes/lib/contentTypes";
 
-const COMMERCE_SLUGS = new Set<string>([
-  "products",
-  "orders",
-  "plans",
-  "ecom-coupon",
-  "ecom-chargeback",
-  "ecom-balance",
-  "ecom-transfer",
-  "ecom-chargeback-evidence",
-]);
+// The generated `api`/`components` types are extremely deep; in this router we prefer
+// runtime safety and flexibility over full static typing.
+const api: any = apiGenerated;
+const components: any = componentsGenerated;
 
-const LMS_SLUGS = new Set<string>([
-  "courses",
-  "lessons",
-  "topics",
-  "quizzes",
-  "certificates",
-  "lms-quiz-question",
-]);
-
-const SUPPORT_SLUGS = new Set<string>(["helpdeskarticles"]);
 const DOWNLOADS_SLUGS = new Set<string>(["downloads", "download"]);
 const ATTACHMENTS_SLUGS = new Set<string>(["attachments", "attachment"]);
+
+type PostStatus = "draft" | "published" | "archived";
 
 type ResolverContext = {
   postTypeSlug: string;
@@ -168,6 +157,161 @@ const adaptAttachment = (record: any): EntityRecord => ({
   },
 });
 
+const inferStorageComponent = (tables: readonly string[] | undefined) => {
+  const storageTables = tables ?? [];
+  const candidate =
+    storageTables.find((t) => t.includes(":posts")) ?? storageTables[0];
+  if (!candidate) return undefined;
+  const prefix = candidate.split(":")[0];
+  return prefix && prefix.trim().length > 0 ? prefix.trim() : undefined;
+};
+
+const makeComponentPostsResolver = (storageComponent: string): Resolver => {
+  const componentPosts = components?.[storageComponent]?.posts;
+  const postsQueries = componentPosts?.queries;
+  const postsMutations = componentPosts?.mutations;
+
+  if (!postsQueries || !postsMutations) {
+    // Fail safe: fall back to core behavior rather than hard error.
+    return coreResolver;
+  }
+
+  const buildCreatePayload = (args: {
+    postTypeSlug: string;
+    data: EntitySaveInput;
+    organizationId?: string;
+  }) => {
+    const raw = (args.data ?? {}) as Record<string, unknown>;
+    const featuredImage =
+      typeof raw.featuredImageUrl === "string"
+        ? raw.featuredImageUrl
+        : undefined;
+    const status: PostStatus =
+      raw.status === "published" ||
+      raw.status === "draft" ||
+      raw.status === "archived"
+        ? (raw.status as PostStatus)
+        : "draft";
+
+    return {
+      organizationId:
+        typeof raw.organizationId === "string"
+          ? raw.organizationId
+          : args.organizationId,
+      postTypeSlug: args.postTypeSlug,
+      title: typeof raw.title === "string" ? raw.title : "",
+      content: typeof raw.content === "string" ? raw.content : undefined,
+      excerpt: typeof raw.excerpt === "string" ? raw.excerpt : undefined,
+      slug: typeof raw.slug === "string" ? raw.slug : "",
+      status,
+      category: typeof raw.category === "string" ? raw.category : undefined,
+      tags: Array.isArray(raw.tags) ? raw.tags : undefined,
+      featuredImage,
+      meta: raw.meta && typeof raw.meta === "object" ? raw.meta : undefined,
+    };
+  };
+
+  const buildUpdatePayload = (args: {
+    id: string;
+    data: Partial<EntitySaveInput>;
+    organizationId?: string;
+  }) => {
+    const raw = (args.data ?? {}) as Record<string, unknown>;
+    const featuredImage =
+      typeof raw.featuredImageUrl === "string"
+        ? raw.featuredImageUrl
+        : undefined;
+    const status: PostStatus | undefined =
+      raw.status === "published" ||
+      raw.status === "draft" ||
+      raw.status === "archived"
+        ? (raw.status as PostStatus)
+        : undefined;
+    return {
+      id: args.id,
+      organizationId:
+        typeof raw.organizationId === "string"
+          ? raw.organizationId
+          : args.organizationId,
+      title: typeof raw.title === "string" ? raw.title : undefined,
+      content: typeof raw.content === "string" ? raw.content : undefined,
+      excerpt: typeof raw.excerpt === "string" ? raw.excerpt : undefined,
+      slug: typeof raw.slug === "string" ? raw.slug : undefined,
+      status,
+      category: typeof raw.category === "string" ? raw.category : undefined,
+      tags: Array.isArray(raw.tags) ? raw.tags : undefined,
+      featuredImage,
+      meta: raw.meta && typeof raw.meta === "object" ? raw.meta : undefined,
+      // Some components (e.g. ecommerce) support patch-style updates; harmless for others
+      // because we only include it when needed later.
+    };
+  };
+
+  return {
+    read: async (ctx, { id, organizationId }) => {
+      const result = await ctx.runQuery(postsQueries.getPostById as any, {
+        id,
+        organizationId,
+      });
+      return result ? adaptCommercePost(result) : null;
+    },
+    list: async (ctx, { filters, postTypeSlug, organizationId }) => {
+      const slugFilter =
+        typeof filters?.slug === "string" ? filters.slug.trim() : "";
+      if (slugFilter) {
+        const result = await ctx.runQuery(postsQueries.getPostBySlug as any, {
+          slug: slugFilter,
+          organizationId,
+        });
+        if (!result) return [];
+        const adapted = adaptCommercePost(result);
+        if (
+          (adapted.postTypeSlug ?? "").toLowerCase() !==
+          postTypeSlug.toLowerCase()
+        ) {
+          return [];
+        }
+        return [adapted];
+      }
+
+      const payload: Record<string, unknown> = { organizationId };
+      payload.filters = { ...(filters ?? {}), postTypeSlug };
+      const results =
+        (await ctx.runQuery(postsQueries.getAllPosts as any, payload as any)) ??
+        [];
+      return results.map(adaptCommercePost);
+    },
+    create: async (ctx, { data, postTypeSlug, organizationId }) => {
+      const payload = buildCreatePayload({
+        postTypeSlug,
+        data,
+        organizationId,
+      });
+      const id = await ctx.runMutation(
+        postsMutations.createPost as any,
+        payload,
+      );
+      const created = await ctx.runQuery(postsQueries.getPostById as any, {
+        id,
+        organizationId: payload.organizationId,
+      });
+      return adaptCommercePost(created);
+    },
+    update: async (ctx, { id, data, organizationId }) => {
+      const payload = buildUpdatePayload({ id, data, organizationId });
+      await ctx.runMutation(postsMutations.updatePost as any, payload);
+      const updated = await ctx.runQuery(postsQueries.getPostById as any, {
+        id,
+        organizationId: payload.organizationId,
+      });
+      return updated ? adaptCommercePost(updated) : null;
+    },
+    remove: async (ctx, { id }) => {
+      await ctx.runMutation(postsMutations.deletePost as any, { id });
+    },
+  };
+};
+
 const coreResolver: Resolver = {
   read: async (ctx, { id, postTypeSlug, organizationId }) => {
     const result = await ctx.runQuery(api.core.posts.queries.getPostById, {
@@ -222,28 +366,34 @@ const coreResolver: Resolver = {
       (await ctx.runQuery(api.core.posts.queries.getAllPosts, payload)) ?? [];
     return results.map(adaptPortalPost);
   },
-  create: async (ctx, { data, postTypeSlug }) => {
+  create: async (ctx, { data, postTypeSlug, organizationId }) => {
     const id = await ctx.runMutation(api.core.posts.mutations.createPost, {
       ...data,
       postTypeSlug,
-      organizationId: data.organizationId
-        ? (data.organizationId as Id<"organizations">)
+      organizationId: organizationId
+        ? (organizationId as Id<"organizations">)
         : undefined,
     });
     const created = await ctx.runQuery(api.core.posts.queries.getPostById, {
       id,
       postTypeSlug,
-      organizationId: data.organizationId as Id<"organizations"> | undefined,
+      organizationId: organizationId
+        ? (organizationId as Id<"organizations">)
+        : undefined,
     });
     return adaptPortalPost(created as Doc<"posts">);
   },
-  update: async (ctx, { id, data }) => {
+  update: async (ctx, { id, data, organizationId, postTypeSlug }) => {
     await ctx.runMutation(api.core.posts.mutations.updatePost, {
       id: id as Id<"posts">,
       ...data,
     });
     const updated = await ctx.runQuery(api.core.posts.queries.getPostById, {
       id,
+      ...(organizationId
+        ? { organizationId: organizationId as Id<"organizations"> }
+        : {}),
+      ...(postTypeSlug ? { postTypeSlug } : {}),
     });
     return updated ? adaptPortalPost(updated as Doc<"posts">) : null;
   },
@@ -431,391 +581,6 @@ const attachmentsResolver: Resolver = {
   },
 };
 
-const commerceResolver: Resolver = {
-  read: async (ctx, { id, organizationId }) => {
-    const result = await ctx.runQuery(
-      api.plugins.commerce.queries.getPostById,
-      {
-        id,
-        organizationId,
-      },
-    );
-    return result ? adaptCommercePost(result) : null;
-  },
-  list: async (ctx, { filters, postTypeSlug, organizationId }) => {
-    const slugFilter =
-      typeof filters?.slug === "string" ? filters.slug.trim() : "";
-    if (slugFilter) {
-      const result = await ctx.runQuery(
-        api.plugins.commerce.queries.getPostBySlug,
-        {
-          slug: slugFilter,
-          organizationId,
-        },
-      );
-      if (!result) return [];
-      const adapted = adaptCommercePost(result);
-      if (
-        (adapted.postTypeSlug ?? "").toLowerCase() !==
-        postTypeSlug.toLowerCase()
-      ) {
-        return [];
-      }
-      return [adapted];
-    }
-
-    const payload: Record<string, unknown> = {
-      organizationId,
-    };
-    if (filters) {
-      payload.filters = { ...filters, postTypeSlug };
-    } else {
-      payload.filters = { postTypeSlug };
-    }
-    const results =
-      (await ctx.runQuery(
-        api.plugins.commerce.queries.getAllPosts,
-        payload as any,
-      )) ?? [];
-    return results.map(adaptCommercePost);
-  },
-  create: async (ctx, { data, postTypeSlug }) => {
-    const id = await ctx.runMutation(
-      api.plugins.commerce.mutations.createPost,
-      {
-        ...data,
-        postTypeSlug,
-        organizationId: data.organizationId,
-      },
-    );
-    const created = await ctx.runQuery(
-      api.plugins.commerce.queries.getPostById,
-      {
-        id,
-        organizationId: data.organizationId,
-      },
-    );
-    return adaptCommercePost(created);
-  },
-  update: async (ctx, { id, data }) => {
-    await ctx.runMutation(api.plugins.commerce.mutations.updatePost, {
-      id,
-      ...data,
-    });
-    const updated = await ctx.runQuery(
-      api.plugins.commerce.queries.getPostById,
-      {
-        id,
-        organizationId: data.organizationId,
-      },
-    );
-    return updated ? adaptCommercePost(updated) : null;
-  },
-  remove: async (ctx, { id }) => {
-    await ctx.runMutation(api.plugins.commerce.mutations.deletePost, { id });
-  },
-};
-
-const lmsResolver: Resolver = {
-  read: async (ctx, { id, organizationId }) => {
-    const result = await ctx.runQuery(
-      api.plugins.lms.posts.queries.getPostById,
-      {
-        id,
-        organizationId,
-      },
-    );
-    return result ? adaptLmsPost(result) : null;
-  },
-  list: async (ctx, { filters, postTypeSlug, organizationId }) => {
-    const slugFilter =
-      typeof filters?.slug === "string" ? filters.slug.trim() : "";
-    if (slugFilter) {
-      const result = await ctx.runQuery(
-        api.plugins.lms.posts.queries.getPostBySlug,
-        {
-          slug: slugFilter,
-          organizationId,
-        },
-      );
-      if (!result) return [];
-      const adapted = adaptLmsPost(result);
-      if (
-        (adapted.postTypeSlug ?? "").toLowerCase() !==
-        postTypeSlug.toLowerCase()
-      ) {
-        return [];
-      }
-      return [adapted];
-    }
-
-    const payload: Record<string, unknown> = {
-      organizationId,
-    };
-    if (filters) {
-      payload.filters = { ...filters, postTypeSlug };
-    } else {
-      payload.filters = { postTypeSlug };
-    }
-    const results =
-      (await ctx.runQuery(
-        api.plugins.lms.posts.queries.getAllPosts,
-        payload as any,
-      )) ?? [];
-    return results.map(adaptLmsPost);
-  },
-  create: async (ctx, { data, postTypeSlug }) => {
-    const id = await ctx.runMutation(
-      api.plugins.lms.posts.mutations.createPost,
-      {
-        ...data,
-        postTypeSlug,
-        organizationId: data.organizationId,
-      },
-    );
-    const created = await ctx.runQuery(
-      api.plugins.lms.posts.queries.getPostById,
-      {
-        id,
-        organizationId: data.organizationId,
-      },
-    );
-    return adaptLmsPost(created);
-  },
-  update: async (ctx, { id, data }) => {
-    await ctx.runMutation(api.plugins.lms.posts.mutations.updatePost, {
-      id,
-      ...data,
-    });
-    const updated = await ctx.runQuery(
-      api.plugins.lms.posts.queries.getPostById,
-      {
-        id,
-        organizationId: data.organizationId,
-      },
-    );
-    return updated ? adaptLmsPost(updated) : null;
-  },
-  remove: async (ctx, { id }) => {
-    await ctx.runMutation(api.plugins.lms.posts.mutations.deletePost, { id });
-  },
-};
-
-const disclaimersResolver: Resolver = {
-  read: async (ctx, { id, organizationId }) => {
-    const result = await ctx.runQuery(
-      api.plugins.disclaimers.posts.queries.getPostById,
-      {
-        id,
-        organizationId,
-      },
-    );
-    return result ? adaptLmsPost(result) : null;
-  },
-  list: async (ctx, { filters, postTypeSlug, organizationId }) => {
-    const slugFilter =
-      typeof filters?.slug === "string" ? filters.slug.trim() : "";
-    if (slugFilter) {
-      const result = await ctx.runQuery(
-        api.plugins.disclaimers.posts.queries.getPostBySlug,
-        {
-          slug: slugFilter,
-          organizationId,
-        },
-      );
-      if (!result) return [];
-      const adapted = adaptLmsPost(result);
-      if (
-        (adapted.postTypeSlug ?? "").toLowerCase() !==
-        postTypeSlug.toLowerCase()
-      ) {
-        return [];
-      }
-      return [adapted];
-    }
-
-    const payload: Record<string, unknown> = {
-      organizationId,
-    };
-    if (filters) {
-      payload.filters = { ...filters, postTypeSlug };
-    } else {
-      payload.filters = { postTypeSlug };
-    }
-    const results =
-      (await ctx.runQuery(
-        api.plugins.disclaimers.posts.queries.getAllPosts,
-        payload as any,
-      )) ?? [];
-    return results.map(adaptLmsPost);
-  },
-  create: async (ctx, { data, postTypeSlug }) => {
-    const id = await ctx.runMutation(
-      api.plugins.disclaimers.posts.mutations.createPost,
-      {
-        ...data,
-        postTypeSlug,
-        organizationId: data.organizationId,
-      },
-    );
-    const created = await ctx.runQuery(
-      api.plugins.disclaimers.posts.queries.getPostById,
-      {
-        id,
-        organizationId: data.organizationId,
-      },
-    );
-    return adaptLmsPost(created);
-  },
-  update: async (ctx, { id, data }) => {
-    // The /admin/edit entity payload includes additional fields used for resolver
-    // selection and scoping (e.g. organizationId, postTypeSlug). The underlying
-    // component post mutation validators don't accept these fields, so we must
-    // explicitly strip them before forwarding.
-    const raw = (data ?? {}) as Record<string, unknown>;
-    const updatePayload: Record<string, unknown> = { id };
-    if (typeof raw.title === "string") updatePayload.title = raw.title;
-    if (typeof raw.content === "string") updatePayload.content = raw.content;
-    if (typeof raw.excerpt === "string") updatePayload.excerpt = raw.excerpt;
-    if (typeof raw.slug === "string") updatePayload.slug = raw.slug;
-    if (
-      raw.status === "published" ||
-      raw.status === "draft" ||
-      raw.status === "archived"
-    ) {
-      updatePayload.status = raw.status;
-    }
-    if (typeof raw.category === "string") updatePayload.category = raw.category;
-    if (Array.isArray(raw.tags)) updatePayload.tags = raw.tags;
-    if (typeof raw.featuredImage === "string") {
-      updatePayload.featuredImage = raw.featuredImage;
-    }
-    if (raw.meta && typeof raw.meta === "object") updatePayload.meta = raw.meta;
-
-    await ctx.runMutation(
-      api.plugins.disclaimers.posts.mutations.updatePost,
-      updatePayload as any,
-    );
-    const updated = await ctx.runQuery(
-      api.plugins.disclaimers.posts.queries.getPostById,
-      {
-        id,
-        organizationId: data.organizationId,
-      },
-    );
-    return updated ? adaptLmsPost(updated) : null;
-  },
-  remove: async (ctx, { id }) => {
-    await ctx.runMutation(api.plugins.disclaimers.posts.mutations.deletePost, {
-      id,
-    });
-  },
-};
-
-const supportResolver: Resolver = {
-  read: async (ctx, { id, organizationId }) => {
-    if (!organizationId) return null;
-    const result = await ctx.runQuery(
-      api.plugins.support.queries.getHelpdeskArticleById,
-      {
-        id,
-        organizationId,
-      },
-    );
-    return result ? adaptSupportPost(result) : null;
-  },
-  list: async (ctx, { filters, organizationId }) => {
-    if (!organizationId) return [];
-    const slugFilter =
-      typeof filters?.slug === "string" ? filters.slug.trim() : "";
-    const results =
-      (await ctx.runQuery(api.plugins.support.queries.listSupportPosts, {
-        organizationId,
-        filters: {
-          postTypeSlug: "helpdeskarticles",
-          status: filters?.status,
-          limit: Math.max(filters?.limit ?? 200, slugFilter ? 200 : 0),
-        },
-      })) ?? [];
-    if (slugFilter) {
-      const match = results.find((row: any) => row?.slug === slugFilter);
-      return match ? [adaptSupportPost(match)] : [];
-    }
-    return results.map(adaptSupportPost);
-  },
-  create: async (ctx, { data, postTypeSlug, organizationId }) => {
-    if (!organizationId) {
-      throw new Error("organizationId is required for helpdesk posts.");
-    }
-    const raw = data as unknown as Record<string, unknown>;
-    const id = await ctx.runMutation(
-      api.plugins.support.mutations.createSupportPost,
-      {
-        organizationId,
-        postTypeSlug,
-        title: typeof raw.title === "string" ? raw.title : "",
-        content: typeof raw.content === "string" ? raw.content : undefined,
-        excerpt: typeof raw.excerpt === "string" ? raw.excerpt : undefined,
-        slug: typeof raw.slug === "string" ? raw.slug : "",
-        status:
-          raw.status === "published" ||
-          raw.status === "draft" ||
-          raw.status === "archived"
-            ? (raw.status as any)
-            : "draft",
-        tags: Array.isArray(raw.tags) ? (raw.tags as string[]) : undefined,
-        authorId: typeof raw.authorId === "string" ? raw.authorId : undefined,
-        meta: Array.isArray(raw.meta) ? (raw.meta as any) : undefined,
-      },
-    );
-    const created = await ctx.runQuery(
-      api.plugins.support.queries.getSupportPostById,
-      {
-        id: id as Id<"posts">,
-        organizationId,
-      },
-    );
-    return created
-      ? adaptSupportPost(created)
-      : { id, postTypeSlug, title: raw.title as any };
-  },
-  update: async (ctx, { id, data, postTypeSlug, organizationId }) => {
-    if (!organizationId) {
-      throw new Error("organizationId is required for helpdesk posts.");
-    }
-    const raw = data as unknown as Record<string, unknown>;
-    await ctx.runMutation(api.plugins.support.mutations.updateSupportPost, {
-      id: id as Id<"posts">,
-      organizationId,
-      postTypeSlug,
-      title: typeof raw.title === "string" ? raw.title : "",
-      content: typeof raw.content === "string" ? raw.content : undefined,
-      excerpt: typeof raw.excerpt === "string" ? raw.excerpt : undefined,
-      slug: typeof raw.slug === "string" ? raw.slug : "",
-      status:
-        raw.status === "published" ||
-        raw.status === "draft" ||
-        raw.status === "archived"
-          ? (raw.status as any)
-          : "draft",
-      tags: Array.isArray(raw.tags) ? (raw.tags as string[]) : undefined,
-      authorId: typeof raw.authorId === "string" ? raw.authorId : undefined,
-      meta: Array.isArray(raw.meta) ? (raw.meta as any) : undefined,
-    });
-    const updated = await ctx.runQuery(
-      api.plugins.support.queries.getSupportPostById,
-      {
-        id: id as Id<"posts">,
-        organizationId,
-      },
-    );
-    return updated ? adaptSupportPost(updated) : null;
-  },
-  remove: async () => {
-    throw new Error("Helpdesk delete is not supported through entity router.");
-  },
-};
-
 const resolveFromPostType = async (
   ctx: QueryCtx | MutationCtx,
   postTypeSlug: string,
@@ -832,24 +597,14 @@ const resolveFromPostType = async (
     );
     if (!postType) return null;
     const storageKind = postType.storageKind;
-    const storageTables = postType.storageTables ?? [];
     if (storageKind === "component") {
-      if (storageTables.some((t) => t.includes("launchthat_lms:posts"))) {
-        return lmsResolver;
+      const storageComponent =
+        (postType as any).storageComponent ??
+        inferStorageComponent((postType as any).storageTables);
+      if (!storageComponent) {
+        return coreResolver;
       }
-      if (storageTables.some((t) => t.includes("launchthat_commerce:posts"))) {
-        return commerceResolver;
-      }
-      if (
-        storageTables.some((t) => t.includes("launchthat_disclaimers:posts"))
-      ) {
-        return disclaimersResolver;
-      }
-      if (storageTables.some((t) => t.includes("launchthat_support:posts"))) {
-        return supportResolver;
-      }
-      // Unknown component storage; fall back to core (safe default).
-      return coreResolver;
+      return makeComponentPostsResolver(storageComponent);
     }
     return coreResolver;
   } catch {
@@ -877,11 +632,6 @@ const getResolver = async (
     organizationId,
   );
   if (fromPostType) return fromPostType;
-
-  // Fallback: legacy slug sets (kept for safety during migration).
-  if (COMMERCE_SLUGS.has(normalized)) return commerceResolver;
-  if (LMS_SLUGS.has(normalized)) return lmsResolver;
-  if (SUPPORT_SLUGS.has(normalized)) return supportResolver;
   return coreResolver;
 };
 

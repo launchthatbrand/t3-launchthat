@@ -134,24 +134,23 @@ const AttachmentsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
   );
 };
 
-const registerAttachmentsMetaBox = () =>
+export const registerAttachmentsMetaBox: () => void = () => {
   registerMetaBoxHook<AdminMetaBoxContext>(
     "main",
     (context): RegisteredMetaBox<AdminMetaBoxContext> | null => {
-    const attachmentsContext = context.attachmentsContext;
-    if (!attachmentsContext?.supportsAttachments) {
-      return null;
-    }
-    return {
-      id: "core-attachments",
-      title: "Attachments",
-      description:
-        "Link media items from the Attachments library to this entry.",
-      location: "main",
-      priority: 10,
-      render: () => <AttachmentsMetaBox context={context} />,
-    };
+      const attachmentsContext = context.attachmentsContext;
+      if (!attachmentsContext?.supportsAttachments) {
+        return null;
+      }
+      return {
+        id: "core-attachments",
+        title: "Attachments",
+        description:
+          "Link media items from the Attachments library to this entry.",
+        location: "main",
+        priority: 10,
+        render: () => <AttachmentsMetaBox context={context} />,
+      };
     },
   );
-
-registerAttachmentsMetaBox();
+};

@@ -1,5 +1,6 @@
 import type { GenericId as Id } from "convex/values";
 import type { PluginDefinition } from "launchthat-plugin-core";
+import { createElement } from "react";
 import {
   ADMIN_ARCHIVE_CONTENT_AFTER,
   ADMIN_ARCHIVE_CONTENT_BEFORE,
@@ -8,7 +9,6 @@ import {
   ADMIN_ARCHIVE_HEADER_SUPPRESS,
   ADMIN_PLUGIN_SETTINGS_HEADER_BEFORE,
 } from "launchthat-plugin-core/hookSlots";
-import { createElement } from "react";
 
 import { registerSupportAdminMetaBoxes } from "./admin/metaBoxes";
 import { TriggerRulesMetaBox } from "./admin/metaBoxes/TriggerRulesMetaBox";
@@ -32,9 +32,11 @@ export type CreateSupportPluginDefinitionOptions = Record<string, never>;
 const defaultOptions: CreateSupportPluginDefinitionOptions = {};
 
 const SUPPORT_POST_TABLES = [
-  "launchthat_support.posts",
-  "launchthat_support.postsMeta",
+  "launchthat_support:posts",
+  "launchthat_support:postsMeta",
 ] as const;
+
+const SUPPORT_COMPONENT_NAME = "launchthat_support" as const;
 
 const buildSupportNavHref = (slug: string) => {
   switch (slug) {
@@ -74,7 +76,8 @@ export const createSupportPluginDefinition = (
     {
       name: "Helpdesk Articles",
       slug: "helpdeskarticles",
-      description: "Long-form answers and docs that can power the support widget.",
+      description:
+        "Long-form answers and docs that can power the support widget.",
       isPublic: false,
       includeTimestamps: true,
       enableApi: true,
@@ -103,6 +106,7 @@ export const createSupportPluginDefinition = (
       },
       storageKind: "component",
       storageTables: [...SUPPORT_POST_TABLES],
+      storageComponent: SUPPORT_COMPONENT_NAME,
       metaBoxes: [
         {
           id: "helpdesk-trigger-meta",
@@ -170,6 +174,7 @@ export const createSupportPluginDefinition = (
       },
       storageKind: "component",
       storageTables: [...SUPPORT_POST_TABLES],
+      storageComponent: SUPPORT_COMPONENT_NAME,
       singleView: {
         basePath: "/admin/edit",
         defaultTab: "edit",
@@ -207,6 +212,7 @@ export const createSupportPluginDefinition = (
       },
       storageKind: "component",
       storageTables: [...SUPPORT_POST_TABLES],
+      storageComponent: SUPPORT_COMPONENT_NAME,
     },
     {
       name: "Support RAG Sources",
@@ -223,6 +229,7 @@ export const createSupportPluginDefinition = (
       },
       storageKind: "component",
       storageTables: [...SUPPORT_POST_TABLES],
+      storageComponent: SUPPORT_COMPONENT_NAME,
     },
     {
       name: "Support Presence",
@@ -241,6 +248,7 @@ export const createSupportPluginDefinition = (
       },
       storageKind: "component",
       storageTables: [...SUPPORT_POST_TABLES],
+      storageComponent: SUPPORT_COMPONENT_NAME,
     },
     {
       name: "Support Email Settings",
@@ -259,6 +267,7 @@ export const createSupportPluginDefinition = (
       },
       storageKind: "component",
       storageTables: [...SUPPORT_POST_TABLES],
+      storageComponent: SUPPORT_COMPONENT_NAME,
     },
     {
       name: "Support Canned Responses",
@@ -278,6 +287,7 @@ export const createSupportPluginDefinition = (
       },
       storageKind: "component",
       storageTables: [...SUPPORT_POST_TABLES],
+      storageComponent: SUPPORT_COMPONENT_NAME,
     },
   ],
   settingsPages: [
@@ -381,5 +391,3 @@ export const createSupportPluginDefinition = (
 });
 
 export const supportPlugin: PluginDefinition = createSupportPluginDefinition();
-
-

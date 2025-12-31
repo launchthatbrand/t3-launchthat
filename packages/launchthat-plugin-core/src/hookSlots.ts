@@ -16,3 +16,7 @@ export const ADMIN_ATTACHMENTS_ARCHIVE_TABS_FILTER =
 
 // Frontend single-post extension points
 export const FRONTEND_SINGLE_SLOTS_FILTER = "frontend.single.slots";
+
+// Portal (frontend) header extension points
+export const FRONTEND_PORTAL_HEADER_RIGHT_FILTER =
+  "frontend.portal.header.right";

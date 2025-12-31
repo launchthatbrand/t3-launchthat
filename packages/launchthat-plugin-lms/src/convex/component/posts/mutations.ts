@@ -69,13 +69,18 @@ export const updatePost = mutation({
     tags: v.optional(v.array(v.string())),
     featuredImage: v.optional(v.string()),
     meta: v.optional(v.record(v.string(), metaValueValidator)),
+    organizationId: v.optional(v.string()),
   },
   returns: v.id("posts"),
   handler: async (ctx, args) => {
-    const { id, meta, ...updates } = args;
+    const { id, meta, organizationId, ...updates } = args;
     const post = await ctx.db.get(id);
     if (!post) {
       throw new Error(`Post with ID ${id} not found`);
+    }
+
+    if (organizationId && post.organizationId !== organizationId) {
+      throw new Error("Post not found for organization");
     }
 
     if (updates.slug) {

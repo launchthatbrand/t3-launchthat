@@ -63,7 +63,7 @@ const ContentMetaBox = ({
   );
 };
 
-const registerContentMetaBox = () =>
+export const registerContentMetaBox: () => void = () => {
   registerMetaBoxHook<AdminMetaBoxContext>("main", (context) => {
     const data = context.general;
     if (context.visibility?.showGeneralPanel === false || !data) {
@@ -79,5 +79,4 @@ const registerContentMetaBox = () =>
       render: () => <ContentMetaBox data={data} context={context} />,
     };
   });
-
-registerContentMetaBox();
+};

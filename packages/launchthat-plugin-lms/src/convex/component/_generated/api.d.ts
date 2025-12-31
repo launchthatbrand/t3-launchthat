@@ -155,6 +155,7 @@ export type Mounts = {
           featuredImage?: string;
           id: string;
           meta?: Record<string, string | number | boolean | null>;
+          organizationId?: string;
           slug?: string;
           status?: "published" | "draft" | "archived";
           tags?: Array<string>;

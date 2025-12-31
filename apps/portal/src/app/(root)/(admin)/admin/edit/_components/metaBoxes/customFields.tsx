@@ -79,7 +79,7 @@ const CustomFieldsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
   );
 };
 
-const registerCustomFieldsMetaBox = () =>
+export const registerCustomFieldsMetaBox: () => void = () => {
   registerMetaBoxHook<AdminMetaBoxContext>(
     "main",
     (context): RegisteredMetaBox<AdminMetaBoxContext> | null => {
@@ -101,5 +101,4 @@ const registerCustomFieldsMetaBox = () =>
       };
     },
   );
-
-registerCustomFieldsMetaBox();
+};

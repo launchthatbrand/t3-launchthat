@@ -1,14 +1,6 @@
 "use client";
 
 /* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-assignment */
-import "./metaBoxes/attachments";
-import "./metaBoxes/general";
-import "./metaBoxes/content";
-import "./metaBoxes/customFields";
-import "./metaBoxes/actions";
-import "./metaBoxes/metadata";
-import "./metaBoxes/vimeo";
-import "./metaBoxes/downloads";
 import "~/lib/pageTemplates";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
@@ -79,7 +71,6 @@ import type {
   PluginSingleViewSlotLocation,
   PluginSingleViewTabDefinition,
 } from "~/lib/plugins/types";
-import type { CommerceComponentPostMeta } from "~/lib/postTypes/customAdapters";
 import {
   AdminLayout,
   AdminLayoutContent,
@@ -110,8 +101,8 @@ import {
 import { getPostStatusOptionsForPostType } from "~/lib/postStatuses/registry";
 import { decodeSyntheticId } from "~/lib/postTypes/adminAdapters";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
-import { adaptCommercePostMetaToPortal } from "~/lib/postTypes/customAdapters";
 import { getCanonicalPostPath } from "~/lib/postTypes/routing";
+import { useAdminPostMeta } from "~/lib/postTypes/useAdminPostMeta";
 import { getTenantScopedPageIdentifier } from "~/utils/pageIdentifier";
 import { useMetaBoxState } from "../_state/useMetaBoxState";
 import { usePostTypeFields } from "../../settings/post-types/_api/postTypes";
@@ -169,27 +160,6 @@ const normalizeFieldOptions = (
   }
   return null;
 };
-
-const LMS_COMPONENT_SLUGS = new Set([
-  "courses",
-  "lessons",
-  "topics",
-  "quizzes",
-  "certificates",
-  "badges",
-  "lms-quiz-question",
-]);
-
-const COMMERCE_COMPONENT_SLUGS = new Set([
-  "products",
-  "orders",
-  "plans",
-  "ecom-coupon",
-  "ecom-chargeback",
-  "ecom-balance",
-  "ecom-transfer",
-  "ecom-chargeback-evidence",
-]);
 
 const formatCustomFieldLabel = (key: string) =>
   key.replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
@@ -517,126 +487,23 @@ export function AdminSinglePostView({
 
   const { data: postTypeFields = [], isLoading: postTypeFieldsLoading } =
     usePostTypeFields(slug, true);
-  const standardMetaArgs =
-    post?._id && (supportsPostsTable || isCustomStorage) && organizationId
-      ? ({
-          postId: post._id as unknown as string,
-          organizationId,
-          postTypeSlug: normalizedSlug,
-        } as const)
-      : "skip";
-  const standardMetaResult = useQuery(
-    api.core.posts.postMeta.getPostMeta,
-    standardMetaArgs,
-  ) as Doc<"postsMeta">[] | undefined;
+  const { metaEntries: postMetaEntries, metaMap: postMetaMap } =
+    useAdminPostMeta({
+      postId: post?._id ? String(post._id) : undefined,
+      postTypeSlug: normalizedSlug,
+      postType,
+      organizationId,
+      storageKind,
+    });
 
-  const supportMetaArgs =
-    post?._id && isComponentStorage && normalizedSlug === "helpdeskarticles"
-      ? ({
-          postId: post._id,
-          organizationId,
-          postTypeSlug: normalizedSlug,
-        } as const)
-      : "skip";
-  const supportMetaResult = useQuery(
-    api.core.posts.postMeta.getPostMeta,
-    supportMetaArgs,
-  ) as Doc<"postsMeta">[] | null | undefined;
-
-  const commerceMetaArgs =
-    post?._id &&
-    isComponentStorage &&
-    COMMERCE_COMPONENT_SLUGS.has(normalizedSlug)
-      ? ({
-          postId: post._id as unknown as string,
-          organizationId: commerceOrganizationId,
-        } as const)
-      : "skip";
-  const commerceMetaResult = useQuery(
-    api.plugins.commerce.queries.getPostMeta,
-    commerceMetaArgs,
-  ) as CommerceComponentPostMeta[] | null | undefined;
-
-  const lmsMetaArgs =
-    post?._id && isComponentStorage && LMS_COMPONENT_SLUGS.has(normalizedSlug)
-      ? ({
-          postId: post._id as unknown as string,
-          organizationId: commerceOrganizationId,
-        } as const)
-      : "skip";
-  const lmsMetaResult = useQuery(
-    api.plugins.lms.posts.queries.getPostMeta,
-    lmsMetaArgs,
-  ) as CommerceComponentPostMeta[] | null | undefined;
-  const postMeta = useMemo(() => {
-    if (isComponentStorage) {
-      if (normalizedSlug === "helpdeskarticles") {
-        if (supportMetaResult === undefined) {
-          return undefined;
-        }
-        if (supportMetaResult === null) {
-          return [] as Doc<"postsMeta">[];
-        }
-        return supportMetaResult ?? [];
-      }
-      if (COMMERCE_COMPONENT_SLUGS.has(normalizedSlug)) {
-        if (commerceMetaResult === undefined) {
-          return undefined;
-        }
-        if (commerceMetaResult === null) {
-          return [] as Doc<"postsMeta">[];
-        }
-        const slugSource = post?.postTypeSlug ?? normalizedSlug;
-        return commerceMetaResult.map((entry) =>
-          adaptCommercePostMetaToPortal(entry, slugSource),
-        );
-      }
-
-      if (LMS_COMPONENT_SLUGS.has(normalizedSlug)) {
-        if (lmsMetaResult === undefined) {
-          return undefined;
-        }
-        if (lmsMetaResult === null) {
-          return [] as Doc<"postsMeta">[];
-        }
-        const slugSource = post?.postTypeSlug ?? normalizedSlug;
-        return lmsMetaResult.map((entry) =>
-          adaptCommercePostMetaToPortal(entry, slugSource),
-        );
-      }
-
-      if (commerceMetaResult === undefined) {
-        return undefined;
-      }
-      if (commerceMetaResult === null) {
-        return [] as Doc<"postsMeta">[];
-      }
-      const slugSource = post?.postTypeSlug ?? normalizedSlug;
-      return commerceMetaResult.map((entry) =>
-        adaptCommercePostMetaToPortal(entry, slugSource),
-      );
+  const postMeta = useMemo<
+    { key: string; value: unknown }[] | undefined
+  >(() => {
+    if (postMetaEntries === undefined) {
+      return undefined;
     }
-    return standardMetaResult ?? undefined;
-  }, [
-    commerceMetaResult,
-    lmsMetaResult,
-    isComponentStorage,
-    supportMetaResult,
-    normalizedSlug,
-    post?.postTypeSlug,
-    standardMetaResult,
-  ]);
-
-  const postMetaMap = useMemo<Record<string, CustomFieldValue>>(() => {
-    if (!postMeta) {
-      return {};
-    }
-    return postMeta.reduce<Record<string, CustomFieldValue>>((acc, meta) => {
-      const normalizedValue = (meta.value ?? "") as CustomFieldValue;
-      acc[meta.key] = normalizedValue;
-      return acc;
-    }, {});
-  }, [postMeta]);
+    return postMetaEntries;
+  }, [postMetaEntries]);
 
   const ensureBuiltInTaxonomies = useEnsureBuiltInTaxonomies();
   const categoryTaxonomy = useQuery(

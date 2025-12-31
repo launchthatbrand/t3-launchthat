@@ -35,10 +35,10 @@
       "launchthat-plugin-lms": [
         "../../packages/launchthat-plugin-lms/src/index"
       ],
-      "launchthat-plugin-commerce": [
-        "../../packages/launchthat-plugin-commerce/src/index"
+      "launchthat-plugin-ecommerce": [
+        "../../packages/launchthat-plugin-ecommerce/src/index"
       ],
-      "launchthat-plugin-commerce/*": [
+      "launchthat-plugin-ecommerce/*": [
         "../../packages/launchthat-plugin-commerce/src/*"
       ],
       "launchthat-plugin-helpdesk": [

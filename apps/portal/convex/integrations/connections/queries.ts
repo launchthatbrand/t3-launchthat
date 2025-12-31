@@ -99,6 +99,52 @@ export const list = query({
 });
 
 /**
+ * Batch lookup connection status for many (nodeType, ownerId) pairs.
+ * Public-safe: does not return secrets.
+ */
+export const listForOwners = query({
+  args: {
+    filters: v.array(
+      v.object({
+        nodeType: v.string(),
+        ownerId: v.union(v.id("users"), v.string()),
+      }),
+    ),
+  },
+  returns: v.array(
+    v.object({
+      nodeType: v.string(),
+      ownerId: v.union(v.id("users"), v.string()),
+      status: v.union(v.string(), v.null()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const results: Array<{
+      nodeType: string;
+      ownerId: string;
+      status: string | null;
+    }> = [];
+
+    for (const filter of args.filters) {
+      const conn = await ctx.db
+        .query("connections")
+        .withIndex("by_node_type_and_owner", (q) =>
+          q.eq("nodeType", filter.nodeType).eq("ownerId", filter.ownerId),
+        )
+        .first();
+
+      results.push({
+        nodeType: filter.nodeType,
+        ownerId: filter.ownerId as any,
+        status: conn?.status ?? null,
+      });
+    }
+
+    return results as any;
+  },
+});
+
+/**
  * Get a specific connection by ID
  */
 export const get = query({

@@ -195,7 +195,7 @@ export async function POST(req: Request) {
             retryAfterMs: sessionLimit.retryAfterMs,
           }),
         );
-        return NextResponse.json(
+      return NextResponse.json(
           { error: "Rate limited" },
           {
             status: 429,
@@ -205,7 +205,7 @@ export async function POST(req: Request) {
               ),
             },
           },
-        );
+      );
       }
     }
     const threadId =
@@ -214,12 +214,12 @@ export async function POST(req: Request) {
         await convex.mutation(
           (api as any).plugins.support.mutations.createThread,
           {
-            organizationId,
+        organizationId,
             clientSessionId: parsed.clientSessionId,
-            contactId: parsed.contactId ?? undefined,
-            contactEmail: parsed.contactEmail ?? undefined,
-            contactName: parsed.contactName ?? undefined,
-            mode: undefined,
+        contactId: parsed.contactId ?? undefined,
+        contactEmail: parsed.contactEmail ?? undefined,
+        contactName: parsed.contactName ?? undefined,
+        mode: undefined,
           },
         )
       ).threadId;

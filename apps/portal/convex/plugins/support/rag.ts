@@ -305,7 +305,9 @@ export const getPostForIngestion = internalQuery({
   returns: v.union(
     v.null(),
     v.object({
-      _id: v.id("posts"),
+      // NOTE: component-scoped posts (e.g. launchthat_ecommerce:posts) can be
+      // ingested as well, and their IDs won't validate as `v.id("posts")`.
+      _id: v.string(),
       organizationId: v.optional(v.id("organizations")),
       postTypeSlug: v.optional(v.string()),
       title: v.optional(v.union(v.string(), v.null())),
@@ -336,7 +338,24 @@ export const getPostForIngestion = internalQuery({
         metaMap[entry.key] = String(entry.value);
       }
     }
-    return { ...(post as any), ...Object.fromEntries(Object.entries(metaMap).map(([k, v]) => [`__meta:${k}`, v])) };
+
+    // IMPORTANT: keep the returned shape stable for the validator and for buildPostText.
+    const base = {
+      _id: String((post as any)._id),
+      organizationId: (post as any).organizationId,
+      postTypeSlug: (post as any).postTypeSlug,
+      title: (post as any).title ?? null,
+      excerpt: (post as any).excerpt ?? null,
+      content: (post as any).content ?? null,
+      slug: (post as any).slug,
+      tags: (post as any).tags,
+      status: (post as any).status,
+    };
+
+    return {
+      ...base,
+      ...Object.fromEntries(Object.entries(metaMap).map(([k, v]) => [`__meta:${k}`, v])),
+    };
   },
 });
 

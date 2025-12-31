@@ -150,6 +150,7 @@ export const createLmsPluginDefinitionImpl = ({
       enableApi: true,
       storageKind: "component",
       storageTables: LMS_COMPONENT_TABLES,
+      storageComponent: "launchthat_lms",
       supports: {
         title: true,
         editor: true,
@@ -280,6 +281,7 @@ export const createLmsPluginDefinitionImpl = ({
       enableApi: true,
       storageKind: "component",
       storageTables: LMS_COMPONENT_TABLES,
+      storageComponent: "launchthat_lms",
       supports: {
         title: true,
         editor: true,
@@ -357,6 +359,7 @@ export const createLmsPluginDefinitionImpl = ({
       enableApi: true,
       storageKind: "component",
       storageTables: LMS_COMPONENT_TABLES,
+      storageComponent: "launchthat_lms",
       supports: {
         title: true,
         editor: true,
@@ -403,6 +406,7 @@ export const createLmsPluginDefinitionImpl = ({
       enableApi: true,
       storageKind: "component",
       storageTables: LMS_COMPONENT_TABLES,
+      storageComponent: "launchthat_lms",
       supports: {
         title: true,
         editor: true,
@@ -469,6 +473,7 @@ export const createLmsPluginDefinitionImpl = ({
       enableApi: true,
       storageKind: "component",
       storageTables: LMS_COMPONENT_TABLES,
+      storageComponent: "launchthat_lms",
       supports: {
         title: true,
         editor: true,
@@ -533,6 +538,7 @@ export const createLmsPluginDefinitionImpl = ({
       enableApi: true,
       storageKind: "component",
       storageTables: LMS_COMPONENT_TABLES,
+      storageComponent: "launchthat_lms",
       supports: {
         title: true,
         editor: true,
@@ -627,6 +633,7 @@ export const createLmsPluginDefinitionImpl = ({
       enableApi: false,
       storageKind: "component",
       storageTables: LMS_COMPONENT_TABLES,
+      storageComponent: "launchthat_lms",
       supports: {
         title: true,
         editor: true,

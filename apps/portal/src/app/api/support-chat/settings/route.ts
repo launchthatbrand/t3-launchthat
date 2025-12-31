@@ -73,7 +73,7 @@ export async function GET(request: Request) {
           retryAfterMs: ipLimit.retryAfterMs,
         }),
       );
-      return NextResponse.json(
+    return NextResponse.json(
         { error: "Rate limited" },
         {
           status: 429,
@@ -86,43 +86,43 @@ export async function GET(request: Request) {
     const organizationIdParam = searchParams.get("organizationId");
     const widgetKey = searchParams.get("widgetKey");
 
-    const convex = getConvex();
+  const convex = getConvex();
     const { organizationId: resolvedOrganizationId } =
       await requireSupportWidgetAuth({
         req: request,
-        convex,
+    convex,
         organizationIdParam,
         widgetKey,
       });
 
-    const [
-      requireContact,
-      contactFields,
-      introHeadline,
-      welcomeMessage,
-      privacyMessage,
-    ] = await Promise.all([
-      convex.query(api.plugins.support.options.getSupportOption, {
-        organizationId: resolvedOrganizationId,
-        key: supportContactCaptureKey,
-      }),
-      convex.query(api.plugins.support.options.getSupportOption, {
-        organizationId: resolvedOrganizationId,
-        key: supportContactCaptureFieldsKey,
-      }),
-      convex.query(api.plugins.support.options.getSupportOption, {
-        organizationId: resolvedOrganizationId,
-        key: supportIntroHeadlineKey,
-      }),
-      convex.query(api.plugins.support.options.getSupportOption, {
-        organizationId: resolvedOrganizationId,
-        key: supportWelcomeMessageKey,
-      }),
-      convex.query(api.plugins.support.options.getSupportOption, {
-        organizationId: resolvedOrganizationId,
-        key: supportPrivacyMessageKey,
-      }),
-    ]);
+  const [
+    requireContact,
+    contactFields,
+    introHeadline,
+    welcomeMessage,
+    privacyMessage,
+  ] = await Promise.all([
+    convex.query(api.plugins.support.options.getSupportOption, {
+      organizationId: resolvedOrganizationId,
+      key: supportContactCaptureKey,
+    }),
+    convex.query(api.plugins.support.options.getSupportOption, {
+      organizationId: resolvedOrganizationId,
+      key: supportContactCaptureFieldsKey,
+    }),
+    convex.query(api.plugins.support.options.getSupportOption, {
+      organizationId: resolvedOrganizationId,
+      key: supportIntroHeadlineKey,
+    }),
+    convex.query(api.plugins.support.options.getSupportOption, {
+      organizationId: resolvedOrganizationId,
+      key: supportWelcomeMessageKey,
+    }),
+    convex.query(api.plugins.support.options.getSupportOption, {
+      organizationId: resolvedOrganizationId,
+      key: supportPrivacyMessageKey,
+    }),
+  ]);
 
   const settings = {
     ...defaultSupportChatSettings,
@@ -145,7 +145,7 @@ export async function GET(request: Request) {
     ),
   };
 
-    return NextResponse.json({ settings });
+  return NextResponse.json({ settings });
   } catch (error) {
     if (error instanceof SupportWidgetAuthError) {
       const { searchParams } = new URL(request.url);

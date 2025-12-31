@@ -1,118 +1,98 @@
 import { v } from "convex/values";
 
-import { components } from "../../_generated/api";
+import { api } from "../../_generated/api";
 import { mutation } from "../../_generated/server";
+import { PORTAL_TENANT_SLUG } from "../../constants";
 
-const commercePostsMutations = components.launchthat_ecommerce.posts.mutations;
+const ECOMMERCE_COMPONENT_TABLES = [
+  "launchthat_ecommerce:posts",
+  "launchthat_ecommerce:postsMeta",
+] as const;
 
-export const createPost = mutation({
+const ECOMMERCE_COMPONENT_NAME = "launchthat_ecommerce" as const;
+
+export const ensureDefaultPagesAndAssign = mutation({
   args: {
-    title: v.string(),
-    content: v.optional(v.string()),
-    excerpt: v.optional(v.string()),
-    slug: v.string(),
-    status: v.union(
-      v.literal("published"),
-      v.literal("draft"),
-      v.literal("archived"),
-    ),
-    category: v.optional(v.string()),
-    tags: v.optional(v.array(v.string())),
-    featuredImage: v.optional(v.string()),
-    postTypeSlug: v.string(),
-    meta: v.optional(
-      v.record(
-        v.string(),
-        v.union(v.string(), v.number(), v.boolean(), v.null()),
-      ),
-    ),
-    organizationId: v.optional(v.string()),
+    organizationId: v.optional(v.id("organizations")),
   },
-  returns: v.string(),
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    return await ctx.runMutation(commercePostsMutations.createPost, args);
+    const org = args.organizationId ?? PORTAL_TENANT_SLUG;
+
+    // Ensure component-backed post types exist for Products + Orders.
+    await ctx.runMutation(api.core.postTypes.mutations.enableForOrganization, {
+      slug: "products",
+      organizationId: org,
+      definition: {
+        name: "Products",
+        description: "Storefront products.",
+        isPublic: true,
+        enableApi: true,
+        includeTimestamps: true,
+        supports: {
+          title: true,
+          editor: true,
+          excerpt: true,
+          featuredImage: true,
+          customFields: true,
+          postMeta: true,
+          taxonomy: true,
+        },
+        rewrite: {
+          hasArchive: true,
+          archiveSlug: "store",
+          singleSlug: "product",
+          withFront: true,
+          feeds: false,
+          pages: true,
+        },
+        adminMenu: {
+          enabled: true,
+          label: "Products",
+          slug: "products",
+          parent: "ecommerce",
+          icon: "ShoppingBag",
+          position: 40,
+        },
+        storageKind: "component",
+        storageTables: [...ECOMMERCE_COMPONENT_TABLES],
+        storageComponent: ECOMMERCE_COMPONENT_NAME,
+      },
+    });
+
+    await ctx.runMutation(api.core.postTypes.mutations.enableForOrganization, {
+      slug: "orders",
+      organizationId: org,
+      definition: {
+        name: "Orders",
+        description: "Customer orders.",
+        isPublic: false,
+        enableApi: true,
+        includeTimestamps: true,
+        supports: {
+          title: true,
+          customFields: true,
+          postMeta: true,
+        },
+        rewrite: {
+          hasArchive: false,
+        },
+        adminMenu: {
+          enabled: true,
+          label: "Orders",
+          slug: "orders",
+          parent: "ecommerce",
+          icon: "Receipt",
+          position: 41,
+        },
+        storageKind: "component",
+        storageTables: [...ECOMMERCE_COMPONENT_TABLES],
+        storageComponent: ECOMMERCE_COMPONENT_NAME,
+      },
+    });
+
+    return { success: true };
   },
 });
-
-export const updatePost = mutation({
-  args: {
-    id: v.string(),
-    title: v.optional(v.string()),
-    content: v.optional(v.string()),
-    excerpt: v.optional(v.string()),
-    slug: v.optional(v.string()),
-    status: v.optional(
-      v.union(
-        v.literal("published"),
-        v.literal("draft"),
-        v.literal("archived"),
-      ),
-    ),
-    category: v.optional(v.string()),
-    tags: v.optional(v.array(v.string())),
-    featuredImage: v.optional(v.string()),
-    meta: v.optional(
-      v.record(
-        v.string(),
-        v.union(v.string(), v.number(), v.boolean(), v.null()),
-      ),
-    ),
-  },
-  returns: v.string(),
-  handler: async (ctx, args) => {
-    return await ctx.runMutation(commercePostsMutations.updatePost, args);
-  },
-});
-
-export const deletePost = mutation({
-  args: {
-    id: v.string(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    return await ctx.runMutation(commercePostsMutations.deletePost, args);
-  },
-});
-
-export const updatePostStatus = mutation({
-  args: {
-    id: v.string(),
-    status: v.union(
-      v.literal("published"),
-      v.literal("draft"),
-      v.literal("archived"),
-    ),
-  },
-  returns: v.string(),
-  handler: async (ctx, args) => {
-    return await ctx.runMutation(commercePostsMutations.updatePostStatus, args);
-  },
-});
-
-export const bulkUpdatePostStatus = mutation({
-  args: {
-    ids: v.array(v.string()),
-    status: v.union(
-      v.literal("published"),
-      v.literal("draft"),
-      v.literal("archived"),
-    ),
-  },
-  returns: v.array(v.string()),
-  handler: async (ctx, args) => {
-    return await ctx.runMutation(
-      commercePostsMutations.bulkUpdatePostStatus,
-      args,
-    );
-  },
-});
-
-
-
-
-
-
-
-
 
 

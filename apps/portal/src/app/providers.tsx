@@ -3,23 +3,21 @@
 
 import type { TenantSummary } from "@/lib/tenant-fetcher";
 // Import Clerk provider and hook
-import React from "react";
+import React, { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { api } from "@/convex/_generated/api";
 import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
 import { SessionProvider } from "convex-helpers/react/sessions";
-import { useQuery } from "convex/react";
-import { ConvexReactClient } from "convex/react";
+import { ConvexReactClient, useQuery } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { SupportChatWidget } from "launchthat-plugin-support";
 import { useLocalStorage } from "usehooks-ts";
-import { useEffect } from "react";
 
 import { ThemeProvider } from "@acme/ui/theme";
 import { Toaster } from "@acme/ui/toast";
 
 import { ContentProtectionProvider } from "~/components/access/ContentProtectionProvider";
 import { TenantProvider } from "~/context/TenantContext";
-import { api } from "@/convex/_generated/api";
 import { env } from "~/env";
 import { PORTAL_TENANT_ID, PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
 import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
@@ -59,6 +57,7 @@ export function Providers({ children, tenant }: ProvidersProps) {
             <TenantProvider value={effectiveTenant}>
               <ConvexUserEnsurer />
               {/* <GuestCartMerger /> */}
+
               <ThemeProvider>
                 {children}
                 {chatOrganizationId ? (
@@ -121,18 +120,17 @@ function SupportChatWidgetBridge({
     }
   }, [organizationId, tenantName, isAdminRoute, widgetKey, widgetKeyRaw]);
 
-  const defaultContact =
-    user
-      ? {
-          contactId: `clerk:${user.id}`,
-          fullName:
-            user.fullName ??
-            user.username ??
-            user.primaryEmailAddress?.emailAddress ??
-            undefined,
-          email: user.primaryEmailAddress?.emailAddress ?? undefined,
-        }
-      : null;
+  const defaultContact = user
+    ? {
+        contactId: `clerk:${user.id}`,
+        fullName:
+          user.fullName ??
+          user.username ??
+          user.primaryEmailAddress?.emailAddress ??
+          undefined,
+        email: user.primaryEmailAddress?.emailAddress ?? undefined,
+      }
+    : null;
 
   return (
     <SupportChatWidget

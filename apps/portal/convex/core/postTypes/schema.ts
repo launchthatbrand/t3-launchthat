@@ -49,6 +49,8 @@ export const postTypeStorageKindValidator = v.union(
 
 export const postTypeStorageTablesValidator = v.array(v.string());
 
+export const postTypeStorageComponentValidator = v.string();
+
 // Define reusable field value validators to match contentTypes.ts
 const fieldDefaultValue = v.optional(
   v.union(v.string(), v.number(), v.boolean(), v.null()),
@@ -183,6 +185,7 @@ export const postTypesTable = defineTable({
   adminMenu: v.optional(postTypeAdminMenuValidator), // Admin menu configuration
   storageKind: v.optional(postTypeStorageKindValidator),
   storageTables: v.optional(postTypeStorageTablesValidator),
+  storageComponent: v.optional(postTypeStorageComponentValidator),
   metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
   frontendVisibility: v.optional(postTypeFrontendVisibilityValidator),
   pageTemplateSlug: v.optional(v.string()),

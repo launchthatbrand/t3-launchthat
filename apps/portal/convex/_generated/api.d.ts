@@ -50,6 +50,7 @@ import type * as core_organizations_types from "../core/organizations/types.js";
 import type * as core_permissions_mutations from "../core/permissions/mutations.js";
 import type * as core_permissions_queries from "../core/permissions/queries.js";
 import type * as core_postTypes_lib_contentTypes from "../core/postTypes/lib/contentTypes.js";
+import type * as core_postTypes_migrations from "../core/postTypes/migrations.js";
 import type * as core_postTypes_mutations from "../core/postTypes/mutations.js";
 import type * as core_postTypes_queries from "../core/postTypes/queries.js";
 import type * as core_postTypes_types from "../core/postTypes/types.js";
@@ -67,46 +68,6 @@ import type * as core_users_mutations from "../core/users/mutations.js";
 import type * as core_users_queries from "../core/users/queries.js";
 import type * as core_users_types from "../core/users/types.js";
 import type * as core_users from "../core/users.js";
-import type * as ecommerce_balances_mutations from "../ecommerce/balances/mutations.js";
-import type * as ecommerce_balances_queries from "../ecommerce/balances/queries.js";
-import type * as ecommerce_cart_cartUtils from "../ecommerce/cart/cartUtils.js";
-import type * as ecommerce_cart_mutations from "../ecommerce/cart/mutations.js";
-import type * as ecommerce_cart_queries from "../ecommerce/cart/queries.js";
-import type * as ecommerce_categories_helpers from "../ecommerce/categories/helpers.js";
-import type * as ecommerce_categories_mutations from "../ecommerce/categories/mutations.js";
-import type * as ecommerce_categories_queries from "../ecommerce/categories/queries.js";
-import type * as ecommerce_chargebacks_evidence from "../ecommerce/chargebacks/evidence.js";
-import type * as ecommerce_chargebacks_mockData from "../ecommerce/chargebacks/mockData.js";
-import type * as ecommerce_chargebacks_mutations from "../ecommerce/chargebacks/mutations.js";
-import type * as ecommerce_chargebacks_queries from "../ecommerce/chargebacks/queries.js";
-import type * as ecommerce_checkout_mutations from "../ecommerce/checkout/mutations.js";
-import type * as ecommerce_checkout_queries from "../ecommerce/checkout/queries.js";
-import type * as ecommerce_checkouts_mutations from "../ecommerce/checkouts/mutations.js";
-import type * as ecommerce_checkouts_queries from "../ecommerce/checkouts/queries.js";
-import type * as ecommerce_coupons_mutations from "../ecommerce/coupons/mutations.js";
-import type * as ecommerce_coupons_queries from "../ecommerce/coupons/queries.js";
-import type * as ecommerce_funnels_mutations from "../ecommerce/funnels/mutations.js";
-import type * as ecommerce_funnels_queries from "../ecommerce/funnels/queries.js";
-import type * as ecommerce_lib_index from "../ecommerce/lib/index.js";
-import type * as ecommerce_lib_permissions from "../ecommerce/lib/permissions.js";
-import type * as ecommerce_lib_pricing from "../ecommerce/lib/pricing.js";
-import type * as ecommerce_lib_stockUtils from "../ecommerce/lib/stockUtils.js";
-import type * as ecommerce_orders_mockData from "../ecommerce/orders/mockData.js";
-import type * as ecommerce_orders_mutations from "../ecommerce/orders/mutations.js";
-import type * as ecommerce_orders_notes from "../ecommerce/orders/notes.js";
-import type * as ecommerce_orders_queries from "../ecommerce/orders/queries.js";
-import type * as ecommerce_payments_mutations from "../ecommerce/payments/mutations.js";
-import type * as ecommerce_payments_queries from "../ecommerce/payments/queries.js";
-import type * as ecommerce_products_helpers from "../ecommerce/products/helpers.js";
-import type * as ecommerce_products_media from "../ecommerce/products/media.js";
-import type * as ecommerce_products_mutations from "../ecommerce/products/mutations.js";
-import type * as ecommerce_products_queries from "../ecommerce/products/queries.js";
-import type * as ecommerce_products_uploads from "../ecommerce/products/uploads.js";
-import type * as ecommerce_transfers_mockData from "../ecommerce/transfers/mockData.js";
-import type * as ecommerce_transfers_mutations from "../ecommerce/transfers/mutations.js";
-import type * as ecommerce_transfers_queries from "../ecommerce/transfers/queries.js";
-import type * as ecommerce_variations_mutations from "../ecommerce/variations/mutations.js";
-import type * as ecommerce_variations_queries from "../ecommerce/variations/queries.js";
 import type * as env from "../env.js";
 import type * as http from "../http.js";
 import type * as integrations_connections_actions from "../integrations/connections/actions.js";
@@ -147,8 +108,6 @@ import type * as lib_permissions_requirePermission from "../lib/permissions/requ
 import type * as lib_permissions_userAuth from "../lib/permissions/userAuth.js";
 import type * as lib_queryAnalyzer from "../lib/queryAnalyzer.js";
 import type * as lib_slugs from "../lib/slugs.js";
-import type * as lms_contentAccess_mutations from "../lms/contentAccess/mutations.js";
-import type * as lms_contentAccess_queries from "../lms/contentAccess/queries.js";
 import type * as migrations_portal from "../migrations/portal.js";
 import type * as notifications_helpers from "../notifications/helpers.js";
 import type * as notifications_internal_dispatch from "../notifications/internal/dispatch.js";
@@ -167,8 +126,17 @@ import type * as plugins_calendar_events_orders from "../plugins/calendar/events
 import type * as plugins_calendar_events_queries from "../plugins/calendar/events/queries.js";
 import type * as plugins_calendar_helpers from "../plugins/calendar/helpers.js";
 import type * as plugins_calendar_queries from "../plugins/calendar/queries.js";
+import type * as plugins_commerce_cart_mutations from "../plugins/commerce/cart/mutations.js";
+import type * as plugins_commerce_cart_queries from "../plugins/commerce/cart/queries.js";
+import type * as plugins_commerce_chargebacks_evidence_mutations from "../plugins/commerce/chargebacks/evidence/mutations.js";
+import type * as plugins_commerce_chargebacks_evidence_queries from "../plugins/commerce/chargebacks/evidence/queries.js";
 import type * as plugins_commerce_mutations from "../plugins/commerce/mutations.js";
+import type * as plugins_commerce_orders_mutations from "../plugins/commerce/orders/mutations.js";
+import type * as plugins_commerce_orders_notes from "../plugins/commerce/orders/notes.js";
+import type * as plugins_commerce_orders_queries from "../plugins/commerce/orders/queries.js";
+import type * as plugins_commerce_products_queries from "../plugins/commerce/products/queries.js";
 import type * as plugins_commerce_queries from "../plugins/commerce/queries.js";
+import type * as plugins_commerce from "../plugins/commerce.js";
 import type * as plugins_disclaimers_actions from "../plugins/disclaimers/actions.js";
 import type * as plugins_disclaimers_mutations from "../plugins/disclaimers/mutations.js";
 import type * as plugins_disclaimers_posts_mutations from "../plugins/disclaimers/posts/mutations.js";
@@ -196,6 +164,7 @@ import type * as plugins_support_internalQueries from "../plugins/support/intern
 import type * as plugins_support_mutations from "../plugins/support/mutations.js";
 import type * as plugins_support_openaiModels from "../plugins/support/openaiModels.js";
 import type * as plugins_support_options from "../plugins/support/options.js";
+import type * as plugins_support_posts_queries from "../plugins/support/posts/queries.js";
 import type * as plugins_support_queries from "../plugins/support/queries.js";
 import type * as plugins_support_rag from "../plugins/support/rag.js";
 import type * as presence from "../presence.js";
@@ -282,6 +251,7 @@ declare const fullApi: ApiFromModules<{
   "core/permissions/mutations": typeof core_permissions_mutations;
   "core/permissions/queries": typeof core_permissions_queries;
   "core/postTypes/lib/contentTypes": typeof core_postTypes_lib_contentTypes;
+  "core/postTypes/migrations": typeof core_postTypes_migrations;
   "core/postTypes/mutations": typeof core_postTypes_mutations;
   "core/postTypes/queries": typeof core_postTypes_queries;
   "core/postTypes/types": typeof core_postTypes_types;
@@ -299,46 +269,6 @@ declare const fullApi: ApiFromModules<{
   "core/users/queries": typeof core_users_queries;
   "core/users/types": typeof core_users_types;
   "core/users": typeof core_users;
-  "ecommerce/balances/mutations": typeof ecommerce_balances_mutations;
-  "ecommerce/balances/queries": typeof ecommerce_balances_queries;
-  "ecommerce/cart/cartUtils": typeof ecommerce_cart_cartUtils;
-  "ecommerce/cart/mutations": typeof ecommerce_cart_mutations;
-  "ecommerce/cart/queries": typeof ecommerce_cart_queries;
-  "ecommerce/categories/helpers": typeof ecommerce_categories_helpers;
-  "ecommerce/categories/mutations": typeof ecommerce_categories_mutations;
-  "ecommerce/categories/queries": typeof ecommerce_categories_queries;
-  "ecommerce/chargebacks/evidence": typeof ecommerce_chargebacks_evidence;
-  "ecommerce/chargebacks/mockData": typeof ecommerce_chargebacks_mockData;
-  "ecommerce/chargebacks/mutations": typeof ecommerce_chargebacks_mutations;
-  "ecommerce/chargebacks/queries": typeof ecommerce_chargebacks_queries;
-  "ecommerce/checkout/mutations": typeof ecommerce_checkout_mutations;
-  "ecommerce/checkout/queries": typeof ecommerce_checkout_queries;
-  "ecommerce/checkouts/mutations": typeof ecommerce_checkouts_mutations;
-  "ecommerce/checkouts/queries": typeof ecommerce_checkouts_queries;
-  "ecommerce/coupons/mutations": typeof ecommerce_coupons_mutations;
-  "ecommerce/coupons/queries": typeof ecommerce_coupons_queries;
-  "ecommerce/funnels/mutations": typeof ecommerce_funnels_mutations;
-  "ecommerce/funnels/queries": typeof ecommerce_funnels_queries;
-  "ecommerce/lib/index": typeof ecommerce_lib_index;
-  "ecommerce/lib/permissions": typeof ecommerce_lib_permissions;
-  "ecommerce/lib/pricing": typeof ecommerce_lib_pricing;
-  "ecommerce/lib/stockUtils": typeof ecommerce_lib_stockUtils;
-  "ecommerce/orders/mockData": typeof ecommerce_orders_mockData;
-  "ecommerce/orders/mutations": typeof ecommerce_orders_mutations;
-  "ecommerce/orders/notes": typeof ecommerce_orders_notes;
-  "ecommerce/orders/queries": typeof ecommerce_orders_queries;
-  "ecommerce/payments/mutations": typeof ecommerce_payments_mutations;
-  "ecommerce/payments/queries": typeof ecommerce_payments_queries;
-  "ecommerce/products/helpers": typeof ecommerce_products_helpers;
-  "ecommerce/products/media": typeof ecommerce_products_media;
-  "ecommerce/products/mutations": typeof ecommerce_products_mutations;
-  "ecommerce/products/queries": typeof ecommerce_products_queries;
-  "ecommerce/products/uploads": typeof ecommerce_products_uploads;
-  "ecommerce/transfers/mockData": typeof ecommerce_transfers_mockData;
-  "ecommerce/transfers/mutations": typeof ecommerce_transfers_mutations;
-  "ecommerce/transfers/queries": typeof ecommerce_transfers_queries;
-  "ecommerce/variations/mutations": typeof ecommerce_variations_mutations;
-  "ecommerce/variations/queries": typeof ecommerce_variations_queries;
   env: typeof env;
   http: typeof http;
   "integrations/connections/actions": typeof integrations_connections_actions;
@@ -379,8 +309,6 @@ declare const fullApi: ApiFromModules<{
   "lib/permissions/userAuth": typeof lib_permissions_userAuth;
   "lib/queryAnalyzer": typeof lib_queryAnalyzer;
   "lib/slugs": typeof lib_slugs;
-  "lms/contentAccess/mutations": typeof lms_contentAccess_mutations;
-  "lms/contentAccess/queries": typeof lms_contentAccess_queries;
   "migrations/portal": typeof migrations_portal;
   "notifications/helpers": typeof notifications_helpers;
   "notifications/internal/dispatch": typeof notifications_internal_dispatch;
@@ -399,8 +327,17 @@ declare const fullApi: ApiFromModules<{
   "plugins/calendar/events/queries": typeof plugins_calendar_events_queries;
   "plugins/calendar/helpers": typeof plugins_calendar_helpers;
   "plugins/calendar/queries": typeof plugins_calendar_queries;
+  "plugins/commerce/cart/mutations": typeof plugins_commerce_cart_mutations;
+  "plugins/commerce/cart/queries": typeof plugins_commerce_cart_queries;
+  "plugins/commerce/chargebacks/evidence/mutations": typeof plugins_commerce_chargebacks_evidence_mutations;
+  "plugins/commerce/chargebacks/evidence/queries": typeof plugins_commerce_chargebacks_evidence_queries;
   "plugins/commerce/mutations": typeof plugins_commerce_mutations;
+  "plugins/commerce/orders/mutations": typeof plugins_commerce_orders_mutations;
+  "plugins/commerce/orders/notes": typeof plugins_commerce_orders_notes;
+  "plugins/commerce/orders/queries": typeof plugins_commerce_orders_queries;
+  "plugins/commerce/products/queries": typeof plugins_commerce_products_queries;
   "plugins/commerce/queries": typeof plugins_commerce_queries;
+  "plugins/commerce": typeof plugins_commerce;
   "plugins/disclaimers/actions": typeof plugins_disclaimers_actions;
   "plugins/disclaimers/mutations": typeof plugins_disclaimers_mutations;
   "plugins/disclaimers/posts/mutations": typeof plugins_disclaimers_posts_mutations;
@@ -428,6 +365,7 @@ declare const fullApi: ApiFromModules<{
   "plugins/support/mutations": typeof plugins_support_mutations;
   "plugins/support/openaiModels": typeof plugins_support_openaiModels;
   "plugins/support/options": typeof plugins_support_options;
+  "plugins/support/posts/queries": typeof plugins_support_posts_queries;
   "plugins/support/queries": typeof plugins_support_queries;
   "plugins/support/rag": typeof plugins_support_rag;
   presence: typeof presence;
@@ -4335,123 +4273,6 @@ export declare const components: {
       >;
     };
   };
-  launchthat_ecommerce: {
-    posts: {
-      mutations: {
-        bulkUpdatePostStatus: FunctionReference<
-          "mutation",
-          "internal",
-          { ids: Array<string>; status: "published" | "draft" | "archived" },
-          any
-        >;
-        createPost: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            category?: string;
-            content?: string;
-            excerpt?: string;
-            featuredImage?: string;
-            meta?: Record<string, string | number | boolean | null>;
-            organizationId?: string;
-            postTypeSlug: string;
-            slug: string;
-            status: "published" | "draft" | "archived";
-            tags?: Array<string>;
-            title: string;
-          },
-          any
-        >;
-        deletePost: FunctionReference<
-          "mutation",
-          "internal",
-          { id: string },
-          any
-        >;
-        updatePost: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            category?: string;
-            content?: string;
-            excerpt?: string;
-            featuredImage?: string;
-            id: string;
-            meta?: Record<string, string | number | boolean | null>;
-            slug?: string;
-            status?: "published" | "draft" | "archived";
-            tags?: Array<string>;
-            title?: string;
-          },
-          any
-        >;
-        updatePostStatus: FunctionReference<
-          "mutation",
-          "internal",
-          { id: string; status: "published" | "draft" | "archived" },
-          any
-        >;
-      };
-      queries: {
-        getAllPosts: FunctionReference<
-          "query",
-          "internal",
-          {
-            filters?: {
-              authorId?: string;
-              category?: string;
-              limit?: number;
-              postTypeSlug?: string;
-              status?: "published" | "draft" | "archived";
-            };
-            organizationId?: string;
-          },
-          any
-        >;
-        getPostById: FunctionReference<
-          "query",
-          "internal",
-          { id: string; organizationId?: string },
-          any
-        >;
-        getPostBySlug: FunctionReference<
-          "query",
-          "internal",
-          { organizationId?: string; slug: string },
-          any
-        >;
-        getPostCategories: FunctionReference<
-          "query",
-          "internal",
-          { organizationId?: string; postTypeSlug?: string },
-          any
-        >;
-        getPostMeta: FunctionReference<
-          "query",
-          "internal",
-          { organizationId?: string; postId: string },
-          any
-        >;
-        getPostTags: FunctionReference<
-          "query",
-          "internal",
-          { organizationId?: string; postTypeSlug?: string },
-          any
-        >;
-        searchPosts: FunctionReference<
-          "query",
-          "internal",
-          {
-            limit?: number;
-            organizationId?: string;
-            postTypeSlug?: string;
-            searchTerm: string;
-          },
-          any
-        >;
-      };
-    };
-  };
   launchthat_support: {
     mutations: {
       createSupportPost: FunctionReference<
@@ -4522,6 +4343,87 @@ export declare const components: {
         },
         any
       >;
+    };
+    posts: {
+      mutations: {
+        createPost: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            category?: string;
+            content?: string;
+            excerpt?: string;
+            featuredImage?: string;
+            meta?: Record<string, string | number | boolean | null>;
+            organizationId?: string;
+            postTypeSlug: string;
+            slug: string;
+            status: "published" | "draft" | "archived";
+            tags?: Array<string>;
+            title: string;
+          },
+          string
+        >;
+        deletePost: FunctionReference<
+          "mutation",
+          "internal",
+          { id: string },
+          null
+        >;
+        updatePost: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            category?: string;
+            content?: string;
+            excerpt?: string;
+            featuredImage?: string;
+            id: string;
+            meta?: Record<string, string | number | boolean | null>;
+            organizationId?: string;
+            slug?: string;
+            status?: "published" | "draft" | "archived";
+            tags?: Array<string>;
+            title?: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        getAllPosts: FunctionReference<
+          "query",
+          "internal",
+          {
+            filters?: {
+              authorId?: string;
+              category?: string;
+              limit?: number;
+              postTypeSlug?: string;
+              status?: "published" | "draft" | "archived";
+            };
+            organizationId?: string;
+          },
+          any
+        >;
+        getPostById: FunctionReference<
+          "query",
+          "internal",
+          { id: string; organizationId?: string },
+          any
+        >;
+        getPostBySlug: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; slug: string },
+          any
+        >;
+        getPostMeta: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; postId: string },
+          any
+        >;
+      };
     };
     queries: {
       getSupportOption: FunctionReference<
@@ -5354,6 +5256,7 @@ export declare const components: {
             featuredImage?: string;
             id: string;
             meta?: Record<string, string | number | boolean | null>;
+            organizationId?: string;
             slug?: string;
             status?: "published" | "draft" | "archived";
             tags?: Array<string>;
@@ -5832,6 +5735,191 @@ export declare const components: {
           updatedAt: number;
         }>
       >;
+    };
+  };
+  launchthat_ecommerce: {
+    cart: {
+      mutations: {
+        addToCart: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            productPostId: string;
+            quantity?: number;
+            userId: string;
+            variationId?: string;
+          },
+          any
+        >;
+        addToGuestCart: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            guestSessionId: string;
+            productPostId: string;
+            quantity?: number;
+            variationId?: string;
+          },
+          any
+        >;
+        clearCart: FunctionReference<
+          "mutation",
+          "internal",
+          { guestSessionId?: string; userId?: string },
+          any
+        >;
+        removeFromCart: FunctionReference<
+          "mutation",
+          "internal",
+          { cartItemId: string; userId: string },
+          any
+        >;
+        removeFromGuestCart: FunctionReference<
+          "mutation",
+          "internal",
+          { cartItemId: string; guestSessionId: string },
+          any
+        >;
+        updateCartItemQuantity: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            cartItemId: string;
+            guestSessionId?: string;
+            quantity: number;
+            userId?: string;
+          },
+          any
+        >;
+      };
+      queries: {
+        getCart: FunctionReference<
+          "query",
+          "internal",
+          { guestSessionId?: string; userId?: string },
+          any
+        >;
+      };
+    };
+    posts: {
+      mutations: {
+        createPost: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            authorId?: string;
+            category?: string;
+            content?: string;
+            createdAt?: number;
+            excerpt?: string;
+            featuredImage?: string;
+            featuredImageUrl?: string;
+            meta?: Record<string, string | number | boolean | null>;
+            organizationId?: string;
+            postTypeSlug: string;
+            slug: string;
+            status: "published" | "draft" | "archived";
+            tags?: Array<string>;
+            title: string;
+            updatedAt?: number;
+          },
+          any
+        >;
+        deletePost: FunctionReference<
+          "mutation",
+          "internal",
+          { id: string },
+          any
+        >;
+        setPostMeta: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            key: string;
+            postId: string;
+            value?: string | number | boolean | null;
+          },
+          any
+        >;
+        updatePost: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            category?: string;
+            content?: string;
+            excerpt?: string;
+            featuredImage?: string;
+            featuredImageUrl?: string;
+            id: string;
+            meta?: Record<string, string | number | boolean | null>;
+            organizationId?: string;
+            patch?: any;
+            slug?: string;
+            status?: "published" | "draft" | "archived";
+            tags?: Array<string>;
+            title?: string;
+          },
+          any
+        >;
+      };
+      queries: {
+        getAllPosts: FunctionReference<
+          "query",
+          "internal",
+          {
+            filters?: {
+              authorId?: string;
+              category?: string;
+              limit?: number;
+              postTypeSlug?: string;
+              status?: "published" | "draft" | "archived";
+            };
+            organizationId?: string;
+          },
+          any
+        >;
+        getPostById: FunctionReference<
+          "query",
+          "internal",
+          { id: string; organizationId?: string },
+          null | any
+        >;
+        getPostBySlug: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; slug: string },
+          null | any
+        >;
+        getPostCategories: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; postTypeSlug?: string },
+          any
+        >;
+        getPostMeta: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; postId: string },
+          any
+        >;
+        getPostTags: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; postTypeSlug?: string },
+          any
+        >;
+        searchPosts: FunctionReference<
+          "query",
+          "internal",
+          {
+            limit?: number;
+            organizationId?: string;
+            postTypeSlug?: string;
+            searchTerm: string;
+          },
+          any
+        >;
+      };
     };
   };
 };

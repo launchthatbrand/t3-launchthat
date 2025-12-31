@@ -1,6 +1,5 @@
 // Re-export all stores for centralized imports
 export { default as useCarouselStore } from "./useCarouselStore";
-export { useCheckoutStore } from "./useCheckoutStore";
 export { useNotificationStore } from "./useNotificationStore";
 export { useEditorStore } from "./useEditorStore";
 export { useSocialStore } from "./useSocialStore";
@@ -23,12 +22,6 @@ export type {
   PaginationState,
   FilterSettings,
 } from "./useSocialStore";
-
-export type {
-  // Checkout store types
-  CheckoutStep,
-  AddressData,
-} from "./useCheckoutStore";
 
 // This centralized approach makes it easier to:
 // 1. Import stores with a consistent pattern

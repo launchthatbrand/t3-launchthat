@@ -25,6 +25,7 @@ import {
   postTypeFrontendVisibilityValidator,
   postTypeMetaBoxValidator,
   postTypeRewriteValidator,
+  postTypeStorageComponentValidator,
   postTypeStorageKindValidator,
   postTypeStorageTablesValidator,
   postTypeSupportsValidator,
@@ -106,14 +107,21 @@ const metaBoxesEqual = (
 
 const normalizeRouteKey = (value: unknown): string | undefined => {
   if (typeof value !== "string") return undefined;
-  const trimmed = value.replace(/^\/+|\/+$/g, "").trim().toLowerCase();
+  const trimmed = value
+    .replace(/^\/+|\/+$/g, "")
+    .trim()
+    .toLowerCase();
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const deriveRewriteKeys = (rewrite: Doc<"postTypes">["rewrite"] | undefined) => {
+const deriveRewriteKeys = (
+  rewrite: Doc<"postTypes">["rewrite"] | undefined,
+) => {
   const singleSlugKey = normalizeRouteKey(rewrite?.singleSlug);
   const archiveSlugKey =
-    rewrite?.hasArchive === false ? undefined : normalizeRouteKey(rewrite?.archiveSlug);
+    rewrite?.hasArchive === false
+      ? undefined
+      : normalizeRouteKey(rewrite?.archiveSlug);
   return { singleSlugKey, archiveSlugKey };
 };
 
@@ -127,8 +135,18 @@ interface DefaultPostTypeConfig {
   adminMenu: Doc<"postTypes">["adminMenu"];
   storageKind?: "posts" | "custom" | "component";
   storageTables?: string[];
+  storageComponent?: string;
   metaBoxes?: Doc<"postTypes">["metaBoxes"];
 }
+
+const inferStorageComponent = (tables: readonly string[] | undefined) => {
+  const storageTables = tables ?? [];
+  const candidate =
+    storageTables.find((t) => t.includes(":posts")) ?? storageTables[0];
+  if (!candidate) return undefined;
+  const prefix = candidate.split(":")[0];
+  return prefix && prefix.trim().length > 0 ? prefix.trim() : undefined;
+};
 
 type DefaultFieldSeed = PostTypeField & {
   isBuiltIn?: boolean;
@@ -847,6 +865,7 @@ export const enableForOrganization = mutation({
         adminMenu: v.optional(postTypeAdminMenuValidator),
         storageKind: v.optional(postTypeStorageKindValidator),
         storageTables: v.optional(postTypeStorageTablesValidator),
+        storageComponent: v.optional(postTypeStorageComponentValidator),
         metaBoxes: v.optional(v.array(postTypeMetaBoxValidator)),
         pageTemplateSlug: v.optional(v.string()),
       }),
@@ -868,8 +887,18 @@ export const enableForOrganization = mutation({
         const storageTables =
           args.definition.storageTables ??
           (storageKind === "posts" ? [...DEFAULT_POST_STORAGE_TABLES] : []);
+        const storageComponent =
+          storageKind === "component"
+            ? (args.definition.storageComponent ??
+              inferStorageComponent(storageTables))
+            : undefined;
         if (storageKind === "custom" && storageTables.length === 0) {
           throw new Error("Custom post types must specify storage tables");
+        }
+        if (storageKind === "component" && !storageComponent) {
+          throw new Error(
+            "Component-backed post types must specify storageComponent (or storageTables that include a '<component>:posts' entry).",
+          );
         }
         const id = await ctx.db.insert("postTypes", {
           organizationId: resolvedOrgId ?? undefined,
@@ -893,6 +922,7 @@ export const enableForOrganization = mutation({
             } satisfies Doc<"postTypes">["adminMenu"]),
           storageKind,
           storageTables,
+          storageComponent,
           metaBoxes: args.definition.metaBoxes,
           pageTemplateSlug: args.definition.pageTemplateSlug,
           fieldCount: 0,
@@ -927,6 +957,11 @@ export const enableForOrganization = mutation({
         (desiredStorageKind === "posts"
           ? [...DEFAULT_POST_STORAGE_TABLES]
           : []);
+      const desiredStorageComponent =
+        desiredStorageKind === "component"
+          ? (args.definition.storageComponent ??
+            inferStorageComponent(desiredStorageTables))
+          : undefined;
       const desiredMetaBoxes = args.definition.metaBoxes;
       const desiredAdminMenu = args.definition.adminMenu;
       const desiredSupports = args.definition.supports;
@@ -945,6 +980,7 @@ export const enableForOrganization = mutation({
       await ctx.db.patch(postType._id, {
         storageKind: desiredStorageKind,
         storageTables: desiredStorageTables,
+        storageComponent: desiredStorageComponent,
         ...(desiredMetaBoxes !== undefined
           ? { metaBoxes: desiredMetaBoxes }
           : {}),
@@ -981,6 +1017,7 @@ export const enableForOrganization = mutation({
         ...postType,
         storageKind: desiredStorageKind,
         storageTables: desiredStorageTables,
+        storageComponent: desiredStorageComponent,
         ...(desiredMetaBoxes !== undefined
           ? { metaBoxes: desiredMetaBoxes }
           : {}),
@@ -1203,7 +1240,9 @@ export const update = mutation({
     };
 
     if (args.data.rewrite !== undefined) {
-      const { singleSlugKey, archiveSlugKey } = deriveRewriteKeys(args.data.rewrite);
+      const { singleSlugKey, archiveSlugKey } = deriveRewriteKeys(
+        args.data.rewrite,
+      );
       patchPayload.singleSlugKey = singleSlugKey;
       patchPayload.archiveSlugKey = archiveSlugKey;
     }

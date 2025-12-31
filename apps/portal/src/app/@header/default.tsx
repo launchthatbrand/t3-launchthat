@@ -1,9 +1,12 @@
 "use client";
 
+import "~/lib/plugins/installHooks";
+
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { applyFilters } from "@acme/admin-runtime/hooks";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -28,6 +31,8 @@ import { PortalNavUser } from "~/components/auth/PortalNavUser";
 import { NotificationIcon } from "~/components/notifications/NotificationIcon";
 import { useTenant } from "~/context/TenantContext";
 
+const FRONTEND_PORTAL_HEADER_RIGHT_FILTER = "frontend.portal.header.right";
+
 export default function HeaderLayout({
   children: _children,
 }: {
@@ -51,6 +56,29 @@ const TopHeader = () => {
   const tenant = useTenant();
   const rawLogo: unknown = (tenant as { logo?: unknown } | null)?.logo;
   const logoUrl = typeof rawLogo === "string" ? rawLogo : "";
+  const pathname = usePathname();
+
+  const baseRightItems: React.ReactNode[] = [
+    <div key="theme-notifications" className="flex items-center gap-2">
+      <ThemeToggleButton />
+      <NotificationIcon />
+    </div>,
+    <PortalNavUser key="user" />,
+  ];
+
+  const filteredRightItemsRaw: unknown = applyFilters(
+    FRONTEND_PORTAL_HEADER_RIGHT_FILTER,
+    baseRightItems,
+    {
+      pathname,
+      tenantId: tenant?._id,
+      tenantName: tenant?.name,
+    },
+  );
+
+  const rightItems: React.ReactNode[] = Array.isArray(filteredRightItemsRaw)
+    ? (filteredRightItemsRaw as React.ReactNode[])
+    : baseRightItems;
 
   return (
     <AppHeader
@@ -58,15 +86,7 @@ const TopHeader = () => {
       sidebarToggle={true}
       image={logoUrl}
       className="bg-background"
-      rightSlot={
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <ThemeToggleButton />
-            <NotificationIcon />
-          </div>
-          <PortalNavUser />
-        </div>
-      }
+      // rightSlot={<div className="flex items-center gap-6">{rightItems}</div>}
     />
   );
 };

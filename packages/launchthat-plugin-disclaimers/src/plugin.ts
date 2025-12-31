@@ -68,6 +68,7 @@ export const createDisclaimersPluginDefinition = (
       pageTemplateSlug: "canvas",
       storageKind: "component",
       storageTables: DISCLAIMERS_COMPONENT_TABLES,
+      storageComponent: "launchthat_disclaimers",
       includeTimestamps: true,
       metaBoxes: [
         {
@@ -108,6 +109,7 @@ export const createDisclaimersPluginDefinition = (
       },
       storageKind: "component",
       storageTables: DISCLAIMERS_COMPONENT_TABLES,
+      storageComponent: "launchthat_disclaimers",
       includeTimestamps: true,
       metaBoxes: [
         {

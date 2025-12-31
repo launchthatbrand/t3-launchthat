@@ -227,6 +227,11 @@ export interface PluginPostTypeConfig {
   adminMenu: PluginPostTypeAdminMenu;
   storageKind?: "posts" | "custom" | "component";
   storageTables?: string[];
+  /**
+   * For component-backed post types, explicitly identifies the mounted Convex component
+   * namespace (e.g. "launchthat_ecommerce"). This avoids relying on parsing storageTables.
+   */
+  storageComponent?: string;
   singleView?: PluginPostSingleViewConfig;
   singleViewSlots?: PluginSingleViewSlotDefinition[];
   adminArchiveView?: PluginPostArchiveViewConfig;

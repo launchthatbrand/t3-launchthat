@@ -120,7 +120,7 @@ const GeneralMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
   );
 };
 
-const registerGeneralMetaBox = () =>
+export const registerGeneralMetaBox: () => void = () => {
   registerMetaBoxHook<AdminMetaBoxContext>("main", (context) => {
     const data = context.general;
     if (context.visibility?.showGeneralPanel === false || !data) {
@@ -136,5 +136,4 @@ const registerGeneralMetaBox = () =>
       render: () => <GeneralMetaBox data={data} />,
     };
   });
-
-registerGeneralMetaBox();
+};

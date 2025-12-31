@@ -328,6 +328,7 @@ export const ensureQuizQuestionPostType: any = mutation({
         },
         storageKind: "component",
         storageTables: ["launchthat_lms:posts", "launchthat_lms:postsMeta"],
+        storageComponent: "launchthat_lms",
       },
     });
 

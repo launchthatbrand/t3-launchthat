@@ -362,7 +362,7 @@ const VimeoTranscriptMetaBox = ({
   );
 };
 
-const registerVimeoMetaBox = () =>
+export const registerVimeoMetaBox: () => void = () => {
   registerMetaBoxHook<AdminMetaBoxContext>(
     "sidebar",
     (context): RegisteredMetaBox<AdminMetaBoxContext> | null => {
@@ -399,5 +399,4 @@ const registerVimeoMetaBox = () =>
       };
     },
   );
-
-registerVimeoMetaBox();
+};

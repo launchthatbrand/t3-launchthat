@@ -141,7 +141,7 @@ const ActionsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
   );
 };
 
-const registerActionsMetaBox = () =>
+export const registerActionsMetaBox: () => void = () => {
   registerMetaBoxHook<AdminMetaBoxContext>("sidebar", (context) => {
     if (
       context.visibility?.showSidebarActions === false ||
@@ -159,5 +159,4 @@ const registerActionsMetaBox = () =>
       render: () => <ActionsMetaBox context={context} />,
     };
   });
-
-registerActionsMetaBox();
+};

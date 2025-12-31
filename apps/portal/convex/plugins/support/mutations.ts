@@ -348,10 +348,10 @@ export const createThread = mutation({
     const thread = await ctx.runMutation(
       components.agent.threads.createThread,
       {
-        title: args.contactName
-          ? `Support: ${args.contactName}`
-          : "Support conversation",
-        userId: args.contactId,
+      title: args.contactName
+        ? `Support: ${args.contactName}`
+        : "Support conversation",
+      userId: args.contactId,
       },
     );
     const threadId = thread._id as unknown as string;
@@ -1231,7 +1231,7 @@ export const triggerRagReindexForPost = mutation({
       0,
       internal.plugins.support.rag.ingestPostIfConfigured,
       {
-        postId: args.postId as any,
+      postId: args.postId as any,
       },
     );
     return null;

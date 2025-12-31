@@ -170,7 +170,7 @@ const DownloadsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
   );
 };
 
-const registerDownloadsMetaBox = () =>
+export const registerDownloadsMetaBox: () => void = () => {
   registerMetaBoxHook<AdminMetaBoxContext>("main", (context) => {
     if (context.slug !== DOWNLOADS_POST_TYPE_SLUG) {
       return null;
@@ -185,7 +185,6 @@ const registerDownloadsMetaBox = () =>
       render: () => <DownloadsMetaBox context={context} />,
     };
   });
-
-registerDownloadsMetaBox();
+};
 
 

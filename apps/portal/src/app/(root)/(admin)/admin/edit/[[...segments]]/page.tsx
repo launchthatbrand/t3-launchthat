@@ -44,7 +44,7 @@ import {
 } from "~/lib/plugins/hookSlots";
 import { encodeSyntheticId } from "~/lib/postTypes/adminAdapters";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
-import { AdminSinglePostView } from "../_components/AdminSinglePostView";
+import { AdminSinglePostContainer } from "../_components/AdminSinglePostContainer";
 import {
   DefaultArchiveSidebar,
   GenericArchiveView,
@@ -478,7 +478,7 @@ function AdminEditPageBody() {
 
   if (viewMode === "single") {
     const singleView = (
-      <AdminSinglePostView
+      <AdminSinglePostContainer
         post={effectivePost}
         postType={hydratedPostType}
         slug={resolvedSlug}

@@ -36,7 +36,7 @@ const MetadataMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
   );
 };
 
-const registerMetadataMetaBox = () =>
+export const registerMetadataMetaBox: () => void = () => {
   registerMetaBoxHook<AdminMetaBoxContext>(
     "sidebar",
     (context): RegisteredMetaBox<AdminMetaBoxContext> | null => {
@@ -57,5 +57,4 @@ const registerMetadataMetaBox = () =>
       };
     },
   );
-
-registerMetadataMetaBox();
+};

@@ -1,7 +1,7 @@
 import { calendarPlugin } from "launchthat-plugin-calendar";
 import { cmsPlugin } from "launchthat-plugin-cms";
-import { commercePlugin } from "launchthat-plugin-commerce";
 import { disclaimersPlugin } from "launchthat-plugin-disclaimers";
+import { ecommercePlugin } from "launchthat-plugin-ecommerce";
 import { lmsPlugin } from "launchthat-plugin-lms";
 import {
   configureSocialFeedPlugin,
@@ -27,12 +27,12 @@ export const pluginDefinitions: PluginDefinition[] = [
   cmsPlugin as unknown as PluginDefinition,
   lmsPlugin as unknown as PluginDefinition,
   calendarPlugin as unknown as PluginDefinition,
-  commercePlugin as unknown as PluginDefinition,
   socialFeedPlugin as unknown as PluginDefinition,
   tasksPlugin as unknown as PluginDefinition,
   supportPlugin as unknown as PluginDefinition,
   vimeoPlugin as unknown as PluginDefinition,
   disclaimersPlugin as unknown as PluginDefinition,
+  ecommercePlugin as unknown as PluginDefinition,
 ];
 
 const registerPluginMenuSource = () => {

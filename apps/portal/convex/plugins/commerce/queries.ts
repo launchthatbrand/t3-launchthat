@@ -1,4 +1,9 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any */
+// Public wrapper queries for component-scoped ecommerce data.
+//
+// The Admin editor uses `api.plugins.commerce.queries.getPostMeta` for
+// component-backed commerce post types (products/orders). These wrappers
+// delegate to the mounted `launchthat_ecommerce` Convex component.
 import { v } from "convex/values";
 
 import { components } from "../../_generated/api";
@@ -28,10 +33,7 @@ export const getAllPosts = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(
-      commercePostsQueries.getAllPosts as any,
-      args,
-    )) as any;
+    return await ctx.runQuery(commercePostsQueries.getAllPosts, args);
   },
 });
 
@@ -42,10 +44,7 @@ export const getPostById = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(
-      commercePostsQueries.getPostById as any,
-      args,
-    )) as any;
+    return await ctx.runQuery(commercePostsQueries.getPostById, args);
   },
 });
 
@@ -56,10 +55,7 @@ export const getPostBySlug = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(
-      commercePostsQueries.getPostBySlug as any,
-      args,
-    )) as any;
+    return await ctx.runQuery(commercePostsQueries.getPostBySlug, args);
   },
 });
 
@@ -70,10 +66,7 @@ export const getPostMeta = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(
-      commercePostsQueries.getPostMeta as any,
-      args,
-    )) as any;
+    return await ctx.runQuery(commercePostsQueries.getPostMeta, args);
   },
 });
 
@@ -86,10 +79,7 @@ export const searchPosts = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(
-      commercePostsQueries.searchPosts as any,
-      args,
-    )) as any;
+    return await ctx.runQuery(commercePostsQueries.searchPosts, args);
   },
 });
 
@@ -100,10 +90,7 @@ export const getPostTags = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(
-      commercePostsQueries.getPostTags as any,
-      args,
-    )) as any;
+    return await ctx.runQuery(commercePostsQueries.getPostTags, args);
   },
 });
 
@@ -114,19 +101,6 @@ export const getPostCategories = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(
-      commercePostsQueries.getPostCategories as any,
-      args,
-    )) as any;
+    return await ctx.runQuery(commercePostsQueries.getPostCategories, args);
   },
 });
-
-
-
-
-
-
-
-
-
-
