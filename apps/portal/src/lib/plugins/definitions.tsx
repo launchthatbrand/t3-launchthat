@@ -15,6 +15,7 @@ import { vimeoPlugin } from "launchthat-plugin-vimeo";
 import type { PluginDefinition, PluginSettingDefinition } from "./types";
 import type { MenuItemInput } from "~/lib/adminMenu";
 import { adminMenuRegistry } from "~/lib/adminMenu";
+import { registerPluginPageTemplates } from "~/lib/pageTemplates/registerPluginPageTemplates";
 import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
 
 configureSocialFeedPlugin({
@@ -22,6 +23,8 @@ configureSocialFeedPlugin({
     [SOCIAL_FEED_FRONTEND_PROVIDER_ID]: PortalSocialFeedProvider,
   },
 });
+
+registerPluginPageTemplates();
 
 export const pluginDefinitions: PluginDefinition[] = [
   cmsPlugin as unknown as PluginDefinition,

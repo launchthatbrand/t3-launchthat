@@ -25,12 +25,6 @@ import { toast } from "sonner";
 
 import type { MetaBoxLocation, RegisteredMetaBox } from "@acme/admin-runtime";
 import { collectRegisteredMetaBoxes } from "@acme/admin-runtime";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@acme/ui/accordion";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
@@ -110,6 +104,7 @@ import { useEnsureBuiltInTaxonomies } from "../../settings/taxonomies/_api/taxon
 import { AiIndexTab } from "./AiIndexTab";
 import { useAttachmentsMetaBox } from "./hooks/useAttachmentsMetaBox";
 import { ATTACHMENTS_META_KEY } from "./metaBoxes/constants";
+import { MetaBoxPanel } from "./metaBoxes/MetaBoxPanel";
 import {
   deriveSystemFieldValue,
   pickMetaBoxes,
@@ -1421,7 +1416,7 @@ export function AdminSinglePostView({
 
   const renderMetaBoxList = (
     metaBoxes: ResolvedMetaBox[],
-    _location: "main" | "sidebar",
+    location: "main" | "sidebar",
   ) => {
     if (metaBoxes.length === 0) {
       return null;
@@ -1431,34 +1426,25 @@ export function AdminSinglePostView({
       <div className="space-y-4">
         {sortedBoxes.map((metaBox) => {
           const storageKey = `${slug}:${metaBox.id}`;
-          const isOpen = metaBoxStates[storageKey] ?? true;
+          const shouldDefaultClosed =
+            isNewRecord &&
+            ((metaBox.id === "core-attachments" &&
+              (attachmentsContext?.attachments?.length ?? 0) === 0) ||
+              // taxonomy often noisy for new records; keep it visible but collapsed
+              metaBox.id === "core-taxonomy");
+          const isOpen = metaBoxStates[storageKey] ?? !shouldDefaultClosed;
           return (
-            <Accordion
-              type="single"
-              collapsible
-              value={isOpen ? metaBox.id : undefined}
-              onValueChange={(value) =>
-                setMetaBoxState(storageKey, Boolean(value))
-              }
+            <MetaBoxPanel
               key={metaBox.id}
-              className="rounded-lg border"
+              id={metaBox.id}
+              title={metaBox.title}
+              description={metaBox.description}
+              isOpen={isOpen}
+              onToggle={(nextOpen) => setMetaBoxState(storageKey, nextOpen)}
+              variant={location}
             >
-              <AccordionItem value={metaBox.id} className="border-none">
-                <AccordionTrigger className="px-4 py-3 text-left">
-                  <div className="flex flex-col text-left">
-                    <span className="font-semibold">{metaBox.title}</span>
-                    {metaBox.description ? (
-                      <span className="text-muted-foreground text-sm">
-                        {metaBox.description}
-                      </span>
-                    ) : null}
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pt-0 pb-4">
-                  <div className="space-y-4 pt-2">{metaBox.render()}</div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+              {metaBox.render()}
+            </MetaBoxPanel>
           );
         })}
       </div>
@@ -1917,6 +1903,21 @@ export function AdminSinglePostView({
     [headerLabel, isNewRecord, post, postType],
   );
 
+  const pageTemplateLabel = useMemo(() => {
+    const pageTemplateSlug =
+      (postType as { pageTemplateSlug?: unknown } | null)?.pageTemplateSlug &&
+      typeof (postType as { pageTemplateSlug?: unknown }).pageTemplateSlug ===
+        "string"
+        ? ((postType as { pageTemplateSlug: string }).pageTemplateSlug ??
+          DEFAULT_PAGE_TEMPLATE_SLUG)
+        : DEFAULT_PAGE_TEMPLATE_SLUG;
+
+    return (
+      availablePageTemplates.find((template) => template.slug === pageTemplateSlug)
+        ?.label ?? pageTemplateSlug
+    );
+  }, [availablePageTemplates, postType]);
+
   const metaBoxContext = useMemo<AdminMetaBoxContext>(
     () => ({
       post,
@@ -1937,24 +1938,95 @@ export function AdminSinglePostView({
       setMetaValue,
       enqueueScript,
       enqueueStyle,
+      // --- Core "special" sidebar panels that should behave like meta boxes ---
+      // Page template is configured per post type.
+      pageTemplateLabel,
+      // Taxonomy is stored outside post meta; editor owns selection state so it can
+      // apply terms on first save for new records.
+      taxonomy: {
+        supportsTaxonomy,
+        categories: {
+          options: resolvedCategoryTerms.map((term) => ({
+            label: term.name,
+            value: term._id as unknown as string,
+          })),
+          selected: selectedCategoryTermIds,
+          onChange: (values: string[]) => {
+            setTaxonomyTermIds((prev) => {
+              const keep = prev.filter((id) => !categoryTermIdSet.has(id));
+              const next = [...keep, ...values];
+              if (organizationId && post?._id) {
+                void setObjectTerms({
+                  organizationId,
+                  objectId: post._id as unknown as string,
+                  postTypeSlug: slug,
+                  termIds: next as unknown as Id<"taxonomyTerms">[],
+                });
+              }
+              return next;
+            });
+          },
+          placeholder: "All categories",
+          loadingLabel: !isCategoryTaxonomyReady ? "Loading categories…" : null,
+          footerLabel: "Categories are scoped to the current organization.",
+          disabled: !organizationId || !post?._id,
+        },
+        tags: {
+          options: resolvedTagTerms.map((term) => ({
+            label: term.name,
+            value: term._id as unknown as string,
+          })),
+          selected: selectedTagTermIds,
+          onChange: (values: string[]) => {
+            setTaxonomyTermIds((prev) => {
+              const keep = prev.filter((id) => !tagTermIdSet.has(id));
+              const next = [...keep, ...values];
+              if (organizationId && post?._id) {
+                void setObjectTerms({
+                  organizationId,
+                  objectId: post._id as unknown as string,
+                  postTypeSlug: slug,
+                  termIds: next as unknown as Id<"taxonomyTerms">[],
+                });
+              }
+              return next;
+            });
+          },
+          placeholder: "All tags",
+          loadingLabel: !isTagTaxonomyReady ? "Loading tags…" : null,
+          disabled: !organizationId || !post?._id,
+        },
+      },
     }),
     [
       attachmentsContext,
+      categoryTermIdSet,
       customFieldsMetaBoxData,
       enqueueScript,
       enqueueStyle,
       generalMetaBoxData,
       getMetaValue,
+      isCategoryTaxonomyReady,
+      isTagTaxonomyReady,
       isNewRecord,
       organizationId,
       post,
+      pageTemplateLabel,
       postType,
       registerMetaPayloadCollector,
+      resolvedCategoryTerms,
+      resolvedTagTerms,
       sidebarActionsMetaBoxData,
       sidebarMetadataMetaBoxData,
       setMetaValue,
       registerBeforeSave,
       slug,
+      supportsTaxonomy,
+      tagTermIdSet,
+      selectedCategoryTermIds,
+      selectedTagTermIds,
+      setObjectTerms,
+      setTaxonomyTermIds,
     ],
   );
   const metaBoxAssetNodes = useMemo(
@@ -2064,118 +2136,9 @@ export function AdminSinglePostView({
     const sidebarTopSlots = renderPluginSlots("sidebarTop");
     const sidebarBottomSlots = renderPluginSlots("sidebarBottom");
 
-    const pageTemplateSlug =
-      (postType as { pageTemplateSlug?: unknown } | null)?.pageTemplateSlug &&
-      typeof (postType as { pageTemplateSlug?: unknown }).pageTemplateSlug ===
-        "string"
-        ? ((postType as { pageTemplateSlug: string }).pageTemplateSlug ??
-          DEFAULT_PAGE_TEMPLATE_SLUG)
-        : DEFAULT_PAGE_TEMPLATE_SLUG;
-
-    const pageTemplateLabel =
-      availablePageTemplates.find(
-        (template) => template.slug === pageTemplateSlug,
-      )?.label ?? pageTemplateSlug;
-
-    const pageTemplateCard = (
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Page Template</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <p className="text-sm">{pageTemplateLabel}</p>
-          <p className="text-muted-foreground text-xs">
-            This is configured per post type (no per-post override).
-          </p>
-        </CardContent>
-      </Card>
-    );
-
-    const categoriesMetaBox = supportsTaxonomy ? (
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Categories</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Label className="text-xs">Categories</Label>
-          <MultiSelect
-            options={resolvedCategoryTerms.map((term) => ({
-              label: term.name,
-              value: term._id as unknown as string,
-            }))}
-            defaultValue={selectedCategoryTermIds}
-            onValueChange={(values: string[]) => {
-              setTaxonomyTermIds((prev) => {
-                const keep = prev.filter((id) => !categoryTermIdSet.has(id));
-                const next = [...keep, ...values];
-                if (organizationId && post?._id) {
-                  void setObjectTerms({
-                    organizationId,
-                    objectId: post._id as unknown as string,
-                    postTypeSlug: slug,
-                    termIds: next as unknown as Id<"taxonomyTerms">[],
-                  });
-                }
-                return next;
-              });
-            }}
-            placeholder="All categories"
-            maxCount={3}
-          />
-          {!isCategoryTaxonomyReady ? (
-            <p className="text-muted-foreground text-xs">Loading categories…</p>
-          ) : null}
-          <p className="text-muted-foreground text-xs">
-            Categories are scoped to the current organization.
-          </p>
-        </CardContent>
-      </Card>
-    ) : null;
-
-    const tagsMetaBox = supportsTaxonomy ? (
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Tags</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Label className="text-xs">Tags</Label>
-          <MultiSelect
-            options={resolvedTagTerms.map((term) => ({
-              label: term.name,
-              value: term._id as unknown as string,
-            }))}
-            defaultValue={selectedTagTermIds}
-            onValueChange={(values: string[]) => {
-              setTaxonomyTermIds((prev) => {
-                const keep = prev.filter((id) => !tagTermIdSet.has(id));
-                const next = [...keep, ...values];
-                if (organizationId && post?._id) {
-                  void setObjectTerms({
-                    organizationId,
-                    objectId: post._id as unknown as string,
-                    postTypeSlug: slug,
-                    termIds: next as unknown as Id<"taxonomyTerms">[],
-                  });
-                }
-                return next;
-              });
-            }}
-            placeholder="All tags"
-            maxCount={3}
-          />
-          {!isTagTaxonomyReady ? (
-            <p className="text-muted-foreground text-xs">Loading tags…</p>
-          ) : null}
-        </CardContent>
-      </Card>
-    ) : null;
-
     return (
       <div className="space-y-4">
         {sidebarTopSlots}
-        {pageTemplateCard}
-        {categoriesMetaBox}
-        {tagsMetaBox}
         {renderMetaBoxList(resolvedMetaBoxes, "sidebar")}
         {sidebarBottomSlots}
       </div>

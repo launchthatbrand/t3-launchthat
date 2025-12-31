@@ -36,31 +36,52 @@ const AttachmentsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
 
   return (
     <>
-      <div className="space-y-4">
-        <p className="text-muted-foreground text-sm">
-          Attach files to keep track of supporting assets—images, downloads, or
-          external media pulled from the Attachments post type. Drag the handle
-          to reorder.
-        </p>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-muted-foreground text-xs">
+            {attachments.length} attached
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setDialogOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add
+            </Button>
+            <Button type="button" size="sm" variant="ghost" asChild>
+              <Link
+                href="/admin/edit/attachments"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Manage
+              </Link>
+            </Button>
+          </div>
+        </div>
+
         {attachments.length === 0 ? (
-          <div className="text-muted-foreground text-sm">
-            No attachments yet. Use the button below to add files.
+          <div className="text-muted-foreground text-xs">
+            No attachments yet.
           </div>
         ) : (
           <BuilderDndProvider onDragEnd={handleAttachmentsDragEnd}>
             <SortableList<AttachmentEntry>
               items={attachments}
               getId={(attachment) => attachment.mediaItemId}
-              itemClassName="!items-stretch gap-0 border bg-card p-0 mb-3 last:mb-0"
+              itemClassName="!items-stretch gap-0 rounded-md border bg-card p-0 mb-2 last:mb-0"
               renderItem={(attachment: AttachmentEntry) => (
-                <div className="flex w-full items-start gap-3 p-3">
-                  <div className="bg-muted relative h-16 w-16 overflow-hidden rounded">
+                <div className="flex w-full items-center gap-2 p-2">
+                  <div className="bg-muted relative h-10 w-10 shrink-0 overflow-hidden rounded">
                     {attachment.url ? (
                       <Image
                         src={attachment.url}
                         alt={attachment.title ?? "Attachment preview"}
                         fill
-                        sizes="64px"
+                        sizes="40px"
                         className="object-cover"
                       />
                     ) : (
@@ -69,15 +90,12 @@ const AttachmentsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
                       </div>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <p className="truncate text-sm font-medium">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium">
                       {attachment.title ?? "Untitled attachment"}
                     </p>
-                    <p className="text-muted-foreground truncate text-xs">
-                      {attachment.url}
-                    </p>
                     {attachment.mimeType ? (
-                      <p className="text-muted-foreground text-xs">
+                      <p className="text-muted-foreground truncate text-[11px]">
                         {attachment.mimeType}
                       </p>
                     ) : null}
@@ -86,6 +104,7 @@ const AttachmentsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
                     type="button"
                     variant="ghost"
                     size="icon"
+                    className="h-8 w-8"
                     aria-label="Remove attachment"
                     onClick={() =>
                       handleAttachmentRemove(attachment.mediaItemId)
@@ -98,21 +117,6 @@ const AttachmentsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
             />
           </BuilderDndProvider>
         )}
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" onClick={() => setDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add from Media Library
-          </Button>
-          <Button type="button" variant="outline" asChild>
-            <Link
-              href="/admin/edit/attachments"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Manage Attachments
-            </Link>
-          </Button>
-        </div>
       </div>
       <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-4xl">
@@ -136,7 +140,7 @@ const AttachmentsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
 
 export const registerAttachmentsMetaBox: () => void = () => {
   registerMetaBoxHook<AdminMetaBoxContext>(
-    "main",
+    "sidebar",
     (context): RegisteredMetaBox<AdminMetaBoxContext> | null => {
       const attachmentsContext = context.attachmentsContext;
       if (!attachmentsContext?.supportsAttachments) {
@@ -145,10 +149,9 @@ export const registerAttachmentsMetaBox: () => void = () => {
       return {
         id: "core-attachments",
         title: "Attachments",
-        description:
-          "Link media items from the Attachments library to this entry.",
-        location: "main",
-        priority: 10,
+        description: "Attach files (drag to reorder).",
+        location: "sidebar",
+        priority: 25,
         render: () => <AttachmentsMetaBox context={context} />,
       };
     },

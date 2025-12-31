@@ -5,6 +5,8 @@ export interface MetaBoxVisibilityConfig {
   showCustomFieldsPanel?: boolean;
   showSidebarActions?: boolean;
   showSidebarMetadata?: boolean;
+  showSidebarPageTemplate?: boolean;
+  showSidebarTaxonomy?: boolean;
 }
 
 export interface AdminMetaBoxContext<

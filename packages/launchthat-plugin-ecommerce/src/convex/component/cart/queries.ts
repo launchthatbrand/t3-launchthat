@@ -29,15 +29,53 @@ export const getCart = query({
         .collect();
     }
 
-    return {
-      items: items.map((row) => ({
+    const metaKey = (key: string) => key;
+    const getMetaValue = (meta: Array<{ key: string; value?: unknown }>, key: string) =>
+      meta.find((m) => m.key === key)?.value;
+
+    const enrichedItems: any[] = [];
+    for (const row of items) {
+      const product = row?.productPostId
+        ? await ctx.db.get(row.productPostId as any)
+        : null;
+      const productMeta = product?._id
+        ? await ctx.db
+            .query("postsMeta")
+            .withIndex("by_post", (q: any) => q.eq("postId", product._id))
+            .collect()
+        : [];
+
+      const regularPrice = getMetaValue(productMeta, metaKey("product.regularPrice"));
+      const salePrice = getMetaValue(productMeta, metaKey("product.salePrice"));
+      const resolvedPrice =
+        typeof salePrice === "number"
+          ? salePrice
+          : typeof regularPrice === "number"
+            ? regularPrice
+            : null;
+
+      enrichedItems.push({
         _id: row._id,
         productPostId: row.productPostId,
         variationId: row.variationId ?? null,
         quantity: row.quantity,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
-      })),
+        product: product
+          ? {
+              _id: product._id,
+              title: product.title,
+              slug: product.slug,
+              featuredImageUrl: product.featuredImageUrl ?? null,
+              postTypeSlug: product.postTypeSlug,
+            }
+          : null,
+        unitPrice: resolvedPrice,
+      });
+    }
+
+    return {
+      items: enrichedItems,
       subtotal: null,
       total: null,
     };

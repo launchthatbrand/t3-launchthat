@@ -7,4 +7,5 @@ export {
   type CreateEcommercePluginDefinitionOptions,
   ecommercePlugin,
 } from "./plugin";
+export { getEcommercePageTemplates } from "./frontend/pageTemplates";
 export default ecommercePlugin;
