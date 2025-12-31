@@ -16,7 +16,20 @@ import { Label } from "@acme/ui/label";
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
-    : {};
+    : typeof value === "string"
+      ? (() => {
+          try {
+            const parsed = JSON.parse(value) as unknown;
+            return parsed &&
+              typeof parsed === "object" &&
+              !Array.isArray(parsed)
+              ? (parsed as Record<string, unknown>)
+              : {};
+          } catch {
+            return {};
+          }
+        })()
+      : {};
 
 const asBoolean = (value: unknown): boolean => value === true;
 
@@ -107,7 +120,8 @@ export function AuthorizeNetCheckoutForm({
       setTokenizeError(null);
 
       const payload = {
-        authData: { clientKey, apiLoginId },
+        // Accept.js requires `apiLoginID` (capital D), not `apiLoginId`.
+        authData: { clientKey, apiLoginID: apiLoginId },
         cardData: {
           cardNumber: cardNumber.replace(/[^\d]/g, ""),
           month: exp.month,
