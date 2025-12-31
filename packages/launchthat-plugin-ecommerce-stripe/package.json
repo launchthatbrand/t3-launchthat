@@ -1,0 +1,41 @@
+{
+  "name": "launchthat-plugin-ecommerce-stripe",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "dev": "tsc",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit --emitDeclarationOnly false"
+  },
+  "dependencies": {
+    "@acme/ui": "workspace:*",
+    "convex": "^1.23.0",
+    "launchthat-plugin-core": "workspace:*",
+    "launchthat-plugin-ecommerce": "workspace:*"
+  },
+  "devDependencies": {
+    "@acme/eslint-config": "workspace:*",
+    "@acme/prettier-config": "workspace:*",
+    "@acme/tsconfig": "workspace:*",
+    "@types/react": "catalog:react19",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "react": "catalog:react19",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "catalog:react19"
+  },
+  "prettier": "@acme/prettier-config"
+}

@@ -1,6 +1,8 @@
 /* eslint-disable react-compiler/react-compiler */
 "use client";
 
+import "~/lib/plugins/registerPaymentMethods.client";
+
 import type { TenantSummary } from "@/lib/tenant-fetcher";
 // Import Clerk provider and hook
 import React, { useEffect } from "react";
@@ -96,7 +98,7 @@ function SupportChatWidgetBridge({
   const widgetKey = typeof widgetKeyRaw === "string" ? widgetKeyRaw : null;
 
   useEffect(() => {
-    if (process.env.NODE_ENV === "production") return;
+    if (env.NODE_ENV === "production") return;
     const rawType = widgetKeyRaw === null ? "null" : typeof widgetKeyRaw;
     const widgetKeyPreview =
       typeof widgetKey === "string" && widgetKey.length > 8

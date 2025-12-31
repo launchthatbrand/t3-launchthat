@@ -7,11 +7,20 @@ import { api } from "@portal/convexspec";
 import { useMutation, useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
+import { RadioGroup, RadioGroupItem } from "@acme/ui/radio-group";
 import { Separator } from "@acme/ui/separator";
 import { toast } from "@acme/ui/toast";
+
+import { getPaymentMethods } from "../../payments/registry";
 
 const apiAny = api as any;
 
@@ -22,6 +31,8 @@ type CartItem = {
   unitPrice?: number | null;
   product?: { _id: string; title?: string; slug?: string } | null;
 };
+
+type PaymentMethod = ReturnType<typeof getPaymentMethods>[number];
 
 const asNumber = (value: unknown): number => {
   if (typeof value === "number") return value;
@@ -34,10 +45,120 @@ const asNumber = (value: unknown): number => {
 
 const formatMoney = (amount: number): string => `$${amount.toFixed(2)}`;
 
-export function CheckoutClient({ organizationId }: { organizationId?: string }) {
+const OrderSummary = ({
+  items,
+  subtotal,
+  onApplyDiscount,
+}: {
+  items: Array<CartItem>;
+  subtotal: number;
+  onApplyDiscount?: (code: string) => void;
+}) => {
+  const [discountCode, setDiscountCode] = useState("");
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-3">
+        {items.length === 0 ? (
+          <div className="text-muted-foreground text-sm">
+            Your cart is empty.
+          </div>
+        ) : (
+          items.map((item) => {
+            const unit =
+              typeof item.unitPrice === "number" ? item.unitPrice : 0;
+            const qty = asNumber(item.quantity);
+            const line = unit * qty;
+            return (
+              <div
+                key={item._id}
+                className="flex items-start justify-between gap-3"
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">
+                    {item.product?.title ?? "Product"}
+                  </div>
+                  <div className="text-muted-foreground text-xs">Qty {qty}</div>
+                </div>
+                <div className="text-sm font-semibold">{formatMoney(line)}</div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <Separator />
+
+      <div className="flex items-end gap-2">
+        <div className="flex-1 space-y-1">
+          <Label htmlFor="discount-code" className="text-xs">
+            Discount code
+          </Label>
+          <Input
+            id="discount-code"
+            value={discountCode}
+            onChange={(e) => setDiscountCode(e.currentTarget.value)}
+            placeholder="Discount code"
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onApplyDiscount?.(discountCode.trim())}
+          disabled={discountCode.trim().length === 0}
+        >
+          Apply
+        </Button>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Subtotal</span>
+          <span className="font-semibold">{formatMoney(subtotal)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Shipping</span>
+          <span className="text-muted-foreground">Calculated at next step</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Estimated taxes</span>
+          <span className="text-muted-foreground">—</span>
+        </div>
+      </div>
+
+      <Separator />
+
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold">Total</div>
+        <div className="text-lg font-semibold">{formatMoney(subtotal)}</div>
+      </div>
+    </div>
+  );
+};
+
+export function CheckoutClient({
+  organizationId,
+}: {
+  organizationId?: string;
+}) {
   const [guestSessionId, setGuestSessionId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
+  const [paymentMethodId, setPaymentMethodId] = useState<string>("");
+  const [paymentData, setPaymentData] = useState<unknown | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [shipping, setShipping] = useState({
+    country: "",
+    firstName: "",
+    lastName: "",
+    phone: "",
+    address1: "",
+    address2: "",
+    city: "",
+    state: "",
+    postcode: "",
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -59,14 +180,14 @@ export function CheckoutClient({ organizationId }: { organizationId?: string }) 
     guestSessionId ? { guestSessionId } : "skip",
   ) as { items?: CartItem[] } | undefined;
 
-  const createOrder = useMutation(
-    apiAny.plugins.commerce.orders.mutations.createOrder,
+  const placeOrder = useMutation(
+    apiAny.plugins.commerce.checkout.mutations.placeOrder,
   ) as (args: any) => Promise<any>;
-  const clearCart = useMutation(apiAny.plugins.commerce.cart.mutations.clearCart) as (
-    args: any,
-  ) => Promise<any>;
 
-  const items = useMemo(() => (Array.isArray(cart?.items) ? cart?.items ?? [] : []), [cart]);
+  const items = useMemo(
+    () => (Array.isArray(cart?.items) ? (cart?.items ?? []) : []),
+    [cart],
+  );
 
   const subtotal = useMemo(() => {
     return items.reduce((sum, item) => {
@@ -75,125 +196,444 @@ export function CheckoutClient({ organizationId }: { organizationId?: string }) 
     }, 0);
   }, [items]);
 
-  const canSubmit = items.length > 0 && email.trim().length > 3 && !isPending;
+  const paymentMethods = useMemo(() => getPaymentMethods(), []);
+  const pluginActiveOptionKeys = useMemo(
+    () => paymentMethods.map((m) => m.config.pluginActiveOptionKey),
+    [paymentMethods],
+  );
+  const paymentEnabledOptionKeys = useMemo(
+    () => paymentMethods.map((m) => m.config.paymentEnabledOptionKey),
+    [paymentMethods],
+  );
+  const configOptionKeys = useMemo(
+    () => paymentMethods.map((m) => m.config.configOptionKey),
+    [paymentMethods],
+  );
+
+  const pluginActiveMap = useQuery(apiAny.core.options.getMany, {
+    metaKeys: pluginActiveOptionKeys,
+    type: "site",
+    orgId: organizationId,
+  }) as Record<string, unknown> | undefined;
+
+  const paymentEnabledMap = useQuery(apiAny.core.options.getMany, {
+    metaKeys: paymentEnabledOptionKeys,
+    type: "site",
+    orgId: organizationId,
+  }) as Record<string, unknown> | undefined;
+
+  const configMap = useQuery(apiAny.core.options.getMany, {
+    metaKeys: configOptionKeys,
+    type: "site",
+    orgId: organizationId,
+  }) as Record<string, unknown> | undefined;
+
+  const enabledPaymentMethods = useMemo(() => {
+    if (!pluginActiveMap || !paymentEnabledMap || !configMap) return [];
+    return paymentMethods.filter(
+      (m) =>
+        pluginActiveMap[m.config.pluginActiveOptionKey] === true &&
+        paymentEnabledMap[m.config.paymentEnabledOptionKey] === true &&
+        m.isConfigured(configMap[m.config.configOptionKey]),
+    );
+  }, [configMap, paymentEnabledMap, paymentMethods, pluginActiveMap]);
+
+  const selectedPaymentMethod = useMemo((): PaymentMethod | null => {
+    if (!paymentMethodId) return null;
+    return enabledPaymentMethods.find((m) => m.id === paymentMethodId) ?? null;
+  }, [enabledPaymentMethods, paymentMethodId]);
+
+  useEffect(() => {
+    setPaymentData(null);
+  }, [paymentMethodId]);
+
+  useEffect(() => {
+    if (paymentMethodId) return;
+    if (enabledPaymentMethods.length === 0) return;
+    setPaymentMethodId(enabledPaymentMethods[0]!.id);
+  }, [enabledPaymentMethods, paymentMethodId]);
+
+  const mustSelectPaymentMethod = enabledPaymentMethods.length > 0;
+  const requiresPaymentData = Boolean(selectedPaymentMethod?.renderCheckoutForm);
+  const canSubmit =
+    items.length > 0 &&
+    email.trim().length > 3 &&
+    !isPending &&
+    (!mustSelectPaymentMethod || paymentMethodId.trim().length > 0) &&
+    (!requiresPaymentData || paymentData !== null);
+
+  const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
 
   const handlePlaceOrder = () => {
     if (!guestSessionId) return;
     startTransition(() => {
-      void createOrder({
+      const fullName = `${shipping.firstName} ${shipping.lastName}`.trim();
+      void placeOrder({
         organizationId,
+        guestSessionId,
         email: email.trim(),
-        subtotal,
-        total: subtotal,
-        payload: JSON.stringify({
-          guestSessionId,
-          items: items.map((i) => ({
-            productPostId: i.productPostId,
-            quantity: i.quantity,
-            unitPrice: i.unitPrice ?? null,
-          })),
-        }),
+        billing: {
+          name: fullName || null,
+          email: email.trim(),
+          phone: shipping.phone.trim() || null,
+          address1: shipping.address1.trim() || null,
+          address2: shipping.address2.trim() || null,
+          city: shipping.city.trim() || null,
+          state: shipping.state.trim() || null,
+          postcode: shipping.postcode.trim() || null,
+          country: shipping.country.trim() || null,
+        },
+        shipping: {
+          name: fullName || null,
+          phone: shipping.phone.trim() || null,
+          address1: shipping.address1.trim() || null,
+          address2: shipping.address2.trim() || null,
+          city: shipping.city.trim() || null,
+          state: shipping.state.trim() || null,
+          postcode: shipping.postcode.trim() || null,
+          country: shipping.country.trim() || null,
+        },
+        paymentMethodId,
+        paymentData,
       })
-        .then(async (result: any) => {
-          await clearCart({ guestSessionId });
-          toast.success("Order placed.");
-          return result;
-        })
+        .then((_result: any) => toast.success("Payment successful."))
         .catch((err: unknown) =>
-          toast.error(err instanceof Error ? err.message : "Checkout failed"),
+          toast.error(err instanceof Error ? err.message : "Payment failed"),
         );
     });
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
-      <div className="lg:col-span-2">
+    <div className="mx-auto w-full max-w-6xl px-4 py-8">
+      {/* Mobile: order summary toggle */}
+      <div className="lg:hidden">
         <Card>
-          <CardHeader>
-            <CardTitle>Contact</CardTitle>
-            <CardDescription>We’ll email your receipt and updates.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="checkout-email">Email</Label>
-              <Input
-                id="checkout-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.currentTarget.value)}
-                placeholder="you@example.com"
-              />
-            </div>
+          <CardContent className="p-4">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-3"
+              onClick={() => setMobileSummaryOpen((v) => !v)}
+            >
+              <div className="text-sm font-medium">
+                {mobileSummaryOpen
+                  ? "Hide order summary"
+                  : "Show order summary"}
+              </div>
+              <div className="text-sm font-semibold">
+                {formatMoney(subtotal)}
+              </div>
+            </button>
+            {mobileSummaryOpen ? (
+              <div className="pt-4">
+                <OrderSummary items={items} subtotal={subtotal} />
+              </div>
+            ) : null}
           </CardContent>
         </Card>
-
         <div className="h-6" />
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Items</CardTitle>
-            <CardDescription>Your cart items and pricing.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {items.length === 0 ? (
-              <div className="text-muted-foreground text-sm">
-                Your cart is empty.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {items.map((item) => {
-                  const unit = typeof item.unitPrice === "number" ? item.unitPrice : 0;
-                  const qty = asNumber(item.quantity);
-                  const line = unit * qty;
-                  return (
-                    <div key={item._id} className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-medium">
-                          {item.product?.title ?? "Product"}
-                        </div>
-                        <div className="text-muted-foreground text-xs">
-                          Qty: {qty} • Unit: {formatMoney(unit)}
-                        </div>
-                      </div>
-                      <div className="text-sm font-semibold">{formatMoney(line)}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
-      <div className="lg:col-span-1">
-        <Card>
-          <CardHeader>
-            <CardTitle>Summary</CardTitle>
-            <CardDescription>Totals for this order.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal</span>
-              <span className="font-semibold">{formatMoney(subtotal)}</span>
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_420px]">
+        {/* Left column */}
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <div className="text-xl font-semibold">Checkout</div>
+            <div className="text-muted-foreground text-sm">
+              Complete your purchase below.
             </div>
-            <Separator />
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Total</span>
-              <span className="font-semibold">{formatMoney(subtotal)}</span>
-            </div>
-            <Button
-              type="button"
-              className="w-full"
-              onClick={handlePlaceOrder}
-              disabled={!canSubmit}
-            >
-              Place order
-            </Button>
-          </CardContent>
-        </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Contact</CardTitle>
+              <CardDescription>
+                We’ll email your receipt and updates.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="checkout-email">Email</Label>
+                <Input
+                  id="checkout-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.currentTarget.value)}
+                  placeholder="you@example.com"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Delivery</CardTitle>
+              <CardDescription>
+                Where should we send your order?
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="ship-country">Country/region</Label>
+                <Input
+                  id="ship-country"
+                  value={shipping.country}
+                  onChange={(e) =>
+                    setShipping((prev) => ({
+                      ...prev,
+                      country: e.currentTarget.value,
+                    }))
+                  }
+                  placeholder="United States"
+                  autoComplete="country-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ship-first">First name (optional)</Label>
+                <Input
+                  id="ship-first"
+                  value={shipping.firstName}
+                  onChange={(e) =>
+                    setShipping((prev) => ({
+                      ...prev,
+                      firstName: e.currentTarget.value,
+                    }))
+                  }
+                  placeholder="Jane"
+                  autoComplete="given-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ship-last">Last name</Label>
+                <Input
+                  id="ship-last"
+                  value={shipping.lastName}
+                  onChange={(e) =>
+                    setShipping((prev) => ({
+                      ...prev,
+                      lastName: e.currentTarget.value,
+                    }))
+                  }
+                  placeholder="Doe"
+                  autoComplete="family-name"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="ship-phone">Phone</Label>
+                <Input
+                  id="ship-phone"
+                  value={shipping.phone}
+                  onChange={(e) =>
+                    setShipping((prev) => ({
+                      ...prev,
+                      phone: e.currentTarget.value,
+                    }))
+                  }
+                  placeholder="(555) 555-5555"
+                  autoComplete="tel"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="ship-address">Address</Label>
+                <Input
+                  id="ship-address"
+                  value={shipping.address1}
+                  onChange={(e) =>
+                    setShipping((prev) => ({
+                      ...prev,
+                      address1: e.currentTarget.value,
+                    }))
+                  }
+                  placeholder="123 Main St"
+                  autoComplete="street-address"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="ship-address2">Apartment, suite, etc. (optional)</Label>
+                <Input
+                  id="ship-address2"
+                  value={shipping.address2}
+                  onChange={(e) =>
+                    setShipping((prev) => ({
+                      ...prev,
+                      address2: e.currentTarget.value,
+                    }))
+                  }
+                  placeholder="Apt 4B"
+                  autoComplete="address-line2"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ship-city">City</Label>
+                <Input
+                  id="ship-city"
+                  value={shipping.city}
+                  onChange={(e) =>
+                    setShipping((prev) => ({
+                      ...prev,
+                      city: e.currentTarget.value,
+                    }))
+                  }
+                  placeholder="New York"
+                  autoComplete="address-level2"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ship-state">State/Province</Label>
+                <Input
+                  id="ship-state"
+                  value={shipping.state}
+                  onChange={(e) =>
+                    setShipping((prev) => ({
+                      ...prev,
+                      state: e.currentTarget.value,
+                    }))
+                  }
+                  placeholder="NY"
+                  autoComplete="address-level1"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ship-zip">Postal code</Label>
+                <Input
+                  id="ship-zip"
+                  value={shipping.postcode}
+                  onChange={(e) =>
+                    setShipping((prev) => ({
+                      ...prev,
+                      postcode: e.currentTarget.value,
+                    }))
+                  }
+                  placeholder="10001"
+                  autoComplete="postal-code"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment</CardTitle>
+              <CardDescription>Select how you’d like to pay.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {pluginActiveMap &&
+              paymentEnabledMap &&
+              configMap &&
+              enabledPaymentMethods.length === 0 ? (
+                <div className="space-y-2">
+                  <div className="text-muted-foreground text-sm">
+                    No payment methods are enabled. An admin can enable one in
+                    Ecommerce → Settings → Payment processors.
+                  </div>
+                  {process.env.NODE_ENV !== "production" ? (
+                    <div className="rounded-md border p-3 text-xs">
+                      <div className="font-semibold">Debug</div>
+                      <div className="text-muted-foreground">
+                        orgId: {organizationId ?? "(undefined)"}
+                      </div>
+                      <div className="mt-2 space-y-1">
+                        {paymentMethods.map((m) => {
+                          const pluginActive =
+                            pluginActiveMap[m.config.pluginActiveOptionKey] ===
+                            true;
+                          const enabled =
+                            paymentEnabledMap[m.config.paymentEnabledOptionKey] ===
+                            true;
+                          const configured = m.isConfigured(
+                            configMap[m.config.configOptionKey],
+                          );
+                          return (
+                            <div
+                              key={m.id}
+                              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
+                            >
+                              <div className="font-medium">{m.id}</div>
+                              <div className="text-muted-foreground">
+                                active:{String(pluginActive)} enabled:
+                                {String(enabled)} configured:{String(configured)}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <RadioGroup
+                  value={paymentMethodId}
+                  onValueChange={setPaymentMethodId}
+                  className="gap-2"
+                >
+                  {enabledPaymentMethods.map((method) => (
+                    <label
+                      key={method.id}
+                      className="border-input hover:bg-muted/40 flex cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2"
+                    >
+                      <div className="flex items-center gap-3">
+                        <RadioGroupItem value={method.id} />
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium">
+                            {method.label}
+                          </div>
+                          {method.description ? (
+                            <div className="text-muted-foreground text-xs">
+                              {method.description}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </RadioGroup>
+              )}
+
+              {selectedPaymentMethod &&
+              configMap &&
+              typeof selectedPaymentMethod.renderCheckoutForm === "function" ? (
+                <div>
+                  {
+                    selectedPaymentMethod.renderCheckoutForm({
+                      organizationId,
+                      configValue:
+                        configMap[selectedPaymentMethod.config.configOptionKey],
+                      onPaymentDataChange: setPaymentData,
+                    }) as any
+                  }
+                </div>
+              ) : null}
+
+              <Button
+                type="button"
+                className="w-full"
+                onClick={handlePlaceOrder}
+                disabled={!canSubmit}
+              >
+                Pay {formatMoney(subtotal)}
+              </Button>
+              <div className="text-muted-foreground text-xs">
+                By placing your order, you agree to our terms and privacy
+                policy.
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right column: sticky summary */}
+        <div className="hidden lg:block">
+          <div className="sticky top-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Order summary</CardTitle>
+                <CardDescription>Review your items and totals.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <OrderSummary items={items} subtotal={subtotal} />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-
-

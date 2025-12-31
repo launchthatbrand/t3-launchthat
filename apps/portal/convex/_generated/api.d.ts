@@ -130,10 +130,12 @@ import type * as plugins_commerce_cart_mutations from "../plugins/commerce/cart/
 import type * as plugins_commerce_cart_queries from "../plugins/commerce/cart/queries.js";
 import type * as plugins_commerce_chargebacks_evidence_mutations from "../plugins/commerce/chargebacks/evidence/mutations.js";
 import type * as plugins_commerce_chargebacks_evidence_queries from "../plugins/commerce/chargebacks/evidence/queries.js";
+import type * as plugins_commerce_checkout_mutations from "../plugins/commerce/checkout/mutations.js";
 import type * as plugins_commerce_mutations from "../plugins/commerce/mutations.js";
 import type * as plugins_commerce_orders_mutations from "../plugins/commerce/orders/mutations.js";
 import type * as plugins_commerce_orders_notes from "../plugins/commerce/orders/notes.js";
 import type * as plugins_commerce_orders_queries from "../plugins/commerce/orders/queries.js";
+import type * as plugins_commerce_payments_authorizenet_actions from "../plugins/commerce/payments/authorizenet/actions.js";
 import type * as plugins_commerce_products_queries from "../plugins/commerce/products/queries.js";
 import type * as plugins_commerce_queries from "../plugins/commerce/queries.js";
 import type * as plugins_commerce from "../plugins/commerce.js";
@@ -333,10 +335,12 @@ declare const fullApi: ApiFromModules<{
   "plugins/commerce/cart/queries": typeof plugins_commerce_cart_queries;
   "plugins/commerce/chargebacks/evidence/mutations": typeof plugins_commerce_chargebacks_evidence_mutations;
   "plugins/commerce/chargebacks/evidence/queries": typeof plugins_commerce_chargebacks_evidence_queries;
+  "plugins/commerce/checkout/mutations": typeof plugins_commerce_checkout_mutations;
   "plugins/commerce/mutations": typeof plugins_commerce_mutations;
   "plugins/commerce/orders/mutations": typeof plugins_commerce_orders_mutations;
   "plugins/commerce/orders/notes": typeof plugins_commerce_orders_notes;
   "plugins/commerce/orders/queries": typeof plugins_commerce_orders_queries;
+  "plugins/commerce/payments/authorizenet/actions": typeof plugins_commerce_payments_authorizenet_actions;
   "plugins/commerce/products/queries": typeof plugins_commerce_products_queries;
   "plugins/commerce/queries": typeof plugins_commerce_queries;
   "plugins/commerce": typeof plugins_commerce;

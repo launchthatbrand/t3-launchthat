@@ -32,7 +32,7 @@ export const getEcommercePageTemplates =
         label: "Ecommerce: Checkout",
         description:
           "Dedicated checkout page (rendered by the Ecommerce plugin).",
-        layout: { showHeader: true, showSidebar: false, container: "default" },
+        layout: { showHeader: false, showSidebar: false, container: "full" },
         order: 51,
         render: (ctx) => <EcommerceCheckoutTemplate ctx={ctx} />,
       },

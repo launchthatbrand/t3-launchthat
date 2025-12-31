@@ -68,8 +68,34 @@ function AdminEditPageBody() {
   const tenant = useTenant();
   const { sections: adminMenuSections, postTypes } = useAdminMenuSections();
   const pluginParam = searchParams.get("plugin")?.toLowerCase().trim() ?? "";
-  const pluginPage =
-    searchParams.get("page")?.toLowerCase().trim() ?? "settings";
+  const pluginPageRaw = searchParams.get("page")?.trim() ?? "settings";
+  const pluginPage = pluginPageRaw.split("?")[0]?.toLowerCase().trim() ?? "settings";
+  const tabParam = searchParams.get("tab")?.toLowerCase().trim() ?? "";
+  const tabFromMalformedPageParam = (() => {
+    const maybeQuery = pluginPageRaw.split("?")[1];
+    if (!maybeQuery) return "";
+    const params = new URLSearchParams(maybeQuery);
+    return params.get("tab")?.toLowerCase().trim() ?? "";
+  })();
+
+  // If someone navigates to /admin/edit?plugin=...&page=settings?tab=page-setup (malformed),
+  // normalize it to /admin/edit?plugin=...&page=settings&tab=page-setup.
+  useEffect(() => {
+    if (!pluginParam) return;
+    if (!tabFromMalformedPageParam) return;
+    if (tabParam) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", pluginPage);
+    params.set("tab", tabFromMalformedPageParam);
+    router.replace(`/admin/edit?${params.toString()}`);
+  }, [
+    pluginPage,
+    pluginParam,
+    router,
+    searchParams,
+    tabFromMalformedPageParam,
+    tabParam,
+  ]);
   const pluginDefinition = useMemo(() => {
     if (!pluginParam) return null;
     return (

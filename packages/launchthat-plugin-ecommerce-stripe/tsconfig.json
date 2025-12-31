@@ -1,16 +1,17 @@
 {
-  "extends": "@acme/tsconfig/compiled-package.json",
+  "extends": "../../tooling/typescript/compiled-package.json",
   "compilerOptions": {
     "lib": ["ES2022", "dom", "dom.iterable"],
     "jsx": "react-jsx",
     "baseUrl": ".",
-    "moduleResolution": "bundler",
     "paths": {
       "launchthat-plugin-core": ["../launchthat-plugin-core/src/index"],
+      "launchthat-plugin-ecommerce": [
+        "../launchthat-plugin-ecommerce/src/index"
+      ],
       "@acme/ui": ["../ui/src/index"],
       "@acme/ui/*": ["../ui/src/*"],
-      "@portal/convexspec": ["../../apps/portal/convexspec.ts"],
-      "@/*": ["./src/*"]
+      "@portal/convexspec": ["../../apps/portal/convexspec.ts"]
     }
   },
   "include": ["src"],

@@ -1,10 +1,11 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
 import { createElement } from "react";
-import { ProductDetailsMetaBox } from "./admin/metaBoxes/ProductDetailsMetaBox";
+
 import { OrderDetailsMetaBox } from "./admin/metaBoxes/OrderDetailsMetaBox";
 import { OrderItemsMetaBox } from "./admin/metaBoxes/OrderItemsMetaBox";
-import { EcommerceSettingsPage } from "./admin/settings/EcommerceSettingsPage";
+import { ProductDetailsMetaBox } from "./admin/metaBoxes/ProductDetailsMetaBox";
 import { EcommercePageSetupSettingsPage } from "./admin/settings/EcommercePageSetupSettingsPage";
+import { EcommerceSettingsPage } from "./admin/settings/EcommerceSettingsPage";
 
 export const PLUGIN_ID = "ecommerce" as const;
 export type PluginId = typeof PLUGIN_ID;
@@ -14,12 +15,18 @@ const ECOMMERCE_COMPONENT_TABLES = [
   "launchthat_ecommerce:postsMeta",
 ] as const;
 
-export type CreateEcommercePluginDefinitionOptions = Record<string, never>;
+export interface EcommerceFrontendOverrides {
+  productsSingleRender?: (props: any) => React.ReactNode;
+}
+
+export interface CreateEcommercePluginDefinitionOptions {
+  frontend?: EcommerceFrontendOverrides;
+}
 
 const defaultOptions: CreateEcommercePluginDefinitionOptions = {};
 
 export const createEcommercePluginDefinition = (
-  _options: CreateEcommercePluginDefinitionOptions = defaultOptions,
+  options: CreateEcommercePluginDefinitionOptions = defaultOptions,
 ): PluginDefinition => ({
   id: PLUGIN_ID,
   name: "Ecommerce",
@@ -52,6 +59,7 @@ export const createEcommercePluginDefinition = (
         customFields: true,
         postMeta: true,
         taxonomy: true,
+        comments: true,
       },
       rewrite: {
         hasArchive: true,
@@ -72,6 +80,15 @@ export const createEcommercePluginDefinition = (
       storageKind: "component",
       storageTables: [...ECOMMERCE_COMPONENT_TABLES],
       storageComponent: "launchthat_ecommerce",
+      ...(options.frontend?.productsSingleRender
+        ? {
+            frontend: {
+              single: {
+                render: options.frontend.productsSingleRender as any,
+              },
+            },
+          }
+        : {}),
       metaBoxes: [
         {
           id: "ecommerce-product-details",
@@ -118,7 +135,8 @@ export const createEcommercePluginDefinition = (
         {
           id: "ecommerce-order-details",
           title: "Order details",
-          description: "Review and update customer, billing, and shipping details.",
+          description:
+            "Review and update customer, billing, and shipping details.",
           location: "main",
           priority: 5,
           fieldKeys: [],
@@ -127,7 +145,8 @@ export const createEcommercePluginDefinition = (
         {
           id: "ecommerce-order-items",
           title: "Order items",
-          description: "Add products, update quantities, and recalculate totals.",
+          description:
+            "Add products, update quantities, and recalculate totals.",
           location: "main",
           priority: 10,
           fieldKeys: [],
@@ -350,9 +369,24 @@ export const createEcommercePluginDefinition = (
           readOnly: false,
         },
 
-        { key: "billing.name", name: "Billing name", type: "text", readOnly: false },
-        { key: "billing.email", name: "Billing email", type: "text", readOnly: false },
-        { key: "billing.phone", name: "Billing phone", type: "text", readOnly: false },
+        {
+          key: "billing.name",
+          name: "Billing name",
+          type: "text",
+          readOnly: false,
+        },
+        {
+          key: "billing.email",
+          name: "Billing email",
+          type: "text",
+          readOnly: false,
+        },
+        {
+          key: "billing.phone",
+          name: "Billing phone",
+          type: "text",
+          readOnly: false,
+        },
         {
           key: "billing.address1",
           name: "Billing address line 1",
@@ -365,8 +399,18 @@ export const createEcommercePluginDefinition = (
           type: "text",
           readOnly: false,
         },
-        { key: "billing.city", name: "Billing city", type: "text", readOnly: false },
-        { key: "billing.state", name: "Billing state", type: "text", readOnly: false },
+        {
+          key: "billing.city",
+          name: "Billing city",
+          type: "text",
+          readOnly: false,
+        },
+        {
+          key: "billing.state",
+          name: "Billing state",
+          type: "text",
+          readOnly: false,
+        },
         {
           key: "billing.postcode",
           name: "Billing postcode",
@@ -380,8 +424,18 @@ export const createEcommercePluginDefinition = (
           readOnly: false,
         },
 
-        { key: "shipping.name", name: "Shipping name", type: "text", readOnly: false },
-        { key: "shipping.phone", name: "Shipping phone", type: "text", readOnly: false },
+        {
+          key: "shipping.name",
+          name: "Shipping name",
+          type: "text",
+          readOnly: false,
+        },
+        {
+          key: "shipping.phone",
+          name: "Shipping phone",
+          type: "text",
+          readOnly: false,
+        },
         {
           key: "shipping.address1",
           name: "Shipping address line 1",
@@ -394,8 +448,18 @@ export const createEcommercePluginDefinition = (
           type: "text",
           readOnly: false,
         },
-        { key: "shipping.city", name: "Shipping city", type: "text", readOnly: false },
-        { key: "shipping.state", name: "Shipping state", type: "text", readOnly: false },
+        {
+          key: "shipping.city",
+          name: "Shipping city",
+          type: "text",
+          readOnly: false,
+        },
+        {
+          key: "shipping.state",
+          name: "Shipping state",
+          type: "text",
+          readOnly: false,
+        },
         {
           key: "shipping.postcode",
           name: "Shipping postcode",
@@ -412,13 +476,6 @@ export const createEcommercePluginDefinition = (
     },
   ],
   settingsPages: [
-    {
-      id: "ecommerce-page-setup",
-      slug: "page-setup",
-      label: "Page setup",
-      description: "Choose which pages are used for cart and checkout.",
-      render: (props) => createElement(EcommercePageSetupSettingsPage, props),
-    },
     {
       id: "ecommerce-settings",
       slug: "settings",

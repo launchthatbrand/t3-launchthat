@@ -38,6 +38,12 @@
       "launchthat-plugin-ecommerce": [
         "../../packages/launchthat-plugin-ecommerce/src/index"
       ],
+      "launchthat-plugin-ecommerce-stripe": [
+        "../../packages/launchthat-plugin-ecommerce-stripe/src/index"
+      ],
+      "launchthat-plugin-ecommerce-authorizenet": [
+        "../../packages/launchthat-plugin-ecommerce-authorizenet/src/index"
+      ],
       "launchthat-plugin-ecommerce/*": [
         "../../packages/launchthat-plugin-commerce/src/*"
       ],

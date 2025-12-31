@@ -86,7 +86,7 @@ const TopHeader = () => {
       sidebarToggle={true}
       image={logoUrl}
       className="bg-background"
-      // rightSlot={<div className="flex items-center gap-6">{rightItems}</div>}
+      rightSlot={<div className="flex items-center gap-6">{rightItems}</div>}
     />
   );
 };

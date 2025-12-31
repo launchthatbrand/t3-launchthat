@@ -1,7 +1,9 @@
 import { calendarPlugin } from "launchthat-plugin-calendar";
 import { cmsPlugin } from "launchthat-plugin-cms";
 import { disclaimersPlugin } from "launchthat-plugin-disclaimers";
-import { ecommercePlugin } from "launchthat-plugin-ecommerce";
+import { createEcommercePluginDefinition } from "launchthat-plugin-ecommerce";
+import { ecommerceAuthorizenetPlugin } from "launchthat-plugin-ecommerce-authorizenet";
+import { ecommerceStripePlugin } from "launchthat-plugin-ecommerce-stripe";
 import { lmsPlugin } from "launchthat-plugin-lms";
 import {
   configureSocialFeedPlugin,
@@ -14,6 +16,7 @@ import { vimeoPlugin } from "launchthat-plugin-vimeo";
 
 import type { PluginDefinition, PluginSettingDefinition } from "./types";
 import type { MenuItemInput } from "~/lib/adminMenu";
+import { renderProductSingle } from "~/components/commerce/ProductSingleRenderer";
 import { adminMenuRegistry } from "~/lib/adminMenu";
 import { registerPluginPageTemplates } from "~/lib/pageTemplates/registerPluginPageTemplates";
 import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
@@ -35,7 +38,11 @@ export const pluginDefinitions: PluginDefinition[] = [
   supportPlugin as unknown as PluginDefinition,
   vimeoPlugin as unknown as PluginDefinition,
   disclaimersPlugin as unknown as PluginDefinition,
-  ecommercePlugin as unknown as PluginDefinition,
+  createEcommercePluginDefinition({
+    frontend: { productsSingleRender: renderProductSingle as any },
+  }) as unknown as PluginDefinition,
+  ecommerceStripePlugin as unknown as PluginDefinition,
+  ecommerceAuthorizenetPlugin as unknown as PluginDefinition,
 ];
 
 const registerPluginMenuSource = () => {

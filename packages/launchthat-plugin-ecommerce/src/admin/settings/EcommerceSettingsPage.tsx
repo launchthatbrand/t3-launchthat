@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type { PluginSettingComponentProps } from "launchthat-plugin-core";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@portal/convexspec";
 import { useMutation, useQuery } from "convex/react";
 
@@ -12,7 +13,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import { Switch } from "@acme/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { toast } from "@acme/ui/toast";
+
+import { EcommercePageSetupSettingsPage } from "./EcommercePageSetupSettingsPage";
+import { EcommercePaymentProcessorsSettings } from "./EcommercePaymentProcessorsSettings";
 
 const apiAny = api as any;
 
@@ -34,7 +39,7 @@ const defaultSettings: EcommerceSettings = {
 
 const asString = (value: unknown): string => (typeof value === "string" ? value : "");
 
-export const EcommerceSettingsPage = (props: PluginSettingComponentProps) => {
+const EcommerceGeneralSettings = (props: PluginSettingComponentProps) => {
   const orgId = props.organizationId ? String(props.organizationId) : undefined;
 
   const stored = useQuery(apiAny.core.options.get, {
@@ -106,7 +111,7 @@ export const EcommerceSettingsPage = (props: PluginSettingComponentProps) => {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Ecommerce settings</CardTitle>
+          <CardTitle>General</CardTitle>
           <CardDescription>
             Configure global defaults and behavior for this organization.
           </CardDescription>
@@ -180,6 +185,55 @@ export const EcommerceSettingsPage = (props: PluginSettingComponentProps) => {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+};
+
+export const EcommerceSettingsPage = (props: PluginSettingComponentProps) => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const activeTab = useMemo(() => {
+    const raw = searchParams.get("tab")?.toLowerCase().trim() ?? "";
+    if (raw === "page-setup") return "page-setup";
+    if (raw === "payment-processors") return "payment-processors";
+    return "general";
+  }, [searchParams]);
+
+  return (
+    <div className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(nextTab) => {
+          const params = new URLSearchParams(searchParams.toString());
+          // Keep plugin/page stable; only update tab within the settings page.
+          if (nextTab === "general") {
+            params.delete("tab");
+          } else {
+            params.set("tab", nextTab);
+          }
+          router.replace(`/admin/edit?${params.toString()}`);
+        }}
+        className="w-full"
+      >
+        <TabsList className="flex h-9 w-full flex-wrap justify-start gap-1">
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="page-setup">Page Setup</TabsTrigger>
+          <TabsTrigger value="payment-processors">Payment processors</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general" className="pt-3">
+          <EcommerceGeneralSettings {...props} />
+        </TabsContent>
+
+        <TabsContent value="page-setup" className="pt-3">
+          <EcommercePageSetupSettingsPage {...props} />
+        </TabsContent>
+
+        <TabsContent value="payment-processors" className="pt-3">
+          <EcommercePaymentProcessorsSettings {...props} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

@@ -46,6 +46,39 @@ export const getByType = query({
   },
 });
 
+// Get multiple options by keys (returns a key -> metaValue map; missing keys map to null)
+export const getMany = query({
+  args: {
+    metaKeys: v.array(v.string()),
+    type: v.optional(v.union(v.literal("store"), v.literal("site"))),
+    orgId: portalAwareOrgId,
+  },
+  handler: async (ctx, args) => {
+    const orgId = args.orgId ?? PORTAL_TENANT_ID;
+    const keys = Array.from(new Set(args.metaKeys.filter(Boolean)));
+
+    const result: Record<string, unknown> = {};
+    for (const key of keys) {
+      result[key] = null;
+    }
+
+    for (const metaKey of keys) {
+      const option = await ctx.db
+        .query("options")
+        .withIndex("by_org_key_type", (q) =>
+          q.eq("orgId", orgId).eq("metaKey", metaKey).eq("type", args.type),
+        )
+        .first();
+
+      if (option) {
+        result[metaKey] = option.metaValue as unknown;
+      }
+    }
+
+    return result;
+  },
+});
+
 // Get all store options as key-value pairs
 export const getStoreOptions = query({
   args: {

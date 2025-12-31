@@ -1,6 +1,3 @@
-// WordPress-style hook system - Main exports
-import "~/lib/plugins/installHooks";
-
 // Core hook functions proxied from the shared runtime
 export {
   addAction,
