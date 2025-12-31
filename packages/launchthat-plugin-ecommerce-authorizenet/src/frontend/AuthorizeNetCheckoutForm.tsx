@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@acme/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 
@@ -25,7 +31,8 @@ export function AuthorizeNetCheckoutForm({
   const sandbox = asBoolean(cfg.sandbox);
   const apiLoginId =
     typeof cfg.apiLoginId === "string" ? cfg.apiLoginId.trim() : "";
-  const clientKey = typeof cfg.clientKey === "string" ? cfg.clientKey.trim() : "";
+  const clientKey =
+    typeof cfg.clientKey === "string" ? cfg.clientKey.trim() : "";
 
   const [cardNumber, setCardNumber] = useState("");
   const [expiry, setExpiry] = useState("");
@@ -69,7 +76,8 @@ export function AuthorizeNetCheckoutForm({
     const yy = digits.slice(2, 4);
     if (mm.length !== 2 || yy.length !== 2) return null;
     const monthNum = Number(mm);
-    if (!Number.isFinite(monthNum) || monthNum < 1 || monthNum > 12) return null;
+    if (!Number.isFinite(monthNum) || monthNum < 1 || monthNum > 12)
+      return null;
     // Accept.js expects 4-digit year.
     const year = `20${yy}`;
     return { month: mm, year };
@@ -108,7 +116,7 @@ export function AuthorizeNetCheckoutForm({
         },
       };
 
-      w.Accept.dispatchData(payload, (response) => {
+      w.Accept?.dispatchData(payload, (response) => {
         setIsTokenizing(false);
 
         const r =
@@ -178,8 +186,9 @@ export function AuthorizeNetCheckoutForm({
       <CardContent className="space-y-4">
         {!apiLoginId || !clientKey ? (
           <div className="text-muted-foreground text-xs">
-            This payment method is missing required settings (API Login ID + Client
-            Key). Add them in Ecommerce → Settings → Payment processors → Authorize.Net.
+            This payment method is missing required settings (API Login ID +
+            Client Key). Add them in Ecommerce → Settings → Payment processors →
+            Authorize.Net.
           </div>
         ) : null}
 
@@ -248,5 +257,3 @@ export function AuthorizeNetCheckoutForm({
     </Card>
   );
 }
-
-
