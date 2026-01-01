@@ -4,7 +4,6 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@acme/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import { Switch } from "@acme/ui/switch";
@@ -48,11 +47,19 @@ const coerceBoolean = (value: unknown): boolean => {
 const clamp = (value: string, max: number) =>
   value.length > max ? value.slice(0, max) : value;
 
-type AttachmentMetaEntry = {
+interface AttachmentMetaEntry {
   url?: string;
   alt?: string;
   mimeType?: string;
-};
+}
+
+type PreviewTab = "google" | "twitter" | "facebook" | "linkedin";
+
+const isPreviewTab = (value: string): value is PreviewTab =>
+  value === "google" ||
+  value === "twitter" ||
+  value === "facebook" ||
+  value === "linkedin";
 
 const isLikelyImageUrl = (url: string) =>
   /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(url);
@@ -159,9 +166,7 @@ export function SeoTab({
     return defaultPreview;
   }, [context.general?.slugPreviewUrl, seoCanonical]);
 
-  const [previewTab, setPreviewTab] = useState<
-    "google" | "twitter" | "facebook" | "linkedin"
-  >("google");
+  const [previewTab, setPreviewTab] = useState<PreviewTab>("google");
 
   const selectedOgImage = useMemo(() => {
     // Prefer the live attachments context (includes unsaved reordering/selection),
@@ -203,227 +208,205 @@ export function SeoTab({
     return previewUrl ? extractHostLabel(previewUrl) : "yourdomain.com";
   }, [previewUrl]);
 
+  const handlePreviewTabChange = (value: string) => {
+    if (isPreviewTab(value)) {
+      setPreviewTab(value);
+    }
+  };
+
   return (
-    <div className="container space-y-6 py-6">
-      <Card>
-        <CardHeader className="space-y-1">
-          <CardTitle className="flex items-center justify-between gap-2">
-            SEO
-            <Badge variant="secondary">Per-page</Badge>
-          </CardTitle>
-          <p className="text-muted-foreground text-sm">
-            Control search snippets, Open Graph, and indexing behavior for this
-            page.
+    <div className="space-y-6">
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="seo-title">SEO Title</Label>
+          <Input
+            id="seo-title"
+            value={seoTitle}
+            onChange={(event) => set(SEO_META_KEYS.title, event.target.value)}
+            placeholder="Leave blank to use the post title"
+          />
+          <p className="text-muted-foreground text-xs">
+            Recommended: 50–60 characters (hard limit ~70).
           </p>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="seo-title">SEO Title</Label>
-              <Input
-                id="seo-title"
-                value={seoTitle}
-                onChange={(event) => set(SEO_META_KEYS.title, event.target.value)}
-                placeholder="Leave blank to use the post title"
-              />
-              <p className="text-muted-foreground text-xs">
-                Recommended: 50–60 characters (hard limit ~70).
-              </p>
-            </div>
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="seo-canonical">Canonical URL (optional)</Label>
-              <Input
-                id="seo-canonical"
-                value={seoCanonical}
-                onChange={(event) =>
-                  set(SEO_META_KEYS.canonical, event.target.value)
-                }
-                placeholder="https://example.com/path or /path"
-              />
-              <p className="text-muted-foreground text-xs">
-                Leave blank to use the computed canonical permalink.
-              </p>
-            </div>
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="seo-canonical">Canonical URL (optional)</Label>
+          <Input
+            id="seo-canonical"
+            value={seoCanonical}
+            onChange={(event) => set(SEO_META_KEYS.canonical, event.target.value)}
+            placeholder="https://example.com/path or /path"
+          />
+          <p className="text-muted-foreground text-xs">
+            Leave blank to use the computed canonical permalink.
+          </p>
+        </div>
+      </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="seo-description">Meta Description</Label>
-            <Textarea
-              id="seo-description"
-              rows={4}
-              value={seoDescription}
-              onChange={(event) =>
-                set(SEO_META_KEYS.description, event.target.value)
-              }
-              placeholder="Leave blank to use the excerpt (or fall back to content)"
-            />
-            <p className="text-muted-foreground text-xs">
-              Recommended: 140–160 characters.
+      <div className="space-y-2">
+        <Label htmlFor="seo-description">Meta Description</Label>
+        <Textarea
+          id="seo-description"
+          rows={4}
+          value={seoDescription}
+          onChange={(event) => set(SEO_META_KEYS.description, event.target.value)}
+          placeholder="Leave blank to use the excerpt (or fall back to content)"
+        />
+        <p className="text-muted-foreground text-xs">
+          Recommended: 140–160 characters.
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="flex items-start gap-3 rounded-md border p-4">
+          <Switch
+            checked={seoNoindex}
+            onCheckedChange={(checked) => set(SEO_META_KEYS.noindex, checked)}
+          />
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Noindex</p>
+            <p className="text-muted-foreground text-sm">
+              Discourage search engines from indexing this page.
             </p>
           </div>
+        </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex items-start gap-3 rounded-md border p-4">
-              <Switch
-                checked={seoNoindex}
-                onCheckedChange={(checked) => set(SEO_META_KEYS.noindex, checked)}
-              />
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Noindex</p>
-                <p className="text-muted-foreground text-sm">
-                  Discourage search engines from indexing this page.
+        <div className="flex items-start gap-3 rounded-md border p-4">
+          <Switch
+            checked={seoNofollow}
+            onCheckedChange={(checked) => set(SEO_META_KEYS.nofollow, checked)}
+          />
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Nofollow</p>
+            <p className="text-muted-foreground text-sm">
+              Discourage search engines from following links on this page.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-md border bg-muted/30 p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-sm font-medium">Preview</p>
+          <Tabs value={previewTab} onValueChange={handlePreviewTabChange}>
+            <TabsList>
+              <TabsTrigger value="google">Google</TabsTrigger>
+              <TabsTrigger value="twitter">X</TabsTrigger>
+              <TabsTrigger value="facebook">Facebook</TabsTrigger>
+              <TabsTrigger value="linkedin">LinkedIn</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        <Tabs value={previewTab} onValueChange={handlePreviewTabChange}>
+          <TabsContent value="google" className="mt-0">
+            <div className="space-y-1">
+              <div className="text-primary text-base font-semibold">
+                {snippetTitle || "Untitled"}
+              </div>
+              <div className="text-muted-foreground text-xs">
+                {previewUrl || "(Preview URL will appear after saving)"}
+              </div>
+              <div className="text-muted-foreground text-sm">
+                {snippetDescription || "No description set."}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="twitter" className="mt-0">
+            <div className="bg-background overflow-hidden rounded-md border">
+              <div className="bg-muted relative aspect-[16/9] w-full">
+                {selectedOgImage?.url && !previewImageErrored ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={selectedOgImage.url}
+                    alt={selectedOgImage.alt ?? "Social preview image"}
+                    className="h-full w-full object-cover"
+                    onError={() => setPreviewImageErrored(true)}
+                  />
+                ) : (
+                  <div className="text-muted-foreground flex h-full w-full items-center justify-center text-xs">
+                    No image
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1 p-3">
+                <p className="text-muted-foreground text-xs uppercase">
+                  {hostLabel}
+                </p>
+                <p className="text-sm font-medium">{snippetTitle || "Untitled"}</p>
+                <p className="text-muted-foreground line-clamp-2 text-sm">
+                  {snippetDescription || "No description set."}
                 </p>
               </div>
             </div>
+          </TabsContent>
 
-            <div className="flex items-start gap-3 rounded-md border p-4">
-              <Switch
-                checked={seoNofollow}
-                onCheckedChange={(checked) =>
-                  set(SEO_META_KEYS.nofollow, checked)
-                }
-              />
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Nofollow</p>
-                <p className="text-muted-foreground text-sm">
-                  Discourage search engines from following links on this page.
+          <TabsContent value="facebook" className="mt-0">
+            <div className="bg-background overflow-hidden rounded-md border">
+              <div className="bg-muted relative aspect-[1.91/1] w-full">
+                {selectedOgImage?.url && !previewImageErrored ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={selectedOgImage.url}
+                    alt={selectedOgImage.alt ?? "Social preview image"}
+                    className="h-full w-full object-cover"
+                    onError={() => setPreviewImageErrored(true)}
+                  />
+                ) : (
+                  <div className="text-muted-foreground flex h-full w-full items-center justify-center text-xs">
+                    No image
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1 bg-muted/30 p-3">
+                <p className="text-muted-foreground text-xs uppercase">{hostLabel}</p>
+                <p className="text-sm font-semibold">{snippetTitle || "Untitled"}</p>
+                <p className="text-muted-foreground line-clamp-2 text-sm">
+                  {snippetDescription || "No description set."}
                 </p>
               </div>
             </div>
-          </div>
+          </TabsContent>
 
-          <div className="rounded-md border bg-muted/30 p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <p className="text-sm font-medium">Preview</p>
-              <Tabs value={previewTab} onValueChange={(v) => setPreviewTab(v as any)}>
-                <TabsList>
-                  <TabsTrigger value="google">Google</TabsTrigger>
-                  <TabsTrigger value="twitter">X</TabsTrigger>
-                  <TabsTrigger value="facebook">Facebook</TabsTrigger>
-                  <TabsTrigger value="linkedin">LinkedIn</TabsTrigger>
-                </TabsList>
-              </Tabs>
+          <TabsContent value="linkedin" className="mt-0">
+            <div className="bg-background overflow-hidden rounded-md border">
+              <div className="bg-muted relative aspect-[16/9] w-full">
+                {selectedOgImage?.url && !previewImageErrored ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={selectedOgImage.url}
+                    alt={selectedOgImage.alt ?? "Social preview image"}
+                    className="h-full w-full object-cover"
+                    onError={() => setPreviewImageErrored(true)}
+                  />
+                ) : (
+                  <div className="text-muted-foreground flex h-full w-full items-center justify-center text-xs">
+                    No image
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1 p-3">
+                <p className="text-sm font-medium">{snippetTitle || "Untitled"}</p>
+                <p className="text-muted-foreground line-clamp-2 text-sm">
+                  {snippetDescription || "No description set."}
+                </p>
+                <p className="text-muted-foreground text-xs">{hostLabel}</p>
+              </div>
             </div>
+          </TabsContent>
+        </Tabs>
 
-            <Tabs value={previewTab} onValueChange={(v) => setPreviewTab(v as any)}>
-              <TabsContent value="google" className="mt-0">
-                <div className="space-y-1">
-                  <div className="text-primary text-base font-semibold">
-                    {snippetTitle || "Untitled"}
-                  </div>
-                  <div className="text-muted-foreground text-xs">
-                    {previewUrl || "(Preview URL will appear after saving)"}
-                  </div>
-                  <div className="text-muted-foreground text-sm">
-                    {snippetDescription || "No description set."}
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="twitter" className="mt-0">
-                <div className="bg-background overflow-hidden rounded-md border">
-                  <div className="bg-muted relative aspect-[16/9] w-full">
-                    {selectedOgImage?.url && !previewImageErrored ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={selectedOgImage.url}
-                        alt={selectedOgImage.alt ?? "Social preview image"}
-                        className="h-full w-full object-cover"
-                        onError={() => setPreviewImageErrored(true)}
-                      />
-                    ) : (
-                      <div className="text-muted-foreground flex h-full w-full items-center justify-center text-xs">
-                        No image
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-1 p-3">
-                    <p className="text-muted-foreground text-xs uppercase">
-                      {hostLabel}
-                    </p>
-                    <p className="text-sm font-medium">
-                      {snippetTitle || "Untitled"}
-                    </p>
-                    <p className="text-muted-foreground line-clamp-2 text-sm">
-                      {snippetDescription || "No description set."}
-                    </p>
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="facebook" className="mt-0">
-                <div className="bg-background overflow-hidden rounded-md border">
-                  <div className="bg-muted relative aspect-[1.91/1] w-full">
-                    {selectedOgImage?.url && !previewImageErrored ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={selectedOgImage.url}
-                        alt={selectedOgImage.alt ?? "Social preview image"}
-                        className="h-full w-full object-cover"
-                        onError={() => setPreviewImageErrored(true)}
-                      />
-                    ) : (
-                      <div className="text-muted-foreground flex h-full w-full items-center justify-center text-xs">
-                        No image
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-1 bg-muted/30 p-3">
-                    <p className="text-muted-foreground text-xs uppercase">
-                      {hostLabel}
-                    </p>
-                    <p className="text-sm font-semibold">
-                      {snippetTitle || "Untitled"}
-                    </p>
-                    <p className="text-muted-foreground line-clamp-2 text-sm">
-                      {snippetDescription || "No description set."}
-                    </p>
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="linkedin" className="mt-0">
-                <div className="bg-background overflow-hidden rounded-md border">
-                  <div className="bg-muted relative aspect-[16/9] w-full">
-                    {selectedOgImage?.url && !previewImageErrored ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={selectedOgImage.url}
-                        alt={selectedOgImage.alt ?? "Social preview image"}
-                        className="h-full w-full object-cover"
-                        onError={() => setPreviewImageErrored(true)}
-                      />
-                    ) : (
-                      <div className="text-muted-foreground flex h-full w-full items-center justify-center text-xs">
-                        No image
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-1 p-3">
-                    <p className="text-sm font-medium">
-                      {snippetTitle || "Untitled"}
-                    </p>
-                    <p className="text-muted-foreground line-clamp-2 text-sm">
-                      {snippetDescription || "No description set."}
-                    </p>
-                    <p className="text-muted-foreground text-xs">{hostLabel}</p>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
-
-            <div className="mt-3 flex flex-wrap gap-2 text-xs">
-              <Badge variant="outline">Title: {effectiveTitle.length}/70</Badge>
-              <Badge variant="outline">
-                Description:{" "}
-                {effectiveDescription.replace(/\s+/g, " ").trim().length}/160
-              </Badge>
-              <Badge variant="outline">OG image: First attachment image</Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          <Badge variant="outline">Title: {effectiveTitle.length}/70</Badge>
+          <Badge variant="outline">
+            Description:{" "}
+            {effectiveDescription.replace(/\s+/g, " ").trim().length}/160
+          </Badge>
+          <Badge variant="outline">OG image: First attachment image</Badge>
+        </div>
+      </div>
     </div>
   );
 }

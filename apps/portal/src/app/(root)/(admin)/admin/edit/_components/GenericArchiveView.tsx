@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { api } from "@/convex/_generated/api";
 import { useDeletePost, useGetAllPosts } from "@/lib/blog";
 import { formatDistanceToNow } from "date-fns";
 import { Eye, Info, Plus, Sparkles, Trash2 } from "lucide-react";
@@ -131,13 +130,16 @@ export function GenericArchiveView({
   const normalizedSlug = slug.toLowerCase();
   const isAttachmentsArchive = normalizedSlug === "attachments";
 
-  type AttachmentsArchiveTab = {
+  interface AttachmentsArchiveTab {
     id: string;
     label: string;
     order?: number;
-    condition?: (ctx: { organizationId?: Id<"organizations">; postTypeSlug: string }) => boolean;
+    condition?: (ctx: {
+      organizationId?: Id<"organizations">;
+      postTypeSlug: string;
+    }) => boolean;
     component?: (props: { organizationId?: Id<"organizations"> }) => ReactNode;
-  };
+  }
 
   const attachmentsHookContext = useMemo(
     () => ({ postTypeSlug: normalizedSlug, organizationId }),
@@ -155,7 +157,7 @@ export function GenericArchiveView({
   );
 
   const attachmentsTabsFinal = useMemo(() => {
-    if (!attachmentsTabs || attachmentsTabs.length === 0) {
+    if (attachmentsTabs.length === 0) {
       return [
         { id: "list", label: "Attachments", order: 0 },
         { id: "drafts", label: "Drafts", order: 1 },
@@ -173,7 +175,9 @@ export function GenericArchiveView({
     const normalized = typeof raw === "string" ? raw.toLowerCase().trim() : "";
     if (!isAttachmentsArchive) return "list";
     if (!normalized) return "list";
-    return attachmentsTabsFinal.some((t) => t.id === normalized) ? normalized : "list";
+    return attachmentsTabsFinal.some((t) => t.id === normalized)
+      ? normalized
+      : "list";
   }, [attachmentsTabsFinal, isAttachmentsArchive, searchParams]);
 
   const attachmentsHeaderTabs = useMemo(() => {
@@ -192,13 +196,17 @@ export function GenericArchiveView({
     });
   }, [attachmentsTabsFinal, isAttachmentsArchive, searchParams]);
 
-  const shouldLoadPosts = Boolean(postType) || isBuiltInPostTypeSlug(normalizedSlug);
+  const shouldLoadPosts =
+    Boolean(postType) || isBuiltInPostTypeSlug(normalizedSlug);
   const postsQuery = useGetAllPosts(
     shouldLoadPosts ? { postTypeSlug: normalizedSlug, limit: 200 } : undefined,
   );
-  const rows: ArchiveRow[] = shouldLoadPosts
-    ? ((postsQuery.posts ?? []) as ArchiveRow[])
-    : FALLBACK_ROWS;
+  const rows = useMemo<ArchiveRow[]>(() => {
+    if (!shouldLoadPosts) {
+      return FALLBACK_ROWS;
+    }
+    return postsQuery.posts as unknown as ArchiveRow[];
+  }, [postsQuery.posts, shouldLoadPosts]);
   const tableLoading = shouldLoadPosts ? postsQuery.isLoading : isLoading;
   const displayRows = useMemo<ArchiveDisplayRow[]>(() => {
     return rows.map((row) => {
@@ -278,7 +286,7 @@ export function GenericArchiveView({
     [slug],
   );
   const deletePost = useDeletePost();
-  const handleDeleteLesson = useCallback(
+  const handleDeleteRow = useCallback(
     async (item: ArchiveDisplayRow) => {
       if (item.isPlaceholder) {
         return;
@@ -294,15 +302,15 @@ export function GenericArchiveView({
           id: item.id as Id<"posts">,
           postTypeSlug: slug,
         });
-        toast.success("Lesson deleted.");
+        toast.success("Deleted.");
       } catch (error) {
-        toast.error("Failed to delete lesson.", {
+        toast.error("Failed to delete.", {
           description:
             error instanceof Error ? error.message : "Unexpected error.",
         });
       }
     },
-    [deletePost],
+    [deletePost, slug],
   );
   const entityActions = useMemo<EntityAction<ArchiveDisplayRow>[]>(() => {
     const actions: EntityAction<ArchiveDisplayRow>[] = [
@@ -320,21 +328,19 @@ export function GenericArchiveView({
       },
     ];
 
-    if (slug === "lessons") {
-      actions.push({
-        id: "delete",
-        label: "Delete",
-        icon: <Trash2 className="h-4 w-4" />,
-        variant: "destructive",
-        isDisabled: (item) => Boolean(item.isPlaceholder),
-        onClick: (item) => {
-          void handleDeleteLesson(item);
-        },
-      });
-    }
+    actions.push({
+      id: "delete",
+      label: "Delete",
+      icon: <Trash2 className="h-4 w-4" />,
+      variant: "destructive",
+      isDisabled: (item) => Boolean(item.isPlaceholder),
+      onClick: (item) => {
+        void handleDeleteRow(item);
+      },
+    });
 
     return actions;
-  }, [handleDeleteLesson, slug]);
+  }, [handleDeleteRow]);
 
   const archiveHookContext = useMemo<{
     postType: string;

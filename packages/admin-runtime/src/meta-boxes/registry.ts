@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export type MetaBoxLocation = "main" | "sidebar";
+export type MetaBoxLocation = "main" | "sidebar" | `tab:${string}`;
 
 export interface RegisteredMetaBox<TContext = unknown> {
   id: string;
@@ -19,7 +19,7 @@ export type MetaBoxHook<TContext = unknown> = (
   | null
   | undefined;
 
-const registry: Record<MetaBoxLocation, MetaBoxHook<any>[]> = {
+const registry: Partial<Record<MetaBoxLocation, MetaBoxHook<any>[]>> = {
   main: [],
   sidebar: [],
 };
@@ -28,7 +28,8 @@ export const registerMetaBoxHook = <TContext = unknown>(
   location: MetaBoxLocation,
   hook: MetaBoxHook<TContext>,
 ) => {
-  registry[location].push(hook as MetaBoxHook<any>);
+  registry[location] ??= [];
+  registry[location]?.push(hook as MetaBoxHook<any>);
   return () => {
     registry[location] =
       registry[location]?.filter((candidate) => candidate !== hook) ?? [];

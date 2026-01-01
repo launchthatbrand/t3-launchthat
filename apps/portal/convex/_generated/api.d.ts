@@ -132,6 +132,8 @@ import type * as plugins_commerce_chargebacks_evidence_mutations from "../plugin
 import type * as plugins_commerce_chargebacks_evidence_queries from "../plugins/commerce/chargebacks/evidence/queries.js";
 import type * as plugins_commerce_checkout_actions from "../plugins/commerce/checkout/actions.js";
 import type * as plugins_commerce_checkout_mutations from "../plugins/commerce/checkout/mutations.js";
+import type * as plugins_commerce_checkouts_mutations from "../plugins/commerce/checkouts/mutations.js";
+import type * as plugins_commerce_checkouts_queries from "../plugins/commerce/checkouts/queries.js";
 import type * as plugins_commerce_mutations from "../plugins/commerce/mutations.js";
 import type * as plugins_commerce_orders_mutations from "../plugins/commerce/orders/mutations.js";
 import type * as plugins_commerce_orders_notes from "../plugins/commerce/orders/notes.js";
@@ -338,6 +340,8 @@ declare const fullApi: ApiFromModules<{
   "plugins/commerce/chargebacks/evidence/queries": typeof plugins_commerce_chargebacks_evidence_queries;
   "plugins/commerce/checkout/actions": typeof plugins_commerce_checkout_actions;
   "plugins/commerce/checkout/mutations": typeof plugins_commerce_checkout_mutations;
+  "plugins/commerce/checkouts/mutations": typeof plugins_commerce_checkouts_mutations;
+  "plugins/commerce/checkouts/queries": typeof plugins_commerce_checkouts_queries;
   "plugins/commerce/mutations": typeof plugins_commerce_mutations;
   "plugins/commerce/orders/mutations": typeof plugins_commerce_orders_mutations;
   "plugins/commerce/orders/notes": typeof plugins_commerce_orders_notes;
@@ -5790,6 +5794,16 @@ export declare const components: {
           { cartItemId: string; guestSessionId: string },
           any
         >;
+        replaceCart: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            guestSessionId?: string;
+            productPostIds: Array<string>;
+            userId?: string;
+          },
+          any
+        >;
         updateCartItemQuantity: FunctionReference<
           "mutation",
           "internal",
@@ -5808,6 +5822,57 @@ export declare const components: {
           "internal",
           { guestSessionId?: string; userId?: string },
           any
+        >;
+      };
+    };
+    checkouts: {
+      mutations: {
+        ensureDefaultCheckout: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId?: string },
+          string
+        >;
+      };
+      queries: {
+        getCheckoutConfigById: FunctionReference<
+          "query",
+          "internal",
+          { id: string; organizationId?: string },
+          null | {
+            design: string;
+            isDefault: boolean;
+            postId: string;
+            predefinedProductPostIds: Array<string>;
+            slug: string;
+            title?: string;
+          }
+        >;
+        getCheckoutConfigBySlug: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; slug: string },
+          null | {
+            design: string;
+            isDefault: boolean;
+            postId: string;
+            predefinedProductPostIds: Array<string>;
+            slug: string;
+            title?: string;
+          }
+        >;
+        getDefaultCheckoutConfig: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string },
+          null | {
+            design: string;
+            isDefault: boolean;
+            postId: string;
+            predefinedProductPostIds: Array<string>;
+            slug: string;
+            title?: string;
+          }
         >;
       };
     };

@@ -8,5 +8,6 @@ export {
   ecommercePlugin,
 } from "./plugin";
 export { getEcommercePageTemplates } from "./frontend/pageTemplates";
+export { CheckoutClient } from "./frontend/ui/CheckoutClient";
 export * from "./payments/registry";
 export default ecommercePlugin;

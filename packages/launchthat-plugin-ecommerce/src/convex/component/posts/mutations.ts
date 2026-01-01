@@ -106,11 +106,19 @@ export const createPost = mutation({
       updatedAt: args.updatedAt,
     });
 
-    if (args.meta && Object.keys(args.meta).length > 0) {
+    const metaToWrite: Record<string, unknown> =
+      args.meta && typeof args.meta === "object" ? { ...(args.meta as any) } : {};
+
+    // Enforce: default checkout must not have predefined products.
+    if (postTypeSlug === "checkout" && uniqueSlug === "__default_checkout__") {
+      metaToWrite["checkout.predefinedProductsJson"] = "[]";
+    }
+
+    if (Object.keys(metaToWrite).length > 0) {
       await upsertMetaEntries(
         ctx,
         postId as Id<"posts">,
-        args.meta as Record<string, unknown>,
+        metaToWrite,
       );
     }
 
@@ -211,7 +219,12 @@ export const updatePost = mutation({
     await ctx.db.patch(post._id, updates as any);
 
     if (meta && Object.keys(meta).length > 0) {
-      await upsertMetaEntries(ctx, post._id as Id<"posts">, meta);
+      const metaToWrite: Record<string, unknown> = { ...meta };
+      // Enforce: default checkout must not have predefined products.
+      if (post.postTypeSlug === "checkout" && post.slug === "__default_checkout__") {
+        metaToWrite["checkout.predefinedProductsJson"] = "[]";
+      }
+      await upsertMetaEntries(ctx, post._id as Id<"posts">, metaToWrite);
     }
     return { success: true };
   },

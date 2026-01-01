@@ -139,7 +139,9 @@ export const postTypeMetaBoxValidator = v.object({
   id: v.string(),
   title: v.string(),
   description: v.optional(v.string()),
-  location: v.optional(v.union(v.literal("main"), v.literal("sidebar"))),
+  // Supports core locations ("main" | "sidebar") and tab locations like "tab:seo".
+  // We validate this more strictly in the frontend/admin UI.
+  location: v.optional(v.string()),
   priority: v.optional(v.number()),
   fieldKeys: v.array(v.string()),
   rendererKey: v.optional(v.string()),

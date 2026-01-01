@@ -102,7 +102,8 @@ export interface PluginPostTypeMetaBox {
   id: string;
   title: string;
   description?: string;
-  location?: "main" | "sidebar";
+  // Supports core locations ("main" | "sidebar") and tab locations like "tab:seo".
+  location?: "main" | "sidebar" | `tab:${string}`;
   priority?: number;
   fieldKeys: string[];
   rendererKey?: string;
@@ -136,7 +137,7 @@ export interface PluginMetaBoxRendererProps {
     id: string;
     title: string;
     description?: string | null;
-    location: "main" | "sidebar";
+    location: "main" | "sidebar" | `tab:${string}`;
   };
   fields: PluginMetaBoxRendererField[];
   getValue: (fieldKey: string) => PluginMetaBoxFieldValue | undefined;

@@ -11,6 +11,7 @@ interface CommerceCartMutations {
   removeFromGuestCart: unknown;
   updateCartItemQuantity: unknown;
   clearCart: unknown;
+  replaceCart: unknown;
 }
 const commerceCartMutations = (
   components as unknown as {
@@ -108,6 +109,22 @@ export const clearCart = mutation({
   handler: async (ctx, args) => {
     const result: unknown = await ctx.runMutation(
       commerceCartMutations.clearCart as any,
+      args,
+    );
+    return result;
+  },
+});
+
+export const replaceCart = mutation({
+  args: {
+    userId: v.optional(v.string()),
+    guestSessionId: v.optional(v.string()),
+    productPostIds: v.array(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const result: unknown = await ctx.runMutation(
+      commerceCartMutations.replaceCart as any,
       args,
     );
     return result;

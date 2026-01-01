@@ -6,6 +6,7 @@ import { registerDownloadsMetaBox } from "./downloads";
 import { registerGeneralMetaBox } from "./general";
 import { registerMetadataMetaBox } from "./metadata";
 import { registerPageTemplateMetaBox } from "./pageTemplate";
+import { registerSeoMetaBox } from "./seo";
 import { registerTaxonomyMetaBoxes } from "./taxonomy";
 import { registerVimeoMetaBox } from "./vimeo";
 
@@ -27,6 +28,7 @@ export const registerCoreMetaBoxes = () => {
     registerDownloadsMetaBox as unknown as () => void,
     registerVimeoMetaBox as unknown as () => void,
     registerTaxonomyMetaBoxes as unknown as () => void,
+    registerSeoMetaBox as unknown as () => void,
   ];
 
   for (const register of registrations) {

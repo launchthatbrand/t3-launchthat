@@ -1,6 +1,6 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-type-assertion */
 import "~/lib/pageTemplates";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
@@ -110,11 +110,10 @@ import {
 } from "./metaBoxes/utils";
 import { getFrontendBaseUrl } from "./permalink";
 import { PlaceholderState } from "./PlaceholderState";
-import { SeoTab } from "./SeoTab";
 
 // The generated `api` types are extremely deep; in this component we prefer
 // runtime safety/flexibility over full static typing.
-const api: any = apiGenerated;
+const api = apiGenerated;
 
 const stripHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
 const resolveSupportFlag = (
@@ -324,9 +323,10 @@ export function AdminSinglePostView({
       ? (post.taxonomyTermIds as unknown as string[])
       : [],
   );
-  const [postStatus, setPostStatus] = useState<AdminPostStatus>(
-    (post?.status as AdminPostStatus) ?? (isNewRecord ? "published" : "draft"),
-  );
+  const [postStatus, setPostStatus] = useState<AdminPostStatus>(() => {
+    const fallback = isNewRecord ? "published" : "draft";
+    return (post?.status ?? fallback) as AdminPostStatus;
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -481,14 +481,13 @@ export function AdminSinglePostView({
 
   const { data: postTypeFields = [], isLoading: postTypeFieldsLoading } =
     usePostTypeFields(slug, true);
-  const { metaEntries: postMetaEntries, metaMap: postMetaMap } =
-    useAdminPostMeta({
-      postId: post?._id ? String(post._id) : undefined,
-      postTypeSlug: normalizedSlug,
-      postType,
-      organizationId,
-      storageKind,
-    });
+  const { metaMap: postMetaMap } = useAdminPostMeta({
+    postId: post?._id ? String(post._id) : undefined,
+    postTypeSlug: normalizedSlug,
+    postType,
+    organizationId,
+    storageKind,
+  });
 
   const ensureBuiltInTaxonomies = useEnsureBuiltInTaxonomies();
   const categoryTaxonomy = useQuery(
@@ -986,6 +985,32 @@ export function AdminSinglePostView({
     () => normalizedMetaBoxes.filter((box) => box.location === "sidebar"),
     [normalizedMetaBoxes],
   );
+  const tabMetaBoxes = useMemo(
+    () => normalizedMetaBoxes.filter((box) => box.location.startsWith("tab:")),
+    [normalizedMetaBoxes],
+  );
+
+  const tabMetaBoxSlugs = useMemo(() => {
+    const slugs = new Set<string>();
+    for (const box of tabMetaBoxes) {
+      const raw = box.location.slice("tab:".length).trim();
+      if (raw) {
+        slugs.add(raw);
+      }
+    }
+    return Array.from(slugs).sort((a, b) => a.localeCompare(b));
+  }, [tabMetaBoxes]);
+
+  const getTabLabel = (value: string): string => {
+    if (value === seoTabValue) return "SEO";
+    if (value === aiTabValue) return "AI";
+    if (value === "edit") return "Edit";
+    return value
+      .split(/[-_]/g)
+      .filter(Boolean)
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(" ");
+  };
 
   const assignedFieldKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -1005,11 +1030,11 @@ export function AdminSinglePostView({
 
   const allMetaBoxesMap = useMemo(() => {
     const map: Record<string, NormalizedMetaBox> = {};
-    [...mainMetaBoxes, ...sidebarMetaBoxes].forEach((box) => {
+    [...mainMetaBoxes, ...sidebarMetaBoxes, ...tabMetaBoxes].forEach((box) => {
       map[box.id] = box;
     });
     return map;
-  }, [mainMetaBoxes, sidebarMetaBoxes]);
+  }, [mainMetaBoxes, sidebarMetaBoxes, tabMetaBoxes]);
 
   const handleCustomFieldChange = useCallback(
     (key: string, value: CustomFieldValue) => {
@@ -1312,7 +1337,7 @@ export function AdminSinglePostView({
                   id: string;
                   title: string;
                   description?: string;
-                  location: "main" | "sidebar";
+                  location: string;
                 };
                 fields: {
                   key: string;
@@ -1406,7 +1431,7 @@ export function AdminSinglePostView({
 
   const renderMetaBoxList = (
     metaBoxes: ResolvedMetaBox[],
-    location: "main" | "sidebar",
+    variant: "main" | "sidebar",
   ) => {
     if (metaBoxes.length === 0) {
       return null;
@@ -1431,7 +1456,7 @@ export function AdminSinglePostView({
               description={metaBox.description}
               isOpen={isOpen}
               onToggle={(nextOpen) => setMetaBoxState(storageKey, nextOpen)}
-              variant={location}
+              variant={variant}
             >
               {metaBox.render()}
             </MetaBoxPanel>
@@ -1590,7 +1615,6 @@ export function AdminSinglePostView({
     postMetaMap,
     resolvedVimeoMeta,
     shouldTrackVimeoMeta,
-    slug,
     sortedCustomFields,
     supportsAttachments,
   ]);
@@ -1635,7 +1659,7 @@ export function AdminSinglePostView({
       setSlugValue(post.slug ?? "");
       setExcerpt(post.excerpt ?? "");
       setContent(post.content ?? "");
-      setPostStatus((post.status as AdminPostStatus) ?? "draft");
+      setPostStatus((post.status ?? "draft") as AdminPostStatus);
       return;
     }
     if (isNewRecord) {
@@ -1738,6 +1762,7 @@ export function AdminSinglePostView({
     canSaveRecord,
     content,
     excerpt,
+    isComponentStorage,
     isNewRecord,
     log,
     organizationId,
@@ -1857,6 +1882,7 @@ export function AdminSinglePostView({
     setObjectTerms,
     slug,
     slugValue,
+    statusOptions,
     supportsTaxonomy,
     taxonomyTermIds,
     title,
@@ -2111,6 +2137,32 @@ export function AdminSinglePostView({
     );
   };
 
+  const renderTabMetaBoxes = (tabSlug: string) => {
+    const location: MetaBoxLocation = `tab:${tabSlug}`;
+    const resolvedMetaBoxes: ResolvedMetaBox[] = [];
+
+    appendRegisteredMetaBoxes(resolvedMetaBoxes, location);
+
+    const matchingFieldMetaBoxes = tabMetaBoxes.filter(
+      (box) => box.location === location,
+    );
+    const pluginMetaBoxes = pickMetaBoxes(
+      undefined,
+      matchingFieldMetaBoxes,
+      allMetaBoxesMap,
+      true,
+    ).map(buildFieldMetaBox);
+
+    resolvedMetaBoxes.push(...pluginMetaBoxes);
+
+    return (
+      <div className="container space-y-6 py-6">
+        {saveError && <p className="text-destructive text-sm">{saveError}</p>}
+        {renderMetaBoxList(resolvedMetaBoxes, "main")}
+      </div>
+    );
+  };
+
   const renderSidebar = (options?: {
     metaBoxIds?: string[];
     sidebarMetaBoxIds?: string[];
@@ -2173,11 +2225,19 @@ export function AdminSinglePostView({
 
   if (pluginSingleView && pluginTabs.length > 0) {
     const isSeoTab = activeTab === seoTabValue;
+    const isBuiltInPluginTab = pluginTabs.some((tab) => tab.slug === activeTab);
+    const isMetaBoxTab =
+      !isSeoTab &&
+      !isAiTab &&
+      !isBuiltInPluginTab &&
+      tabMetaBoxSlugs.includes(activeTab);
     const activeTabDefinition =
       pluginTabs.find((tab) => tab.slug === activeTab) ?? pluginTabs[0];
     const showSidebar = isSeoTab
       ? true
-      : (activeTabDefinition?.usesDefaultEditor ?? false);
+      : isMetaBoxTab
+        ? true
+        : (activeTabDefinition?.usesDefaultEditor ?? false);
     const defaultTabOptions = {
       showGeneralPanel: activeTabDefinition?.showGeneralPanel ?? true,
       showCustomFieldsPanel: activeTabDefinition?.showCustomFieldsPanel ?? true,
@@ -2205,6 +2265,13 @@ export function AdminSinglePostView({
         label: tab.label,
         onClick: () => handleTabChange(tab.slug),
       })),
+      ...tabMetaBoxSlugs
+        .filter((tabSlug) => tabSlug !== seoTabValue && tabSlug !== aiTabValue)
+        .map((tabSlug) => ({
+          value: tabSlug,
+          label: getTabLabel(tabSlug),
+          onClick: () => handleTabChange(tabSlug),
+        })),
       {
         value: seoTabValue,
         label: "SEO",
@@ -2234,7 +2301,7 @@ export function AdminSinglePostView({
               <AdminLayoutHeader customTabs={layoutTabs} />
               <div className="">
                 {isSeoTab ? (
-                  <SeoTab context={metaBoxContext} post={post ?? null} />
+                  renderTabMetaBoxes(seoTabValue)
                 ) : isAiTab ? (
                   <div className="container py-6">
                     <AiIndexTab
@@ -2244,6 +2311,8 @@ export function AdminSinglePostView({
                       ragIndexStatus={ragIndexStatus}
                     />
                   </div>
+                ) : isMetaBoxTab ? (
+                  renderTabMetaBoxes(activeTab)
                 ) : activeTabDefinition?.usesDefaultEditor ? (
                   renderDefaultContent(defaultTabOptions)
                 ) : activeTabDefinition?.render ? (
@@ -2268,6 +2337,13 @@ export function AdminSinglePostView({
 
   const baseTabs = [
     { value: "edit", label: "Edit", onClick: () => handleTabChange("edit") },
+    ...tabMetaBoxSlugs
+      .filter((tabSlug) => tabSlug !== seoTabValue && tabSlug !== aiTabValue)
+      .map((tabSlug) => ({
+        value: tabSlug,
+        label: getTabLabel(tabSlug),
+        onClick: () => handleTabChange(tabSlug),
+      })),
     {
       value: seoTabValue,
       label: "SEO",
@@ -2284,6 +2360,7 @@ export function AdminSinglePostView({
       : []),
   ];
   const isSeoTab = activeTab === seoTabValue;
+  const isMetaBoxTab = tabMetaBoxSlugs.includes(activeTab);
 
   return wrapWithPostTypeProviders(
     <>
@@ -2299,7 +2376,7 @@ export function AdminSinglePostView({
             <AdminLayoutHeader />
             <div className="container py-6">
               {isSeoTab ? (
-                <SeoTab context={metaBoxContext} post={post ?? null} />
+                renderTabMetaBoxes(seoTabValue)
               ) : isAiTab ? (
                 <AiIndexTab
                   organizationId={organizationId}
@@ -2307,6 +2384,8 @@ export function AdminSinglePostView({
                   postId={String(post?._id ?? "")}
                   ragIndexStatus={ragIndexStatus}
                 />
+              ) : isMetaBoxTab && activeTab !== "edit" ? (
+                renderTabMetaBoxes(activeTab)
               ) : (
                 renderDefaultContent()
               )}

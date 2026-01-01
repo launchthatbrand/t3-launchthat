@@ -1,6 +1,7 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
 import { createElement } from "react";
 
+import { CheckoutSettingsMetaBox } from "./admin/metaBoxes/CheckoutSettingsMetaBox";
 import { OrderDetailsMetaBox } from "./admin/metaBoxes/OrderDetailsMetaBox";
 import { OrderItemsMetaBox } from "./admin/metaBoxes/OrderItemsMetaBox";
 import { ProductDetailsMetaBox } from "./admin/metaBoxes/ProductDetailsMetaBox";
@@ -33,7 +34,7 @@ export const createEcommercePluginDefinition = (
   description: "Storefront products and orders.",
   longDescription:
     "Adds a component-scoped ecommerce content layer (products + orders) backed by Convex Components.",
-  features: ["Products post type", "Orders post type"],
+  features: ["Products post type", "Orders post type", "Checkouts post type"],
   postStatuses: [
     {
       value: "unpaid",
@@ -176,6 +177,52 @@ export const createEcommercePluginDefinition = (
       metaBoxRenderers: {
         "ecommerce.order.details": OrderDetailsMetaBox,
         "ecommerce.order.items": OrderItemsMetaBox,
+      },
+    },
+    {
+      name: "Checkouts",
+      slug: "checkout",
+      description: "Configurable checkout flows and shareable checkout links.",
+      isPublic: true,
+      enableApi: true,
+      includeTimestamps: true,
+      supports: {
+        title: true,
+        customFields: true,
+        postMeta: true,
+      },
+      rewrite: {
+        hasArchive: false,
+        // Custom checkout URLs live under /checkout/<slug>.
+        singleSlug: "checkout",
+        withFront: true,
+        pages: true,
+      },
+      adminMenu: {
+        enabled: true,
+        label: "Checkouts",
+        slug: "checkout",
+        parent: "ecommerce",
+        icon: "CreditCard",
+        position: 42,
+      },
+      storageKind: "component",
+      storageTables: [...ECOMMERCE_COMPONENT_TABLES],
+      storageComponent: "launchthat_ecommerce",
+      metaBoxes: [
+        {
+          id: "ecommerce-checkout-settings",
+          title: "Checkout settings",
+          description:
+            "Pick a checkout design and optionally attach predefined products for shareable checkout links.",
+          location: "main",
+          priority: 5,
+          fieldKeys: [],
+          rendererKey: "ecommerce.checkout.settings",
+        },
+      ],
+      metaBoxRenderers: {
+        "ecommerce.checkout.settings": CheckoutSettingsMetaBox,
       },
     },
   ],
@@ -490,6 +537,32 @@ export const createEcommercePluginDefinition = (
           key: "shipping.country",
           name: "Shipping country",
           type: "text",
+          readOnly: false,
+        },
+      ],
+    },
+    {
+      postTypeSlug: "checkout",
+      fields: [
+        {
+          key: "checkout.design",
+          name: "Checkout design",
+          description: "Select which checkout layout to use.",
+          type: "select",
+          options: [
+            { label: "Default", value: "default" },
+            { label: "Minimal", value: "minimal" },
+            { label: "Sidebar", value: "sidebar" },
+          ],
+          defaultValue: "default",
+          readOnly: false,
+        },
+        {
+          key: "checkout.predefinedProductsJson",
+          name: "Predefined products (JSON)",
+          description:
+            "Internal: JSON encoded list of product IDs used by custom checkout links.",
+          type: "textarea",
           readOnly: false,
         },
       ],

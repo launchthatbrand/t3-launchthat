@@ -96,6 +96,14 @@ export default async function RootLayout(props: {
   let showSidebar = !isCanvasFromPostType;
   let showFooter = !isCanvasFromPostType;
 
+  // Checkout routes should render as a full-screen canvas (no portal chrome),
+  // including custom checkout URLs like /checkout/<slug>.
+  if (firstSegment === "checkout") {
+    showHeader = false;
+    showSidebar = false;
+    showFooter = false;
+  }
+
   if (!isCanvasFromPostType && isCanvasFromPageTemplate) {
     const slug = firstSegment;
     const pagePost = (await fetchQuery(

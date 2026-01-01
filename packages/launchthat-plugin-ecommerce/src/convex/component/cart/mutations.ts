@@ -169,4 +169,57 @@ export const clearCart = mutation({
   },
 });
 
+export const replaceCart = mutation({
+  args: {
+    userId: v.optional(v.string()),
+    guestSessionId: v.optional(v.string()),
+    productPostIds: v.array(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx: any, args: any) => {
+    const userId = args.userId ?? undefined;
+    const guestSessionId = args.guestSessionId ?? undefined;
+    if (!userId && !guestSessionId) {
+      throw new Error("Must provide userId or guestSessionId");
+    }
+
+    const rows = userId
+      ? await ctx.db
+          .query("cartItems")
+          .withIndex("by_user", (q: any) => q.eq("userId", userId))
+          .collect()
+      : await ctx.db
+          .query("cartItems")
+          .withIndex("by_guest", (q: any) => q.eq("guestSessionId", guestSessionId))
+          .collect();
+
+    await Promise.all(rows.map((row: any) => ctx.db.delete(row._id)));
+
+    const uniqueProductIds = Array.from(
+      new Set(
+        (Array.isArray(args.productPostIds) ? args.productPostIds : [])
+          .map((id: unknown) => (typeof id === "string" ? id.trim() : ""))
+          .filter(Boolean),
+      ),
+    );
+
+    const now = Date.now();
+    await Promise.all(
+      uniqueProductIds.map((productPostId) =>
+        ctx.db.insert("cartItems", {
+          userId,
+          guestSessionId,
+          productPostId,
+          variationId: undefined,
+          quantity: 1,
+          createdAt: now,
+          updatedAt: now,
+        }),
+      ),
+    );
+
+    return { success: true };
+  },
+});
+
 

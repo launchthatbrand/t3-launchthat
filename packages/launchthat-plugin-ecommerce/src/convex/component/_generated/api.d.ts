@@ -10,6 +10,8 @@
 
 import type * as cart_mutations from "../cart/mutations.js";
 import type * as cart_queries from "../cart/queries.js";
+import type * as checkouts_mutations from "../checkouts/mutations.js";
+import type * as checkouts_queries from "../checkouts/queries.js";
 import type * as index from "../index.js";
 import type * as posts_helpers from "../posts/helpers.js";
 import type * as posts_mutations from "../posts/mutations.js";
@@ -32,6 +34,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   "cart/mutations": typeof cart_mutations;
   "cart/queries": typeof cart_queries;
+  "checkouts/mutations": typeof checkouts_mutations;
+  "checkouts/queries": typeof checkouts_queries;
   index: typeof index;
   "posts/helpers": typeof posts_helpers;
   "posts/mutations": typeof posts_mutations;
@@ -80,6 +84,16 @@ export type Mounts = {
         { cartItemId: string; guestSessionId: string },
         any
       >;
+      replaceCart: FunctionReference<
+        "mutation",
+        "public",
+        {
+          guestSessionId?: string;
+          productPostIds: Array<string>;
+          userId?: string;
+        },
+        any
+      >;
       updateCartItemQuantity: FunctionReference<
         "mutation",
         "public",
@@ -98,6 +112,57 @@ export type Mounts = {
         "public",
         { guestSessionId?: string; userId?: string },
         any
+      >;
+    };
+  };
+  checkouts: {
+    mutations: {
+      ensureDefaultCheckout: FunctionReference<
+        "mutation",
+        "public",
+        { organizationId?: string },
+        string
+      >;
+    };
+    queries: {
+      getCheckoutConfigById: FunctionReference<
+        "query",
+        "public",
+        { id: string; organizationId?: string },
+        null | {
+          design: string;
+          isDefault: boolean;
+          postId: string;
+          predefinedProductPostIds: Array<string>;
+          slug: string;
+          title?: string;
+        }
+      >;
+      getCheckoutConfigBySlug: FunctionReference<
+        "query",
+        "public",
+        { organizationId?: string; slug: string },
+        null | {
+          design: string;
+          isDefault: boolean;
+          postId: string;
+          predefinedProductPostIds: Array<string>;
+          slug: string;
+          title?: string;
+        }
+      >;
+      getDefaultCheckoutConfig: FunctionReference<
+        "query",
+        "public",
+        { organizationId?: string },
+        null | {
+          design: string;
+          isDefault: boolean;
+          postId: string;
+          predefinedProductPostIds: Array<string>;
+          slug: string;
+          title?: string;
+        }
       >;
     };
   };

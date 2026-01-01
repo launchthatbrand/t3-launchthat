@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { api } from "@portal/convexspec";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
@@ -22,12 +22,17 @@ import { Separator } from "@acme/ui/separator";
 import { toast } from "@acme/ui/toast";
 
 import { getPaymentMethods } from "../../payments/registry";
+import { CheckoutDesignDefault } from "./designs/CheckoutDesignDefault";
+import { CheckoutDesignMinimal } from "./designs/CheckoutDesignMinimal";
+import { CheckoutDesignSidebar } from "./designs/CheckoutDesignSidebar";
 import {
   EMPTY_CHECKOUT_DRAFT,
   useCheckoutDraftStore,
 } from "../state/useCheckoutDraftStore";
 
 const apiAny = api as any;
+
+const DEFAULT_CHECKOUT_SLUG = "__default_checkout__";
 
 type CartItem = {
   _id: string;
@@ -145,8 +150,12 @@ const OrderSummary = ({
 
 export function CheckoutClient({
   organizationId,
+  checkoutId,
+  checkoutSlug,
 }: {
   organizationId?: string;
+  checkoutId?: string;
+  checkoutSlug?: string;
 }) {
   const orgKey = organizationId ?? "portal-root";
   const [guestSessionId, setGuestSessionId] = useState<string | null>(null);
@@ -164,6 +173,10 @@ export function CheckoutClient({
   const [isPending, startTransition] = useTransition();
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const shipping = draft.shipping;
+  const [hasEnsuredDefaultCheckout, setHasEnsuredDefaultCheckout] =
+    useState(false);
+  const [hasAppliedPredefinedProducts, setHasAppliedPredefinedProducts] =
+    useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -184,6 +197,51 @@ export function CheckoutClient({
     apiAny.plugins.commerce.cart.queries.getCart,
     guestSessionId ? { guestSessionId } : "skip",
   ) as { items?: CartItem[] } | undefined;
+
+  const ensureGeneralCheckout = useMutation(
+    apiAny.plugins.commerce.checkouts.mutations.ensureGeneralCheckout,
+  ) as (args: any) => Promise<any>;
+
+  const replaceCart = useMutation(
+    apiAny.plugins.commerce.cart.mutations.replaceCart,
+  ) as (args: any) => Promise<any>;
+
+  const effectiveCheckoutSlug =
+    typeof checkoutSlug === "string" && checkoutSlug.trim().length > 0
+      ? checkoutSlug.trim()
+      : DEFAULT_CHECKOUT_SLUG;
+
+  const checkoutConfigBySlug = useQuery(
+    apiAny.plugins.commerce.checkouts.queries.getCheckoutConfigBySlug,
+    guestSessionId && !checkoutId
+      ? {
+          slug: effectiveCheckoutSlug,
+          organizationId,
+        }
+      : "skip",
+  ) as any;
+
+  const checkoutConfigById = useQuery(
+    apiAny.plugins.commerce.checkouts.queries.getCheckoutConfigById,
+    guestSessionId && checkoutId
+      ? {
+          id: checkoutId,
+          organizationId,
+        }
+      : "skip",
+  ) as any;
+
+  const checkoutConfig = (checkoutId ? checkoutConfigById : checkoutConfigBySlug) as
+    | {
+        postId: string;
+        slug: string;
+        title?: string;
+        design?: string;
+        predefinedProductPostIds?: string[];
+        isDefault?: boolean;
+      }
+    | null
+    | undefined;
 
   const placeOrder = useAction(
     apiAny.plugins.commerce.checkout.actions.placeOrder,
@@ -247,6 +305,49 @@ export function CheckoutClient({
     if (!paymentMethodId) return null;
     return enabledPaymentMethods.find((m) => m.id === paymentMethodId) ?? null;
   }, [enabledPaymentMethods, paymentMethodId]);
+
+  useEffect(() => {
+    if (hasEnsuredDefaultCheckout) return;
+    if (effectiveCheckoutSlug !== DEFAULT_CHECKOUT_SLUG) return;
+    if (!guestSessionId) return;
+
+    startTransition(() => {
+      void ensureGeneralCheckout({ organizationId })
+        .catch(() => null)
+        .finally(() => setHasEnsuredDefaultCheckout(true));
+    });
+  }, [
+    effectiveCheckoutSlug,
+    ensureGeneralCheckout,
+    guestSessionId,
+    hasEnsuredDefaultCheckout,
+    organizationId,
+    startTransition,
+  ]);
+
+  useEffect(() => {
+    if (hasAppliedPredefinedProducts) return;
+    if (!guestSessionId) return;
+    if (!checkoutConfig) return;
+    if (checkoutConfig.isDefault === true) return;
+
+    const productIds = Array.isArray(checkoutConfig.predefinedProductPostIds)
+      ? checkoutConfig.predefinedProductPostIds
+      : [];
+    if (productIds.length === 0) return;
+
+    startTransition(() => {
+      void replaceCart({ guestSessionId, productPostIds: productIds })
+        .catch(() => null)
+        .finally(() => setHasAppliedPredefinedProducts(true));
+    });
+  }, [
+    checkoutConfig,
+    guestSessionId,
+    hasAppliedPredefinedProducts,
+    replaceCart,
+    startTransition,
+  ]);
 
   useEffect(() => {
     setPaymentData(null);
@@ -316,6 +417,57 @@ export function CheckoutClient({
     });
   };
 
+  const checkoutDesign = (() => {
+    const raw = checkoutConfig?.design;
+    if (raw === "minimal") return "minimal";
+    if (raw === "sidebar") return "sidebar";
+    return "default";
+  })();
+
+  const Layout =
+    checkoutDesign === "minimal"
+      ? CheckoutDesignMinimal
+      : checkoutDesign === "sidebar"
+        ? CheckoutDesignSidebar
+        : CheckoutDesignDefault;
+
+  const mobileSummary = (
+    <div className="lg:hidden">
+      <Card>
+        <CardContent className="p-4">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3"
+            onClick={() => setMobileSummaryOpen((v) => !v)}
+          >
+            <div className="text-sm font-medium">
+              {mobileSummaryOpen ? "Hide order summary" : "Show order summary"}
+            </div>
+            <div className="text-sm font-semibold">{formatMoney(subtotal)}</div>
+          </button>
+          {mobileSummaryOpen ? (
+            <div className="pt-4">
+              <OrderSummary items={items} subtotal={subtotal} />
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+      <div className="h-6" />
+    </div>
+  );
+
+  const rightSummary = (
+    <Card>
+      <CardHeader>
+        <CardTitle>Order summary</CardTitle>
+        <CardDescription>Review your items and totals.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <OrderSummary items={items} subtotal={subtotal} />
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8">
       {isPlacingOrder ? (
@@ -331,87 +483,67 @@ export function CheckoutClient({
           </div>
         </div>
       ) : null}
-      {/* Mobile: order summary toggle */}
-      <div className="lg:hidden">
-        <Card>
-          <CardContent className="p-4">
-            <button
-              type="button"
-              className="flex w-full items-center justify-between gap-3"
-              onClick={() => setMobileSummaryOpen((v) => !v)}
-            >
-              <div className="text-sm font-medium">
-                {mobileSummaryOpen
-                  ? "Hide order summary"
-                  : "Show order summary"}
+      <Layout
+        mobileSummary={mobileSummary}
+        left={
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <div className="text-xl font-semibold">
+                {typeof checkoutConfig?.title === "string" &&
+                checkoutConfig.title.trim()
+                  ? checkoutConfig.title
+                  : "Checkout"}
               </div>
-              <div className="text-sm font-semibold">
-                {formatMoney(subtotal)}
+              <div className="text-muted-foreground text-sm">
+                Complete your purchase below.
               </div>
-            </button>
-            {mobileSummaryOpen ? (
-              <div className="pt-4">
-                <OrderSummary items={items} subtotal={subtotal} />
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
-        <div className="h-6" />
-      </div>
-
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_420px]">
-        {/* Left column */}
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <div className="text-xl font-semibold">Checkout</div>
-            <div className="text-muted-foreground text-sm">
-              Complete your purchase below.
             </div>
-          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Contact</CardTitle>
-              <CardDescription>
-                We’ll email your receipt and updates.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="checkout-email">Email</Label>
-                <Input
-                  id="checkout-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(orgKey, e.currentTarget.value)}
-                  placeholder="you@example.com"
-                  disabled={isPlacingOrder}
-                />
-              </div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Contact</CardTitle>
+                <CardDescription>
+                  We’ll email your receipt and updates.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="checkout-email">Email</Label>
+                  <Input
+                    id="checkout-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(orgKey, e.currentTarget.value)}
+                    placeholder="you@example.com"
+                    disabled={isPlacingOrder}
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Delivery</CardTitle>
-              <CardDescription>
-                Where should we send your order?
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="ship-country">Country/region</Label>
-                <Input
-                  id="ship-country"
-                  value={shipping.country}
-                  onChange={(e) =>
-                    setShippingDraft(orgKey, { country: e.currentTarget.value })
-                  }
-                  placeholder="United States"
-                  autoComplete="country-name"
-                  disabled={isPlacingOrder}
-                />
-              </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Delivery</CardTitle>
+                <CardDescription>
+                  Where should we send your order?
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="ship-country">Country/region</Label>
+                  <Input
+                    id="ship-country"
+                    value={shipping.country}
+                    onChange={(e) =>
+                      setShippingDraft(orgKey, {
+                        country: e.currentTarget.value,
+                      })
+                    }
+                    placeholder="United States"
+                    autoComplete="country-name"
+                    disabled={isPlacingOrder}
+                  />
+                </div>
               <div className="space-y-2">
                 <Label htmlFor="ship-first">First name (optional)</Label>
                 <Input
@@ -532,86 +664,87 @@ export function CheckoutClient({
                   disabled={isPlacingOrder}
                 />
               </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment</CardTitle>
-              <CardDescription>Select how you’d like to pay.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {pluginActiveMap &&
-              paymentEnabledMap &&
-              configMap &&
-              enabledPaymentMethods.length === 0 ? (
-                <div className="space-y-2">
-                  <div className="text-muted-foreground text-sm">
-                    No payment methods are enabled. An admin can enable one in
-                    Ecommerce → Settings → Payment processors.
-                  </div>
-                  {process.env.NODE_ENV !== "production" ? (
-                    <div className="rounded-md border p-3 text-xs">
-                      <div className="font-semibold">Debug</div>
-                      <div className="text-muted-foreground">
-                        orgId: {organizationId ?? "(undefined)"}
-                      </div>
-                      <div className="mt-2 space-y-1">
-                        {paymentMethods.map((m) => {
-                          const pluginActive =
-                            pluginActiveMap[m.config.pluginActiveOptionKey] ===
-                            true;
-                          const enabled =
-                            paymentEnabledMap[m.config.paymentEnabledOptionKey] ===
-                            true;
-                          const configured = m.isConfigured(
-                            configMap[m.config.configOptionKey],
-                          );
-                          return (
-                            <div
-                              key={m.id}
-                              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
-                            >
-                              <div className="font-medium">{m.id}</div>
-                              <div className="text-muted-foreground">
-                                active:{String(pluginActive)} enabled:
-                                {String(enabled)} configured:{String(configured)}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment</CardTitle>
+                <CardDescription>Select how you’d like to pay.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {pluginActiveMap &&
+                paymentEnabledMap &&
+                configMap &&
+                enabledPaymentMethods.length === 0 ? (
+                  <div className="space-y-2">
+                    <div className="text-muted-foreground text-sm">
+                      No payment methods are enabled. An admin can enable one in
+                      Ecommerce → Settings → Payment processors.
                     </div>
-                  ) : null}
-                </div>
-              ) : (
-                <RadioGroup
-                  value={paymentMethodId}
-                  onValueChange={(value) => setPaymentMethodId(orgKey, value)}
-                  className="gap-2"
-                >
-                  {enabledPaymentMethods.map((method) => (
-                    <label
-                      key={method.id}
-                      className="border-input hover:bg-muted/40 flex cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2"
-                    >
-                      <div className="flex items-center gap-3">
-                        <RadioGroupItem value={method.id} />
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium">
-                            {method.label}
-                          </div>
-                          {method.description ? (
-                            <div className="text-muted-foreground text-xs">
-                              {method.description}
-                            </div>
-                          ) : null}
+                    {process.env.NODE_ENV !== "production" ? (
+                      <div className="rounded-md border p-3 text-xs">
+                        <div className="font-semibold">Debug</div>
+                        <div className="text-muted-foreground">
+                          orgId: {organizationId ?? "(undefined)"}
+                        </div>
+                        <div className="mt-2 space-y-1">
+                          {paymentMethods.map((m) => {
+                            const pluginActive =
+                              pluginActiveMap[m.config.pluginActiveOptionKey] ===
+                              true;
+                            const enabled =
+                              paymentEnabledMap[m.config.paymentEnabledOptionKey] ===
+                              true;
+                            const configured = m.isConfigured(
+                              configMap[m.config.configOptionKey],
+                            );
+                            return (
+                              <div
+                                key={m.id}
+                                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
+                              >
+                                <div className="font-medium">{m.id}</div>
+                                <div className="text-muted-foreground">
+                                  active:{String(pluginActive)} enabled:
+                                  {String(enabled)} configured:
+                                  {String(configured)}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-                    </label>
-                  ))}
-                </RadioGroup>
-              )}
+                    ) : null}
+                  </div>
+                ) : (
+                  <RadioGroup
+                    value={paymentMethodId}
+                    onValueChange={(value) => setPaymentMethodId(orgKey, value)}
+                    className="gap-2"
+                  >
+                    {enabledPaymentMethods.map((method) => (
+                      <label
+                        key={method.id}
+                        className="border-input hover:bg-muted/40 flex cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2"
+                      >
+                        <div className="flex items-center gap-3">
+                          <RadioGroupItem value={method.id} />
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium">
+                              {method.label}
+                            </div>
+                            {method.description ? (
+                              <div className="text-muted-foreground text-xs">
+                                {method.description}
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </RadioGroup>
+                )}
 
               {selectedPaymentMethod &&
               configMap &&
@@ -647,25 +780,12 @@ export function CheckoutClient({
                 By placing your order, you agree to our terms and privacy
                 policy.
               </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right column: sticky summary */}
-        <div className="hidden lg:block">
-          <div className="sticky top-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Order summary</CardTitle>
-                <CardDescription>Review your items and totals.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <OrderSummary items={items} subtotal={subtotal} />
               </CardContent>
             </Card>
           </div>
-        </div>
-      </div>
+        }
+        rightSummary={rightSummary}
+      />
     </div>
   );
 }
