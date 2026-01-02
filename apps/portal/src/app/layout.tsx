@@ -98,7 +98,7 @@ export default async function RootLayout(props: {
 
   // Checkout routes should render as a full-screen canvas (no portal chrome),
   // including custom checkout URLs like /checkout/<slug>.
-  if (firstSegment === "checkout") {
+  if (firstSegment === "checkout" || firstSegment === "f") {
     showHeader = false;
     showSidebar = false;
     showFooter = false;

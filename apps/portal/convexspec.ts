@@ -793,6 +793,16 @@ export type PublicApiType = {
         { orgId?: Id<"organizations">; type?: "store" | "site" },
         any
       >;
+      getMany: FunctionReference<
+        "query",
+        "public",
+        {
+          metaKeys: Array<string>;
+          orgId?: Id<"organizations">;
+          type?: "store" | "site";
+        },
+        any
+      >;
       getStoreOptions: FunctionReference<
         "query",
         "public",
@@ -2227,7 +2237,7 @@ export type PublicApiType = {
               description?: string;
               fieldKeys: Array<string>;
               id: string;
-              location?: "main" | "sidebar";
+              location?: string;
               priority?: number;
               rendererKey?: string;
               title: string;
@@ -2284,7 +2294,7 @@ export type PublicApiType = {
                 description?: string;
                 fieldKeys: Array<string>;
                 id: string;
-                location?: "main" | "sidebar";
+                location?: string;
                 priority?: number;
                 rendererKey?: string;
                 title: string;
@@ -2300,6 +2310,7 @@ export type PublicApiType = {
                 singleSlug?: string;
                 withFront?: boolean;
               };
+              storageComponent?: string;
               storageKind?: "posts" | "custom" | "component";
               storageTables?: Array<string>;
               supports?: {
@@ -2354,7 +2365,7 @@ export type PublicApiType = {
                 description?: string;
                 fieldKeys: Array<string>;
                 id: string;
-                location?: "main" | "sidebar";
+                location?: string;
                 priority?: number;
                 rendererKey?: string;
                 title: string;
@@ -2499,7 +2510,7 @@ export type PublicApiType = {
               description?: string;
               fieldKeys: Array<string>;
               id: string;
-              location?: "main" | "sidebar";
+              location?: string;
               priority?: number;
               rendererKey?: string;
               title: string;
@@ -2518,6 +2529,7 @@ export type PublicApiType = {
             };
             singleSlugKey?: string;
             slug: string;
+            storageComponent?: string;
             storageKind?: "posts" | "custom" | "component";
             storageTables?: Array<string>;
             supports?: {
@@ -2572,7 +2584,7 @@ export type PublicApiType = {
               description?: string;
               fieldKeys: Array<string>;
               id: string;
-              location?: "main" | "sidebar";
+              location?: string;
               priority?: number;
               rendererKey?: string;
               title: string;
@@ -2591,6 +2603,7 @@ export type PublicApiType = {
             };
             singleSlugKey?: string;
             slug: string;
+            storageComponent?: string;
             storageKind?: "posts" | "custom" | "component";
             storageTables?: Array<string>;
             supports?: {
@@ -2645,7 +2658,7 @@ export type PublicApiType = {
               description?: string;
               fieldKeys: Array<string>;
               id: string;
-              location?: "main" | "sidebar";
+              location?: string;
               priority?: number;
               rendererKey?: string;
               title: string;
@@ -2664,6 +2677,7 @@ export type PublicApiType = {
             };
             singleSlugKey?: string;
             slug: string;
+            storageComponent?: string;
             storageKind?: "posts" | "custom" | "component";
             storageTables?: Array<string>;
             supports?: {
@@ -2718,7 +2732,7 @@ export type PublicApiType = {
               description?: string;
               fieldKeys: Array<string>;
               id: string;
-              location?: "main" | "sidebar";
+              location?: string;
               priority?: number;
               rendererKey?: string;
               title: string;
@@ -2737,6 +2751,7 @@ export type PublicApiType = {
             };
             singleSlugKey?: string;
             slug: string;
+            storageComponent?: string;
             storageKind?: "posts" | "custom" | "component";
             storageTables?: Array<string>;
             supports?: {
@@ -2791,7 +2806,7 @@ export type PublicApiType = {
               description?: string;
               fieldKeys: Array<string>;
               id: string;
-              location?: "main" | "sidebar";
+              location?: string;
               priority?: number;
               rendererKey?: string;
               title: string;
@@ -2810,6 +2825,7 @@ export type PublicApiType = {
             };
             singleSlugKey?: string;
             slug: string;
+            storageComponent?: string;
             storageKind?: "posts" | "custom" | "component";
             storageTables?: Array<string>;
             supports?: {
@@ -4986,6 +5002,76 @@ export type PublicApiType = {
           >;
         };
       };
+      contentAccess: {
+        queries: {
+          getContentAccessRules: FunctionReference<
+            "query",
+            "public",
+            {
+              contentId: string;
+              contentType:
+                | "course"
+                | "lesson"
+                | "topic"
+                | "download"
+                | "product"
+                | "quiz";
+            },
+            {
+              contentId: string;
+              contentType:
+                | "course"
+                | "lesson"
+                | "topic"
+                | "download"
+                | "product"
+                | "quiz";
+              excludedTags: { mode: "all" | "some"; tagIds: Array<string> };
+              isActive?: boolean;
+              isPublic?: boolean;
+              priority?: number;
+              requiredTags: { mode: "all" | "some"; tagIds: Array<string> };
+            } | null
+          >;
+        };
+        mutations: {
+          saveContentAccessRules: FunctionReference<
+            "mutation",
+            "public",
+            {
+              contentId: string;
+              contentType:
+                | "course"
+                | "lesson"
+                | "topic"
+                | "download"
+                | "product"
+                | "quiz";
+              excludedTags: { mode: "all" | "some"; tagIds: Array<string> };
+              isActive?: boolean;
+              isPublic?: boolean;
+              priority?: number;
+              requiredTags: { mode: "all" | "some"; tagIds: Array<string> };
+            },
+            string
+          >;
+          clearContentAccessRules: FunctionReference<
+            "mutation",
+            "public",
+            {
+              contentId: string;
+              contentType:
+                | "course"
+                | "lesson"
+                | "topic"
+                | "download"
+                | "product"
+                | "quiz";
+            },
+            boolean
+          >;
+        };
+      };
     };
     support: {
       queries: {
@@ -5450,6 +5536,41 @@ export type PublicApiType = {
           { organizationId: string },
           Array<string>
         >;
+      };
+      posts: {
+        queries: {
+          getAllPosts: FunctionReference<
+            "query",
+            "public",
+            {
+              filters?: {
+                limit?: number;
+                postTypeSlug?: string;
+                status?: "published" | "draft" | "archived";
+              };
+              organizationId?: string;
+            },
+            any
+          >;
+          getPostById: FunctionReference<
+            "query",
+            "public",
+            { id: string; organizationId?: string },
+            any
+          >;
+          getPostBySlug: FunctionReference<
+            "query",
+            "public",
+            { organizationId: string; slug: string },
+            any
+          >;
+          getPostMeta: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string; postId: string },
+            any
+          >;
+        };
       };
     };
     calendar: {
@@ -6405,6 +6526,16 @@ export type PublicApiType = {
             { guestSessionId?: string; userId?: string },
             any
           >;
+          replaceCart: FunctionReference<
+            "mutation",
+            "public",
+            {
+              guestSessionId?: string;
+              productPostIds: Array<string>;
+              userId?: string;
+            },
+            any
+          >;
         };
         queries: {
           getCart: FunctionReference<
@@ -6464,10 +6595,41 @@ export type PublicApiType = {
             "mutation",
             "public",
             {
+              billing?: {
+                address1?: string;
+                address2?: string;
+                city?: string;
+                country?: string;
+                email?: string;
+                name?: string;
+                phone?: string;
+                postcode?: string;
+                state?: string;
+              };
+              couponCode?: string;
+              currency?: string;
               email?: string;
+              gateway?: string;
+              gatewayTransactionId?: string;
+              itemsJson?: string;
+              itemsSubtotal?: number;
+              orderTotal?: number;
               organizationId?: string;
               payload?: string;
+              paymentMethodId?: string;
+              paymentResponseJson?: string;
+              paymentStatus?: string;
               shipping?: number;
+              shippingAddress?: {
+                address1?: string;
+                address2?: string;
+                city?: string;
+                country?: string;
+                name?: string;
+                phone?: string;
+                postcode?: string;
+                state?: string;
+              };
               slug?: string;
               subtotal?: number;
               tax?: number;
@@ -6481,11 +6643,42 @@ export type PublicApiType = {
             "mutation",
             "public",
             {
+              billing?: {
+                address1?: string;
+                address2?: string;
+                city?: string;
+                country?: string;
+                email?: string;
+                name?: string;
+                phone?: string;
+                postcode?: string;
+                state?: string;
+              };
+              couponCode?: string;
+              currency?: string;
               email?: string;
+              gateway?: string;
+              gatewayTransactionId?: string;
               id: string;
+              itemsJson?: string;
+              itemsSubtotal?: number;
+              orderTotal?: number;
               organizationId?: string;
               payload?: string;
+              paymentMethodId?: string;
+              paymentResponseJson?: string;
+              paymentStatus?: string;
               shipping?: number;
+              shippingAddress?: {
+                address1?: string;
+                address2?: string;
+                city?: string;
+                country?: string;
+                name?: string;
+                phone?: string;
+                postcode?: string;
+                state?: string;
+              };
               slug?: string;
               subtotal?: number;
               tax?: number;
@@ -6622,6 +6815,231 @@ export type PublicApiType = {
         { organizationId?: string; postTypeSlug?: string },
         any
       >;
+      queries: {
+        getAllPosts: FunctionReference<
+          "query",
+          "public",
+          {
+            filters?: {
+              authorId?: string;
+              category?: string;
+              limit?: number;
+              postTypeSlug?: string;
+              status?: "published" | "draft" | "archived";
+            };
+            organizationId?: string;
+          },
+          any
+        >;
+        getPostById: FunctionReference<
+          "query",
+          "public",
+          { id: string; organizationId?: string },
+          any
+        >;
+        getPostBySlug: FunctionReference<
+          "query",
+          "public",
+          { organizationId?: string; slug: string },
+          any
+        >;
+        getPostMeta: FunctionReference<
+          "query",
+          "public",
+          { organizationId?: string; postId: string },
+          any
+        >;
+        searchPosts: FunctionReference<
+          "query",
+          "public",
+          {
+            limit?: number;
+            organizationId?: string;
+            postTypeSlug?: string;
+            searchTerm: string;
+          },
+          any
+        >;
+        getPostTags: FunctionReference<
+          "query",
+          "public",
+          { organizationId?: string; postTypeSlug?: string },
+          any
+        >;
+        getPostCategories: FunctionReference<
+          "query",
+          "public",
+          { organizationId?: string; postTypeSlug?: string },
+          any
+        >;
+      };
+      payments: {
+        authorizenet: {
+          actions: {
+            chargeWithOpaqueData: FunctionReference<
+              "action",
+              "public",
+              {
+                amount: number;
+                billing?: { name?: string; postcode?: string };
+                currency?: string;
+                opaqueData: { dataDescriptor: string; dataValue: string };
+                orderId?: string;
+                organizationId?: string;
+              },
+              any
+            >;
+          };
+        };
+      };
+      checkout: {
+        mutations: {
+          placeOrder: FunctionReference<
+            "mutation",
+            "public",
+            {
+              billing: {
+                address1?: string;
+                address2?: string;
+                city?: string;
+                country?: string;
+                email?: string;
+                name?: string;
+                phone?: string;
+                postcode?: string;
+                state?: string;
+              };
+              email: string;
+              guestSessionId?: string;
+              organizationId?: string;
+              paymentData?: any;
+              paymentMethodId: string;
+              shipping: {
+                address1?: string;
+                address2?: string;
+                city?: string;
+                country?: string;
+                name?: string;
+                phone?: string;
+                postcode?: string;
+                state?: string;
+              };
+              userId?: string;
+            },
+            any
+          >;
+        };
+        actions: {
+          placeOrder: FunctionReference<
+            "action",
+            "public",
+            {
+              billing: {
+                address1?: string;
+                address2?: string;
+                city?: string;
+                country?: string;
+                email?: string;
+                name?: string;
+                phone?: string;
+                postcode?: string;
+                state?: string;
+              };
+              email: string;
+              funnelStepId?: string;
+              guestSessionId?: string;
+              organizationId?: string;
+              paymentData?: any;
+              paymentMethodId: string;
+              shipping: {
+                address1?: string;
+                address2?: string;
+                city?: string;
+                country?: string;
+                name?: string;
+                phone?: string;
+                postcode?: string;
+                state?: string;
+              };
+              userId?: string;
+            },
+            { orderId: string; redirectUrl?: string; success: boolean }
+          >;
+        };
+      };
+      funnels: {
+        mutations: {
+          ensureDefaultFunnel: FunctionReference<
+            "mutation",
+            "public",
+            { organizationId?: string },
+            string
+          >;
+        };
+        queries: {
+          getDefaultFunnel: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string },
+            any
+          >;
+          getFunnelBySlug: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string; slug: string },
+            any
+          >;
+        };
+      };
+      funnelSteps: {
+        mutations: {
+          ensureDefaultFunnelSteps: FunctionReference<
+            "mutation",
+            "public",
+            { organizationId?: string },
+            null
+          >;
+          ensureBaselineStepsForFunnel: FunctionReference<
+            "mutation",
+            "public",
+            { funnelId: string; organizationId?: string },
+            null
+          >;
+          addFunnelStep: FunctionReference<
+            "mutation",
+            "public",
+            {
+              funnelId: string;
+              kind: "checkout" | "upsell" | "thankYou";
+              order?: number;
+              organizationId?: string;
+              slug?: string;
+              title?: string;
+            },
+            string
+          >;
+        };
+        queries: {
+          getFunnelStepsForFunnel: FunctionReference<
+            "query",
+            "public",
+            { funnelId: string; organizationId?: string },
+            any
+          >;
+          getFunnelStepBySlug: FunctionReference<
+            "query",
+            "public",
+            { funnelSlug: string; organizationId?: string; stepSlug: string },
+            any
+          >;
+          getFunnelStepById: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string; stepId: string },
+            any
+          >;
+        };
+      };
     };
   };
   puckEditor: {

@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { mutation } from "../_generated/server";
 
-const DEFAULT_CHECKOUT_SLUG = "__default_checkout__";
+const DEFAULT_FUNNEL_SLUG = "__default_funnel__";
 
 const upsertMetaEntry = async (
   ctx: any,
@@ -24,7 +24,7 @@ const upsertMetaEntry = async (
   }
 };
 
-export const ensureDefaultCheckout = mutation({
+export const ensureDefaultFunnel = mutation({
   args: {
     organizationId: v.optional(v.string()),
   },
@@ -36,54 +36,41 @@ export const ensureDefaultCheckout = mutation({
       ? await ctx.db
           .query("posts")
           .withIndex("by_org_slug", (q: any) =>
-            q.eq("organizationId", organizationId).eq("slug", DEFAULT_CHECKOUT_SLUG),
+            q.eq("organizationId", organizationId).eq("slug", DEFAULT_FUNNEL_SLUG),
           )
           .unique()
       : await ctx.db
           .query("posts")
-          .withIndex("by_slug", (q: any) => q.eq("slug", DEFAULT_CHECKOUT_SLUG))
+          .withIndex("by_slug", (q: any) => q.eq("slug", DEFAULT_FUNNEL_SLUG))
           .filter((q: any) => q.eq(q.field("organizationId"), undefined))
           .unique();
 
-    if (existing && existing.postTypeSlug === "checkout") {
-      // Ensure required meta keys exist.
-      await upsertMetaEntry(ctx, existing._id as Id<"posts">, "checkout.design", "default");
-      await upsertMetaEntry(
-        ctx,
-        existing._id as Id<"posts">,
-        "checkout.predefinedProductsJson",
-        "[]",
-      );
+    if (existing && existing.postTypeSlug === "funnels") {
+      await upsertMetaEntry(ctx, existing._id as Id<"posts">, "funnel.isDefault", true);
       return String(existing._id);
     }
 
     const now = Date.now();
-    const postId = await ctx.db.insert("posts", {
-      title: "Default Checkout",
+    const funnelId = await ctx.db.insert("posts", {
+      title: "Default Funnel",
       content: undefined,
       excerpt: undefined,
-      slug: DEFAULT_CHECKOUT_SLUG,
+      slug: DEFAULT_FUNNEL_SLUG,
       status: "published",
       category: undefined,
       tags: undefined,
       featuredImageUrl: undefined,
-      postTypeSlug: "checkout",
+      postTypeSlug: "funnels",
       organizationId,
       authorId: undefined,
       createdAt: now,
       updatedAt: now,
     });
 
-    await upsertMetaEntry(ctx, postId as Id<"posts">, "checkout.design", "default");
-    // Default checkout must not have predefined products, but we store an explicit empty list.
-    await upsertMetaEntry(
-      ctx,
-      postId as Id<"posts">,
-      "checkout.predefinedProductsJson",
-      "[]",
-    );
+    await upsertMetaEntry(ctx, funnelId as Id<"posts">, "funnel.isDefault", true);
 
-    return String(postId);
+    // Step creation is handled by funnelSteps.ensureDefaultFunnelSteps to keep concerns separated.
+    return String(funnelId);
   },
 });
 

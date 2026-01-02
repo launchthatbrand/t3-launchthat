@@ -5,7 +5,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./hooks": "./src/hooks/index.ts",
-    "./meta-boxes": "./src/meta-boxes/index.ts"
+    "./meta-boxes": "./src/meta-boxes/index.ts",
+    "./permalinks": "./src/permalinks/index.ts"
   },
   "license": "MIT",
   "scripts": {

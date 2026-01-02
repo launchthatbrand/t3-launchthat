@@ -150,10 +150,23 @@ const OrderSummary = ({
 
 export function CheckoutClient({
   organizationId,
+  funnelId,
+  funnelSlug,
+  stepId,
+  stepSlug,
+  stepKind,
+  orderId,
+  // Legacy props (deprecated)
   checkoutId,
   checkoutSlug,
 }: {
   organizationId?: string;
+  funnelId?: string;
+  funnelSlug?: string;
+  stepId?: string;
+  stepSlug?: string;
+  stepKind?: string;
+  orderId?: string;
   checkoutId?: string;
   checkoutSlug?: string;
 }) {
@@ -173,8 +186,7 @@ export function CheckoutClient({
   const [isPending, startTransition] = useTransition();
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const shipping = draft.shipping;
-  const [hasEnsuredDefaultCheckout, setHasEnsuredDefaultCheckout] =
-    useState(false);
+  const [hasEnsuredDefaultCheckout, setHasEnsuredDefaultCheckout] = useState(false);
   const [hasAppliedPredefinedProducts, setHasAppliedPredefinedProducts] =
     useState(false);
 
@@ -198,47 +210,49 @@ export function CheckoutClient({
     guestSessionId ? { guestSessionId } : "skip",
   ) as { items?: CartItem[] } | undefined;
 
-  const ensureGeneralCheckout = useMutation(
-    apiAny.plugins.commerce.checkouts.mutations.ensureGeneralCheckout,
+  const ensureDefaultFunnel = useMutation(
+    apiAny.plugins.commerce.funnels.mutations.ensureDefaultFunnel,
   ) as (args: any) => Promise<any>;
 
   const replaceCart = useMutation(
     apiAny.plugins.commerce.cart.mutations.replaceCart,
   ) as (args: any) => Promise<any>;
 
-  const effectiveCheckoutSlug =
-    typeof checkoutSlug === "string" && checkoutSlug.trim().length > 0
-      ? checkoutSlug.trim()
-      : DEFAULT_CHECKOUT_SLUG;
+  // Legacy checkout config support was removed in favor of funnel steps.
+  const checkoutConfig = null as null;
 
-  const checkoutConfigBySlug = useQuery(
-    apiAny.plugins.commerce.checkouts.queries.getCheckoutConfigBySlug,
-    guestSessionId && !checkoutId
-      ? {
-          slug: effectiveCheckoutSlug,
-          organizationId,
-        }
-      : "skip",
+  const resolvedStepById = useQuery(
+    apiAny.plugins.commerce.funnelSteps.queries.getFunnelStepById,
+    stepId ? { stepId, organizationId } : "skip",
   ) as any;
 
-  const checkoutConfigById = useQuery(
-    apiAny.plugins.commerce.checkouts.queries.getCheckoutConfigById,
-    guestSessionId && checkoutId
-      ? {
-          id: checkoutId,
-          organizationId,
-        }
-      : "skip",
+  const resolvedStepBySlug = useQuery(
+    apiAny.plugins.commerce.funnelSteps.queries.getFunnelStepBySlug,
+    !stepId && funnelSlug && stepSlug ? { funnelSlug, stepSlug, organizationId } : "skip",
   ) as any;
 
-  const checkoutConfig = (checkoutId ? checkoutConfigById : checkoutConfigBySlug) as
+  const resolvedStep = (stepId ? resolvedStepById : resolvedStepBySlug) as any;
+  const effectiveStepKind =
+    typeof resolvedStep?.kind === "string" ? (resolvedStep.kind as string) : stepKind;
+
+  const orderQueryArgs = useMemo(() => {
+    const raw = typeof orderId === "string" ? orderId.trim() : "";
+    if (!raw) return "skip";
+    return {
+      orderId: raw,
+      organizationId,
+    };
+  }, [orderId, organizationId]);
+
+  const resolvedOrder = useQuery(
+    apiAny.plugins.commerce.orders.queries.getOrder,
+    orderQueryArgs,
+  ) as
     | {
-        postId: string;
-        slug: string;
-        title?: string;
-        design?: string;
-        predefinedProductPostIds?: string[];
-        isDefault?: boolean;
+        orderId?: string;
+        status?: string;
+        total?: number;
+        email?: string;
       }
     | null
     | undefined;
@@ -308,19 +322,24 @@ export function CheckoutClient({
 
   useEffect(() => {
     if (hasEnsuredDefaultCheckout) return;
-    if (effectiveCheckoutSlug !== DEFAULT_CHECKOUT_SLUG) return;
     if (!guestSessionId) return;
 
     startTransition(() => {
-      void ensureGeneralCheckout({ organizationId })
-        .catch(() => null)
-        .finally(() => setHasEnsuredDefaultCheckout(true));
+      // Funnel-mode: ensure the default funnel exists (steps are ensured on the server routes)
+      if (funnelSlug === "__default_funnel__") {
+        void ensureDefaultFunnel({ organizationId })
+          .catch(() => null)
+          .finally(() => setHasEnsuredDefaultCheckout(true));
+        return;
+      }
+
+      setHasEnsuredDefaultCheckout(true);
     });
   }, [
-    effectiveCheckoutSlug,
-    ensureGeneralCheckout,
+    ensureDefaultFunnel,
     guestSessionId,
     hasEnsuredDefaultCheckout,
+    funnelSlug,
     organizationId,
     startTransition,
   ]);
@@ -328,24 +347,30 @@ export function CheckoutClient({
   useEffect(() => {
     if (hasAppliedPredefinedProducts) return;
     if (!guestSessionId) return;
-    if (!checkoutConfig) return;
-    if (checkoutConfig.isDefault === true) return;
 
-    const productIds = Array.isArray(checkoutConfig.predefinedProductPostIds)
-      ? checkoutConfig.predefinedProductPostIds
-      : [];
-    if (productIds.length === 0) return;
+    // Funnel-mode predefined products (checkout step only)
+    if (resolvedStep && resolvedStep.kind === "checkout") {
+      const productIds = Array.isArray(resolvedStep.checkout?.predefinedProductPostIds)
+        ? resolvedStep.checkout.predefinedProductPostIds
+        : [];
+      if (productIds.length === 0) {
+        setHasAppliedPredefinedProducts(true);
+        return;
+      }
 
-    startTransition(() => {
-      void replaceCart({ guestSessionId, productPostIds: productIds })
-        .catch(() => null)
-        .finally(() => setHasAppliedPredefinedProducts(true));
-    });
+      startTransition(() => {
+        void replaceCart({ guestSessionId, productPostIds: productIds })
+          .catch(() => null)
+          .finally(() => setHasAppliedPredefinedProducts(true));
+      });
+      return;
+    }
+
   }, [
-    checkoutConfig,
     guestSessionId,
     hasAppliedPredefinedProducts,
     replaceCart,
+    resolvedStep,
     startTransition,
   ]);
 
@@ -379,6 +404,8 @@ export function CheckoutClient({
       void placeOrder({
         organizationId,
         guestSessionId,
+        funnelStepId:
+          typeof resolvedStep?.stepId === "string" ? resolvedStep.stepId : undefined,
         email: email.trim(),
         billing: {
           name: fullName || null,
@@ -404,11 +431,15 @@ export function CheckoutClient({
         paymentMethodId,
         paymentData,
       })
-        .then((_result: any) => {
+        .then((result: any) => {
           toast.success("Payment successful.");
           resetDraft(orgKey);
           setPaymentData(null);
           setIsPlacingOrder(false);
+
+          if (result && typeof result.redirectUrl === "string" && result.redirectUrl) {
+            window.location.assign(result.redirectUrl);
+          }
         })
         .catch((err: unknown) => {
           toast.error(err instanceof Error ? err.message : "Payment failed");
@@ -418,11 +449,109 @@ export function CheckoutClient({
   };
 
   const checkoutDesign = (() => {
-    const raw = checkoutConfig?.design;
+    const raw =
+      typeof resolvedStep?.checkout?.design === "string"
+        ? resolvedStep.checkout.design
+        : undefined;
     if (raw === "minimal") return "minimal";
     if (raw === "sidebar") return "sidebar";
     return "default";
   })();
+
+  // Step renderer (non-checkout steps). Use the `stepKind` prop as a fallback so we don't flash
+  // checkout UI before the step query resolves (step query doesn't depend on guest cart session).
+  if (typeof effectiveStepKind === "string" && effectiveStepKind !== "checkout") {
+    const headline =
+      effectiveStepKind === "thankYou"
+        ? "Order confirmed"
+        : effectiveStepKind === "upsell"
+          ? "Special offer"
+          : "Step";
+
+    const hasOrder = Boolean(resolvedOrder && typeof resolvedOrder === "object");
+
+    const funnelSlugLabel =
+      typeof resolvedStep?.funnelSlug === "string"
+        ? (resolvedStep.funnelSlug as string)
+        : (funnelSlug ?? "");
+    const stepSlugLabel =
+      typeof resolvedStep?.stepSlug === "string"
+        ? (resolvedStep.stepSlug as string)
+        : (stepSlug ?? "");
+
+    return (
+      <div className="mx-auto w-full max-w-2xl px-4 py-10">
+        <h1 className="text-2xl font-semibold">{headline}</h1>
+
+        {effectiveStepKind === "thankYou" ? (
+          <p className="text-muted-foreground mt-2 text-sm">
+            {hasOrder
+              ? "Thanks for your purchase. Your order details are below."
+              : "This is a preview of the thank you page. Complete checkout to see real order details."}
+          </p>
+        ) : null}
+
+        <div className="mt-6 space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Summary</CardTitle>
+              <CardDescription>
+                {hasOrder ? "Real order data" : "Placeholder preview"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Funnel</span>
+                <code>{String(funnelSlugLabel ?? "")}</code>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Step</span>
+                <code>{String(stepSlugLabel ?? "")}</code>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Order</span>
+                <code>
+                  {hasOrder
+                    ? String((resolvedOrder as any)?.orderId ?? orderId ?? "")
+                    : orderId ?? "(missing)"}
+                </code>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Email</span>
+                <span>
+                  {hasOrder
+                    ? String((resolvedOrder as any)?.email ?? "")
+                    : "customer@example.com"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Total</span>
+                <span className="font-semibold">
+                  {hasOrder
+                    ? formatMoney(asNumber((resolvedOrder as any)?.total))
+                    : formatMoney(99)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Status</span>
+                <span>{hasOrder ? String((resolvedOrder as any)?.status ?? "") : "paid"}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => window.location.assign("/checkout")}
+            >
+              Back to checkout
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const Layout =
     checkoutDesign === "minimal"
@@ -489,10 +618,7 @@ export function CheckoutClient({
           <div className="space-y-6">
             <div className="space-y-2">
               <div className="text-xl font-semibold">
-                {typeof checkoutConfig?.title === "string" &&
-                checkoutConfig.title.trim()
-                  ? checkoutConfig.title
-                  : "Checkout"}
+                {"Checkout"}
               </div>
               <div className="text-muted-foreground text-sm">
                 Complete your purchase below.

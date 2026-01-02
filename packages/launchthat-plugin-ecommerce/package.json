@@ -8,6 +8,10 @@
       "types": "./dist/index.d.ts",
       "default": "./src/index.ts"
     },
+    "./permalinks": {
+      "types": "./src/frontend/permalinkPreviewResolvers.ts",
+      "default": "./src/frontend/permalinkPreviewResolvers.ts"
+    },
     "./convex/component": {
       "types": "./dist/convex/component/index.d.ts",
       "default": "./src/convex/component/index.ts"

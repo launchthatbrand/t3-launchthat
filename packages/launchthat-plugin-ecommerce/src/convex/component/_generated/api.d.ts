@@ -10,8 +10,10 @@
 
 import type * as cart_mutations from "../cart/mutations.js";
 import type * as cart_queries from "../cart/queries.js";
-import type * as checkouts_mutations from "../checkouts/mutations.js";
-import type * as checkouts_queries from "../checkouts/queries.js";
+import type * as funnelSteps_mutations from "../funnelSteps/mutations.js";
+import type * as funnelSteps_queries from "../funnelSteps/queries.js";
+import type * as funnels_mutations from "../funnels/mutations.js";
+import type * as funnels_queries from "../funnels/queries.js";
 import type * as index from "../index.js";
 import type * as posts_helpers from "../posts/helpers.js";
 import type * as posts_mutations from "../posts/mutations.js";
@@ -34,8 +36,10 @@ import type {
 declare const fullApi: ApiFromModules<{
   "cart/mutations": typeof cart_mutations;
   "cart/queries": typeof cart_queries;
-  "checkouts/mutations": typeof checkouts_mutations;
-  "checkouts/queries": typeof checkouts_queries;
+  "funnelSteps/mutations": typeof funnelSteps_mutations;
+  "funnelSteps/queries": typeof funnelSteps_queries;
+  "funnels/mutations": typeof funnels_mutations;
+  "funnels/queries": typeof funnels_queries;
   index: typeof index;
   "posts/helpers": typeof posts_helpers;
   "posts/mutations": typeof posts_mutations;
@@ -115,9 +119,96 @@ export type Mounts = {
       >;
     };
   };
-  checkouts: {
+  funnelSteps: {
     mutations: {
-      ensureDefaultCheckout: FunctionReference<
+      addFunnelStep: FunctionReference<
+        "mutation",
+        "public",
+        {
+          funnelId: string;
+          kind: "checkout" | "upsell" | "thankYou";
+          order?: number;
+          organizationId?: string;
+          slug?: string;
+          title?: string;
+        },
+        string
+      >;
+      ensureBaselineStepsForFunnel: FunctionReference<
+        "mutation",
+        "public",
+        { funnelId: string; organizationId?: string },
+        null
+      >;
+      ensureDefaultFunnelSteps: FunctionReference<
+        "mutation",
+        "public",
+        { organizationId?: string },
+        null
+      >;
+      ensureFunnelStepRoutingMeta: FunctionReference<
+        "mutation",
+        "public",
+        { organizationId?: string; stepId: string },
+        null
+      >;
+    };
+    queries: {
+      getFunnelStepById: FunctionReference<
+        "query",
+        "public",
+        { organizationId?: string; stepId: string },
+        null | {
+          checkout?: {
+            design: string;
+            predefinedProductPostIds: Array<string>;
+          };
+          funnelId: string;
+          funnelSlug: string;
+          isDefaultFunnel: boolean;
+          kind: string;
+          order: number;
+          stepId: string;
+          stepSlug: string;
+          stepTitle?: string;
+        }
+      >;
+      getFunnelStepBySlug: FunctionReference<
+        "query",
+        "public",
+        { funnelSlug: string; organizationId?: string; stepSlug: string },
+        null | {
+          checkout?: {
+            design: string;
+            predefinedProductPostIds: Array<string>;
+          };
+          funnelId: string;
+          funnelSlug: string;
+          isDefaultFunnel: boolean;
+          kind: string;
+          order: number;
+          stepId: string;
+          stepSlug: string;
+          stepTitle?: string;
+        }
+      >;
+      getFunnelStepsForFunnel: FunctionReference<
+        "query",
+        "public",
+        { funnelId: string; organizationId?: string },
+        Array<{
+          id: string;
+          kind: string;
+          order: number;
+          slug: string;
+          title?: string;
+        }>
+      >;
+    };
+  };
+  funnels: {
+    mutations: {
+      ensureDefaultFunnel: FunctionReference<
         "mutation",
         "public",
         { organizationId?: string },
@@ -125,44 +216,17 @@ export type Mounts = {
       >;
     };
     queries: {
-      getCheckoutConfigById: FunctionReference<
-        "query",
-        "public",
-        { id: string; organizationId?: string },
-        null | {
-          design: string;
-          isDefault: boolean;
-          postId: string;
-          predefinedProductPostIds: Array<string>;
-          slug: string;
-          title?: string;
-        }
-      >;
-      getCheckoutConfigBySlug: FunctionReference<
-        "query",
-        "public",
-        { organizationId?: string; slug: string },
-        null | {
-          design: string;
-          isDefault: boolean;
-          postId: string;
-          predefinedProductPostIds: Array<string>;
-          slug: string;
-          title?: string;
-        }
-      >;
-      getDefaultCheckoutConfig: FunctionReference<
+      getDefaultFunnel: FunctionReference<
         "query",
         "public",
         { organizationId?: string },
-        null | {
-          design: string;
-          isDefault: boolean;
-          postId: string;
-          predefinedProductPostIds: Array<string>;
-          slug: string;
-          title?: string;
-        }
+        null | { id: string; isDefault: boolean; slug: string; title?: string }
+      >;
+      getFunnelBySlug: FunctionReference<
+        "query",
+        "public",
+        { organizationId?: string; slug: string },
+        null | { id: string; isDefault: boolean; slug: string; title?: string }
       >;
     };
   };

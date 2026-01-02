@@ -132,8 +132,10 @@ import type * as plugins_commerce_chargebacks_evidence_mutations from "../plugin
 import type * as plugins_commerce_chargebacks_evidence_queries from "../plugins/commerce/chargebacks/evidence/queries.js";
 import type * as plugins_commerce_checkout_actions from "../plugins/commerce/checkout/actions.js";
 import type * as plugins_commerce_checkout_mutations from "../plugins/commerce/checkout/mutations.js";
-import type * as plugins_commerce_checkouts_mutations from "../plugins/commerce/checkouts/mutations.js";
-import type * as plugins_commerce_checkouts_queries from "../plugins/commerce/checkouts/queries.js";
+import type * as plugins_commerce_funnelSteps_mutations from "../plugins/commerce/funnelSteps/mutations.js";
+import type * as plugins_commerce_funnelSteps_queries from "../plugins/commerce/funnelSteps/queries.js";
+import type * as plugins_commerce_funnels_mutations from "../plugins/commerce/funnels/mutations.js";
+import type * as plugins_commerce_funnels_queries from "../plugins/commerce/funnels/queries.js";
 import type * as plugins_commerce_mutations from "../plugins/commerce/mutations.js";
 import type * as plugins_commerce_orders_mutations from "../plugins/commerce/orders/mutations.js";
 import type * as plugins_commerce_orders_notes from "../plugins/commerce/orders/notes.js";
@@ -340,8 +342,10 @@ declare const fullApi: ApiFromModules<{
   "plugins/commerce/chargebacks/evidence/queries": typeof plugins_commerce_chargebacks_evidence_queries;
   "plugins/commerce/checkout/actions": typeof plugins_commerce_checkout_actions;
   "plugins/commerce/checkout/mutations": typeof plugins_commerce_checkout_mutations;
-  "plugins/commerce/checkouts/mutations": typeof plugins_commerce_checkouts_mutations;
-  "plugins/commerce/checkouts/queries": typeof plugins_commerce_checkouts_queries;
+  "plugins/commerce/funnelSteps/mutations": typeof plugins_commerce_funnelSteps_mutations;
+  "plugins/commerce/funnelSteps/queries": typeof plugins_commerce_funnelSteps_queries;
+  "plugins/commerce/funnels/mutations": typeof plugins_commerce_funnels_mutations;
+  "plugins/commerce/funnels/queries": typeof plugins_commerce_funnels_queries;
   "plugins/commerce/mutations": typeof plugins_commerce_mutations;
   "plugins/commerce/orders/mutations": typeof plugins_commerce_orders_mutations;
   "plugins/commerce/orders/notes": typeof plugins_commerce_orders_notes;
@@ -5825,9 +5829,96 @@ export declare const components: {
         >;
       };
     };
-    checkouts: {
+    funnelSteps: {
       mutations: {
-        ensureDefaultCheckout: FunctionReference<
+        addFunnelStep: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            funnelId: string;
+            kind: "checkout" | "upsell" | "thankYou";
+            order?: number;
+            organizationId?: string;
+            slug?: string;
+            title?: string;
+          },
+          string
+        >;
+        ensureBaselineStepsForFunnel: FunctionReference<
+          "mutation",
+          "internal",
+          { funnelId: string; organizationId?: string },
+          null
+        >;
+        ensureDefaultFunnelSteps: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId?: string },
+          null
+        >;
+        ensureFunnelStepRoutingMeta: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId?: string; stepId: string },
+          null
+        >;
+      };
+      queries: {
+        getFunnelStepById: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; stepId: string },
+          null | {
+            checkout?: {
+              design: string;
+              predefinedProductPostIds: Array<string>;
+            };
+            funnelId: string;
+            funnelSlug: string;
+            isDefaultFunnel: boolean;
+            kind: string;
+            order: number;
+            stepId: string;
+            stepSlug: string;
+            stepTitle?: string;
+          }
+        >;
+        getFunnelStepBySlug: FunctionReference<
+          "query",
+          "internal",
+          { funnelSlug: string; organizationId?: string; stepSlug: string },
+          null | {
+            checkout?: {
+              design: string;
+              predefinedProductPostIds: Array<string>;
+            };
+            funnelId: string;
+            funnelSlug: string;
+            isDefaultFunnel: boolean;
+            kind: string;
+            order: number;
+            stepId: string;
+            stepSlug: string;
+            stepTitle?: string;
+          }
+        >;
+        getFunnelStepsForFunnel: FunctionReference<
+          "query",
+          "internal",
+          { funnelId: string; organizationId?: string },
+          Array<{
+            id: string;
+            kind: string;
+            order: number;
+            slug: string;
+            title?: string;
+          }>
+        >;
+      };
+    };
+    funnels: {
+      mutations: {
+        ensureDefaultFunnel: FunctionReference<
           "mutation",
           "internal",
           { organizationId?: string },
@@ -5835,41 +5926,24 @@ export declare const components: {
         >;
       };
       queries: {
-        getCheckoutConfigById: FunctionReference<
-          "query",
-          "internal",
-          { id: string; organizationId?: string },
-          null | {
-            design: string;
-            isDefault: boolean;
-            postId: string;
-            predefinedProductPostIds: Array<string>;
-            slug: string;
-            title?: string;
-          }
-        >;
-        getCheckoutConfigBySlug: FunctionReference<
-          "query",
-          "internal",
-          { organizationId?: string; slug: string },
-          null | {
-            design: string;
-            isDefault: boolean;
-            postId: string;
-            predefinedProductPostIds: Array<string>;
-            slug: string;
-            title?: string;
-          }
-        >;
-        getDefaultCheckoutConfig: FunctionReference<
+        getDefaultFunnel: FunctionReference<
           "query",
           "internal",
           { organizationId?: string },
           null | {
-            design: string;
+            id: string;
             isDefault: boolean;
-            postId: string;
-            predefinedProductPostIds: Array<string>;
+            slug: string;
+            title?: string;
+          }
+        >;
+        getFunnelBySlug: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; slug: string },
+          null | {
+            id: string;
+            isDefault: boolean;
             slug: string;
             title?: string;
           }

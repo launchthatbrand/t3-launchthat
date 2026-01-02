@@ -1,7 +1,8 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
 import { createElement } from "react";
 
-import { CheckoutSettingsMetaBox } from "./admin/metaBoxes/CheckoutSettingsMetaBox";
+import { FunnelStepsMetaBox } from "./admin/metaBoxes/FunnelStepsMetaBox";
+import { FunnelStepSettingsMetaBox } from "./admin/metaBoxes/FunnelStepSettingsMetaBox";
 import { OrderDetailsMetaBox } from "./admin/metaBoxes/OrderDetailsMetaBox";
 import { OrderItemsMetaBox } from "./admin/metaBoxes/OrderItemsMetaBox";
 import { ProductDetailsMetaBox } from "./admin/metaBoxes/ProductDetailsMetaBox";
@@ -34,7 +35,7 @@ export const createEcommercePluginDefinition = (
   description: "Storefront products and orders.",
   longDescription:
     "Adds a component-scoped ecommerce content layer (products + orders) backed by Convex Components.",
-  features: ["Products post type", "Orders post type", "Checkouts post type"],
+  features: ["Products post type", "Orders post type", "Funnels + steps"],
   postStatuses: [
     {
       value: "unpaid",
@@ -180,30 +181,27 @@ export const createEcommercePluginDefinition = (
       },
     },
     {
-      name: "Checkouts",
-      slug: "checkout",
-      description: "Configurable checkout flows and shareable checkout links.",
-      isPublic: true,
+      name: "Funnels",
+      slug: "funnels",
+      description: "Checkout funnels (container).",
+      isPublic: false,
       enableApi: true,
       includeTimestamps: true,
       supports: {
         title: true,
+        excerpt: true,
         customFields: true,
         postMeta: true,
       },
       rewrite: {
         hasArchive: false,
-        // Custom checkout URLs live under /checkout/<slug>.
-        singleSlug: "checkout",
-        withFront: true,
-        pages: true,
       },
       adminMenu: {
         enabled: true,
-        label: "Checkouts",
-        slug: "checkout",
+        label: "Funnels",
+        slug: "funnels",
         parent: "ecommerce",
-        icon: "CreditCard",
+        icon: "Workflow",
         position: 42,
       },
       storageKind: "component",
@@ -211,18 +209,56 @@ export const createEcommercePluginDefinition = (
       storageComponent: "launchthat_ecommerce",
       metaBoxes: [
         {
-          id: "ecommerce-checkout-settings",
-          title: "Checkout settings",
+          id: "ecommerce-funnel-steps",
+          title: "Funnel steps",
           description:
-            "Pick a checkout design and optionally attach predefined products for shareable checkout links.",
+            "Manage the ordered steps inside this funnel (checkout, thank you, upsells).",
           location: "main",
           priority: 5,
           fieldKeys: [],
-          rendererKey: "ecommerce.checkout.settings",
+          rendererKey: "ecommerce.funnel.steps",
         },
       ],
       metaBoxRenderers: {
-        "ecommerce.checkout.settings": CheckoutSettingsMetaBox,
+        "ecommerce.funnel.steps": FunnelStepsMetaBox,
+      },
+    },
+    {
+      name: "Funnel Steps",
+      slug: "funnel_steps",
+      description: "Individual funnel steps (checkout, thank you, upsell).",
+      isPublic: true,
+      enableApi: true,
+      includeTimestamps: true,
+      supports: {
+        title: true,
+        excerpt: true,
+        editor: true,
+        customFields: true,
+        postMeta: true,
+      },
+      rewrite: {
+        hasArchive: false,
+      },
+      adminMenu: {
+        enabled: false,
+      },
+      storageKind: "component",
+      storageTables: [...ECOMMERCE_COMPONENT_TABLES],
+      storageComponent: "launchthat_ecommerce",
+      metaBoxes: [
+        {
+          id: "ecommerce-funnel-step-settings",
+          title: "Step settings",
+          description: "Configure what this step is and how it behaves.",
+          location: "main",
+          priority: 5,
+          fieldKeys: [],
+          rendererKey: "ecommerce.funnelStep.settings",
+        },
+      ],
+      metaBoxRenderers: {
+        "ecommerce.funnelStep.settings": FunnelStepSettingsMetaBox,
       },
     },
   ],
@@ -542,12 +578,52 @@ export const createEcommercePluginDefinition = (
       ],
     },
     {
-      postTypeSlug: "checkout",
+      postTypeSlug: "funnels",
       fields: [
         {
-          key: "checkout.design",
+          key: "funnel.isDefault",
+          name: "Default funnel",
+          description:
+            "Internal: marks the funnel whose checkout step is rendered at /checkout.",
+          type: "boolean",
+          readOnly: false,
+        },
+      ],
+    },
+    {
+      postTypeSlug: "funnel_steps",
+      fields: [
+        {
+          key: "step.funnelId",
+          name: "Funnel ID",
+          description: "Internal: parent funnel identifier.",
+          type: "text",
+          readOnly: false,
+        },
+        {
+          key: "step.kind",
+          name: "Step kind",
+          description: "Checkout, thank you, upsell, etc.",
+          type: "select",
+          options: [
+            { label: "Checkout", value: "checkout" },
+            { label: "Thank you", value: "thankYou" },
+            { label: "Upsell", value: "upsell" },
+          ],
+          defaultValue: "checkout",
+          readOnly: false,
+        },
+        {
+          key: "step.order",
+          name: "Step order",
+          description: "Internal: sorting order within the funnel.",
+          type: "number",
+          readOnly: false,
+        },
+        {
+          key: "step.checkout.design",
           name: "Checkout design",
-          description: "Select which checkout layout to use.",
+          description: "Select which checkout layout to use (checkout steps only).",
           type: "select",
           options: [
             { label: "Default", value: "default" },
@@ -558,10 +634,31 @@ export const createEcommercePluginDefinition = (
           readOnly: false,
         },
         {
-          key: "checkout.predefinedProductsJson",
+          key: "step.checkout.predefinedProductsJson",
           name: "Predefined products (JSON)",
           description:
-            "Internal: JSON encoded list of product IDs used by custom checkout links.",
+            "Internal: JSON encoded list of product IDs to auto-add/replace cart when entering this checkout step.",
+          type: "textarea",
+          readOnly: false,
+        },
+        {
+          key: "step.thankYou.headline",
+          name: "Thank you headline",
+          description: "Headline shown on thank you steps.",
+          type: "text",
+          readOnly: false,
+        },
+        {
+          key: "step.thankYou.body",
+          name: "Thank you body",
+          description: "Body content shown on thank you steps.",
+          type: "textarea",
+          readOnly: false,
+        },
+        {
+          key: "step.upsell.offerProductPostIdsJson",
+          name: "Upsell offer products (JSON)",
+          description: "Internal: JSON encoded list of product IDs offered on this upsell step.",
           type: "textarea",
           readOnly: false,
         },

@@ -16,15 +16,19 @@ import {
   useState,
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { api as apiGenerated } from "@/convex/_generated/api";
 import { generateSlugFromTitle, useCreatePost } from "@/lib/blog";
 import { saveAdminEntry } from "@/lib/postTypes/adminSave";
+import { api } from "@portal/convexspec";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
-import type { MetaBoxLocation, RegisteredMetaBox } from "@acme/admin-runtime";
-import { collectRegisteredMetaBoxes } from "@acme/admin-runtime";
+import type {
+  MetaBoxLocation,
+  RegisteredMetaBox,
+} from "@acme/admin-runtime/meta-boxes";
+import { collectRegisteredMetaBoxes } from "@acme/admin-runtime/meta-boxes";
+import { resolvePermalinkPreviewPath } from "@acme/admin-runtime/permalinks";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent } from "@acme/ui/card";
@@ -110,10 +114,6 @@ import {
 } from "./metaBoxes/utils";
 import { getFrontendBaseUrl } from "./permalink";
 import { PlaceholderState } from "./PlaceholderState";
-
-// The generated `api` types are extremely deep; in this component we prefer
-// runtime safety/flexibility over full static typing.
-const api = apiGenerated;
 
 const stripHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
 const resolveSupportFlag = (
@@ -702,6 +702,24 @@ export function AdminSinglePostView({
       return null;
     }
 
+    // Allow plugins to provide permalink preview logic for specific post types.
+    // This keeps core admin views plugin-agnostic (no ecommerce-specific code here).
+    const pluginPreviewPath = resolvePermalinkPreviewPath({
+      postTypeSlug: slug,
+      slugValue,
+      postMetaMap,
+    });
+    log("permalink preview resolver", {
+      postTypeSlug: slug,
+      slugValue,
+      hasMetaKeys: Object.keys(postMetaMap ?? {}).length,
+      pluginPreviewPath,
+    });
+    if (pluginPreviewPath) {
+      const baseUrl = getFrontendBaseUrl();
+      return baseUrl ? `${baseUrl}${pluginPreviewPath}` : pluginPreviewPath;
+    }
+
     const previewPost = (
       post
         ? { ...post, slug: slugValue }
@@ -717,7 +735,7 @@ export function AdminSinglePostView({
     }
     const baseUrl = getFrontendBaseUrl();
     return baseUrl ? `${baseUrl}${path}` : path;
-  }, [post, postType, slugValue]);
+  }, [log, post, postMetaMap, postType, slug, slugValue]);
 
   const beforeSaveHandlers = useRef<Set<() => Promise<void> | void>>(new Set());
   const metaPayloadCollectors = useRef<
@@ -963,11 +981,11 @@ export function AdminSinglePostView({
         id: box.id,
         title: box.title,
         description: box.description ?? null,
-        location: box.location ?? "sidebar",
+        location: (box.location ?? "sidebar") as MetaBoxLocation,
         priority: box.priority ?? 50,
         fields,
         rendererKey: box.rendererKey ?? null,
-      });
+      } as NormalizedMetaBox);
     }
     return boxes.sort((a, b) => {
       if (a.priority === b.priority) {

@@ -101,6 +101,7 @@ export const placeOrder = action({
     organizationId: v.optional(v.string()),
     userId: v.optional(v.string()),
     guestSessionId: v.optional(v.string()),
+    funnelStepId: v.optional(v.string()),
 
     email: v.string(),
     billing: v.object({
@@ -131,6 +132,7 @@ export const placeOrder = action({
   returns: v.object({
     success: v.boolean(),
     orderId: v.string(),
+    redirectUrl: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
     if (!args.userId && !args.guestSessionId) {
@@ -422,7 +424,52 @@ export const placeOrder = action({
         guestSessionId: args.guestSessionId,
       });
 
-      return { success: true, orderId };
+      let redirectUrl: string | undefined = undefined;
+
+      if (typeof args.funnelStepId === "string" && args.funnelStepId.trim()) {
+        const step: any = await ctx.runQuery(
+          apiAny.plugins.commerce.funnelSteps.queries.getFunnelStepById,
+          {
+            stepId: args.funnelStepId,
+            organizationId: args.organizationId,
+          },
+        );
+
+        const funnelId = asString(step?.funnelId);
+        const funnelSlug = asString(step?.funnelSlug);
+        const isDefaultFunnel = Boolean(step?.isDefaultFunnel);
+        const currentOrder = asNumber(step?.order);
+
+        if (funnelId && funnelSlug) {
+          const steps: any[] = await ctx.runQuery(
+            apiAny.plugins.commerce.funnelSteps.queries.getFunnelStepsForFunnel,
+            {
+              funnelId,
+              organizationId: args.organizationId,
+            },
+          );
+
+          const sorted = Array.isArray(steps)
+            ? steps
+                .map((s) => ({
+                  slug: asString(s?.slug),
+                  order: asNumber(s?.order),
+                }))
+                .filter((s) => Boolean(s.slug))
+                .sort((a, b) => a.order - b.order)
+            : [];
+
+          const next = sorted.find((s) => s.order > currentOrder);
+          if (next?.slug) {
+            const base = isDefaultFunnel
+              ? `/checkout/${next.slug}`
+              : `/f/${encodeURIComponent(funnelSlug)}/${encodeURIComponent(next.slug)}`;
+            redirectUrl = `${base}?orderId=${encodeURIComponent(orderId)}`;
+          }
+        }
+      }
+
+      return { success: true, orderId, redirectUrl };
     }
 
     throw new Error(`Unsupported payment method: ${args.paymentMethodId}`);

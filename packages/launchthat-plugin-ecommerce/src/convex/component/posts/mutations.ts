@@ -49,6 +49,68 @@ const upsertMetaEntries = async (
   }
 };
 
+const createBaselineStepsForFunnel = async (ctx: any, args: {
+  funnelId: Id<"posts">;
+  funnelSlug: string;
+  organizationId: string | undefined;
+  isDefaultFunnel: boolean;
+}) => {
+  const now = Date.now();
+
+  const checkoutStepId = await ctx.db.insert("posts", {
+    title: "Checkout",
+    content: undefined,
+    excerpt: undefined,
+    slug: "checkout",
+    status: "published",
+    category: undefined,
+    tags: undefined,
+    featuredImageUrl: undefined,
+    postTypeSlug: "funnel_steps",
+    organizationId: args.organizationId,
+    authorId: undefined,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  await upsertMetaEntries(ctx, checkoutStepId as Id<"posts">, {
+    "step.funnelId": String(args.funnelId),
+    // Denormalized/system-owned routing fields used by permalink preview resolvers.
+    "step.funnelSlug": args.funnelSlug,
+    "step.isDefaultFunnel": args.isDefaultFunnel,
+    "step.kind": "checkout",
+    "step.order": 0,
+    "step.checkout.design": "default",
+    "step.checkout.predefinedProductsJson": "[]",
+  });
+
+  const thankYouSlug = args.isDefaultFunnel ? "order-confirmed" : "thank-you";
+  const thankYouTitle = args.isDefaultFunnel ? "Order confirmed" : "Thank you";
+  const thankYouStepId = await ctx.db.insert("posts", {
+    title: thankYouTitle,
+    content: undefined,
+    excerpt: undefined,
+    slug: thankYouSlug,
+    status: "published",
+    category: undefined,
+    tags: undefined,
+    featuredImageUrl: undefined,
+    postTypeSlug: "funnel_steps",
+    organizationId: args.organizationId,
+    authorId: undefined,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  await upsertMetaEntries(ctx, thankYouStepId as Id<"posts">, {
+    "step.funnelId": String(args.funnelId),
+    "step.funnelSlug": args.funnelSlug,
+    "step.isDefaultFunnel": args.isDefaultFunnel,
+    "step.kind": "thankYou",
+    "step.order": 1,
+  });
+};
+
 export const createPost = mutation({
   args: {
     organizationId: v.optional(v.string()),
@@ -109,17 +171,24 @@ export const createPost = mutation({
     const metaToWrite: Record<string, unknown> =
       args.meta && typeof args.meta === "object" ? { ...(args.meta as any) } : {};
 
-    // Enforce: default checkout must not have predefined products.
-    if (postTypeSlug === "checkout" && uniqueSlug === "__default_checkout__") {
-      metaToWrite["checkout.predefinedProductsJson"] = "[]";
-    }
-
     if (Object.keys(metaToWrite).length > 0) {
       await upsertMetaEntries(
         ctx,
         postId as Id<"posts">,
         metaToWrite,
       );
+    }
+
+    // Funnels always start with baseline steps (checkout + thank-you).
+    if (postTypeSlug === "funnels") {
+      const isDefaultFunnel =
+        metaToWrite["funnel.isDefault"] === true || uniqueSlug === "__default_funnel__";
+      await createBaselineStepsForFunnel(ctx, {
+        funnelId: postId as Id<"posts">,
+        funnelSlug: uniqueSlug,
+        organizationId,
+        isDefaultFunnel,
+      });
     }
 
     return String(postId);
@@ -220,11 +289,54 @@ export const updatePost = mutation({
 
     if (meta && Object.keys(meta).length > 0) {
       const metaToWrite: Record<string, unknown> = { ...meta };
-      // Enforce: default checkout must not have predefined products.
-      if (post.postTypeSlug === "checkout" && post.slug === "__default_checkout__") {
-        metaToWrite["checkout.predefinedProductsJson"] = "[]";
-      }
       await upsertMetaEntries(ctx, post._id as Id<"posts">, metaToWrite);
+    }
+
+    // Funnels own their steps' routing meta; keep it in sync when funnel changes.
+    if (String(post.postTypeSlug ?? "") === "funnels") {
+      const nextSlug =
+        typeof updates.slug === "string" && updates.slug.trim().length > 0
+          ? updates.slug
+          : (post.slug ?? "");
+
+      const defaultRow = await ctx.db
+        .query("postsMeta")
+        .withIndex("by_post_and_key", (q: any) =>
+          q.eq("postId", post._id).eq("key", "funnel.isDefault"),
+        )
+        .unique();
+      const isDefaultFunnel = Boolean(defaultRow?.value) || nextSlug === "__default_funnel__";
+
+      const organizationId = post.organizationId ?? undefined;
+      const candidateSteps = organizationId
+        ? await ctx.db
+            .query("posts")
+            .withIndex("by_org_postTypeSlug", (q: any) =>
+              q.eq("organizationId", organizationId).eq("postTypeSlug", "funnel_steps"),
+            )
+            .collect()
+        : await ctx.db
+            .query("posts")
+            .withIndex("by_postTypeSlug", (q: any) => q.eq("postTypeSlug", "funnel_steps"))
+            .filter((q: any) => q.eq(q.field("organizationId"), undefined))
+            .collect();
+
+      for (const step of candidateSteps) {
+        if (!step || step.postTypeSlug !== "funnel_steps") continue;
+        const funnelIdRow = await ctx.db
+          .query("postsMeta")
+          .withIndex("by_post_and_key", (q: any) =>
+            q.eq("postId", step._id).eq("key", "step.funnelId"),
+          )
+          .unique();
+        if (String(funnelIdRow?.value ?? "") !== String(post._id)) continue;
+
+        await upsertMetaEntries(ctx, step._id as Id<"posts">, {
+          "step.funnelId": String(post._id),
+          "step.funnelSlug": nextSlug,
+          "step.isDefaultFunnel": isDefaultFunnel,
+        });
+      }
     }
     return { success: true };
   },

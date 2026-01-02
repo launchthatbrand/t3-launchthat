@@ -3,7 +3,10 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import type { SerializedEditorState } from "lexical";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 
-import type { AdminMetaBoxContext as RuntimeAdminMetaBoxContext } from "@acme/admin-runtime";
+import type {
+  AdminMetaBoxContext as RuntimeAdminMetaBoxContext,
+  MetaBoxLocation,
+} from "@acme/admin-runtime";
 
 import type { MediaItem } from "~/components/media/MediaLibrary";
 
@@ -118,7 +121,7 @@ export interface NormalizedMetaBox {
   id: string;
   title: string;
   description?: string | null;
-  location: "main" | "sidebar";
+  location: MetaBoxLocation;
   priority: number;
   fields: EditorCustomField[];
   rendererKey?: string | null;
@@ -128,7 +131,7 @@ export interface ResolvedMetaBox {
   id: string;
   title: string;
   description?: string | null;
-  location: "main" | "sidebar";
+  location: MetaBoxLocation;
   priority: number;
   render: () => ReactNode;
 }

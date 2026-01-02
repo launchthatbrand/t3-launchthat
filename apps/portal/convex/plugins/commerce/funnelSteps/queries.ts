@@ -4,38 +4,40 @@ import { v } from "convex/values";
 import { components } from "../../../_generated/api";
 import { query } from "../../../_generated/server";
 
-const commerceCheckoutsQueries = components.launchthat_ecommerce.checkouts
+const commerceFunnelStepsQueries = components.launchthat_ecommerce.funnelSteps
   .queries as any;
 
-export const getCheckoutConfigById = query({
+export const getFunnelStepsForFunnel = query({
   args: {
-    id: v.string(),
+    funnelId: v.string(),
     organizationId: v.optional(v.string()),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return await ctx.runQuery(commerceCheckoutsQueries.getCheckoutConfigById, args);
+    return await ctx.runQuery(commerceFunnelStepsQueries.getFunnelStepsForFunnel, args);
   },
 });
 
-export const getCheckoutConfigBySlug = query({
+export const getFunnelStepBySlug = query({
   args: {
-    slug: v.string(),
+    funnelSlug: v.string(),
+    stepSlug: v.string(),
     organizationId: v.optional(v.string()),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return await ctx.runQuery(commerceCheckoutsQueries.getCheckoutConfigBySlug, args);
+    return await ctx.runQuery(commerceFunnelStepsQueries.getFunnelStepBySlug, args);
   },
 });
 
-export const getDefaultCheckoutConfig = query({
+export const getFunnelStepById = query({
   args: {
+    stepId: v.string(),
     organizationId: v.optional(v.string()),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return await ctx.runQuery(commerceCheckoutsQueries.getDefaultCheckoutConfig, args);
+    return await ctx.runQuery(commerceFunnelStepsQueries.getFunnelStepById, args);
   },
 });
 

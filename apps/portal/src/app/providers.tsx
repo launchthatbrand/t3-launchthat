@@ -2,6 +2,7 @@
 "use client";
 
 import "~/lib/plugins/registerPaymentMethods.client";
+import "~/lib/plugins/registerPermalinkResolvers.client";
 
 import type { TenantSummary } from "@/lib/tenant-fetcher";
 // Import Clerk provider and hook

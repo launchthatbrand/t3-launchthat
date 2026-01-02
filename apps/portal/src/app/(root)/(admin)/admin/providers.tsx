@@ -1,5 +1,7 @@
 "use client";
 
+import "~/lib/plugins/registerPermalinkResolvers.client";
+
 import type { ReactNode } from "react";
 
 import { AdminPostProvider } from "./_providers/AdminPostProvider";
