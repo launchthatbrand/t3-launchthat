@@ -26,10 +26,12 @@ registerPaymentMethod({
   },
   renderSettings: (props) =>
     createElement(AuthorizeNetSettingsPage, props as any),
-  renderCheckoutForm: ({ configValue, onPaymentDataChange }) =>
+  renderCheckoutForm: ({ configValue, onPaymentDataChange, testMode, testPrefill }) =>
     createElement(AuthorizeNetCheckoutForm, {
       configValue,
       onPaymentDataChange,
+      testMode,
+      testPrefill,
     }),
   isConfigured: (configValue) => {
     const v =

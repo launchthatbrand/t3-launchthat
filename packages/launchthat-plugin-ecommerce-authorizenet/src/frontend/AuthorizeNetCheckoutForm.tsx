@@ -36,9 +36,13 @@ const asBoolean = (value: unknown): boolean => value === true;
 export function AuthorizeNetCheckoutForm({
   configValue,
   onPaymentDataChange,
+  testMode,
+  testPrefill,
 }: {
   configValue: unknown;
   onPaymentDataChange?: (paymentData: unknown | null) => void;
+  testMode?: boolean;
+  testPrefill?: Record<string, unknown> | null;
 }) {
   const cfg = useMemo(() => asRecord(configValue), [configValue]);
   const sandbox = asBoolean(cfg.sandbox);
@@ -59,6 +63,29 @@ export function AuthorizeNetCheckoutForm({
   } | null>(null);
 
   const lastSentOpaqueData = useRef<string>("");
+
+  useEffect(() => {
+    if (!testMode) return;
+    if (typeof window === "undefined") return;
+    const host = window.location.hostname;
+    if (!(host === "localhost" || host.endsWith(".localhost"))) return;
+
+    // Only prefill if the merchant has configured Accept.js (otherwise tokenization cannot run).
+    if (!apiLoginId || !clientKey) return;
+
+    const card = asRecord(testPrefill?.card);
+    const namePrefill = typeof card.name === "string" ? card.name : "";
+    const numberPrefill = typeof card.number === "string" ? card.number : "";
+    const expiryPrefill = typeof card.expiry === "string" ? card.expiry : "";
+    const cvcPrefill = typeof card.cvc === "string" ? card.cvc : "";
+
+    // Do not stomp on a user's manual input.
+    if (!name.trim() && namePrefill) setName(namePrefill);
+    if (!cardNumber.trim() && numberPrefill) setCardNumber(numberPrefill);
+    if (!expiry.trim() && expiryPrefill) setExpiry(expiryPrefill);
+    if (!cvc.trim() && cvcPrefill) setCvc(cvcPrefill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testMode, testPrefill, apiLoginId, clientKey]);
 
   useEffect(() => {
     // Clear token when switching configs / editing fields.

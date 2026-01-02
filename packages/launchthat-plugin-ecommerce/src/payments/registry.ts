@@ -30,6 +30,8 @@ export type EcommercePaymentMethodDefinition = {
     organizationId?: string;
     configValue: unknown;
     onPaymentDataChange?: (paymentData: unknown | null) => void;
+    testMode?: boolean;
+    testPrefill?: Record<string, unknown> | null;
   }) => unknown;
 };
 

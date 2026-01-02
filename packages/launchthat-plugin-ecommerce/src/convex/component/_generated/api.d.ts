@@ -134,6 +134,12 @@ export type Mounts = {
         },
         string
       >;
+      backfillFunnelStepRoutingMeta: FunctionReference<
+        "mutation",
+        "public",
+        { organizationId?: string },
+        { scanned: number; skipped: number; updated: number }
+      >;
       ensureBaselineStepsForFunnel: FunctionReference<
         "mutation",
         "public",

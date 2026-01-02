@@ -18,9 +18,15 @@ export function EcommerceCheckoutTemplate({ ctx }: { ctx: any }): ReactNode {
         </p>
       </div>
 
-      <CheckoutClient organizationId={typeof organizationId === "string" ? organizationId : undefined} />
+      <CheckoutClient
+        organizationId={
+          typeof organizationId === "string" ? organizationId : undefined
+        }
+        // When rendered via the page-template system, we still want default funnel behavior
+        // so successful checkout can advance to the next step (e.g., /checkout/order-confirmed).
+        funnelSlug="__default_funnel__"
+        stepSlug="checkout"
+      />
     </div>
   );
 }
-
-

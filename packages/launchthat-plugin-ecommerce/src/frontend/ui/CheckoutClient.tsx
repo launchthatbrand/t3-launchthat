@@ -33,6 +33,13 @@ import {
 const apiAny = api as any;
 
 const DEFAULT_CHECKOUT_SLUG = "__default_checkout__";
+const DEFAULT_FUNNEL_SLUG = "__default_funnel__";
+
+const isLocalCheckoutHost = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  return host === "localhost" || host.endsWith(".localhost");
+};
 
 type CartItem = {
   _id: string;
@@ -189,6 +196,11 @@ export function CheckoutClient({
   const [hasEnsuredDefaultCheckout, setHasEnsuredDefaultCheckout] = useState(false);
   const [hasAppliedPredefinedProducts, setHasAppliedPredefinedProducts] =
     useState(false);
+  const [hasAppliedTestPrefill, setHasAppliedTestPrefill] = useState(false);
+  const [testMode, setTestMode] = useState(false);
+  const [testPrefill, setTestPrefill] = useState<Record<string, unknown> | null>(
+    null,
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -205,6 +217,46 @@ export function CheckoutClient({
     setGuestSessionId(created);
   }, []);
 
+  useEffect(() => {
+    if (hasAppliedTestPrefill) return;
+    if (typeof window === "undefined") return;
+    if (!isLocalCheckoutHost()) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const enabled = params.get("test") === "true";
+    if (!enabled) {
+      setHasAppliedTestPrefill(true);
+      return;
+    }
+
+    setTestMode(true);
+    setTestPrefill({
+      // Targeting Authorize.Net sandbox tokenization.
+      paymentMethodId: "authorizenet",
+      card: {
+        name: "Test User",
+        number: "4007000000027",
+        expiry: "12/30",
+        cvc: "900",
+      },
+    });
+
+    setEmail(orgKey, "test.checkout@example.com");
+    setShippingDraft(orgKey, {
+      firstName: "Test",
+      lastName: "User",
+      phone: "555-555-5555",
+      address1: "123 Test St",
+      address2: "",
+      city: "Testville",
+      state: "CA",
+      postcode: "90210",
+      country: "US",
+    });
+
+    setHasAppliedTestPrefill(true);
+  }, [hasAppliedTestPrefill, orgKey, setEmail, setShippingDraft]);
+
   const cart = useQuery(
     apiAny.plugins.commerce.cart.queries.getCart,
     guestSessionId ? { guestSessionId } : "skip",
@@ -212,6 +264,10 @@ export function CheckoutClient({
 
   const ensureDefaultFunnel = useMutation(
     apiAny.plugins.commerce.funnels.mutations.ensureDefaultFunnel,
+  ) as (args: any) => Promise<any>;
+
+  const ensureDefaultFunnelSteps = useMutation(
+    apiAny.plugins.commerce.funnelSteps.mutations.ensureDefaultFunnelSteps,
   ) as (args: any) => Promise<any>;
 
   const replaceCart = useMutation(
@@ -231,7 +287,18 @@ export function CheckoutClient({
     !stepId && funnelSlug && stepSlug ? { funnelSlug, stepSlug, organizationId } : "skip",
   ) as any;
 
-  const resolvedStep = (stepId ? resolvedStepById : resolvedStepBySlug) as any;
+  const resolvedDefaultStep = useQuery(
+    apiAny.plugins.commerce.funnelSteps.queries.getFunnelStepBySlug,
+    !stepId && !funnelSlug && !stepSlug
+      ? { funnelSlug: DEFAULT_FUNNEL_SLUG, stepSlug: "checkout", organizationId }
+      : "skip",
+  ) as any;
+
+  const resolvedStep = (stepId
+    ? resolvedStepById
+    : funnelSlug && stepSlug
+      ? resolvedStepBySlug
+      : resolvedDefaultStep) as any;
   const effectiveStepKind =
     typeof resolvedStep?.kind === "string" ? (resolvedStep.kind as string) : stepKind;
 
@@ -325,9 +392,12 @@ export function CheckoutClient({
     if (!guestSessionId) return;
 
     startTransition(() => {
-      // Funnel-mode: ensure the default funnel exists (steps are ensured on the server routes)
-      if (funnelSlug === "__default_funnel__") {
+      // Funnel-mode: ensure the default funnel exists (and its baseline steps) so checkout
+      // can always redirect to the next step after successful payment.
+      if (funnelSlug === DEFAULT_FUNNEL_SLUG || (!funnelSlug && !stepSlug && !stepId)) {
         void ensureDefaultFunnel({ organizationId })
+          .catch(() => null)
+          .then(() => ensureDefaultFunnelSteps({ organizationId }))
           .catch(() => null)
           .finally(() => setHasEnsuredDefaultCheckout(true));
         return;
@@ -336,12 +406,15 @@ export function CheckoutClient({
       setHasEnsuredDefaultCheckout(true);
     });
   }, [
+    ensureDefaultFunnelSteps,
     ensureDefaultFunnel,
     guestSessionId,
     hasEnsuredDefaultCheckout,
     funnelSlug,
     organizationId,
     startTransition,
+    stepId,
+    stepSlug,
   ]);
 
   useEffect(() => {
@@ -383,6 +456,17 @@ export function CheckoutClient({
     if (enabledPaymentMethods.length === 0) return;
     setPaymentMethodId(orgKey, enabledPaymentMethods[0]!.id);
   }, [enabledPaymentMethods, paymentMethodId]);
+
+  useEffect(() => {
+    if (!testMode) return;
+    if (paymentMethodId) return;
+    if (enabledPaymentMethods.length === 0) return;
+
+    const preferred = enabledPaymentMethods.find((m) => m.id === "authorizenet");
+    if (preferred) {
+      setPaymentMethodId(orgKey, preferred.id);
+    }
+  }, [enabledPaymentMethods, orgKey, paymentMethodId, setPaymentMethodId, testMode]);
 
   const mustSelectPaymentMethod = enabledPaymentMethods.length > 0;
   const requiresPaymentData = Boolean(selectedPaymentMethod?.renderCheckoutForm);
@@ -439,6 +523,17 @@ export function CheckoutClient({
 
           if (result && typeof result.redirectUrl === "string" && result.redirectUrl) {
             window.location.assign(result.redirectUrl);
+            return;
+          }
+
+          // If the server couldn't compute a redirect (e.g., missing step context),
+          // fall back to a best-effort thank-you page for the default funnel.
+          const createdOrderId =
+            result && typeof result.orderId === "string" ? result.orderId : "";
+          if (createdOrderId) {
+            window.location.assign(
+              `/checkout/order-confirmed?orderId=${encodeURIComponent(createdOrderId)}`,
+            );
           }
         })
         .catch((err: unknown) => {
@@ -882,6 +977,8 @@ export function CheckoutClient({
                       configValue:
                         configMap[selectedPaymentMethod.config.configOptionKey],
                       onPaymentDataChange: setPaymentData,
+                      testMode,
+                      testPrefill,
                     }) as any
                   }
                 </div>

@@ -5844,6 +5844,12 @@ export declare const components: {
           },
           string
         >;
+        backfillFunnelStepRoutingMeta: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId?: string },
+          { scanned: number; skipped: number; updated: number }
+        >;
         ensureBaselineStepsForFunnel: FunctionReference<
           "mutation",
           "internal",

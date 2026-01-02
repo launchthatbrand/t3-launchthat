@@ -4,9 +4,12 @@ import type { Id } from "../_generated/dataModel";
 import { mutation } from "../_generated/server";
 import { sanitizeSlug } from "../posts/helpers";
 
-const DEFAULT_FUNNEL_SLUG = "__default_funnel__";
-const STEP_FUNNEL_SLUG_KEY = "step.funnelSlug";
-const STEP_IS_DEFAULT_FUNNEL_KEY = "step.isDefaultFunnel";
+import {
+  FUNNEL_DEFAULT_SLUG,
+  STEP_FUNNEL_ID_KEY,
+  STEP_FUNNEL_SLUG_KEY,
+  STEP_IS_DEFAULT_FUNNEL_KEY,
+} from "../../../shared/funnels/routingMeta";
 
 const upsertMetaEntry = async (
   ctx: any,
@@ -86,7 +89,7 @@ export const ensureDefaultFunnelSteps = mutation({
   returns: v.null(),
   handler: async (ctx: any, args: any) => {
     const organizationId = args.organizationId ?? undefined;
-    const funnelId = await getFunnelIdBySlug(ctx, organizationId, DEFAULT_FUNNEL_SLUG);
+    const funnelId = await getFunnelIdBySlug(ctx, organizationId, FUNNEL_DEFAULT_SLUG);
     if (!funnelId) {
       // Caller should ensure the default funnel exists via funnels.ensureDefaultFunnel.
       return null;
@@ -133,9 +136,9 @@ export const ensureDefaultFunnelSteps = mutation({
     ) => {
       if (matching[slug]) {
         // Only fill missing meta keys; never overwrite user edits.
-        await ensureMetaEntry(ctx, matching[slug]._id, "step.funnelId", String(funnelId));
+        await ensureMetaEntry(ctx, matching[slug]._id, STEP_FUNNEL_ID_KEY, String(funnelId));
         // System-owned routing meta should always be correct.
-        await upsertMetaEntry(ctx, matching[slug]._id, STEP_FUNNEL_SLUG_KEY, DEFAULT_FUNNEL_SLUG);
+        await upsertMetaEntry(ctx, matching[slug]._id, STEP_FUNNEL_SLUG_KEY, FUNNEL_DEFAULT_SLUG);
         await upsertMetaEntry(ctx, matching[slug]._id, STEP_IS_DEFAULT_FUNNEL_KEY, true);
         await ensureMetaEntry(ctx, matching[slug]._id, "step.kind", kind);
         await ensureMetaEntry(ctx, matching[slug]._id, "step.order", order);
@@ -167,8 +170,8 @@ export const ensureDefaultFunnelSteps = mutation({
         updatedAt: now,
       });
 
-      await upsertMetaEntry(ctx, stepId as Id<"posts">, "step.funnelId", String(funnelId));
-      await upsertMetaEntry(ctx, stepId as Id<"posts">, STEP_FUNNEL_SLUG_KEY, DEFAULT_FUNNEL_SLUG);
+      await upsertMetaEntry(ctx, stepId as Id<"posts">, STEP_FUNNEL_ID_KEY, String(funnelId));
+      await upsertMetaEntry(ctx, stepId as Id<"posts">, STEP_FUNNEL_SLUG_KEY, FUNNEL_DEFAULT_SLUG);
       await upsertMetaEntry(ctx, stepId as Id<"posts">, STEP_IS_DEFAULT_FUNNEL_KEY, true);
       await upsertMetaEntry(ctx, stepId as Id<"posts">, "step.kind", kind);
       await upsertMetaEntry(ctx, stepId as Id<"posts">, "step.order", order);
@@ -209,7 +212,7 @@ export const ensureBaselineStepsForFunnel = mutation({
         q.eq("postId", funnel._id).eq("key", "funnel.isDefault"),
       )
       .unique();
-    const isDefaultFunnel = Boolean(funnelMetaRow?.value) || funnel.slug === DEFAULT_FUNNEL_SLUG;
+    const isDefaultFunnel = Boolean(funnelMetaRow?.value) || funnel.slug === FUNNEL_DEFAULT_SLUG;
     const funnelSlug = typeof funnel.slug === "string" ? funnel.slug : "";
 
     const now = Date.now();
@@ -347,7 +350,7 @@ export const addFunnelStep = mutation({
       )
       .unique();
     const isDefaultFunnel =
-      Boolean(funnelMetaRow?.value) || funnel.slug === DEFAULT_FUNNEL_SLUG;
+      Boolean(funnelMetaRow?.value) || funnel.slug === FUNNEL_DEFAULT_SLUG;
     const funnelSlug = typeof funnel.slug === "string" ? funnel.slug : "";
 
     const existingSteps = organizationId
@@ -468,7 +471,7 @@ export const addFunnelStep = mutation({
       updatedAt: now,
     });
 
-    await upsertMetaEntry(ctx, stepId as Id<"posts">, "step.funnelId", String(funnel._id));
+    await upsertMetaEntry(ctx, stepId as Id<"posts">, STEP_FUNNEL_ID_KEY, String(funnel._id));
     await upsertMetaEntry(ctx, stepId as Id<"posts">, STEP_FUNNEL_SLUG_KEY, funnelSlug);
     await upsertMetaEntry(ctx, stepId as Id<"posts">, STEP_IS_DEFAULT_FUNNEL_KEY, isDefaultFunnel);
     await upsertMetaEntry(ctx, stepId as Id<"posts">, "step.kind", args.kind);
@@ -511,7 +514,7 @@ export const ensureFunnelStepRoutingMeta = mutation({
     const funnelIdRow = await ctx.db
       .query("postsMeta")
       .withIndex("by_post_and_key", (q: any) =>
-        q.eq("postId", step._id).eq("key", "step.funnelId"),
+        q.eq("postId", step._id).eq("key", STEP_FUNNEL_ID_KEY),
       )
       .unique();
     const funnelId = typeof funnelIdRow?.value === "string" ? funnelIdRow.value : "";
@@ -529,17 +532,8 @@ export const ensureFunnelStepRoutingMeta = mutation({
       )
       .unique();
     const isDefaultFunnel =
-      Boolean(funnelDefaultRow?.value) || funnel.slug === DEFAULT_FUNNEL_SLUG;
+      Boolean(funnelDefaultRow?.value) || funnel.slug === FUNNEL_DEFAULT_SLUG;
     const funnelSlug = typeof funnel.slug === "string" ? funnel.slug : "";
-
-    // eslint-disable-next-line no-console
-    console.log("[ecommerce] ensureFunnelStepRoutingMeta", {
-      stepId: String(step._id),
-      funnelId: String(funnel._id),
-      funnelSlug,
-      isDefaultFunnel,
-      organizationId,
-    });
 
     await upsertMetaEntry(ctx, step._id as Id<"posts">, STEP_FUNNEL_SLUG_KEY, funnelSlug);
     await upsertMetaEntry(
@@ -550,6 +544,93 @@ export const ensureFunnelStepRoutingMeta = mutation({
     );
 
     return null;
+  },
+});
+
+/**
+ * One-time backfill for existing funnel steps missing system-owned routing meta.
+ * This is intentionally explicit (admin-triggered) rather than a UI auto-repair.
+ */
+export const backfillFunnelStepRoutingMeta = mutation({
+  args: {
+    organizationId: v.optional(v.string()),
+  },
+  returns: v.object({
+    scanned: v.number(),
+    updated: v.number(),
+    skipped: v.number(),
+  }),
+  handler: async (ctx: any, args: any) => {
+    const organizationId = args.organizationId ?? undefined;
+
+    const steps = organizationId
+      ? await ctx.db
+          .query("posts")
+          .withIndex("by_org_postTypeSlug", (q: any) =>
+            q.eq("organizationId", organizationId).eq("postTypeSlug", "funnel_steps"),
+          )
+          .collect()
+      : await ctx.db
+          .query("posts")
+          .withIndex("by_postTypeSlug", (q: any) => q.eq("postTypeSlug", "funnel_steps"))
+          .filter((q: any) => q.eq(q.field("organizationId"), undefined))
+          .collect();
+
+    let scanned = 0;
+    let updated = 0;
+    let skipped = 0;
+
+    for (const step of steps) {
+      scanned += 1;
+      if (!step || step.postTypeSlug !== "funnel_steps") {
+        skipped += 1;
+        continue;
+      }
+
+      const funnelIdRow = await ctx.db
+        .query("postsMeta")
+        .withIndex("by_post_and_key", (q: any) =>
+          q.eq("postId", step._id).eq("key", STEP_FUNNEL_ID_KEY),
+        )
+        .unique();
+      const funnelId = typeof funnelIdRow?.value === "string" ? funnelIdRow.value : "";
+      if (!funnelId) {
+        skipped += 1;
+        continue;
+      }
+
+      const funnel = await ctx.db.get(funnelId as any);
+      if (!funnel || funnel.postTypeSlug !== "funnels") {
+        skipped += 1;
+        continue;
+      }
+      if (organizationId && funnel.organizationId !== organizationId) {
+        skipped += 1;
+        continue;
+      }
+
+      const defaultRow = await ctx.db
+        .query("postsMeta")
+        .withIndex("by_post_and_key", (q: any) =>
+          q.eq("postId", funnel._id).eq("key", "funnel.isDefault"),
+        )
+        .unique();
+      const isDefaultFunnel =
+        Boolean(defaultRow?.value) || funnel.slug === FUNNEL_DEFAULT_SLUG;
+      const funnelSlug = typeof funnel.slug === "string" ? funnel.slug : "";
+
+      // Only update if missing or clearly wrong; keep this idempotent.
+      await upsertMetaEntry(ctx, step._id as Id<"posts">, STEP_FUNNEL_SLUG_KEY, funnelSlug);
+      await upsertMetaEntry(
+        ctx,
+        step._id as Id<"posts">,
+        STEP_IS_DEFAULT_FUNNEL_KEY,
+        isDefaultFunnel,
+      );
+      updated += 1;
+    }
+
+    return { scanned, updated, skipped };
   },
 });
 

@@ -1,9 +1,7 @@
 "use client";
 
 import type { PluginMetaBoxRendererProps } from "launchthat-plugin-core";
-import { useEffect, useMemo } from "react";
-import { api } from "@portal/convexspec";
-import { useMutation } from "convex/react";
+import { useMemo } from "react";
 
 import { Label } from "@acme/ui/label";
 import {
@@ -21,22 +19,26 @@ const STEP_ORDER_KEY = "step.order";
 const STEP_FUNNEL_ID_KEY = "step.funnelId";
 
 const CHECKOUT_DESIGN_KEY = "step.checkout.design";
-const CHECKOUT_PREDEFINED_PRODUCTS_JSON_KEY = "step.checkout.predefinedProductsJson";
+const CHECKOUT_PREDEFINED_PRODUCTS_JSON_KEY =
+  "step.checkout.predefinedProductsJson";
 
 const THANK_YOU_HEADLINE_KEY = "step.thankYou.headline";
 const THANK_YOU_BODY_KEY = "step.thankYou.body";
 
 const UPSELL_OFFER_PRODUCTS_JSON_KEY = "step.upsell.offerProductPostIdsJson";
 
-const asString = (value: unknown): string => (typeof value === "string" ? value : "");
+const asString = (value: unknown): string =>
+  typeof value === "string" ? value : "";
 const asNumberString = (value: unknown): string =>
-  typeof value === "number" ? String(value) : typeof value === "string" ? value : "";
+  typeof value === "number"
+    ? String(value)
+    : typeof value === "string"
+      ? value
+      : "";
 
-export const FunnelStepSettingsMetaBox = (props: PluginMetaBoxRendererProps) => {
-  const ensureRoutingMeta = useMutation(
-    (api.plugins.commerce.funnelSteps.mutations as any).ensureFunnelStepRoutingMeta,
-  ) as (args: any) => Promise<any>;
-
+export const FunnelStepSettingsMetaBox = (
+  props: PluginMetaBoxRendererProps,
+) => {
   const kindRaw = asString(props.getValue(STEP_KIND_KEY));
   const kind = useMemo(() => {
     if (kindRaw === "checkout") return "checkout" as const;
@@ -48,7 +50,8 @@ export const FunnelStepSettingsMetaBox = (props: PluginMetaBoxRendererProps) => 
   const order = asNumberString(props.getValue(STEP_ORDER_KEY));
   const funnelId = asString(props.getValue(STEP_FUNNEL_ID_KEY));
 
-  const checkoutDesign = asString(props.getValue(CHECKOUT_DESIGN_KEY)) || "default";
+  const checkoutDesign =
+    asString(props.getValue(CHECKOUT_DESIGN_KEY)) || "default";
   const predefinedProductsJson = asString(
     props.getValue(CHECKOUT_PREDEFINED_PRODUCTS_JSON_KEY),
   );
@@ -65,30 +68,6 @@ export const FunnelStepSettingsMetaBox = (props: PluginMetaBoxRendererProps) => 
     if (kind === "thankYou") return "thankYou";
     return "upsell";
   }, [kind]);
-
-  useEffect(() => {
-    // Ensure routing meta exists so the admin permalink preview can resolve
-    // /f/<funnelSlug>/<stepSlug> vs /checkout/... without hardcoding logic in core admin.
-    const stepId = props.context.postId;
-    if (!stepId) return;
-    // eslint-disable-next-line no-console
-    console.info("[ecommerce] ensureFunnelStepRoutingMeta (client)", {
-      stepId,
-      organizationId: props.context.organizationId,
-    });
-    void ensureRoutingMeta({
-      stepId,
-      organizationId: props.context.organizationId,
-    })
-      .then(() => {
-        // eslint-disable-next-line no-console
-        console.info("[ecommerce] ensureFunnelStepRoutingMeta ok", { stepId });
-      })
-      .catch((err: unknown) => {
-        // eslint-disable-next-line no-console
-        console.error("[ecommerce] ensureFunnelStepRoutingMeta failed", err);
-      });
-  }, [ensureRoutingMeta, props.context.organizationId, props.context.postId]);
 
   return (
     <div className="space-y-4">
@@ -147,7 +126,9 @@ export const FunnelStepSettingsMetaBox = (props: PluginMetaBoxRendererProps) => 
           </div>
 
           <div className="rounded-md border p-3 text-xs">
-            <div className="text-muted-foreground">Funnel ID (assigned by system)</div>
+            <div className="text-muted-foreground">
+              Funnel ID (assigned by system)
+            </div>
             <div>
               <code>{funnelId || "(not set yet)"}</code>
             </div>
@@ -159,7 +140,9 @@ export const FunnelStepSettingsMetaBox = (props: PluginMetaBoxRendererProps) => 
             <Label>Checkout design</Label>
             <Select
               value={checkoutDesign}
-              onValueChange={(next) => props.setValue(CHECKOUT_DESIGN_KEY, next)}
+              onValueChange={(next) =>
+                props.setValue(CHECKOUT_DESIGN_KEY, next)
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select design" />
@@ -189,7 +172,8 @@ export const FunnelStepSettingsMetaBox = (props: PluginMetaBoxRendererProps) => 
               placeholder='["productPostId1","productPostId2"]'
             />
             <div className="text-muted-foreground text-xs">
-              Only applies when step kind is Checkout. We’ll replace the cart with these items when the step is visited.
+              Only applies when step kind is Checkout. We’ll replace the cart
+              with these items when the step is visited.
             </div>
           </div>
         </TabsContent>
@@ -200,7 +184,9 @@ export const FunnelStepSettingsMetaBox = (props: PluginMetaBoxRendererProps) => 
             <Textarea
               rows={2}
               value={thankYouHeadline}
-              onChange={(e) => props.setValue(THANK_YOU_HEADLINE_KEY, e.currentTarget.value)}
+              onChange={(e) =>
+                props.setValue(THANK_YOU_HEADLINE_KEY, e.currentTarget.value)
+              }
               placeholder="Order confirmed"
             />
             <div className="text-muted-foreground text-xs">
@@ -213,7 +199,9 @@ export const FunnelStepSettingsMetaBox = (props: PluginMetaBoxRendererProps) => 
             <Textarea
               rows={5}
               value={thankYouBody}
-              onChange={(e) => props.setValue(THANK_YOU_BODY_KEY, e.currentTarget.value)}
+              onChange={(e) =>
+                props.setValue(THANK_YOU_BODY_KEY, e.currentTarget.value)
+              }
               placeholder="Thanks for your purchase…"
             />
             <div className="text-muted-foreground text-xs">
@@ -229,12 +217,16 @@ export const FunnelStepSettingsMetaBox = (props: PluginMetaBoxRendererProps) => 
               rows={4}
               value={upsellOfferProductsJson}
               onChange={(e) =>
-                props.setValue(UPSELL_OFFER_PRODUCTS_JSON_KEY, e.currentTarget.value)
+                props.setValue(
+                  UPSELL_OFFER_PRODUCTS_JSON_KEY,
+                  e.currentTarget.value,
+                )
               }
               placeholder='["productPostId1","productPostId2"]'
             />
             <div className="text-muted-foreground text-xs">
-              Products offered on this upsell step (we’ll replace this with a proper picker).
+              Products offered on this upsell step (we’ll replace this with a
+              proper picker).
             </div>
           </div>
         </TabsContent>
@@ -242,5 +234,3 @@ export const FunnelStepSettingsMetaBox = (props: PluginMetaBoxRendererProps) => 
     </div>
   );
 };
-
-

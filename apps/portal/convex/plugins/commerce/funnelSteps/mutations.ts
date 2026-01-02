@@ -60,4 +60,17 @@ export const ensureFunnelStepRoutingMeta = mutation({
   },
 });
 
+export const backfillFunnelStepRoutingMeta = mutation({
+  args: {
+    organizationId: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    return await ctx.runMutation(
+      commerceFunnelStepsMutations.backfillFunnelStepRoutingMeta,
+      args,
+    );
+  },
+});
+
 

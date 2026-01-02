@@ -1,6 +1,11 @@
 import type { PermalinkPreviewContext } from "@acme/admin-runtime/permalinks";
 import { registerPermalinkPreviewResolver } from "@acme/admin-runtime/permalinks";
 
+import {
+  STEP_FUNNEL_SLUG_KEY,
+  STEP_IS_DEFAULT_FUNNEL_KEY,
+} from "../shared/funnels/routingMeta";
+
 let registered = false;
 
 const asString = (value: unknown): string =>
@@ -23,8 +28,10 @@ const resolveFunnelStepPreviewPath = (
   const stepSlug = ctx.slugValue.trim();
   if (!stepSlug) return null;
 
-  const funnelSlug = asString(ctx.postMetaMap["step.funnelSlug"]).trim();
-  const isDefaultFunnel = asBoolean(ctx.postMetaMap["step.isDefaultFunnel"]);
+  const funnelSlug = asString(ctx.postMetaMap[STEP_FUNNEL_SLUG_KEY]).trim();
+  const isDefaultFunnel = asBoolean(
+    ctx.postMetaMap[STEP_IS_DEFAULT_FUNNEL_KEY],
+  );
 
   if (isDefaultFunnel) {
     return stepSlug === "checkout"

@@ -4,6 +4,13 @@ import type { Id } from "../_generated/dataModel";
 import { mutation } from "../_generated/server";
 import { ensureUniqueSlug, sanitizeSlug } from "./helpers";
 
+import {
+  FUNNEL_DEFAULT_SLUG,
+  STEP_FUNNEL_ID_KEY,
+  STEP_FUNNEL_SLUG_KEY,
+  STEP_IS_DEFAULT_FUNNEL_KEY,
+} from "../../../shared/funnels/routingMeta";
+
 const metaValueValidator = v.union(
   v.string(),
   v.number(),
@@ -74,10 +81,10 @@ const createBaselineStepsForFunnel = async (ctx: any, args: {
   });
 
   await upsertMetaEntries(ctx, checkoutStepId as Id<"posts">, {
-    "step.funnelId": String(args.funnelId),
+    [STEP_FUNNEL_ID_KEY]: String(args.funnelId),
     // Denormalized/system-owned routing fields used by permalink preview resolvers.
-    "step.funnelSlug": args.funnelSlug,
-    "step.isDefaultFunnel": args.isDefaultFunnel,
+    [STEP_FUNNEL_SLUG_KEY]: args.funnelSlug,
+    [STEP_IS_DEFAULT_FUNNEL_KEY]: args.isDefaultFunnel,
     "step.kind": "checkout",
     "step.order": 0,
     "step.checkout.design": "default",
@@ -103,9 +110,9 @@ const createBaselineStepsForFunnel = async (ctx: any, args: {
   });
 
   await upsertMetaEntries(ctx, thankYouStepId as Id<"posts">, {
-    "step.funnelId": String(args.funnelId),
-    "step.funnelSlug": args.funnelSlug,
-    "step.isDefaultFunnel": args.isDefaultFunnel,
+    [STEP_FUNNEL_ID_KEY]: String(args.funnelId),
+    [STEP_FUNNEL_SLUG_KEY]: args.funnelSlug,
+    [STEP_IS_DEFAULT_FUNNEL_KEY]: args.isDefaultFunnel,
     "step.kind": "thankYou",
     "step.order": 1,
   });
@@ -182,7 +189,7 @@ export const createPost = mutation({
     // Funnels always start with baseline steps (checkout + thank-you).
     if (postTypeSlug === "funnels") {
       const isDefaultFunnel =
-        metaToWrite["funnel.isDefault"] === true || uniqueSlug === "__default_funnel__";
+        metaToWrite["funnel.isDefault"] === true || uniqueSlug === FUNNEL_DEFAULT_SLUG;
       await createBaselineStepsForFunnel(ctx, {
         funnelId: postId as Id<"posts">,
         funnelSlug: uniqueSlug,
@@ -289,7 +296,76 @@ export const updatePost = mutation({
 
     if (meta && Object.keys(meta).length > 0) {
       const metaToWrite: Record<string, unknown> = { ...meta };
+
+      // Strict consistency: funnel step routing meta is system-owned.
+      if (String(post.postTypeSlug ?? "") === "funnel_steps") {
+        const existingFunnelIdRow = await ctx.db
+          .query("postsMeta")
+          .withIndex("by_post_and_key", (q: any) =>
+            q.eq("postId", post._id).eq("key", STEP_FUNNEL_ID_KEY),
+          )
+          .unique();
+        const existingFunnelId =
+          typeof existingFunnelIdRow?.value === "string"
+            ? existingFunnelIdRow.value
+            : "";
+
+        const requestedFunnelIdRaw = metaToWrite[STEP_FUNNEL_ID_KEY];
+        const requestedFunnelId =
+          typeof requestedFunnelIdRaw === "string" ? requestedFunnelIdRaw : "";
+
+        if (
+          requestedFunnelId &&
+          existingFunnelId &&
+          requestedFunnelId !== existingFunnelId
+        ) {
+          throw new Error("Cannot change funnel step funnelId (system-owned).");
+        }
+
+        // Never allow clients to directly set the denormalized routing fields.
+        delete metaToWrite[STEP_FUNNEL_SLUG_KEY];
+        delete metaToWrite[STEP_IS_DEFAULT_FUNNEL_KEY];
+      }
+
       await upsertMetaEntries(ctx, post._id as Id<"posts">, metaToWrite);
+    }
+
+    // Strict consistency: ensure funnel step routing meta is correct after any write.
+    if (String(post.postTypeSlug ?? "") === "funnel_steps") {
+      const funnelIdRow = await ctx.db
+        .query("postsMeta")
+        .withIndex("by_post_and_key", (q: any) =>
+          q.eq("postId", post._id).eq("key", STEP_FUNNEL_ID_KEY),
+        )
+        .unique();
+      const funnelId =
+        typeof funnelIdRow?.value === "string" ? funnelIdRow.value : "";
+      if (!funnelId) {
+        throw new Error(
+          "Funnel step is missing funnelId. Run the ecommerce routing meta backfill.",
+        );
+      }
+
+      const funnel = await ctx.db.get(funnelId as any);
+      if (!funnel || funnel.postTypeSlug !== "funnels") {
+        throw new Error("Funnel step references an invalid funnel.");
+      }
+
+      const defaultRow = await ctx.db
+        .query("postsMeta")
+        .withIndex("by_post_and_key", (q: any) =>
+          q.eq("postId", funnel._id).eq("key", "funnel.isDefault"),
+        )
+        .unique();
+      const isDefaultFunnel =
+        Boolean(defaultRow?.value) || funnel.slug === FUNNEL_DEFAULT_SLUG;
+      const funnelSlug = typeof funnel.slug === "string" ? funnel.slug : "";
+
+      await upsertMetaEntries(ctx, post._id as Id<"posts">, {
+        [STEP_FUNNEL_ID_KEY]: String(funnel._id),
+        [STEP_FUNNEL_SLUG_KEY]: funnelSlug,
+        [STEP_IS_DEFAULT_FUNNEL_KEY]: isDefaultFunnel,
+      });
     }
 
     // Funnels own their steps' routing meta; keep it in sync when funnel changes.
@@ -305,7 +381,7 @@ export const updatePost = mutation({
           q.eq("postId", post._id).eq("key", "funnel.isDefault"),
         )
         .unique();
-      const isDefaultFunnel = Boolean(defaultRow?.value) || nextSlug === "__default_funnel__";
+      const isDefaultFunnel = Boolean(defaultRow?.value) || nextSlug === FUNNEL_DEFAULT_SLUG;
 
       const organizationId = post.organizationId ?? undefined;
       const candidateSteps = organizationId
@@ -326,15 +402,15 @@ export const updatePost = mutation({
         const funnelIdRow = await ctx.db
           .query("postsMeta")
           .withIndex("by_post_and_key", (q: any) =>
-            q.eq("postId", step._id).eq("key", "step.funnelId"),
+            q.eq("postId", step._id).eq("key", STEP_FUNNEL_ID_KEY),
           )
           .unique();
         if (String(funnelIdRow?.value ?? "") !== String(post._id)) continue;
 
         await upsertMetaEntries(ctx, step._id as Id<"posts">, {
-          "step.funnelId": String(post._id),
-          "step.funnelSlug": nextSlug,
-          "step.isDefaultFunnel": isDefaultFunnel,
+          [STEP_FUNNEL_ID_KEY]: String(post._id),
+          [STEP_FUNNEL_SLUG_KEY]: nextSlug,
+          [STEP_IS_DEFAULT_FUNNEL_KEY]: isDefaultFunnel,
         });
       }
     }

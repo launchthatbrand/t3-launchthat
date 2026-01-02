@@ -1,8 +1,8 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
 import { createElement } from "react";
 
-import { FunnelStepsMetaBox } from "./admin/metaBoxes/FunnelStepsMetaBox";
 import { FunnelStepSettingsMetaBox } from "./admin/metaBoxes/FunnelStepSettingsMetaBox";
+import { FunnelStepsMetaBox } from "./admin/metaBoxes/FunnelStepsMetaBox";
 import { OrderDetailsMetaBox } from "./admin/metaBoxes/OrderDetailsMetaBox";
 import { OrderItemsMetaBox } from "./admin/metaBoxes/OrderItemsMetaBox";
 import { ProductDetailsMetaBox } from "./admin/metaBoxes/ProductDetailsMetaBox";
@@ -263,6 +263,32 @@ export const createEcommercePluginDefinition = (
     },
   ],
   fieldRegistrations: [
+    {
+      postTypeSlug: "funnel_steps",
+      fields: [
+        {
+          key: "step.funnelId",
+          name: "Funnel ID",
+          description: "System-owned. Do not edit.",
+          type: "text",
+          readOnly: true,
+        },
+        {
+          key: "step.funnelSlug",
+          name: "Funnel slug",
+          description: "System-owned. Used for permalink previews.",
+          type: "text",
+          readOnly: true,
+        },
+        {
+          key: "step.isDefaultFunnel",
+          name: "Is default funnel",
+          description: "System-owned. Used for permalink previews.",
+          type: "boolean",
+          readOnly: true,
+        },
+      ],
+    },
     {
       postTypeSlug: "products",
       fields: [
@@ -623,7 +649,8 @@ export const createEcommercePluginDefinition = (
         {
           key: "step.checkout.design",
           name: "Checkout design",
-          description: "Select which checkout layout to use (checkout steps only).",
+          description:
+            "Select which checkout layout to use (checkout steps only).",
           type: "select",
           options: [
             { label: "Default", value: "default" },
@@ -658,7 +685,8 @@ export const createEcommercePluginDefinition = (
         {
           key: "step.upsell.offerProductPostIdsJson",
           name: "Upsell offer products (JSON)",
-          description: "Internal: JSON encoded list of product IDs offered on this upsell step.",
+          description:
+            "Internal: JSON encoded list of product IDs offered on this upsell step.",
           type: "textarea",
           readOnly: false,
         },
