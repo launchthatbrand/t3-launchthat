@@ -9,7 +9,13 @@ import { api } from "@portal/convexspec";
 import { useMutation, useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import { Switch } from "@acme/ui/switch";
@@ -27,6 +33,7 @@ type EcommerceSettings = {
   defaultCurrency: string;
   enableTax: boolean;
   enableShipping: boolean;
+  hideShippingWhenVirtualOnly: boolean;
   allowGuestCheckout: boolean;
 };
 
@@ -34,10 +41,12 @@ const defaultSettings: EcommerceSettings = {
   defaultCurrency: "USD",
   enableTax: false,
   enableShipping: false,
+  hideShippingWhenVirtualOnly: false,
   allowGuestCheckout: true,
 };
 
-const asString = (value: unknown): string => (typeof value === "string" ? value : "");
+const asString = (value: unknown): string =>
+  typeof value === "string" ? value : "";
 
 const EcommerceGeneralSettings = (props: PluginSettingComponentProps) => {
   const orgId = props.organizationId ? String(props.organizationId) : undefined;
@@ -59,12 +68,20 @@ const EcommerceGeneralSettings = (props: PluginSettingComponentProps) => {
     const v = stored?.metaValue as Partial<EcommerceSettings> | undefined;
     const currency = asString(v?.defaultCurrency).trim();
     return {
-      defaultCurrency: currency.length > 0 ? currency : defaultSettings.defaultCurrency,
-      enableTax: typeof v?.enableTax === "boolean" ? v.enableTax : defaultSettings.enableTax,
+      defaultCurrency:
+        currency.length > 0 ? currency : defaultSettings.defaultCurrency,
+      enableTax:
+        typeof v?.enableTax === "boolean"
+          ? v.enableTax
+          : defaultSettings.enableTax,
       enableShipping:
         typeof v?.enableShipping === "boolean"
           ? v.enableShipping
           : defaultSettings.enableShipping,
+      hideShippingWhenVirtualOnly:
+        typeof v?.hideShippingWhenVirtualOnly === "boolean"
+          ? v.hideShippingWhenVirtualOnly
+          : defaultSettings.hideShippingWhenVirtualOnly,
       allowGuestCheckout:
         typeof v?.allowGuestCheckout === "boolean"
           ? v.allowGuestCheckout
@@ -72,9 +89,13 @@ const EcommerceGeneralSettings = (props: PluginSettingComponentProps) => {
     };
   }, [stored]);
 
-  const [defaultCurrency, setDefaultCurrency] = useState(resolved.defaultCurrency);
+  const [defaultCurrency, setDefaultCurrency] = useState(
+    resolved.defaultCurrency,
+  );
   const [enableTax, setEnableTax] = useState(resolved.enableTax);
   const [enableShipping, setEnableShipping] = useState(resolved.enableShipping);
+  const [hideShippingWhenVirtualOnly, setHideShippingWhenVirtualOnly] =
+    useState(resolved.hideShippingWhenVirtualOnly);
   const [allowGuestCheckout, setAllowGuestCheckout] = useState(
     resolved.allowGuestCheckout,
   );
@@ -84,6 +105,7 @@ const EcommerceGeneralSettings = (props: PluginSettingComponentProps) => {
     setDefaultCurrency(resolved.defaultCurrency);
     setEnableTax(resolved.enableTax);
     setEnableShipping(resolved.enableShipping);
+    setHideShippingWhenVirtualOnly(resolved.hideShippingWhenVirtualOnly);
     setAllowGuestCheckout(resolved.allowGuestCheckout);
   }, [resolved]);
 
@@ -94,15 +116,19 @@ const EcommerceGeneralSettings = (props: PluginSettingComponentProps) => {
         type: "site",
         orgId: (orgId ?? null) as any,
         metaValue: {
-          defaultCurrency: defaultCurrency.trim() || defaultSettings.defaultCurrency,
+          defaultCurrency:
+            defaultCurrency.trim() || defaultSettings.defaultCurrency,
           enableTax,
           enableShipping,
+          hideShippingWhenVirtualOnly,
           allowGuestCheckout,
         } satisfies EcommerceSettings,
       })
         .then(() => toast.success("Saved ecommerce settings"))
         .catch((err: unknown) =>
-          toast.error(err instanceof Error ? err.message : "Failed to save settings"),
+          toast.error(
+            err instanceof Error ? err.message : "Failed to save settings",
+          ),
         );
     });
   };
@@ -149,7 +175,26 @@ const EcommerceGeneralSettings = (props: PluginSettingComponentProps) => {
                 Turn on shipping fields and shipping rate calculations.
               </div>
             </div>
-            <Switch checked={enableShipping} onCheckedChange={setEnableShipping} />
+            <Switch
+              checked={enableShipping}
+              onCheckedChange={setEnableShipping}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="font-medium">
+                Hide shipping fields for virtual-only carts
+              </div>
+              <div className="text-muted-foreground text-sm">
+                If every product in the cart is marked virtual, we’ll skip the
+                delivery address step during checkout.
+              </div>
+            </div>
+            <Switch
+              checked={hideShippingWhenVirtualOnly}
+              onCheckedChange={setHideShippingWhenVirtualOnly}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
@@ -173,6 +218,9 @@ const EcommerceGeneralSettings = (props: PluginSettingComponentProps) => {
                 setDefaultCurrency(resolved.defaultCurrency);
                 setEnableTax(resolved.enableTax);
                 setEnableShipping(resolved.enableShipping);
+                setHideShippingWhenVirtualOnly(
+                  resolved.hideShippingWhenVirtualOnly,
+                );
                 setAllowGuestCheckout(resolved.allowGuestCheckout);
               }}
               disabled={isPending}
@@ -219,7 +267,9 @@ export const EcommerceSettingsPage = (props: PluginSettingComponentProps) => {
         <TabsList className="flex h-9 w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="page-setup">Page Setup</TabsTrigger>
-          <TabsTrigger value="payment-processors">Payment processors</TabsTrigger>
+          <TabsTrigger value="payment-processors">
+            Payment processors
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="pt-3">
@@ -237,5 +287,3 @@ export const EcommerceSettingsPage = (props: PluginSettingComponentProps) => {
     </div>
   );
 };
-
-

@@ -2,8 +2,11 @@
 
 import type { PluginMetaBoxRendererProps } from "launchthat-plugin-core";
 import { useMemo } from "react";
+import { api } from "@portal/convexspec";
+import { useQuery } from "convex/react";
 
 import { Label } from "@acme/ui/label";
+import { MultiSelect } from "@acme/ui/multi-select";
 import {
   Select,
   SelectContent,
@@ -14,9 +17,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { Textarea } from "@acme/ui/textarea";
 
+const apiAny = api as any;
+
 const STEP_KIND_KEY = "step.kind";
 const STEP_ORDER_KEY = "step.order";
 const STEP_FUNNEL_ID_KEY = "step.funnelId";
+const STEP_IS_DEFAULT_FUNNEL_KEY = "step.isDefaultFunnel";
 
 const CHECKOUT_DESIGN_KEY = "step.checkout.design";
 const CHECKOUT_PREDEFINED_PRODUCTS_JSON_KEY =
@@ -35,6 +41,28 @@ const asNumberString = (value: unknown): string =>
     : typeof value === "string"
       ? value
       : "";
+const asBoolean = (value: unknown): boolean => value === true;
+
+type ProductOption = { label: string; value: string };
+
+const parseStringArrayJson = (raw: unknown): string[] => {
+  if (typeof raw !== "string" || raw.trim().length === 0) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (v): v is string => typeof v === "string" && v.trim().length > 0,
+    );
+  } catch {
+    return [];
+  }
+};
+
+const stringifyStringArrayJson = (values: string[]): string => {
+  return JSON.stringify(
+    values.filter((v) => typeof v === "string" && v.trim().length > 0),
+  );
+};
 
 export const FunnelStepSettingsMetaBox = (
   props: PluginMetaBoxRendererProps,
@@ -49,12 +77,15 @@ export const FunnelStepSettingsMetaBox = (
 
   const order = asNumberString(props.getValue(STEP_ORDER_KEY));
   const funnelId = asString(props.getValue(STEP_FUNNEL_ID_KEY));
+  const isDefaultFunnel = asBoolean(props.getValue(STEP_IS_DEFAULT_FUNNEL_KEY));
 
   const checkoutDesign =
     asString(props.getValue(CHECKOUT_DESIGN_KEY)) || "default";
-  const predefinedProductsJson = asString(
-    props.getValue(CHECKOUT_PREDEFINED_PRODUCTS_JSON_KEY),
-  );
+  const predefinedProducts = useMemo(() => {
+    return parseStringArrayJson(
+      props.getValue(CHECKOUT_PREDEFINED_PRODUCTS_JSON_KEY),
+    );
+  }, [props]);
 
   const thankYouHeadline = asString(props.getValue(THANK_YOU_HEADLINE_KEY));
   const thankYouBody = asString(props.getValue(THANK_YOU_BODY_KEY));
@@ -69,18 +100,41 @@ export const FunnelStepSettingsMetaBox = (
     return "upsell";
   }, [kind]);
 
+  const productRows = useQuery(apiAny.plugins.commerce.getAllPosts, {
+    organizationId: props.context.organizationId,
+    filters: { postTypeSlug: "products", limit: 250 },
+  }) as Array<{ _id: string; title?: string | null }> | undefined;
+
+  const productOptions = useMemo<ProductOption[]>(() => {
+    const rows = Array.isArray(productRows) ? productRows : [];
+    return rows
+      .map((row) => ({
+        label:
+          typeof row.title === "string" && row.title.trim()
+            ? row.title.trim()
+            : row._id,
+        value: row._id,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [productRows]);
+
   return (
     <div className="space-y-4">
       <Tabs defaultValue="general">
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value={settingsTab}>
-            {kind === "checkout"
-              ? "Checkout"
-              : kind === "thankYou"
-                ? "Thank you"
-                : "Upsell"}
-          </TabsTrigger>
+          {kind === "checkout" ? (
+            <>
+              <TabsTrigger value="checkout">Design</TabsTrigger>
+              <TabsTrigger value="products" disabled={isDefaultFunnel}>
+                Products
+              </TabsTrigger>
+            </>
+          ) : (
+            <TabsTrigger value={settingsTab}>
+              {kind === "thankYou" ? "Thank you" : "Upsell"}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="general" className="mt-4 space-y-4">
@@ -157,25 +211,56 @@ export const FunnelStepSettingsMetaBox = (
               Only applies when step kind is Checkout.
             </div>
           </div>
+        </TabsContent>
 
-          <div className="space-y-2">
-            <Label>Predefined products (JSON)</Label>
-            <Textarea
-              rows={4}
-              value={predefinedProductsJson}
-              onChange={(e) =>
-                props.setValue(
-                  CHECKOUT_PREDEFINED_PRODUCTS_JSON_KEY,
-                  e.currentTarget.value,
-                )
-              }
-              placeholder='["productPostId1","productPostId2"]'
-            />
-            <div className="text-muted-foreground text-xs">
-              Only applies when step kind is Checkout. We’ll replace the cart
-              with these items when the step is visited.
+        <TabsContent value="products" className="mt-4 space-y-4">
+          {isDefaultFunnel ? (
+            <div className="text-muted-foreground text-sm">
+              Predefined products are disabled for the default funnel checkout.
             </div>
-          </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>Attached products</Label>
+              <MultiSelect
+                options={productOptions}
+                defaultValue={predefinedProducts}
+                onValueChange={(values: string[]) =>
+                  props.setValue(
+                    CHECKOUT_PREDEFINED_PRODUCTS_JSON_KEY,
+                    stringifyStringArrayJson(values),
+                  )
+                }
+                placeholder="Select products for immediate checkout"
+                maxCount={3}
+              />
+              <div className="text-muted-foreground text-xs">
+                Visiting this checkout step will replace the cart with these
+                items.
+              </div>
+              <details className="rounded-md border p-3 text-xs">
+                <summary className="cursor-pointer text-muted-foreground">
+                  Advanced: raw JSON
+                </summary>
+                <div className="mt-2 space-y-2">
+                  <Textarea
+                    rows={4}
+                    value={stringifyStringArrayJson(predefinedProducts)}
+                    onChange={(e) =>
+                      props.setValue(
+                        CHECKOUT_PREDEFINED_PRODUCTS_JSON_KEY,
+                        e.currentTarget.value,
+                      )
+                    }
+                    placeholder='["productPostId1","productPostId2"]'
+                  />
+                  <div className="text-muted-foreground text-xs">
+                    This is stored as{" "}
+                    <code>step.checkout.predefinedProductsJson</code>.
+                  </div>
+                </div>
+              </details>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="thankYou" className="mt-4 space-y-4">

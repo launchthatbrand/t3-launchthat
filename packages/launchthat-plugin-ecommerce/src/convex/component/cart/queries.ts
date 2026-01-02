@@ -47,6 +47,7 @@ export const getCart = query({
 
       const regularPrice = getMetaValue(productMeta, metaKey("product.regularPrice"));
       const salePrice = getMetaValue(productMeta, metaKey("product.salePrice"));
+      const isVirtual = getMetaValue(productMeta, metaKey("product.isVirtual")) === true;
       const resolvedPrice =
         typeof salePrice === "number"
           ? salePrice
@@ -68,6 +69,7 @@ export const getCart = query({
               slug: product.slug,
               featuredImageUrl: product.featuredImageUrl ?? null,
               postTypeSlug: product.postTypeSlug,
+              isVirtual,
             }
           : null,
         unitPrice: resolvedPrice,

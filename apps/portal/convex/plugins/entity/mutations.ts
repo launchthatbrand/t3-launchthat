@@ -63,9 +63,14 @@ export const deleteEntity = mutation({
   args: {
     postTypeSlug: v.string(),
     id: v.string(),
+    organizationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const resolver = await entityResolvers.get(ctx, args.postTypeSlug, undefined);
+    const resolver = await entityResolvers.get(
+      ctx,
+      args.postTypeSlug,
+      args.organizationId ?? undefined,
+    );
     await resolver.remove(ctx, {
       postTypeSlug: args.postTypeSlug,
       id: args.id,

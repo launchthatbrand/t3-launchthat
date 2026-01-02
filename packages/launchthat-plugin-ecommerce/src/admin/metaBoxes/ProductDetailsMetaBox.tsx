@@ -15,6 +15,7 @@ import {
 } from "@acme/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { Textarea } from "@acme/ui/textarea";
+import { Switch } from "@acme/ui/switch";
 
 type ProductType = "simple" | "external" | "grouped";
 type StockStatus = "instock" | "outofstock" | "onbackorder";
@@ -53,6 +54,10 @@ export function ProductDetailsMetaBox({
     return PRODUCT_TYPE_OPTIONS.some((opt) => opt.value === normalized)
       ? normalized
       : "simple";
+  }, [getValue]);
+
+  const isVirtual = useMemo(() => {
+    return asBoolean(getValue("product.isVirtual"));
   }, [getValue]);
 
   const stockStatus = useMemo<StockStatus>(() => {
@@ -108,12 +113,28 @@ export function ProductDetailsMetaBox({
           </Select>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+          <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+            <div className="space-y-0.5">
+              <div className="text-sm font-medium">Virtual</div>
+              <div className="text-muted-foreground text-xs">
+                No shipping required
+              </div>
+            </div>
+            <Switch
+              checked={isVirtual}
+              onCheckedChange={(checked) =>
+                setValue("product.isVirtual", Boolean(checked))
+              }
+              disabled={!canEdit}
+            />
+          </div>
           <Button
             type="button"
             variant="outline"
             onClick={() => {
               setValue("product.type", "simple");
+              setValue("product.isVirtual", false);
               setValue("product.manageStock", false);
               setValue("product.stockStatus", "instock");
             }}

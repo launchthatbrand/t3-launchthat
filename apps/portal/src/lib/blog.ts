@@ -388,7 +388,15 @@ export function useDeletePost() {
   const deleteEntity = useMutation(api.plugins.entity.mutations.deleteEntity);
   const lmsDeletePost = useMutation(api.plugins.lms.posts.mutations.deletePost as any);
   return useCallback(
-    async ({ id, postTypeSlug }: { id: Id<"posts">; postTypeSlug: string }) => {
+    async ({
+      id,
+      postTypeSlug,
+      organizationId,
+    }: {
+      id: Id<"posts">;
+      postTypeSlug: string;
+      organizationId?: string;
+    }) => {
       if (isLmsComponentPostTypeSlug(postTypeSlug)) {
         await lmsDeletePost({ id: id as unknown as string });
         return;
@@ -396,6 +404,7 @@ export function useDeletePost() {
       await deleteEntity({
         postTypeSlug: postTypeSlug.toLowerCase(),
         id: id as string,
+        organizationId: organizationId ?? undefined,
       });
     },
     [deleteEntity, lmsDeletePost],

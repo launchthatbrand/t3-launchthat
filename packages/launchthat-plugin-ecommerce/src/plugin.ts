@@ -305,6 +305,14 @@ export const createEcommercePluginDefinition = (
           readOnly: false,
         },
         {
+          key: "product.isVirtual",
+          name: "Virtual product",
+          description: "If enabled, this product does not require shipping.",
+          type: "boolean",
+          defaultValue: false,
+          readOnly: false,
+        },
+        {
           key: "product.regularPrice",
           name: "Regular price",
           type: "number",

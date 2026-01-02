@@ -301,6 +301,7 @@ export function GenericArchiveView({
         await deletePost({
           id: item.id as Id<"posts">,
           postTypeSlug: slug,
+          organizationId: organizationId ? String(organizationId) : undefined,
         });
         toast.success("Deleted.");
       } catch (error) {

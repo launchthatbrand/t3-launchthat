@@ -22,13 +22,13 @@ import { Separator } from "@acme/ui/separator";
 import { toast } from "@acme/ui/toast";
 
 import { getPaymentMethods } from "../../payments/registry";
-import { CheckoutDesignDefault } from "./designs/CheckoutDesignDefault";
-import { CheckoutDesignMinimal } from "./designs/CheckoutDesignMinimal";
-import { CheckoutDesignSidebar } from "./designs/CheckoutDesignSidebar";
 import {
   EMPTY_CHECKOUT_DRAFT,
   useCheckoutDraftStore,
 } from "../state/useCheckoutDraftStore";
+import { CheckoutDesignDefault } from "./designs/CheckoutDesignDefault";
+import { CheckoutDesignMinimal } from "./designs/CheckoutDesignMinimal";
+import { CheckoutDesignSidebar } from "./designs/CheckoutDesignSidebar";
 
 const apiAny = api as any;
 
@@ -46,7 +46,12 @@ type CartItem = {
   productPostId: string;
   quantity: number;
   unitPrice?: number | null;
-  product?: { _id: string; title?: string; slug?: string } | null;
+  product?: {
+    _id: string;
+    title?: string;
+    slug?: string;
+    isVirtual?: boolean;
+  } | null;
 };
 
 type PaymentMethod = ReturnType<typeof getPaymentMethods>[number];
@@ -193,14 +198,16 @@ export function CheckoutClient({
   const [isPending, startTransition] = useTransition();
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const shipping = draft.shipping;
-  const [hasEnsuredDefaultCheckout, setHasEnsuredDefaultCheckout] = useState(false);
+  const [hasEnsuredDefaultCheckout, setHasEnsuredDefaultCheckout] =
+    useState(false);
   const [hasAppliedPredefinedProducts, setHasAppliedPredefinedProducts] =
     useState(false);
   const [hasAppliedTestPrefill, setHasAppliedTestPrefill] = useState(false);
   const [testMode, setTestMode] = useState(false);
-  const [testPrefill, setTestPrefill] = useState<Record<string, unknown> | null>(
-    null,
-  );
+  const [testPrefill, setTestPrefill] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -284,23 +291,33 @@ export function CheckoutClient({
 
   const resolvedStepBySlug = useQuery(
     apiAny.plugins.commerce.funnelSteps.queries.getFunnelStepBySlug,
-    !stepId && funnelSlug && stepSlug ? { funnelSlug, stepSlug, organizationId } : "skip",
+    !stepId && funnelSlug && stepSlug
+      ? { funnelSlug, stepSlug, organizationId }
+      : "skip",
   ) as any;
 
   const resolvedDefaultStep = useQuery(
     apiAny.plugins.commerce.funnelSteps.queries.getFunnelStepBySlug,
     !stepId && !funnelSlug && !stepSlug
-      ? { funnelSlug: DEFAULT_FUNNEL_SLUG, stepSlug: "checkout", organizationId }
+      ? {
+          funnelSlug: DEFAULT_FUNNEL_SLUG,
+          stepSlug: "checkout",
+          organizationId,
+        }
       : "skip",
   ) as any;
 
-  const resolvedStep = (stepId
-    ? resolvedStepById
-    : funnelSlug && stepSlug
-      ? resolvedStepBySlug
-      : resolvedDefaultStep) as any;
+  const resolvedStep = (
+    stepId
+      ? resolvedStepById
+      : funnelSlug && stepSlug
+        ? resolvedStepBySlug
+        : resolvedDefaultStep
+  ) as any;
   const effectiveStepKind =
-    typeof resolvedStep?.kind === "string" ? (resolvedStep.kind as string) : stepKind;
+    typeof resolvedStep?.kind === "string"
+      ? (resolvedStep.kind as string)
+      : stepKind;
 
   const orderQueryArgs = useMemo(() => {
     const raw = typeof orderId === "string" ? orderId.trim() : "";
@@ -382,6 +399,30 @@ export function CheckoutClient({
     );
   }, [configMap, paymentEnabledMap, paymentMethods, pluginActiveMap]);
 
+  const ecommerceSettings = useQuery(apiAny.core.options.get, {
+    metaKey: "plugin.ecommerce.settings",
+    type: "site",
+    orgId: organizationId ?? null,
+  }) as { metaValue?: unknown } | null | undefined;
+
+  const hideShippingWhenVirtualOnly = useMemo(() => {
+    const v =
+      ecommerceSettings?.metaValue &&
+      typeof ecommerceSettings.metaValue === "object" &&
+      !Array.isArray(ecommerceSettings.metaValue)
+        ? (ecommerceSettings.metaValue as Record<string, unknown>)
+        : {};
+    return v.hideShippingWhenVirtualOnly === true;
+  }, [ecommerceSettings]);
+
+  const isVirtualOnlyCart = useMemo(() => {
+    if (items.length === 0) return false;
+    return items.every((item) => item.product?.isVirtual === true);
+  }, [items]);
+
+  const shouldHideDeliveryFields =
+    hideShippingWhenVirtualOnly && isVirtualOnlyCart;
+
   const selectedPaymentMethod = useMemo((): PaymentMethod | null => {
     if (!paymentMethodId) return null;
     return enabledPaymentMethods.find((m) => m.id === paymentMethodId) ?? null;
@@ -394,7 +435,10 @@ export function CheckoutClient({
     startTransition(() => {
       // Funnel-mode: ensure the default funnel exists (and its baseline steps) so checkout
       // can always redirect to the next step after successful payment.
-      if (funnelSlug === DEFAULT_FUNNEL_SLUG || (!funnelSlug && !stepSlug && !stepId)) {
+      if (
+        funnelSlug === DEFAULT_FUNNEL_SLUG ||
+        (!funnelSlug && !stepSlug && !stepId)
+      ) {
         void ensureDefaultFunnel({ organizationId })
           .catch(() => null)
           .then(() => ensureDefaultFunnelSteps({ organizationId }))
@@ -423,7 +467,9 @@ export function CheckoutClient({
 
     // Funnel-mode predefined products (checkout step only)
     if (resolvedStep && resolvedStep.kind === "checkout") {
-      const productIds = Array.isArray(resolvedStep.checkout?.predefinedProductPostIds)
+      const productIds = Array.isArray(
+        resolvedStep.checkout?.predefinedProductPostIds,
+      )
         ? resolvedStep.checkout.predefinedProductPostIds
         : [];
       if (productIds.length === 0) {
@@ -438,7 +484,6 @@ export function CheckoutClient({
       });
       return;
     }
-
   }, [
     guestSessionId,
     hasAppliedPredefinedProducts,
@@ -462,14 +507,24 @@ export function CheckoutClient({
     if (paymentMethodId) return;
     if (enabledPaymentMethods.length === 0) return;
 
-    const preferred = enabledPaymentMethods.find((m) => m.id === "authorizenet");
+    const preferred = enabledPaymentMethods.find(
+      (m) => m.id === "authorizenet",
+    );
     if (preferred) {
       setPaymentMethodId(orgKey, preferred.id);
     }
-  }, [enabledPaymentMethods, orgKey, paymentMethodId, setPaymentMethodId, testMode]);
+  }, [
+    enabledPaymentMethods,
+    orgKey,
+    paymentMethodId,
+    setPaymentMethodId,
+    testMode,
+  ]);
 
   const mustSelectPaymentMethod = enabledPaymentMethods.length > 0;
-  const requiresPaymentData = Boolean(selectedPaymentMethod?.renderCheckoutForm);
+  const requiresPaymentData = Boolean(
+    selectedPaymentMethod?.renderCheckoutForm,
+  );
   const canSubmit =
     items.length > 0 &&
     email.trim().length > 3 &&
@@ -489,7 +544,9 @@ export function CheckoutClient({
         organizationId,
         guestSessionId,
         funnelStepId:
-          typeof resolvedStep?.stepId === "string" ? resolvedStep.stepId : undefined,
+          typeof resolvedStep?.stepId === "string"
+            ? resolvedStep.stepId
+            : undefined,
         email: email.trim(),
         billing: {
           name: fullName || null,
@@ -521,7 +578,11 @@ export function CheckoutClient({
           setPaymentData(null);
           setIsPlacingOrder(false);
 
-          if (result && typeof result.redirectUrl === "string" && result.redirectUrl) {
+          if (
+            result &&
+            typeof result.redirectUrl === "string" &&
+            result.redirectUrl
+          ) {
             window.location.assign(result.redirectUrl);
             return;
           }
@@ -555,7 +616,10 @@ export function CheckoutClient({
 
   // Step renderer (non-checkout steps). Use the `stepKind` prop as a fallback so we don't flash
   // checkout UI before the step query resolves (step query doesn't depend on guest cart session).
-  if (typeof effectiveStepKind === "string" && effectiveStepKind !== "checkout") {
+  if (
+    typeof effectiveStepKind === "string" &&
+    effectiveStepKind !== "checkout"
+  ) {
     const headline =
       effectiveStepKind === "thankYou"
         ? "Order confirmed"
@@ -563,7 +627,9 @@ export function CheckoutClient({
           ? "Special offer"
           : "Step";
 
-    const hasOrder = Boolean(resolvedOrder && typeof resolvedOrder === "object");
+    const hasOrder = Boolean(
+      resolvedOrder && typeof resolvedOrder === "object",
+    );
 
     const funnelSlugLabel =
       typeof resolvedStep?.funnelSlug === "string"
@@ -608,7 +674,7 @@ export function CheckoutClient({
                 <code>
                   {hasOrder
                     ? String((resolvedOrder as any)?.orderId ?? orderId ?? "")
-                    : orderId ?? "(missing)"}
+                    : (orderId ?? "(missing)")}
                 </code>
               </div>
               <div className="flex items-center justify-between">
@@ -629,7 +695,11 @@ export function CheckoutClient({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Status</span>
-                <span>{hasOrder ? String((resolvedOrder as any)?.status ?? "") : "paid"}</span>
+                <span>
+                  {hasOrder
+                    ? String((resolvedOrder as any)?.status ?? "")
+                    : "paid"}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -695,8 +765,8 @@ export function CheckoutClient({
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8">
       {isPlacingOrder ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-lg border bg-background p-6 shadow-lg">
+        <div className="bg-background/70 fixed inset-0 z-50 grid place-items-center backdrop-blur-sm">
+          <div className="bg-background w-full max-w-sm rounded-lg border p-6 shadow-lg">
             <div className="flex items-center gap-3">
               <Loader2 className="h-5 w-5 animate-spin" />
               <div className="text-sm font-medium">Processing payment…</div>
@@ -712,9 +782,7 @@ export function CheckoutClient({
         left={
           <div className="space-y-6">
             <div className="space-y-2">
-              <div className="text-xl font-semibold">
-                {"Checkout"}
-              </div>
+              <div className="text-xl font-semibold">{"Checkout"}</div>
               <div className="text-muted-foreground text-sm">
                 Complete your purchase below.
               </div>
@@ -742,151 +810,212 @@ export function CheckoutClient({
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Delivery</CardTitle>
-                <CardDescription>
-                  Where should we send your order?
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="ship-country">Country/region</Label>
-                  <Input
-                    id="ship-country"
-                    value={shipping.country}
-                    onChange={(e) =>
-                      setShippingDraft(orgKey, {
-                        country: e.currentTarget.value,
-                      })
-                    }
-                    placeholder="United States"
-                    autoComplete="country-name"
-                    disabled={isPlacingOrder}
-                  />
-                </div>
-              <div className="space-y-2">
-                <Label htmlFor="ship-first">First name (optional)</Label>
-                <Input
-                  id="ship-first"
-                  value={shipping.firstName}
-                  onChange={(e) =>
-                    setShippingDraft(orgKey, {
-                      firstName: e.currentTarget.value,
-                    })
-                  }
-                  placeholder="Jane"
-                  autoComplete="given-name"
-                  disabled={isPlacingOrder}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ship-last">Last name</Label>
-                <Input
-                  id="ship-last"
-                  value={shipping.lastName}
-                  onChange={(e) =>
-                    setShippingDraft(orgKey, {
-                      lastName: e.currentTarget.value,
-                    })
-                  }
-                  placeholder="Doe"
-                  autoComplete="family-name"
-                  disabled={isPlacingOrder}
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="ship-phone">Phone</Label>
-                <Input
-                  id="ship-phone"
-                  value={shipping.phone}
-                  onChange={(e) =>
-                    setShippingDraft(orgKey, {
-                      phone: e.currentTarget.value,
-                    })
-                  }
-                  placeholder="(555) 555-5555"
-                  autoComplete="tel"
-                  disabled={isPlacingOrder}
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="ship-address">Address</Label>
-                <Input
-                  id="ship-address"
-                  value={shipping.address1}
-                  onChange={(e) =>
-                    setShippingDraft(orgKey, {
-                      address1: e.currentTarget.value,
-                    })
-                  }
-                  placeholder="123 Main St"
-                  autoComplete="street-address"
-                  disabled={isPlacingOrder}
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="ship-address2">Apartment, suite, etc. (optional)</Label>
-                <Input
-                  id="ship-address2"
-                  value={shipping.address2}
-                  onChange={(e) =>
-                    setShippingDraft(orgKey, {
-                      address2: e.currentTarget.value,
-                    })
-                  }
-                  placeholder="Apt 4B"
-                  autoComplete="address-line2"
-                  disabled={isPlacingOrder}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ship-city">City</Label>
-                <Input
-                  id="ship-city"
-                  value={shipping.city}
-                  onChange={(e) =>
-                    setShippingDraft(orgKey, {
-                      city: e.currentTarget.value,
-                    })
-                  }
-                  placeholder="New York"
-                  autoComplete="address-level2"
-                  disabled={isPlacingOrder}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ship-state">State/Province</Label>
-                <Input
-                  id="ship-state"
-                  value={shipping.state}
-                  onChange={(e) =>
-                    setShippingDraft(orgKey, {
-                      state: e.currentTarget.value,
-                    })
-                  }
-                  placeholder="NY"
-                  autoComplete="address-level1"
-                  disabled={isPlacingOrder}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ship-zip">Postal code</Label>
-                <Input
-                  id="ship-zip"
-                  value={shipping.postcode}
-                  onChange={(e) =>
-                    setShippingDraft(orgKey, {
-                      postcode: e.currentTarget.value,
-                    })
-                  }
-                  placeholder="10001"
-                  autoComplete="postal-code"
-                  disabled={isPlacingOrder}
-                />
-              </div>
-              </CardContent>
-            </Card>
+            {shouldHideDeliveryFields ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Customer details</CardTitle>
+                  <CardDescription>
+                    Your cart contains only virtual products, so we don’t need a
+                    delivery address.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="ship-first">First name (optional)</Label>
+                    <Input
+                      id="ship-first"
+                      value={shipping.firstName}
+                      onChange={(e) =>
+                        setShippingDraft(orgKey, {
+                          firstName: e.currentTarget.value,
+                        })
+                      }
+                      placeholder="Jane"
+                      autoComplete="given-name"
+                      disabled={isPlacingOrder}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ship-last">Last name</Label>
+                    <Input
+                      id="ship-last"
+                      value={shipping.lastName}
+                      onChange={(e) =>
+                        setShippingDraft(orgKey, {
+                          lastName: e.currentTarget.value,
+                        })
+                      }
+                      placeholder="Doe"
+                      autoComplete="family-name"
+                      disabled={isPlacingOrder}
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="ship-phone">Phone (optional)</Label>
+                    <Input
+                      id="ship-phone"
+                      value={shipping.phone}
+                      onChange={(e) =>
+                        setShippingDraft(orgKey, {
+                          phone: e.currentTarget.value,
+                        })
+                      }
+                      placeholder="(555) 555-5555"
+                      autoComplete="tel"
+                      disabled={isPlacingOrder}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Delivery</CardTitle>
+                  <CardDescription>
+                    Where should we send your order?
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="ship-country">Country/region</Label>
+                    <Input
+                      id="ship-country"
+                      value={shipping.country}
+                      onChange={(e) =>
+                        setShippingDraft(orgKey, {
+                          country: e.currentTarget.value,
+                        })
+                      }
+                      placeholder="United States"
+                      autoComplete="country-name"
+                      disabled={isPlacingOrder}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ship-first">First name (optional)</Label>
+                    <Input
+                      id="ship-first"
+                      value={shipping.firstName}
+                      onChange={(e) =>
+                        setShippingDraft(orgKey, {
+                          firstName: e.currentTarget.value,
+                        })
+                      }
+                      placeholder="Jane"
+                      autoComplete="given-name"
+                      disabled={isPlacingOrder}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ship-last">Last name</Label>
+                    <Input
+                      id="ship-last"
+                      value={shipping.lastName}
+                      onChange={(e) =>
+                        setShippingDraft(orgKey, {
+                          lastName: e.currentTarget.value,
+                        })
+                      }
+                      placeholder="Doe"
+                      autoComplete="family-name"
+                      disabled={isPlacingOrder}
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="ship-phone">Phone</Label>
+                    <Input
+                      id="ship-phone"
+                      value={shipping.phone}
+                      onChange={(e) =>
+                        setShippingDraft(orgKey, {
+                          phone: e.currentTarget.value,
+                        })
+                      }
+                      placeholder="(555) 555-5555"
+                      autoComplete="tel"
+                      disabled={isPlacingOrder}
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="ship-address">Address</Label>
+                    <Input
+                      id="ship-address"
+                      value={shipping.address1}
+                      onChange={(e) =>
+                        setShippingDraft(orgKey, {
+                          address1: e.currentTarget.value,
+                        })
+                      }
+                      placeholder="123 Main St"
+                      autoComplete="street-address"
+                      disabled={isPlacingOrder}
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="ship-address2">
+                      Apartment, suite, etc. (optional)
+                    </Label>
+                    <Input
+                      id="ship-address2"
+                      value={shipping.address2}
+                      onChange={(e) =>
+                        setShippingDraft(orgKey, {
+                          address2: e.currentTarget.value,
+                        })
+                      }
+                      placeholder="Apt 4B"
+                      autoComplete="address-line2"
+                      disabled={isPlacingOrder}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ship-city">City</Label>
+                    <Input
+                      id="ship-city"
+                      value={shipping.city}
+                      onChange={(e) =>
+                        setShippingDraft(orgKey, {
+                          city: e.currentTarget.value,
+                        })
+                      }
+                      placeholder="New York"
+                      autoComplete="address-level2"
+                      disabled={isPlacingOrder}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ship-state">State/Province</Label>
+                    <Input
+                      id="ship-state"
+                      value={shipping.state}
+                      onChange={(e) =>
+                        setShippingDraft(orgKey, {
+                          state: e.currentTarget.value,
+                        })
+                      }
+                      placeholder="NY"
+                      autoComplete="address-level1"
+                      disabled={isPlacingOrder}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ship-zip">Postal code</Label>
+                    <Input
+                      id="ship-zip"
+                      value={shipping.postcode}
+                      onChange={(e) =>
+                        setShippingDraft(orgKey, {
+                          postcode: e.currentTarget.value,
+                        })
+                      }
+                      placeholder="10001"
+                      autoComplete="postal-code"
+                      disabled={isPlacingOrder}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader>
@@ -912,11 +1041,13 @@ export function CheckoutClient({
                         <div className="mt-2 space-y-1">
                           {paymentMethods.map((m) => {
                             const pluginActive =
-                              pluginActiveMap[m.config.pluginActiveOptionKey] ===
-                              true;
+                              pluginActiveMap[
+                                m.config.pluginActiveOptionKey
+                              ] === true;
                             const enabled =
-                              paymentEnabledMap[m.config.paymentEnabledOptionKey] ===
-                              true;
+                              paymentEnabledMap[
+                                m.config.paymentEnabledOptionKey
+                              ] === true;
                             const configured = m.isConfigured(
                               configMap[m.config.configOptionKey],
                             );
@@ -967,42 +1098,45 @@ export function CheckoutClient({
                   </RadioGroup>
                 )}
 
-              {selectedPaymentMethod &&
-              configMap &&
-              typeof selectedPaymentMethod.renderCheckoutForm === "function" ? (
-                <div>
-                  {
-                    selectedPaymentMethod.renderCheckoutForm({
-                      organizationId,
-                      configValue:
-                        configMap[selectedPaymentMethod.config.configOptionKey],
-                      onPaymentDataChange: setPaymentData,
-                      testMode,
-                      testPrefill,
-                    }) as any
-                  }
-                </div>
-              ) : null}
+                {selectedPaymentMethod &&
+                configMap &&
+                typeof selectedPaymentMethod.renderCheckoutForm ===
+                  "function" ? (
+                  <div>
+                    {
+                      selectedPaymentMethod.renderCheckoutForm({
+                        organizationId,
+                        configValue:
+                          configMap[
+                            selectedPaymentMethod.config.configOptionKey
+                          ],
+                        onPaymentDataChange: setPaymentData,
+                        testMode,
+                        testPrefill,
+                      }) as any
+                    }
+                  </div>
+                ) : null}
 
-              <Button
-                type="button"
-                className="w-full"
-                onClick={handlePlaceOrder}
-                disabled={!canSubmit}
-              >
-                {isPlacingOrder ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing…
-                  </>
-                ) : (
-                  <>Pay {formatMoney(subtotal)}</>
-                )}
-              </Button>
-              <div className="text-muted-foreground text-xs">
-                By placing your order, you agree to our terms and privacy
-                policy.
-              </div>
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={handlePlaceOrder}
+                  disabled={!canSubmit}
+                >
+                  {isPlacingOrder ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing…
+                    </>
+                  ) : (
+                    <>Pay {formatMoney(subtotal)}</>
+                  )}
+                </Button>
+                <div className="text-muted-foreground text-xs">
+                  By placing your order, you agree to our terms and privacy
+                  policy.
+                </div>
               </CardContent>
             </Card>
           </div>
