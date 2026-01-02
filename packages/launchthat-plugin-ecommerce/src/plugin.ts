@@ -8,6 +8,7 @@ import { OrderItemsMetaBox } from "./admin/metaBoxes/OrderItemsMetaBox";
 import { ProductDetailsMetaBox } from "./admin/metaBoxes/ProductDetailsMetaBox";
 import { EcommercePageSetupSettingsPage } from "./admin/settings/EcommercePageSetupSettingsPage";
 import { EcommerceSettingsPage } from "./admin/settings/EcommerceSettingsPage";
+import { EcommerceAccountOrdersTab } from "./frontend/account/EcommerceAccountOrdersTab";
 
 export const PLUGIN_ID = "ecommerce" as const;
 export type PluginId = typeof PLUGIN_ID;
@@ -36,6 +37,45 @@ export const createEcommercePluginDefinition = (
   longDescription:
     "Adds a component-scoped ecommerce content layer (products + orders) backed by Convex Components.",
   features: ["Products post type", "Orders post type", "Funnels + steps"],
+  hooks: {
+    filters: [
+      {
+        hook: "frontend.account.tabs",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        callback: (value: any, ctx: any) => {
+          const tabs = Array.isArray(value) ? value : [];
+          const enabledPluginIds = Array.isArray(ctx?.enabledPluginIds)
+            ? (ctx.enabledPluginIds as string[])
+            : [];
+          if (!enabledPluginIds.includes(PLUGIN_ID)) {
+            return tabs;
+          }
+
+          const organizationId =
+            ctx && typeof ctx === "object" && "organizationId" in ctx
+              ? (ctx as { organizationId?: unknown }).organizationId
+              : undefined;
+
+          return [
+            ...tabs,
+            {
+              id: "ecommerce-account-orders",
+              label: "Orders",
+              value: "orders",
+              order: 20,
+              render: () =>
+                createElement(EcommerceAccountOrdersTab, {
+                  organizationId:
+                    typeof organizationId === "string" ? organizationId : undefined,
+                }),
+            },
+          ];
+        },
+        priority: 10,
+        acceptedArgs: 2,
+      },
+    ],
+  },
   postStatuses: [
     {
       value: "unpaid",
@@ -161,7 +201,7 @@ export const createEcommercePluginDefinition = (
             "Review and update customer, billing, and shipping details.",
           location: "main",
           priority: 5,
-          fieldKeys: [],
+          fieldKeys: ["order.userId"],
           rendererKey: "ecommerce.order.details",
         },
         {
@@ -433,6 +473,14 @@ export const createEcommercePluginDefinition = (
     {
       postTypeSlug: "orders",
       fields: [
+        {
+          key: "order.userId",
+          name: "Assigned user id",
+          description:
+            "Internal. Convex users._id for the assigned customer account.",
+          type: "text",
+          readOnly: false,
+        },
         {
           key: "order.createdAt",
           name: "Date created",

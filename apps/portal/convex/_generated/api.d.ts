@@ -6030,6 +6030,17 @@ export declare const components: {
         >;
       };
       queries: {
+        findFirstPostIdByMetaKeyValue: FunctionReference<
+          "query",
+          "internal",
+          {
+            key: string;
+            organizationId?: string;
+            postTypeSlug?: string;
+            value: string;
+          },
+          null | string
+        >;
         getAllPosts: FunctionReference<
           "query",
           "internal",
@@ -6080,6 +6091,18 @@ export declare const components: {
           "internal",
           { organizationId?: string; postTypeSlug?: string },
           any
+        >;
+        listPostIdsByMetaKeyValue: FunctionReference<
+          "query",
+          "internal",
+          {
+            key: string;
+            limit?: number;
+            organizationId?: string;
+            postTypeSlug?: string;
+            value: string;
+          },
+          Array<string>
         >;
         searchPosts: FunctionReference<
           "query",

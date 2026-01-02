@@ -305,6 +305,17 @@ export type Mounts = {
       >;
     };
     queries: {
+      findFirstPostIdByMetaKeyValue: FunctionReference<
+        "query",
+        "public",
+        {
+          key: string;
+          organizationId?: string;
+          postTypeSlug?: string;
+          value: string;
+        },
+        null | string
+      >;
       getAllPosts: FunctionReference<
         "query",
         "public",
@@ -355,6 +366,18 @@ export type Mounts = {
         "public",
         { organizationId?: string; postTypeSlug?: string },
         any
+      >;
+      listPostIdsByMetaKeyValue: FunctionReference<
+        "query",
+        "public",
+        {
+          key: string;
+          limit?: number;
+          organizationId?: string;
+          postTypeSlug?: string;
+          value: string;
+        },
+        Array<string>
       >;
       searchPosts: FunctionReference<
         "query",

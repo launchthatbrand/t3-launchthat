@@ -8,3 +8,5 @@ export type AdminMetaMap = Record<
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   string | number | boolean | null | ""
 >;
+
+

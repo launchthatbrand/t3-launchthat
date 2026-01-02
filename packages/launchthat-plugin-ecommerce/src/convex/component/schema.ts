@@ -31,7 +31,8 @@ const postsMetaTable = defineTable({
   updatedAt: v.optional(v.number()),
 })
   .index("by_post", ["postId"])
-  .index("by_post_and_key", ["postId", "key"]);
+  .index("by_post_and_key", ["postId", "key"])
+  .index("by_key_and_value", ["key", "value"]);
 
 const cartItemsTable = defineTable({
   userId: v.optional(v.string()),

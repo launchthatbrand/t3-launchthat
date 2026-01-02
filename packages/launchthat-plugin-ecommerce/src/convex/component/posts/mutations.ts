@@ -56,6 +56,68 @@ const upsertMetaEntries = async (
   }
 };
 
+const ORDER_LOCKED_META_KEYS = new Set<string>([
+  "order.itemsJson",
+  "order.itemsSubtotal",
+  "order.orderTotal",
+  "order.currency",
+  "order.couponCode",
+]);
+
+const ORDER_USER_ID_KEY = "order.userId";
+const ORDER_LEGACY_USER_ID_KEY = "order:userId";
+
+const coerceMetaValue = (
+  rawValue: unknown,
+): string | number | boolean | null => {
+  return typeof rawValue === "string" ||
+    typeof rawValue === "number" ||
+    typeof rawValue === "boolean" ||
+    rawValue === null
+    ? rawValue
+    : null;
+};
+
+/**
+ * Paid orders should allow updating non-item fields (like assigned user),
+ * but should NOT allow changing the line items / totals.
+ *
+ * Some admin update flows send a large meta payload including unchanged values,
+ * so we only block when a locked key's value actually changes.
+ */
+const assertOrderItemsWritable = async (
+  ctx: any,
+  post: any,
+  meta: Record<string, unknown>,
+) => {
+  if (!post || String(post.postTypeSlug ?? "") !== "orders") return;
+  if (String(post.status ?? "") !== "paid") return;
+
+  for (const key of Object.keys(meta)) {
+    if (!ORDER_LOCKED_META_KEYS.has(key)) continue;
+
+    const existing = await ctx.db
+      .query("postsMeta")
+      .withIndex("by_post_and_key", (q: any) =>
+        q.eq("postId", post._id).eq("key", key),
+      )
+      .unique();
+
+    const existingValue =
+      existing && "value" in (existing as any)
+        ? ((existing as any).value as unknown)
+        : null;
+    const nextValue = coerceMetaValue(meta[key]);
+
+    // Treat missing existing value as null (matches storage behavior).
+    const normalizedExisting = coerceMetaValue(existingValue);
+
+    if (normalizedExisting !== nextValue) {
+      throw new Error("Paid orders cannot be modified.");
+    }
+  }
+};
+
 const createBaselineStepsForFunnel = async (ctx: any, args: {
   funnelId: Id<"posts">;
   funnelSlug: string;
@@ -327,6 +389,17 @@ export const updatePost = mutation({
         delete metaToWrite[STEP_IS_DEFAULT_FUNNEL_KEY];
       }
 
+      // Back-compat: mirror assigned user id into the legacy key.
+      // This lets older queries (and existing data) continue to work.
+      if (
+        String(post.postTypeSlug ?? "") === "orders" &&
+        Object.prototype.hasOwnProperty.call(metaToWrite, ORDER_USER_ID_KEY) &&
+        !Object.prototype.hasOwnProperty.call(metaToWrite, ORDER_LEGACY_USER_ID_KEY)
+      ) {
+        metaToWrite[ORDER_LEGACY_USER_ID_KEY] = metaToWrite[ORDER_USER_ID_KEY];
+      }
+
+      await assertOrderItemsWritable(ctx, post, metaToWrite);
       await upsertMetaEntries(ctx, post._id as Id<"posts">, metaToWrite);
     }
 
@@ -476,6 +549,8 @@ export const setPostMeta = mutation({
     if (!post) {
       throw new Error(`Post not found: ${args.postId}`);
     }
+    const value = args.value ?? null;
+    await assertOrderItemsWritable(ctx, post, { [args.key]: value });
 
     const existing = await ctx.db
       .query("postsMeta")
@@ -487,16 +562,40 @@ export const setPostMeta = mutation({
     const now = Date.now();
     if (existing) {
       await ctx.db.patch(existing._id, {
-        value: args.value ?? null,
+        value,
         updatedAt: now,
       });
     } else {
       await ctx.db.insert("postsMeta", {
         postId: post._id,
         key: args.key,
-        value: args.value ?? null,
+        value,
         createdAt: now,
       });
+    }
+
+    // Back-compat: mirror assigned user id into the legacy key.
+    if (
+      String(post.postTypeSlug ?? "") === "orders" &&
+      args.key === ORDER_USER_ID_KEY
+    ) {
+      const legacyExisting = await ctx.db
+        .query("postsMeta")
+        .withIndex("by_post_and_key", (q: any) =>
+          q.eq("postId", post._id).eq("key", ORDER_LEGACY_USER_ID_KEY),
+        )
+        .unique();
+      if (legacyExisting) {
+        await ctx.db.patch(legacyExisting._id, { value, updatedAt: now });
+      } else {
+        await ctx.db.insert("postsMeta", {
+          postId: post._id,
+          key: ORDER_LEGACY_USER_ID_KEY,
+          value,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
     }
 
     return { success: true };

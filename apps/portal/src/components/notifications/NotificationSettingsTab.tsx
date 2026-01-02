@@ -22,7 +22,7 @@ import {
   groupCatalogByCategory,
 } from "~/lib/notifications/notificationCatalog";
 
-export default function NotificationSettingsPage() {
+export function NotificationSettingsTab() {
   const { user } = useClerk();
   const clerkId = user?.id;
   const tenant = useTenant();
@@ -38,7 +38,9 @@ export default function NotificationSettingsPage() {
 
   const userPrefs = useQuery(
     api.notifications.settings.getUserEventPrefs,
-    convexUser && orgId ? { userId: convexUser._id as any, orgId: orgId as any } : "skip",
+    convexUser && orgId
+      ? { userId: convexUser._id as any, orgId: orgId as any }
+      : "skip",
   );
 
   const orgDefaults = useQuery(
@@ -46,12 +48,8 @@ export default function NotificationSettingsPage() {
     orgId ? { orgId: orgId as any } : "skip",
   );
 
-  const setUserEventPrefs = useMutation(
-    api.notifications.settings.setUserEventPrefs,
-  );
-  const upsertSubscription = useMutation(
-    api.notifications.settings.upsertSubscription,
-  );
+  const setUserEventPrefs = useMutation(api.notifications.settings.setUserEventPrefs);
+  const upsertSubscription = useMutation(api.notifications.settings.upsertSubscription);
 
   const lmsCourses = useQuery(
     api.plugins.lms.queries.listCourses,
@@ -69,7 +67,6 @@ export default function NotificationSettingsPage() {
   );
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
-
   const [isSaving, setIsSaving] = useState(false);
 
   const handleToggle = async (eventKey: string, enabled: boolean) => {
@@ -115,15 +112,11 @@ export default function NotificationSettingsPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-6">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Notification settings
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            In-app notifications only.
-          </p>
+          <div className="text-lg font-semibold">Notification settings</div>
+          <div className="text-muted-foreground text-sm">In-app notifications only.</div>
         </div>
         <Button variant="outline" disabled>
           Saved automatically
@@ -133,17 +126,17 @@ export default function NotificationSettingsPage() {
       {Object.entries(grouped).map(([category, items]) => {
         if (!items.length) return null;
         return (
-          <Card key={category} className="mb-4">
+          <Card key={category}>
             <CardHeader>
               <CardTitle className="capitalize">{category}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {category === "lms" ? (
-                <div className="border-border mb-4 space-y-3 rounded-md border p-3">
+                <div className="border-border space-y-3 rounded-md border p-3">
                   <div className="font-medium">Course step notifications</div>
                   <div className="text-muted-foreground text-sm">
-                    Choose whether you want to be notified when a new course
-                    step is added to any course or specific courses.
+                    Choose whether you want to be notified when a new course step is added to any
+                    course or specific courses.
                   </div>
 
                   <div className="flex items-center justify-between gap-4">
@@ -154,11 +147,9 @@ export default function NotificationSettingsPage() {
                       </div>
                     </div>
                     <Switch
-                      checked={!!lmsSubs?.some((s) => s.scopeId === null && s.enabled)}
+                      checked={!!lmsSubs?.some((s: any) => s.scopeId === null && s.enabled)}
                       disabled={!convexUser || !orgId || isSaving}
-                      onCheckedChange={(checked) =>
-                        void handleToggleCourseSub(null, checked)
-                      }
+                      onCheckedChange={(checked) => void handleToggleCourseSub(null, checked)}
                     />
                   </div>
 
@@ -173,7 +164,7 @@ export default function NotificationSettingsPage() {
                           <SelectValue placeholder="Select a course…" />
                         </SelectTrigger>
                         <SelectContent>
-                          {(lmsCourses ?? []).map((course) => (
+                          {(lmsCourses ?? []).map((course: any) => (
                             <SelectItem key={course._id} value={course._id}>
                               {course.title}
                             </SelectItem>
@@ -193,11 +184,11 @@ export default function NotificationSettingsPage() {
 
                   <div className="space-y-2">
                     {(lmsSubs ?? [])
-                      .filter((s) => s.scopeId !== null)
-                      .map((sub) => {
+                      .filter((s: any) => s.scopeId !== null)
+                      .map((sub: any) => {
                         const courseTitle =
-                          (lmsCourses ?? []).find((c) => c._id === sub.scopeId)
-                            ?.title ?? sub.scopeId;
+                          (lmsCourses ?? []).find((c: any) => c._id === sub.scopeId)?.title ??
+                          sub.scopeId;
                         return (
                           <div
                             key={sub._id}
@@ -213,10 +204,7 @@ export default function NotificationSettingsPage() {
                               checked={sub.enabled}
                               disabled={!convexUser || !orgId || isSaving}
                               onCheckedChange={(checked) =>
-                                void handleToggleCourseSub(
-                                  sub.scopeId as any,
-                                  checked,
-                                )
+                                void handleToggleCourseSub(sub.scopeId as any, checked)
                               }
                             />
                           </div>
@@ -227,8 +215,8 @@ export default function NotificationSettingsPage() {
               ) : null}
 
               {items.map((item) => {
-                const userOverride = userPrefs?.inAppEnabled?.[item.eventKey];
-                const orgDefault = orgDefaults?.inAppDefaults?.[item.eventKey];
+                const userOverride = (userPrefs as any)?.inAppEnabled?.[item.eventKey];
+                const orgDefault = (orgDefaults as any)?.inAppDefaults?.[item.eventKey];
                 const effective =
                   typeof userOverride === "boolean"
                     ? userOverride
@@ -237,27 +225,18 @@ export default function NotificationSettingsPage() {
                       : item.defaultInAppEnabled ?? true;
 
                 return (
-                  <div
-                    key={item.eventKey}
-                    className="flex items-start justify-between gap-4"
-                  >
+                  <div key={item.eventKey} className="flex items-start justify-between gap-4">
                     <div>
                       <div className="font-medium">{item.label}</div>
                       {item.description ? (
-                        <div className="text-muted-foreground text-sm">
-                          {item.description}
-                        </div>
+                        <div className="text-muted-foreground text-sm">{item.description}</div>
                       ) : null}
-                      <div className="text-muted-foreground mt-1 text-xs">
-                        {item.pluginName}
-                      </div>
+                      <div className="text-muted-foreground mt-1 text-xs">{item.pluginName}</div>
                     </div>
                     <Switch
                       checked={effective}
                       disabled={!convexUser || !orgId || isSaving}
-                      onCheckedChange={(checked) =>
-                        void handleToggle(item.eventKey, checked)
-                      }
+                      onCheckedChange={(checked) => void handleToggle(item.eventKey, checked)}
                     />
                   </div>
                 );

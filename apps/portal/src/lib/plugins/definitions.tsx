@@ -20,6 +20,7 @@ import { renderProductSingle } from "~/components/commerce/ProductSingleRenderer
 import { adminMenuRegistry } from "~/lib/adminMenu";
 import { registerPluginPageTemplates } from "~/lib/pageTemplates/registerPluginPageTemplates";
 import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
+import { portalNotificationsPlugin } from "./portalNotificationsPlugin";
 
 configureSocialFeedPlugin({
   providers: {
@@ -38,7 +39,10 @@ export const pluginDefinitions: PluginDefinition[] = [
   supportPlugin as unknown as PluginDefinition,
   vimeoPlugin as unknown as PluginDefinition,
   disclaimersPlugin as unknown as PluginDefinition,
+  portalNotificationsPlugin,
   createEcommercePluginDefinition({
+    // `productsSingleRender` is intentionally loosely typed (accepts `any`) in the ecommerce plugin.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
     frontend: { productsSingleRender: renderProductSingle as any },
   }) as unknown as PluginDefinition,
   ecommerceStripePlugin as unknown as PluginDefinition,

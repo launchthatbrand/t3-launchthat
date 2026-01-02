@@ -9,7 +9,7 @@ export function CheckoutDesignSidebar(props: {
     <div className="space-y-6">
       {props.mobileSummary}
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_480px]">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_460px]">
         <div className="space-y-6">{props.left}</div>
 
         <div className="hidden lg:block">

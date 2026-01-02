@@ -10,14 +10,7 @@ export function EcommerceCheckoutTemplate({ ctx }: { ctx: any }): ReactNode {
       : undefined;
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Checkout</h1>
-        <p className="text-muted-foreground text-sm">
-          Complete your purchase securely.
-        </p>
-      </div>
-
+    <div>
       <CheckoutClient
         organizationId={
           typeof organizationId === "string" ? organizationId : undefined

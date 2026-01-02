@@ -136,6 +136,79 @@ export const getPostMeta = query({
   },
 });
 
+export const findFirstPostIdByMetaKeyValue = query({
+  args: {
+    key: v.string(),
+    value: v.string(),
+    organizationId: v.optional(v.string()),
+    postTypeSlug: v.optional(v.string()),
+  },
+  returns: v.union(v.null(), v.string()),
+  handler: async (ctx: any, args: any) => {
+    const row = await ctx.db
+      .query("postsMeta")
+      .withIndex("by_key_and_value", (q: any) =>
+        q.eq("key", args.key).eq("value", args.value),
+      )
+      .first();
+
+    if (!row) return null;
+
+    const post = await ctx.db.get(row.postId);
+    if (!post) return null;
+
+    if (args.organizationId && post.organizationId !== args.organizationId) {
+      return null;
+    }
+    if (
+      args.postTypeSlug &&
+      String(post.postTypeSlug ?? "").toLowerCase() !==
+        String(args.postTypeSlug ?? "").toLowerCase()
+    ) {
+      return null;
+    }
+
+    return String(post._id);
+  },
+});
+
+export const listPostIdsByMetaKeyValue = query({
+  args: {
+    key: v.string(),
+    value: v.string(),
+    organizationId: v.optional(v.string()),
+    postTypeSlug: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(v.string()),
+  handler: async (ctx: any, args: any) => {
+    const limit = args.limit ?? 50;
+    const rows = await ctx.db
+      .query("postsMeta")
+      .withIndex("by_key_and_value", (q: any) =>
+        q.eq("key", args.key).eq("value", args.value),
+      )
+      .take(200);
+
+    const out: string[] = [];
+    for (const row of rows) {
+      if (out.length >= limit) break;
+      const post = await ctx.db.get(row.postId);
+      if (!post) continue;
+      if (args.organizationId && post.organizationId !== args.organizationId) continue;
+      if (
+        args.postTypeSlug &&
+        String(post.postTypeSlug ?? "").toLowerCase() !==
+          String(args.postTypeSlug ?? "").toLowerCase()
+      )
+        continue;
+      out.push(String(post._id));
+    }
+
+    return out;
+  },
+});
+
 export const searchPosts = query({
   args: {
     searchTerm: v.string(),

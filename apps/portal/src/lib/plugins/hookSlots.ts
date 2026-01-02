@@ -19,3 +19,6 @@ export const FRONTEND_SINGLE_SLOTS_FILTER = "frontend.single.slots";
 
 // Portal (frontend) header extension points
 export const FRONTEND_PORTAL_HEADER_RIGHT_FILTER = "frontend.portal.header.right";
+
+// Portal (frontend) account page extension points
+export const FRONTEND_ACCOUNT_TABS_FILTER = "frontend.account.tabs";

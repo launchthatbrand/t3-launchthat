@@ -1,10 +1,13 @@
 "use client";
 
 import type { PluginMetaBoxRendererProps } from "launchthat-plugin-core";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { api } from "@portal/convexspec";
+import { useQuery } from "convex/react";
 
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
+import { Button } from "@acme/ui/button";
 import {
   Select,
   SelectContent,
@@ -47,6 +50,9 @@ const fieldKey = (
   key: string,
 ): string => `${scope}.${key}`;
 
+const ORDER_LEGACY_USER_ID_KEY = "order:userId";
+const ORDER_ADMIN_USER_ID_KEY = fieldKey("order", "userId");
+
 const Section = ({
   title,
   children,
@@ -70,6 +76,55 @@ export function OrderDetailsMetaBox({
   setValue,
 }: PluginMetaBoxRendererProps) {
   const canEdit = Boolean(context.postId) || context.isNewRecord;
+  const [assignedUserSearch, setAssignedUserSearch] = useState("");
+
+  const assignedUserId = useMemo(() => {
+    const adminKey = asString(getValue(ORDER_ADMIN_USER_ID_KEY)).trim();
+    if (adminKey) return adminKey;
+    const legacy = asString(getValue(ORDER_LEGACY_USER_ID_KEY)).trim();
+    if (legacy) return legacy;
+    return "";
+  }, [getValue]);
+
+  const allUsers = useQuery(
+    (api.core.users.queries as any).listUsers,
+    {},
+  ) as Array<{ _id: string; email: string; name?: string }> | undefined;
+
+  const filteredUserOptions = useMemo(() => {
+    const term = assignedUserSearch.trim().toLowerCase();
+    const list = Array.isArray(allUsers) ? allUsers : [];
+    const normalized = list
+      .map((u) => ({
+        id: String(u._id),
+        email: typeof u.email === "string" ? u.email : "",
+        name: typeof u.name === "string" ? u.name : "",
+      }))
+      .filter((u) => Boolean(u.id) && Boolean(u.email));
+
+    const filtered = term
+      ? normalized.filter((u) => {
+          const hay = `${u.name}\n${u.email}`.toLowerCase();
+          return hay.includes(term);
+        })
+      : normalized;
+
+    return filtered
+      .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email))
+      .slice(0, 50);
+  }, [allUsers, assignedUserSearch]);
+
+  const assignedUser = useQuery(
+    (api.core.users.queries as any).getUserById,
+    assignedUserId ? { userId: assignedUserId } : "skip",
+  ) as { _id: string; email: string; name?: string } | null | undefined;
+
+  const resolvedAssignUser = useQuery(
+    (api.core.users.queries as any).getUserByEmail,
+    assignedUserSearch.trim().length > 3
+      ? { email: assignedUserSearch.trim() }
+      : "skip",
+  ) as { _id: string; email: string; name?: string } | null | undefined;
   const postStatus = useMemo(() => {
     const post = asRecord(context.post);
     const raw = post.status;
@@ -148,6 +203,93 @@ export function OrderDetailsMetaBox({
             placeholder="customer@example.com"
             disabled={!canEdit}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="order-assigned-user">Assigned User</Label>
+          <div className="flex flex-col gap-2">
+            <Input
+              id="order-assigned-user"
+              value={assignedUserSearch}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setAssignedUserSearch(e.currentTarget.value)
+              }
+              placeholder="Search users by name or email…"
+              disabled={!canEdit}
+            />
+            <Select
+              value={assignedUserId || "__unassigned__"}
+              onValueChange={(value: string) => {
+                if (!canEdit) return;
+                if (value === "__unassigned__") {
+                  setValue(ORDER_ADMIN_USER_ID_KEY, null);
+                  return;
+                }
+                setValue(ORDER_ADMIN_USER_ID_KEY, value);
+              }}
+              disabled={!canEdit}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a user…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__unassigned__">Unassigned</SelectItem>
+                {filteredUserOptions.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name ? `${u.name} — ${u.email}` : u.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  // If the admin typed an exact email, allow assigning even if the dropdown is filtered
+                  // to a smaller subset.
+                  if (
+                    !resolvedAssignUser ||
+                    typeof resolvedAssignUser._id !== "string"
+                  ) {
+                    return;
+                  }
+                  setValue(ORDER_ADMIN_USER_ID_KEY, resolvedAssignUser._id);
+                }}
+                disabled={
+                  !canEdit ||
+                  assignedUserSearch.trim().length === 0 ||
+                  resolvedAssignUser === undefined ||
+                  resolvedAssignUser === null
+                }
+              >
+                Assign by exact email
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setValue(ORDER_ADMIN_USER_ID_KEY, null);
+                  setAssignedUserSearch("");
+                }}
+                disabled={!canEdit || !assignedUserId}
+              >
+                Clear
+              </Button>
+              {assignedUserId ? (
+                <div className="text-muted-foreground text-xs">
+                  Assigned to:{" "}
+                  <span className="text-foreground font-medium">
+                    {assignedUser === undefined
+                      ? "Loading…"
+                      : assignedUser?.email ?? assignedUserId}
+                  </span>
+                </div>
+              ) : (
+                <div className="text-muted-foreground text-xs">No user assigned.</div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="space-y-2">

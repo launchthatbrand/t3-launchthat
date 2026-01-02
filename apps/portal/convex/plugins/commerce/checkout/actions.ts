@@ -14,6 +14,10 @@ interface CommercePostsMutations {
   updatePost: unknown;
 }
 
+interface CommercePostsQueries {
+  findFirstPostIdByMetaKeyValue: unknown;
+}
+
 interface CommerceCartQueries {
   getCart: unknown;
 }
@@ -27,6 +31,12 @@ const commercePostsMutations = (
     launchthat_ecommerce: { posts: { mutations: CommercePostsMutations } };
   }
 ).launchthat_ecommerce.posts.mutations;
+
+const commercePostsQueries = (
+  components as unknown as {
+    launchthat_ecommerce: { posts: { queries: CommercePostsQueries } };
+  }
+).launchthat_ecommerce.posts.queries;
 
 const commerceCartQueries = (
   components as unknown as {
@@ -72,6 +82,7 @@ const ORDER_META_KEYS = {
   gateway: "order.gateway",
   gatewayTransactionId: "order.gatewayTransactionId",
   paymentResponseJson: "order.paymentResponseJson",
+  idempotencyKey: "order.idempotencyKey",
   billingName: "billing.name",
   billingEmail: "billing.email",
   billingPhone: "billing.phone",
@@ -94,6 +105,7 @@ const ORDER_META_KEYS = {
   legacyTotal: "order:total",
   legacyEmail: "order:email",
   legacyUserId: "order:userId",
+  userId: "order.userId",
 } as const;
 
 export const placeOrder = action({
@@ -102,6 +114,7 @@ export const placeOrder = action({
     userId: v.optional(v.string()),
     guestSessionId: v.optional(v.string()),
     funnelStepId: v.optional(v.string()),
+    idempotencyKey: v.optional(v.string()),
 
     email: v.string(),
     billing: v.object({
@@ -161,6 +174,26 @@ export const placeOrder = action({
       }
     }
 
+    const idempotencyKey = asString(args.idempotencyKey).trim();
+    if (idempotencyKey) {
+      const existingOrderId = (await ctx.runQuery(
+        commercePostsQueries.findFirstPostIdByMetaKeyValue as any,
+        {
+          key: ORDER_META_KEYS.idempotencyKey,
+          value: idempotencyKey,
+          organizationId: args.organizationId,
+          postTypeSlug: "orders",
+        },
+      )) as string | null;
+
+      if (existingOrderId) {
+        return {
+          success: true,
+          orderId: existingOrderId,
+        };
+      }
+    }
+
     const cart = await ctx.runQuery(commerceCartQueries.getCart as any, {
       userId: args.userId,
       guestSessionId: args.guestSessionId,
@@ -212,6 +245,12 @@ export const placeOrder = action({
     metaEntries.push({ key: ORDER_META_KEYS.itemsSubtotal, value: subtotal });
     metaEntries.push({ key: ORDER_META_KEYS.orderTotal, value: subtotal });
     metaEntries.push({ key: ORDER_META_KEYS.currency, value: currency });
+    if (idempotencyKey) {
+      metaEntries.push({
+        key: ORDER_META_KEYS.idempotencyKey,
+        value: idempotencyKey,
+      });
+    }
     metaEntries.push({
       key: ORDER_META_KEYS.paymentMethodId,
       value: args.paymentMethodId,
@@ -314,11 +353,16 @@ export const placeOrder = action({
       key: ORDER_META_KEYS.legacyEmail,
       value: args.email.trim(),
     });
-    if (args.userId)
+    if (args.userId) {
       metaEntries.push({
         key: ORDER_META_KEYS.legacyUserId,
         value: args.userId,
       });
+      metaEntries.push({
+        key: ORDER_META_KEYS.userId,
+        value: args.userId,
+      });
+    }
     metaEntries.push({ key: ORDER_META_KEYS.legacySubtotal, value: subtotal });
     metaEntries.push({ key: ORDER_META_KEYS.legacyTotal, value: subtotal });
     metaEntries.push({
@@ -374,6 +418,10 @@ export const placeOrder = action({
       const gatewayTransactionId = success
         ? asString(charge.transactionId)
         : "";
+      const gatewayAuthCode = success ? asString(charge.authCode) : "";
+      const gatewayResponseCode = success ? asString(charge.responseCode) : "";
+      const gatewayErrorCode = success ? "" : asString(charge.errorCode);
+      const gatewayErrorMessage = success ? "" : asString(charge.errorMessage);
 
       await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
         postId: orderId,
@@ -397,20 +445,32 @@ export const placeOrder = action({
           value: gatewayTransactionId,
         });
       }
+
+      // Store a minimal gateway result payload only (no raw gateway response).
+      const chargeToStore = {
+        success,
+        transactionId: gatewayTransactionId || undefined,
+        authCode: gatewayAuthCode || undefined,
+        responseCode: gatewayResponseCode || undefined,
+        errorCode: gatewayErrorCode || undefined,
+        errorMessage: gatewayErrorMessage || undefined,
+      };
       await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
         postId: orderId,
         key: ORDER_META_KEYS.paymentResponseJson,
-        value: JSON.stringify(chargeResult),
+        value: JSON.stringify(chargeToStore),
       });
 
       if (!success) {
-        const msg = asString(charge.errorMessage) || "Payment failed";
         await ctx.runMutation(commercePostsMutations.updatePost as any, {
           id: orderId,
           organizationId: args.organizationId,
           status: "failed",
         });
-        throw new Error(msg);
+        // Do not leak raw gateway decline messages to the client.
+        throw new Error(
+          "Payment failed. Please try again or use a different payment method.",
+        );
       }
 
       // Align post status with payment result (admin lists / filters).

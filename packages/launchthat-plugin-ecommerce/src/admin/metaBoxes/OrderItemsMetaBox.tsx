@@ -75,6 +75,14 @@ export function OrderItemsMetaBox({
   setValue,
 }: PluginMetaBoxRendererProps) {
   const canEdit = Boolean(context.postId) || context.isNewRecord;
+  const isPaidOrder = useMemo(() => {
+    const status =
+      context.post && typeof context.post === "object"
+        ? String((context.post as any).status ?? "")
+        : "";
+    return status === "paid";
+  }, [context.post]);
+  const canEditItems = canEdit && !isPaidOrder;
   const organizationId = context.organizationId;
 
   const [search, setSearch] = useState("");
@@ -165,6 +173,7 @@ export function OrderItemsMetaBox({
   );
 
   const handleAddSelected = useCallback(() => {
+    if (!canEditItems) return;
     if (!selectedProduct) return;
     const quantity = Math.max(1, Math.floor(asNumber(selectedQuantity)));
     const unitPrice = selectedProductRegularPrice || selectedProduct.regularPrice || 0;
@@ -183,6 +192,7 @@ export function OrderItemsMetaBox({
     setSelectedQuantity("1");
     setSearch("");
   }, [
+    canEditItems,
     handlePersistItems,
     items,
     selectedProduct,
@@ -195,27 +205,30 @@ export function OrderItemsMetaBox({
 
   const handleRemoveItem = useCallback(
     (idx: number) => {
+      if (!canEditItems) return;
       handlePersistItems(items.filter((_, i) => i !== idx));
     },
-    [handlePersistItems, items],
+    [canEditItems, handlePersistItems, items],
   );
 
   const handleUpdateItem = useCallback(
     (idx: number, patch: Partial<OrderLineItem>) => {
+      if (!canEditItems) return;
       const next = items.map((it, i) => (i === idx ? { ...it, ...patch } : it));
       handlePersistItems(next);
     },
-    [handlePersistItems, items],
+    [canEditItems, handlePersistItems, items],
   );
 
   const handleRecalculate = useCallback(() => {
+    if (!canEditItems) return;
     const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
     setValue(ITEMS_SUBTOTAL_KEY, subtotal);
     setValue(ORDER_TOTAL_KEY, subtotal);
     if (!asString(getValue(CURRENCY_KEY)).trim()) {
       setValue(CURRENCY_KEY, currency);
     }
-  }, [currency, getValue, items, setValue]);
+  }, [canEditItems, currency, getValue, items, setValue]);
 
   // If user edits line items, keep totals “stale” unless they explicitly recalc.
   // But if totals are empty, seed them once.
@@ -232,6 +245,11 @@ export function OrderItemsMetaBox({
 
   return (
     <div className="space-y-4">
+      {isPaidOrder ? (
+        <div className="bg-muted/40 text-muted-foreground rounded-md border px-3 py-2 text-sm">
+          This order is <span className="text-foreground font-medium">paid</span>. Line items are locked and can’t be edited.
+        </div>
+      ) : null}
       <div className="rounded-md border">
         <div className="grid grid-cols-12 gap-2 border-b bg-muted/20 px-3 py-2 text-sm font-medium">
           <div className="col-span-6">Item</div>
@@ -272,7 +290,7 @@ export function OrderItemsMetaBox({
                           unitPrice: asNumber(e.currentTarget.value),
                         })
                       }
-                      disabled={!canEdit}
+                      disabled={!canEditItems}
                     />
                   </div>
 
@@ -288,7 +306,7 @@ export function OrderItemsMetaBox({
                           quantity: Math.max(1, Math.floor(asNumber(e.currentTarget.value))),
                         })
                       }
-                      disabled={!canEdit}
+                      disabled={!canEditItems}
                     />
                   </div>
 
@@ -301,7 +319,7 @@ export function OrderItemsMetaBox({
                       size="sm"
                       variant="ghost"
                       onClick={() => handleRemoveItem(idx)}
-                      disabled={!canEdit}
+                      disabled={!canEditItems}
                     >
                       Remove
                     </Button>
@@ -324,7 +342,7 @@ export function OrderItemsMetaBox({
                 setSearch(e.currentTarget.value)
               }
               placeholder="Search products…"
-              disabled={!canEdit}
+              disabled={!canEditItems}
             />
             {search.trim().length > 0 ? (
               <div className="max-h-44 overflow-y-auto rounded-md border">
@@ -345,7 +363,7 @@ export function OrderItemsMetaBox({
                           selected ? "bg-muted/60" : "",
                         ].join(" ")}
                         onClick={() => setSelectedProductId(p.id)}
-                        disabled={!canEdit}
+                        disabled={!canEditItems}
                       >
                         <span className="truncate">{p.title}</span>
                         <span className="text-muted-foreground ml-3 shrink-0 text-xs">
@@ -370,7 +388,7 @@ export function OrderItemsMetaBox({
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setSelectedQuantity(e.currentTarget.value)
               }
-              disabled={!canEdit}
+              disabled={!canEditItems}
             />
           </div>
         </div>
@@ -380,7 +398,7 @@ export function OrderItemsMetaBox({
             type="button"
             variant="outline"
             onClick={handleAddSelected}
-            disabled={!canEdit || !selectedProductId}
+            disabled={!canEditItems || !selectedProductId}
           >
             Add item(s)
           </Button>
@@ -393,7 +411,7 @@ export function OrderItemsMetaBox({
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setValue(COUPON_CODE_KEY, e.currentTarget.value.trim() || null)
               }
-              disabled={!canEdit}
+              disabled={!canEditItems}
             />
             <Button
               type="button"
@@ -402,13 +420,13 @@ export function OrderItemsMetaBox({
                 // Placeholder: coupon application will be implemented once checkout rules exist.
                 handleRecalculate();
               }}
-              disabled={!canEdit}
+              disabled={!canEditItems}
             >
               Apply coupon
             </Button>
           </div>
 
-          <Button type="button" onClick={handleRecalculate} disabled={!canEdit}>
+          <Button type="button" onClick={handleRecalculate} disabled={!canEditItems}>
             Recalculate
           </Button>
         </div>
