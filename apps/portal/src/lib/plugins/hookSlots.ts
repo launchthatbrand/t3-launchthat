@@ -28,3 +28,10 @@ export const FRONTEND_ACCOUNT_TABS_FILTER = "frontend.account.tabs";
 // Plugins (and core) can register route handlers with priorities, used by the frontend catch-all route.
 // Lower priority runs first (e.g. 5 overrides core priority 10).
 export const FRONTEND_ROUTE_HANDLERS_FILTER = "frontend.route.handlers";
+
+// Portal (frontend) post resolution extension points (WordPress-style “main query”)
+// Override stores run first (priority-ordered) and may short-circuit.
+export const FRONTEND_POST_STORE_OVERRIDES_FILTER =
+  "frontend.postStores.overrides";
+// Primary stores provide a (mostly) exclusive resolver per postTypeSlug.
+export const FRONTEND_POST_STORES_FILTER = "frontend.postStores";

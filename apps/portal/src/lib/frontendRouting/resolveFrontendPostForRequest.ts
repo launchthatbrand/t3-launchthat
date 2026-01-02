@@ -16,6 +16,8 @@ export async function resolveFrontendPostForRequest(args: {
   getPostTypeBySingleSlugKey: unknown;
   readEntity: unknown;
   listEntities: unknown;
+  api?: unknown;
+  searchParams?: Record<string, string | string[] | undefined>;
 
   getCorePostBySlug: unknown;
   getCorePostById: unknown;
@@ -28,6 +30,8 @@ export async function resolveFrontendPostForRequest(args: {
     getPostTypeBySingleSlugKey: args.getPostTypeBySingleSlugKey,
     readEntity: args.readEntity,
     listEntities: args.listEntities,
+    api: args.api,
+    searchParams: args.searchParams,
   });
 
   if (pluginResolved) {

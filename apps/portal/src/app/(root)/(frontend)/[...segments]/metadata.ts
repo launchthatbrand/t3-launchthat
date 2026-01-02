@@ -2,7 +2,6 @@
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { api } from "@/convex/_generated/api";
 import { adaptFetchQuery } from "@/lib/frontendRouting/fetchQueryAdapter";
 import { resolveFrontendPostForRequest } from "@/lib/frontendRouting/resolveFrontendPostForRequest";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
@@ -197,6 +196,9 @@ const buildPostMetaMap = (
 export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const resolvedParams = await props.params;
   const segments = normalizeSegments(resolvedParams?.segments ?? []);
+  const resolvedSearchParams = props.searchParams
+    ? await props.searchParams
+    : undefined;
   const slug = deriveSlugFromSegments(segments);
 
   const headerList: Headers = await headers();
@@ -213,16 +215,20 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const tenant = await getActiveTenantFromHeaders();
   const organizationId = getTenantOrganizationId(tenant);
 
-  const generalOption = await fetchQuery(api.core.options.get, {
+  // Avoid TS deep instantiation issues in this file by avoiding a module-scope import of the huge generated `api` type.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
+  const apiAny = (await import("@/convex/_generated/api")).api as any;
+
+  const generalOption = await fetchQuery(apiAny.core.options.get, {
     metaKey: SEO_OPTION_KEYS.general,
     type: "site",
     ...(organizationId ? { orgId: organizationId } : {}),
-  } as const);
-  const socialOption = await fetchQuery(api.core.options.get, {
+  });
+  const socialOption = await fetchQuery(apiAny.core.options.get, {
     metaKey: SEO_OPTION_KEYS.social,
     type: "site",
     ...(organizationId ? { orgId: organizationId } : {}),
-  } as const);
+  });
 
   const general =
     generalOption?.metaValue && typeof generalOption.metaValue === "object"
@@ -261,12 +267,14 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
     segments,
     slug,
     organizationId: organizationId ?? null,
+    searchParams: resolvedSearchParams,
     fetchQuery: adaptFetchQuery(fetchQuery),
-    getPostTypeBySingleSlugKey: api.core.postTypes.queries.getBySingleSlugKey,
-    readEntity: api.plugins.entity.queries.readEntity,
-    listEntities: api.plugins.entity.queries.listEntities,
-    getCorePostBySlug: api.core.posts.queries.getPostBySlug,
-    getCorePostById: api.core.posts.queries.getPostById,
+    getPostTypeBySingleSlugKey: apiAny.core.postTypes.queries.getBySingleSlugKey,
+    readEntity: apiAny.plugins.entity.queries.readEntity,
+    listEntities: apiAny.plugins.entity.queries.listEntities,
+    api: apiAny,
+    getCorePostBySlug: apiAny.core.posts.queries.getPostBySlug,
+    getCorePostById: apiAny.core.posts.queries.getPostById,
   });
 
   const post: Doc<"posts"> | null = resolved?.post ?? null;
@@ -281,13 +289,13 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
 
   const postType =
     post.postTypeSlug
-      ? (await fetchQuery(api.core.postTypes.queries.getBySlug, {
+      ? (await fetchQuery(apiAny.core.postTypes.queries.getBySlug, {
           slug: post.postTypeSlug,
           ...(organizationId ? { organizationId } : {}),
         })) ?? null
       : null;
 
-  const postMetaResult: unknown = await fetchQuery(api.core.posts.postMeta.getPostMeta, {
+  const postMetaResult: unknown = await fetchQuery(apiAny.core.posts.postMeta.getPostMeta, {
     postId: post._id,
     ...(organizationId ? { organizationId } : {}),
     postTypeSlug: post.postTypeSlug ?? undefined,
@@ -422,7 +430,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
             return `${origin}/api/media/${mediaItemId}`;
           }
 
-          const media = await fetchQuery(api.core.media.queries.getMediaItem, {
+          const media = await fetchQuery(apiAny.core.media.queries.getMediaItem, {
             id: mediaItemId as unknown as Id<"mediaItems">,
           });
           const mimeType =

@@ -5,6 +5,8 @@ import {
 } from "./registerHooks";
 
 import "../frontendSlots/registerCoreFrontendSlots";
+import "../frontendRouting/registerCoreRouteHandlers";
+import "../frontendRouting/postStores/registerCorePostStores";
 
 // Server-safe: admin bootstraps may register client-only metabox modules.
 // We only run those bootstraps in the browser.

@@ -100,7 +100,11 @@ const LMS_POST_TYPE_SLUG_SET = new Set([
   "topics",
   "quizzes",
   "certificates",
+  "badges",
 ]);
+
+// Portal frontend post-store hook (string constant to avoid portal package coupling)
+const FRONTEND_POST_STORES_FILTER = "frontend.postStores";
 
 const FRONTEND_TAXONOMY_TERM_LINK_FILTER = "frontend.single.taxonomy.termLink";
 
@@ -663,6 +667,83 @@ export const createLmsPluginDefinitionImpl = ({
   ],
   hooks: {
     filters: [
+      {
+        hook: FRONTEND_POST_STORES_FILTER,
+        acceptedArgs: 2,
+        callback: (value: unknown, context: unknown) => {
+          const stores = Array.isArray(value) ? value : [];
+          if (!context || typeof context !== "object") {
+            return stores;
+          }
+
+          const ctx = context as Record<string, unknown>;
+          const enabledPluginIds = Array.isArray(ctx.enabledPluginIds)
+            ? (ctx.enabledPluginIds as unknown[]).filter(
+                (v): v is string => typeof v === "string",
+              )
+            : [];
+
+          if (!enabledPluginIds.includes("lms")) {
+            return stores;
+          }
+
+          const store = {
+            id: "lms:component-posts",
+            pluginId: "lms",
+            postTypeSlugs: Array.from(LMS_POST_TYPE_SLUG_SET),
+            getBySlug: async ({
+              ctx: storeCtx,
+              postTypeSlug,
+              slug,
+            }: {
+              ctx: any;
+              postTypeSlug: string;
+              slug: string;
+            }) => {
+              const apiAny = storeCtx.api as any;
+              const organizationId = storeCtx.organizationId
+                ? String(storeCtx.organizationId)
+                : undefined;
+              const post =
+                (await storeCtx.fetchQuery(
+                  apiAny.plugins.lms.posts.queries.getPostBySlug,
+                  { slug, organizationId },
+                )) ?? null;
+              if (!post || typeof post !== "object") return null;
+              if ((post as any).status !== "published") return null;
+              const resolvedId = (post as any)._id ?? (post as any).id;
+              if (typeof resolvedId !== "string" || !resolvedId) return null;
+              return { ...(post as any), _id: resolvedId, postTypeSlug };
+            },
+            getById: async ({
+              ctx: storeCtx,
+              postTypeSlug,
+              id,
+            }: {
+              ctx: any;
+              postTypeSlug: string;
+              id: string;
+            }) => {
+              const apiAny = storeCtx.api as any;
+              const organizationId = storeCtx.organizationId
+                ? String(storeCtx.organizationId)
+                : undefined;
+              const post =
+                (await storeCtx.fetchQuery(
+                  apiAny.plugins.lms.posts.queries.getPostById,
+                  { id, organizationId },
+                )) ?? null;
+              if (!post || typeof post !== "object") return null;
+              if ((post as any).status !== "published") return null;
+              const resolvedId = (post as any)._id ?? (post as any).id;
+              if (typeof resolvedId !== "string" || !resolvedId) return null;
+              return { ...(post as any), _id: resolvedId, postTypeSlug };
+            },
+          };
+
+          return [...stores, store];
+        },
+      },
       {
         hook: FRONTEND_TAXONOMY_TERM_LINK_FILTER,
         acceptedArgs: 2,

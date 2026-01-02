@@ -1,7 +1,9 @@
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 
-import { resolveDownloadPost } from "./resolvers/downloads";
 import type { FetchQueryLike } from "./fetchQueryAdapter";
+import type { PostIdentifier } from "./postStores/types";
+import { resolvePostViaStores } from "./postStores/resolvePostViaStores";
+import { resolveDownloadPost } from "./resolvers/downloads";
 
 const looksLikeConvexId = (value: string) => /^[a-z0-9]{32}$/.test(value);
 
@@ -13,6 +15,9 @@ export async function resolveFrontendEntry(args: {
   getPostTypeBySingleSlugKey: unknown;
   readEntity: unknown;
   listEntities: unknown;
+  // Convex generated API object (used by PostStores)
+  api?: unknown;
+  searchParams?: Record<string, string | string[] | undefined>;
 }): Promise<{ post: Doc<"posts">; resolvedBy: "downloads" | "entity" } | null> {
   const normalizeEntityPost = (
     entity: unknown,
@@ -33,7 +38,10 @@ export async function resolveFrontendEntry(args: {
   if (downloadPost) return { post: downloadPost, resolvedBy: "downloads" };
 
   const normalizeRouteKey = (value: string) =>
-    value.replace(/^\/+|\/+$/g, "").trim().toLowerCase();
+    value
+      .replace(/^\/+|\/+$/g, "")
+      .trim()
+      .toLowerCase();
 
   // Support nested routing shapes (e.g. /course/:courseSlug/lesson/:lessonSlug)
   // by scanning for the *last* `singleSlug` marker in the path and using the
@@ -72,7 +80,9 @@ export async function resolveFrontendEntry(args: {
         args.getPostTypeBySingleSlugKey,
         {
           singleSlugKey: key,
-          ...(args.organizationId ? { organizationId: args.organizationId } : {}),
+          ...(args.organizationId
+            ? { organizationId: args.organizationId }
+            : {}),
         },
       );
       if (found && typeof found.slug === "string" && found.slug) {
@@ -83,32 +93,38 @@ export async function resolveFrontendEntry(args: {
   }
 
   if (postTypeSlug) {
-    const organizationId = args.organizationId
-      ? String(args.organizationId)
-      : undefined;
     const candidate = candidateSlug ?? args.slug;
-    const readEntityFn: unknown = args.readEntity;
-    const listEntitiesFn: unknown = args.listEntities;
 
-    // Fast-path: allow ID-based access when the slug is actually a Convex id.
-    if (looksLikeConvexId(candidate)) {
-      const entity = await args.fetchQuery(readEntityFn, {
+    const identifier: PostIdentifier = looksLikeConvexId(candidate)
+      ? { kind: "id", id: candidate }
+      : { kind: "slug", slug: candidate };
+
+    const debugRouting = (() => {
+      const raw = args.searchParams?.debugRouting;
+      const value = Array.isArray(raw) ? raw[0] : raw;
+      return value === "1" || value === "true";
+    })();
+
+    if (debugRouting) {
+      console.log("[routing] rewrite matched", {
+        segments: args.segments,
         postTypeSlug,
-        id: candidate,
-        organizationId,
+        identifier,
       });
-      const normalized = normalizeEntityPost(entity, postTypeSlug);
-      if (normalized) return { post: normalized, resolvedBy: "entity" };
     }
 
-    // Default: resolve by slug via listEntities (readEntity only supports id).
-    const results = await args.fetchQuery(listEntitiesFn, {
+    const storeResolved = await resolvePostViaStores({
+      segments: args.segments,
+      searchParams: args.searchParams,
+      organizationId: args.organizationId ? String(args.organizationId) : null,
       postTypeSlug,
-      organizationId,
-      filters: { slug: candidate, status: "published", limit: 1 },
+      identifier,
+      fetchQuery: args.fetchQuery as any,
+      api: args.api,
+      debug: debugRouting,
     });
-    if (Array.isArray(results) && results.length > 0) {
-      const normalized = normalizeEntityPost(results[0], postTypeSlug);
+    if (storeResolved?.post) {
+      const normalized = normalizeEntityPost(storeResolved.post, postTypeSlug);
       if (normalized) return { post: normalized, resolvedBy: "entity" };
     }
   }
