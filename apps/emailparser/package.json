@@ -35,7 +35,7 @@
     "superjson": "2.2.3",
     "uuid": "catalog:",
     "zod": "catalog:",
-    "zustand": "^5.0.3"
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@acme/eslint-config": "workspace:*",
