@@ -114,6 +114,9 @@ export default function PluginsPage() {
   const ensureQuizQuestionPostType = useMutation(
     api.plugins.lms.mutations.ensureQuizQuestionPostType,
   );
+  const ensureDefaultCommerceFunnel = useMutation(
+    api.plugins.commerce.funnels.mutations.ensureDefaultFunnel,
+  );
   const [isPending, startTransition] = useTransition();
   const [pluginToDisable, setPluginToDisable] = useState<PluginRow | null>(
     null,
@@ -261,6 +264,13 @@ export default function PluginsPage() {
               organizationId: tenantId,
             });
           }
+          if (plugin.id === "ecommerce") {
+            await ensureDefaultCommerceFunnel({
+              ...(portalAwareOrgId
+                ? { organizationId: String(portalAwareOrgId) }
+                : {}),
+            });
+          }
           toast.success(`${plugin.name} plugin enabled`);
           console.log("[plugins] enable success", {
             tenantId,
@@ -282,6 +292,8 @@ export default function PluginsPage() {
       createPostType,
       setOption,
       ensureQuizQuestionPostType,
+      ensureDefaultCommerceFunnel,
+      portalAwareOrgId,
     ],
   );
 

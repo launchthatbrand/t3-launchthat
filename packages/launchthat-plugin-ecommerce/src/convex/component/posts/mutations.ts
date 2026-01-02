@@ -427,6 +427,31 @@ export const deletePost = mutation({
     const post = await ctx.db.get(args.id as any);
     if (!post) return { success: true };
 
+    // System-owned invariants: the default funnel and its baseline steps must never be deleted.
+    if (post.postTypeSlug === "funnels" && post.slug === FUNNEL_DEFAULT_SLUG) {
+      throw new Error("The default funnel cannot be deleted.");
+    }
+    if (post.postTypeSlug === "funnel_steps") {
+      const defaultFlagRow = await ctx.db
+        .query("postsMeta")
+        .withIndex("by_post_and_key", (q: any) =>
+          q.eq("postId", post._id).eq("key", STEP_IS_DEFAULT_FUNNEL_KEY),
+        )
+        .unique();
+      const funnelSlugRow = await ctx.db
+        .query("postsMeta")
+        .withIndex("by_post_and_key", (q: any) =>
+          q.eq("postId", post._id).eq("key", STEP_FUNNEL_SLUG_KEY),
+        )
+        .unique();
+
+      const isDefault =
+        defaultFlagRow?.value === true || funnelSlugRow?.value === FUNNEL_DEFAULT_SLUG;
+      if (isDefault) {
+        throw new Error("Default funnel steps cannot be deleted.");
+      }
+    }
+
     await ctx.db.delete(post._id);
     const metaEntries = await ctx.db
       .query("postsMeta")
