@@ -9,6 +9,7 @@ import { ProductDetailsMetaBox } from "./admin/metaBoxes/ProductDetailsMetaBox";
 import { EcommercePageSetupSettingsPage } from "./admin/settings/EcommercePageSetupSettingsPage";
 import { EcommerceSettingsPage } from "./admin/settings/EcommerceSettingsPage";
 import { EcommerceAccountOrdersTab } from "./frontend/account/EcommerceAccountOrdersTab";
+import { CheckoutClient } from "./frontend/ui/CheckoutClient";
 
 export const PLUGIN_ID = "ecommerce" as const;
 export type PluginId = typeof PLUGIN_ID;
@@ -40,6 +41,91 @@ export const createEcommercePluginDefinition = (
   hooks: {
     filters: [
       {
+        hook: "frontend.route.handlers",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        callback: (value: any, ctx: any) => {
+          const handlers = Array.isArray(value) ? value : [];
+          return [
+            ...handlers,
+            {
+              id: "ecommerce:funnel-step",
+              priority: 20,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              resolve: async (routeCtx: any) => {
+                const enabledPluginIds = Array.isArray(routeCtx?.enabledPluginIds)
+                  ? (routeCtx.enabledPluginIds as string[])
+                  : [];
+                if (!enabledPluginIds.includes(PLUGIN_ID)) {
+                  return null;
+                }
+
+                const segmentsRaw = Array.isArray(routeCtx?.segments)
+                  ? (routeCtx.segments as unknown[])
+                  : [];
+                const segments = segmentsRaw
+                  .map((s) => (typeof s === "string" ? s : ""))
+                  .filter(Boolean);
+
+                // Handle: /f/:funnelSlug/:stepSlug
+                if (!(segments.length >= 3 && segments[0] === "f")) return null;
+                const funnelSlug = String(segments[1] ?? "").trim();
+                const stepSlug = String(segments[2] ?? "").trim();
+                if (!funnelSlug || !stepSlug) return null;
+
+                const fetchQuery = routeCtx?.fetchQuery;
+                const api = routeCtx?.api;
+                if (typeof fetchQuery !== "function" || !api) return null;
+
+                const orgIdRaw = routeCtx?.organizationId;
+                const organizationId =
+                  typeof orgIdRaw === "string" ? orgIdRaw : undefined;
+
+                const step: any = await fetchQuery(
+                  api.plugins.commerce.funnelSteps.queries.getFunnelStepBySlug,
+                  {
+                    funnelSlug,
+                    stepSlug,
+                    ...(organizationId ? { organizationId } : {}),
+                  },
+                );
+                if (!step) return null;
+
+                const orderIdParam = routeCtx?.searchParams?.orderId;
+                const orderId =
+                  typeof orderIdParam === "string"
+                    ? orderIdParam
+                    : Array.isArray(orderIdParam)
+                      ? orderIdParam[0]
+                      : undefined;
+
+                return createElement(
+                  "main",
+                  { className: "bg-background min-h-screen" },
+                  createElement(CheckoutClient as any, {
+                    organizationId,
+                    funnelId:
+                      typeof step?.funnelId === "string" ? step.funnelId : undefined,
+                    funnelSlug:
+                      typeof step?.funnelSlug === "string"
+                        ? step.funnelSlug
+                        : undefined,
+                    stepId:
+                      typeof step?.stepId === "string" ? step.stepId : undefined,
+                    stepSlug:
+                      typeof step?.stepSlug === "string" ? step.stepSlug : undefined,
+                    stepKind:
+                      typeof step?.kind === "string" ? step.kind : undefined,
+                    orderId: typeof orderId === "string" ? orderId : undefined,
+                  }),
+                );
+              },
+            },
+          ];
+        },
+        priority: 10,
+        acceptedArgs: 2,
+      },
+      {
         hook: "frontend.account.tabs",
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         callback: (value: any, ctx: any) => {
@@ -66,7 +152,9 @@ export const createEcommercePluginDefinition = (
               render: () =>
                 createElement(EcommerceAccountOrdersTab, {
                   organizationId:
-                    typeof organizationId === "string" ? organizationId : undefined,
+                    typeof organizationId === "string"
+                      ? organizationId
+                      : undefined,
                 }),
             },
           ];

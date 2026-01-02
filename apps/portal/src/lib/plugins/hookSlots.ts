@@ -18,7 +18,13 @@ export const ADMIN_ATTACHMENTS_ARCHIVE_TABS_FILTER =
 export const FRONTEND_SINGLE_SLOTS_FILTER = "frontend.single.slots";
 
 // Portal (frontend) header extension points
-export const FRONTEND_PORTAL_HEADER_RIGHT_FILTER = "frontend.portal.header.right";
+export const FRONTEND_PORTAL_HEADER_RIGHT_FILTER =
+  "frontend.portal.header.right";
 
 // Portal (frontend) account page extension points
 export const FRONTEND_ACCOUNT_TABS_FILTER = "frontend.account.tabs";
+
+// Portal (frontend) routing extension points
+// Plugins (and core) can register route handlers with priorities, used by the frontend catch-all route.
+// Lower priority runs first (e.g. 5 overrides core priority 10).
+export const FRONTEND_ROUTE_HANDLERS_FILTER = "frontend.route.handlers";

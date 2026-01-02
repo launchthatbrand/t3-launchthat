@@ -21,6 +21,17 @@ export function NotificationIcon() {
   const [isOpen, setIsOpen] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
+  const notificationsPluginOption = useQuery(
+    api.core.options.get,
+    clerkId && orgId
+      ? {
+          metaKey: "plugin.notifications.enabled",
+          type: "site",
+          orgId: orgId as any,
+        }
+      : "skip",
+  ) as { metaValue?: unknown } | null | undefined;
+
   const unreadCount = useQuery(
     api.notifications.queries.getUnreadCountByClerkIdAndOrgId,
     clerkId && orgId ? { clerkId, orgId } : "skip",
@@ -29,6 +40,11 @@ export function NotificationIcon() {
   // Signed-out users shouldn't see notifications UI at all.
   // Note: keep this AFTER hooks so hook order is stable across renders.
   if (!clerkId) return null;
+
+  // If the notifications plugin is disabled, hide the header icon entirely.
+  if (notificationsPluginOption && notificationsPluginOption.metaValue === false) {
+    return null;
+  }
 
   const triggerButton = (
     <Button

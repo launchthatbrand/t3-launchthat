@@ -1,17 +1,19 @@
 import "~/lib/pageTemplates";
+import "~/lib/plugins/installHooks";
 
-/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unnecessary-type-assertion */
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { Data as PuckData } from "@measured/puck";
 import type { FrontendFilterContext } from "launchthat-plugin-core/frontendFilters";
 import type { ReactNode } from "react";
 import { Fragment } from "react";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { adaptFetchQuery } from "@/lib/frontendRouting/fetchQueryAdapter";
 import { resolveFrontendArchive } from "@/lib/frontendRouting/resolveFrontendArchive";
 import { resolveFrontendPostForRequest } from "@/lib/frontendRouting/resolveFrontendPostForRequest";
+import { resolveFrontendRouteOverride } from "@/lib/frontendRouting/resolveFrontendRouteOverride";
 import { resolveFrontendTaxonomyArchive } from "@/lib/frontendRouting/resolveFrontendTaxonomyArchive";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
@@ -85,6 +87,26 @@ export default async function FrontendCatchAllPage(props: PageProps) {
     : undefined;
   const tenant = await getActiveTenantFromHeaders();
   const organizationId = getTenantOrganizationId(tenant);
+  const apiAny = api as any;
+  const fetchQueryAny = fetchQuery as any;
+
+  const pluginOptions =
+    ((await fetchQueryAny(apiAny.core.options.getByType, {
+      type: "site",
+      ...(organizationId ? { orgId: organizationId } : {}),
+    })) as Doc<"options">[]) ?? [];
+
+  const routeOverride = await resolveFrontendRouteOverride({
+    segments,
+    searchParams: resolvedSearchParams,
+    organizationId: (organizationId ? (organizationId as any) : null) as any,
+    pluginOptions,
+    fetchQuery,
+    api,
+  });
+  if (routeOverride) {
+    return routeOverride;
+  }
 
   const archiveContext = await resolveArchiveContext(segments, organizationId);
   if (archiveContext) {
@@ -188,12 +210,12 @@ export default async function FrontendCatchAllPage(props: PageProps) {
   let postFields: Doc<"postTypeFields">[] = [];
   if (post.postTypeSlug) {
     postType =
-      (await fetchQuery(api.core.postTypes.queries.getBySlug, {
+      (await fetchQueryAny(apiAny.core.postTypes.queries.getBySlug, {
         slug: post.postTypeSlug,
         ...(organizationId ? { organizationId } : {}),
       })) ?? null;
     const fieldResult: Doc<"postTypeFields">[] | null = await fetchQuery(
-      api.core.postTypes.queries.fieldsBySlug,
+      apiAny.core.postTypes.queries.fieldsBySlug,
       {
         slug: post.postTypeSlug,
         includeSystem: true,
