@@ -31,3 +31,4 @@ export const SignaturePalette = ({ onAdd }: { onAdd: () => void }) => {
 
 
 
+

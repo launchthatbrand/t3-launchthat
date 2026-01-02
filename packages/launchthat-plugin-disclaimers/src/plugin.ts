@@ -5,6 +5,7 @@ import { DisclaimersIssueSendMetaBox } from "./admin/metaBoxes/DisclaimersIssueS
 import { DisclaimersTemplatePdfMetaBox } from "./admin/metaBoxes/DisclaimersTemplatePdfMetaBox";
 import { DisclaimersOverviewPage } from "./admin/OverviewPage";
 import { DisclaimersSettingsPage } from "./admin/SettingsPage";
+import DisclaimerSignPage from "./frontend/DisclaimerSignPage";
 import { DisclaimerTemplateBuilderTab } from "./tabs/DisclaimerTemplateBuilderTab";
 
 export const PLUGIN_ID = "disclaimers" as const;
@@ -18,6 +19,18 @@ const DISCLAIMERS_COMPONENT_TABLES = [
   "launchthat_disclaimers:posts",
   "launchthat_disclaimers:postsMeta",
 ];
+
+const normalizePostLike = (value: unknown, fallbackPostTypeSlug: string) => {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const id = raw._id ?? raw.id;
+  if (typeof id !== "string" || id.trim().length === 0) return null;
+  const postTypeSlug =
+    typeof raw.postTypeSlug === "string" && raw.postTypeSlug.trim().length > 0
+      ? raw.postTypeSlug
+      : fallbackPostTypeSlug;
+  return { ...raw, _id: id, postTypeSlug };
+};
 
 export const createDisclaimersPluginDefinition = (
   _options: CreateDisclaimersPluginDefinitionOptions = defaultOptions,
@@ -33,6 +46,161 @@ export const createDisclaimersPluginDefinition = (
     "Signature capture and signed PDF generation",
     "Audit metadata and download evidence",
   ],
+  hooks: {
+    filters: [
+      {
+        hook: "frontend.post.stores",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        callback: (value: any, ctx: any) => {
+          const stores = Array.isArray(value) ? value : [];
+          const enabledPluginIds = Array.isArray(ctx?.enabledPluginIds)
+            ? (ctx.enabledPluginIds as string[])
+            : [];
+          if (!enabledPluginIds.includes(PLUGIN_ID)) {
+            return stores;
+          }
+
+          const existing = stores.some(
+            (s: any) => s?.id === "disclaimers:component-posts",
+          );
+          if (existing) return stores;
+
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          const apiAny = ctx?.api as any;
+
+          const store = {
+            id: "disclaimers:component-posts",
+            pluginId: PLUGIN_ID,
+            priority: 0,
+            postTypeSlugs: ["disclaimers", "disclaimertemplates"],
+            getBySlug: async ({ ctx: storeCtx, postTypeSlug, slug }: any) => {
+              const org = storeCtx.organizationId
+                ? String(storeCtx.organizationId)
+                : undefined;
+              const post =
+                (await storeCtx.fetchQuery(
+                  apiAny.plugins.disclaimers.posts.queries.getPostBySlug,
+                  {
+                    slug,
+                    organizationId: org,
+                  },
+                )) ?? null;
+              return normalizePostLike(post, postTypeSlug);
+            },
+            getById: async ({ ctx: storeCtx, postTypeSlug, id }: any) => {
+              const org = storeCtx.organizationId
+                ? String(storeCtx.organizationId)
+                : undefined;
+              const post =
+                (await storeCtx.fetchQuery(
+                  apiAny.plugins.disclaimers.posts.queries.getPostById,
+                  {
+                    id,
+                    organizationId: org,
+                  },
+                )) ?? null;
+              return normalizePostLike(post, postTypeSlug);
+            },
+            list: async ({ ctx: storeCtx, postTypeSlug, filters }: any) => {
+              const org = storeCtx.organizationId
+                ? String(storeCtx.organizationId)
+                : undefined;
+              const posts =
+                (await storeCtx.fetchQuery(
+                  apiAny.plugins.disclaimers.posts.queries.getAllPosts,
+                  {
+                    organizationId: org,
+                    filters: { ...(filters ?? {}), postTypeSlug },
+                  },
+                )) ?? [];
+              return Array.isArray(posts)
+                ? posts
+                    .map((p) => normalizePostLike(p, postTypeSlug))
+                    .filter(Boolean)
+                : [];
+            },
+          };
+
+          return [...stores, store];
+        },
+        priority: 10,
+        acceptedArgs: 2,
+      },
+      {
+        hook: "frontend.route.handlers",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        callback: (value: any, ctx: any) => {
+          const handlers = Array.isArray(value) ? value : [];
+          return [
+            ...handlers,
+            {
+              id: "disclaimers:signing",
+              // Run before core:single (10) so we can claim /disclaimer/:issueId when needed.
+              priority: 5,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              resolve: async (routeCtx: any) => {
+                const enabledPluginIds = Array.isArray(
+                  routeCtx?.enabledPluginIds,
+                )
+                  ? (routeCtx.enabledPluginIds as string[])
+                  : [];
+                if (!enabledPluginIds.includes(PLUGIN_ID)) {
+                  return null;
+                }
+
+                const segmentsRaw = Array.isArray(routeCtx?.segments)
+                  ? (routeCtx.segments as unknown[])
+                  : [];
+                const segments = segmentsRaw
+                  .map((s) => (typeof s === "string" ? s.trim() : ""))
+                  .filter(Boolean);
+
+                if (segments.length < 2) return null;
+                const root = String(segments[0] ?? "");
+                if (!(root === "disclaimer" || root === "disclaimers"))
+                  return null;
+
+                const issueIdOrSlug = String(segments[1] ?? "").trim();
+                if (!issueIdOrSlug) return null;
+
+                // If this looks like a real "disclaimers" post slug, allow core:single to render it
+                // (via the PostStore registered above). Otherwise treat it as a signing issueId.
+                if (root === "disclaimer") {
+                  const fetchQuery = routeCtx?.fetchQuery;
+                  const apiAny = routeCtx?.api;
+                  if (typeof fetchQuery === "function" && apiAny) {
+                    const orgIdRaw = routeCtx?.organizationId;
+                    const organizationId =
+                      typeof orgIdRaw === "string" ? orgIdRaw : undefined;
+                    const maybePost = await fetchQuery(
+                      apiAny.plugins.disclaimers.posts.queries.getPostBySlug,
+                      {
+                        slug: issueIdOrSlug,
+                        organizationId,
+                      },
+                    );
+                    if (
+                      maybePost &&
+                      typeof maybePost === "object" &&
+                      "_id" in maybePost
+                    ) {
+                      return null;
+                    }
+                  }
+                }
+
+                return createElement(DisclaimerSignPage, {
+                  issueId: issueIdOrSlug,
+                });
+              },
+            },
+          ];
+        },
+        priority: 10,
+        acceptedArgs: 2,
+      },
+    ],
+  },
   postStatuses: [
     {
       value: "sent",

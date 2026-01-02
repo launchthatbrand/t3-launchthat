@@ -263,6 +263,55 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
           | "player")
       : "summary_large_image";
 
+  // Special-case disclaimer signing links: `/disclaimer/:issueId?token=...`
+  // These are handled by the Disclaimers plugin route handler, but this metadata
+  // function traditionally attempts "post resolution" which will explode if the
+  // segment is a Convex ID from a *different* table (e.g. disclaimerIssues).
+  // We only treat `/disclaimer/:value` as a post if a real Disclaimers post exists
+  // with slug `:value`. Otherwise, return safe, non-indexable metadata.
+  const rootSegment = segments[0] ?? "";
+  const secondSegment = segments[1] ?? "";
+  if (
+    (rootSegment === "disclaimer" || rootSegment === "disclaimers") &&
+    typeof secondSegment === "string" &&
+    secondSegment.trim().length > 0
+  ) {
+    const candidate = secondSegment.trim();
+    try {
+      const org = organizationId ?? undefined;
+      const maybeDisclaimerPost = await fetchQuery(
+        apiAny.plugins.disclaimers.posts.queries.getPostBySlug,
+        {
+          slug: candidate,
+          ...(org ? { organizationId: org } : {}),
+        },
+      );
+      if (!maybeDisclaimerPost) {
+        return {
+          metadataBase: new URL(origin),
+          title: resolveTitleWithSiteSettings({
+            pageTitle: "Disclaimer",
+            siteTitle,
+            titleFormat,
+            separator,
+          }),
+          robots: { index: false, follow: false },
+        };
+      }
+    } catch {
+      return {
+        metadataBase: new URL(origin),
+        title: resolveTitleWithSiteSettings({
+          pageTitle: "Disclaimer",
+          siteTitle,
+          titleFormat,
+          separator,
+        }),
+        robots: { index: false, follow: false },
+      };
+    }
+  }
+
   const resolved = await resolveFrontendPostForRequest({
     segments,
     slug,

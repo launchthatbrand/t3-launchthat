@@ -13,8 +13,7 @@ import {
 } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
-import { api } from "@convex-config/_generated/api";
+import { useSearchParams } from "next/navigation";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 
@@ -81,7 +80,6 @@ const sha256Hex = async (input: string): Promise<string> => {
     .join("");
 };
 
-
 const DisclaimerSigningCanvas = ({
   templateTitle,
   recipientEmail,
@@ -106,9 +104,7 @@ const DisclaimerSigningCanvas = ({
   signatureFields: BuilderSignatureFieldV1[];
   requiredSignatureFields: BuilderSignatureFieldV1[];
   signatureByFieldId: Record<string, string | null>;
-  setSignatureByFieldId: Dispatch<
-    SetStateAction<Record<string, string | null>>
-  >;
+  setSignatureByFieldId: Dispatch<SetStateAction<Record<string, string | null>>>;
   isPending: boolean;
   onFinish: () => void;
   isComplete: boolean;
@@ -116,20 +112,17 @@ const DisclaimerSigningCanvas = ({
   signedAt: number | null;
 }) => {
   const pdfJsUrl = useMemo(() => toPdfJsUrl(pdfUrl), [pdfUrl]);
-  const pdfKey = useMemo(
-    () => `${pdfJsUrl}:${pdfVersion}`,
-    [pdfJsUrl, pdfVersion],
-  );
+  const pdfKey = useMemo(() => `${pdfJsUrl}:${pdfVersion}`, [pdfJsUrl, pdfVersion]);
 
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
   const [pageCount, setPageCount] = useState(1);
-  const [pageSizes, setPageSizes] = useState<
-    Array<{ width: number; height: number }>
-  >([]);
-  const [pageCanvases, setPageCanvases] = useState<
-    Array<HTMLCanvasElement | null>
-  >([]);
+  const [pageSizes, setPageSizes] = useState<Array<{ width: number; height: number }>>(
+    [],
+  );
+  const [pageCanvases, setPageCanvases] = useState<Array<HTMLCanvasElement | null>>(
+    [],
+  );
 
   useEffect(() => {
     const node = frameRef.current;
@@ -183,14 +176,10 @@ const DisclaimerSigningCanvas = ({
         });
         const doc = await loadingTask.promise;
         const count =
-          typeof doc?.numPages === "number" && doc.numPages > 0
-            ? doc.numPages
-            : 1;
+          typeof doc?.numPages === "number" && doc.numPages > 0 ? doc.numPages : 1;
         if (cancelled) return;
         setPageCount(count);
-        setPageSizes(
-          Array.from({ length: count }, () => ({ width: 612, height: 792 })),
-        );
+        setPageSizes(Array.from({ length: count }, () => ({ width: 612, height: 792 })));
         setPageCanvases(Array.from({ length: count }, () => null));
 
         // Progressive render: do the first couple pages ASAP, then yield between pages.
@@ -198,14 +187,14 @@ const DisclaimerSigningCanvas = ({
         const renderPage = async (pageIndex: number) => {
           const page = await doc.getPage(pageIndex + 1);
           const baseViewport = page.getViewport({ scale: 1 });
-        const viewport = page.getViewport({ scale: renderScale });
-        const canvas = document.createElement("canvas");
-        const ctx2d = canvas.getContext("2d");
-        if (!ctx2d) return;
-        canvas.width = Math.floor(viewport.width);
-        canvas.height = Math.floor(viewport.height);
-        await page.render({ canvasContext: ctx2d, viewport }).promise;
-        if (cancelled) return;
+          const viewport = page.getViewport({ scale: renderScale });
+          const canvas = document.createElement("canvas");
+          const ctx2d = canvas.getContext("2d");
+          if (!ctx2d) return;
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
+          await page.render({ canvasContext: ctx2d, viewport }).promise;
+          if (cancelled) return;
           setPageSizes((prev) => {
             const next = prev.slice();
             next[pageIndex] = { width: baseViewport.width, height: baseViewport.height };
@@ -292,12 +281,8 @@ const DisclaimerSigningCanvas = ({
   const getSignatureImage = (fieldId: string) => {
     const base64 = signatureByFieldId[fieldId];
     if (!base64) return null;
-    const dataUrl = base64.startsWith("data:")
-      ? base64
-      : `data:image/png;base64,${base64}`;
-    const img = signatureImageCache.get(dataUrl, () =>
-      setSignatureImageTick((t) => t + 1),
-    );
+    const dataUrl = base64.startsWith("data:") ? base64 : `data:image/png;base64,${base64}`;
+    const img = signatureImageCache.get(dataUrl, () => setSignatureImageTick((t) => t + 1));
     return img;
   };
 
@@ -310,12 +295,10 @@ const DisclaimerSigningCanvas = ({
   } | null>(null);
 
   const requiredSignedCount = useMemo(() => {
-    return requiredSignatureFields.filter((f) => signatureByFieldId[f.id])
-      .length;
+    return requiredSignatureFields.filter((f) => signatureByFieldId[f.id]).length;
   }, [requiredSignatureFields, signatureByFieldId]);
   const requiredCount = requiredSignatureFields.length;
-  const allRequiredSigned =
-    requiredCount > 0 ? requiredSignedCount >= requiredCount : false;
+  const allRequiredSigned = requiredCount > 0 ? requiredSignedCount >= requiredCount : false;
 
   useEffect(() => {
     if (isComplete) setHasStarted(true);
@@ -350,9 +333,7 @@ const DisclaimerSigningCanvas = ({
   const handleStart = useCallback(() => {
     if (isComplete) return;
     setHasStarted(true);
-    const firstUnsigned = requiredSignatureFields.find(
-      (f) => !signatureByFieldId[f.id],
-    );
+    const firstUnsigned = requiredSignatureFields.find((f) => !signatureByFieldId[f.id]);
     if (!firstUnsigned) return;
     setScrollTarget({
       fieldId: firstUnsigned.id,
@@ -373,9 +354,7 @@ const DisclaimerSigningCanvas = ({
       <div className="bg-background/80 absolute inset-x-0 top-0 z-10 border-b px-4 py-3 backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">
-              {templateTitle}
-            </div>
+            <div className="truncate text-sm font-semibold">{templateTitle}</div>
             <div className="text-muted-foreground text-xs">
               {(recipientName ? `${recipientName} • ` : "") + recipientEmail}
               {" • "}
@@ -386,35 +365,21 @@ const DisclaimerSigningCanvas = ({
                   : `${requiredSignedCount}/${requiredCount} required signed`}
               {" • "}
               {pageCount} page{pageCount === 1 ? "" : "s"}
-              {signedAt
-                ? ` • Signed ${new Date(signedAt).toLocaleString()}`
-                : ""}
+              {signedAt ? ` • Signed ${new Date(signedAt).toLocaleString()}` : ""}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             {isComplete ? (
-            <Button
-              type="button"
-                onClick={handleDownload}
-                disabled={!downloadUrl}
-            >
+              <Button type="button" onClick={handleDownload} disabled={!downloadUrl}>
                 {downloadUrl ? "Download" : "Preparing…"}
-            </Button>
+              </Button>
             ) : !hasStarted ? (
-            <Button
-              type="button"
-                onClick={handleStart}
-                disabled={requiredCount === 0}
-            >
+              <Button type="button" onClick={handleStart} disabled={requiredCount === 0}>
                 Start
-            </Button>
+              </Button>
             ) : (
-              <Button
-                type="button"
-                onClick={onFinish}
-                disabled={!allRequiredSigned || isPending}
-              >
+              <Button type="button" onClick={onFinish} disabled={!allRequiredSigned || isPending}>
                 Finish
               </Button>
             )}
@@ -435,35 +400,32 @@ const DisclaimerSigningCanvas = ({
                 const fieldsOnPage = fieldsByPageIndex[pageIndex] ?? [];
                 const stageHeight = Math.max(1, Math.ceil(ps.height * scale));
                 return (
-                  <div
-                    key={`${pdfKey}:p${pageIndex}`}
-                    className="mx-auto w-full max-w-5xl"
-                  >
-              <Stage
-                width={stageWidth}
-                height={stageHeight}
-                scaleX={scale}
-                scaleY={scale}
-              >
-                <Layer>
-                  <Rect
-                    name="canvas-bg"
-                    x={0}
-                    y={0}
+                  <div key={`${pdfKey}:p${pageIndex}`} className="mx-auto w-full max-w-5xl">
+                    <Stage
+                      width={stageWidth}
+                      height={stageHeight}
+                      scaleX={scale}
+                      scaleY={scale}
+                    >
+                      <Layer>
+                        <Rect
+                          name="canvas-bg"
+                          x={0}
+                          y={0}
                           width={ps.width}
                           height={ps.height}
-                    fill="#ffffff"
-                  />
+                          fill="#ffffff"
+                        />
 
                         {canvas ? (
-                  <KonvaImage
+                          <KonvaImage
                             image={canvas}
-                    x={0}
-                    y={0}
+                            x={0}
+                            y={0}
                             width={ps.width}
                             height={ps.height}
-                    listening={false}
-                  />
+                            listening={false}
+                          />
                         ) : (
                           <Text
                             x={24}
@@ -475,29 +437,29 @@ const DisclaimerSigningCanvas = ({
                           />
                         )}
 
-                  {fieldsOnPage.map((field) => {
+                        {fieldsOnPage.map((field) => {
                           const x = field.xPct * ps.width;
                           const y = field.yPct * ps.height;
                           const w = field.wPct * ps.width;
                           const h = field.hPct * ps.height;
-                    const done = Boolean(signatureByFieldId[field.id]);
-                    const img = done ? getSignatureImage(field.id) : null;
-                    const label = field.label ?? "Signature";
+                          const done = Boolean(signatureByFieldId[field.id]);
+                          const img = done ? getSignatureImage(field.id) : null;
+                          const label = field.label ?? "Signature";
                           const isHighlight = highlightFieldId === field.id;
-                    return (
+                          return (
                             <Fragment key={field.id}>
-                        <Rect
-                          x={x}
-                          y={y}
-                          width={w}
-                          height={h}
-                          fill={
-                            done
-                              ? "rgba(16,185,129,0.08)"
+                              <Rect
+                                x={x}
+                                y={y}
+                                width={w}
+                                height={h}
+                                fill={
+                                  done
+                                    ? "rgba(16,185,129,0.08)"
                                     : canInteract
                                       ? "rgba(59,130,246,0.08)"
                                       : "rgba(148,163,184,0.10)"
-                          }
+                                }
                                 stroke={
                                   isHighlight
                                     ? "#f59e0b"
@@ -506,7 +468,7 @@ const DisclaimerSigningCanvas = ({
                                       : "#3b82f6"
                                 }
                                 strokeWidth={isHighlight ? 3 : 2}
-                          dash={done ? undefined : [6, 4]}
+                                dash={done ? undefined : [6, 4]}
                                 onClick={() => {
                                   if (!canInteract) return;
                                   openField(field.id);
@@ -515,34 +477,34 @@ const DisclaimerSigningCanvas = ({
                                   if (!canInteract) return;
                                   openField(field.id);
                                 }}
-                        />
-                        <Text
-                          x={x + 6}
-                          y={y + 6}
-                          text={`${done ? "✓ " : ""}${label}`}
-                          fontSize={14}
-                          fill={done ? "#065f46" : "#1e3a8a"}
-                          listening={false}
-                        />
-                        {img ? (
-                          <KonvaImage
-                            image={img}
-                            x={x + 6}
-                            y={y + 22}
-                            width={Math.max(1, w - 12)}
-                            height={Math.max(1, h - 28)}
-                            listening={false}
-                          />
-                        ) : null}
+                              />
+                              <Text
+                                x={x + 6}
+                                y={y + 6}
+                                text={`${done ? "✓ " : ""}${label}`}
+                                fontSize={14}
+                                fill={done ? "#065f46" : "#1e3a8a"}
+                                listening={false}
+                              />
+                              {img ? (
+                                <KonvaImage
+                                  image={img}
+                                  x={x + 6}
+                                  y={y + 22}
+                                  width={Math.max(1, w - 12)}
+                                  height={Math.max(1, h - 28)}
+                                  listening={false}
+                                />
+                              ) : null}
                             </Fragment>
-                    );
-                  })}
-                </Layer>
-              </Stage>
-              </div>
+                          );
+                        })}
+                      </Layer>
+                    </Stage>
+                  </div>
                 );
               })}
-          </div>
+            </div>
           </div>
         </div>
       </div>
@@ -559,19 +521,14 @@ const DisclaimerSigningCanvas = ({
                 withSubmit={false}
                 downloadOnSave={false}
                 onChange={(event: { base64: string | null }) => {
-                  const base64 =
-                    typeof event?.base64 === "string" ? event.base64 : null;
+                  const base64 = typeof event?.base64 === "string" ? event.base64 : null;
                   setFieldSigBase64(base64);
                 }}
               />
             </div>
 
             <div className="flex items-center justify-between gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setFieldSigBase64(null)}
-              >
+              <Button type="button" variant="outline" onClick={() => setFieldSigBase64(null)}>
                 Clear
               </Button>
               <Button type="button" onClick={saveFieldSignature}>
@@ -585,9 +542,13 @@ const DisclaimerSigningCanvas = ({
   );
 };
 
-export default function DisclaimerSignPage() {
-  const params = useParams<{ issueId: string }>();
-  const issueId = params?.issueId ?? "";
+export function DisclaimerSignPage(props: { issueId: string }) {
+  const issueId = props.issueId ?? "";
+  // Avoid importing the generated Convex `api` with full type information here,
+  // since it can cause TS "excessively deep" instantiation in some project configs.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports
+  const apiAny = (require("@convex-config/_generated/api") as any).api as any;
+
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const tokenHashFromUrl = searchParams.get("tokenHash") ?? "";
@@ -625,7 +586,7 @@ export default function DisclaimerSignPage() {
   }, [token, tokenHashFromUrl]);
 
   const signingContext = useQuery(
-    api.plugins.disclaimers.queries.getSigningContext,
+    apiAny.plugins.disclaimers.queries.getSigningContext,
     tokenHash && issueId ? { issueId, tokenHash } : "skip",
   ) as
     | {
@@ -651,7 +612,7 @@ export default function DisclaimerSignPage() {
     | undefined;
 
   const signingDebug = useQuery(
-    api.plugins.disclaimers.queries.getSigningContextDebug,
+    apiAny.plugins.disclaimers.queries.getSigningContextDebug,
     debug && tokenHash && issueId ? { issueId, tokenHash } : "skip",
   ) as
     | {
@@ -664,10 +625,8 @@ export default function DisclaimerSignPage() {
     | undefined;
 
   const receipt = useQuery(
-    api.plugins.disclaimers.queries.getSigningReceipt,
-    signingContext?.status === "complete" && tokenHash && issueId
-      ? { issueId, tokenHash }
-      : "skip",
+    apiAny.plugins.disclaimers.queries.getSigningReceipt,
+    signingContext?.status === "complete" && tokenHash && issueId ? { issueId, tokenHash } : "skip",
   ) as
     | {
         signedAt: number;
@@ -681,7 +640,7 @@ export default function DisclaimerSignPage() {
 
   const submitSignature = useAction(
     (
-      api as unknown as {
+      apiAny as unknown as {
         plugins: { disclaimers: { actions: { submitSignature: unknown } } };
       }
     ).plugins.disclaimers.actions.submitSignature as never,
@@ -695,7 +654,7 @@ export default function DisclaimerSignPage() {
   }) => Promise<{ signatureId: string; signedPdfFileId: string }>;
 
   const recordSigningView = useMutation(
-    api.plugins.disclaimers.mutations.recordSigningView,
+    apiAny.plugins.disclaimers.mutations.recordSigningView,
   ) as (args: {
     issueId: string;
     tokenHash: string;
@@ -703,9 +662,9 @@ export default function DisclaimerSignPage() {
     userAgent?: string;
   }) => Promise<null>;
 
-  const [signatureByFieldId, setSignatureByFieldId] = useState<
-    Record<string, string | null>
-  >({});
+  const [signatureByFieldId, setSignatureByFieldId] = useState<Record<string, string | null>>(
+    {},
+  );
   const [isPending, startTransition] = useTransition();
 
   const fetchClientIp = useCallback(async (): Promise<string | undefined> => {
@@ -754,8 +713,7 @@ export default function DisclaimerSignPage() {
         issueId,
         tokenHash,
         ip,
-        userAgent:
-          typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
       });
     })().catch(() => {
       // Allow retry if it failed due to transient network issues.
@@ -806,12 +764,10 @@ export default function DisclaimerSignPage() {
       return;
     }
 
-      const missing = requiredSignatureFields.some(
-        (f) => !signatureByFieldId[f.id],
-      );
-      if (missing) {
-        toast.error("Please sign all required fields.");
-        return;
+    const missing = requiredSignatureFields.some((f) => !signatureByFieldId[f.id]);
+    if (missing) {
+      toast.error("Please sign all required fields.");
+      return;
     }
 
     startTransition(() => {
@@ -819,39 +775,31 @@ export default function DisclaimerSignPage() {
         .map((f) => {
           const raw = signatureByFieldId[f.id];
           if (!raw) return null;
-          const signatureDataUrl = raw.startsWith("data:")
-            ? raw
-            : `data:image/png;base64,${raw}`;
+          const signatureDataUrl = raw.startsWith("data:") ? raw : `data:image/png;base64,${raw}`;
           return { fieldId: f.id, signatureDataUrl };
         })
-        .filter((x): x is { fieldId: string; signatureDataUrl: string } =>
-          Boolean(x),
-        );
+        .filter((x): x is { fieldId: string; signatureDataUrl: string } => Boolean(x));
 
       void (async () => {
         const ip = await fetchClientIp();
         return await submitSignature({
-        issueId,
-        tokenHash,
-        fieldSignatures,
+          issueId,
+          tokenHash,
+          fieldSignatures,
           ip,
-        userAgent:
-          typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+          userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
         });
       })()
         .then(() => {
           toast.success("Signed. Thank you!");
         })
         .catch((err: unknown) => {
-          toast.error(
-            err instanceof Error ? err.message : "Failed to submit signature",
-          );
+          toast.error(err instanceof Error ? err.message : "Failed to submit signature");
         });
     });
   };
 
-  const isLoading =
-    signingContext === undefined && tokenHash !== null && issueId.length > 0;
+  const isLoading = signingContext === undefined && tokenHash !== null && issueId.length > 0;
   const invalid = signingContext === null;
 
   return (
@@ -876,7 +824,9 @@ export default function DisclaimerSignPage() {
               <div className="mt-4">
                 <Link
                   className="text-primary underline underline-offset-4"
-                  href={`?tokenHash=${encodeURIComponent(tokenHashFromUrl || (tokenHash ?? ""))}&debug=1`}
+                  href={`?tokenHash=${encodeURIComponent(
+                    tokenHashFromUrl || (tokenHash ?? ""),
+                  )}&debug=1`}
                 >
                   Show debug details
                 </Link>
@@ -887,23 +837,27 @@ export default function DisclaimerSignPage() {
       ) : null}
 
       {signingContext && signingContext !== null ? (
-          <DisclaimerSigningCanvas
-            templateTitle={signingContext.template.title}
+        <DisclaimerSigningCanvas
+          templateTitle={signingContext.template.title}
           recipientEmail={signingContext.recipientEmail}
           recipientName={signingContext.recipientName ?? undefined}
-            pdfUrl={signingContext.template.pdfUrl}
-            pdfVersion={signingContext.template.pdfVersion}
-            signatureFields={signatureFields}
-            requiredSignatureFields={requiredSignatureFields}
-            signatureByFieldId={signatureByFieldId}
-            setSignatureByFieldId={setSignatureByFieldId}
-            isPending={isPending}
+          pdfUrl={signingContext.template.pdfUrl}
+          pdfVersion={signingContext.template.pdfVersion}
+          signatureFields={signatureFields}
+          requiredSignatureFields={requiredSignatureFields}
+          signatureByFieldId={signatureByFieldId}
+          setSignatureByFieldId={setSignatureByFieldId}
+          isPending={isPending}
           onFinish={handleSubmit}
           isComplete={signingContext.status === "complete"}
           downloadUrl={receipt?.signedPdfUrl ?? null}
           signedAt={receipt?.signedAt ?? null}
-          />
+        />
       ) : null}
     </div>
   );
 }
+
+export default DisclaimerSignPage;
+
+

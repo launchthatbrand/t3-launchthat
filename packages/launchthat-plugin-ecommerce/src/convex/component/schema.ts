@@ -54,4 +54,3 @@ export default defineSchema({
   cartItems: cartItemsTable,
 });
 
-

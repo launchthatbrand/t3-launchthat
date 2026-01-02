@@ -9,10 +9,10 @@
       "@portal/convexspec": ["../../apps/portal/convexspec.ts"],
       "@acme/ui": ["../ui/src/index"],
       "@acme/ui/*": ["../ui/src/*"],
+      "@convex-config/_generated/api": ["./src/types/convex-api-stub.d.ts"],
       "@/*": ["./src/*"]
     }
   },
   "include": ["src"],
   "exclude": ["dist", "node_modules"]
 }
-
