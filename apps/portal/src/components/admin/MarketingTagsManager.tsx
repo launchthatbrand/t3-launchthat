@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import { Plus, Settings, Tag, Users } from "lucide-react";
+import { Plus, Settings, Tag } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -21,7 +21,6 @@ import {
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Id } from "@convex-config/_generated/dataModel";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import { Textarea } from "@acme/ui/textarea";
@@ -38,12 +37,8 @@ interface CreateTagFormData {
 }
 
 export function MarketingTagsManager() {
-  const { marketingTags, createTag, assignTag, removeTag } = useMarketingTags();
+  const { marketingTags, createTag } = useMarketingTags();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
-  const [selectedTagId, setSelectedTagId] =
-    useState<Id<"marketingTags"> | null>(null);
-  const [targetUserId, setTargetUserId] = useState("");
 
   const [formData, setFormData] = useState<CreateTagFormData>({
     name: "",
@@ -79,38 +74,7 @@ export function MarketingTagsManager() {
   };
 
   const handleAssignTag = async () => {
-    if (!selectedTagId || !targetUserId) return;
-
-    try {
-      await assignTag({
-        userId: targetUserId as Id<"users">,
-        marketingTagId: selectedTagId,
-        source: "manual_admin",
-      });
-
-      toast.success("Tag assigned successfully!");
-      setIsAssignDialogOpen(false);
-      setSelectedTagId(null);
-      setTargetUserId("");
-    } catch (error) {
-      toast.error(`Failed to assign tag: ${error}`);
-    }
-  };
-
-  const handleRemoveTag = async (
-    userId: Id<"users">,
-    tagId: Id<"marketingTags">,
-  ) => {
-    try {
-      await removeTag({
-        userId,
-        marketingTagId: tagId,
-      });
-
-      toast.success("Tag removed successfully!");
-    } catch (error) {
-      toast.error(`Failed to remove tag: ${error}`);
-    }
+    toast.info("Assigning tags is handled on CRM contacts; use the user/contact tag manager.");
   };
 
   // Auto-generate slug from name
@@ -253,88 +217,6 @@ export function MarketingTagsManager() {
             </DialogContent>
           </Dialog>
 
-          <Dialog
-            open={isAssignDialogOpen}
-            onOpenChange={setIsAssignDialogOpen}
-          >
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <Users className="mr-2 h-4 w-4" />
-                Assign Tag
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Assign Marketing Tag</DialogTitle>
-                <DialogDescription>
-                  Assign a marketing tag to a user for segmentation and access
-                  control.
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="tag-select">Marketing Tag</Label>
-                  <Select
-                    value={selectedTagId || ""}
-                    onValueChange={(value) =>
-                      setSelectedTagId(value as Id<"marketingTags">)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a tag" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {marketingTags.map((tag) => (
-                        <SelectItem key={tag._id} value={tag._id}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="h-3 w-3 rounded-full"
-                              style={{ backgroundColor: tag.color }}
-                            />
-                            {tag.name}
-                            {tag.category && (
-                              <Badge variant="outline" className="text-xs">
-                                {tag.category}
-                              </Badge>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="user-id">User ID</Label>
-                  <Input
-                    id="user-id"
-                    value={targetUserId}
-                    onChange={(e) => setTargetUserId(e.target.value)}
-                    placeholder="Enter user ID"
-                  />
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    You can find user IDs in the admin users panel
-                  </p>
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsAssignDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleAssignTag}
-                  disabled={!selectedTagId || !targetUserId}
-                >
-                  Assign Tag
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
 

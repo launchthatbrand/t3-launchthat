@@ -1,5 +1,5 @@
 import { calendarPlugin } from "launchthat-plugin-calendar";
-import { cmsPlugin } from "launchthat-plugin-cms";
+import { crmPlugin } from "launchthat-plugin-crm";
 import { disclaimersPlugin } from "launchthat-plugin-disclaimers";
 import { createEcommercePluginDefinition } from "launchthat-plugin-ecommerce";
 import { ecommerceAuthorizenetPlugin } from "launchthat-plugin-ecommerce-authorizenet";
@@ -20,6 +20,7 @@ import { renderProductSingle } from "~/components/commerce/ProductSingleRenderer
 import { adminMenuRegistry } from "~/lib/adminMenu";
 import { registerPluginPageTemplates } from "~/lib/pageTemplates/registerPluginPageTemplates";
 import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
+import { portalCrmPlugin } from "./portalCrmPlugin";
 import { portalNotificationsPlugin } from "./portalNotificationsPlugin";
 
 configureSocialFeedPlugin({
@@ -31,7 +32,7 @@ configureSocialFeedPlugin({
 registerPluginPageTemplates();
 
 export const pluginDefinitions: PluginDefinition[] = [
-  cmsPlugin as unknown as PluginDefinition,
+  crmPlugin as unknown as PluginDefinition,
   lmsPlugin as unknown as PluginDefinition,
   calendarPlugin as unknown as PluginDefinition,
   socialFeedPlugin as unknown as PluginDefinition,
@@ -39,6 +40,7 @@ export const pluginDefinitions: PluginDefinition[] = [
   supportPlugin as unknown as PluginDefinition,
   vimeoPlugin as unknown as PluginDefinition,
   disclaimersPlugin as unknown as PluginDefinition,
+  portalCrmPlugin,
   portalNotificationsPlugin,
   createEcommercePluginDefinition({
     // `productsSingleRender` is intentionally loosely typed (accepts `any`) in the ecommerce plugin.

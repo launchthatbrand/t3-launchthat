@@ -35,3 +35,12 @@ export const FRONTEND_POST_STORE_OVERRIDES_FILTER =
   "frontend.postStores.overrides";
 // Primary stores provide a (mostly) exclusive resolver per postTypeSlug.
 export const FRONTEND_POST_STORES_FILTER = "frontend.postStores";
+
+// Portal-wide identity resolution (e.g., user/email -> CRM contact)
+// Providers are registered as filter returns, ordered by provider.priority (lower runs first).
+export const FRONTEND_IDENTITY_RESOLVERS_FILTER = "frontend.identity.resolvers";
+
+// Portal-wide content access evaluation (gating/redirects).
+// Providers are registered as filter returns, ordered by provider.priority (lower runs first).
+export const FRONTEND_CONTENT_ACCESS_PROVIDERS_FILTER =
+  "frontend.contentAccess.providers";

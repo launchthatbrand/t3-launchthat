@@ -15,6 +15,8 @@ import { api } from "@convex-config/_generated/api";
 import { useQuery } from "convex/react";
 
 import { useConvexUser } from "~/hooks/useConvexUser";
+import { useTenant } from "~/context/TenantContext";
+import { PORTAL_TENANT_SLUG } from "~/lib/tenant-fetcher";
 
 interface ContentAccess {
   contentType: string;
@@ -75,24 +77,52 @@ export function ContentProtectionProvider({
   children,
 }: ContentProtectionProviderProps) {
   const { convexId: userId, isLoading: userLoading } = useConvexUser();
+  const tenant = useTenant();
+  const crmOrganizationId =
+    tenant?.slug === PORTAL_TENANT_SLUG ? PORTAL_TENANT_SLUG : tenant?._id ?? null;
   const pathname = usePathname();
   const [accessCache, setAccessCache] = useState<Record<string, ContentAccess>>(
     {},
   );
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Get user's marketing tags
-  // TODO: Restore marketing tags functionality after users refactor
-  const userTags = useQuery(
-    api.core.users.marketingTags.index.getUserMarketingTags,
-    userId ? { userId } : "skip",
+  const crmEnabledOption = useQuery(
+    api.core.options.get,
+    crmOrganizationId
+      ? ({
+          metaKey: "plugin_crm_enabled",
+          type: "site",
+          orgId: tenant?.slug === PORTAL_TENANT_SLUG ? undefined : (crmOrganizationId as any),
+        } as const)
+      : "skip",
+  ) as { metaValue?: unknown } | null | undefined;
+  const crmEnabled = Boolean(crmEnabledOption?.metaValue);
+
+  const contactId = useQuery(
+    api.core.crm.identity.queries.getContactIdForUser,
+    crmEnabled && userId && crmOrganizationId
+      ? ({ organizationId: crmOrganizationId, userId } as any)
+      : "skip",
   );
 
-  // Stable user tag IDs to prevent unnecessary re-renders
-  const userTagIds = useMemo(
-    () => (userTags ?? []).map((tag) => tag.marketingTag._id),
-    [userTags],
+  const contactTags = useQuery(
+    api.core.crm.marketingTags.index.getContactMarketingTags,
+    crmEnabled && crmOrganizationId && contactId
+      ? ({ organizationId: crmOrganizationId, contactId } as any)
+      : "skip",
   );
+
+  // Stable tag keys (slugs + ids) to prevent unnecessary re-renders
+  const userTagIds = useMemo(() => {
+    const rows = Array.isArray(contactTags) ? contactTags : [];
+    const keys: string[] = [];
+    rows.forEach((assignment: any) => {
+      const tag = assignment?.marketingTag;
+      if (typeof tag?.slug === "string") keys.push(tag.slug);
+      if (typeof tag?._id === "string") keys.push(tag._id);
+    });
+    return keys;
+  }, [contactTags]);
 
   // Extract current page content info (memoized to prevent re-computation)
   const currentPageContent = useMemo(
@@ -129,6 +159,11 @@ export function ContentProtectionProvider({
       return { hasAccess: true, isLoading: true }; // Optimistic: show content while loading
     }
 
+    // If CRM is disabled, tag-based rules are not enforced.
+    if (!crmEnabled) {
+      return { hasAccess: true, isLoading: false };
+    }
+
     // No rules = public access
     if (!currentPageRules) {
       return { hasAccess: true, isLoading: false };
@@ -151,6 +186,7 @@ export function ContentProtectionProvider({
     userId,
     currentPageContent,
     shouldLoadPageRules,
+    crmEnabled,
   ]);
 
   // Cache page access to prevent re-queries on the same content

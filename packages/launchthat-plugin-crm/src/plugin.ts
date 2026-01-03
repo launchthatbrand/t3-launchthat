@@ -1,18 +1,18 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
 import { createElement } from "react";
 
-import { CmsSettingsPage } from "./CmsSettingsPage";
+import { CrmSettingsPage } from "./CrmSettingsPage";
 
-export const PLUGIN_ID = "cms" as const;
+export const PLUGIN_ID = "crm" as const;
 
-export interface CmsPluginOptions {
+export interface CrmPluginOptions {
   adminMenus?: PluginDefinition["adminMenus"];
 }
 
-const defaultOptions: CmsPluginOptions = {};
+const defaultOptions: CrmPluginOptions = {};
 
-export const createCmsPluginDefinition = (
-  options: CmsPluginOptions = defaultOptions,
+export const createCrmPluginDefinition = (
+  options: CrmPluginOptions = defaultOptions,
 ): PluginDefinition => ({
   id: PLUGIN_ID,
   name: "Contacts & CRM",
@@ -52,17 +52,17 @@ export const createCmsPluginDefinition = (
     },
   ],
   activation: {
-    optionKey: "plugin_cms_enabled",
+    optionKey: "plugin_crm_enabled",
     optionType: "site",
     defaultEnabled: false,
   },
   settingsPages: [
     {
-      id: "cms-settings",
+      id: "crm-settings",
       slug: "settings",
       label: "Settings",
       description: "Configure the Contacts & CRM plugin.",
-      render: () => createElement(CmsSettingsPage),
+      render: () => createElement(CrmSettingsPage),
     },
   ],
   adminMenus: options.adminMenus ?? [
@@ -76,6 +76,4 @@ export const createCmsPluginDefinition = (
   ],
 });
 
-export const cmsPlugin: PluginDefinition = createCmsPluginDefinition();
-
-
+export const crmPlugin: PluginDefinition = createCrmPluginDefinition();

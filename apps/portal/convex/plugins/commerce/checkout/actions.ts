@@ -1,8 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
 import { v } from "convex/values";
 
-import { api, components } from "../../../_generated/api";
+import { api, components, internal } from "../../../_generated/api";
 import { action } from "../../../_generated/server";
+import {
+  normalizeOrganizationId,
+  PORTAL_TENANT_SLUG,
+} from "../../../constants";
 
 // Avoid TS "type instantiation is excessively deep" from the generated `api` types
 // when used with ctx.runQuery/runMutation/runAction in large orchestration functions.
@@ -108,6 +112,47 @@ const ORDER_META_KEYS = {
   userId: "order.userId",
 } as const;
 
+const CRM_PLUGIN_ENABLED_KEY = "plugin_crm_enabled";
+const CRM_PRODUCT_TAG_SLUGS_META_KEY = "crm.tagSlugsJson";
+
+const parseJsonStringArray = (value: unknown): string[] => {
+  if (typeof value !== "string") return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((v): v is string => typeof v === "string");
+  } catch {
+    return [];
+  }
+};
+
+const readMetaValue = (entries: unknown, key: string): unknown => {
+  if (!Array.isArray(entries)) return undefined;
+  for (const entry of entries) {
+    if (!entry || typeof entry !== "object") continue;
+    const e = entry as Record<string, unknown>;
+    if (e.key === key) return e.value;
+  }
+  return undefined;
+};
+
+const isCrmEnabledForOrg = async (
+  ctx: Parameters<(typeof action)["handler"]>[0],
+  args: { organizationId?: string | undefined },
+): Promise<boolean> => {
+  const orgRaw = args.organizationId;
+  const orgIdForOptions =
+    typeof orgRaw === "string" && orgRaw.length > 0
+      ? normalizeOrganizationId(orgRaw as any)
+      : null;
+  const option = await ctx.runQuery(apiAny.core.options.get, {
+    metaKey: CRM_PLUGIN_ENABLED_KEY,
+    type: "site",
+    orgId: orgIdForOptions,
+  });
+  return Boolean((option as any)?.metaValue);
+};
+
 export const placeOrder = action({
   args: {
     organizationId: v.optional(v.string()),
@@ -153,10 +198,15 @@ export const placeOrder = action({
       throw new Error("Missing cart identity");
     }
 
+    const orgRaw = args.organizationId;
+    const orgIdForOptions =
+      typeof orgRaw === "string" && orgRaw.length > 0
+        ? normalizeOrganizationId(orgRaw as any)
+        : null;
     const ecommerceSettings: any = await ctx.runQuery(apiAny.core.options.get, {
       metaKey: "plugin.ecommerce.settings",
       type: "site",
-      orgId: args.organizationId ?? null,
+      orgId: orgIdForOptions,
     });
     const settingsValue = asRecord(ecommerceSettings?.metaValue);
     const currencyRaw = settingsValue.defaultCurrency;
@@ -479,6 +529,67 @@ export const placeOrder = action({
         organizationId: args.organizationId,
         status: "paid",
       });
+
+      // CRM sync (optional): ensure contact exists and assign any product tags.
+      if (
+        await isCrmEnabledForOrg(ctx, { organizationId: args.organizationId })
+      ) {
+        const crmOrganizationId = (args.organizationId ??
+          PORTAL_TENANT_SLUG) as any;
+        const contact = await ctx.runMutation(
+          internal.core.crm.identity.resolvers.resolveOrCreateContactForActor,
+          {
+            organizationId: crmOrganizationId,
+            userId: args.userId as any,
+            email: args.email,
+            name:
+              args.billing.name ?? args.shipping.name ?? undefined ?? undefined,
+            source: "commerce.checkout",
+          },
+        );
+
+        const contactId = contact?.contactId;
+        if (contactId) {
+          const productIds = lineItems
+            .map((li) => li.productId)
+            .filter(Boolean);
+          const tagSlugs: string[] = [];
+          for (const productId of productIds) {
+            const meta = await ctx.runQuery(
+              apiAny.plugins.commerce.queries.getPostMeta,
+              {
+                postId: productId,
+                organizationId: args.organizationId,
+              },
+            );
+            const raw = readMetaValue(meta, CRM_PRODUCT_TAG_SLUGS_META_KEY);
+            tagSlugs.push(...parseJsonStringArray(raw));
+          }
+
+          const normalizedSlugs = Array.from(
+            new Set(
+              tagSlugs.map((s) => s.trim().toLowerCase()).filter(Boolean),
+            ),
+          );
+          for (const slug of normalizedSlugs) {
+            const marketingTagId: string = await ctx.runMutation(
+              internal.core.crm.marketingTags.index
+                .ensureCrmMarketingTagBySlugInternal,
+              { organizationId: crmOrganizationId, slug },
+            );
+            await ctx.runMutation(
+              internal.core.crm.marketingTags.index
+                .assignMarketingTagToContactInternal,
+              {
+                organizationId: crmOrganizationId,
+                contactId,
+                marketingTagId: marketingTagId as any,
+                source: "commerce.product_purchase",
+              },
+            );
+          }
+        }
+      }
 
       await ctx.runMutation(commerceCartMutations.clearCart as any, {
         userId: args.userId,

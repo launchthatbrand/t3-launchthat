@@ -1044,12 +1044,12 @@ importers:
       launchthat-plugin-calendar:
         specifier: workspace:*
         version: link:../../packages/launchthat-plugin-calendar
-      launchthat-plugin-cms:
-        specifier: workspace:*
-        version: link:../../packages/launchthat-plugin-cms
       launchthat-plugin-core:
         specifier: workspace:*
         version: link:../../packages/launchthat-plugin-core
+      launchthat-plugin-crm:
+        specifier: workspace:*
+        version: link:../../packages/launchthat-plugin-crm
       launchthat-plugin-disclaimers:
         specifier: workspace:*
         version: link:../../packages/launchthat-plugin-disclaimers
@@ -2452,40 +2452,6 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
-  packages/launchthat-plugin-cms:
-    dependencies:
-      dev:
-        specifier: ^0.1.3
-        version: 0.1.3
-      launchthat-plugin-core:
-        specifier: workspace:*
-        version: link:../launchthat-plugin-core
-    devDependencies:
-      '@acme/eslint-config':
-        specifier: workspace:*
-        version: link:../../tooling/eslint
-      '@acme/prettier-config':
-        specifier: workspace:*
-        version: link:../../tooling/prettier
-      '@acme/tsconfig':
-        specifier: workspace:*
-        version: link:../../tooling/typescript
-      '@types/react':
-        specifier: catalog:react19
-        version: 19.0.12
-      eslint:
-        specifier: 'catalog:'
-        version: 9.39.1(jiti@2.6.1)
-      prettier:
-        specifier: 'catalog:'
-        version: 3.6.2
-      react:
-        specifier: catalog:react19
-        version: 19.0.0
-      typescript:
-        specifier: 'catalog:'
-        version: 5.9.3
-
   packages/launchthat-plugin-core:
     dependencies:
       dev:
@@ -2504,6 +2470,40 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.1
+      '@types/react':
+        specifier: catalog:react19
+        version: 19.0.12
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.1(jiti@2.6.1)
+      prettier:
+        specifier: 'catalog:'
+        version: 3.6.2
+      react:
+        specifier: catalog:react19
+        version: 19.0.0
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
+  packages/launchthat-plugin-crm:
+    dependencies:
+      dev:
+        specifier: ^0.1.3
+        version: 0.1.3
+      launchthat-plugin-core:
+        specifier: workspace:*
+        version: link:../launchthat-plugin-core
+    devDependencies:
+      '@acme/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint
+      '@acme/prettier-config':
+        specifier: workspace:*
+        version: link:../../tooling/prettier
+      '@acme/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
       '@types/react':
         specifier: catalog:react19
         version: 19.0.12

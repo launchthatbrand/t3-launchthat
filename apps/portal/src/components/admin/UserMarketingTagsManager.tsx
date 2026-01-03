@@ -83,7 +83,7 @@ export function UserMarketingTagsManager({
   });
 
   // Get user's current marketing tags
-  const { userTags, assignTag, removeTag } = useUserMarketingTags(userId);
+  const { userTags, assignTag, removeTag, contactId } = useUserMarketingTags(userId);
   const { marketingTags, createTag } = useMarketingTags();
   const { convexId: actingUserId } = useConvexUser();
 
@@ -116,7 +116,6 @@ export function UserMarketingTagsManager({
         userId,
         tagId: newTagId,
         source: "admin_manual",
-        assignedBy: actingUserId ?? userId,
       });
 
       toast.success("Marketing tag created and assigned successfully");
@@ -147,9 +146,8 @@ export function UserMarketingTagsManager({
     try {
       await assignTag({
         userId,
-        tagId: selectedTagId as Id<"marketingTags">,
+        tagId: selectedTagId as unknown as Id<"crmMarketingTags">,
         source: "admin_manual",
-        assignedBy: actingUserId ?? userId,
       });
 
       toast.success("Marketing tag assigned successfully");
@@ -173,8 +171,8 @@ export function UserMarketingTagsManager({
   };
 
   const handleRemoveTag = async (userTag: {
-    _id: Id<"userMarketingTags">;
-    marketingTag: { _id: Id<"marketingTags"> };
+    _id: Id<"contactMarketingTags">;
+    marketingTag: { _id: Id<"crmMarketingTags"> };
   }) => {
     try {
       await removeTag({
@@ -190,7 +188,7 @@ export function UserMarketingTagsManager({
   };
 
   // This function is no longer needed since userTags now includes tag details
-  // const getTagById = (tagId: Id<"marketingTags">) => {
+  // const getTagById = (tagId: Id<"crmMarketingTags">) => {
   //   return marketingTags?.find((tag) => tag._id === tagId);
   // };
 
@@ -382,6 +380,12 @@ export function UserMarketingTagsManager({
         </div>
       </CardHeader>
       <CardContent>
+        {contactId === null && (
+          <div className="mb-4 rounded-lg border bg-muted/50 p-3 text-sm text-muted-foreground">
+            No CRM contact is linked to this user yet. Tag assignment will be
+            available after a contact is linked/created.
+          </div>
+        )}
         {!userTags || userTags.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">
             <Tag className="mx-auto mb-2 h-8 w-8 opacity-50" />

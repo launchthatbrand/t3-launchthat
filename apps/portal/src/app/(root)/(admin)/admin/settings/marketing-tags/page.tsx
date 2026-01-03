@@ -93,7 +93,7 @@ export default function MarketingTagsAdminPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingTag, setEditingTag] = useState<Id<"marketingTags"> | null>(
+  const [editingTag, setEditingTag] = useState<Id<"crmMarketingTags"> | null>(
     null,
   );
   const [tagToDelete, setTagToDelete] = useState<MarketingTag | null>(null);

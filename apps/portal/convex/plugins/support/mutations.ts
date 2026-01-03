@@ -4,6 +4,7 @@ import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import { api, components, internal } from "../../_generated/api";
 import { internalMutation, mutation } from "../../_generated/server";
+import { normalizeOrganizationId } from "../../constants";
 import { supportOrganizationIdValidator } from "./schema";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -195,6 +196,21 @@ const recordMessageArgs = {
   ),
 } as const;
 
+const CRM_PLUGIN_ENABLED_KEY = "plugin_crm_enabled";
+
+const isCrmEnabledForOrg = async (
+  ctx: MutationCtx,
+  organizationId: string,
+): Promise<boolean> => {
+  const orgIdForOptions = normalizeOrganizationId(organizationId as any);
+  const option = await ctx.runQuery(api.core.options.get as any, {
+    metaKey: CRM_PLUGIN_ENABLED_KEY,
+    type: "site",
+    orgId: orgIdForOptions,
+  });
+  return Boolean((option as any)?.metaValue);
+};
+
 // ---------- mutations ----------
 
 const requireActor = async (ctx: MutationCtx) => {
@@ -345,13 +361,35 @@ export const createThread = mutation({
       }
     }
 
+    const crmEnabled = await isCrmEnabledForOrg(ctx, args.organizationId);
+    let resolvedContactId = args.contactId;
+    let resolvedContactEmail = args.contactEmail;
+    let resolvedContactName = args.contactName;
+
+    if (crmEnabled && !resolvedContactId && resolvedContactEmail) {
+      const resolved = await ctx.runMutation(
+        internal.core.crm.identity.resolvers.resolveOrCreateContactForActor,
+        {
+          organizationId: args.organizationId as any,
+          email: resolvedContactEmail,
+          name: resolvedContactName,
+          source: "support.createThread",
+        },
+      );
+      if (resolved?.contactId) {
+        resolvedContactId = resolved.contactId as unknown as string;
+        resolvedContactEmail = resolved.contactEmail ?? resolvedContactEmail;
+        resolvedContactName = resolved.contactName ?? resolvedContactName;
+      }
+    }
+
     const thread = await ctx.runMutation(
       components.agent.threads.createThread,
       {
-      title: args.contactName
-        ? `Support: ${args.contactName}`
+      title: resolvedContactName
+        ? `Support: ${resolvedContactName}`
         : "Support conversation",
-      userId: args.contactId,
+      userId: resolvedContactId,
       },
     );
     const threadId = thread._id as unknown as string;
@@ -371,8 +409,9 @@ export const createThread = mutation({
           origin: "chat",
           status: existing.status ?? "open",
           mode: args.mode ?? existing.mode ?? "agent",
-          contactEmail: args.contactEmail ?? existing.contactEmail,
-          contactName: args.contactName ?? existing.contactName,
+          contactId: resolvedContactId ? (resolvedContactId as any) : existing.contactId,
+          contactEmail: resolvedContactEmail ?? existing.contactEmail,
+          contactName: resolvedContactName ?? existing.contactName,
           agentThreadId: threadId,
           updatedAt: timestamp,
         });
@@ -383,8 +422,9 @@ export const createThread = mutation({
           origin: "chat",
           status: "open",
           mode: args.mode ?? "agent",
-          contactEmail: args.contactEmail,
-          contactName: args.contactName,
+          contactId: resolvedContactId ? (resolvedContactId as any) : undefined,
+          contactEmail: resolvedContactEmail,
+          contactName: resolvedContactName,
           agentThreadId: threadId,
           firstMessageAt: timestamp,
           lastMessageAt: timestamp,
@@ -405,9 +445,9 @@ export const createThread = mutation({
         { key: "threadId", value: threadId },
         { key: "agentThreadId", value: threadId },
         { key: "sessionId", value: args.clientSessionId },
-        { key: "contactId", value: args.contactId },
-        { key: "contactName", value: args.contactName },
-        { key: "contactEmail", value: args.contactEmail },
+        { key: "contactId", value: resolvedContactId },
+        { key: "contactName", value: resolvedContactName },
+        { key: "contactEmail", value: resolvedContactEmail },
         { key: "origin", value: args.mode === "manual" ? "email" : "chat" },
         { key: "mode", value: args.mode ?? "agent" },
         { key: "firstAt", value: timestamp },
@@ -713,14 +753,36 @@ export const recordMessage = mutation({
       limit: 30,
       windowMs: 60_000,
     });
+
+    const crmEnabled = await isCrmEnabledForOrg(ctx, args.organizationId);
+    let resolvedContactId = args.contactId ?? undefined;
+    let resolvedContactEmail = args.contactEmail ?? undefined;
+    let resolvedContactName = args.contactName ?? undefined;
+
+    if (crmEnabled && !resolvedContactId && resolvedContactEmail) {
+      const resolved = await ctx.runMutation(
+        internal.core.crm.identity.resolvers.resolveOrCreateContactForActor,
+        {
+          organizationId: args.organizationId as any,
+          email: resolvedContactEmail,
+          name: resolvedContactName,
+          source: "support.recordMessage",
+        },
+      );
+      if (resolved?.contactId) {
+        resolvedContactId = resolved.contactId as unknown as string;
+        resolvedContactEmail = resolved.contactEmail ?? resolvedContactEmail;
+        resolvedContactName = resolved.contactName ?? resolvedContactName;
+      }
+    }
     const convoId = await touchConversationPost(
       ctx,
       {
         organizationId: args.organizationId,
         threadId: resolvedThreadId,
-        contactId: args.contactId ?? undefined,
-        contactName: args.contactName ?? undefined,
-        contactEmail: args.contactEmail ?? undefined,
+        contactId: resolvedContactId,
+        contactName: resolvedContactName,
+        contactEmail: resolvedContactEmail,
         role: args.role,
         snippet: args.content.slice(0, 240),
         mode:
@@ -747,8 +809,9 @@ export const recordMessage = mutation({
     const snippet = args.content.slice(0, 240);
     if (existingConversation) {
       await ctx.db.patch(existingConversation._id, {
-        contactEmail: args.contactEmail ?? existingConversation.contactEmail,
-        contactName: args.contactName ?? existingConversation.contactName,
+        contactId: resolvedContactId ? (resolvedContactId as any) : existingConversation.contactId,
+        contactEmail: resolvedContactEmail ?? existingConversation.contactEmail,
+        contactName: resolvedContactName ?? existingConversation.contactName,
         agentThreadId: resolvedThreadId,
         lastMessageSnippet: snippet,
         lastMessageAuthor: args.role,
@@ -768,8 +831,9 @@ export const recordMessage = mutation({
             : args.source === "agent"
               ? "agent"
               : "agent",
-        contactEmail: args.contactEmail,
-        contactName: args.contactName,
+        contactId: resolvedContactId ? (resolvedContactId as any) : undefined,
+        contactEmail: resolvedContactEmail,
+        contactName: resolvedContactName,
         agentThreadId: resolvedThreadId,
         lastMessageSnippet: snippet,
         lastMessageAuthor: args.role,

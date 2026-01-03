@@ -3,6 +3,9 @@ import { Id } from "@convex-config/_generated/dataModel";
 import { useQuery } from "convex/react";
 
 import { useConvexUser } from "./useConvexUser";
+import { useTenant } from "~/context/TenantContext";
+import { PORTAL_TENANT_SLUG } from "~/lib/tenant-fetcher";
+import { evaluateContentAccess } from "~/lib/access/contentAccessRegistry";
 
 export type ContentType =
   | "course"
@@ -22,33 +25,24 @@ export interface UseContentAccessProps {
 export interface AccessRules {
   requiredTags: {
     mode: "all" | "some";
-    tagIds: Id<"marketingTags">[];
+    tagIds: string[];
   };
   excludedTags: {
     mode: "all" | "some";
-    tagIds: Id<"marketingTags">[];
+    tagIds: string[];
   };
   isPublic?: boolean;
 }
 
-export interface UserTag {
-  marketingTagId: Id<"marketingTags">;
-  userId: Id<"users">;
-  assignedBy?: Id<"users">;
-  source?: string;
-  expiresAt?: number;
-  _id: Id<"marketingTags">;
-  marketingTag: {
-    _id: Id<"marketingTags">;
-    name: string;
-  };
-}
+export type ContactTagAssignment = {
+  marketingTag: { _id: string; slug: string; name: string };
+};
 
 export interface ContentAccessResult {
   hasAccess: boolean;
   isLoading: boolean;
   accessRules?: AccessRules;
-  userTags?: UserTag[];
+  userTags?: ContactTagAssignment[];
   reason?: string;
   course?: {
     _id: Id<"courses">;
@@ -68,6 +62,9 @@ export const useContentAccess = ({
   parentContentId,
 }: UseContentAccessProps): ContentAccessResult => {
   const { convexId: userId, isLoading: userLoading } = useConvexUser();
+  const tenant = useTenant();
+  const crmOrganizationId =
+    tenant?.slug === PORTAL_TENANT_SLUG ? PORTAL_TENANT_SLUG : tenant?._id ?? null;
 
   // Normalize params for hooks so hooks are not conditional
   const normalizedContentId = contentId || "";
@@ -110,9 +107,30 @@ export const useContentAccess = ({
     courseQueryParams,
   );
 
-  const userTags = useQuery(
-    api.core.users.marketingTags.index.getUserMarketingTags,
-    userId ? { userId } : ("skip" as const),
+  const crmEnabledOption = useQuery(
+    api.core.options.get,
+    crmOrganizationId
+      ? ({
+          metaKey: "plugin_crm_enabled",
+          type: "site",
+          orgId: tenant?.slug === PORTAL_TENANT_SLUG ? undefined : (crmOrganizationId as any),
+        } as const)
+      : ("skip" as const),
+  ) as { metaValue?: unknown } | null | undefined;
+  const crmEnabled = Boolean(crmEnabledOption?.metaValue);
+
+  const contactId = useQuery(
+    api.core.crm.identity.queries.getContactIdForUser,
+    crmEnabled && userId && crmOrganizationId
+      ? ({ organizationId: crmOrganizationId, userId } as any)
+      : ("skip" as const),
+  );
+
+  const contactTags = useQuery(
+    api.core.crm.marketingTags.index.getContactMarketingTags,
+    crmEnabled && crmOrganizationId && contactId
+      ? ({ organizationId: crmOrganizationId, contactId } as any)
+      : ("skip" as const),
   );
 
   // Early return for invalid or empty content IDs
@@ -122,51 +140,6 @@ export const useContentAccess = ({
       isLoading: false,
     };
   }
-
-  // Helper function to check if user meets tag requirements
-  const checkTagAccess = (
-    rules: AccessRules | undefined,
-    userTagIds: string[],
-  ) => {
-    if (!rules) return true; // No rules = public access
-
-    // If explicitly marked as public, allow access
-    if (rules.isPublic) return true;
-
-    // Check required tags
-    if (rules.requiredTags.tagIds.length > 0) {
-      const hasRequiredTags =
-        rules.requiredTags.mode === "all"
-          ? rules.requiredTags.tagIds.every((tagId) =>
-              userTagIds.includes(tagId),
-            )
-          : rules.requiredTags.tagIds.some((tagId) =>
-              userTagIds.includes(tagId),
-            );
-
-      if (!hasRequiredTags) {
-        return false;
-      }
-    }
-
-    // Check excluded tags
-    if (rules.excludedTags.tagIds.length > 0) {
-      const hasExcludedTags =
-        rules.excludedTags.mode === "all"
-          ? rules.excludedTags.tagIds.every((tagId) =>
-              userTagIds.includes(tagId),
-            )
-          : rules.excludedTags.tagIds.some((tagId) =>
-              userTagIds.includes(tagId),
-            );
-
-      if (hasExcludedTags) {
-        return false;
-      }
-    }
-
-    return true;
-  };
 
   // Main access logic
   const isLoading = userLoading || contentRules === undefined;
@@ -178,93 +151,46 @@ export const useContentAccess = ({
     };
   }
 
-  // Extract user tag IDs
-  const userTagIds = (userTags ?? []).map(
-    (tag: UserTag) => tag.marketingTag._id,
-  );
+  const tagKeys = (contactTags ?? []).flatMap((assignment: any) => {
+    const tag = assignment?.marketingTag;
+    const slug = typeof tag?.slug === "string" ? tag.slug : undefined;
+    const id = typeof tag?._id === "string" ? tag._id : undefined;
+    return [slug, id].filter(Boolean) as string[];
+  });
 
-  // Check content-specific rules first
-  if (contentRules) {
-    const hasAccess = userId
-      ? checkTagAccess(contentRules as unknown as AccessRules, userTagIds)
-      : (contentRules as unknown as AccessRules).isPublic;
+  const decision = crmEnabled
+    ? evaluateContentAccess({
+        subject: {
+          organizationId: crmOrganizationId,
+          enabledPluginIds: crmEnabled ? ["crm"] : [],
+          userId: userId ?? null,
+          contactId: (contactId as any) ?? null,
+          isAuthenticated: Boolean(userId),
+        },
+        resource: {
+          contentType,
+          contentId: normalizedContentId,
+          parent:
+            parentContentType && parentContentId
+              ? { contentType: parentContentType, contentId: parentContentId }
+              : null,
+        },
+        data: {
+          contentRules: contentRules as any,
+          parentRules: parentRules as any,
+          tagKeys,
+        },
+      })
+    : { kind: "abstain" as const };
 
-    if (!hasAccess) {
-      const rules = contentRules as unknown as AccessRules;
-      const reason = !userId
-        ? "Please log in to access this content"
-        : rules.requiredTags.tagIds.length > 0
-          ? `Missing required tags (need ${rules.requiredTags.mode === "all" ? "ALL" : "at least one"} of the specified tags)`
-          : "Access denied due to excluded tags";
-
-      return {
-        hasAccess: false,
-        isLoading: false,
-        accessRules: rules,
-        userTags,
-        reason,
-        course: courseInfo
-          ? {
-              _id: courseInfo._id,
-              title: courseInfo.title,
-              productId: courseInfo.productId,
-            }
-          : undefined,
-      };
-    }
-
-    // Has access based on content rules
+  if (decision.kind === "deny" || decision.kind === "redirect") {
+    const rules = (contentRules ?? parentRules) as unknown as AccessRules | undefined;
     return {
-      hasAccess: true,
-      isLoading: false,
-      accessRules: contentRules as unknown as AccessRules,
-      userTags,
-      course: courseInfo
-        ? {
-            _id: courseInfo._id,
-            title: courseInfo.title,
-            productId: courseInfo.productId,
-          }
-        : undefined,
-    };
-  }
-
-  // Check parent rules for cascading access
-  if (parentRules) {
-    const rules = parentRules as unknown as AccessRules;
-    const hasAccess = userId
-      ? checkTagAccess(rules, userTagIds)
-      : rules.isPublic;
-
-    if (!hasAccess) {
-      const reason = !userId
-        ? "Please log in to access this content"
-        : rules.requiredTags.tagIds.length > 0
-          ? `Missing required tags from parent content (need ${rules.requiredTags.mode === "all" ? "ALL" : "at least one"} of the specified tags)`
-          : "Access denied due to parent content restrictions";
-
-      return {
-        hasAccess: false,
-        isLoading: false,
-        accessRules: rules,
-        userTags,
-        reason,
-        course: courseInfo
-          ? {
-              _id: courseInfo._id,
-              title: courseInfo.title,
-              productId: courseInfo.productId,
-            }
-          : undefined,
-      };
-    }
-
-    // Has access based on parent rules
-    return {
-      hasAccess: true,
+      hasAccess: false,
       isLoading: false,
       accessRules: rules,
-      userTags,
+      userTags: contactTags as any,
+      reason: decision.reason ?? "Access denied",
       course: courseInfo
         ? {
             _id: courseInfo._id,

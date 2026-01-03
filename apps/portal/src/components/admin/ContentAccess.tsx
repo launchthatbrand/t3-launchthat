@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { api } from "@convex-config/_generated/api";
-import { Id } from "@convex-config/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { Plus, X } from "lucide-react";
 
@@ -23,15 +22,16 @@ import {
   SelectValue,
 } from "@acme/ui/select";
 import { toast } from "@acme/ui/toast";
+import { useMarketingTags } from "~/hooks/useMarketingTags";
 
 export interface AccessRule {
   requiredTags: {
     mode: "all" | "some";
-    tagIds: Id<"marketingTags">[];
+    tagIds: string[];
   };
   excludedTags: {
     mode: "all" | "some";
-    tagIds: Id<"marketingTags">[];
+    tagIds: string[];
   };
   isPublic: boolean;
 }
@@ -55,11 +55,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
   });
 
   // Queries
-  // TODO: Restore marketing tags functionality after users refactor
-  // const marketingTags = useQuery(
-  //   api.core.users.marketingTags.index.listMarketingTags,
-  // );
-  const marketingTags = undefined;
+  const { marketingTags } = useMarketingTags();
   const currentRules = useQuery(
     api.plugins.lms.contentAccess.queries.getContentAccessRules,
     {
@@ -117,7 +113,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
     }
   };
 
-  const addRequiredTag = (tagId: Id<"marketingTags">) => {
+  const addRequiredTag = (tagId: string) => {
     if (!accessRules.requiredTags.tagIds.includes(tagId)) {
       setAccessRules((prev) => ({
         ...prev,
@@ -129,7 +125,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
     }
   };
 
-  const removeRequiredTag = (tagId: Id<"marketingTags">) => {
+  const removeRequiredTag = (tagId: string) => {
     setAccessRules((prev) => ({
       ...prev,
       requiredTags: {
@@ -139,7 +135,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
     }));
   };
 
-  const addExcludedTag = (tagId: Id<"marketingTags">) => {
+  const addExcludedTag = (tagId: string) => {
     if (!accessRules.excludedTags.tagIds.includes(tagId)) {
       setAccessRules((prev) => ({
         ...prev,
@@ -151,7 +147,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
     }
   };
 
-  const removeExcludedTag = (tagId: Id<"marketingTags">) => {
+  const removeExcludedTag = (tagId: string) => {
     setAccessRules((prev) => ({
       ...prev,
       excludedTags: {
@@ -161,15 +157,15 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
     }));
   };
 
-  const getTagName = (tagId: Id<"marketingTags">) => {
-    return marketingTags?.find((tag) => tag._id === tagId)?.name ?? tagId;
+  const getTagName = (tagId: string) => {
+    return marketingTags?.find((tag: any) => tag.slug === tagId)?.name ?? tagId;
   };
 
   const availableTags =
     marketingTags?.filter(
       (tag) =>
-        !accessRules.requiredTags.tagIds.includes(tag._id) &&
-        !accessRules.excludedTags.tagIds.includes(tag._id),
+        !accessRules.requiredTags.tagIds.includes(tag.slug) &&
+        !accessRules.excludedTags.tagIds.includes(tag.slug),
     ) ?? [];
 
   return (
@@ -243,7 +239,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
                   variant="outline"
                   className="flex items-center gap-1"
                 >
-                  {getTagName(tagId)}
+                  {getTagName(tagId as any)}
                   <X
                     className="h-3 w-3 cursor-pointer"
                     onClick={() => removeRequiredTag(tagId)}
@@ -261,7 +257,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
               </SelectTrigger>
               <SelectContent>
                 {availableTags.map((tag) => (
-                  <SelectItem key={tag._id} value={tag._id}>
+                  <SelectItem key={tag._id} value={tag.slug}>
                     {tag.name}
                   </SelectItem>
                 ))}
@@ -300,7 +296,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
                   variant="outline"
                   className="flex items-center gap-1"
                 >
-                  {getTagName(tagId)}
+                  {getTagName(tagId as any)}
                   <X
                     className="h-3 w-3 cursor-pointer"
                     onClick={() => removeExcludedTag(tagId)}
@@ -318,7 +314,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
               </SelectTrigger>
               <SelectContent>
                 {availableTags.map((tag) => (
-                  <SelectItem key={tag._id} value={tag._id}>
+                  <SelectItem key={tag._id} value={tag.slug}>
                     {tag.name}
                   </SelectItem>
                 ))}
