@@ -1,5 +1,5 @@
-// import { NotificationSettingsTab } from "~/components/notifications/NotificationSettingsTab";
 import type { PluginDefinition } from "./types";
+import NotificationSettingsTab from "~/components/notifications/NotificationSettingsTab";
 import { FRONTEND_ACCOUNT_TABS_FILTER } from "~/lib/plugins/hookSlots";
 
 interface AccountTabsFilterContext {
@@ -52,13 +52,14 @@ export const portalNotificationsPlugin: PluginDefinition = {
 
           const next = [
             ...tabs,
-            // {
-            //   id: "notifications",
-            //   label: "Notifications",
-            //   value: "notifications",
-            //   order: 30,
-            //   render: () => <NotificationSettingsTab />,
-            // },
+            {
+              id: "notifications",
+              label: "Notifications",
+              value: "notifications",
+              // Keep between Orders (20) and Customization (30).
+              order: 25,
+              render: () => <NotificationSettingsTab />,
+            },
           ];
 
           if (debugPlugins) {

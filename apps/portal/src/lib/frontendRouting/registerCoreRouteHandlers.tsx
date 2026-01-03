@@ -1,6 +1,6 @@
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { addFilter } from "@acme/admin-runtime/hooks";
+import { addFilter, hasFilter } from "@acme/admin-runtime/hooks";
 import type { fetchQuery as convexFetchQuery } from "convex/nextjs";
 import { Fragment } from "react";
 import Link from "next/link";
@@ -311,24 +311,27 @@ function TaxonomyArchiveGrouped(props: any) {
 }
 
 export function registerCoreRouteHandlers(): void {
-  // NOTE: In dev/HMR, module state (hook registry) can be reset while `globalThis`
-  // persists. Using a versioned guard ensures we can safely re-register once after
-  // structural changes without getting stuck in a "registered but no hooks" state.
-  const already = (globalThis as any).__portal_core_route_handlers_registered_v2;
-  if (already) return;
-  (globalThis as any).__portal_core_route_handlers_registered_v2 = true;
+  // Dev/HMR safety: the hook registry can reset while `globalThis` persists.
+  // Only skip registration if we already registered AND the hook currently exists.
+  const already = (globalThis as any).__portal_core_route_handlers_registered_v3;
+  if (already && hasFilter(FRONTEND_ROUTE_HANDLERS_FILTER)) return;
+  (globalThis as any).__portal_core_route_handlers_registered_v3 = true;
 
   addFilter(
     FRONTEND_ROUTE_HANDLERS_FILTER,
     (value: unknown, _ctx: unknown) => {
       const handlers = Array.isArray(value) ? (value as FrontendRouteHandler[]) : [];
 
-      return [
-        ...handlers,
-        {
-          id: "core:archive",
-          priority: 10,
-          resolve: async (ctx: FrontendRouteHandlerContext) => {
+      const next: FrontendRouteHandler[] = [...handlers];
+      const hasId = (id: string) => next.some((h) => h?.id === id);
+      const pushIfMissing = (h: FrontendRouteHandler) => {
+        if (!hasId(h.id)) next.push(h);
+      };
+
+      pushIfMissing({
+        id: "core:archive",
+        priority: 10,
+        resolve: async (ctx: FrontendRouteHandlerContext) => {
             const segments = normalizeSegments(ctx.segments);
             const archiveContext = await resolveArchiveContext({
               segments,
@@ -369,11 +372,12 @@ export function registerCoreRouteHandlers(): void {
 
             return <PostArchive postType={archiveContext.postType} posts={posts} />;
           },
-        },
-        {
-          id: "core:taxonomy",
-          priority: 10,
-          resolve: async (ctx: FrontendRouteHandlerContext) => {
+      });
+
+      pushIfMissing({
+        id: "core:taxonomy",
+        priority: 10,
+        resolve: async (ctx: FrontendRouteHandlerContext) => {
             const segments = normalizeSegments(ctx.segments);
             const resolved = await resolveFrontendTaxonomyArchive({
               segments,
@@ -417,11 +421,12 @@ export function registerCoreRouteHandlers(): void {
               />
             );
           },
-        },
-        {
-          id: "core:single",
-          priority: 10,
-          resolve: async (ctx: FrontendRouteHandlerContext) => {
+      });
+
+      pushIfMissing({
+        id: "core:single",
+        priority: 10,
+        resolve: async (ctx: FrontendRouteHandlerContext) => {
             const segments = normalizeSegments(ctx.segments);
             const slug = deriveSlugFromSegments(segments);
             if (!slug) return null;
@@ -516,8 +521,9 @@ export function registerCoreRouteHandlers(): void {
               enforceCanonicalRedirect: true,
             } as any);
           },
-        },
-      ];
+      });
+
+      return next;
     },
     10,
     2,
