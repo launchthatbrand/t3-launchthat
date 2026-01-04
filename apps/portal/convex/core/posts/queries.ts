@@ -411,6 +411,47 @@ export const getPostCategories = query({
   },
 });
 
+export const listPostsWithMetaKey = query({
+  args: {
+    key: v.string(),
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.array(
+    v.object({
+      postId: v.id("posts"),
+      postTypeSlug: v.string(),
+      title: v.optional(v.string()),
+      organizationId: v.optional(v.id("organizations")),
+      value: v.optional(v.union(v.string(), v.number(), v.boolean(), v.null())),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const entries = await ctx.db
+      .query("postsMeta")
+      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .collect();
+
+    const rows = await Promise.all(
+      entries.map(async (entry) => {
+        const post = await ctx.db.get(entry.postId);
+        if (!post) return null;
+        if (args.organizationId && post.organizationId !== args.organizationId) {
+          return null;
+        }
+        return {
+          postId: post._id,
+          postTypeSlug: post.postTypeSlug,
+          title: post.title ?? undefined,
+          organizationId: post.organizationId ?? undefined,
+          value: entry.value ?? null,
+        };
+      }),
+    );
+
+    return rows.filter((r): r is NonNullable<typeof r> => r !== null);
+  },
+});
+
 interface TemplateMeta {
   templateCategory: TemplateCategory;
   targetPostType: string | null;

@@ -9,16 +9,9 @@
  */
 
 import type * as constants from "../constants.js";
-import type * as core_accessControl_helpers from "../core/accessControl/helpers.js";
-import type * as core_accessControl_mutations from "../core/accessControl/mutations.js";
-import type * as core_accessControl_queries from "../core/accessControl/queries.js";
-import type * as core_accessControl_types from "../core/accessControl/types.js";
 import type * as core_auditLog_queries from "../core/auditLog/queries.js";
 import type * as core_categories_mutations from "../core/categories/mutations.js";
 import type * as core_categories_queries from "../core/categories/queries.js";
-import type * as core_crm_contacts_mutations from "../core/crm/contacts/mutations.js";
-import type * as core_crm_contacts_queries from "../core/crm/contacts/queries.js";
-import type * as core_crm_queries from "../core/crm/queries.js";
 import type * as core_downloads_actions from "../core/downloads/actions.js";
 import type * as core_downloads_meta from "../core/downloads/meta.js";
 import type * as core_downloads_mutations from "../core/downloads/mutations.js";
@@ -58,12 +51,12 @@ import type * as core_posts_mutations from "../core/posts/mutations.js";
 import type * as core_posts_postMeta from "../core/posts/postMeta.js";
 import type * as core_posts_queries from "../core/posts/queries.js";
 import type * as core_posts_templates from "../core/posts/templates.js";
+import type * as core_roles_queries from "../core/roles/queries.js";
 import type * as core_tags_mutations from "../core/tags/mutations.js";
 import type * as core_tags_queries from "../core/tags/queries.js";
 import type * as core_taxonomies_mutations from "../core/taxonomies/mutations.js";
 import type * as core_taxonomies_queries from "../core/taxonomies/queries.js";
 import type * as core_users_helpers from "../core/users/helpers.js";
-import type * as core_users_marketingTags_index from "../core/users/marketingTags/index.js";
 import type * as core_users_mutations from "../core/users/mutations.js";
 import type * as core_users_queries from "../core/users/queries.js";
 import type * as core_users_types from "../core/users/types.js";
@@ -144,6 +137,8 @@ import type * as plugins_commerce_payments_authorizenet_actions from "../plugins
 import type * as plugins_commerce_products_queries from "../plugins/commerce/products/queries.js";
 import type * as plugins_commerce_queries from "../plugins/commerce/queries.js";
 import type * as plugins_commerce from "../plugins/commerce.js";
+import type * as plugins_crm_marketingTags_mutations from "../plugins/crm/marketingTags/mutations.js";
+import type * as plugins_crm_marketingTags_queries from "../plugins/crm/marketingTags/queries.js";
 import type * as plugins_disclaimers_actions from "../plugins/disclaimers/actions.js";
 import type * as plugins_disclaimers_mutations from "../plugins/disclaimers/mutations.js";
 import type * as plugins_disclaimers_posts_mutations from "../plugins/disclaimers/posts/mutations.js";
@@ -154,8 +149,6 @@ import type * as plugins_entity_queries from "../plugins/entity/queries.js";
 import type * as plugins_entity_resolvers from "../plugins/entity/resolvers.js";
 import type * as plugins_entity_types from "../plugins/entity/types.js";
 import type * as plugins_lms_actions from "../plugins/lms/actions.js";
-import type * as plugins_lms_contentAccess_mutations from "../plugins/lms/contentAccess/mutations.js";
-import type * as plugins_lms_contentAccess_queries from "../plugins/lms/contentAccess/queries.js";
 import type * as plugins_lms_helpers from "../plugins/lms/helpers.js";
 import type * as plugins_lms_mutations from "../plugins/lms/mutations.js";
 import type * as plugins_lms_posts_mutations from "../plugins/lms/posts/mutations.js";
@@ -219,16 +212,9 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   constants: typeof constants;
-  "core/accessControl/helpers": typeof core_accessControl_helpers;
-  "core/accessControl/mutations": typeof core_accessControl_mutations;
-  "core/accessControl/queries": typeof core_accessControl_queries;
-  "core/accessControl/types": typeof core_accessControl_types;
   "core/auditLog/queries": typeof core_auditLog_queries;
   "core/categories/mutations": typeof core_categories_mutations;
   "core/categories/queries": typeof core_categories_queries;
-  "core/crm/contacts/mutations": typeof core_crm_contacts_mutations;
-  "core/crm/contacts/queries": typeof core_crm_contacts_queries;
-  "core/crm/queries": typeof core_crm_queries;
   "core/downloads/actions": typeof core_downloads_actions;
   "core/downloads/meta": typeof core_downloads_meta;
   "core/downloads/mutations": typeof core_downloads_mutations;
@@ -268,12 +254,12 @@ declare const fullApi: ApiFromModules<{
   "core/posts/postMeta": typeof core_posts_postMeta;
   "core/posts/queries": typeof core_posts_queries;
   "core/posts/templates": typeof core_posts_templates;
+  "core/roles/queries": typeof core_roles_queries;
   "core/tags/mutations": typeof core_tags_mutations;
   "core/tags/queries": typeof core_tags_queries;
   "core/taxonomies/mutations": typeof core_taxonomies_mutations;
   "core/taxonomies/queries": typeof core_taxonomies_queries;
   "core/users/helpers": typeof core_users_helpers;
-  "core/users/marketingTags/index": typeof core_users_marketingTags_index;
   "core/users/mutations": typeof core_users_mutations;
   "core/users/queries": typeof core_users_queries;
   "core/users/types": typeof core_users_types;
@@ -354,6 +340,8 @@ declare const fullApi: ApiFromModules<{
   "plugins/commerce/products/queries": typeof plugins_commerce_products_queries;
   "plugins/commerce/queries": typeof plugins_commerce_queries;
   "plugins/commerce": typeof plugins_commerce;
+  "plugins/crm/marketingTags/mutations": typeof plugins_crm_marketingTags_mutations;
+  "plugins/crm/marketingTags/queries": typeof plugins_crm_marketingTags_queries;
   "plugins/disclaimers/actions": typeof plugins_disclaimers_actions;
   "plugins/disclaimers/mutations": typeof plugins_disclaimers_mutations;
   "plugins/disclaimers/posts/mutations": typeof plugins_disclaimers_posts_mutations;
@@ -364,8 +352,6 @@ declare const fullApi: ApiFromModules<{
   "plugins/entity/resolvers": typeof plugins_entity_resolvers;
   "plugins/entity/types": typeof plugins_entity_types;
   "plugins/lms/actions": typeof plugins_lms_actions;
-  "plugins/lms/contentAccess/mutations": typeof plugins_lms_contentAccess_mutations;
-  "plugins/lms/contentAccess/queries": typeof plugins_lms_contentAccess_queries;
   "plugins/lms/helpers": typeof plugins_lms_helpers;
   "plugins/lms/mutations": typeof plugins_lms_mutations;
   "plugins/lms/posts/mutations": typeof plugins_lms_posts_mutations;
@@ -5156,76 +5142,6 @@ export declare const components: {
     };
   };
   launchthat_lms: {
-    contentAccess: {
-      mutations: {
-        clearContentAccessRules: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            contentId: string;
-            contentType:
-              | "course"
-              | "lesson"
-              | "topic"
-              | "download"
-              | "product"
-              | "quiz";
-          },
-          boolean
-        >;
-        saveContentAccessRules: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            contentId: string;
-            contentType:
-              | "course"
-              | "lesson"
-              | "topic"
-              | "download"
-              | "product"
-              | "quiz";
-            excludedTags: { mode: "all" | "some"; tagIds: Array<string> };
-            isActive?: boolean;
-            isPublic?: boolean;
-            priority?: number;
-            requiredTags: { mode: "all" | "some"; tagIds: Array<string> };
-          },
-          string
-        >;
-      };
-      queries: {
-        getContentAccessRules: FunctionReference<
-          "query",
-          "internal",
-          {
-            contentId: string;
-            contentType:
-              | "course"
-              | "lesson"
-              | "topic"
-              | "download"
-              | "product"
-              | "quiz";
-          },
-          {
-            contentId: string;
-            contentType:
-              | "course"
-              | "lesson"
-              | "topic"
-              | "download"
-              | "product"
-              | "quiz";
-            excludedTags: { mode: "all" | "some"; tagIds: Array<string> };
-            isActive?: boolean;
-            isPublic?: boolean;
-            priority?: number;
-            requiredTags: { mode: "all" | "some"; tagIds: Array<string> };
-          } | null
-        >;
-      };
-    };
     posts: {
       mutations: {
         bulkUpdatePostStatus: FunctionReference<
@@ -5345,6 +5261,12 @@ export declare const components: {
           "query",
           "internal",
           { organizationId?: string; postTypeSlug?: string },
+          any
+        >;
+        listPostsWithMetaKey: FunctionReference<
+          "query",
+          "internal",
+          { key: string; organizationId?: string },
           any
         >;
         searchPosts: FunctionReference<
@@ -6114,6 +6036,119 @@ export declare const components: {
             searchTerm: string;
           },
           any
+        >;
+      };
+    };
+  };
+  launchthat_crm: {
+    marketingTags: {
+      mutations: {
+        assignMarketingTagToUser: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            assignedBy?: string;
+            contactId: string;
+            expiresAt?: number;
+            marketingTagId: string;
+            notes?: string;
+            organizationId?: string;
+            source?: string;
+          },
+          string
+        >;
+        createMarketingTag: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            category?: string;
+            color?: string;
+            createdBy?: string;
+            description?: string;
+            isActive?: boolean;
+            name: string;
+            organizationId?: string;
+            slug?: string;
+          },
+          string
+        >;
+        removeMarketingTagFromUser: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            contactId: string;
+            marketingTagId: string;
+            organizationId?: string;
+          },
+          boolean
+        >;
+      };
+      queries: {
+        contactHasMarketingTags: FunctionReference<
+          "query",
+          "internal",
+          {
+            contactId: string;
+            organizationId?: string;
+            requireAll?: boolean;
+            tagSlugs: Array<string>;
+          },
+          {
+            hasAccess: boolean;
+            matchingTags: Array<string>;
+            missingTags: Array<string>;
+          }
+        >;
+        getContactIdForUser: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; userId: string },
+          string | null
+        >;
+        getUserMarketingTags: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; userId: string },
+          Array<{
+            _id: string;
+            assignedAt: number;
+            assignedBy?: string;
+            contactId: string;
+            expiresAt?: number;
+            marketingTag: {
+              _creationTime: number;
+              _id: string;
+              category?: string;
+              color?: string;
+              createdAt?: number;
+              createdBy?: string;
+              description?: string;
+              isActive?: boolean;
+              name: string;
+              organizationId?: string;
+              slug?: string;
+            };
+            notes?: string;
+            source?: string;
+          }>
+        >;
+        listMarketingTags: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            category?: string;
+            color?: string;
+            createdAt?: number;
+            createdBy?: string;
+            description?: string;
+            isActive?: boolean;
+            name: string;
+            organizationId?: string;
+            slug?: string;
+          }>
         >;
       };
     };

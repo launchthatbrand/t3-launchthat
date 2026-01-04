@@ -1,6 +1,7 @@
 import { registerActionsMetaBox } from "./actions";
 import { registerAttachmentsMetaBox } from "./attachments";
 import { registerContentMetaBox } from "./content";
+import { registerContentAccessMetaBox } from "./contentAccess";
 import { registerCustomFieldsMetaBox } from "./customFields";
 import { registerDownloadsMetaBox } from "./downloads";
 import { registerGeneralMetaBox } from "./general";
@@ -29,6 +30,7 @@ export const registerCoreMetaBoxes = () => {
     registerVimeoMetaBox as unknown as () => void,
     registerTaxonomyMetaBoxes as unknown as () => void,
     registerSeoMetaBox as unknown as () => void,
+    registerContentAccessMetaBox as unknown as () => void,
   ];
 
   for (const register of registrations) {

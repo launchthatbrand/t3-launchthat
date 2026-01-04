@@ -28,8 +28,9 @@ import type {
 } from "../constants/courseSettings";
 import type { Id } from "../lib/convexId";
 import {
-  buildCourseSettingsOptionKey,
   DEFAULT_COURSE_SETTINGS,
+  LMS_COURSE_ACCESS_MODE_META_KEY,
+  LMS_COURSE_SETTINGS_META_KEY,
 } from "../constants/courseSettings";
 
 const ACCESS_MODE_OPTIONS: {
@@ -110,36 +111,33 @@ export const CourseSettingsTab = ({
   const normalizedOrganizationId = organizationId
     ? (organizationId as unknown as Id<"organizations">)
     : undefined;
-  const optionKey = postId ? buildCourseSettingsOptionKey(postId) : null;
-  const optionsArgs =
-    optionKey && normalizedOrganizationId
-      ? {
-          metaKey: optionKey,
-          type: "site" as const,
-          orgId: normalizedOrganizationId,
-        }
-      : "skip";
-  const canPersist = optionsArgs !== "skip";
+  const canPersist = Boolean(postId && normalizedOrganizationId);
 
-  const existingOption = useQuery(
-    api.core.options.get,
-    optionsArgs === "skip" ? "skip" : optionsArgs,
-  );
-  const setOption = useMutation(api.core.options.set);
+  const postMeta = useQuery(
+    api.plugins.lms.posts.queries.getPostMeta,
+    postId && normalizedOrganizationId
+      ? { postId, organizationId: String(normalizedOrganizationId) }
+      : "skip",
+  ) as unknown as Array<{ key: string; value?: unknown }> | undefined;
+
+  const updatePost = useMutation(api.plugins.lms.posts.mutations.updatePost);
 
   const resolvedSettings: CourseSettings = useMemo(() => {
-    if (
-      existingOption &&
-      existingOption.metaValue &&
-      typeof existingOption.metaValue === "object"
-    ) {
-      return {
-        ...DEFAULT_COURSE_SETTINGS,
-        ...(existingOption.metaValue as Partial<CourseSettings>),
-      };
+    const raw = Array.isArray(postMeta)
+      ? postMeta.find((m) => m?.key === LMS_COURSE_SETTINGS_META_KEY)?.value
+      : undefined;
+    if (typeof raw === "string" && raw.trim().length > 0) {
+      try {
+        const parsed = JSON.parse(raw) as Partial<CourseSettings>;
+        if (parsed && typeof parsed === "object") {
+          return { ...DEFAULT_COURSE_SETTINGS, ...parsed };
+        }
+      } catch {
+        // ignore invalid JSON
+      }
     }
     return DEFAULT_COURSE_SETTINGS;
-  }, [existingOption]);
+  }, [postMeta]);
 
   const [settings, setSettings] = useState<CourseSettings>(resolvedSettings);
   const [prereqInput, setPrereqInput] = useState(
@@ -178,16 +176,17 @@ export const CourseSettingsTab = ({
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (!canPersist || !optionKey || !normalizedOrganizationId) {
+    if (!canPersist || !postId || !normalizedOrganizationId) {
       return;
     }
     setIsSaving(true);
     try {
-      await setOption({
-        metaKey: optionKey,
-        metaValue: settings,
-        type: "site",
-        orgId: normalizedOrganizationId,
+      await updatePost({
+        id: postId,
+        meta: {
+          [LMS_COURSE_SETTINGS_META_KEY]: JSON.stringify(settings),
+          [LMS_COURSE_ACCESS_MODE_META_KEY]: settings.accessMode,
+        },
       });
       toast.success("Course settings saved", {
         description: `Stored via ${pluginName}.`,
@@ -199,7 +198,7 @@ export const CourseSettingsTab = ({
     } finally {
       setIsSaving(false);
     }
-  }, [canPersist, optionKey, organizationId, pluginName, setOption, settings]);
+  }, [canPersist, normalizedOrganizationId, pluginName, postId, settings, updatePost]);
 
   if (!postId) {
     return (

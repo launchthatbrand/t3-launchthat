@@ -36,11 +36,16 @@ export const FRONTEND_POST_STORE_OVERRIDES_FILTER =
 // Primary stores provide a (mostly) exclusive resolver per postTypeSlug.
 export const FRONTEND_POST_STORES_FILTER = "frontend.postStores";
 
-// Portal-wide identity resolution (e.g., user/email -> CRM contact)
-// Providers are registered as filter returns, ordered by provider.priority (lower runs first).
-export const FRONTEND_IDENTITY_RESOLVERS_FILTER = "frontend.identity.resolvers";
-
-// Portal-wide content access evaluation (gating/redirects).
-// Providers are registered as filter returns, ordered by provider.priority (lower runs first).
+// Portal (frontend) content access extension points
+// Providers return ContentAccessDecisions used to gate post-type controlled frontend routes.
 export const FRONTEND_CONTENT_ACCESS_PROVIDERS_FILTER =
   "frontend.contentAccess.providers";
+
+// Portal-wide content access rule sources (for admin overview).
+// Sources are registered as filter returns, ordered by source.priority (lower runs first).
+export const FRONTEND_CONTENT_ACCESS_RULE_SOURCES_FILTER =
+  "frontend.contentAccess.ruleSources";
+
+// Admin edit meta box extension point for content access UI.
+// Plugins can contribute additional UI sections (e.g. CRM marketing tags) to the core Content Access metabox.
+export const ADMIN_CONTENT_ACCESS_SECTIONS_FILTER = "admin.contentAccess.sections";

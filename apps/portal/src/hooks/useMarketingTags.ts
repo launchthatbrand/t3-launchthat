@@ -12,19 +12,13 @@ export function useMarketingTags() {
     tenant?.slug === PORTAL_TENANT_SLUG ? PORTAL_TENANT_SLUG : tenant?._id ?? null;
 
   const marketingTags = useQuery(
-    api.core.crm.marketingTags.index.listCrmMarketingTags,
+    api.plugins.crm.marketingTags.queries.listMarketingTags,
     organizationId ? ({ organizationId } as any) : "skip",
   );
 
   // Mutations
   const createTagMutation = useMutation(
-    api.core.crm.marketingTags.index.createCrmMarketingTag,
-  );
-  const assignTagToContactMutation = useMutation(
-    api.core.crm.marketingTags.index.assignMarketingTagToContact,
-  );
-  const removeTagFromContactMutation = useMutation(
-    api.core.crm.marketingTags.index.removeMarketingTagFromContact,
+    api.plugins.crm.marketingTags.mutations.createMarketingTag,
   );
 
   const createTag = async (args: {
@@ -44,8 +38,6 @@ export function useMarketingTags() {
   return {
     marketingTags,
     createTag,
-    assignTagToContact: assignTagToContactMutation,
-    removeTagFromContact: removeTagFromContactMutation,
     organizationId,
   };
 }
@@ -57,31 +49,24 @@ export function useUserMarketingTags(userId?: Id<"users">) {
   const organizationId =
     tenant?.slug === PORTAL_TENANT_SLUG ? PORTAL_TENANT_SLUG : tenant?._id ?? null;
 
-  const contactId = useQuery(
-    api.core.crm.identity.queries.getContactIdForUser,
-    targetUserId && organizationId
-      ? ({ organizationId, userId: targetUserId } as any)
-      : "skip",
-  );
-
   const userTags = useQuery(
-    api.core.crm.marketingTags.index.getContactMarketingTags,
-    contactId && organizationId
-      ? ({ organizationId, contactId } as any)
+    api.plugins.crm.marketingTags.queries.getUserMarketingTags,
+    targetUserId && organizationId
+      ? ({ organizationId, userId: String(targetUserId) } as any)
       : "skip",
   );
 
   // Mutations
   const assignTagMutation = useMutation(
-    api.core.crm.marketingTags.index.assignMarketingTagToContact,
+    api.plugins.crm.marketingTags.mutations.assignMarketingTagToUser,
   );
   const removeTagMutation = useMutation(
-    api.core.crm.marketingTags.index.removeMarketingTagFromContact,
+    api.plugins.crm.marketingTags.mutations.removeMarketingTagFromUser,
   );
 
   const assignTag = async (args: {
     userId: Id<"users">; // will be resolved to a contact
-    tagId: Id<"crmMarketingTags">;
+    tagId: string;
     source?: string;
     expiresAt?: number;
     notes?: string;
@@ -89,13 +74,10 @@ export function useUserMarketingTags(userId?: Id<"users">) {
     if (!organizationId) {
       throw new Error("Missing organization");
     }
-    if (!contactId) {
-      throw new Error("No contact linked to this user");
-    }
     return assignTagMutation({
       organizationId: organizationId as any,
-      contactId: contactId as any,
       marketingTagId: args.tagId as any,
+      userId: String(args.userId),
       source: args.source,
       expiresAt: args.expiresAt,
       notes: args.notes,
@@ -104,18 +86,15 @@ export function useUserMarketingTags(userId?: Id<"users">) {
 
   const removeTag = async (args: {
     userId: Id<"users">;
-    tagId: Id<"crmMarketingTags">;
+    tagId: string;
   }) => {
     if (!organizationId) {
       throw new Error("Missing organization");
     }
-    if (!contactId) {
-      throw new Error("No contact linked to this user");
-    }
     return removeTagMutation({
       organizationId: organizationId as any,
-      contactId: contactId as any,
       marketingTagId: args.tagId as any,
+      userId: String(args.userId),
     });
   };
 
@@ -124,7 +103,7 @@ export function useUserMarketingTags(userId?: Id<"users">) {
     assignTag,
     removeTag,
     isLoading: userTags === undefined,
-    contactId: contactId ?? null,
+    contactId: null,
   };
 }
 
@@ -135,12 +114,12 @@ export function useMarketingTagAccess(tagSlugs: string[], requireAll = false) {
     tenant?.slug === PORTAL_TENANT_SLUG ? PORTAL_TENANT_SLUG : tenant?._id ?? null;
 
   const contactId = useQuery(
-    api.core.crm.identity.queries.getContactIdForUser,
-    convexId && organizationId ? ({ organizationId, userId: convexId } as any) : "skip",
-  );
+    api.plugins.crm.marketingTags.queries.getContactIdForUser,
+    convexId && organizationId ? ({ organizationId, userId: String(convexId) } as any) : "skip",
+  ) as unknown as string | null | undefined;
 
   const access = useQuery(
-    api.core.crm.marketingTags.index.contactHasMarketingTags,
+    api.plugins.crm.marketingTags.queries.contactHasMarketingTags,
     contactId && organizationId && tagSlugs.length > 0
       ? {
           organizationId: organizationId as any,
@@ -149,7 +128,7 @@ export function useMarketingTagAccess(tagSlugs: string[], requireAll = false) {
           requireAll,
         }
       : "skip",
-  );
+  ) as any;
 
   return {
     hasAccess: access?.hasAccess ?? false,

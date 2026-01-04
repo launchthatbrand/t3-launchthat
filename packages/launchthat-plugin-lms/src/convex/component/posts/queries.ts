@@ -175,6 +175,41 @@ export const getPostMetaInternal = query({
   },
 });
 
+export const listPostsWithMetaKey = query({
+  args: {
+    key: v.string(),
+    organizationId: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const entries = await ctx.db
+      .query("postsMeta")
+      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .collect();
+
+    const rows = await Promise.all(
+      entries.map(async (entry) => {
+        const post = await ctx.db.get(entry.postId);
+        if (!post) return null;
+        if (
+          !organizationMatches(post.organizationId, args.organizationId ?? undefined)
+        ) {
+          return null;
+        }
+        return {
+          postId: post._id,
+          postTypeSlug: post.postTypeSlug,
+          title: post.title,
+          organizationId: post.organizationId,
+          value: entry.value ?? null,
+        };
+      }),
+    );
+
+    return rows.filter(Boolean);
+  },
+});
+
 export const searchPosts = query({
   args: {
     searchTerm: v.string(),

@@ -25,10 +25,9 @@ const normalizePostLike = (value: unknown, fallbackPostTypeSlug: string) => {
 };
 
 export function registerCorePostStores(): void {
-  // Versioned guard for dev/HMR resilience (see registerCoreRouteHandlers.tsx).
-  const already = (globalThis as any).__portal_core_poststores_registered_v3;
-  if (already && hasFilter(FRONTEND_POST_STORES_FILTER)) return;
-  (globalThis as any).__portal_core_poststores_registered_v3 = true;
+  // Dev/HMR safety:
+  // Avoid guarding on `hasFilter()` (plugins may have registered these hooks already),
+  // and instead register our core stores whenever this module is evaluated.
 
   // Overrides hook is currently empty by default (but exists for caching/migrations/preview).
   addFilter(

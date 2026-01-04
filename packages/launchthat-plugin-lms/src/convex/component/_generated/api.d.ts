@@ -8,8 +8,6 @@
  * @module
  */
 
-import type * as contentAccess_mutations from "../contentAccess/mutations.js";
-import type * as contentAccess_queries from "../contentAccess/queries.js";
 import type * as index from "../index.js";
 import type * as posts_helpers from "../posts/helpers.js";
 import type * as posts_mutations from "../posts/mutations.js";
@@ -32,8 +30,6 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
-  "contentAccess/mutations": typeof contentAccess_mutations;
-  "contentAccess/queries": typeof contentAccess_queries;
   index: typeof index;
   "posts/helpers": typeof posts_helpers;
   "posts/mutations": typeof posts_mutations;
@@ -42,76 +38,6 @@ declare const fullApi: ApiFromModules<{
   "progress/queries": typeof progress_queries;
 }>;
 export type Mounts = {
-  contentAccess: {
-    mutations: {
-      clearContentAccessRules: FunctionReference<
-        "mutation",
-        "public",
-        {
-          contentId: string;
-          contentType:
-            | "course"
-            | "lesson"
-            | "topic"
-            | "download"
-            | "product"
-            | "quiz";
-        },
-        boolean
-      >;
-      saveContentAccessRules: FunctionReference<
-        "mutation",
-        "public",
-        {
-          contentId: string;
-          contentType:
-            | "course"
-            | "lesson"
-            | "topic"
-            | "download"
-            | "product"
-            | "quiz";
-          excludedTags: { mode: "all" | "some"; tagIds: Array<string> };
-          isActive?: boolean;
-          isPublic?: boolean;
-          priority?: number;
-          requiredTags: { mode: "all" | "some"; tagIds: Array<string> };
-        },
-        string
-      >;
-    };
-    queries: {
-      getContentAccessRules: FunctionReference<
-        "query",
-        "public",
-        {
-          contentId: string;
-          contentType:
-            | "course"
-            | "lesson"
-            | "topic"
-            | "download"
-            | "product"
-            | "quiz";
-        },
-        {
-          contentId: string;
-          contentType:
-            | "course"
-            | "lesson"
-            | "topic"
-            | "download"
-            | "product"
-            | "quiz";
-          excludedTags: { mode: "all" | "some"; tagIds: Array<string> };
-          isActive?: boolean;
-          isPublic?: boolean;
-          priority?: number;
-          requiredTags: { mode: "all" | "some"; tagIds: Array<string> };
-        } | null
-      >;
-    };
-  };
   posts: {
     mutations: {
       bulkUpdatePostStatus: FunctionReference<
@@ -226,6 +152,12 @@ export type Mounts = {
         "query",
         "public",
         { organizationId?: string; postTypeSlug?: string },
+        any
+      >;
+      listPostsWithMetaKey: FunctionReference<
+        "query",
+        "public",
+        { key: string; organizationId?: string },
         any
       >;
       searchPosts: FunctionReference<

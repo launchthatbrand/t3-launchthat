@@ -1,18 +1,19 @@
 "use client";
 
+import React, { createContext, useContext } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { AlertCircle, Lock } from "lucide-react";
+
+import { Button } from "@acme/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+
 import {
   AccessRules,
   ContentType,
-  UserTag,
   useContentAccess,
+  UserTag,
 } from "~/hooks/useContentAccess";
-import { AlertCircle, Lock } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import React, { createContext, useContext } from "react";
-
-import { Button } from "@acme/ui/button";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 // Access context type
 interface AccessContextType {
@@ -113,14 +114,15 @@ function AccessDeniedUI({
   };
 }) {
   return (
-    <div className="flex min-h-[60vh] items-center justify-center p-6">
+    <div className="flex min-h-[60vh] flex-1 items-center justify-center p-6">
       <Card className="mx-auto max-w-md">
+        asd
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
             <Lock className="h-6 w-6 text-red-600" />
           </div>
           <CardTitle className="text-xl font-semibold text-gray-900">
-            Access Restricted
+            Access Restrictededed
           </CardTitle>
           {course && (
             <p className="text-sm text-gray-600">
@@ -136,7 +138,7 @@ function AccessDeniedUI({
 
           <p className="mb-6 text-gray-600">
             {reason ??
-              `You don't have permission to access this ${contentType ?? "content"}.`}
+              `You don't have permission to access thisssss ${contentType ?? "content"}.`}
           </p>
 
           <div className="space-y-3">
@@ -212,7 +214,7 @@ export default function AccessGate({
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+          <div className="border-primary mx-auto h-8 w-8 animate-spin rounded-full border-b-2"></div>
           <p className="mt-2 text-sm text-gray-600">
             Checking access permissions...
           </p>

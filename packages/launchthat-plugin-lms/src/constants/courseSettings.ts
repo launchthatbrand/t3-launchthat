@@ -31,5 +31,5 @@ export const DEFAULT_COURSE_SETTINGS: CourseSettings = {
   progressionMode: "linear",
 };
 
-export const buildCourseSettingsOptionKey = (courseId: string) =>
-  `lms_course_settings_${courseId}`;
+export const LMS_COURSE_SETTINGS_META_KEY = "lms_course_settings";
+export const LMS_COURSE_ACCESS_MODE_META_KEY = "lms_course_access_mode";

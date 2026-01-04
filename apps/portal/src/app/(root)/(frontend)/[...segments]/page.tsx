@@ -1,5 +1,5 @@
 import "~/lib/pageTemplates";
-import "~/lib/plugins/installHooks";
+import "~/lib/plugins/installHooks.server";
 
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
@@ -36,13 +36,41 @@ export default async function FrontendCatchAllPage(
   const tenant = await getActiveTenantFromHeaders();
   const organizationId = getTenantOrganizationId(tenant);
 
+  const debugRouting = (() => {
+    const raw = resolvedSearchParams?.debugRouting;
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    return value === "1" || value === "true";
+  })();
+
+  if (debugRouting) {
+    console.log("[frontendRouting] catch-all request", {
+      segments,
+      host: tenant?.customDomain ?? tenant?.slug ?? null,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      tenantId: (tenant as any)?._id ?? null,
+      organizationId: organizationId ?? null,
+    });
+  }
+
   const node = await resolveFrontendRoute({
     segments,
-    searchParams: resolvedSearchParams,
+    searchParams: {
+      ...(resolvedSearchParams ?? {}),
+      // ensure downstream routing sees the debug flag
+      ...(debugRouting ? { debugRouting: "1" } : {}),
+    },
     organizationId: (organizationId ?? null) as any,
     fetchQuery,
   });
 
-  if (!node) notFound();
+  if (!node) {
+    if (debugRouting) {
+      console.log("[frontendRouting] catch-all notFound (no node)", {
+        segments,
+        organizationId: organizationId ?? null,
+      });
+    }
+    notFound();
+  }
   return node;
 }

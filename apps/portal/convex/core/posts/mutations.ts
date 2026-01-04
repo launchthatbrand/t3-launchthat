@@ -281,6 +281,26 @@ export const deletePost = mutation({
   },
 });
 
+export const deletePostMetaKey = mutation({
+  args: {
+    postId: v.id("posts"),
+    key: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("postsMeta")
+      .withIndex("by_post_and_key", (q) =>
+        q.eq("postId", args.postId).eq("key", args.key),
+      )
+      .unique();
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+    return null;
+  },
+});
+
 /**
  * Update post status
  */

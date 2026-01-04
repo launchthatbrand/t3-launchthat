@@ -14,8 +14,8 @@ import { usePathname } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
 import { useQuery } from "convex/react";
 
-import { useConvexUser } from "~/hooks/useConvexUser";
 import { useTenant } from "~/context/TenantContext";
+import { useConvexUser } from "~/hooks/useConvexUser";
 import { PORTAL_TENANT_SLUG } from "~/lib/tenant-fetcher";
 
 interface ContentAccess {
@@ -79,7 +79,9 @@ export function ContentProtectionProvider({
   const { convexId: userId, isLoading: userLoading } = useConvexUser();
   const tenant = useTenant();
   const crmOrganizationId =
-    tenant?.slug === PORTAL_TENANT_SLUG ? PORTAL_TENANT_SLUG : tenant?._id ?? null;
+    tenant?.slug === PORTAL_TENANT_SLUG
+      ? PORTAL_TENANT_SLUG
+      : (tenant?._id ?? null);
   const pathname = usePathname();
   const [accessCache, setAccessCache] = useState<Record<string, ContentAccess>>(
     {},
@@ -92,23 +94,19 @@ export function ContentProtectionProvider({
       ? ({
           metaKey: "plugin_crm_enabled",
           type: "site",
-          orgId: tenant?.slug === PORTAL_TENANT_SLUG ? undefined : (crmOrganizationId as any),
+          orgId:
+            tenant?.slug === PORTAL_TENANT_SLUG
+              ? undefined
+              : (crmOrganizationId as any),
         } as const)
       : "skip",
   ) as { metaValue?: unknown } | null | undefined;
   const crmEnabled = Boolean(crmEnabledOption?.metaValue);
 
-  const contactId = useQuery(
-    api.core.crm.identity.queries.getContactIdForUser,
-    crmEnabled && userId && crmOrganizationId
-      ? ({ organizationId: crmOrganizationId, userId } as any)
-      : "skip",
-  );
-
   const contactTags = useQuery(
-    api.core.crm.marketingTags.index.getContactMarketingTags,
-    crmEnabled && crmOrganizationId && contactId
-      ? ({ organizationId: crmOrganizationId, contactId } as any)
+    api.plugins.crm.marketingTags.queries.getUserMarketingTags,
+    crmEnabled && crmOrganizationId && userId
+      ? ({ organizationId: crmOrganizationId, userId: String(userId) } as any)
       : "skip",
   );
 
@@ -261,10 +259,10 @@ export function ContentProtectionProvider({
       hasAccessToContent,
       getAccessReason,
       checkMultipleAccess,
-      userId,
+      userId: userId ? String(userId) : undefined,
       userTags: userTagIds,
       isAuthenticated: !!userId,
-      isLoading: userLoading,
+      isLoading: Boolean(userLoading),
       refreshAccess,
       currentPageAccess,
     }),

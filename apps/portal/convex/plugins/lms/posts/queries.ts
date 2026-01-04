@@ -102,4 +102,15 @@ export const getPostCategories = query({
   },
 });
 
+export const listPostsWithMetaKey = query({
+  args: {
+    key: v.string(),
+    organizationId: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    return (await ctx.runQuery(lmsPostsQueries.listPostsWithMetaKey as any, args)) as any;
+  },
+});
+
 

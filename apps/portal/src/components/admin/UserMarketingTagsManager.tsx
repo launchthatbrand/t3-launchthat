@@ -146,7 +146,7 @@ export function UserMarketingTagsManager({
     try {
       await assignTag({
         userId,
-        tagId: selectedTagId as unknown as Id<"crmMarketingTags">,
+        tagId: selectedTagId,
         source: "admin_manual",
       });
 
@@ -171,8 +171,8 @@ export function UserMarketingTagsManager({
   };
 
   const handleRemoveTag = async (userTag: {
-    _id: Id<"contactMarketingTags">;
-    marketingTag: { _id: Id<"crmMarketingTags"> };
+    _id: string;
+    marketingTag: { _id: string };
   }) => {
     try {
       await removeTag({

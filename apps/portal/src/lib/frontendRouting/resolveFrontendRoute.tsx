@@ -1,4 +1,4 @@
-import "~/lib/plugins/installHooks";
+import "~/lib/plugins/installHooks.server";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { fetchQuery as convexFetchQuery } from "convex/nextjs";

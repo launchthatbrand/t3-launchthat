@@ -20,8 +20,9 @@ import { renderProductSingle } from "~/components/commerce/ProductSingleRenderer
 import { adminMenuRegistry } from "~/lib/adminMenu";
 import { registerPluginPageTemplates } from "~/lib/pageTemplates/registerPluginPageTemplates";
 import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
-import { portalCrmPlugin } from "./portalCrmPlugin";
+import { portalAccessControlPlugin } from "./portalAccessControlPlugin";
 import { portalNotificationsPlugin } from "./portalNotificationsPlugin";
+import { enhanceCrmPluginDefinition } from "./enhanceCrmPlugin";
 
 configureSocialFeedPlugin({
   providers: {
@@ -31,8 +32,13 @@ configureSocialFeedPlugin({
 
 registerPluginPageTemplates();
 
-export const pluginDefinitions: PluginDefinition[] = [
+const crmPluginEnhanced = enhanceCrmPluginDefinition(
   crmPlugin as unknown as PluginDefinition,
+);
+
+export const pluginDefinitions: PluginDefinition[] = [
+  portalAccessControlPlugin,
+  crmPluginEnhanced,
   lmsPlugin as unknown as PluginDefinition,
   calendarPlugin as unknown as PluginDefinition,
   socialFeedPlugin as unknown as PluginDefinition,
@@ -40,7 +46,6 @@ export const pluginDefinitions: PluginDefinition[] = [
   supportPlugin as unknown as PluginDefinition,
   vimeoPlugin as unknown as PluginDefinition,
   disclaimersPlugin as unknown as PluginDefinition,
-  portalCrmPlugin,
   portalNotificationsPlugin,
   createEcommercePluginDefinition({
     // `productsSingleRender` is intentionally loosely typed (accepts `any`) in the ecommerce plugin.

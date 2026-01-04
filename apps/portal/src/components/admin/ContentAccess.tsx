@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { api } from "@convex-config/_generated/api";
+import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Plus, X } from "lucide-react";
 
+import { applyFilters } from "@acme/admin-runtime/hooks";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import {
@@ -13,84 +13,173 @@ import {
   CardTitle,
 } from "@acme/ui/card";
 import { Checkbox } from "@acme/ui/checkbox";
+import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@acme/ui/select";
 import { toast } from "@acme/ui/toast";
-import { useMarketingTags } from "~/hooks/useMarketingTags";
 
-export interface AccessRule {
-  requiredTags: {
-    mode: "all" | "some";
-    tagIds: string[];
-  };
-  excludedTags: {
-    mode: "all" | "some";
-    tagIds: string[];
-  };
-  isPublic: boolean;
-}
+import type { ContentAccessAdminSection } from "~/lib/access/contentAccessAdminSections";
+import type { NormalizedContentAccessRules } from "~/lib/access/contentAccessMeta";
+import {
+  isEffectivelyEmptyContentAccessRules,
+  normalizeContentAccessRules,
+  parseContentAccessMetaValue,
+  serializeContentAccessRules,
+} from "~/lib/access/contentAccessMeta";
+import { ADMIN_CONTENT_ACCESS_SECTIONS_FILTER } from "~/lib/plugins/hookSlots";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
+import { useTenant } from "~/context/TenantContext";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+
+export type AccessRule = NormalizedContentAccessRules;
+
+// Avoid importing Convex generated API as a typed ESM import here; it can trigger
+// TS "excessively deep" instantiation in some client modules. We only need the
+// runtime function references.
+// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
+const apiAny: any = require("@/convex/_generated/api").api;
 
 interface ContentAccessProps {
-  contentType: "course" | "lesson" | "topic" | "download" | "product" | "quiz";
+  contentType:
+    | "course"
+    | "lesson"
+    | "topic"
+    | "download"
+    | "product"
+    | "quiz"
+    | "post";
   contentId: string;
+  postTypeSlug: string;
   title?: string;
 }
 
 export const ContentAccess: React.FC<ContentAccessProps> = ({
   contentType,
   contentId,
+  postTypeSlug,
   title,
 }) => {
+  const tenant = useTenant();
+  const tenantOrgId = getTenantOrganizationId(tenant);
+  const portalAwareOrgId = tenantOrgId ?? tenant?._id;
+
   // State for access rules
   const [accessRules, setAccessRules] = useState<AccessRule>({
-    requiredTags: { mode: "some", tagIds: [] },
-    excludedTags: { mode: "some", tagIds: [] },
-    isPublic: false,
+    ...normalizeContentAccessRules(null),
   });
+  const [isDirty, setIsDirty] = useState(false);
 
-  // Queries
-  const { marketingTags } = useMarketingTags();
-  const currentRules = useQuery(
-    api.plugins.lms.contentAccess.queries.getContentAccessRules,
+  const setAccessRulesDirty = (
+    updater: React.SetStateAction<AccessRule>,
+  ): void => {
+    setIsDirty(true);
+    setAccessRules(updater);
+  };
+
+  const pluginOptions = useQuery(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    apiAny.core.options.getByType,
+    portalAwareOrgId ? { orgId: portalAwareOrgId, type: "site" } : "skip",
+  ) as unknown as Array<{ metaKey: string; metaValue?: unknown }> | undefined;
+
+  const enabledPluginIds = useMemo(() => {
+    const optionMap = new Map<string, boolean>(
+      Array.isArray(pluginOptions)
+        ? pluginOptions.map((o) => [o.metaKey, Boolean(o.metaValue)])
+        : [],
+    );
+    return pluginDefinitions
+      .filter((plugin) => {
+        if (!plugin.activation) return true;
+        const stored = optionMap.get(plugin.activation.optionKey);
+        if (stored === undefined) {
+          return plugin.activation.defaultEnabled ?? false;
+        }
+        return stored;
+      })
+      .map((p) => p.id);
+  }, [pluginOptions]);
+
+  const postType = useQuery(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    apiAny.core.postTypes.queries.getBySlug,
     {
-      contentType,
-      contentId,
+      slug: postTypeSlug,
+      ...(portalAwareOrgId ? { organizationId: portalAwareOrgId } : {}),
     },
-  );
+  ) as unknown as
+    | { storageKind?: string; storageTables?: string[] }
+    | null
+    | undefined;
+  const isLmsComponent =
+    postType?.storageKind === "component" &&
+    (postType?.storageTables ?? []).some((t) =>
+      String(t).includes("launchthat_lms:posts"),
+    );
 
-  const saveRules = useMutation(
-    api.plugins.lms.contentAccess.mutations.saveContentAccessRules,
+  // Queries: load postmeta and parse `content_access`
+  const postMeta = useQuery(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    apiAny.core.posts.postMeta.getPostMeta,
+    {
+      postId: contentId,
+      postTypeSlug,
+      ...(portalAwareOrgId ? { organizationId: portalAwareOrgId } : {}),
+    },
+  ) as unknown as Array<{ key: string; value?: unknown }> | undefined;
+
+  const currentRules = useMemo(() => {
+    const entry = Array.isArray(postMeta)
+      ? postMeta.find((m) => m?.key === "content_access")
+      : undefined;
+    const parsed = parseContentAccessMetaValue(entry?.value);
+    return parsed;
+  }, [postMeta]);
+
+  const saveCoreMeta = useMutation(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    apiAny.core.posts.mutations.updatePost,
   );
-  const clearRules = useMutation(
-    api.plugins.lms.contentAccess.mutations.clearContentAccessRules,
+  const deleteCoreMetaKey = useMutation(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    apiAny.core.posts.mutations.deletePostMetaKey,
+  );
+  const saveLmsMeta = useMutation(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    apiAny.plugins.lms.posts.mutations.updatePost,
+  );
+  const deleteLmsMetaKey = useMutation(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    apiAny.plugins.lms.posts.mutations.deletePostMetaKey,
   );
 
   // Load existing rules when data is available
   useEffect(() => {
-    if (currentRules) {
-      setAccessRules({
-        requiredTags: currentRules.requiredTags,
-        excludedTags: currentRules.excludedTags,
-        isPublic: currentRules.isPublic ?? false,
-      });
-    }
-  }, [currentRules]);
+    if (isDirty) return;
+    setAccessRules(currentRules ?? normalizeContentAccessRules(null));
+  }, [currentRules, isDirty]);
+
+  // Reset dirty state when switching content
+  useEffect(() => {
+    setIsDirty(false);
+  }, [contentType, contentId, postTypeSlug]);
 
   const handleSave = async () => {
     try {
-      await saveRules({
-        contentType,
-        contentId,
-        requiredTags: accessRules.requiredTags,
-        excludedTags: accessRules.excludedTags,
-        isPublic: accessRules.isPublic,
-      });
+      if (isEffectivelyEmptyContentAccessRules(accessRules)) {
+        if (isLmsComponent) {
+          await deleteLmsMetaKey({ postId: contentId, key: "content_access" });
+        } else {
+          await deleteCoreMetaKey({ postId: contentId, key: "content_access" });
+        }
+      } else {
+        const value = serializeContentAccessRules(accessRules);
+        if (isLmsComponent) {
+          await saveLmsMeta({ id: contentId, meta: { content_access: value } });
+        } else {
+          await saveCoreMeta({ id: contentId, meta: { content_access: value } });
+        }
+      }
+      setIsDirty(false);
       toast.success("Access rules saved successfully");
     } catch (error) {
       console.error("Failed to save access rules:", error);
@@ -100,12 +189,13 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
 
   const handleClear = async () => {
     try {
-      await clearRules({ contentType, contentId });
-      setAccessRules({
-        requiredTags: { mode: "some", tagIds: [] },
-        excludedTags: { mode: "some", tagIds: [] },
-        isPublic: false,
-      });
+      if (isLmsComponent) {
+        await deleteLmsMetaKey({ postId: contentId, key: "content_access" });
+      } else {
+        await deleteCoreMetaKey({ postId: contentId, key: "content_access" });
+      }
+      setAccessRules(normalizeContentAccessRules(null));
+      setIsDirty(false);
       toast.success("Access rules cleared");
     } catch (error) {
       console.error("Failed to clear access rules:", error);
@@ -113,78 +203,43 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
     }
   };
 
-  const addRequiredTag = (tagId: string) => {
-    if (!accessRules.requiredTags.tagIds.includes(tagId)) {
-      setAccessRules((prev) => ({
-        ...prev,
-        requiredTags: {
-          ...prev.requiredTags,
-          tagIds: [...prev.requiredTags.tagIds, tagId],
-        },
-      }));
-    }
-  };
+  const [requiredRoleInput, setRequiredRoleInput] = useState("");
+  const [requiredPermissionInput, setRequiredPermissionInput] = useState("");
 
-  const removeRequiredTag = (tagId: string) => {
-    setAccessRules((prev) => ({
-      ...prev,
-      requiredTags: {
-        ...prev.requiredTags,
-        tagIds: prev.requiredTags.tagIds.filter((id) => id !== tagId),
-      },
-    }));
-  };
-
-  const addExcludedTag = (tagId: string) => {
-    if (!accessRules.excludedTags.tagIds.includes(tagId)) {
-      setAccessRules((prev) => ({
-        ...prev,
-        excludedTags: {
-          ...prev.excludedTags,
-          tagIds: [...prev.excludedTags.tagIds, tagId],
-        },
-      }));
-    }
-  };
-
-  const removeExcludedTag = (tagId: string) => {
-    setAccessRules((prev) => ({
-      ...prev,
-      excludedTags: {
-        ...prev.excludedTags,
-        tagIds: prev.excludedTags.tagIds.filter((id) => id !== tagId),
-      },
-    }));
-  };
-
-  const getTagName = (tagId: string) => {
-    return marketingTags?.find((tag: any) => tag.slug === tagId)?.name ?? tagId;
-  };
-
-  const availableTags =
-    marketingTags?.filter(
-      (tag) =>
-        !accessRules.requiredTags.tagIds.includes(tag.slug) &&
-        !accessRules.excludedTags.tagIds.includes(tag.slug),
-    ) ?? [];
+  const rawSections = applyFilters(ADMIN_CONTENT_ACCESS_SECTIONS_FILTER, [], {
+    contentType,
+    contentId,
+    enabledPluginIds,
+  });
+  const sections: ContentAccessAdminSection[] = Array.isArray(rawSections)
+    ? (rawSections as ContentAccessAdminSection[])
+    : [];
+  const visibleSections = useMemo(() => {
+    const filtered = sections.filter((s) => {
+      if (!s?.pluginId) return true;
+      return enabledPluginIds.includes(s.pluginId);
+    });
+    return filtered.sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabledPluginIds, rawSections]);
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="rounded-none border-none p-0 shadow-none">
+      <CardHeader className="p-0">
         <CardTitle>Content Access Control</CardTitle>
         <CardDescription>
           Configure who can access this {contentType}
           {title && ` (${title})`}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 p-0">
         {/* Public Access Checkbox */}
         <div className="flex items-center space-x-2">
           <Checkbox
             id="isPublic"
             checked={accessRules.isPublic}
             onCheckedChange={(checked) =>
-              setAccessRules((prev) => ({
+              setAccessRulesDirty((prev) => ({
                 ...prev,
                 isPublic: checked as boolean,
               }))
@@ -198,130 +253,144 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
         {accessRules.isPublic && (
           <div className="rounded-lg border border-green-200 bg-green-50 p-4">
             <p className="text-sm text-green-800">
-              This content is publicly accessible to all users. Tag-based
+              This content is publicly accessible to all users. Additional
               restrictions are disabled.
             </p>
           </div>
         )}
 
-        {/* Tag-based access controls - disabled when public */}
+        {/* Core access controls (always available) */}
         <div
           className={`space-y-6 ${accessRules.isPublic ? "pointer-events-none opacity-50" : ""}`}
         >
-          {/* Required Tags Section */}
+          {/* Role requirements */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-semibold">Required Tags</Label>
-              <Select
-                value={accessRules.requiredTags.mode}
-                onValueChange={(value: "all" | "some") =>
-                  setAccessRules((prev) => ({
-                    ...prev,
-                    requiredTags: { ...prev.requiredTags, mode: value },
-                  }))
-                }
-                disabled={accessRules.isPublic}
-              >
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="some">Some</SelectItem>
-                  <SelectItem value="all">All</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
+            <Label className="text-base font-semibold">Required Roles</Label>
             <div className="flex flex-wrap gap-2">
-              {accessRules.requiredTags.tagIds.map((tagId) => (
+              {(accessRules.requiredRoleNames ?? []).map((roleName) => (
                 <Badge
-                  key={tagId}
+                  key={roleName}
                   variant="outline"
                   className="flex items-center gap-1"
                 >
-                  {getTagName(tagId as any)}
+                  {roleName}
                   <X
                     className="h-3 w-3 cursor-pointer"
-                    onClick={() => removeRequiredTag(tagId)}
+                    onClick={() =>
+                  setAccessRulesDirty((prev) => ({
+                        ...prev,
+                        requiredRoleNames: (
+                          prev.requiredRoleNames ?? []
+                        ).filter((r) => r !== roleName),
+                      }))
+                    }
                   />
                 </Badge>
               ))}
             </div>
-
-            <Select
-              onValueChange={addRequiredTag}
-              disabled={accessRules.isPublic}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Add required tag..." />
-              </SelectTrigger>
-              <SelectContent>
-                {availableTags.map((tag) => (
-                  <SelectItem key={tag._id} value={tag.slug}>
-                    {tag.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Input
+                value={requiredRoleInput}
+                onChange={(e) => setRequiredRoleInput(e.target.value)}
+                placeholder="Add required role (name)"
+                disabled={accessRules.isPublic}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  const role = requiredRoleInput.trim();
+                  if (!role) return;
+                  setAccessRulesDirty((prev) => ({
+                    ...prev,
+                    requiredRoleNames: Array.from(
+                      new Set([...(prev.requiredRoleNames ?? []), role]),
+                    ),
+                  }));
+                  setRequiredRoleInput("");
+                }}
+                disabled={accessRules.isPublic}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
-          {/* Excluded Tags Section */}
+          {/* Permission requirements */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-semibold">Excluded Tags</Label>
-              <Select
-                value={accessRules.excludedTags.mode}
-                onValueChange={(value: "all" | "some") =>
-                  setAccessRules((prev) => ({
-                    ...prev,
-                    excludedTags: { ...prev.excludedTags, mode: value },
-                  }))
-                }
-                disabled={accessRules.isPublic}
-              >
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="some">Some</SelectItem>
-                  <SelectItem value="all">All</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
+            <Label className="text-base font-semibold">
+              Required Permissions
+            </Label>
             <div className="flex flex-wrap gap-2">
-              {accessRules.excludedTags.tagIds.map((tagId) => (
+              {(accessRules.requiredPermissionKeys ?? []).map((key) => (
                 <Badge
-                  key={tagId}
+                  key={key}
                   variant="outline"
                   className="flex items-center gap-1"
                 >
-                  {getTagName(tagId as any)}
+                  {key}
                   <X
                     className="h-3 w-3 cursor-pointer"
-                    onClick={() => removeExcludedTag(tagId)}
+                    onClick={() =>
+                      setAccessRulesDirty((prev) => ({
+                        ...prev,
+                        requiredPermissionKeys: (
+                          prev.requiredPermissionKeys ?? []
+                        ).filter((p) => p !== key),
+                      }))
+                    }
                   />
                 </Badge>
               ))}
             </div>
-
-            <Select
-              onValueChange={addExcludedTag}
-              disabled={accessRules.isPublic}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Add excluded tag..." />
-              </SelectTrigger>
-              <SelectContent>
-                {availableTags.map((tag) => (
-                  <SelectItem key={tag._id} value={tag.slug}>
-                    {tag.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Input
+                value={requiredPermissionInput}
+                onChange={(e) => setRequiredPermissionInput(e.target.value)}
+                placeholder="Add required permission key"
+                disabled={accessRules.isPublic}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  const key = requiredPermissionInput.trim();
+                  if (!key) return;
+                  setAccessRulesDirty((prev) => ({
+                    ...prev,
+                    requiredPermissionKeys: Array.from(
+                      new Set([...(prev.requiredPermissionKeys ?? []), key]),
+                    ),
+                  }));
+                  setRequiredPermissionInput("");
+                }}
+                disabled={accessRules.isPublic}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
+
+        {/* Plugin-provided access controls (e.g. CRM marketing tags) */}
+        {visibleSections.length > 0 ? (
+          <div
+            className={`space-y-6 ${accessRules.isPublic ? "pointer-events-none opacity-50" : ""}`}
+          >
+            {visibleSections.map((section) => (
+              <React.Fragment key={section.id}>
+                {section.render({
+                  contentType,
+                  contentId,
+                  title,
+                  rules: accessRules,
+                  setRules: setAccessRulesDirty,
+                  disabled: accessRules.isPublic,
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+        ) : null}
 
         {/* Action Buttons */}
         <div className="flex gap-2">

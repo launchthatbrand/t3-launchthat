@@ -146,4 +146,19 @@ export const bulkUpdatePostStatus = mutation({
   },
 });
 
+export const deletePostMetaKey = mutation({
+  args: {
+    postId: v.string(),
+    key: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.runMutation(lmsPostsMutations.deletePostMetaKey as any, {
+      postId: args.postId as any,
+      key: args.key,
+    });
+    return null;
+  },
+});
+
 

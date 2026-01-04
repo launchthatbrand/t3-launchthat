@@ -16,8 +16,8 @@ import type {
   LmsPostId,
 } from "../types";
 import {
-  buildCourseSettingsOptionKey,
   DEFAULT_COURSE_SETTINGS,
+  LMS_COURSE_SETTINGS_META_KEY,
 } from "../constants/courseSettings";
 import {
   coercePostId,
@@ -277,35 +277,29 @@ export function LmsCourseProvider({
     courseProgressArgs !== "skip" && rawCourseProgress === undefined;
   const courseProgress = (rawCourseProgress ?? null) as CourseProgressRecord;
 
-  const courseSettingsOptionKey =
-    resolvedCourseId !== undefined
-      ? buildCourseSettingsOptionKey(String(resolvedCourseId))
-      : null;
-
-  const courseSettingsOption = useQuery(
-    api.core.options.get,
-    courseSettingsOptionKey && normalizedOrganizationId
-      ? {
-          metaKey: courseSettingsOptionKey,
-          type: "site" as const,
-          orgId: normalizedOrganizationId,
-        }
+  const courseMeta = useQuery(
+    api.plugins.lms.posts.queries.getPostMeta,
+    resolvedCourseId && normalizedOrganizationId
+      ? { postId: String(resolvedCourseId), organizationId: String(normalizedOrganizationId) }
       : "skip",
-  );
+  ) as unknown as Array<{ key: string; value?: unknown }> | undefined;
 
   const courseSettings = useMemo<CourseSettings>(() => {
-    if (
-      courseSettingsOption &&
-      courseSettingsOption.metaValue &&
-      typeof courseSettingsOption.metaValue === "object"
-    ) {
-      return {
-        ...DEFAULT_COURSE_SETTINGS,
-        ...(courseSettingsOption.metaValue as Partial<CourseSettings>),
-      };
+    const raw = Array.isArray(courseMeta)
+      ? courseMeta.find((m) => m?.key === LMS_COURSE_SETTINGS_META_KEY)?.value
+      : undefined;
+    if (typeof raw === "string" && raw.trim().length > 0) {
+      try {
+        const parsed = JSON.parse(raw) as Partial<CourseSettings>;
+        if (parsed && typeof parsed === "object") {
+          return { ...DEFAULT_COURSE_SETTINGS, ...parsed };
+        }
+      } catch {
+        // ignore invalid JSON
+      }
     }
     return DEFAULT_COURSE_SETTINGS;
-  }, [courseSettingsOption]);
+  }, [courseMeta]);
 
   const completedLessonIds = useMemo(
     () => new Set(courseProgress?.completedLessonIds ?? []),

@@ -1,34 +1,43 @@
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import { api } from "@/convex/_generated/api";
-import { addFilter, hasFilter } from "@acme/admin-runtime/hooks";
+/* eslint-disable
+  @typescript-eslint/no-explicit-any,
+  @typescript-eslint/no-unsafe-assignment,
+  @typescript-eslint/no-unsafe-call,
+  @typescript-eslint/no-unsafe-member-access,
+  @typescript-eslint/no-unsafe-return,
+  @typescript-eslint/no-unnecessary-condition,
+  @typescript-eslint/no-unnecessary-type-assertion
+*/
+
+import type { Doc } from "@/convex/_generated/dataModel";
 import type { fetchQuery as convexFetchQuery } from "convex/nextjs";
-import { Fragment } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
+
+import { addFilter } from "@acme/admin-runtime/hooks";
 
 import type {
   FrontendRouteHandler,
   FrontendRouteHandlerContext,
 } from "./resolveFrontendRoute";
-import { resolveFrontendArchive } from "./resolveFrontendArchive";
-import { resolveFrontendPostForRequest } from "./resolveFrontendPostForRequest";
-import { resolveFrontendTaxonomyArchive } from "./resolveFrontendTaxonomyArchive";
-
-import { FrontendContentFilterHost } from "~/components/frontend/FrontendContentFilterHost";
-import { BackgroundRippleEffect } from "~/components/ui/background-ripple-effect";
+import { AccessDeniedPage } from "~/components/access/AccessDeniedPage";
 import { EditorViewer } from "~/components/blocks/editor-x/viewer";
-import { PostCommentsSection } from "~/components/comments/PostCommentsSection";
-import { TaxonomyBadges } from "~/components/taxonomies/TaxonomyBadges";
+import { FrontendContentFilterHost } from "~/components/frontend/FrontendContentFilterHost";
 import { PuckContentRenderer } from "~/components/puckeditor/PuckContentRenderer";
+import { BackgroundRippleEffect } from "~/components/ui/background-ripple-effect";
+import { env } from "~/env";
+import { evaluateContentAccess } from "~/lib/access/contentAccessRegistry";
+import { parseContentAccessMetaValue } from "~/lib/access/contentAccessMeta";
 import {
   isLexicalSerializedStateString,
   parseLexicalSerializedState,
 } from "~/lib/editor/lexical";
-import { renderFrontendResolvedPost } from "./renderFrontendSinglePost";
 import { findPostTypeBySlug } from "~/lib/plugins/frontend";
-import { getCanonicalPostPath } from "~/lib/postTypes/routing";
 import { FRONTEND_ROUTE_HANDLERS_FILTER } from "~/lib/plugins/hookSlots";
-import { cn } from "~/lib/utils";
+import { getCanonicalPostPath } from "~/lib/postTypes/routing";
+import { renderFrontendResolvedPost } from "./renderFrontendSinglePost";
+import { resolveFrontendArchive } from "./resolveFrontendArchive";
+import { resolveFrontendPostForRequest } from "./resolveFrontendPostForRequest";
+import { resolveFrontendTaxonomyArchive } from "./resolveFrontendTaxonomyArchive";
 
 type FetchQuery = typeof convexFetchQuery;
 
@@ -36,6 +45,16 @@ type PostTypeDoc = Doc<"postTypes">;
 type PostFieldDoc = Doc<"postTypeFields">;
 type PostMetaDoc = Doc<"postsMeta">;
 type PostMetaValue = string | number | boolean | null | undefined;
+
+if (env.NODE_ENV !== "production") {
+  const g = globalThis as unknown as {
+    __portal_core_route_handlers_loaded_logged?: boolean;
+  };
+  if (!g.__portal_core_route_handlers_loaded_logged) {
+    g.__portal_core_route_handlers_loaded_logged = true;
+    console.log("[frontendRouting] core route handlers module loaded");
+  }
+}
 
 const normalizeSegments = (segments: string[]) =>
   segments.map((s) => s.trim()).filter((s) => s.length > 0);
@@ -52,12 +71,13 @@ async function resolveArchiveContext(args: {
   segments: string[];
   organizationId?: Doc<"organizations">["_id"];
   fetchQuery: FetchQuery;
+  api: unknown;
 }): Promise<{ postType: PostTypeDoc } | null> {
   if (args.segments.length === 0) return null;
   const path = args.segments.join("/");
 
   const match: PostTypeDoc | null = await args.fetchQuery(
-    api.core.postTypes.queries.getByArchiveSlugKey,
+    (args.api as any).core.postTypes.queries.getByArchiveSlugKey,
     {
       archiveSlugKey: path,
       ...(args.organizationId ? { organizationId: args.organizationId } : {}),
@@ -85,14 +105,19 @@ async function loadTemplateContent(args: {
   postTypeSlug: string | null;
   organizationId: Doc<"organizations">["_id"] | undefined;
   fetchQuery: FetchQuery;
+  api: unknown;
 }) {
-  const template = await args.fetchQuery(api.core.posts.queries.getTemplateForPostType, {
-    templateCategory: args.templateType,
-    postTypeSlug: args.postTypeSlug ?? undefined,
-    ...(args.organizationId ? { organizationId: args.organizationId } : {}),
-  });
+  const template = await args.fetchQuery(
+    (args.api as any).core.posts.queries.getTemplateForPostType,
+    {
+      templateCategory: args.templateType,
+      postTypeSlug: args.postTypeSlug ?? undefined,
+      ...(args.organizationId ? { organizationId: args.organizationId } : {}),
+    },
+  );
   if (!template) return null;
-  const source = (template as any).puckData ?? (template as any).content ?? null;
+  const source =
+    (template as any).puckData ?? (template as any).content ?? null;
   return parsePuckData(source);
 }
 
@@ -144,7 +169,10 @@ function FilteredContent(props: {
   if (!props.filterIds.length) return contentNode;
 
   return (
-    <FrontendContentFilterHost filterIds={props.filterIds} context={props.filterContext}>
+    <FrontendContentFilterHost
+      filterIds={props.filterIds}
+      context={props.filterContext}
+    >
       {contentNode}
     </FrontendContentFilterHost>
   );
@@ -186,7 +214,9 @@ function PostArchive(props: { postType: PostTypeDoc; posts: Doc<"posts">[] }) {
                     </h2>
                   </div>
                   {post.excerpt ? (
-                    <p className="text-muted-foreground text-sm">{post.excerpt}</p>
+                    <p className="text-muted-foreground text-sm">
+                      {post.excerpt}
+                    </p>
                   ) : null}
                 </Link>
               </article>
@@ -235,7 +265,9 @@ function TaxonomyArchive(props: any) {
                     </h2>
                   </div>
                   {post.excerpt ? (
-                    <p className="text-muted-foreground text-sm">{post.excerpt}</p>
+                    <p className="text-muted-foreground text-sm">
+                      {post.excerpt}
+                    </p>
                   ) : null}
                 </Link>
               </article>
@@ -267,18 +299,25 @@ function TaxonomyArchiveGrouped(props: any) {
         </header>
         {sortedSections.length === 0 ? (
           <div className="text-muted-foreground rounded-lg border p-10 text-center">
-            No posts have been published for this {props.label.toLowerCase()} yet.
+            No posts have been published for this {props.label.toLowerCase()}{" "}
+            yet.
           </div>
         ) : (
           <div className="space-y-12">
             {sortedSections.map((section: any) => (
               <section key={section.postType.slug} className="space-y-4">
                 <div className="border-b pb-2">
-                  <h2 className="text-2xl font-semibold">{section.postType.name}</h2>
+                  <h2 className="text-2xl font-semibold">
+                    {section.postType.name}
+                  </h2>
                 </div>
                 <div className="grid gap-6 md:grid-cols-2">
                   {section.posts.map((post: any) => {
-                    const url = getCanonicalPostPath(post, section.postType, true);
+                    const url = getCanonicalPostPath(
+                      post,
+                      section.postType,
+                      true,
+                    );
                     return (
                       <article
                         key={post._id}
@@ -294,7 +333,9 @@ function TaxonomyArchiveGrouped(props: any) {
                             </h3>
                           </div>
                           {post.excerpt ? (
-                            <p className="text-muted-foreground text-sm">{post.excerpt}</p>
+                            <p className="text-muted-foreground text-sm">
+                              {post.excerpt}
+                            </p>
                           ) : null}
                         </Link>
                       </article>
@@ -311,16 +352,17 @@ function TaxonomyArchiveGrouped(props: any) {
 }
 
 export function registerCoreRouteHandlers(): void {
-  // Dev/HMR safety: the hook registry can reset while `globalThis` persists.
-  // Only skip registration if we already registered AND the hook currently exists.
-  const already = (globalThis as any).__portal_core_route_handlers_registered_v3;
-  if (already && hasFilter(FRONTEND_ROUTE_HANDLERS_FILTER)) return;
-  (globalThis as any).__portal_core_route_handlers_registered_v3 = true;
+  // Dev/HMR safety:
+  // Next's module graph can be reloaded while hook registries reset. Avoid guarding on
+  // `hasFilter()` (plugins may have registered this hook already), and instead just
+  // register our filter whenever this module is evaluated.
 
   addFilter(
     FRONTEND_ROUTE_HANDLERS_FILTER,
     (value: unknown, _ctx: unknown) => {
-      const handlers = Array.isArray(value) ? (value as FrontendRouteHandler[]) : [];
+      const handlers = Array.isArray(value)
+        ? (value as FrontendRouteHandler[])
+        : [];
 
       const next: FrontendRouteHandler[] = [...handlers];
       const hasId = (id: string) => next.some((h) => h?.id === id);
@@ -332,195 +374,376 @@ export function registerCoreRouteHandlers(): void {
         id: "core:archive",
         priority: 10,
         resolve: async (ctx: FrontendRouteHandlerContext) => {
-            const segments = normalizeSegments(ctx.segments);
-            const archiveContext = await resolveArchiveContext({
-              segments,
-              organizationId: (ctx.organizationId ?? undefined) as any,
-              fetchQuery: ctx.fetchQuery as any,
+          const segments = normalizeSegments(ctx.segments);
+          const archiveContext = await resolveArchiveContext({
+            segments,
+            organizationId: (ctx.organizationId ?? undefined) as any,
+            fetchQuery: ctx.fetchQuery as any,
+            api: ctx.api,
+          });
+          if (!archiveContext) return null;
+
+          const archiveTemplateData = await loadTemplateContent({
+            templateType: "archive",
+            postTypeSlug: archiveContext.postType.slug,
+            organizationId: (ctx.organizationId ?? undefined) as any,
+            fetchQuery: ctx.fetchQuery as any,
+            api: ctx.api,
+          });
+          if (archiveTemplateData) {
+            return (
+              <main className="bg-background min-h-screen">
+                <PuckContentRenderer data={archiveTemplateData as any} />
+              </main>
+            );
+          }
+
+          const resolvedCustomArchive = await resolveFrontendArchive({
+            postType: archiveContext.postType,
+            organizationId: (ctx.organizationId ?? null) as any,
+            fetchQuery: ctx.fetchQuery as any,
+            getAllPostsCore: (ctx.api as any).core.posts.queries.getAllPosts,
+            getAllPostsLms: (ctx.api as any).plugins.lms.posts.queries
+              .getAllPosts,
+            listEntities: (ctx.api as any).plugins.entity.queries.listEntities,
+          });
+
+          const posts = resolvedCustomArchive.posts ?? [];
+          const pluginMatch = findPostTypeBySlug(archiveContext.postType.slug);
+          const pluginArchive = pluginMatch?.postType.frontend?.archive;
+          if (pluginMatch && pluginArchive?.render) {
+            return pluginArchive.render({
+              posts,
+              postType: pluginMatch.postType,
             });
-            if (!archiveContext) return null;
+          }
 
-            const archiveTemplateData = await loadTemplateContent({
-              templateType: "archive",
-              postTypeSlug: archiveContext.postType.slug,
-              organizationId: (ctx.organizationId ?? undefined) as any,
-              fetchQuery: ctx.fetchQuery as any,
-            });
-            if (archiveTemplateData) {
-              return (
-                <main className="bg-background min-h-screen">
-                  <PuckContentRenderer data={archiveTemplateData as any} />
-                </main>
-              );
-            }
-
-            const resolvedCustomArchive = await resolveFrontendArchive({
-              postType: archiveContext.postType,
-              organizationId: (ctx.organizationId ?? null) as any,
-              fetchQuery: ctx.fetchQuery as any,
-              getAllPostsCore: (api as any).core.posts.queries.getAllPosts,
-              getAllPostsLms: (api as any).plugins.lms.posts.queries.getAllPosts,
-              listEntities: (api as any).plugins.entity.queries.listEntities,
-            });
-
-            const posts = resolvedCustomArchive.posts ?? [];
-            const pluginMatch = findPostTypeBySlug(archiveContext.postType.slug);
-            const pluginArchive = pluginMatch?.postType.frontend?.archive;
-            if (pluginMatch && pluginArchive?.render) {
-              return pluginArchive.render({ posts, postType: pluginMatch.postType });
-            }
-
-            return <PostArchive postType={archiveContext.postType} posts={posts} />;
-          },
+          return (
+            <PostArchive postType={archiveContext.postType} posts={posts} />
+          );
+        },
       });
 
       pushIfMissing({
         id: "core:taxonomy",
         priority: 10,
         resolve: async (ctx: FrontendRouteHandlerContext) => {
-            const segments = normalizeSegments(ctx.segments);
-            const resolved = await resolveFrontendTaxonomyArchive({
-              segments,
-              searchParams: ctx.searchParams,
-              organizationId: (ctx.organizationId ?? null) as any,
-              fetchQuery: ctx.fetchQuery as any,
-              getOption: (api as any).core.options.get,
-              getTermBySlug: (api as any).core.taxonomies.queries.getTermBySlug,
-              getTaxonomyBySlug: (api as any).core.taxonomies.queries.getTaxonomyBySlug,
-              listObjectsByTerm: (api as any).core.taxonomies.queries.listObjectsByTerm,
-              listAssignmentsByTerm: (api as any).core.taxonomies.queries.listAssignmentsByTerm,
-              getPostTypeBySlug: (api as any).core.postTypes.queries.getBySlug,
-              getAllPostsCore: (api as any).core.posts.queries.getAllPosts,
-              getAllPostsLms: (api as any).plugins.lms.posts.queries.getAllPosts,
-              listEntities: (api as any).plugins.entity.queries.listEntities,
-            });
+          const segments = normalizeSegments(ctx.segments);
+          const resolved = await resolveFrontendTaxonomyArchive({
+            segments,
+            searchParams: ctx.searchParams,
+            organizationId: (ctx.organizationId ?? null) as any,
+            fetchQuery: ctx.fetchQuery as any,
+            getOption: (ctx.api as any).core.options.get,
+            getTermBySlug: (ctx.api as any).core.taxonomies.queries
+              .getTermBySlug,
+            getTaxonomyBySlug: (ctx.api as any).core.taxonomies.queries
+              .getTaxonomyBySlug,
+            listObjectsByTerm: (ctx.api as any).core.taxonomies.queries
+              .listObjectsByTerm,
+            listAssignmentsByTerm: (ctx.api as any).core.taxonomies.queries
+              .listAssignmentsByTerm,
+            getPostTypeBySlug: (ctx.api as any).core.postTypes.queries
+              .getBySlug,
+            getAllPostsCore: (ctx.api as any).core.posts.queries.getAllPosts,
+            getAllPostsLms: (ctx.api as any).plugins.lms.posts.queries
+              .getAllPosts,
+            listEntities: (ctx.api as any).plugins.entity.queries.listEntities,
+          });
 
-            if (resolved === "not_found") return null;
-            if (!resolved) return null;
+          if (resolved === "not_found") return null;
+          if (!resolved) return null;
 
-            if (resolved.kind === "single") {
-              return (
-                <TaxonomyArchive
-                  label={resolved.label}
-                  termName={resolved.termName}
-                  termSlug={resolved.termSlug}
-                  description={resolved.description}
-                  postType={resolved.postType}
-                  posts={resolved.posts}
-                />
-              );
-            }
-
+          if (resolved.kind === "single") {
             return (
-              <TaxonomyArchiveGrouped
+              <TaxonomyArchive
                 label={resolved.label}
                 termName={resolved.termName}
                 termSlug={resolved.termSlug}
                 description={resolved.description}
-                sections={resolved.sections}
+                postType={resolved.postType}
+                posts={resolved.posts}
               />
             );
-          },
+          }
+
+          return (
+            <TaxonomyArchiveGrouped
+              label={resolved.label}
+              termName={resolved.termName}
+              termSlug={resolved.termSlug}
+              description={resolved.description}
+              sections={resolved.sections}
+            />
+          );
+        },
       });
 
       pushIfMissing({
         id: "core:single",
         priority: 10,
         resolve: async (ctx: FrontendRouteHandlerContext) => {
-            const segments = normalizeSegments(ctx.segments);
-            const slug = deriveSlugFromSegments(segments);
-            if (!slug) return null;
+          const segments = normalizeSegments(ctx.segments);
+          const slug = deriveSlugFromSegments(segments);
+          if (!slug) return null;
 
-            const resolved = await resolveFrontendPostForRequest({
-              segments,
-              slug,
-              organizationId: (ctx.organizationId ?? null) as any,
-              searchParams: ctx.searchParams,
-              fetchQuery: (await import("./fetchQueryAdapter")).adaptFetchQuery(
-                ctx.fetchQuery as any,
-              ) as any,
-              getPostTypeBySingleSlugKey: (api as any).core.postTypes.queries.getBySingleSlugKey,
-              readEntity: (api as any).plugins.entity.queries.readEntity,
-              listEntities: (api as any).plugins.entity.queries.listEntities,
-              api: api as any,
-              getCorePostBySlug: (api as any).core.posts.queries.getPostBySlug,
-              getCorePostById: (api as any).core.posts.queries.getPostById,
-            });
-            if (!resolved?.post) return null;
+          const debugRouting = (() => {
+            const raw = ctx.searchParams?.debugRouting;
+            const value = Array.isArray(raw) ? raw[0] : raw;
+            return value === "1" || value === "true";
+          })();
 
-            const post = resolved.post;
+          const resolved = await resolveFrontendPostForRequest({
+            segments,
+            slug,
+            organizationId: (ctx.organizationId ?? null) as any,
+            searchParams: ctx.searchParams,
+            fetchQuery: (await import("./fetchQueryAdapter")).adaptFetchQuery(
+              ctx.fetchQuery as any,
+            ) as any,
+            getPostTypeBySingleSlugKey: (ctx.api as any).core.postTypes.queries
+              .getBySingleSlugKey,
+            readEntity: (ctx.api as any).plugins.entity.queries.readEntity,
+            listEntities: (ctx.api as any).plugins.entity.queries.listEntities,
+            api: ctx.api as any,
+            getCorePostBySlug: (ctx.api as any).core.posts.queries
+              .getPostBySlug,
+            getCorePostById: (ctx.api as any).core.posts.queries.getPostById,
+          });
+          if (!resolved?.post) return null;
 
-            let postType: PostTypeDoc | null = null;
-            let postFields: Doc<"postTypeFields">[] = [];
-            if (post.postTypeSlug) {
-              postType =
-                (await (ctx.fetchQuery as any)((api as any).core.postTypes.queries.getBySlug, {
+          const post = resolved.post;
+
+          let postType: PostTypeDoc | null = null;
+          let postFields: Doc<"postTypeFields">[] = [];
+          if (post.postTypeSlug) {
+            postType =
+              (await (ctx.fetchQuery as any)(
+                (ctx.api as any).core.postTypes.queries.getBySlug,
+                {
                   slug: post.postTypeSlug,
-                  ...(ctx.organizationId ? { organizationId: ctx.organizationId } : {}),
-                })) ?? null;
-              postFields =
-                ((await (ctx.fetchQuery as any)((api as any).core.postTypes.queries.fieldsBySlug, {
+                  ...(ctx.organizationId
+                    ? { organizationId: ctx.organizationId }
+                    : {}),
+                },
+              )) ?? null;
+            postFields =
+              ((await (ctx.fetchQuery as any)(
+                (ctx.api as any).core.postTypes.queries.fieldsBySlug,
+                {
                   slug: post.postTypeSlug,
                   includeSystem: true,
-                  ...(ctx.organizationId ? { organizationId: ctx.organizationId } : {}),
-                })) as Doc<"postTypeFields">[]) ?? [];
-            }
+                  ...(ctx.organizationId
+                    ? { organizationId: ctx.organizationId }
+                    : {}),
+                },
+              )) as Doc<"postTypeFields">[]) ?? [];
+          }
 
-            const postMetaResult: unknown = await (ctx.fetchQuery as any)(
-              (api as any).core.posts.postMeta.getPostMeta,
-              {
-                postId: post._id,
-                ...(ctx.organizationId ? { organizationId: ctx.organizationId } : {}),
-                postTypeSlug: post.postTypeSlug ?? undefined,
-              },
-            );
-            const postMeta = (postMetaResult ?? []) as {
-              key: string;
-              value?: string | number | boolean | null;
-            }[];
-            const postMetaMap = buildPostMetaMap(postMeta as any);
-            const postMetaObject = Object.fromEntries(postMetaMap.entries()) as Record<
-              string,
-              PostMetaValue
-            >;
+          const postMetaResult: unknown = await (ctx.fetchQuery as any)(
+            (ctx.api as any).core.posts.postMeta.getPostMeta,
+            {
+              postId: post._id,
+              ...(ctx.organizationId
+                ? { organizationId: ctx.organizationId }
+                : {}),
+              postTypeSlug: post.postTypeSlug ?? undefined,
+            },
+          );
+          const postMeta = (postMetaResult ?? []) as {
+            key: string;
+            value?: string | number | boolean | null;
+          }[];
+          const postMetaMap = buildPostMetaMap(postMeta as any);
+          const postMetaObject = Object.fromEntries(
+            postMetaMap.entries(),
+          ) as Record<string, PostMetaValue>;
 
-            const puckMetaEntry = postMeta.find((m) => m.key === "puck_data");
-            const puckData = parsePuckData(
-              typeof puckMetaEntry?.value === "string" ? puckMetaEntry.value : null,
-            );
+          // ---- Frontend access control (post-type routes) ----
+          // Evaluate access before rendering the resolved post.
+          const { userId: clerkUserId } = await auth();
+          const viewer = clerkUserId
+            ? await (ctx.fetchQuery as any)(
+                (ctx.api as any).core.users.queries.getUserByClerkId,
+                {
+                  clerkId: clerkUserId,
+                },
+              )
+            : null;
 
-            // If a single-template exists, prefer it.
-            const singleTemplateData = await loadTemplateContent({
-              templateType: "single",
-              postTypeSlug: post.postTypeSlug ?? null,
-              organizationId: (ctx.organizationId ?? undefined) as any,
-              fetchQuery: ctx.fetchQuery as any,
+          const organizationId = (ctx.organizationId ?? null) as any;
+          const siteOptions = (await (ctx.fetchQuery as any)(
+            (ctx.api as any).core.options.getByType,
+            {
+              type: "site",
+              ...(organizationId ? { orgId: organizationId } : {}),
+            },
+          )) as Doc<"options">[];
+          const optionMap = new Map(
+            (siteOptions ?? []).map((o) => [o.metaKey, Boolean(o.metaValue)]),
+          );
+
+          const convexUserId = viewer?._id ?? null;
+          const isAuthenticated = Boolean(convexUserId);
+
+          // Content access rules: stored as a single JSON blob in postmeta.
+          const contentRules = parseContentAccessMetaValue(
+            (postMetaObject as any)?.content_access,
+          );
+          if (debugRouting) {
+            console.log("[frontendRouting] content access: loaded rules", {
+              postId: String(post._id),
+              hasRules: Boolean(contentRules),
+              contentRules,
             });
-            if (singleTemplateData) {
-              return (
-                <main className="bg-background min-h-screen">
-                  <PuckContentRenderer data={singleTemplateData as any} />
-                </main>
-              );
-            }
+          }
 
-            const pluginMatch = post.postTypeSlug ? findPostTypeBySlug(post.postTypeSlug) : null;
+          // Resolve user marketing tags (slugs + ids) for tag-based rules.
+          // Marketing tags are CRM-scoped.
+          const userMarketingTags =
+            convexUserId && ctx.enabledPluginIds.includes("crm")
+              ? await (ctx.fetchQuery as any)(
+                  (ctx.api as any).plugins.crm.marketingTags.queries
+                    .getUserMarketingTags,
+                  {
+                    userId: String(convexUserId),
+                    ...(ctx.organizationId
+                      ? { organizationId: String(ctx.organizationId) }
+                      : {}),
+                  },
+                )
+              : [];
+          const tagKeys: string[] = Array.isArray(userMarketingTags)
+            ? userMarketingTags.flatMap((assignment: any) => {
+                const tag = assignment?.marketingTag;
+                const keys: string[] = [];
+                if (typeof tag?.slug === "string") keys.push(tag.slug);
+                if (typeof tag?._id === "string") keys.push(tag._id);
+                return keys;
+              })
+            : [];
+          if (debugRouting) {
+            console.log("[frontendRouting] content access: tagKeys", {
+              tagKeys,
+            });
+          }
 
-            return await renderFrontendResolvedPost({
-              post,
-              postType,
-              postFields,
-              postMeta: postMeta as any,
-              postMetaObject,
-              postMetaMap,
-              puckData,
-              pluginMatch,
-              organizationId: (ctx.organizationId ?? null) as any,
-              allowedPageTemplates: undefined,
-              segments,
-              enforceCanonicalRedirect: true,
-            } as any);
-          },
+          // Role/permission prefetch for core provider (avoid async inside providers).
+          const roleNames = convexUserId
+            ? ((await (ctx.fetchQuery as any)(
+                (ctx.api as any).core.roles.queries.getRoleNamesForUser,
+                { userId: convexUserId },
+              )) as string[])
+            : [];
+
+          const requiredPermissionKeys: string[] = contentRules
+            ? contentRules.requiredPermissionKeys
+            : [];
+          const permissionGrants: Record<string, boolean> = {};
+          if (convexUserId && requiredPermissionKeys.length > 0) {
+            await Promise.all(
+              requiredPermissionKeys.map(async (permissionKey) => {
+                const allowed = await (ctx.fetchQuery as any)(
+                  (ctx.api as any).core.permissions.queries.checkUserPermission,
+                  {
+                    userId: convexUserId,
+                    permissionKey,
+                  },
+                );
+                permissionGrants[permissionKey] = Boolean(allowed);
+              }),
+            );
+          }
+
+          const decision = contentRules
+            ? evaluateContentAccess({
+                subject: {
+                  organizationId: organizationId
+                    ? String(organizationId)
+                    : null,
+                  enabledPluginIds: ctx.enabledPluginIds,
+                  userId: convexUserId ? String(convexUserId) : null,
+                  contactId: null,
+                  isAuthenticated,
+                },
+                resource: {
+                  contentType: "post",
+                  contentId: String(post._id),
+                },
+                data: {
+                  contentRules,
+                  tagKeys,
+                  roleNames,
+                  permissionGrants,
+                  userRole: viewer?.role ?? null,
+                  post,
+                  postType,
+                  postMeta: postMetaObject,
+                },
+              })
+            : ({ kind: "abstain" } as const);
+          if (debugRouting) {
+            console.log("[frontendRouting] content access: decision", decision);
+          }
+
+          if (decision.kind === "deny" || decision.kind === "redirect") {
+            const currentPath = `/${segments.join("/")}`;
+            const signInHref = `/auth/sign-in?redirect_url=${encodeURIComponent(
+              currentPath,
+            )}`;
+            return (
+              <AccessDeniedPage
+                reason={decision.reason}
+                contentTitle={
+                  typeof post.title === "string" ? post.title : undefined
+                }
+                signInHref={signInHref}
+              />
+            );
+          }
+
+          const puckMetaEntry = postMeta.find((m) => m.key === "puck_data");
+          const puckData = parsePuckData(
+            typeof puckMetaEntry?.value === "string"
+              ? puckMetaEntry.value
+              : null,
+          );
+
+          // If a single-template exists, prefer it.
+          const singleTemplateData = await loadTemplateContent({
+            templateType: "single",
+            postTypeSlug: post.postTypeSlug ?? null,
+            organizationId: (ctx.organizationId ?? undefined) as any,
+            fetchQuery: ctx.fetchQuery as any,
+            api: ctx.api,
+          });
+          if (singleTemplateData) {
+            return (
+              <main className="bg-background min-h-screen">
+                <PuckContentRenderer data={singleTemplateData as any} />
+              </main>
+            );
+          }
+
+          const pluginMatch = post.postTypeSlug
+            ? findPostTypeBySlug(post.postTypeSlug)
+            : null;
+
+          return await renderFrontendResolvedPost({
+            post,
+            postType,
+            postFields,
+            postMeta: postMeta as any,
+            postMetaObject,
+            postMetaMap,
+            puckData,
+            pluginMatch,
+            organizationId: (ctx.organizationId ?? null) as any,
+            allowedPageTemplates: undefined,
+            segments,
+            enforceCanonicalRedirect: true,
+          } as any);
+        },
       });
 
       return next;
@@ -532,5 +755,3 @@ export function registerCoreRouteHandlers(): void {
 
 // Register on module import for server/runtime safety.
 registerCoreRouteHandlers();
-
-

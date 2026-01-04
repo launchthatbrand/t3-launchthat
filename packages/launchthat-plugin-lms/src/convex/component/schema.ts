@@ -1,10 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-import {
-  contentAccessLogTable,
-  contentAccessRulesTable,
-} from "./contentAccess/schema";
 import { progressSchema } from "./progress/schema";
 
 const postsTable = defineTable({
@@ -41,12 +37,12 @@ const postsMetaTable = defineTable({
   updatedAt: v.optional(v.number()),
 })
   .index("by_post", ["postId"])
-  .index("by_post_and_key", ["postId", "key"]);
+  .index("by_post_and_key", ["postId", "key"])
+  .index("by_key", ["key"])
+  .index("by_key_and_postId", ["key", "postId"]);
 
 export default defineSchema({
   posts: postsTable,
   postsMeta: postsMetaTable,
-  contentAccessRules: contentAccessRulesTable,
-  contentAccessLog: contentAccessLogTable,
   ...progressSchema,
 });
