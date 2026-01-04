@@ -1,6 +1,5 @@
 "use client";
 
-import type { Doc } from "@convex-config/_generated/dataModel";
 import React from "react";
 
 import {
@@ -17,6 +16,7 @@ import {
 
 import { getTaskMutations, useTasks } from "../api/tasks";
 import { useTasksApi, useTasksMutation } from "../context/TasksClientProvider";
+import type { TaskRecord } from "../types";
 
 const STATUS_COLUMNS = [
   { id: "pending", label: "Pending" },
@@ -35,7 +35,7 @@ export default function KanbanPage() {
 
   // Group tasks by status
   const tasksByStatus = React.useMemo(() => {
-    const grouped: Record<string, Doc<"tasks">[]> = {};
+    const grouped: Record<string, TaskRecord[]> = {};
     for (const { id } of STATUS_COLUMNS) grouped[id] = [];
     (tasks ?? []).forEach((task) => {
       const status = task.status || "pending";
@@ -49,7 +49,7 @@ export default function KanbanPage() {
   const handleDrop = React.useCallback(
     async (taskData: string, newStatus: string) => {
       try {
-        const task = JSON.parse(taskData) as Doc<"tasks">;
+        const task = JSON.parse(taskData) as TaskRecord;
         if (task.status !== newStatus) {
           await updateTask({ taskId: task._id, status: newStatus });
         }

@@ -1,6 +1,5 @@
 "use client";
 
-import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -11,6 +10,7 @@ import { Input } from "@acme/ui/input";
 
 import { getBoardMutations } from "../api/tasks";
 import { useTasksApi, useTasksMutation } from "../context/TasksClientProvider";
+import type { TaskBoardRecord } from "../types";
 
 const boardSchema = z.object({
   name: z.string().min(1, "Board name is required"),
@@ -19,7 +19,7 @@ const boardSchema = z.object({
 type BoardFormValues = z.infer<typeof boardSchema>;
 
 interface BoardFormProps {
-  board?: Doc<"taskBoards">;
+  board?: TaskBoardRecord;
   onSuccess?: () => void;
 }
 
@@ -50,7 +50,7 @@ export const BoardForm: React.FC<BoardFormProps> = ({ board, onSuccess }) => {
     try {
       if (board) {
         await updateBoard({
-          boardId: board._id as Id<"taskBoards">,
+          boardId: board._id,
           name: values.name,
         });
       } else {

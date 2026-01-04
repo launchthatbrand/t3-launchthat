@@ -1,6 +1,5 @@
 "use client";
 
-import type { Doc } from "@convex-config/_generated/dataModel";
 import React from "react";
 
 import type { CalendarEvent } from "@acme/ui/calendar/utils/data";
@@ -8,6 +7,7 @@ import Calendar from "@acme/ui/calendar/components/calendar";
 import { EventsProvider } from "@acme/ui/calendar/context/events-context";
 
 import { useTasks } from "../api/tasks";
+import type { TaskRecord } from "../types";
 
 export default function CalendarPage() {
   const tasks = useTasks();
@@ -18,7 +18,7 @@ export default function CalendarPage() {
     () =>
       (tasks ?? [])
         .filter(
-          (task): task is Doc<"tasks"> =>
+          (task): task is TaskRecord =>
             typeof task.dueDate === "number" && !!task.dueDate,
         )
         .map((task) => ({

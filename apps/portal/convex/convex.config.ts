@@ -11,6 +11,8 @@ import launchthat_ecommerce from "launchthat-plugin-ecommerce/convex/component/c
 import launchthat_lms from "launchthat-plugin-lms/convex/component/convex.config";
 import launchthat_socialfeed from "launchthat-plugin-socialfeed/convex/component/convex.config";
 import launchthat_support from "launchthat-plugin-support/convex/component/convex.config";
+import launchthat_tasks from "launchthat-plugin-tasks/convex/component/convex.config";
+import launchthat_vimeo from "launchthat-plugin-vimeo/convex/component/convex.config";
 
 const app = defineApp();
 
@@ -26,4 +28,6 @@ app.use(launchthat_lms);
 app.use(launchthat_disclaimers);
 app.use(launchthat_ecommerce);
 app.use(launchthat_crm);
+app.use(launchthat_tasks);
+app.use(launchthat_vimeo);
 export default app;

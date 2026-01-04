@@ -17,9 +17,7 @@ export const notificationsTable = defineTable({
   // Sources/relations (optional)
   sourceUserId: v.optional(v.id("users")),
   // sourceDownloadId: v.optional(v.id("downloads")),
-  sourceOrderId: v.optional(v.id("transactions")),
   expiresAt: v.optional(v.number()),
-  relatedId: v.optional(v.id("groupInvitations")),
 })
   .index("by_user", ["userId"]) // legacy
   .index("by_user_org", ["userId", "orgId"])

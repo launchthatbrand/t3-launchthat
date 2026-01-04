@@ -15,6 +15,8 @@ import type * as funnelSteps_queries from "../funnelSteps/queries.js";
 import type * as funnels_mutations from "../funnels/mutations.js";
 import type * as funnels_queries from "../funnels/queries.js";
 import type * as index from "../index.js";
+import type * as plans_mutations from "../plans/mutations.js";
+import type * as plans_queries from "../plans/queries.js";
 import type * as posts_helpers from "../posts/helpers.js";
 import type * as posts_mutations from "../posts/mutations.js";
 import type * as posts_queries from "../posts/queries.js";
@@ -41,6 +43,8 @@ declare const fullApi: ApiFromModules<{
   "funnels/mutations": typeof funnels_mutations;
   "funnels/queries": typeof funnels_queries;
   index: typeof index;
+  "plans/mutations": typeof plans_mutations;
+  "plans/queries": typeof plans_queries;
   "posts/helpers": typeof posts_helpers;
   "posts/mutations": typeof posts_mutations;
   "posts/queries": typeof posts_queries;
@@ -233,6 +237,86 @@ export type Mounts = {
         "public",
         { organizationId?: string; slug: string },
         null | { id: string; isDefault: boolean; slug: string; title?: string }
+      >;
+    };
+  };
+  plans: {
+    mutations: {
+      seedPlans: FunctionReference<"mutation", "public", {}, Array<string>>;
+      updatePlan: FunctionReference<
+        "mutation",
+        "public",
+        {
+          description?: string;
+          displayName?: string;
+          features?: Array<string>;
+          isActive?: boolean;
+          maxOrganizations?: number;
+          planId: string;
+          priceMonthly?: number;
+          priceYearly?: number;
+          sortOrder?: number;
+        },
+        null
+      >;
+    };
+    queries: {
+      getPlanById: FunctionReference<
+        "query",
+        "public",
+        { planId: string },
+        null | {
+          _creationTime: number;
+          _id: string;
+          description: string;
+          displayName: string;
+          features?: Array<string>;
+          isActive: boolean;
+          maxOrganizations: number;
+          name: "free" | "starter" | "business" | "agency";
+          priceMonthly: number;
+          priceYearly?: number;
+          sortOrder: number;
+          updatedAt: number;
+        }
+      >;
+      getPlanByName: FunctionReference<
+        "query",
+        "public",
+        { name: "free" | "starter" | "business" | "agency" },
+        null | {
+          _creationTime: number;
+          _id: string;
+          description: string;
+          displayName: string;
+          features?: Array<string>;
+          isActive: boolean;
+          maxOrganizations: number;
+          name: "free" | "starter" | "business" | "agency";
+          priceMonthly: number;
+          priceYearly?: number;
+          sortOrder: number;
+          updatedAt: number;
+        }
+      >;
+      getPlans: FunctionReference<
+        "query",
+        "public",
+        { isActive?: boolean },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          description: string;
+          displayName: string;
+          features?: Array<string>;
+          isActive: boolean;
+          maxOrganizations: number;
+          name: "free" | "starter" | "business" | "agency";
+          priceMonthly: number;
+          priceYearly?: number;
+          sortOrder: number;
+          updatedAt: number;
+        }>
       >;
     };
   };

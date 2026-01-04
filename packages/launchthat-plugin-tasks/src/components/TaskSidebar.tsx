@@ -1,4 +1,3 @@
-import type { Doc } from "@convex-config/_generated/dataModel";
 import React from "react";
 import Link from "next/link";
 import { PlusIcon } from "lucide-react";
@@ -23,6 +22,7 @@ import {
 
 import { getBoardQueries } from "../api/tasks";
 import { useTasksApi, useTasksQuery } from "../context/TasksClientProvider";
+import type { TaskBoardRecord } from "../types";
 import BoardForm from "./BoardForm";
 
 // Assume you have a Convex table 'taskBoards' with fields: _id, name
@@ -31,7 +31,7 @@ import BoardForm from "./BoardForm";
 export function TasksSidebar(props: React.ComponentProps<typeof TaskSidebar>) {
   const tasksApi = useTasksApi<any>();
   const boardQueries = getBoardQueries(tasksApi);
-  const boards = useTasksQuery<Doc<"taskBoards">[]>(
+  const boards = useTasksQuery<TaskBoardRecord[]>(
     boardQueries?.listBoards,
     {},
   );

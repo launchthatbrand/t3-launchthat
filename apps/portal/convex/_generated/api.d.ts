@@ -77,7 +77,6 @@ import type * as integrations_integrationNodes_registry from "../integrations/in
 import type * as integrations_integrationNodes_seed from "../integrations/integrationNodes/seed.js";
 import type * as integrations_lib_actionExecution from "../integrations/lib/actionExecution.js";
 import type * as integrations_lib_crypto from "../integrations/lib/crypto.js";
-import type * as integrations_lib_dryRun from "../integrations/lib/dryRun.js";
 import type * as integrations_lib_errors from "../integrations/lib/errors.js";
 import type * as integrations_lib_httpFetch from "../integrations/lib/httpFetch.js";
 import type * as integrations_lib_idempotency from "../integrations/lib/idempotency.js";
@@ -87,12 +86,10 @@ import type * as integrations_lib_migrations from "../integrations/lib/migration
 import type * as integrations_lib_registries from "../integrations/lib/registries.js";
 import type * as integrations_lib_retry from "../integrations/lib/retry.js";
 import type * as integrations_lib_runManagement from "../integrations/lib/runManagement.js";
-import type * as integrations_lib_scenarioExecution from "../integrations/lib/scenarioExecution.js";
 import type * as integrations_lib_seedingUtils from "../integrations/lib/seedingUtils.js";
 import type * as integrations_manifestSeeding from "../integrations/manifestSeeding.js";
 import type * as integrations_triggers_orderEvents from "../integrations/triggers/orderEvents.js";
 import type * as integrations_triggers_registry from "../integrations/triggers/registry.js";
-import type * as integrations_webhooks_handler from "../integrations/webhooks/handler.js";
 import type * as lib_db from "../lib/db.js";
 import type * as lib_fileTypes from "../lib/fileTypes.js";
 import type * as lib_permissions_hasPermission from "../lib/permissions/hasPermission.js";
@@ -280,7 +277,6 @@ declare const fullApi: ApiFromModules<{
   "integrations/integrationNodes/seed": typeof integrations_integrationNodes_seed;
   "integrations/lib/actionExecution": typeof integrations_lib_actionExecution;
   "integrations/lib/crypto": typeof integrations_lib_crypto;
-  "integrations/lib/dryRun": typeof integrations_lib_dryRun;
   "integrations/lib/errors": typeof integrations_lib_errors;
   "integrations/lib/httpFetch": typeof integrations_lib_httpFetch;
   "integrations/lib/idempotency": typeof integrations_lib_idempotency;
@@ -290,12 +286,10 @@ declare const fullApi: ApiFromModules<{
   "integrations/lib/registries": typeof integrations_lib_registries;
   "integrations/lib/retry": typeof integrations_lib_retry;
   "integrations/lib/runManagement": typeof integrations_lib_runManagement;
-  "integrations/lib/scenarioExecution": typeof integrations_lib_scenarioExecution;
   "integrations/lib/seedingUtils": typeof integrations_lib_seedingUtils;
   "integrations/manifestSeeding": typeof integrations_manifestSeeding;
   "integrations/triggers/orderEvents": typeof integrations_triggers_orderEvents;
   "integrations/triggers/registry": typeof integrations_triggers_registry;
-  "integrations/webhooks/handler": typeof integrations_webhooks_handler;
   "lib/db": typeof lib_db;
   "lib/fileTypes": typeof lib_fileTypes;
   "lib/permissions/hasPermission": typeof lib_permissions_hasPermission;
@@ -4279,6 +4273,47 @@ export declare const components: {
   };
   launchthat_support: {
     mutations: {
+      addConversationNote: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          actorId?: string;
+          actorName?: string;
+          note: string;
+          organizationId: string;
+          sessionId?: string;
+          threadId?: string;
+        },
+        null
+      >;
+      appendConversationEvent: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          actorId?: string;
+          actorName?: string;
+          eventType: string;
+          organizationId: string;
+          payload?: any;
+          sessionId?: string;
+          threadId?: string;
+        },
+        null
+      >;
+      assignConversation: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          actorId?: string;
+          actorName?: string;
+          assignedAgentId: string;
+          assignedAgentName?: string;
+          organizationId: string;
+          sessionId?: string;
+          threadId?: string;
+        },
+        null
+      >;
       createSupportPost: FunctionReference<
         "mutation",
         "internal",
@@ -4300,6 +4335,110 @@ export declare const components: {
           title: string;
         },
         any
+      >;
+      deleteRagSourceConfig: FunctionReference<
+        "mutation",
+        "internal",
+        { organizationId: string; sourceId: string },
+        null
+      >;
+      rateLimitOrThrow: FunctionReference<
+        "mutation",
+        "internal",
+        { key: string; limit: number; windowMs: number },
+        null
+      >;
+      recordMessageIndexUpdate: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          contactEmail?: string;
+          contactId?: string;
+          contactName?: string;
+          mode?: "agent" | "manual";
+          organizationId: string;
+          role: "user" | "assistant";
+          sessionId: string;
+          snippet: string;
+          threadId: string;
+        },
+        null
+      >;
+      saveRagSourceConfig: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          additionalMetaKeys?: string;
+          baseInstructions?: string;
+          displayName?: string;
+          fields?: Array<string>;
+          includeTags?: boolean;
+          isEnabled?: boolean;
+          metaFieldKeys?: Array<string>;
+          organizationId: string;
+          postTypeSlug: string;
+          sourceId?: string;
+          sourceType?: "postType" | "lmsPostType";
+          useCustomBaseInstructions?: boolean;
+        },
+        { ragSourceId: string }
+      >;
+      setAgentPresence: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          agentName?: string;
+          agentUserId: string;
+          organizationId: string;
+          sessionId?: string;
+          status: "typing" | "idle";
+          threadId?: string;
+        },
+        null
+      >;
+      setConversationMode: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          actorId?: string;
+          actorName?: string;
+          mode: "agent" | "manual";
+          organizationId: string;
+          sessionId?: string;
+          threadId?: string;
+        },
+        null
+      >;
+      setConversationStatus: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          actorId?: string;
+          actorName?: string;
+          organizationId: string;
+          sessionId?: string;
+          status: "open" | "snoozed" | "closed";
+          threadId?: string;
+        },
+        null
+      >;
+      touchRagSourceIndexedAt: FunctionReference<
+        "mutation",
+        "internal",
+        { sourceId: string },
+        null
+      >;
+      unassignConversation: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          actorId?: string;
+          actorName?: string;
+          organizationId: string;
+          sessionId?: string;
+          threadId?: string;
+        },
+        null
       >;
       updateSupportPost: FunctionReference<
         "mutation",
@@ -4323,6 +4462,50 @@ export declare const components: {
           title: string;
         },
         any
+      >;
+      upsertConversationIndex: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          agentThreadId?: string;
+          assignedAgentId?: string;
+          assignedAgentName?: string;
+          contactEmail?: string;
+          contactId?: string;
+          contactName?: string;
+          emailThreadId?: string;
+          firstMessageAt?: number;
+          inboundAlias?: string;
+          lastMessageAt?: number;
+          lastMessageAuthor?: "user" | "assistant";
+          lastMessageSnippet?: string;
+          mode?: "agent" | "manual";
+          organizationId: string;
+          origin: "chat" | "email";
+          sessionId: string;
+          status?: "open" | "snoozed" | "closed";
+          subject?: string;
+          totalMessages?: number;
+        },
+        null
+      >;
+      upsertRagIndexStatus: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          entryKey: string;
+          lastAttemptAt: number;
+          lastEntryId?: string;
+          lastEntryStatus?: "pending" | "ready" | "replaced";
+          lastError?: string;
+          lastStatus: string;
+          lastSuccessAt?: number;
+          organizationId: string;
+          postId: string;
+          postTypeSlug: string;
+          sourceType: "postType" | "lmsPostType";
+        },
+        null
       >;
       upsertSupportOption: FunctionReference<
         "mutation",
@@ -4430,6 +4613,52 @@ export declare const components: {
       };
     };
     queries: {
+      getAgentPresence: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string; sessionId?: string; threadId?: string },
+        any
+      >;
+      getConversationIndex: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string; sessionId?: string; threadId?: string },
+        any
+      >;
+      getConversationMode: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string; sessionId?: string; threadId?: string },
+        any
+      >;
+      getRagIndexStatusForPost: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string; postId: string; postTypeSlug: string },
+        any
+      >;
+      getRagSourceConfigForPostType: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string; postTypeSlug: string },
+        any
+      >;
+      getRagSourceForPostType: FunctionReference<
+        "query",
+        "internal",
+        {
+          organizationId: string;
+          postTypeSlug: string;
+          sourceType: "postType" | "lmsPostType";
+        },
+        any
+      >;
+      getRagSourceForPostTypeAny: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string; postTypeSlug: string },
+        any
+      >;
       getSupportOption: FunctionReference<
         "query",
         "internal",
@@ -4446,6 +4675,30 @@ export declare const components: {
         "query",
         "internal",
         { organizationId?: string; postId: string },
+        any
+      >;
+      listConversationEvents: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string; sessionId?: string; threadId?: string },
+        any
+      >;
+      listConversationNotes: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string; sessionId?: string; threadId?: string },
+        any
+      >;
+      listConversations: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; organizationId: string },
+        any
+      >;
+      listRagSources: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string },
         any
       >;
       listSupportOptions: FunctionReference<
@@ -5878,6 +6131,86 @@ export declare const components: {
         >;
       };
     };
+    plans: {
+      mutations: {
+        seedPlans: FunctionReference<"mutation", "internal", {}, Array<string>>;
+        updatePlan: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            description?: string;
+            displayName?: string;
+            features?: Array<string>;
+            isActive?: boolean;
+            maxOrganizations?: number;
+            planId: string;
+            priceMonthly?: number;
+            priceYearly?: number;
+            sortOrder?: number;
+          },
+          null
+        >;
+      };
+      queries: {
+        getPlanById: FunctionReference<
+          "query",
+          "internal",
+          { planId: string },
+          null | {
+            _creationTime: number;
+            _id: string;
+            description: string;
+            displayName: string;
+            features?: Array<string>;
+            isActive: boolean;
+            maxOrganizations: number;
+            name: "free" | "starter" | "business" | "agency";
+            priceMonthly: number;
+            priceYearly?: number;
+            sortOrder: number;
+            updatedAt: number;
+          }
+        >;
+        getPlanByName: FunctionReference<
+          "query",
+          "internal",
+          { name: "free" | "starter" | "business" | "agency" },
+          null | {
+            _creationTime: number;
+            _id: string;
+            description: string;
+            displayName: string;
+            features?: Array<string>;
+            isActive: boolean;
+            maxOrganizations: number;
+            name: "free" | "starter" | "business" | "agency";
+            priceMonthly: number;
+            priceYearly?: number;
+            sortOrder: number;
+            updatedAt: number;
+          }
+        >;
+        getPlans: FunctionReference<
+          "query",
+          "internal",
+          { isActive?: boolean },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            description: string;
+            displayName: string;
+            features?: Array<string>;
+            isActive: boolean;
+            maxOrganizations: number;
+            name: "free" | "starter" | "business" | "agency";
+            priceMonthly: number;
+            priceYearly?: number;
+            sortOrder: number;
+            updatedAt: number;
+          }>
+        >;
+      };
+    };
     posts: {
       mutations: {
         createPost: FunctionReference<
@@ -6149,6 +6482,298 @@ export declare const components: {
             organizationId?: string;
             slug?: string;
           }>
+        >;
+      };
+    };
+  };
+  launchthat_tasks: {
+    tasks: {
+      boards: {
+        mutations: {
+          createBoard: FunctionReference<
+            "mutation",
+            "internal",
+            { name: string },
+            string
+          >;
+          deleteBoard: FunctionReference<
+            "mutation",
+            "internal",
+            { boardId: string },
+            boolean
+          >;
+          updateBoard: FunctionReference<
+            "mutation",
+            "internal",
+            { boardId: string; name: string },
+            boolean
+          >;
+        };
+        queries: {
+          getBoard: FunctionReference<
+            "query",
+            "internal",
+            { boardId: string },
+            null | {
+              _creationTime: number;
+              _id: string;
+              createdAt: number;
+              name: string;
+              updatedAt: number;
+            }
+          >;
+          listBoards: FunctionReference<
+            "query",
+            "internal",
+            {},
+            Array<{
+              _creationTime: number;
+              _id: string;
+              createdAt: number;
+              name: string;
+              updatedAt: number;
+            }>
+          >;
+        };
+      };
+      mutations: {
+        createTask: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            boardId?: string;
+            description?: string;
+            dueDate?: number;
+            isRecurring?: boolean;
+            recurrenceRule?: string;
+            status?: "pending" | "completed" | "cancelled";
+            title: string;
+          },
+          string
+        >;
+        deleteTask: FunctionReference<
+          "mutation",
+          "internal",
+          { taskId: string },
+          boolean
+        >;
+        reorderTasks: FunctionReference<
+          "mutation",
+          "internal",
+          { tasks: Array<{ sortIndex: number; taskId: string }> },
+          boolean
+        >;
+        updateTask: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            description?: string;
+            dueDate?: number;
+            isRecurring?: boolean;
+            recurrenceRule?: string;
+            status?: "pending" | "completed" | "cancelled";
+            taskId: string;
+            title?: string;
+          },
+          boolean
+        >;
+      };
+      queries: {
+        getTask: FunctionReference<
+          "query",
+          "internal",
+          { taskId: string },
+          null | {
+            _creationTime: number;
+            _id: string;
+            boardId?: string;
+            createdAt: number;
+            description?: string;
+            dueDate?: number;
+            isRecurring?: boolean;
+            recurrenceRule?: string;
+            sortIndex?: number;
+            status: "pending" | "completed" | "cancelled";
+            title: string;
+            updatedAt: number;
+          }
+        >;
+        listTasks: FunctionReference<
+          "query",
+          "internal",
+          {},
+          Array<{
+            _creationTime: number;
+            _id: string;
+            boardId?: string;
+            createdAt: number;
+            description?: string;
+            dueDate?: number;
+            isRecurring?: boolean;
+            recurrenceRule?: string;
+            sortIndex?: number;
+            status: "pending" | "completed" | "cancelled";
+            title: string;
+            updatedAt: number;
+          }>
+        >;
+        listTasksByBoard: FunctionReference<
+          "query",
+          "internal",
+          { boardId: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            boardId?: string;
+            createdAt: number;
+            description?: string;
+            dueDate?: number;
+            isRecurring?: boolean;
+            recurrenceRule?: string;
+            sortIndex?: number;
+            status: "pending" | "completed" | "cancelled";
+            title: string;
+            updatedAt: number;
+          }>
+        >;
+      };
+    };
+  };
+  launchthat_vimeo: {
+    syncState: {
+      mutations: {
+        updateSyncState: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            connectionId: string;
+            estimatedTotalPages?: number | null;
+            finishedAt?: number | null;
+            lastError?: string | null;
+            nextPage?: number;
+            pagesFetchedDelta?: number;
+            perPage?: number;
+            setPagesFetched?: number;
+            setSyncedCount?: number;
+            startedAt?: number | null;
+            status?: "idle" | "running" | "error" | "done";
+            syncedCountDelta?: number;
+            totalVideos?: number | null;
+            webhookId?: string | null;
+            webhookLastError?: string | null;
+            webhookLastEventAt?: number | null;
+            webhookSecret?: string | null;
+            webhookStatus?: "idle" | "active" | "error" | "disabled" | null;
+            workflowId?: string | null;
+          },
+          string
+        >;
+      };
+      queries: {
+        getSyncStateByConnection: FunctionReference<
+          "query",
+          "internal",
+          { connectionId: string },
+          any
+        >;
+      };
+    };
+    videos: {
+      mutations: {
+        createVideo: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            connectionId: string;
+            createdAt: number;
+            description?: string;
+            embedUrl: string;
+            publishedAt: number;
+            thumbnailUrl?: string;
+            title: string;
+            updatedAt: number;
+            videoId: string;
+          },
+          string
+        >;
+        markVideoDeleted: FunctionReference<
+          "mutation",
+          "internal",
+          { connectionId: string; deletedAt: number; videoId: string },
+          boolean
+        >;
+        updateVideo: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            description?: string;
+            embedUrl?: string;
+            id: string;
+            publishedAt?: number;
+            thumbnailUrl?: string;
+            title?: string;
+            updatedAt: number;
+          },
+          string
+        >;
+        upsertVideo: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            connectionId: string;
+            now: number;
+            video: {
+              description?: string;
+              embedUrl: string;
+              publishedAt: number;
+              thumbnailUrl?: string;
+              title: string;
+              videoId: string;
+            };
+          },
+          { id: string; inserted: boolean }
+        >;
+        upsertVideosPage: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            connectionId: string;
+            now: number;
+            videos: Array<{
+              description?: string;
+              embedUrl: string;
+              publishedAt: number;
+              thumbnailUrl?: string;
+              title: string;
+              videoId: string;
+            }>;
+          },
+          { inserted: number; updated: number }
+        >;
+      };
+      queries: {
+        getVideoByExternalId: FunctionReference<
+          "query",
+          "internal",
+          { connectionId: string; videoId: string },
+          any
+        >;
+        listVideosByConnectionPaginated: FunctionReference<
+          "query",
+          "internal",
+          {
+            connectionId: string;
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+            search?: string;
+          },
+          any
         >;
       };
     };

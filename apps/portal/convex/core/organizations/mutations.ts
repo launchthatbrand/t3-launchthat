@@ -20,7 +20,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
-    planId: v.optional(v.id("plans")), // Make planId optional for admin users
+    // planId: v.optional(v.id("plans")), // Make planId optional for admin users
     isPublic: v.optional(v.boolean()),
     allowSelfRegistration: v.optional(v.boolean()),
   },
@@ -87,7 +87,7 @@ export const update = mutation({
     customDomain: v.optional(v.string()),
     isPublic: v.optional(v.boolean()),
     allowSelfRegistration: v.optional(v.boolean()),
-    planId: v.optional(v.id("plans")),
+    // planId: v.optional(v.id("plans")),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -411,7 +411,7 @@ export const grantCustomerAccessMutation = mutation({
       v.literal("course_enrollment"),
       v.literal("manual_grant"),
     ),
-    sourceId: v.optional(v.union(v.id("products"), v.string())),
+    sourceId: v.optional(v.union(v.string())),
     expiresAt: v.optional(v.number()),
   },
   returns: v.id("userOrganizations"),
@@ -548,174 +548,8 @@ export const addUserByEmail = mutation({
  */
 
 /**
- * Create a new plan
- */
-export const createPlan = mutation({
-  args: {
-    name: v.union(
-      v.literal("free"),
-      v.literal("starter"),
-      v.literal("business"),
-      v.literal("agency"),
-    ),
-    displayName: v.string(),
-    description: v.string(),
-    maxOrganizations: v.number(),
-    priceMonthly: v.number(),
-    priceYearly: v.optional(v.number()),
-    features: v.array(v.string()),
-    isActive: v.optional(v.boolean()),
-    sortOrder: v.optional(v.number()),
-  },
-  returns: v.id("plans"),
-  handler: async (ctx, args) => {
-    const userId = await getAuthenticatedUserId(ctx);
-
-    // Only admins can create plans
-    const user = await ctx.db.get(userId);
-    if (user?.role !== "admin") {
-      throw new Error("Only administrators can create plans");
-    }
-
-    // Check if plan name already exists
-    const existingPlan = await ctx.db
-      .query("plans")
-      .filter((q) => q.eq(q.field("name"), args.name))
-      .first();
-
-    if (existingPlan) {
-      throw new Error(`Plan with name '${args.name}' already exists`);
-    }
-
-    const now = Date.now();
-
-    const planId = await ctx.db.insert("plans", {
-      name: args.name,
-      displayName: args.displayName,
-      description: args.description,
-      maxOrganizations: args.maxOrganizations,
-      priceMonthly: args.priceMonthly,
-      priceYearly: args.priceYearly,
-      features: args.features,
-      isActive: args.isActive ?? true,
-      sortOrder: args.sortOrder ?? 0,
-      updatedAt: now,
-    });
-
-    return planId;
-  },
-});
-
-/**
- * Update an existing plan
- */
-export const updatePlan = mutation({
-  args: {
-    planId: v.id("plans"),
-    name: v.optional(
-      v.union(
-        v.literal("free"),
-        v.literal("starter"),
-        v.literal("business"),
-        v.literal("agency"),
-      ),
-    ),
-    displayName: v.optional(v.string()),
-    description: v.optional(v.string()),
-    maxOrganizations: v.optional(v.number()),
-    priceMonthly: v.optional(v.number()),
-    priceYearly: v.optional(v.number()),
-    features: v.optional(v.array(v.string())),
-    isActive: v.optional(v.boolean()),
-    sortOrder: v.optional(v.number()),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const userId = await getAuthenticatedUserId(ctx);
-
-    // Only admins can update plans
-    const user = await ctx.db.get(userId);
-    if (user?.role !== "admin") {
-      throw new Error("Only administrators can update plans");
-    }
-
-    const plan = await ctx.db.get(args.planId);
-    if (!plan) {
-      throw new Error("Plan not found");
-    }
-
-    const updates: Record<string, unknown> = {
-      updatedAt: Date.now(),
-    };
-
-    // Add fields that are being updated
-    if (args.name !== undefined) updates.name = args.name;
-    if (args.displayName !== undefined) updates.displayName = args.displayName;
-    if (args.description !== undefined) updates.description = args.description;
-    if (args.maxOrganizations !== undefined)
-      updates.maxOrganizations = args.maxOrganizations;
-    if (args.priceMonthly !== undefined)
-      updates.priceMonthly = args.priceMonthly;
-    if (args.priceYearly !== undefined) updates.priceYearly = args.priceYearly;
-    if (args.features !== undefined) updates.features = args.features;
-    if (args.isActive !== undefined) updates.isActive = args.isActive;
-    if (args.sortOrder !== undefined) updates.sortOrder = args.sortOrder;
-
-    await ctx.db.patch(args.planId, updates);
-    return null;
-  },
-});
-
-/**
  * Delete a plan
  */
-export const deletePlan = mutation({
-  args: {
-    planId: v.id("plans"),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const userId = await getAuthenticatedUserId(ctx);
-
-    // Only admins can delete plans
-    const user = await ctx.db.get(userId);
-    if (user?.role !== "admin") {
-      throw new Error("Only administrators can delete plans");
-    }
-
-    const plan = await ctx.db.get(args.planId);
-    if (!plan) {
-      throw new Error("Plan not found");
-    }
-
-    // Check if any users are currently on this plan
-    const usersOnPlan = await ctx.db
-      .query("users")
-      .filter((q) => q.eq(q.field("planId"), args.planId))
-      .collect();
-
-    if (usersOnPlan.length > 0) {
-      throw new Error(
-        `Cannot delete plan. ${usersOnPlan.length} user(s) are currently assigned to this plan.`,
-      );
-    }
-
-    // Check if any organizations reference this plan
-    const orgsOnPlan = await ctx.db
-      .query("organizations")
-      .filter((q) => q.eq(q.field("planId"), args.planId))
-      .collect();
-
-    if (orgsOnPlan.length > 0) {
-      throw new Error(
-        `Cannot delete plan. ${orgsOnPlan.length} organization(s) are currently using this plan.`,
-      );
-    }
-
-    await ctx.db.delete(args.planId);
-    return null;
-  },
-});
 
 type MemberRole = "admin" | "editor" | "viewer" | "student";
 

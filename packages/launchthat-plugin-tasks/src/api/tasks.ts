@@ -1,4 +1,4 @@
-import type { Doc, Id } from "@convex-config/_generated/dataModel";
+import type { TaskBoardId, TaskBoardRecord, TaskId, TaskRecord } from "../types";
 
 import {
   useTasksApi,
@@ -26,20 +26,20 @@ export function getBoardMutations(api: any) {
 
 export function useTasks() {
   const api = useTasksApi<any>();
-  return useTasksQuery<Doc<"tasks">[]>(getTaskQueries(api)?.listTasks, {});
+  return useTasksQuery<TaskRecord[]>(getTaskQueries(api)?.listTasks, {});
 }
 
-export function useTask(taskId: Id<"tasks"> | null) {
+export function useTask(taskId: TaskId | null) {
   const api = useTasksApi<any>();
-  return useTasksQuery<Doc<"tasks"> | null>(
+  return useTasksQuery<TaskRecord | null>(
     getTaskQueries(api)?.getTask,
     taskId ? { taskId } : "skip",
   );
 }
 
-export function useTasksByBoard(boardId: Id<"taskBoards"> | null) {
+export function useTasksByBoard(boardId: TaskBoardId | null) {
   const api = useTasksApi<any>();
-  return useTasksQuery<Doc<"tasks">[]>(
+  return useTasksQuery<TaskRecord[]>(
     getTaskQueries(api)?.listTasksByBoard,
     boardId ? { boardId } : "skip",
   );
@@ -63,3 +63,8 @@ export const useReorderTasks = () => {
   const api = useTasksApi<any>();
   return useTasksMutation(getTaskMutations(api)?.reorderTasks);
 };
+
+export function useTaskBoards() {
+  const api = useTasksApi<any>();
+  return useTasksQuery<TaskBoardRecord[]>(getBoardQueries(api)?.listBoards, {});
+}

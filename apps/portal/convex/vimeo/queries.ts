@@ -6,9 +6,11 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 
+import { components } from "../_generated/api";
 import { query } from "../_generated/server";
 
 const queryAny = query as any;
+const componentsAny = components as any;
 
 export const listVideos = queryAny({
   args: {
@@ -16,21 +18,7 @@ export const listVideos = queryAny({
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
   },
-  returns: v.object({
-    page: v.array(
-      v.object({
-        _id: v.id("vimeoVideos"),
-        videoId: v.string(),
-        title: v.string(),
-        description: v.optional(v.string()),
-        embedUrl: v.string(),
-        thumbnailUrl: v.optional(v.string()),
-        publishedAt: v.number(),
-      }),
-    ),
-    isDone: v.boolean(),
-    continueCursor: v.union(v.string(), v.null()),
-  }),
+  returns: v.any(),
   // NOTE: We intentionally cast ctx/args to any to avoid TS "type instantiation is excessively deep"
   // in large Convex schemas, while still enforcing runtime validation via `args`/`returns`.
   handler: async (ctx: any, args: any) => {
@@ -44,77 +32,25 @@ export const listVideos = queryAny({
     if (!connection) {
       return { page: [], isDone: true, continueCursor: null };
     }
-
-    const search = args.search?.trim() ?? "";
-    const isActive = (row: any) => (row.status ?? "active") === "active";
-
-    const normalizeRow = (row: any) => ({
-      _id: row._id,
-      videoId: row.videoId,
-      title: row.title,
-      description: row.description ?? undefined,
-      embedUrl: row.embedUrl,
-      thumbnailUrl: row.thumbnailUrl ?? undefined,
-      publishedAt: row.publishedAt,
-    });
-
-    if (search.length > 0) {
-      const result = await ctx.db
-        .query("vimeoVideos")
-        .withSearchIndex("search_title", (q: any) =>
-          q.search("title", search).eq("connectionId", connection._id),
-        )
-        .paginate(args.paginationOpts);
-      return {
-        page: result.page.filter(isActive).map(normalizeRow),
-        isDone: result.isDone,
-        continueCursor: result.continueCursor,
-      };
-    }
-
-    const result = await ctx.db
-      .query("vimeoVideos")
-      .withIndex("by_connection", (q: any) => q.eq("connectionId", connection._id))
-      .order("desc")
-      .paginate(args.paginationOpts);
-    return {
-      page: result.page.filter(isActive).map(normalizeRow),
-      isDone: result.isDone,
-      continueCursor: result.continueCursor,
-    };
+    return await ctx.runQuery(
+      componentsAny.launchthat_vimeo.videos.queries
+        .listVideosByConnectionPaginated,
+      {
+        connectionId: String(connection._id),
+        paginationOpts: args.paginationOpts,
+        search: args.search,
+      },
+    );
   },
 });
 
 export const getVideoByExternalId = queryAny({
-  args: { connectionId: v.id("connections"), videoId: v.string() },
-  returns: v.union(
-    v.null(),
-    v.object({
-      _id: v.id("vimeoVideos"),
-      videoId: v.string(),
-      title: v.string(),
-      embedUrl: v.string(),
-      thumbnailUrl: v.optional(v.string()),
-      publishedAt: v.number(),
-      connectionId: v.id("connections"),
-    }),
-  ),
+  args: { connectionId: v.string(), videoId: v.string() },
+  returns: v.any(),
   handler: async (ctx: any, args: any) => {
-    const existing = await ctx.db
-      .query("vimeoVideos")
-      .withIndex("by_connection_and_videoId", (q: any) =>
-        q.eq("connectionId", args.connectionId).eq("videoId", args.videoId),
-      )
-      .unique();
-    if (!existing) return null;
-    return {
-      _id: existing._id,
-      videoId: existing.videoId,
-      title: existing.title,
-      embedUrl: existing.embedUrl,
-      thumbnailUrl: existing.thumbnailUrl ?? undefined,
-      publishedAt: existing.publishedAt,
-      connectionId: existing.connectionId,
-    };
+    return await ctx.runQuery(
+      componentsAny.launchthat_vimeo.videos.queries.getVideoByExternalId,
+      args,
+    );
   },
 });

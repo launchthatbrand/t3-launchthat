@@ -1,6 +1,5 @@
 "use client";
 
-import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import React from "react";
 import { useParams } from "next/navigation";
 
@@ -22,6 +21,7 @@ import {
   useTasksMutation,
   useTasksQuery,
 } from "../context/TasksClientProvider";
+import type { TaskBoardId, TaskRecord } from "../types";
 
 const STATUS_COLUMNS = [
   { id: "pending", label: "Pending" },
@@ -37,15 +37,15 @@ export default function KanbanPage() {
   if (!taskMutations?.updateTask) {
     throw new Error("Tasks API is missing task update mutation.");
   }
-  const tasks = useTasksQuery<Doc<"tasks">[]>(
+  const tasks = useTasksQuery<TaskRecord[]>(
     taskQueries?.listTasksByBoard,
-    boardId ? { boardId: boardId as Id<"taskBoards"> } : "skip",
+    boardId ? { boardId: boardId as TaskBoardId } : "skip",
   );
   const updateTask = useTasksMutation(taskMutations?.updateTask);
 
   // Group tasks by status
   const tasksByStatus = React.useMemo(() => {
-    const grouped: Record<string, Doc<"tasks">[]> = {};
+    const grouped: Record<string, TaskRecord[]> = {};
     for (const { id } of STATUS_COLUMNS) grouped[id] = [];
     (tasks ?? []).forEach((task) => {
       const status = task.status || "pending";
@@ -59,7 +59,7 @@ export default function KanbanPage() {
   const handleDrop = React.useCallback(
     async (taskData: string, newStatus: string) => {
       try {
-        const task = JSON.parse(taskData) as Doc<"tasks">;
+        const task = JSON.parse(taskData) as TaskRecord;
         if (task.status !== newStatus) {
           await updateTask({ taskId: task._id, status: newStatus });
         }

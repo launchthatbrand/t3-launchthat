@@ -5,16 +5,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { v } from "convex/values";
 
+import { components } from "../_generated/api";
 import { internalMutation, internalQuery, query } from "../_generated/server";
 
 const vAny = v as any;
 const queryAny = query as any;
 const internalQueryAny = internalQuery as any;
 const internalMutationAny = internalMutation as any;
+const componentsAny = components as any;
 
 const syncStateValidator = vAny.object({
-  _id: vAny.id("vimeoSyncState"),
-  connectionId: vAny.id("connections"),
+  _id: vAny.string(),
+  connectionId: vAny.string(),
   status: vAny.union(
     vAny.literal("idle"),
     vAny.literal("running"),
@@ -69,22 +71,20 @@ const normalizeSyncStateRow = (row: any) => ({
 });
 
 export const getSyncStateByConnection = internalQueryAny({
-  args: { connectionId: vAny.id("connections") },
+  args: { connectionId: vAny.string() },
   returns: vAny.union(vAny.null(), syncStateValidator),
   handler: async (ctx: any, args: any) => {
-    const row = await ctx.db
-      .query("vimeoSyncState")
-      .withIndex("by_connectionId", (q: any) =>
-        q.eq("connectionId", args.connectionId),
-      )
-      .unique();
+    const row = await ctx.runQuery(
+      componentsAny.launchthat_vimeo.syncState.queries.getSyncStateByConnection,
+      { connectionId: args.connectionId },
+    );
     return row ? normalizeSyncStateRow(row) : null;
   },
 });
 
 export const updateSyncState = internalMutationAny({
   args: {
-    connectionId: vAny.id("connections"),
+    connectionId: vAny.string(),
     status: vAny.optional(
       vAny.union(
         vAny.literal("idle"),
@@ -119,102 +119,13 @@ export const updateSyncState = internalMutationAny({
     webhookLastEventAt: vAny.optional(vAny.union(vAny.number(), vAny.null())),
     webhookLastError: vAny.optional(vAny.union(vAny.string(), vAny.null())),
   },
-  returns: vAny.id("vimeoSyncState"),
+  returns: vAny.string(),
   handler: async (ctx: any, args: any) => {
-    const existing = await ctx.db
-      .query("vimeoSyncState")
-      .withIndex("by_connectionId", (q: any) =>
-        q.eq("connectionId", args.connectionId),
-      )
-      .unique();
-
-    const now = Date.now();
-    const applyNullable = <T>(value: T | null | undefined) =>
-      value ?? undefined;
-
-    if (existing) {
-      const nextSyncedCount =
-        args.setSyncedCount ??
-        existing.syncedCount + (args.syncedCountDelta ?? 0);
-      const nextPagesFetched =
-        args.setPagesFetched ??
-        existing.pagesFetched + (args.pagesFetchedDelta ?? 0);
-
-      await ctx.db.patch(existing._id, {
-        status: args.status ?? existing.status,
-        nextPage: args.nextPage ?? existing.nextPage,
-        perPage: args.perPage ?? existing.perPage,
-        syncedCount: nextSyncedCount,
-        pagesFetched: nextPagesFetched,
-        totalVideos:
-          args.totalVideos !== undefined
-            ? applyNullable(args.totalVideos)
-            : existing.totalVideos,
-        estimatedTotalPages:
-          args.estimatedTotalPages !== undefined
-            ? applyNullable(args.estimatedTotalPages)
-            : existing.estimatedTotalPages,
-        workflowId:
-          args.workflowId !== undefined
-            ? applyNullable(args.workflowId)
-            : existing.workflowId,
-        lastError:
-          args.lastError !== undefined
-            ? applyNullable(args.lastError)
-            : existing.lastError,
-        startedAt:
-          args.startedAt !== undefined
-            ? applyNullable(args.startedAt)
-            : existing.startedAt,
-        finishedAt:
-          args.finishedAt !== undefined
-            ? applyNullable(args.finishedAt)
-            : existing.finishedAt,
-        webhookSecret:
-          args.webhookSecret !== undefined
-            ? applyNullable(args.webhookSecret)
-            : existing.webhookSecret,
-        webhookId:
-          args.webhookId !== undefined
-            ? applyNullable(args.webhookId)
-            : existing.webhookId,
-        webhookStatus:
-          args.webhookStatus !== undefined
-            ? applyNullable(args.webhookStatus)
-            : existing.webhookStatus,
-        webhookLastEventAt:
-          args.webhookLastEventAt !== undefined
-            ? applyNullable(args.webhookLastEventAt)
-            : existing.webhookLastEventAt,
-        webhookLastError:
-          args.webhookLastError !== undefined
-            ? applyNullable(args.webhookLastError)
-            : existing.webhookLastError,
-        updatedAt: now,
-      });
-      return existing._id;
-    }
-
-    return await ctx.db.insert("vimeoSyncState", {
-      connectionId: args.connectionId,
-      status: args.status ?? "idle",
-      nextPage: args.nextPage ?? 1,
-      perPage: args.perPage ?? 100,
-      syncedCount: args.setSyncedCount ?? args.syncedCountDelta ?? 0,
-      pagesFetched: args.setPagesFetched ?? args.pagesFetchedDelta ?? 0,
-      totalVideos: applyNullable(args.totalVideos),
-      estimatedTotalPages: applyNullable(args.estimatedTotalPages),
-      workflowId: applyNullable(args.workflowId),
-      lastError: applyNullable(args.lastError),
-      startedAt: applyNullable(args.startedAt),
-      finishedAt: applyNullable(args.finishedAt),
-      webhookSecret: applyNullable(args.webhookSecret),
-      webhookId: applyNullable(args.webhookId),
-      webhookStatus: applyNullable(args.webhookStatus),
-      webhookLastEventAt: applyNullable(args.webhookLastEventAt),
-      webhookLastError: applyNullable(args.webhookLastError),
-      updatedAt: now,
-    });
+    const id = await ctx.runMutation(
+      componentsAny.launchthat_vimeo.syncState.mutations.updateSyncState,
+      args,
+    );
+    return String(id);
   },
 });
 
@@ -230,13 +141,10 @@ export const getVimeoSyncStatus = queryAny({
       .unique();
     if (!connection) return null;
 
-    const state = await ctx.db
-      .query("vimeoSyncState")
-      .withIndex("by_connectionId", (q: any) =>
-        q.eq("connectionId", connection._id),
-      )
-      .unique();
-
+    const state = await ctx.runQuery(
+      componentsAny.launchthat_vimeo.syncState.queries.getSyncStateByConnection,
+      { connectionId: String(connection._id) },
+    );
     return state ? normalizeSyncStateRow(state) : null;
   },
 });

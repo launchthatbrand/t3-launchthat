@@ -1,6 +1,7 @@
 import type { PluginDefinition } from "launchthat-plugin-core";
 import { createElement } from "react";
 
+import { ContactDetailsMetaBox } from "./admin/metaBoxes/ContactDetailsMetaBox";
 import { CrmSettingsPage } from "./CrmSettingsPage";
 
 export const PLUGIN_ID = "crm" as const;
@@ -34,6 +35,7 @@ export const createCrmPluginDefinition = (
       supports: {
         title: true,
         customFields: true,
+        postMeta: true,
       },
       rewrite: {
         hasArchive: false,
@@ -49,6 +51,60 @@ export const createCrmPluginDefinition = (
       storageKind: "custom",
       storageTables: ["contacts", "contact_meta"],
       includeTimestamps: true,
+      metaBoxes: [
+        {
+          id: "crm-contact-details",
+          title: "Contact details",
+          description:
+            "CRM contact fields (linked user, email address, phone, etc).",
+          location: "main",
+          priority: 5,
+          fieldKeys: [],
+          rendererKey: "crm.contact.details",
+        },
+      ],
+      metaBoxRenderers: {
+        "crm.contact.details": ContactDetailsMetaBox,
+      },
+    },
+  ],
+  fieldRegistrations: [
+    {
+      postTypeSlug: "contact",
+      fields: [
+        {
+          key: "contact.userId",
+          name: "Linked user id",
+          description:
+            "Optional Convex user id linked to this contact (CRM identity).",
+          type: "text",
+          readOnly: false,
+        },
+        {
+          key: "contact.firstName",
+          name: "First name",
+          type: "text",
+          readOnly: false,
+        },
+        {
+          key: "contact.lastName",
+          name: "Last name",
+          type: "text",
+          readOnly: false,
+        },
+        {
+          key: "contact.email",
+          name: "Email address",
+          type: "text",
+          readOnly: false,
+        },
+        {
+          key: "contact.phone",
+          name: "Phone",
+          type: "text",
+          readOnly: false,
+        },
+      ],
     },
   ],
   activation: {

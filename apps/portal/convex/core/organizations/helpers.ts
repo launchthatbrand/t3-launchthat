@@ -1,5 +1,6 @@
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
+import { components } from "../../_generated/api";
 
 /**
  * Verify that a user has access to an organization with a specific role
@@ -82,7 +83,10 @@ export const checkOrganizationLimit = async (
     throw new Error("User has no plan assigned");
   }
 
-  const plan = await ctx.db.get(user.planId);
+  const plan = await ctx.runQuery(
+    components.launchthat_ecommerce.plans.queries.getPlanById as any,
+    { planId: String(user.planId) },
+  );
   if (!plan) {
     throw new Error("User plan not found");
   }
@@ -120,7 +124,10 @@ export const getUserPlan = async (ctx: QueryCtx, userId: Id<"users">) => {
     return null;
   }
 
-  return await ctx.db.get(user.planId);
+  return (await ctx.runQuery(
+    components.launchthat_ecommerce.plans.queries.getPlanById as any,
+    { planId: String(user.planId) },
+  )) as any;
 };
 
 /**

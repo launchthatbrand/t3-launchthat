@@ -1,28 +1,6 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
-// Plans table - defines subscription tiers and organization limits
-export const plansTable = defineTable({
-  name: v.union(
-    v.literal("free"),
-    v.literal("starter"),
-    v.literal("business"),
-    v.literal("agency"),
-  ),
-  displayName: v.string(), // "Free", "Starter", "Business", "Agency"
-  description: v.string(),
-  maxOrganizations: v.number(), // 1, 1, 3, -1 (unlimited)
-  priceMonthly: v.number(), // Price in cents (0, 2900, 9900, 19900)
-  priceYearly: v.optional(v.number()), // Optional yearly pricing
-  features: v.optional(v.array(v.string())), // Array of feature descriptions
-  isActive: v.boolean(), // Whether this plan is available for new subscriptions
-  sortOrder: v.number(), // For display ordering
-  updatedAt: v.number(),
-})
-  .index("by_name", ["name"])
-  .index("by_active", ["isActive"])
-  .index("by_sort_order", ["sortOrder"]);
-
 // Organizations table - tenant containers for content
 export const organizationsTable = defineTable({
   name: v.string(),
@@ -83,7 +61,9 @@ export const organizationsTable = defineTable({
   allowSelfRegistration: v.boolean(), // Whether users can register themselves
 
   // Subscription and billing
-  planId: v.optional(v.id("plans")), // Current plan (optional for admin-created orgs)
+  // NOTE: Plans are ecommerce-owned and stored in the ecommerce Convex component.
+  // We store the plan id as an opaque string here (component ids don't validate as v.id("plans") in the portal schema).
+  planId: v.optional(v.string()), // Current plan id (component id)
   subscriptionStatus: v.union(
     v.literal("active"),
     v.literal("trialing"),
@@ -139,7 +119,6 @@ export const userOrganizationsTable = defineTable({
       ),
       accessSourceId: v.optional(
         v.union(
-          v.id("products"),
           v.string(), // For manual grants, could be a reason
         ),
       ),
@@ -201,7 +180,6 @@ export const organizationSettingsTable = defineTable({
 
 // Export schema
 export const organizationsSchema = {
-  plans: plansTable,
   organizations: organizationsTable,
   userOrganizations: userOrganizationsTable,
   organizationInvitations: organizationInvitationsTable,

@@ -8,7 +8,7 @@ import { v } from "convex/values";
 
 // Plan types
 export const planValidator = v.object({
-  _id: v.id("plans"),
+  _id: v.string(),
   _creationTime: v.number(),
   name: v.union(
     v.literal("free"),
@@ -81,7 +81,7 @@ export const organizationValidator = v.object({
   emailDomainUpdatedAt: v.optional(v.number()),
   isPublic: v.boolean(),
   allowSelfRegistration: v.boolean(),
-  planId: v.optional(v.id("plans")),
+  planId: v.optional(v.string()),
   subscriptionStatus: v.union(
     v.literal("active"),
     v.literal("trialing"),
@@ -133,7 +133,7 @@ export const userOrganizationValidator = v.object({
         v.literal("course_enrollment"),
         v.literal("manual_grant"),
       ),
-      accessSourceId: v.optional(v.union(v.id("products"))),
+      accessSourceId: v.optional(v.union(v.string())),
       expiresAt: v.optional(v.number()),
       purchaseDate: v.optional(v.number()),
       metadata: v.optional(v.any()), // Keep as any for flexible metadata
@@ -234,7 +234,7 @@ export const organizationWithRoleValidator = v.object({
   emailDomainUpdatedAt: v.optional(v.number()),
   isPublic: v.boolean(),
   allowSelfRegistration: v.boolean(),
-  planId: v.optional(v.id("plans")),
+  planId: v.optional(v.string()),
   subscriptionStatus: v.union(
     v.literal("active"),
     v.literal("trialing"),
@@ -290,7 +290,8 @@ export const organizationMemberValidator = v.object({
 });
 
 // TypeScript interfaces (for better development experience)
-export type PlanDoc = Doc<"plans">;
+// NOTE: Plans are ecommerce-owned and live in the `launchthat_ecommerce` Convex component.
+// The portal schema does not include a `plans` table.
 export type OrganizationDoc = Doc<"organizations">;
 export type UserOrganizationDoc = Doc<"userOrganizations">;
 export type OrganizationInvitationDoc = Doc<"organizationInvitations">;

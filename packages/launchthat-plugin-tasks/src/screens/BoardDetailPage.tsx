@@ -1,6 +1,5 @@
 "use client";
 
-import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import type { ColumnDef } from "@tanstack/react-table";
 import React, { useState } from "react";
 import { useParams } from "next/navigation";
@@ -26,31 +25,32 @@ import {
 import { TaskForm, TaskFormValues } from "../components/TaskForm";
 import { TasksTable } from "../components/TasksTable";
 import { fieldRegistry } from "../fields/registry";
+import type { TaskBoardId, TaskRecord } from "../types";
 
 const BoardPage = () => {
   const { boardId } = useParams();
-  const tasks = useTasksByBoard(boardId as Id<"taskBoards">);
+  const tasks = useTasksByBoard(boardId as TaskBoardId);
   const deleteTask = useDeleteTask();
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editTask, setEditTask] = useState<Doc<"tasks"> | null>(null);
+  const [editTask, setEditTask] = useState<TaskRecord | null>(null);
   const [open, setOpen] = useState(false);
 
-  const handleEditClick = (task: Doc<"tasks">) => {
+  const handleEditClick = (task: TaskRecord) => {
     setEditTask(task);
     setDrawerOpen(true);
   };
 
-  const handleDelete = async (task: Doc<"tasks">) => {
+  const handleDelete = async (task: TaskRecord) => {
     if (confirm(`Delete task: ${task.title}?`)) {
       await deleteTask({ taskId: task._id });
     }
   };
 
   // Move columns array here so it can access the handlers
-  const columns: ColumnDef<Doc<"tasks">>[] = [
+  const columns: ColumnDef<TaskRecord>[] = [
     {
       accessorKey: "title",
       header: "Title",
@@ -160,7 +160,7 @@ const BoardPage = () => {
           <div className="p-4">
             <TaskForm
               task={editTask ?? undefined}
-              boardId={boardId as Id<"taskBoards">}
+              boardId={boardId as TaskBoardId}
               onSuccess={() => setDrawerOpen(false)}
             />
           </div>

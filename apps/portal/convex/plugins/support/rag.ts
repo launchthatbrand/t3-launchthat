@@ -48,9 +48,19 @@ const buildSearchFilters = (args: {
   return filters;
 };
 
-type SupportRagSourceDoc = Doc<"supportRagSources">;
 type PostDoc = Doc<"posts">;
 type LmsPostTypeSlug = string;
+
+type SupportRagSourceConfig = {
+  _id: string;
+  postTypeSlug?: string;
+  displayName?: string;
+  isEnabled?: boolean;
+  includeTags?: boolean;
+  metaFieldKeys?: string[];
+  additionalMetaKeys?: string;
+  fields?: Array<"title" | "excerpt" | "content">;
+};
 
 const namespaceForOrganization = (organizationId: Id<"organizations">) =>
   `org-${organizationId}`;
@@ -91,37 +101,22 @@ export const upsertRagIndexStatusInternal = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const normalizedPostTypeSlug = args.postTypeSlug.toLowerCase();
-    const existing = await ctx.db
-      .query("supportRagIndexStatus")
-      .withIndex("by_org_post", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("postTypeSlug", normalizedPostTypeSlug)
-          .eq("postId", args.postId),
-      )
-      .unique();
-
-    const payload = {
-      organizationId: args.organizationId,
-      sourceType: args.sourceType,
-      postTypeSlug: normalizedPostTypeSlug,
-      postId: args.postId,
-      entryKey: args.entryKey,
-      lastStatus: args.lastStatus,
-      lastAttemptAt: args.lastAttemptAt,
-      lastSuccessAt: args.lastSuccessAt,
-      lastError: args.lastError,
-      lastEntryId: args.lastEntryId,
-      lastEntryStatus: args.lastEntryStatus,
-    };
-
-    if (existing) {
-      await ctx.db.patch(existing._id, payload);
-      return null;
-    }
-
-    await ctx.db.insert("supportRagIndexStatus", payload);
+    await ctx.runMutation(
+      components.launchthat_support.mutations.upsertRagIndexStatus as any,
+      {
+        organizationId: String(args.organizationId),
+        sourceType: args.sourceType,
+        postTypeSlug: args.postTypeSlug,
+        postId: args.postId,
+        entryKey: args.entryKey,
+        lastStatus: args.lastStatus,
+        lastAttemptAt: args.lastAttemptAt,
+        lastSuccessAt: args.lastSuccessAt,
+        lastError: args.lastError,
+        lastEntryId: args.lastEntryId,
+        lastEntryStatus: args.lastEntryStatus,
+      },
+    );
     return null;
   },
 });
@@ -150,7 +145,7 @@ const deleteEntryByKey = async (
 
 const buildPostText = async (
   post: PostDoc,
-  config: SupportRagSourceDoc,
+  config: SupportRagSourceConfig,
 ): Promise<string> => {
   const segments: string[] = [];
 
@@ -192,7 +187,7 @@ const buildPostText = async (
 const buildLmsPostText = async (args: {
   lmsPost: Record<string, unknown>;
   lmsMeta: Array<{ key?: unknown; value?: unknown }>;
-  config: SupportRagSourceDoc;
+  config: SupportRagSourceConfig;
 }): Promise<string> => {
   const segments: string[] = [];
   const post = args.lmsPost;
@@ -261,7 +256,7 @@ export const getSupportRagSourceForPostType = internalQuery({
   returns: v.union(
     v.null(),
     v.object({
-      _id: v.id("supportRagSources"),
+      _id: v.string(),
       postTypeSlug: v.optional(v.string()),
       displayName: v.optional(v.string()),
       isEnabled: v.optional(v.boolean()),
@@ -272,23 +267,19 @@ export const getSupportRagSourceForPostType = internalQuery({
     }),
   ),
   handler: async (ctx, args) => {
-    const doc = await ctx.db
-      .query("supportRagSources")
-      .withIndex("by_org_type_and_postTypeSlug", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("sourceType", args.sourceType)
-          .eq("postTypeSlug", args.postTypeSlug.toLowerCase()),
-      )
-      .unique();
-    if (!doc) {
-      return null;
-    }
+    const doc = (await ctx.runQuery(
+      components.launchthat_support.queries.getRagSourceForPostType as any,
+      {
+        organizationId: String(args.organizationId),
+        postTypeSlug: args.postTypeSlug,
+        sourceType: args.sourceType,
+      },
+    )) as any | null;
 
-    // IMPORTANT: Only return fields allowed by the `returns` validator.
-    // Convex will throw if we return a document with extra fields.
+    if (!doc) return null;
+
     return {
-      _id: doc._id,
+      _id: String(doc._id ?? ""),
       postTypeSlug: doc.postTypeSlug,
       displayName: doc.displayName,
       isEnabled: doc.isEnabled,
@@ -536,7 +527,7 @@ export const ingestPostIfConfigured = internalAction({
       return { status: "notPublished" };
     }
 
-    const text = await buildPostText(post as PostDoc, config as SupportRagSourceDoc);
+    const text = await buildPostText(post as PostDoc, config as SupportRagSourceConfig);
     if (!text) {
       await ctx.runMutation(internal.plugins.support.rag.deleteEntryByKeyInternal, {
         organizationId,
@@ -769,10 +760,13 @@ export const deleteEntryByKeyInternal = internalMutation({
 });
 
 export const touchRagSourceIndexedAtInternal = internalMutation({
-  args: { sourceId: v.id("supportRagSources") },
+  args: { sourceId: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.sourceId, { lastIndexedAt: Date.now(), updatedAt: Date.now() });
+    await ctx.runMutation(
+      components.launchthat_support.mutations.touchRagSourceIndexedAt as any,
+      { sourceId: args.sourceId },
+    );
     return null;
   },
 });

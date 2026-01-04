@@ -38,7 +38,9 @@ export const usersTable = defineTable({
 
   // Organization and billing fields
   organizationId: v.optional(v.id("organizations")), // Made optional for multi-tenancy
-  planId: v.optional(v.id("plans")), // Current subscription plan
+  // NOTE: Plans are ecommerce-owned and stored in the ecommerce Convex component.
+  // We store the plan id as an opaque string here (component ids don't validate as v.id("plans") in the portal schema).
+  planId: v.optional(v.string()), // Current subscription plan (component id)
   customerId: v.optional(v.string()), // External customer ID (Stripe, etc.)
   subscriptionId: v.optional(v.string()), // External subscription ID
   subscriptionStatus: v.optional(

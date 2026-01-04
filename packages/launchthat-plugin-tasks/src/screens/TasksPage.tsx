@@ -1,6 +1,5 @@
 "use client";
 
-import type { Doc } from "@convex-config/_generated/dataModel";
 import type { ColumnDef } from "@tanstack/react-table";
 import React, { useCallback, useMemo, useState } from "react";
 import { Plus, Trash } from "lucide-react";
@@ -20,13 +19,14 @@ import {
 import { useDeleteTask, useTasks } from "../api/tasks";
 import { TaskForm } from "../components/TaskForm";
 import { TasksTable } from "../components/TasksTable";
+import type { TaskRecord } from "../types";
 
 const TasksPage = () => {
   const tasks = useTasks();
   const deleteTask = useDeleteTask();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editTask, setEditTask] = useState<Doc<"tasks"> | null>(null);
+  const [editTask, setEditTask] = useState<TaskRecord | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const handleDrawerClose = useCallback(() => {
@@ -34,13 +34,13 @@ const TasksPage = () => {
     setEditTask(null);
   }, []);
 
-  const handleEditClick = useCallback((task: Doc<"tasks">) => {
+  const handleEditClick = useCallback((task: TaskRecord) => {
     setEditTask(task);
     setDrawerOpen(true);
   }, []);
 
   const handleDelete = useCallback(
-    async (task: Doc<"tasks">) => {
+    async (task: TaskRecord) => {
       if (confirm(`Delete task: ${task.title}?`)) {
         await deleteTask({ taskId: task._id });
       }
@@ -48,7 +48,7 @@ const TasksPage = () => {
     [deleteTask],
   );
 
-  const columns = useMemo<ColumnDef<Doc<"tasks">>[]>(
+  const columns = useMemo<ColumnDef<TaskRecord>[]>(
     () => [
       {
         id: "select",

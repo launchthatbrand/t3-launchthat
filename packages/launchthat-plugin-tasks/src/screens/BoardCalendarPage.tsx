@@ -1,6 +1,5 @@
 "use client";
 
-import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import React from "react";
 import { useParams } from "next/navigation";
 
@@ -10,15 +9,16 @@ import { EventsProvider } from "@acme/ui/calendar/context/events-context";
 
 import { getTaskQueries } from "../api/tasks";
 import { useTasksApi, useTasksQuery } from "../context/TasksClientProvider";
+import type { TaskBoardId, TaskRecord } from "../types";
 
 export default function CalendarPage() {
   const params = useParams<{ boardId?: string }>();
   const boardId = params?.boardId;
   const tasksApi = useTasksApi<any>();
   const taskQueries = getTaskQueries(tasksApi);
-  const tasks = useTasksQuery<Doc<"tasks">[]>(
+  const tasks = useTasksQuery<TaskRecord[]>(
     taskQueries?.listTasksByBoard,
-    boardId ? { boardId: boardId as Id<"taskBoards"> } : "skip",
+    boardId ? { boardId: boardId as TaskBoardId } : "skip",
   );
 
   console.log("[CalendarPage] tasks", tasks);
@@ -27,7 +27,7 @@ export default function CalendarPage() {
     () =>
       (tasks ?? [])
         .filter(
-          (task): task is Doc<"tasks"> =>
+          (task): task is TaskRecord =>
             typeof task.dueDate === "number" && !!task.dueDate,
         )
         .map((task) => ({

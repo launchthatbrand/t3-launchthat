@@ -5,7 +5,6 @@ import type { MutationCtx } from "../../_generated/server";
 import { api, components, internal } from "../../_generated/api";
 import { internalMutation, mutation } from "../../_generated/server";
 import { normalizeOrganizationId } from "../../constants";
-import { supportOrganizationIdValidator } from "./schema";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -50,126 +49,9 @@ const rateLimitOrThrow = async (
   ctx: MutationCtx,
   args: { key: string; limit: number; windowMs: number },
 ) => {
-  const now = Date.now();
-  const windowStart = Math.floor(now / args.windowMs);
-  const bucketKey = `${args.key}:${windowStart}`;
-  // This table is used for runtime guardrails; keep it loosely typed to avoid deep type instantiation issues.
-  const db = ctx.db as unknown as {
-    query: (table: string) => {
-      withIndex: (
-        indexName: string,
-        builder: (q: {
-          eq: (field: string, value: unknown) => unknown;
-        }) => unknown,
-      ) => { unique: () => Promise<{ _id: unknown; count: number } | null> };
-    };
-    insert: (table: string, value: Record<string, unknown>) => Promise<unknown>;
-    patch: (id: unknown, value: Record<string, unknown>) => Promise<unknown>;
-  };
-  const existing = await db
-    .query("supportRateLimits")
-    .withIndex("by_key", (q) => q.eq("key", bucketKey))
-    .unique();
-
-  if (!existing) {
-    await db.insert("supportRateLimits", {
-      key: bucketKey,
-      count: 1,
-      expiresAt: now + args.windowMs,
-      updatedAt: now,
-    });
-    return;
-  }
-
-  if (existing.count >= args.limit) {
-    throw new Error("Rate limited");
-  }
-
-  await db.patch(existing._id, {
-    count: existing.count + 1,
-    updatedAt: now,
-  });
-};
-
-const touchConversationPost = async (
-  ctx: MutationCtx,
-  args: {
-    organizationId: string;
-    threadId: string;
-    contactId?: string;
-    contactName?: string;
-    contactEmail?: string;
-    role: "user" | "assistant";
-    snippet: string;
-    mode?: "agent" | "manual";
-  },
-  timestamp: number,
-): Promise<string> => {
-  const conversations = (await ctx.runQuery(supportQueries.listSupportPosts, {
-    organizationId: args.organizationId,
-    filters: { postTypeSlug: "supportconversations" },
-  })) as SupportPostRecord[];
-  let convo = conversations.find((c) => c.slug === args.threadId);
-  if (!convo) {
-    const convoId = await ctx.runMutation(supportMutations.createSupportPost, {
-      organizationId: args.organizationId,
-      postTypeSlug: "supportconversations",
-      title: `Conversation ${args.threadId.slice(-8)}`,
-      slug: args.threadId,
-      status: "published",
-      meta: [
-        { key: "threadId", value: args.threadId },
-        { key: "agentThreadId", value: args.threadId },
-        { key: "contactId", value: args.contactId },
-        { key: "contactName", value: args.contactName },
-        { key: "contactEmail", value: args.contactEmail },
-        {
-          key: "origin",
-          value: args.mode === "manual" ? "email" : "chat",
-        },
-        { key: "firstAt", value: timestamp },
-        { key: "totalMessages", value: 0 },
-      ],
-    });
-    convo = {
-      _id: convoId as string,
-      _creationTime: timestamp,
-      organizationId: args.organizationId,
-      postTypeSlug: "supportconversations",
-      slug: args.threadId,
-      createdAt: timestamp,
-    };
-  }
-
-  const existingMeta = await ctx.runQuery(supportQueries.getSupportPostMeta, {
-    postId: convo._id as Id<"posts">,
-    organizationId: args.organizationId,
-  });
-  const existingTotal =
-    ((existingMeta as { key: string; value: unknown }[]).find(
-      (m: { key: string; value: unknown }) => m.key === "totalMessages",
-    )?.value as number | undefined) ?? 0;
-  const nextTotal = (typeof existingTotal === "number" ? existingTotal : 0) + 1;
-
-  await ctx.runMutation(supportMutations.upsertSupportPostMeta, {
-    postId: convo._id as Id<"posts">,
-    organizationId: args.organizationId,
-    entries: [
-      { key: "lastMessage", value: args.snippet },
-      { key: "lastRole", value: args.role },
-      { key: "lastAt", value: timestamp },
-      { key: "firstAt", value: convo.createdAt ?? timestamp },
-      { key: "threadId", value: args.threadId },
-      { key: "agentThreadId", value: args.threadId },
-      { key: "contactId", value: args.contactId },
-      { key: "contactName", value: args.contactName },
-      { key: "contactEmail", value: args.contactEmail },
-      { key: "mode", value: args.mode ?? "agent" },
-      { key: "totalMessages", value: nextTotal },
-    ],
-  });
-
-  return convo._id;
+  // Support rate limiting is component-scoped.
+  const _result: null = await ctx.runMutation(supportMutations.rateLimitOrThrow, args);
+  return;
 };
 
 const recordMessageArgs = {
@@ -237,94 +119,6 @@ const requireActor = async (ctx: MutationCtx) => {
   return { actorId, actorName };
 };
 
-const resolveConversationBySessionOrThread = async (
-  ctx: MutationCtx,
-  args: {
-    organizationId: string;
-    threadId?: string;
-    sessionId?: string;
-  },
-) => {
-  const resolved = args.threadId ?? args.sessionId;
-  if (!resolved) {
-    throw new Error("threadId is required");
-  }
-  const orgId = args.organizationId as any;
-  const byThread = args.threadId
-    ? await ctx.db
-        .query("supportConversations")
-        .withIndex("by_org_agentThreadId", (q) =>
-          q.eq("organizationId", orgId).eq("agentThreadId", resolved),
-        )
-        .first()
-    : null;
-  const bySession = !byThread
-    ? await ctx.db
-        .query("supportConversations")
-        .withIndex("by_org_session", (q) =>
-          q.eq("organizationId", orgId).eq("sessionId", resolved),
-        )
-        .first()
-    : null;
-  const conversation = byThread ?? bySession;
-  if (!conversation) {
-    throw new Error("Conversation not found");
-  }
-  return { conversation, resolved };
-};
-
-const appendConversationEvent = async (
-  ctx: MutationCtx,
-  args: {
-    organizationId: string;
-    sessionId: string;
-    agentThreadId?: string;
-    eventType: string;
-    actorId?: string;
-    actorName?: string;
-    payload?: unknown;
-  },
-) => {
-  const timestamp = Date.now();
-  await ctx.db.insert("supportConversationEvents", {
-    organizationId: args.organizationId as any,
-    sessionId: args.sessionId,
-    agentThreadId: args.agentThreadId,
-    eventType: args.eventType,
-    actorId: args.actorId,
-    actorName: args.actorName,
-    payload:
-      args.payload === undefined ? undefined : JSON.stringify(args.payload),
-    createdAt: timestamp,
-  });
-};
-
-const upsertConversationCmsMeta = async (
-  ctx: MutationCtx,
-  args: {
-    organizationId: string;
-    threadId: string;
-    entries: {
-      key: string;
-      value: string | number | boolean | null | undefined;
-    }[];
-  },
-) => {
-  const posts = (await ctx.runQuery(supportQueries.listSupportPosts, {
-    organizationId: args.organizationId,
-    filters: { postTypeSlug: "supportconversations", limit: 500 },
-  })) as SupportPostRecord[];
-  const post = posts.find((p) => p.slug === args.threadId);
-  if (!post) {
-    return;
-  }
-  await ctx.runMutation(supportMutations.upsertSupportPostMeta, {
-    postId: post._id as unknown as Id<"posts">,
-    organizationId: args.organizationId,
-    entries: args.entries.map((e) => ({ key: e.key, value: e.value })),
-  });
-};
-
 export const createThread = mutation({
   args: {
     organizationId: v.string(),
@@ -347,15 +141,10 @@ export const createThread = mutation({
     }
 
     if (args.clientSessionId) {
-      const existing = await ctx.db
-        .query("supportConversations")
-        .withIndex("by_org_session", (q) =>
-          q
-            .eq("organizationId", args.organizationId as any)
-            .eq("sessionId", args.clientSessionId!),
-        )
-        .unique();
-
+      const existing = (await ctx.runQuery(supportQueries.getConversationIndex, {
+        organizationId: args.organizationId,
+        sessionId: args.clientSessionId,
+      })) as { agentThreadId?: string } | null;
       if (existing?.agentThreadId) {
         return { threadId: existing.agentThreadId };
       }
@@ -394,66 +183,20 @@ export const createThread = mutation({
     );
     const threadId = thread._id as unknown as string;
 
-    if (args.clientSessionId) {
-      const existing = await ctx.db
-        .query("supportConversations")
-        .withIndex("by_org_session", (q) =>
-          q
-            .eq("organizationId", args.organizationId as any)
-            .eq("sessionId", args.clientSessionId!),
-        )
-        .unique();
-
-      if (existing) {
-        await ctx.db.patch(existing._id, {
-          origin: "chat",
-          status: existing.status ?? "open",
-          mode: args.mode ?? existing.mode ?? "agent",
-          contactId: resolvedContactId ? (resolvedContactId as any) : existing.contactId,
-          contactEmail: resolvedContactEmail ?? existing.contactEmail,
-          contactName: resolvedContactName ?? existing.contactName,
-          agentThreadId: threadId,
-          updatedAt: timestamp,
-        });
-      } else {
-        await ctx.db.insert("supportConversations", {
-          organizationId: args.organizationId as any,
-          sessionId: args.clientSessionId,
-          origin: "chat",
-          status: "open",
-          mode: args.mode ?? "agent",
-          contactId: resolvedContactId ? (resolvedContactId as any) : undefined,
-          contactEmail: resolvedContactEmail,
-          contactName: resolvedContactName,
-          agentThreadId: threadId,
-          firstMessageAt: timestamp,
-          lastMessageAt: timestamp,
-          totalMessages: 0,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-        });
-      }
-    }
-
-    await ctx.runMutation(supportMutations.createSupportPost, {
+    // Support conversation index/state is stored in the support component tables.
+    await ctx.runMutation(supportMutations.upsertConversationIndex, {
       organizationId: args.organizationId,
-      postTypeSlug: "supportconversations",
-      title: `Conversation ${threadId.slice(-8)}`,
-      slug: threadId,
-      status: "published",
-      meta: [
-        { key: "threadId", value: threadId },
-        { key: "agentThreadId", value: threadId },
-        { key: "sessionId", value: args.clientSessionId },
-        { key: "contactId", value: resolvedContactId },
-        { key: "contactName", value: resolvedContactName },
-        { key: "contactEmail", value: resolvedContactEmail },
-        { key: "origin", value: args.mode === "manual" ? "email" : "chat" },
-        { key: "mode", value: args.mode ?? "agent" },
-        { key: "firstAt", value: timestamp },
-        { key: "lastAt", value: timestamp },
-        { key: "totalMessages", value: 0 },
-      ],
+      sessionId: args.clientSessionId ?? threadId,
+      agentThreadId: threadId,
+      origin: "chat",
+      status: "open",
+      mode: args.mode ?? "agent",
+      contactId: resolvedContactId,
+      contactEmail: resolvedContactEmail,
+      contactName: resolvedContactName,
+      firstMessageAt: timestamp,
+      lastMessageAt: timestamp,
+      totalMessages: 0,
     });
 
     return { threadId };
@@ -474,45 +217,17 @@ export const setConversationStatus = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const { actorId, actorName } = await requireActor(ctx);
-    const { conversation, resolved } =
-      await resolveConversationBySessionOrThread(ctx, args);
-
-    const current = conversation.status ?? "open";
-    const next = args.status;
-
-    const allowed: Record<
-      typeof current,
-      readonly ("open" | "snoozed" | "closed")[]
-    > = {
-      open: ["snoozed", "closed"],
-      snoozed: ["open", "closed"],
-      closed: ["open"],
-    };
-    if (next !== current && !allowed[current].includes(next)) {
-      throw new Error(`Invalid status transition: ${current} -> ${next}`);
-    }
-
-    if (next !== current) {
-      await ctx.db.patch(conversation._id, {
-        status: next,
-        updatedAt: Date.now(),
-      });
-      await appendConversationEvent(ctx, {
+    const _result: null = await ctx.runMutation(
+      supportMutations.setConversationStatus,
+      {
         organizationId: args.organizationId,
-        sessionId: conversation.sessionId,
-        agentThreadId: conversation.agentThreadId ?? resolved,
-        eventType: "status_changed",
+        threadId: args.threadId,
+        sessionId: args.sessionId,
+        status: args.status,
         actorId,
         actorName,
-        payload: { from: current, to: next },
-      });
-      await upsertConversationCmsMeta(ctx, {
-        organizationId: args.organizationId,
-        threadId: conversation.agentThreadId ?? resolved,
-        entries: [{ key: "status", value: next }],
-      });
-    }
-
+      },
+    );
     return null;
   },
 });
@@ -528,37 +243,18 @@ export const assignConversation = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const { actorId, actorName } = await requireActor(ctx);
-    const { conversation, resolved } =
-      await resolveConversationBySessionOrThread(ctx, args);
-
-    await ctx.db.patch(conversation._id, {
-      assignedAgentId: args.assignedAgentId,
-      assignedAgentName: args.assignedAgentName,
-      updatedAt: Date.now(),
-    });
-
-    await appendConversationEvent(ctx, {
-      organizationId: args.organizationId,
-      sessionId: conversation.sessionId,
-      agentThreadId: conversation.agentThreadId ?? resolved,
-      eventType: "assignment_changed",
-      actorId,
-      actorName,
-      payload: {
+    const _result: null = await ctx.runMutation(
+      supportMutations.assignConversation,
+      {
+        organizationId: args.organizationId,
+        threadId: args.threadId,
+        sessionId: args.sessionId,
         assignedAgentId: args.assignedAgentId,
         assignedAgentName: args.assignedAgentName,
+        actorId,
+        actorName,
       },
-    });
-
-    await upsertConversationCmsMeta(ctx, {
-      organizationId: args.organizationId,
-      threadId: conversation.agentThreadId ?? resolved,
-      entries: [
-        { key: "assignedAgentId", value: args.assignedAgentId },
-        { key: "assignedAgentName", value: args.assignedAgentName },
-      ],
-    });
-
+    );
     return null;
   },
 });
@@ -572,33 +268,16 @@ export const unassignConversation = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const { actorId, actorName } = await requireActor(ctx);
-    const { conversation, resolved } =
-      await resolveConversationBySessionOrThread(ctx, args);
-
-    await ctx.db.patch(conversation._id, {
-      assignedAgentId: undefined,
-      assignedAgentName: undefined,
-      updatedAt: Date.now(),
-    });
-
-    await appendConversationEvent(ctx, {
-      organizationId: args.organizationId,
-      sessionId: conversation.sessionId,
-      agentThreadId: conversation.agentThreadId ?? resolved,
-      eventType: "assignment_cleared",
-      actorId,
-      actorName,
-    });
-
-    await upsertConversationCmsMeta(ctx, {
-      organizationId: args.organizationId,
-      threadId: conversation.agentThreadId ?? resolved,
-      entries: [
-        { key: "assignedAgentId", value: null },
-        { key: "assignedAgentName", value: null },
-      ],
-    });
-
+    const _result: null = await ctx.runMutation(
+      supportMutations.unassignConversation,
+      {
+        organizationId: args.organizationId,
+        threadId: args.threadId,
+        sessionId: args.sessionId,
+        actorId,
+        actorName,
+      },
+    );
     return null;
   },
 });
@@ -613,29 +292,17 @@ export const addConversationNote = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const { actorId, actorName } = await requireActor(ctx);
-    const { conversation, resolved } =
-      await resolveConversationBySessionOrThread(ctx, args);
-
-    const timestamp = Date.now();
-    await ctx.db.insert("supportConversationNotes", {
-      organizationId: args.organizationId as any,
-      sessionId: conversation.sessionId,
-      agentThreadId: conversation.agentThreadId ?? resolved,
-      note: args.note,
-      actorId,
-      actorName,
-      createdAt: timestamp,
-    });
-
-    await appendConversationEvent(ctx, {
-      organizationId: args.organizationId,
-      sessionId: conversation.sessionId,
-      agentThreadId: conversation.agentThreadId ?? resolved,
-      eventType: "note_added",
-      actorId,
-      actorName,
-    });
-
+    const _result: null = await ctx.runMutation(
+      supportMutations.addConversationNote,
+      {
+        organizationId: args.organizationId,
+        threadId: args.threadId,
+        sessionId: args.sessionId,
+        note: args.note,
+        actorId,
+        actorName,
+      },
+    );
     return null;
   },
 });
@@ -775,75 +442,23 @@ export const recordMessage = mutation({
         resolvedContactName = resolved.contactName ?? resolvedContactName;
       }
     }
-    const convoId = await touchConversationPost(
-      ctx,
-      {
-        organizationId: args.organizationId,
-        threadId: resolvedThreadId,
-        contactId: resolvedContactId,
-        contactName: resolvedContactName,
-        contactEmail: resolvedContactEmail,
-        role: args.role,
-        snippet: args.content.slice(0, 240),
-        mode:
-          args.source === "admin"
-            ? "manual"
-            : args.source === "agent"
-              ? "agent"
-              : undefined,
-      },
-      timestamp,
-    );
-
-    // Maintain fast native indexes for list views + ownership checks.
-    // NOTE: `sessionId` is a stable browser session id when provided, otherwise fallback to thread id.
-    const existingConversation = await ctx.db
-      .query("supportConversations")
-      .withIndex("by_org_session", (q) =>
-        q
-          .eq("organizationId", args.organizationId as any)
-          .eq("sessionId", normalizedSessionId),
-      )
-      .unique();
-
     const snippet = args.content.slice(0, 240);
-    if (existingConversation) {
-      await ctx.db.patch(existingConversation._id, {
-        contactId: resolvedContactId ? (resolvedContactId as any) : existingConversation.contactId,
-        contactEmail: resolvedContactEmail ?? existingConversation.contactEmail,
-        contactName: resolvedContactName ?? existingConversation.contactName,
-        agentThreadId: resolvedThreadId,
-        lastMessageSnippet: snippet,
-        lastMessageAuthor: args.role,
-        lastMessageAt: timestamp,
-        totalMessages: (existingConversation.totalMessages ?? 0) + 1,
-        updatedAt: timestamp,
-      });
-    } else {
-      await ctx.db.insert("supportConversations", {
-        organizationId: args.organizationId as any,
-        sessionId: normalizedSessionId,
-        origin: "chat",
-        status: "open",
-        mode:
-          args.source === "admin"
-            ? "manual"
-            : args.source === "agent"
-              ? "agent"
-              : "agent",
-        contactId: resolvedContactId ? (resolvedContactId as any) : undefined,
-        contactEmail: resolvedContactEmail,
-        contactName: resolvedContactName,
-        agentThreadId: resolvedThreadId,
-        lastMessageSnippet: snippet,
-        lastMessageAuthor: args.role,
-        firstMessageAt: timestamp,
-        lastMessageAt: timestamp,
-        totalMessages: 1,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      });
-    }
+    await ctx.runMutation(supportMutations.recordMessageIndexUpdate, {
+      organizationId: args.organizationId,
+      sessionId: normalizedSessionId,
+      threadId: resolvedThreadId,
+      role: args.role,
+      snippet,
+      contactId: resolvedContactId,
+      contactEmail: resolvedContactEmail,
+      contactName: resolvedContactName,
+      mode:
+        args.source === "admin"
+          ? "manual"
+          : args.source === "agent"
+            ? "agent"
+            : undefined,
+    });
 
     // Store the canonical message in the agent component tables.
     await ctx.runMutation(components.agent.messages.addMessages, {
@@ -856,16 +471,6 @@ export const recordMessage = mutation({
           } as any,
           status: "success",
         },
-      ],
-    });
-
-    // Keep the support conversation record's meta linked.
-    await ctx.runMutation(supportMutations.upsertSupportPostMeta, {
-      postId: convoId as Id<"posts">,
-      organizationId: args.organizationId,
-      entries: [
-        { key: "agentThreadId", value: resolvedThreadId },
-        { key: "sessionId", value: normalizedSessionId },
       ],
     });
     return null;
@@ -894,59 +499,17 @@ export const setAgentPresence = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const resolvedThreadId = args.threadId ?? args.sessionId;
-    if (!resolvedThreadId) {
-      return null;
-    }
-    const presencePosts: SupportPostRecord[] = (await ctx.runQuery(
-      supportQueries.listSupportPosts,
+    const _result: null = await ctx.runMutation(
+      supportMutations.setAgentPresence,
       {
         organizationId: args.organizationId,
-        filters: { postTypeSlug: "supportpresence" },
+        threadId: args.threadId,
+        sessionId: args.sessionId,
+        agentUserId: args.agentUserId,
+        agentName: args.agentName,
+        status: args.status,
       },
-    )) as SupportPostRecord[];
-
-    let presence: SupportPostRecord | undefined = presencePosts.find(
-      (p) => p.slug === resolvedThreadId,
     );
-    if (!presence) {
-      const presenceId = await ctx.runMutation(
-        supportMutations.createSupportPost,
-        {
-          organizationId: args.organizationId,
-          postTypeSlug: "supportpresence",
-          title: `Presence ${resolvedThreadId.slice(-8)}`,
-          slug: resolvedThreadId,
-          status: "published",
-          meta: [
-            { key: "agentUserId", value: args.agentUserId },
-            { key: "agentName", value: args.agentName },
-            { key: "status", value: args.status },
-          ],
-        },
-      );
-      const fetchedPresence = (await ctx.runQuery(
-        supportQueries.getSupportPostById,
-        {
-          id: presenceId as Id<"posts">,
-          organizationId: args.organizationId,
-        },
-      )) as SupportPostRecord | null;
-      presence = fetchedPresence ?? undefined;
-      if (!presence) {
-        return null;
-      }
-    }
-
-    await ctx.runMutation(supportMutations.upsertSupportPostMeta, {
-      postId: presence._id as Id<"posts">,
-      organizationId: args.organizationId,
-      entries: [
-        { key: "agentUserId", value: args.agentUserId },
-        { key: "agentName", value: args.agentName },
-        { key: "status", value: args.status },
-      ],
-    });
     return null;
   },
 });
@@ -960,10 +523,6 @@ export const setConversationMode = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const resolvedThreadId = args.threadId ?? args.sessionId;
-    if (!resolvedThreadId) {
-      return null;
-    }
     const identity = await ctx.auth.getUserIdentity();
     const identityObj: Record<string, unknown> =
       typeof identity === "object" && identity !== null
@@ -981,54 +540,17 @@ export const setConversationMode = mutation({
         : typeof identityObj.email === "string"
           ? identityObj.email
           : undefined;
-
-    // Native state machine update (fast path).
-    const orgId = args.organizationId as any;
-    const conversation =
-      (await ctx.db
-        .query("supportConversations")
-        .withIndex("by_org_agentThreadId", (q) =>
-          q.eq("organizationId", orgId).eq("agentThreadId", resolvedThreadId),
-        )
-        .first()) ??
-      (await ctx.db
-        .query("supportConversations")
-        .withIndex("by_org_session", (q) =>
-          q.eq("organizationId", orgId).eq("sessionId", resolvedThreadId),
-        )
-        .first());
-
-    if (conversation) {
-      const previousMode = conversation.mode ?? "agent";
-      if (previousMode !== args.mode) {
-        await ctx.db.patch(conversation._id, {
-          mode: args.mode,
-          updatedAt: Date.now(),
-        });
-        await appendConversationEvent(ctx, {
-          organizationId: args.organizationId,
-          sessionId: conversation.sessionId,
-          agentThreadId: conversation.agentThreadId ?? resolvedThreadId,
-          eventType: "mode_changed",
-          actorId,
-          actorName,
-          payload: { from: previousMode, to: args.mode },
-        });
-      }
-    }
-    const conversations = (await ctx.runQuery(supportQueries.listSupportPosts, {
-      organizationId: args.organizationId,
-      filters: { postTypeSlug: "supportconversations" },
-    })) as SupportPostRecord[];
-    const convo = conversations.find((c) => c.slug === resolvedThreadId);
-    if (!convo) {
-      return null;
-    }
-    await ctx.runMutation(supportMutations.upsertSupportPostMeta, {
-      postId: convo._id as Id<"posts">,
-      organizationId: args.organizationId,
-      entries: [{ key: "mode", value: args.mode }],
-    });
+    const _result: null = await ctx.runMutation(
+      supportMutations.setConversationMode,
+      {
+        organizationId: args.organizationId,
+        threadId: args.threadId,
+        sessionId: args.sessionId,
+        mode: args.mode,
+        actorId,
+        actorName,
+      },
+    );
     return null;
   },
 });
@@ -1126,8 +648,8 @@ export const beginDomainVerification = mutation({
 // RAG sources
 export const saveRagSourceConfig = mutation({
   args: {
-    organizationId: supportOrganizationIdValidator,
-    sourceId: v.optional(v.id("supportRagSources")),
+    organizationId: v.string(),
+    sourceId: v.optional(v.string()),
     postTypeSlug: v.string(),
     sourceType: v.optional(
       v.union(v.literal("postType"), v.literal("lmsPostType")),
@@ -1142,137 +664,57 @@ export const saveRagSourceConfig = mutation({
     baseInstructions: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const timestamp = Date.now();
-    const slug = args.postTypeSlug.toLowerCase();
-    const organizationId = args.organizationId as
-      | Id<"organizations">
-      | "portal-root";
-    const inferredSourceType =
-      args.sourceType ??
-      ([
-        "courses",
-        "lessons",
-        "topics",
-        "quizzes",
-        "certificates",
-        "badges",
-      ].includes(slug)
-        ? "lmsPostType"
-        : "postType");
-    const fields = (args.fields ?? ["title", "content"]).filter(
-      (field): field is "title" | "excerpt" | "content" =>
-        field === "title" || field === "excerpt" || field === "content",
-    );
-
-    if (args.sourceId) {
-      await ctx.db.patch(args.sourceId, {
-        postTypeSlug: slug,
-        sourceType: inferredSourceType,
-        fields,
-        includeTags: args.includeTags ?? false,
-        metaFieldKeys: args.metaFieldKeys ?? [],
-        additionalMetaKeys: args.additionalMetaKeys ?? "",
-        displayName: args.displayName ?? slug,
-        isEnabled: args.isEnabled ?? true,
-        useCustomBaseInstructions: args.useCustomBaseInstructions ?? false,
-        baseInstructions: args.baseInstructions ?? "",
-        updatedAt: timestamp,
-      });
-      return { ragSourceId: args.sourceId };
-    }
-
-    const existing = await ctx.db
-      .query("supportRagSources")
-      .withIndex("by_org_type_and_postTypeSlug", (q: any) =>
-        q
-          .eq("organizationId", organizationId)
-          .eq("sourceType", inferredSourceType)
-          .eq("postTypeSlug", slug),
-      )
-      .unique();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        fields,
-        includeTags: args.includeTags ?? false,
-        metaFieldKeys: args.metaFieldKeys ?? [],
-        additionalMetaKeys: args.additionalMetaKeys ?? "",
-        displayName: args.displayName ?? slug,
-        isEnabled: args.isEnabled ?? true,
-        useCustomBaseInstructions: args.useCustomBaseInstructions ?? false,
-        baseInstructions: args.baseInstructions ?? "",
-        updatedAt: timestamp,
-      });
-      return { ragSourceId: existing._id };
-    }
-
-    const id = await ctx.db.insert("supportRagSources", {
-      organizationId,
-      sourceType: inferredSourceType,
-      postTypeSlug: slug,
-      fields,
-      includeTags: args.includeTags ?? false,
-      metaFieldKeys: args.metaFieldKeys ?? [],
-      additionalMetaKeys: args.additionalMetaKeys ?? "",
-      displayName: args.displayName ?? slug,
-      isEnabled: args.isEnabled ?? true,
-      useCustomBaseInstructions: args.useCustomBaseInstructions ?? false,
-      baseInstructions: args.baseInstructions ?? "",
-      createdAt: timestamp,
-      updatedAt: timestamp,
+    const result = await ctx.runMutation(supportMutations.saveRagSourceConfig, {
+      organizationId: args.organizationId,
+      sourceId: args.sourceId,
+      postTypeSlug: args.postTypeSlug,
+      sourceType: args.sourceType,
+      fields: args.fields,
+      includeTags: args.includeTags,
+      metaFieldKeys: args.metaFieldKeys,
+      additionalMetaKeys: args.additionalMetaKeys,
+      displayName: args.displayName,
+      isEnabled: args.isEnabled,
+      useCustomBaseInstructions: args.useCustomBaseInstructions,
+      baseInstructions: args.baseInstructions,
     });
-
-    return { ragSourceId: id };
+    return { ragSourceId: String((result as any)?.ragSourceId ?? "") };
   },
 });
 
 export const deleteRagSourceConfig = mutation({
   args: {
-    organizationId: supportOrganizationIdValidator,
-    sourceId: v.id("supportRagSources"),
+    organizationId: v.string(),
+    sourceId: v.string(),
   },
   handler: async (ctx, args) => {
-    const doc = await ctx.db.get(args.sourceId);
-    if (!doc || doc.organizationId !== args.organizationId) {
-      return null;
-    }
-    await ctx.db.delete(args.sourceId);
+    const _result: null = await ctx.runMutation(
+      supportMutations.deleteRagSourceConfig,
+      {
+        organizationId: args.organizationId,
+        sourceId: args.sourceId,
+      },
+    );
     return null;
   },
 });
 
 export const triggerRagReindexForPost = mutation({
   args: {
-    organizationId: supportOrganizationIdValidator,
+    organizationId: v.string(),
     postTypeSlug: v.string(),
     postId: v.string(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const org = args.organizationId as Id<"organizations">;
     const normalizedPostTypeSlug = args.postTypeSlug.toLowerCase();
-
-    const lmsConfig = await ctx.db
-      .query("supportRagSources")
-      .withIndex("by_org_type_and_postTypeSlug", (q) =>
-        q
-          .eq("organizationId", org)
-          .eq("sourceType", "lmsPostType")
-          .eq("postTypeSlug", normalizedPostTypeSlug),
-      )
-      .unique();
-
-    const postConfig =
-      lmsConfig ??
-      (await ctx.db
-        .query("supportRagSources")
-        .withIndex("by_org_type_and_postTypeSlug", (q) =>
-          q
-            .eq("organizationId", org)
-            .eq("sourceType", "postType")
-            .eq("postTypeSlug", normalizedPostTypeSlug),
-        )
-        .unique());
+    const postConfig = (await ctx.runQuery(
+      supportQueries.getRagSourceForPostTypeAny,
+      {
+        organizationId: args.organizationId,
+        postTypeSlug: normalizedPostTypeSlug,
+      },
+    )) as { isEnabled?: boolean; sourceType?: string } | null;
 
     if (!postConfig?.isEnabled) {
       throw new Error("This post type is not enabled for AI indexing.");
@@ -1285,7 +727,7 @@ export const triggerRagReindexForPost = mutation({
         {
           id: args.postId,
           postTypeSlug: normalizedPostTypeSlug,
-          organizationId: org,
+          organizationId: args.organizationId as any,
         },
       );
       return null;
@@ -1295,7 +737,7 @@ export const triggerRagReindexForPost = mutation({
       0,
       internal.plugins.support.rag.ingestPostIfConfigured,
       {
-      postId: args.postId as any,
+        postId: args.postId as any,
       },
     );
     return null;
@@ -1309,20 +751,15 @@ export const setConversationAgentThread = internalMutation({
     agentThreadId: v.string(),
   },
   handler: async (ctx, args) => {
-    const conversations = (await ctx.runQuery(supportQueries.listSupportPosts, {
+    await ctx.runMutation(supportMutations.upsertConversationIndex, {
       organizationId: args.organizationId,
-      filters: { postTypeSlug: "supportconversations" },
-    })) as SupportPostRecord[];
-    const convo = conversations.find((c) => c.slug === args.threadId);
-    if (!convo) {
-      return null;
-    }
-    await ctx.runMutation(supportMutations.upsertSupportPostMeta, {
-      postId: convo._id as Id<"posts">,
-      organizationId: args.organizationId,
-      entries: [{ key: "agentThreadId", value: args.agentThreadId }],
+      sessionId: args.threadId,
+      agentThreadId: args.agentThreadId,
+      origin: "chat",
+      status: "open",
+      mode: "agent",
     });
-    return { agentThreadId: args.agentThreadId };
+    return { agentThreadId: args.agentThreadId } as const;
   },
 });
 

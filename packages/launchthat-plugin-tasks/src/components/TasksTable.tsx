@@ -23,7 +23,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Id } from "launchthat-plugin-core";
 import { GripVertical } from "lucide-react";
 
 import {
@@ -130,7 +129,7 @@ export function TasksTable<T extends { _id: string }>({
     // Persist new order to Convex
     await reorderTasks({
       tasks: newOrder.map((id, idx) => ({
-        taskId: id as Id<"tasks">,
+        taskId: id,
         sortIndex: idx,
       })),
     });

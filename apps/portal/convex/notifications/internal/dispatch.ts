@@ -1,6 +1,7 @@
-import { internalMutation } from "../../_generated/server";
 import { v } from "convex/values";
+
 import type { Id } from "../../_generated/dataModel";
+import { internalMutation } from "../../_generated/server";
 import { throwInvalidInput } from "../../shared/errors";
 
 /**
@@ -25,7 +26,6 @@ export const dispatchEvent = internalMutation({
     actionUrl: v.optional(v.string()),
     actionData: v.optional(v.record(v.string(), v.string())),
     sourceUserId: v.optional(v.id("users")),
-    sourceOrderId: v.optional(v.id("transactions")),
     expiresAt: v.optional(v.number()),
   },
   returns: v.null(),
@@ -34,7 +34,7 @@ export const dispatchEvent = internalMutation({
     const scopeId = (args.scopeId ?? "").trim();
 
     if (!scopeKind) {
-      throwInvalidInput("dispatchEvent requires scopeKind (use e.g. \"course\")");
+      throwInvalidInput('dispatchEvent requires scopeKind (use e.g. "course")');
     }
 
     console.log("[notifications.internal.dispatchEvent] start", {
@@ -115,11 +115,14 @@ export const dispatchEvent = internalMutation({
             : true;
 
       if (!enabled) {
-        console.log("[notifications.internal.dispatchEvent] skipped (disabled)", {
-          userId,
-          userOverride,
-          orgDefault,
-        });
+        console.log(
+          "[notifications.internal.dispatchEvent] skipped (disabled)",
+          {
+            userId,
+            userOverride,
+            orgDefault,
+          },
+        );
         continue;
       }
 
@@ -145,5 +148,3 @@ export const dispatchEvent = internalMutation({
     return null;
   },
 });
-
-

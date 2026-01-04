@@ -174,68 +174,7 @@ export const listConversations = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const limit = args.limit ?? 200;
-    const orgId = args.organizationId as any;
-
-    const nativeRows = await ctx.db
-      .query("supportConversations")
-      .withIndex("by_org_lastMessageAt", (q) => q.eq("organizationId", orgId))
-      .order("desc")
-      .take(limit);
-
-    const seenThreadIds = new Set<string>();
-    const native = nativeRows.map((row) => {
-      const threadId = row.agentThreadId ?? row.sessionId;
-      seenThreadIds.add(threadId);
-      return {
-        threadId,
-        lastMessage: row.lastMessageSnippet ?? undefined,
-        lastRole: row.lastMessageAuthor ?? undefined,
-        lastAt: row.lastMessageAt ?? undefined,
-        firstAt: row.firstMessageAt ?? undefined,
-        totalMessages: row.totalMessages ?? undefined,
-        contactId: row.contactId ? String(row.contactId) : undefined,
-        contactName: row.contactName ?? undefined,
-        contactEmail: row.contactEmail ?? undefined,
-        origin: row.origin ?? undefined,
-        status: row.status ?? undefined,
-        mode: row.mode ?? undefined,
-        assignedAgentId: row.assignedAgentId ?? undefined,
-        assignedAgentName: row.assignedAgentName ?? undefined,
-        agentThreadId: row.agentThreadId ?? undefined,
-        // Back-compat: callers historically used this only as an opaque reference.
-        postId: threadId,
-      };
-    });
-
-    // Back-compat fallback (no N+1): include CMS conversations that haven't been written to the native index yet.
-    const legacy = (await ctx.runQuery(supportQueries.listSupportPosts, {
-      organizationId: args.organizationId,
-      filters: { postTypeSlug: "supportconversations", limit },
-    })) as SupportPostRecord[];
-
-    const legacyMapped = legacy
-      .filter((post) => !seenThreadIds.has(post.slug))
-      .map((post) => ({
-        threadId: post.slug,
-        lastMessage: post.content ?? undefined,
-        lastRole: "user" as const,
-        lastAt: post.updatedAt ?? post.createdAt,
-        firstAt: post.createdAt,
-        totalMessages: undefined,
-        contactId: undefined,
-        contactName: undefined,
-        contactEmail: undefined,
-        origin: "chat" as const,
-        status: undefined,
-        mode: undefined,
-        assignedAgentId: undefined,
-        assignedAgentName: undefined,
-        agentThreadId: undefined,
-        postId: post._id,
-      }));
-
-    return [...native, ...legacyMapped].slice(0, limit);
+    return (await ctx.runQuery(supportQueries.listConversations, args)) as any;
   },
 });
 
@@ -257,29 +196,14 @@ export const listMessages = query({
   handler: async (ctx, args) => {
     const resolvedThreadId = args.threadId ?? args.sessionId;
     if (!resolvedThreadId) return [];
-    const orgId = args.organizationId as any;
 
-    // Verify thread ownership via native index (no scans).
-    const conversationByThread = args.threadId
-      ? await ctx.db
-          .query("supportConversations")
-          .withIndex("by_org_agentThreadId", (q) =>
-            q.eq("organizationId", orgId).eq("agentThreadId", resolvedThreadId),
-          )
-          .first()
-      : null;
-    const conversationBySession = !conversationByThread
-      ? await ctx.db
-          .query("supportConversations")
-          .withIndex("by_org_session", (q) =>
-            q.eq("organizationId", orgId).eq("sessionId", resolvedThreadId),
-          )
-          .first()
-      : null;
-    const agentThreadId =
-      conversationByThread?.agentThreadId ??
-      conversationBySession?.agentThreadId ??
-      (args.threadId ? resolvedThreadId : null);
+    const conversation = (await ctx.runQuery(supportQueries.getConversationIndex, {
+      organizationId: args.organizationId,
+      threadId: args.threadId,
+      sessionId: args.sessionId,
+    })) as { agentThreadId?: string } | null;
+
+    const agentThreadId = conversation?.agentThreadId ?? (args.threadId ? resolvedThreadId : null);
 
     if (!agentThreadId) {
       return [];
@@ -346,49 +270,7 @@ export const listConversationNotes = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const resolved = args.threadId ?? args.sessionId;
-    if (!resolved) {
-      return [];
-    }
-    const orgId = args.organizationId as any;
-    const conversationByThread = args.threadId
-      ? await ctx.db
-          .query("supportConversations")
-          .withIndex("by_org_agentThreadId", (q) =>
-            q.eq("organizationId", orgId).eq("agentThreadId", resolved),
-          )
-          .first()
-      : null;
-    const conversationBySession = !conversationByThread
-      ? await ctx.db
-          .query("supportConversations")
-          .withIndex("by_org_session", (q) =>
-            q.eq("organizationId", orgId).eq("sessionId", resolved),
-          )
-          .first()
-      : null;
-    const conversation = conversationByThread ?? conversationBySession;
-    if (!conversation) {
-      return [];
-    }
-
-    const rows = await ctx.db
-      .query("supportConversationNotes")
-      .withIndex("by_org_session_createdAt", (q) =>
-        q
-          .eq("organizationId", args.organizationId as any)
-          .eq("sessionId", conversation.sessionId),
-      )
-      .order("desc")
-      .take(200);
-
-    return rows.map((row) => ({
-      _id: String(row._id),
-      note: row.note,
-      actorId: row.actorId ?? undefined,
-      actorName: row.actorName ?? undefined,
-      createdAt: row.createdAt,
-    }));
+    return (await ctx.runQuery(supportQueries.listConversationNotes, args)) as any;
   },
 });
 
@@ -409,50 +291,7 @@ export const listConversationEvents = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const resolved = args.threadId ?? args.sessionId;
-    if (!resolved) {
-      return [];
-    }
-    const orgId = args.organizationId as any;
-    const conversationByThread = args.threadId
-      ? await ctx.db
-          .query("supportConversations")
-          .withIndex("by_org_agentThreadId", (q) =>
-            q.eq("organizationId", orgId).eq("agentThreadId", resolved),
-          )
-          .first()
-      : null;
-    const conversationBySession = !conversationByThread
-      ? await ctx.db
-          .query("supportConversations")
-          .withIndex("by_org_session", (q) =>
-            q.eq("organizationId", orgId).eq("sessionId", resolved),
-          )
-          .first()
-      : null;
-    const conversation = conversationByThread ?? conversationBySession;
-    if (!conversation) {
-      return [];
-    }
-
-    const rows = await ctx.db
-      .query("supportConversationEvents")
-      .withIndex("by_org_session_createdAt", (q) =>
-        q
-          .eq("organizationId", args.organizationId as any)
-          .eq("sessionId", conversation.sessionId),
-      )
-      .order("desc")
-      .take(200);
-
-    return rows.map((row) => ({
-      _id: String(row._id),
-      eventType: row.eventType,
-      actorId: row.actorId ?? undefined,
-      actorName: row.actorName ?? undefined,
-      payload: row.payload ?? undefined,
-      createdAt: row.createdAt,
-    }));
+    return (await ctx.runQuery(supportQueries.listConversationEvents, args)) as any;
   },
 });
 
@@ -486,70 +325,7 @@ export const getRagIndexStatusForPost = query({
     ),
   }),
   handler: async (ctx, args) => {
-    const normalizedPostTypeSlug = args.postTypeSlug.toLowerCase();
-    const org = args.organizationId as Id<"organizations">;
-
-    const lmsConfig = await ctx.db
-      .query("supportRagSources")
-      .withIndex("by_org_type_and_postTypeSlug", (q) =>
-        q
-          .eq("organizationId", org)
-          .eq("sourceType", "lmsPostType")
-          .eq("postTypeSlug", normalizedPostTypeSlug),
-      )
-      .unique();
-
-    const postConfig =
-      lmsConfig ??
-      (await ctx.db
-        .query("supportRagSources")
-        .withIndex("by_org_type_and_postTypeSlug", (q) =>
-          q
-            .eq("organizationId", org)
-            .eq("sourceType", "postType")
-            .eq("postTypeSlug", normalizedPostTypeSlug),
-        )
-        .unique());
-
-    if (!postConfig?.isEnabled) {
-      return { isEnabledForPostType: false };
-    }
-
-    const sourceType = postConfig.sourceType;
-    const entryKey =
-      sourceType === "lmsPostType"
-        ? `lms:${normalizedPostTypeSlug}:${args.postId}`
-        : `post:${args.postId}`;
-
-    const status = await ctx.db
-      .query("supportRagIndexStatus")
-      .withIndex("by_org_post", (q) =>
-        q
-          .eq("organizationId", org)
-          .eq("postTypeSlug", normalizedPostTypeSlug)
-          .eq("postId", args.postId),
-      )
-      .unique();
-
-    return {
-      isEnabledForPostType: true,
-      sourceType,
-      entryKey,
-      lastStatus: status?.lastStatus,
-      lastAttemptAt: status?.lastAttemptAt,
-      lastSuccessAt: status?.lastSuccessAt,
-      lastError: status?.lastError,
-      lastEntryId: status?.lastEntryId,
-      lastEntryStatus: status?.lastEntryStatus,
-      config: {
-        displayName: postConfig.displayName,
-        fields: postConfig.fields as unknown as string[],
-        includeTags: postConfig.includeTags,
-        metaFieldKeys: postConfig.metaFieldKeys,
-        additionalMetaKeys: postConfig.additionalMetaKeys,
-        lastIndexedAt: postConfig.lastIndexedAt,
-      },
-    };
+    return (await ctx.runQuery(supportQueries.getRagIndexStatusForPost, args)) as any;
   },
 });
 
@@ -706,36 +482,9 @@ export const listRagSources = query({
     organizationId: v.string(),
   },
   handler: async (ctx, args) => {
-    const postTypeSources = await ctx.db
-      .query("supportRagSources")
-      .withIndex("by_org_type", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("sourceType", "postType"),
-      )
-      .collect();
-    const lmsSources = await ctx.db
-      .query("supportRagSources")
-      .withIndex("by_org_type", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("sourceType", "lmsPostType"),
-      )
-      .collect();
-
-    return [...postTypeSources, ...lmsSources].map((source) => ({
-      _id: source._id,
-      _creationTime: source._creationTime,
-      postTypeSlug: source.postTypeSlug,
-      displayName: source.displayName,
-      isEnabled: source.isEnabled,
-      includeTags: source.includeTags,
-      metaFieldKeys: source.metaFieldKeys ?? [],
-      additionalMetaKeys: source.additionalMetaKeys,
-      fields: source.fields,
-      useCustomBaseInstructions: source.useCustomBaseInstructions ?? false,
-      baseInstructions: source.baseInstructions ?? "",
-    })) satisfies RagSourceRecord[];
+    return (await ctx.runQuery(supportQueries.listRagSources, args)) as
+      | RagSourceRecord[]
+      | [];
   },
 });
 
@@ -747,7 +496,7 @@ export const getRagSourceConfigForPostType = query({
   returns: v.union(
     v.null(),
     v.object({
-      _id: v.id("supportRagSources"),
+      _id: v.string(),
       postTypeSlug: v.string(),
       sourceType: v.union(v.literal("postType"), v.literal("lmsPostType")),
       isEnabled: v.boolean(),
@@ -756,41 +505,15 @@ export const getRagSourceConfigForPostType = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const org = args.organizationId as Id<"organizations">;
-    const postTypeSlug = args.postTypeSlug.toLowerCase().trim();
-    if (!postTypeSlug) return null;
-
-    const lmsConfig = await ctx.db
-      .query("supportRagSources")
-      .withIndex("by_org_type_and_postTypeSlug", (q) =>
-        q
-          .eq("organizationId", org)
-          .eq("sourceType", "lmsPostType")
-          .eq("postTypeSlug", postTypeSlug),
-      )
-      .unique();
-
-    const postConfig =
-      lmsConfig ??
-      (await ctx.db
-        .query("supportRagSources")
-        .withIndex("by_org_type_and_postTypeSlug", (q) =>
-          q
-            .eq("organizationId", org)
-            .eq("sourceType", "postType")
-            .eq("postTypeSlug", postTypeSlug),
-        )
-        .unique());
-
-    if (!postConfig) return null;
-
+    const result = await ctx.runQuery(supportQueries.getRagSourceConfigForPostType, args);
+    if (!result) return null;
     return {
-      _id: postConfig._id,
-      postTypeSlug: postConfig.postTypeSlug,
-      sourceType: postConfig.sourceType,
-      isEnabled: postConfig.isEnabled,
-      useCustomBaseInstructions: postConfig.useCustomBaseInstructions ?? false,
-      baseInstructions: postConfig.baseInstructions ?? "",
+      _id: String((result as any)._id ?? ""),
+      postTypeSlug: (result as any).postTypeSlug,
+      sourceType: (result as any).sourceType,
+      isEnabled: Boolean((result as any).isEnabled),
+      useCustomBaseInstructions: Boolean((result as any).useCustomBaseInstructions),
+      baseInstructions: String((result as any).baseInstructions ?? ""),
     };
   },
 });

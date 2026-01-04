@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 
+import { components } from "../../_generated/api";
 import { query } from "../../_generated/server";
 import {
   getOrganizationBySlug,
@@ -172,14 +173,10 @@ export const getPlans = query({
   args: {},
   returns: v.array(planValidator),
   handler: async (ctx, _args) => {
-    // No authentication required - plans are public data
-    const plans = await ctx.db
-      .query("plans")
-      .filter((q) => q.eq(q.field("isActive"), true))
-      .collect();
-
-    // Sort by sort order
-    return plans.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    return (await ctx.runQuery(
+      components.launchthat_ecommerce.plans.queries.getPlans as any,
+      { isActive: true },
+    )) as any;
   },
 });
 
@@ -230,7 +227,10 @@ export const canCreateOrganization = query({
       };
     }
 
-    const plan = await ctx.db.get(user.planId);
+    const plan = (await ctx.runQuery(
+      components.launchthat_ecommerce.plans.queries.getPlanById as any,
+      { planId: String(user.planId) },
+    )) as any | null;
     if (!plan) {
       return {
         canCreate: false,

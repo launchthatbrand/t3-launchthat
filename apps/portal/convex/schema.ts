@@ -7,16 +7,11 @@ import { integrationsSchema } from "./integrations/schema";
 // Add integrations schema
 // import { integrationsSchema } from "./integrations/schema";
 import { notificationsSchema } from "./notifications/schema";
-import { supportSchema } from "./plugins/support/schema";
-import { lmsSchema } from "./plugins/lms/schema";
-import { tasksSchema } from "./tasks/schema";
-import { vimeoSchema } from "./vimeo/schema";
+
+// import { lmsSchema } from "./plugins/lms/schema";
 
 // Define the main schema that includes all tables
 export default defineSchema({
-  // Support plugin tables
-  ...supportSchema,
-
   // Integrations tables
   ...integrationsSchema,
 
@@ -31,10 +26,12 @@ export default defineSchema({
   ...usersSchema,
 
   // Vimeo videos
-  ...vimeoSchema,
+  // NOTE: Vimeo tables now live inside the mounted `launchthat_vimeo` Convex Component
+  // and are no longer part of the portal's main schema.
 
   // Tasks
-  ...tasksSchema,
+  // NOTE: tasks/taskBoards tables now live inside the mounted `launchthat_tasks` Convex Component
+  // and are no longer part of the portal's main schema.
 
   // Posts
   ...postsSchema,
@@ -43,5 +40,5 @@ export default defineSchema({
   ...coreSchema,
 
   // LMS plugin tables (portal-owned)
-  ...lmsSchema,
+  // ...lmsSchema,
 });

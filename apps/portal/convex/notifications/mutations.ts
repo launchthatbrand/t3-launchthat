@@ -72,12 +72,10 @@ export const createNotification = mutation({
     content: v.optional(v.string()),
     sourceUserId: v.optional(v.id("users")),
     // sourceDownloadId: v.optional(v.id("downloads")),
-    sourceOrderId: v.optional(v.id("transactions")),
     actionUrl: v.optional(v.string()),
     actionData: v.optional(v.record(v.string(), v.string())),
     message: v.optional(v.string()),
     expiresAt: v.optional(v.number()),
-    relatedId: v.optional(v.id("groupInvitations")),
   },
   returns: v.id("notifications"),
   handler: async (ctx, args) => {
@@ -224,19 +222,19 @@ export const batchCreateNotifications = mutation({
     content: v.optional(v.string()),
     sourceUserId: v.optional(v.id("users")),
     // sourceDownloadId: v.optional(v.id("downloads")),
-    sourceOrderId: v.optional(v.id("transactions")),
     actionUrl: v.optional(v.string()),
     actionData: v.optional(v.record(v.string(), v.string())),
     message: v.optional(v.string()),
     expiresAt: v.optional(v.number()),
-    relatedId: v.optional(v.id("groupInvitations")),
   },
   returns: v.array(v.id("notifications")),
   handler: async (ctx, args) => {
     const { userIds, ...notificationData } = args;
     const notificationIds: Id<"notifications">[] = [];
 
-    const eventKey = (notificationData.eventKey ?? notificationData.type)?.trim();
+    const eventKey = (
+      notificationData.eventKey ?? notificationData.type
+    )?.trim();
     if (!eventKey) {
       throwInvalidInput("Either eventKey or type must be provided");
     }
@@ -245,7 +243,8 @@ export const batchCreateNotifications = mutation({
     for (const userId of userIds) {
       const user = await ctx.db.get(userId);
       if (!user) continue;
-      const orgId = notificationData.orgId ?? user.organizationId ?? PORTAL_TENANT_ID;
+      const orgId =
+        notificationData.orgId ?? user.organizationId ?? PORTAL_TENANT_ID;
       const notificationId = await ctx.db.insert("notifications", {
         title: notificationData.title,
         content: notificationData.content,

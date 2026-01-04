@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 
 import { mutation } from "../../_generated/server";
+import { components } from "../../_generated/api";
 
 /**
  * Seed initial plans data
@@ -8,113 +9,14 @@ import { mutation } from "../../_generated/server";
  */
 export const seedPlans = mutation({
   args: {},
-  returns: v.array(v.id("plans")),
+  // Plans are ecommerce-owned (component ids don't validate as v.id("plans") in the portal schema).
+  returns: v.array(v.string()),
   handler: async (ctx) => {
-    // Check if plans already exist
-    const existingPlans = await ctx.db.query("plans").collect();
-    if (existingPlans.length > 0) {
-      throw new Error(
-        "Plans already exist. Use updatePlans to modify existing plans.",
-      );
-    }
-
-    const now = Date.now();
-    const planIds = [];
-
-    // Free Plan
-    const freePlanId = await ctx.db.insert("plans", {
-      name: "free",
-      displayName: "Free",
-      description: "Perfect for getting started with one organization",
-      maxOrganizations: 1,
-      priceMonthly: 0, // Free
-      features: [
-        "1 Organization",
-        "Unlimited courses",
-        "Basic support",
-        "Community access",
-      ],
-      isActive: true,
-      sortOrder: 1,
-      updatedAt: now,
-    });
-    planIds.push(freePlanId);
-
-    // Starter Plan
-    const starterPlanId = await ctx.db.insert("plans", {
-      name: "starter",
-      displayName: "Starter",
-      description: "For creators ready to launch their first course business",
-      maxOrganizations: 1,
-      priceMonthly: 2900, // $29/month
-      priceYearly: 29000, // $290/year (save $58)
-      features: [
-        "1 Organization",
-        "Unlimited courses",
-        "Priority support",
-        "Custom branding",
-        "Advanced analytics",
-        "Email marketing tools",
-      ],
-      isActive: true,
-      sortOrder: 2,
-      updatedAt: now,
-    });
-    planIds.push(starterPlanId);
-
-    // Business Plan
-    const businessPlanId = await ctx.db.insert("plans", {
-      name: "business",
-      displayName: "Business",
-      description: "For growing course creators managing multiple brands",
-      maxOrganizations: 3,
-      priceMonthly: 9900, // $99/month
-      priceYearly: 99000, // $990/year (save $198)
-      features: [
-        "3 Organizations",
-        "Unlimited courses",
-        "Priority support",
-        "Custom branding",
-        "Advanced analytics",
-        "Email marketing tools",
-        "White-label options",
-        "API access",
-        "Custom domains",
-      ],
-      isActive: true,
-      sortOrder: 3,
-      updatedAt: now,
-    });
-    planIds.push(businessPlanId);
-
-    // Agency Plan
-    const agencyPlanId = await ctx.db.insert("plans", {
-      name: "agency",
-      displayName: "Agency",
-      description: "For agencies managing multiple client course businesses",
-      maxOrganizations: -1, // Unlimited
-      priceMonthly: 19900, // $199/month
-      priceYearly: 199000, // $1990/year (save $398)
-      features: [
-        "Unlimited Organizations",
-        "Unlimited courses",
-        "Premium support",
-        "Custom branding",
-        "Advanced analytics",
-        "Email marketing tools",
-        "White-label options",
-        "API access",
-        "Custom domains",
-        "Dedicated account manager",
-        "Custom integrations",
-      ],
-      isActive: true,
-      sortOrder: 4,
-      updatedAt: now,
-    });
-    planIds.push(agencyPlanId);
-
-    return planIds;
+    const ids = (await ctx.runMutation(
+      components.launchthat_ecommerce.plans.mutations.seedPlans as any,
+      {},
+    )) as any[];
+    return ids.map((id) => String(id));
   },
 });
 
@@ -127,11 +29,10 @@ export const assignFreePlanToUser = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    // Get the free plan
-    const freePlan = await ctx.db
-      .query("plans")
-      .withIndex("by_name", (q) => q.eq("name", "free"))
-      .unique();
+    const freePlan = (await ctx.runQuery(
+      components.launchthat_ecommerce.plans.queries.getPlanByName as any,
+      { name: "free" },
+    )) as { _id: string } | null;
 
     if (!freePlan) {
       throw new Error("Free plan not found. Run seedPlans first.");
@@ -139,7 +40,7 @@ export const assignFreePlanToUser = mutation({
 
     // Update user with free plan
     await ctx.db.patch(args.userId, {
-      planId: freePlan._id,
+      planId: String(freePlan._id),
       subscriptionStatus: "active",
     });
 
@@ -221,7 +122,7 @@ export const createDefaultOrganization = mutation({
  */
 export const updatePlan = mutation({
   args: {
-    planId: v.id("plans"),
+    planId: v.string(),
     displayName: v.optional(v.string()),
     description: v.optional(v.string()),
     maxOrganizations: v.optional(v.number()),
@@ -233,23 +134,10 @@ export const updatePlan = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const updates: Record<string, unknown> = {
-      updatedAt: Date.now(),
-    };
-
-    // Add fields that are being updated
-    if (args.displayName !== undefined) updates.displayName = args.displayName;
-    if (args.description !== undefined) updates.description = args.description;
-    if (args.maxOrganizations !== undefined)
-      updates.maxOrganizations = args.maxOrganizations;
-    if (args.priceMonthly !== undefined)
-      updates.priceMonthly = args.priceMonthly;
-    if (args.priceYearly !== undefined) updates.priceYearly = args.priceYearly;
-    if (args.features !== undefined) updates.features = args.features;
-    if (args.isActive !== undefined) updates.isActive = args.isActive;
-    if (args.sortOrder !== undefined) updates.sortOrder = args.sortOrder;
-
-    await ctx.db.patch(args.planId, updates);
+    await ctx.runMutation(
+      components.launchthat_ecommerce.plans.mutations.updatePlan as any,
+      args,
+    );
     return null;
   },
 });

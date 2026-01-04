@@ -1,6 +1,5 @@
 "use client";
 
-import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -33,6 +32,7 @@ import { Textarea } from "@acme/ui/textarea";
 
 import { getTaskMutations } from "../api/tasks";
 import { useTasksApi, useTasksMutation } from "../context/TasksClientProvider";
+import type { TaskBoardId, TaskRecord } from "../types";
 
 // Local cn utility (Tailwind merge helper)
 function cn(...classes: (string | false | null | undefined)[]) {
@@ -51,8 +51,8 @@ export const TaskFormSchema = z.object({
 export type TaskFormValues = z.infer<typeof TaskFormSchema>;
 
 export interface TaskFormProps {
-  boardId?: Id<"taskBoards">;
-  task?: Doc<"tasks">;
+  boardId?: TaskBoardId;
+  task?: TaskRecord;
   onSuccess?: () => void;
 }
 

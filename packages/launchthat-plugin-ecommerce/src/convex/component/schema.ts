@@ -48,9 +48,31 @@ const cartItemsTable = defineTable({
   .index("by_user_product", ["userId", "productPostId"])
   .index("by_guest_product", ["guestSessionId", "productPostId"]);
 
+// Subscription plans (ecommerce-owned)
+const plansTable = defineTable({
+  name: v.union(
+    v.literal("free"),
+    v.literal("starter"),
+    v.literal("business"),
+    v.literal("agency"),
+  ),
+  displayName: v.string(),
+  description: v.string(),
+  maxOrganizations: v.number(),
+  priceMonthly: v.number(),
+  priceYearly: v.optional(v.number()),
+  features: v.optional(v.array(v.string())),
+  isActive: v.boolean(),
+  sortOrder: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_name", ["name"])
+  .index("by_active", ["isActive"])
+  .index("by_sort_order", ["sortOrder"]);
+
 export default defineSchema({
   posts: postsTable,
   postsMeta: postsMetaTable,
   cartItems: cartItemsTable,
+  plans: plansTable,
 });
-

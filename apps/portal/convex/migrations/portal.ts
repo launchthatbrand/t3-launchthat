@@ -27,25 +27,6 @@ async function migrateIndexedCollection(
   return docs.length;
 }
 
-async function migrateSupportRagSources(ctx: MutationCtx) {
-  const docs = await ctx.db
-    .query("supportRagSources")
-    .withIndex("by_org_type", (q) =>
-      q.eq("organizationId", PORTAL_TENANT_SLUG).eq("sourceType", "postType"),
-    )
-    .collect();
-
-  await Promise.all(
-    docs.map((doc) =>
-      ctx.db.patch(doc._id, {
-        organizationId: PORTAL_TENANT_ID,
-      }),
-    ),
-  );
-
-  return docs.length;
-}
-
 async function migratePostTypes(ctx: MutationCtx) {
   const docs = await ctx.db.query("postTypes").collect();
   let updated = 0;
@@ -85,31 +66,6 @@ export const migratePortalOrganizationIds = mutation({
         "by_organization",
         "organizationId",
       ),
-      supportMessages: await migrateIndexedCollection(
-        ctx,
-        "supportMessages",
-        "by_organization",
-        "organizationId",
-      ),
-      supportConversations: await migrateIndexedCollection(
-        ctx,
-        "supportConversations",
-        "by_organization",
-        "organizationId",
-      ),
-      supportEmailSettings: await migrateIndexedCollection(
-        ctx,
-        "supportEmailSettings",
-        "by_organization",
-        "organizationId",
-      ),
-      supportAgentPresence: await migrateIndexedCollection(
-        ctx,
-        "supportAgentPresence",
-        "by_org_session",
-        "organizationId",
-      ),
-      supportRagSources: await migrateSupportRagSources(ctx),
       postTypes: await migratePostTypes(ctx),
     };
 
