@@ -73,6 +73,21 @@ export const getUserByClerkId = query({
     }),
   ),
   handler: async (ctx, args) => {
+    const project = (user: any) => {
+      if (!user) return null;
+      return {
+        _id: user._id,
+        _creationTime: user._creationTime,
+        name: user.name ?? undefined,
+        email: user.email,
+        role: user.role ?? undefined,
+        tokenIdentifier: user.tokenIdentifier ?? undefined,
+        username: user.username ?? undefined,
+        image: user.image ?? undefined,
+        addresses: user.addresses ?? undefined,
+      };
+    };
+
     // Prefer the authenticated Convex identity (works in all environments).
     const identity = await ctx.auth.getUserIdentity();
     if (identity?.tokenIdentifier) {
@@ -82,7 +97,7 @@ export const getUserByClerkId = query({
           q.eq("tokenIdentifier", identity.tokenIdentifier),
         )
         .unique();
-      return user ?? null;
+      return project(user);
     }
 
     // Fallback: resolve by stored Clerk user id (subject).
@@ -91,7 +106,7 @@ export const getUserByClerkId = query({
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .first();
-    return user ?? null;
+    return project(user);
   },
 });
 

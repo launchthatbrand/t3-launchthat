@@ -74,6 +74,11 @@ const getNextTheme = (current: ThemeMode): ThemeMode => {
 
 export const themeDetectorScript = (function () {
   function themeFn() {
+    // Ensure we don't end up with both "dark" and "light" on the root element.
+    // This can happen on client navigations where the root already has a theme
+    // class and the detector script runs again.
+    document.documentElement.classList.remove("light", "dark", "auto");
+
     const isValidTheme = (theme: string): theme is ThemeMode => {
       const validThemes = ["light", "dark", "auto"] as const;
       return validThemes.includes(theme as ThemeMode);
@@ -107,6 +112,13 @@ const ThemeContext = React.createContext<ThemeContextProps | undefined>(
 
 export function ThemeProvider({ children }: React.PropsWithChildren) {
   const [themeMode, setThemeMode] = React.useState(getStoredThemeMode);
+
+  // Ensure theme classes are applied after hydration too.
+  // Next.js hydration can overwrite <html class="..."> back to the SSR markup,
+  // so we re-apply on mount and whenever the stored mode changes.
+  React.useLayoutEffect(() => {
+    updateThemeClass(themeMode);
+  }, [themeMode]);
 
   React.useEffect(() => {
     if (themeMode !== "auto") return;
