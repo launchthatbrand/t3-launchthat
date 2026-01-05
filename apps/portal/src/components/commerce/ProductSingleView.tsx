@@ -10,6 +10,7 @@ import {
   isLexicalSerializedStateString,
   parseLexicalSerializedState,
 } from "~/lib/editor/lexical";
+import { ATTACHMENTS_META_KEY } from "~/lib/posts/metaKeys";
 import { ProductPurchaseBox } from "./ProductPurchaseBox";
 
 type PostMetaValue = string | number | boolean | null | undefined;
@@ -42,6 +43,65 @@ const safeParseStringArray = (value: unknown): string[] => {
   }
 };
 
+type AttachmentMetaEntry = {
+  mediaItemId?: string;
+  url?: string;
+  mimeType?: string;
+  title?: string;
+  alt?: string;
+};
+
+const resolvePrimaryImageFromAttachmentsMeta = (
+  attachmentsMetaValue: PostMetaValue,
+): { url: string; alt?: string } | null => {
+  const raw =
+    typeof attachmentsMetaValue === "string" ? attachmentsMetaValue.trim() : "";
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+
+    // Prefer the first "image-like" attachment (same heuristic as SEO preview).
+    for (const item of parsed) {
+      if (!item || typeof item !== "object") continue;
+      const entry = item as AttachmentMetaEntry;
+
+      const url = typeof entry.url === "string" ? entry.url.trim() : "";
+      const mimeType = typeof entry.mimeType === "string" ? entry.mimeType : "";
+      const mediaItemId =
+        typeof entry.mediaItemId === "string" ? entry.mediaItemId : "";
+      const alt = typeof entry.alt === "string" && entry.alt.trim() ? entry.alt : undefined;
+
+      const looksLikeImageUrl =
+        /\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i.test(url) ||
+        url.includes("vimeocdn.com");
+
+      if (mimeType.startsWith("image/") || looksLikeImageUrl) {
+        if (/^https?:\/\//i.test(url)) return { url, alt };
+        if (mediaItemId) return { url: `/api/media/${mediaItemId}`, alt };
+        if (url) return { url, alt };
+      }
+    }
+
+    // Fallback: try the first attachment URL (might be non-image; <img> will fail gracefully)
+    const first = parsed[0];
+    if (first && typeof first === "object") {
+      const entry = first as AttachmentMetaEntry;
+      const url = typeof entry.url === "string" ? entry.url.trim() : "";
+      const mediaItemId =
+        typeof entry.mediaItemId === "string" ? entry.mediaItemId : "";
+      if (/^https?:\/\//i.test(url)) return { url };
+      if (mediaItemId) return { url: `/api/media/${mediaItemId}` };
+      if (url) return { url };
+    }
+  } catch {
+    // ignore
+  }
+
+  return null;
+};
+
 export async function ProductSingleView({
   post,
   organizationId,
@@ -61,6 +121,9 @@ export async function ProductSingleView({
     : [];
   const postMetaObject = buildPostMetaObject(postMetaRows ?? []);
   const features = safeParseStringArray(postMetaObject["product.features"]);
+  const primaryImage = resolvePrimaryImageFromAttachmentsMeta(
+    postMetaObject[ATTACHMENTS_META_KEY],
+  );
 
   const lexicalContent = parseLexicalSerializedState(post?.content ?? null);
   const rawContent = isLexicalSerializedStateString(post?.content)
@@ -73,6 +136,17 @@ export async function ProductSingleView({
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
           <article className="space-y-6">
             <header className="space-y-3">
+              {primaryImage?.url ? (
+                <div className="bg-muted overflow-hidden rounded-xl border">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={primaryImage.url}
+                    alt={primaryImage.alt ?? post?.title ?? "Product image"}
+                    className="h-auto w-full object-cover"
+                    loading="eager"
+                  />
+                </div>
+              ) : null}
               <p className="text-muted-foreground text-sm tracking-wide uppercase">
                 Product
               </p>

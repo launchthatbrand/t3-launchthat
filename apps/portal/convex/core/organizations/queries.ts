@@ -16,6 +16,35 @@ import {
   planValidator,
 } from "./types";
 
+// Convex validators do not accept `null` for optional fields (they must be `undefined` / omitted).
+// Some existing data may contain explicit `null`s (e.g. logo: null), so normalize at the API boundary.
+const normalizeOrgForValidator = (org: any) => ({
+  ...org,
+  description: org.description ?? undefined,
+  logo: org.logo ?? undefined,
+  primaryColor: org.primaryColor ?? undefined,
+
+  customDomain: org.customDomain ?? undefined,
+  customDomainLastError: org.customDomainLastError ?? undefined,
+  customDomainRecords: org.customDomainRecords ?? undefined,
+  customDomainStatus: org.customDomainStatus ?? undefined,
+  customDomainUpdatedAt: org.customDomainUpdatedAt ?? undefined,
+  customDomainVerifiedAt: org.customDomainVerifiedAt ?? undefined,
+
+  emailDomain: org.emailDomain ?? undefined,
+  emailDomainLastError: org.emailDomainLastError ?? undefined,
+  emailDomainRecords: org.emailDomainRecords ?? undefined,
+  emailDomainStatus: org.emailDomainStatus ?? undefined,
+  emailDomainUpdatedAt: org.emailDomainUpdatedAt ?? undefined,
+  emailDomainVerifiedAt: org.emailDomainVerifiedAt ?? undefined,
+
+  planId: org.planId ?? undefined,
+  subscriptionId: org.subscriptionId ?? undefined,
+  currentPeriodStart: org.currentPeriodStart ?? undefined,
+  currentPeriodEnd: org.currentPeriodEnd ?? undefined,
+  cancelAtPeriodEnd: org.cancelAtPeriodEnd ?? undefined,
+});
+
 /**
  * Get all organizations the current user has access to
  */
@@ -91,7 +120,7 @@ export const getById = query({
     const userMembership = memberships.find((m) => m.userId === user._id);
 
     return {
-      ...organization,
+      ...normalizeOrgForValidator(organization),
       memberCount,
       userRole: userMembership?.role ?? "viewer",
     };
@@ -108,7 +137,8 @@ export const getBySlug = query({
   returns: v.union(organizationValidator, v.null()),
   handler: async (ctx, args) => {
     // No authentication required for public organizations
-    return await getOrganizationBySlug(ctx, args.slug);
+    const org = await getOrganizationBySlug(ctx, args.slug);
+    return org ? normalizeOrgForValidator(org) : null;
   },
 });
 
@@ -134,7 +164,7 @@ export const getByCustomDomain = query({
     if (org.customDomainStatus && org.customDomainStatus !== "verified") {
       return null;
     }
-    return org;
+    return normalizeOrgForValidator(org);
   },
 });
 
@@ -302,11 +332,13 @@ export const searchOrganizations = query({
       .take(limit);
 
     // Filter by search query
-    return organizations.filter(
-      (org) =>
-        org.name.toLowerCase().includes(args.query.toLowerCase()) ||
-        org.description?.toLowerCase().includes(args.query.toLowerCase()),
-    );
+    return organizations
+      .filter(
+        (org) =>
+          org.name.toLowerCase().includes(args.query.toLowerCase()) ||
+          org.description?.toLowerCase().includes(args.query.toLowerCase()),
+      )
+      .map((org) => normalizeOrgForValidator(org));
   },
 });
 

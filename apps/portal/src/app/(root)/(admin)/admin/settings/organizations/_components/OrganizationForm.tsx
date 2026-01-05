@@ -44,6 +44,22 @@ import { MediaLibrarySingleSelectDialog } from "~/components/media/MediaLibraryS
 // Form validation schema
 const organizationFormSchema = z.object({
   name: z.string().min(1, "Organization name is required"),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .optional()
+    .refine(
+      (value) => {
+        if (!value) return true;
+        if (value === "portal") return false;
+        return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
+      },
+      {
+        message:
+          'Slug must be lowercase letters, numbers, and hyphens (and cannot be "portal")',
+      },
+    ),
   description: z.string().optional(),
   logo: z
     .string()
@@ -132,6 +148,7 @@ export function OrganizationForm({
     resolver: zodResolver(organizationFormSchema),
     defaultValues: {
       name: "",
+      slug: "",
       description: "",
       logo: "",
       planId: "",
@@ -145,6 +162,7 @@ export function OrganizationForm({
     if (existingOrganization && organizationId && !isFormInitialized) {
       form.reset({
         name: existingOrganization.name,
+        slug: existingOrganization.slug,
         description: existingOrganization.description || "",
         logo: existingOrganization.logo ?? "",
         planId: existingOrganization.planId || "",
@@ -188,9 +206,17 @@ export function OrganizationForm({
 
         if (organizationId) {
           // Update existing organization
+          const normalizedSlug = data.slug?.trim() ? data.slug.trim() : undefined;
+          const existingSlug =
+            typeof existingOrganization?.slug === "string"
+              ? existingOrganization.slug
+              : undefined;
           await updateOrganization({
             organizationId,
             ...submitData,
+            ...(normalizedSlug && normalizedSlug !== existingSlug
+              ? { slug: normalizedSlug }
+              : {}),
             logo: data.logo?.trim() ? data.logo.trim() : null,
           });
           toast.success("Organization updated successfully");
@@ -260,6 +286,33 @@ export function OrganizationForm({
                   </FormItem>
                 )}
               />
+
+              {organizationId ? (
+                <FormField
+                  control={form.control}
+                  name="slug"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Slug</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="wall-street-academy"
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          spellCheck={false}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Used for the subdomain (e.g.{" "}
+                        <span className="font-mono">https://{field.value || "your-slug"}.localhost</span>
+                        ). Changing this will change the URL users visit.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
 
               <FormField
                 control={form.control}

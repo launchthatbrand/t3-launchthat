@@ -7,7 +7,6 @@ import { getAuthenticatedUserId } from "../../lib/permissions/userAuth";
 import {
   checkOrganizationLimit,
   generateInvitationToken,
-  generateOrganizationSlug,
   grantCustomerAccess,
   validateInvitation,
   verifyOrganizationAccess,
@@ -81,6 +80,7 @@ export const update = mutation({
   args: {
     organizationId: v.id("organizations"),
     name: v.optional(v.string()),
+    slug: v.optional(v.string()),
     description: v.optional(v.string()),
     logo: v.optional(v.union(v.string(), v.null())),
     primaryColor: v.optional(v.string()),
@@ -117,8 +117,29 @@ export const update = mutation({
     // Add fields that are being updated
     if (args.name !== undefined) {
       updates.name = args.name;
-      // Regenerate slug if name changed
-      updates.slug = await generateOrganizationSlug(ctx, args.name);
+    }
+    if (args.slug !== undefined) {
+      const normalizedSlug = args.slug
+        .toLowerCase()
+        .replace(/[^a-z0-9\-]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+      if (!normalizedSlug) {
+        throw new Error("Slug cannot be empty");
+      }
+      if (normalizedSlug === "portal") {
+        throw new Error('Slug "portal" is reserved');
+      }
+
+      const existing = await ctx.db
+        .query("organizations")
+        .withIndex("by_slug", (q) => q.eq("slug", normalizedSlug))
+        .unique();
+      if (existing && existing._id !== args.organizationId) {
+        throw new Error("Slug is already taken");
+      }
+
+      updates.slug = normalizedSlug;
     }
     if (args.description !== undefined) updates.description = args.description;
     if (args.logo !== undefined) updates.logo = args.logo;

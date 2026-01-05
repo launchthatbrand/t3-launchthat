@@ -34,6 +34,61 @@ const safeParseStringArray = (value: unknown): string[] => {
   }
 };
 
+interface AttachmentMetaEntry {
+  mediaItemId?: string;
+  url?: string;
+  mimeType?: string;
+  title?: string;
+}
+
+const resolvePrimaryImageUrlFromAttachmentsMeta = (
+  attachmentsMetaValue: unknown,
+): string | null => {
+  const raw =
+    typeof attachmentsMetaValue === "string" ? attachmentsMetaValue.trim() : "";
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+
+    for (const item of parsed) {
+      if (!item || typeof item !== "object") continue;
+      const entry = item as AttachmentMetaEntry;
+
+      const url = typeof entry.url === "string" ? entry.url.trim() : "";
+      const mimeType = typeof entry.mimeType === "string" ? entry.mimeType : "";
+      const mediaItemId =
+        typeof entry.mediaItemId === "string" ? entry.mediaItemId : "";
+
+      const looksLikeImageUrl =
+        /\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i.test(url) ||
+        url.includes("vimeocdn.com");
+
+      if (mimeType.startsWith("image/") || looksLikeImageUrl) {
+        if (/^https?:\/\//i.test(url)) return url;
+        if (mediaItemId) return `/api/media/${mediaItemId}`;
+        if (url) return url;
+      }
+    }
+
+    const first = parsed[0];
+    if (first && typeof first === "object") {
+      const entry = first as AttachmentMetaEntry;
+      const url = typeof entry.url === "string" ? entry.url.trim() : "";
+      const mediaItemId =
+        typeof entry.mediaItemId === "string" ? entry.mediaItemId : "";
+      if (/^https?:\/\//i.test(url)) return url;
+      if (mediaItemId) return `/api/media/${mediaItemId}`;
+      if (url) return url;
+    }
+  } catch {
+    // ignore
+  }
+
+  return null;
+};
+
 export const getCart = query({
   args: {
     userId: v.optional(v.string()),
@@ -53,19 +108,41 @@ export const getCart = query({
     const items = Array.isArray(typed.items) ? typed.items : [];
     if (items.length === 0) return result;
 
-    const featuresByPostId: Record<string, string[]> = {};
-    const getFeaturesForPostId = async (postId: string): Promise<string[]> => {
-      if (postId in featuresByPostId) return featuresByPostId[postId] ?? [];
-      const meta: unknown = await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
-        postId,
-      });
+    const enrichByPostId: Record<
+      string,
+      { features: string[]; featuredImageUrl: string | null }
+    > = {};
+    const getEnrichmentForPostId = async (
+      postId: string,
+    ): Promise<{ features: string[]; featuredImageUrl: string | null }> => {
+      if (postId in enrichByPostId) {
+        return (
+          enrichByPostId[postId] ?? { features: [], featuredImageUrl: null }
+        );
+      }
+      const meta: unknown = await ctx.runQuery(
+        commercePostsQueries.getPostMeta as any,
+        {
+          postId,
+        },
+      );
       const rows = Array.isArray(meta)
         ? (meta as Array<{ key?: unknown; value?: unknown }>)
         : [];
-      const raw = rows.find((r) => r?.key === "product.features")?.value;
-      const parsed = safeParseStringArray(raw);
-      featuresByPostId[postId] = parsed;
-      return parsed;
+      const rawFeatures = rows.find(
+        (r) => r?.key === "product.features",
+      )?.value;
+      const parsedFeatures = safeParseStringArray(rawFeatures);
+
+      const rawAttachments = rows.find(
+        (r) => r?.key === "__core_attachments",
+      )?.value;
+      const featuredImageUrl =
+        resolvePrimaryImageUrlFromAttachmentsMeta(rawAttachments);
+
+      const result = { features: parsedFeatures, featuredImageUrl };
+      enrichByPostId[postId] = result;
+      return result;
     };
 
     const enriched: unknown[] = [];
@@ -75,18 +152,30 @@ export const getCart = query({
         continue;
       }
       const it = item as any;
-      const postId = typeof it.productPostId === "string" ? it.productPostId : "";
-      const product = it.product && typeof it.product === "object" ? it.product : null;
+      const postId =
+        typeof it.productPostId === "string" ? it.productPostId : "";
+      const product =
+        it.product && typeof it.product === "object" ? it.product : null;
       if (!postId || !product) {
         enriched.push(item);
         continue;
       }
-      const features = await getFeaturesForPostId(postId);
+      const enrichment = await getEnrichmentForPostId(postId);
+      const existingFeatured =
+        typeof product.featuredImageUrl === "string" &&
+        product.featuredImageUrl.trim()
+          ? product.featuredImageUrl.trim()
+          : null;
       enriched.push({
         ...it,
         product: {
           ...product,
-          features,
+          features: enrichment.features,
+          ...(existingFeatured
+            ? {}
+            : enrichment.featuredImageUrl
+              ? { featuredImageUrl: enrichment.featuredImageUrl }
+              : {}),
         },
       });
     }
