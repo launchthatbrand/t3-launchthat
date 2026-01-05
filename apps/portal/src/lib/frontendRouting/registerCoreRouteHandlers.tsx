@@ -20,10 +20,7 @@ import type {
   FrontendRouteHandler,
   FrontendRouteHandlerContext,
 } from "./resolveFrontendRoute";
-import type { parseLexicalSerializedState } from "~/lib/editor/lexical";
 import { AccessDeniedPage } from "~/components/access/AccessDeniedPage";
-import { EditorViewer } from "~/components/blocks/editor-x/viewer";
-import { FrontendContentFilterHost } from "~/components/frontend/FrontendContentFilterHost";
 import { PuckContentRenderer } from "~/components/puckeditor/PuckContentRenderer";
 import { BackgroundRippleEffect } from "~/components/ui/background-ripple-effect";
 import { env } from "~/env";
@@ -231,16 +228,6 @@ const getMetaBoolean = (
   return null;
 };
 
-const hasRenderableLexicalContent = (
-  state: ReturnType<typeof parseLexicalSerializedState>,
-): state is Exclude<ReturnType<typeof parseLexicalSerializedState>, null> => {
-  if (!state) return false;
-  const root = (state as any).root;
-  const children = root?.children;
-  if (!Array.isArray(children) || children.length === 0) return false;
-  return true;
-};
-
 function PostArchive(props: { postType: PostTypeDoc; posts: Doc<"posts">[] }) {
   const description =
     props.postType.description ??
@@ -312,8 +299,9 @@ function TaxonomyArchive(props: any) {
       ) : (
         <section className="grid gap-6 md:grid-cols-2">
           {props.posts.map((post: any) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+            /* eslint-disable @typescript-eslint/no-unsafe-argument */
             const url = getCanonicalPostPath(post, props.postType, true);
+            /* eslint-enable @typescript-eslint/no-unsafe-argument */
             return (
               <article
                 key={post._id}
@@ -377,12 +365,13 @@ function TaxonomyArchiveGrouped(props: any) {
                 </div>
                 <div className="grid gap-6 md:grid-cols-2">
                   {section.posts.map((post: any) => {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                    /* eslint-disable @typescript-eslint/no-unsafe-argument */
                     const url = getCanonicalPostPath(
                       post,
                       section.postType,
                       true,
                     );
+                    /* eslint-enable @typescript-eslint/no-unsafe-argument */
                     return (
                       <article
                         key={post._id}
