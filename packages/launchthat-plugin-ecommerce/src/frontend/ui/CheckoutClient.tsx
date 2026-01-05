@@ -479,7 +479,8 @@ export function CheckoutClient({
 }) {
   const orgKey = organizationId ?? "portal-root";
   const [guestSessionId, setGuestSessionId] = useState<string | null>(null);
-  const [hasAppliedAccountPrefill, setHasAppliedAccountPrefill] = useState(false);
+  const [hasAppliedAccountPrefill, setHasAppliedAccountPrefill] =
+    useState(false);
   const draft = useCheckoutDraftStore(
     (s) => s.draftsByOrg[orgKey] ?? EMPTY_CHECKOUT_DRAFT,
   );
@@ -576,7 +577,11 @@ export function CheckoutClient({
     if (!nextShipping.lastName.trim() && inferredLastName) {
       nextShipping.lastName = inferredLastName;
     }
-    if (!nextShipping.phone.trim() && typeof me.phoneNumber === "string" && me.phoneNumber.trim()) {
+    if (
+      !nextShipping.phone.trim() &&
+      typeof me.phoneNumber === "string" &&
+      me.phoneNumber.trim()
+    ) {
       nextShipping.phone = me.phoneNumber.trim();
     }
     if (!nextShipping.phone.trim() && addr?.phoneNumber?.trim()) {
@@ -603,7 +608,16 @@ export function CheckoutClient({
 
     setShippingDraft(orgKey, nextShipping);
     setHasAppliedAccountPrefill(true);
-  }, [email, hasAppliedAccountPrefill, me, orgKey, setEmail, setShippingDraft, shipping, testMode]);
+  }, [
+    email,
+    hasAppliedAccountPrefill,
+    me,
+    orgKey,
+    setEmail,
+    setShippingDraft,
+    shipping,
+    testMode,
+  ]);
 
   useEffect(() => {
     if (hasAppliedTestPrefill) return;
@@ -806,7 +820,10 @@ export function CheckoutClient({
       typeof process !== "undefined"
         ? (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "")
         : "";
-    const rootDomain = rootDomainRaw.toLowerCase().replace(/^www\./, "").trim();
+    const rootDomain = rootDomainRaw
+      .toLowerCase()
+      .replace(/^www\./, "")
+      .trim();
     if (!rootDomain) return "";
 
     if (
@@ -828,14 +845,13 @@ export function CheckoutClient({
       typeof process !== "undefined"
         ? (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "")
         : "";
-    const rootDomain = rootDomainRaw.toLowerCase().replace(/^www\./, "").trim();
+    const rootDomain = rootDomainRaw
+      .toLowerCase()
+      .replace(/^www\./, "")
+      .trim();
 
     // If this is a first-party subdomain of our root domain, don't treat it as a custom domain.
-    if (
-      rootDomain &&
-      host !== rootDomain &&
-      host.endsWith(`.${rootDomain}`)
-    ) {
+    if (rootDomain && host !== rootDomain && host.endsWith(`.${rootDomain}`)) {
       return false;
     }
 
