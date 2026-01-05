@@ -787,23 +787,64 @@ export function CheckoutClient({
   }) as { metaValue?: unknown } | null | undefined;
 
   // Resolve organization branding without auth (checkout is public).
-  // Prefer custom domain resolution; fall back to "<slug>.localhost" in dev.
+  // Prefer custom domain resolution; fall back to "<slug>.<rootDomain>" subdomain resolution.
   const hostname = useMemo(() => {
     if (typeof window === "undefined") return "";
     return window.location.hostname ?? "";
   }, []);
   const subdomainSlug = useMemo(() => {
     if (!hostname) return "";
-    const parts = hostname.split(".").filter(Boolean);
-    if (parts.length >= 2 && parts[parts.length - 1] === "localhost") {
-      return parts[0] ?? "";
+    const host = hostname.toLowerCase().replace(/^www\./, "");
+
+    // Localhost: <slug>.localhost
+    if (host.endsWith(".localhost")) {
+      return host.split(".")[0] ?? "";
     }
+
+    // Production/staging: <slug>.<rootDomain>
+    const rootDomainRaw =
+      typeof process !== "undefined"
+        ? (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "")
+        : "";
+    const rootDomain = rootDomainRaw.toLowerCase().replace(/^www\./, "").trim();
+    if (!rootDomain) return "";
+
+    if (
+      host !== rootDomain &&
+      host !== `www.${rootDomain}` &&
+      host.endsWith(`.${rootDomain}`)
+    ) {
+      const slug = host.slice(0, -(rootDomain.length + 1));
+      return slug || "";
+    }
+
     return "";
+  }, [hostname]);
+
+  const shouldTryCustomDomain = useMemo(() => {
+    if (!hostname) return false;
+    const host = hostname.toLowerCase().replace(/^www\./, "");
+    const rootDomainRaw =
+      typeof process !== "undefined"
+        ? (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "")
+        : "";
+    const rootDomain = rootDomainRaw.toLowerCase().replace(/^www\./, "").trim();
+
+    // If this is a first-party subdomain of our root domain, don't treat it as a custom domain.
+    if (
+      rootDomain &&
+      host !== rootDomain &&
+      host.endsWith(`.${rootDomain}`)
+    ) {
+      return false;
+    }
+
+    return true;
   }, [hostname]);
 
   const orgByCustomDomain = useQuery(
     apiAny.core.organizations.queries.getByCustomDomain,
-    hostname ? { hostname } : "skip",
+    shouldTryCustomDomain && hostname ? { hostname } : "skip",
   ) as { name?: string; logo?: string | undefined | null } | null | undefined;
   const orgBySlug = useQuery(
     apiAny.core.organizations.queries.getBySlug,
