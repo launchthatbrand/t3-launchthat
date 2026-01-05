@@ -33,3 +33,5 @@ export const DEFAULT_COURSE_SETTINGS: CourseSettings = {
 
 export const LMS_COURSE_SETTINGS_META_KEY = "lms_course_settings";
 export const LMS_COURSE_ACCESS_MODE_META_KEY = "lms_course_access_mode";
+export const LMS_COURSE_ACCESS_CASCADE_META_KEY = "lms_course_access_cascade";
+export const LMS_COURSE_BUY_NOW_URL_META_KEY = "lms_course_buy_now_url";

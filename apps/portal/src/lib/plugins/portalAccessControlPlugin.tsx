@@ -1,23 +1,24 @@
 import type { PluginDefinition } from "./types";
-
-import {
-  FRONTEND_CONTENT_ACCESS_PROVIDERS_FILTER,
-  FRONTEND_CONTENT_ACCESS_RULE_SOURCES_FILTER,
-} from "./hookSlots";
-import { rolePermissionAccessProvider } from "~/lib/access/providers/rolePermissionAccessProvider";
-import type {
-  ContentAccessProvider,
-} from "~/lib/access/contentAccessRegistry";
+import type { ContentAccessProvider } from "~/lib/access/contentAccessRegistry";
 import type {
   ContentAccessRuleRecord,
   ContentAccessRuleSource,
 } from "~/lib/access/contentAccessRuleSources";
 import { parseContentAccessMetaValue } from "~/lib/access/contentAccessMeta";
+import { loginRequiredAccessProvider } from "~/lib/access/providers/loginRequiredAccessProvider";
+import { rolePermissionAccessProvider } from "~/lib/access/providers/rolePermissionAccessProvider";
+import {
+  FRONTEND_CONTENT_ACCESS_PROVIDERS_FILTER,
+  FRONTEND_CONTENT_ACCESS_RULE_SOURCES_FILTER,
+} from "./hookSlots";
 
 const safeString = (value: unknown): string | null =>
   typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 
-const summarizeRule = (rule: any, pluginIds: string[]): { summary: string; pluginId?: string } => {
+const summarizeRule = (
+  rule: any,
+  pluginIds: string[],
+): { summary: string; pluginId?: string } => {
   const parts: string[] = [];
   const isPublic = Boolean(rule?.isPublic);
   if (isPublic) {
@@ -27,7 +28,9 @@ const summarizeRule = (rule: any, pluginIds: string[]): { summary: string; plugi
   const requiredRoleNames: string[] = Array.isArray(rule?.requiredRoleNames)
     ? rule.requiredRoleNames.filter((r: any) => typeof r === "string")
     : [];
-  const requiredPermissionKeys: string[] = Array.isArray(rule?.requiredPermissionKeys)
+  const requiredPermissionKeys: string[] = Array.isArray(
+    rule?.requiredPermissionKeys,
+  )
     ? rule.requiredPermissionKeys.filter((p: any) => typeof p === "string")
     : [];
   const requiredTags: string[] = Array.isArray(rule?.requiredTags?.tagIds)
@@ -44,21 +47,29 @@ const summarizeRule = (rule: any, pluginIds: string[]): { summary: string; plugi
     parts.push(`permissions: ${requiredPermissionKeys.join(", ")}`);
   }
   if (requiredTags.length > 0) {
-    parts.push(`requires tags (${rule?.requiredTags?.mode === "all" ? "all" : "some"}): ${requiredTags.join(", ")}`);
+    parts.push(
+      `requires tags (${rule?.requiredTags?.mode === "all" ? "all" : "some"}): ${requiredTags.join(", ")}`,
+    );
   }
   if (excludedTags.length > 0) {
-    parts.push(`excludes tags (${rule?.excludedTags?.mode === "all" ? "all" : "some"}): ${excludedTags.join(", ")}`);
+    parts.push(
+      `excludes tags (${rule?.excludedTags?.mode === "all" ? "all" : "some"}): ${excludedTags.join(", ")}`,
+    );
   }
 
   // Heuristic attribution for display grouping.
   const inferredPluginId =
-    (requiredTags.length > 0 || excludedTags.length > 0) && pluginIds.includes("crm")
+    (requiredTags.length > 0 || excludedTags.length > 0) &&
+    pluginIds.includes("crm")
       ? "crm"
       : requiredRoleNames.length > 0 || requiredPermissionKeys.length > 0
         ? "core"
         : "lms";
 
-  return { summary: parts.join(" • ") || "restricted", pluginId: inferredPluginId };
+  return {
+    summary: parts.join(" • ") || "restricted",
+    pluginId: inferredPluginId,
+  };
 };
 
 const lmsLockedCoursesRuleSource: ContentAccessRuleSource = {
@@ -71,7 +82,9 @@ const lmsLockedCoursesRuleSource: ContentAccessRuleSource = {
       ctx.api.plugins.lms.posts.queries.listPostsWithMetaKey,
       {
         key: "lms_course_access_mode",
-        organizationId: ctx.organizationId ? String(ctx.organizationId) : undefined,
+        organizationId: ctx.organizationId
+          ? String(ctx.organizationId)
+          : undefined,
       },
     )) as Array<{
       postId: string;
@@ -112,7 +125,9 @@ const contentAccessRulesRuleSource: ContentAccessRuleSource = {
   priority: 20,
   listRules: async (ctx) => {
     const rows: ContentAccessRuleRecord[] = [];
-    const orgArg = ctx.organizationId ? { organizationId: ctx.organizationId } : {};
+    const orgArg = ctx.organizationId
+      ? { organizationId: ctx.organizationId }
+      : {};
 
     const coreRows = (await ctx.query(
       ctx.api.core.posts.queries.listPostsWithMetaKey,
@@ -157,7 +172,9 @@ const contentAccessRulesRuleSource: ContentAccessRuleSource = {
         ctx.api.plugins.lms.posts.queries.listPostsWithMetaKey,
         {
           key: "content_access",
-          organizationId: ctx.organizationId ? String(ctx.organizationId) : undefined,
+          organizationId: ctx.organizationId
+            ? String(ctx.organizationId)
+            : undefined,
         },
       )) as Array<{
         postId: string;
@@ -174,7 +191,10 @@ const contentAccessRulesRuleSource: ContentAccessRuleSource = {
         const parsed = parseContentAccessMetaValue((row as any).value);
         if (!parsed) continue;
 
-        const { summary, pluginId } = summarizeRule(parsed, ctx.enabledPluginIds);
+        const { summary, pluginId } = summarizeRule(
+          parsed,
+          ctx.enabledPluginIds,
+        );
         rows.push({
           id: `rule:lms:post:${postId}`,
           resource: {
@@ -210,8 +230,11 @@ export const portalAccessControlPlugin: PluginDefinition = {
         hook: FRONTEND_CONTENT_ACCESS_PROVIDERS_FILTER,
         callback: (value: unknown) => {
           const list = Array.isArray(value)
-            ? ([...(value as ContentAccessProvider[])] as ContentAccessProvider[])
+            ? ([
+                ...(value as ContentAccessProvider[]),
+              ] as ContentAccessProvider[])
             : ([] as ContentAccessProvider[]);
+          list.push(loginRequiredAccessProvider);
           list.push(rolePermissionAccessProvider);
           return list;
         },
@@ -222,7 +245,9 @@ export const portalAccessControlPlugin: PluginDefinition = {
         hook: FRONTEND_CONTENT_ACCESS_RULE_SOURCES_FILTER,
         callback: (value: unknown) => {
           const list = Array.isArray(value)
-            ? ([...(value as ContentAccessRuleSource[])] as ContentAccessRuleSource[])
+            ? ([
+                ...(value as ContentAccessRuleSource[]),
+              ] as ContentAccessRuleSource[])
             : ([] as ContentAccessRuleSource[]);
           list.push(lmsLockedCoursesRuleSource);
           list.push(contentAccessRulesRuleSource);
@@ -234,5 +259,3 @@ export const portalAccessControlPlugin: PluginDefinition = {
     ],
   },
 };
-
-

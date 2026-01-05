@@ -38,16 +38,35 @@ const asStringArray = (value: unknown): string[] | null => {
 export const normalizeContentAccessRules = (
   rules: ContentAccessRules | null | undefined,
 ): NormalizedContentAccessRules => {
+  const requiredRoleNames = asStringArray(rules?.requiredRoleNames) ?? [];
+  const requiredPermissionKeys =
+    asStringArray(rules?.requiredPermissionKeys) ?? [];
+  const requiredTags = isTagRule(rules?.requiredTags)
+    ? rules.requiredTags
+    : DEFAULT_TAG_RULE;
+  const excludedTags = isTagRule(rules?.excludedTags)
+    ? rules.excludedTags
+    : DEFAULT_TAG_RULE;
+
+  // Backwards-compatible defaulting:
+  // - If isPublic is explicitly set, honor it.
+  // - If any restriction exists and isPublic is missing, default to NOT public.
+  // - If nothing is configured, default to public (absence of meta == public).
+  const hasAnyRestriction =
+    requiredRoleNames.length > 0 ||
+    requiredPermissionKeys.length > 0 ||
+    requiredTags.tagIds.length > 0 ||
+    excludedTags.tagIds.length > 0;
+
   return {
-    isPublic: Boolean(rules?.isPublic),
-    requiredRoleNames: asStringArray(rules?.requiredRoleNames) ?? [],
-    requiredPermissionKeys: asStringArray(rules?.requiredPermissionKeys) ?? [],
-    requiredTags: isTagRule(rules?.requiredTags)
-      ? rules.requiredTags
-      : DEFAULT_TAG_RULE,
-    excludedTags: isTagRule(rules?.excludedTags)
-      ? rules.excludedTags
-      : DEFAULT_TAG_RULE,
+    isPublic:
+      rules?.isPublic !== undefined
+        ? Boolean(rules.isPublic)
+        : !hasAnyRestriction,
+    requiredRoleNames,
+    requiredPermissionKeys,
+    requiredTags,
+    excludedTags,
   };
 };
 
@@ -82,12 +101,12 @@ export const serializeContentAccessRules = (
 export const isEffectivelyEmptyContentAccessRules = (
   rules: NormalizedContentAccessRules,
 ): boolean => {
-  if (rules.isPublic) return false;
+  // Public is the default behavior. If content is public and no additional
+  // restrictions are configured, treat as empty (delete meta).
+  if (!rules.isPublic) return false;
   if (rules.requiredRoleNames.length > 0) return false;
   if (rules.requiredPermissionKeys.length > 0) return false;
   if (rules.requiredTags.tagIds.length > 0) return false;
   if (rules.excludedTags.tagIds.length > 0) return false;
   return true;
 };
-
-

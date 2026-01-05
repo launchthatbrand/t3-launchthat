@@ -29,7 +29,9 @@ import type {
 import type { Id } from "../lib/convexId";
 import {
   DEFAULT_COURSE_SETTINGS,
+  LMS_COURSE_ACCESS_CASCADE_META_KEY,
   LMS_COURSE_ACCESS_MODE_META_KEY,
+  LMS_COURSE_BUY_NOW_URL_META_KEY,
   LMS_COURSE_SETTINGS_META_KEY,
 } from "../constants/courseSettings";
 
@@ -139,7 +141,35 @@ export const CourseSettingsTab = ({
     return DEFAULT_COURSE_SETTINGS;
   }, [postMeta]);
 
+  const resolvedCascadeAccessToSteps = useMemo(() => {
+    const raw = Array.isArray(postMeta)
+      ? postMeta.find((m) => m?.key === LMS_COURSE_ACCESS_CASCADE_META_KEY)?.value
+      : undefined;
+    // Default: enabled (course lock applies to steps).
+    if (raw === undefined || raw === null) return true;
+    if (typeof raw === "boolean") return raw;
+    if (typeof raw === "number") return raw !== 0;
+    if (typeof raw === "string") {
+      const v = raw.trim().toLowerCase();
+      if (v === "false" || v === "0" || v === "no") return false;
+      if (v === "true" || v === "1" || v === "yes") return true;
+    }
+    return true;
+  }, [postMeta]);
+
+  const resolvedBuyNowUrl = useMemo(() => {
+    const raw = Array.isArray(postMeta)
+      ? postMeta.find((m) => m?.key === LMS_COURSE_BUY_NOW_URL_META_KEY)?.value
+      : undefined;
+    if (typeof raw === "string") return raw;
+    return "";
+  }, [postMeta]);
+
   const [settings, setSettings] = useState<CourseSettings>(resolvedSettings);
+  const [cascadeAccessToSteps, setCascadeAccessToSteps] = useState<boolean>(
+    resolvedCascadeAccessToSteps,
+  );
+  const [buyNowUrl, setBuyNowUrl] = useState<string>(resolvedBuyNowUrl);
   const [prereqInput, setPrereqInput] = useState(
     resolvedSettings.prerequisites.join(", "),
   );
@@ -148,7 +178,9 @@ export const CourseSettingsTab = ({
   useEffect(() => {
     setSettings(resolvedSettings);
     setPrereqInput(resolvedSettings.prerequisites.join(", "));
-  }, [resolvedSettings]);
+    setCascadeAccessToSteps(resolvedCascadeAccessToSteps);
+    setBuyNowUrl(resolvedBuyNowUrl);
+  }, [resolvedBuyNowUrl, resolvedCascadeAccessToSteps, resolvedSettings]);
 
   const handleChange = useCallback(
     <Key extends keyof CourseSettings>(
@@ -186,6 +218,9 @@ export const CourseSettingsTab = ({
         meta: {
           [LMS_COURSE_SETTINGS_META_KEY]: JSON.stringify(settings),
           [LMS_COURSE_ACCESS_MODE_META_KEY]: settings.accessMode,
+          [LMS_COURSE_ACCESS_CASCADE_META_KEY]: cascadeAccessToSteps,
+          [LMS_COURSE_BUY_NOW_URL_META_KEY]:
+            buyNowUrl.trim().length > 0 ? buyNowUrl.trim() : null,
         },
       });
       toast.success("Course settings saved", {
@@ -198,7 +233,16 @@ export const CourseSettingsTab = ({
     } finally {
       setIsSaving(false);
     }
-  }, [canPersist, normalizedOrganizationId, pluginName, postId, settings, updatePost]);
+  }, [
+    canPersist,
+    normalizedOrganizationId,
+    pluginName,
+    postId,
+    settings,
+    cascadeAccessToSteps,
+    buyNowUrl,
+    updatePost,
+  ]);
 
   if (!postId) {
     return (
@@ -292,6 +336,35 @@ export const CourseSettingsTab = ({
                 </div>
               ))}
             </RadioGroup>
+          </section>
+
+          <section className="space-y-2 rounded-lg border p-4">
+            <Label htmlFor="lms-buy-now-url">Buy now redirect URL</Label>
+            <Input
+              id="lms-buy-now-url"
+              value={buyNowUrl}
+              onChange={(event) => setBuyNowUrl(event.target.value)}
+              placeholder="Example: /checkout/forex-course or /product/forex-course or https://paypal.me/..."
+            />
+            <p className="text-muted-foreground text-sm">
+              Optional. When access mode is <span className="font-medium">Buy now</span> and a visitor is logged out,
+              they’ll be redirected here. Supports relative paths (starting with <code>/</code>) or full URLs
+              (<code>https://...</code>).
+            </p>
+          </section>
+
+          <section className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-1">
+              <Label>Apply access mode to all steps</Label>
+              <p className="text-muted-foreground text-sm">
+                When enabled, lessons and topics inherit this course’s access
+                mode.
+              </p>
+            </div>
+            <Switch
+              checked={cascadeAccessToSteps}
+              onCheckedChange={setCascadeAccessToSteps}
+            />
           </section>
 
           <section className="grid gap-4 md:grid-cols-2">

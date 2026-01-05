@@ -11,9 +11,10 @@
 import type { Doc } from "@/convex/_generated/dataModel";
 import type { fetchQuery as convexFetchQuery } from "convex/nextjs";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 
-import { addFilter } from "@acme/admin-runtime/hooks";
+import { addFilter, applyFilters } from "@acme/admin-runtime/hooks";
 
 import type {
   FrontendRouteHandler,
@@ -27,6 +28,7 @@ import { BackgroundRippleEffect } from "~/components/ui/background-ripple-effect
 import { env } from "~/env";
 import { evaluateContentAccess } from "~/lib/access/contentAccessRegistry";
 import { parseContentAccessMetaValue } from "~/lib/access/contentAccessMeta";
+import { FRONTEND_ACCESS_DENIED_ACTIONS_FILTER } from "~/lib/plugins/hookSlots";
 import {
   isLexicalSerializedStateString,
   parseLexicalSerializedState,
@@ -45,6 +47,17 @@ type PostTypeDoc = Doc<"postTypes">;
 type PostFieldDoc = Doc<"postTypeFields">;
 type PostMetaDoc = Doc<"postsMeta">;
 type PostMetaValue = string | number | boolean | null | undefined;
+
+type LmsCourseAccessMode = "open" | "free" | "buy_now" | "recurring" | "closed";
+
+type LmsCourseAccessContext = {
+  courseId: string;
+  courseSlug: string;
+  accessMode: LmsCourseAccessMode;
+  cascadeToSteps: boolean;
+  buyNowUrl?: string | null;
+  appliesToCurrentResource: boolean;
+};
 
 if (env.NODE_ENV !== "production") {
   const g = globalThis as unknown as {
@@ -126,6 +139,27 @@ function buildPostMetaMap(meta: PostMetaDoc[]): Map<string, PostMetaValue> {
   meta.forEach((entry) => map.set(entry.key, entry.value ?? null));
   return map;
 }
+
+const getMetaString = (meta: Record<string, PostMetaValue>, key: string) => {
+  const value = meta[key];
+  if (typeof value === "string" && value.trim().length > 0) return value.trim();
+  return null;
+};
+
+const getMetaBoolean = (
+  meta: Record<string, PostMetaValue>,
+  key: string,
+): boolean | null => {
+  const value = meta[key];
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const v = value.trim().toLowerCase();
+    if (v === "true" || v === "1" || v === "yes") return true;
+    if (v === "false" || v === "0" || v === "no") return false;
+  }
+  return null;
+};
 
 const hasRenderableLexicalContent = (
   state: ReturnType<typeof parseLexicalSerializedState>,
@@ -655,42 +689,166 @@ export function registerCoreRouteHandlers(): void {
             );
           }
 
-          const decision = contentRules
-            ? evaluateContentAccess({
-                subject: {
-                  organizationId: organizationId
-                    ? String(organizationId)
-                    : null,
-                  enabledPluginIds: ctx.enabledPluginIds,
-                  userId: convexUserId ? String(convexUserId) : null,
-                  contactId: null,
-                  isAuthenticated,
+          // ---- LMS course access cascade (course → steps) ----
+          let lmsCourseAccess: LmsCourseAccessContext | null = null;
+          if (ctx.enabledPluginIds.includes("lms")) {
+            const postTypeSlug = typeof post.postTypeSlug === "string" ? post.postTypeSlug : null;
+            const isCourse = postTypeSlug === "courses";
+            const isStep = postTypeSlug === "lessons" || postTypeSlug === "topics" || postTypeSlug === "quizzes";
+
+            let courseId: string | null = null;
+            if (isCourse) {
+              courseId = String(post._id);
+            } else if (postTypeSlug === "lessons") {
+              courseId = getMetaString(postMetaObject, "courseId");
+            } else if (postTypeSlug === "topics") {
+              const lessonId = getMetaString(postMetaObject, "lessonId");
+              if (lessonId) {
+                const lessonMetaResult: unknown = await (ctx.fetchQuery as any)(
+                  (ctx.api as any).plugins.lms.posts.queries.getPostMeta,
+                  {
+                    postId: lessonId,
+                    organizationId: ctx.organizationId ? String(ctx.organizationId) : undefined,
+                  },
+                );
+                const lessonMeta = (lessonMetaResult ?? []) as { key: string; value?: PostMetaValue }[];
+                const lessonMap = new Map<string, PostMetaValue>();
+                lessonMeta.forEach((entry) => lessonMap.set(entry.key, entry.value ?? null));
+                const lessonMetaObject = Object.fromEntries(lessonMap.entries()) as Record<string, PostMetaValue>;
+                courseId = getMetaString(lessonMetaObject, "courseId");
+              }
+            } else if (postTypeSlug === "quizzes") {
+              courseId = getMetaString(postMetaObject, "courseId");
+            }
+
+            if (courseId && (isCourse || isStep)) {
+              const orgArg = ctx.organizationId
+                ? { organizationId: String(ctx.organizationId) }
+                : {};
+
+              const coursePostResult: unknown = await (ctx.fetchQuery as any)(
+                (ctx.api as any).plugins.lms.posts.queries.getPostById,
+                { id: courseId, ...orgArg },
+              );
+              const coursePost = (coursePostResult ?? null) as
+                | { slug?: unknown }
+                | null;
+              const courseSlug =
+                typeof coursePost?.slug === "string" && coursePost.slug.trim().length > 0
+                  ? coursePost.slug.trim()
+                  : courseId;
+
+              const courseMetaResult: unknown = await (ctx.fetchQuery as any)(
+                (ctx.api as any).plugins.lms.posts.queries.getPostMeta,
+                {
+                  postId: courseId,
+                  ...orgArg,
                 },
-                resource: {
-                  contentType: "post",
-                  contentId: String(post._id),
-                },
-                data: {
-                  contentRules,
-                  tagKeys,
-                  roleNames,
-                  permissionGrants,
-                  userRole: viewer?.role ?? null,
-                  post,
-                  postType,
-                  postMeta: postMetaObject,
-                },
-              })
-            : ({ kind: "abstain" } as const);
+              );
+              const courseMeta = (courseMetaResult ?? []) as { key: string; value?: PostMetaValue }[];
+              const courseMap = new Map<string, PostMetaValue>();
+              courseMeta.forEach((entry) => courseMap.set(entry.key, entry.value ?? null));
+              const courseMetaObject = Object.fromEntries(courseMap.entries()) as Record<string, PostMetaValue>;
+
+              const accessModeRaw = getMetaString(courseMetaObject, "lms_course_access_mode") ?? "open";
+              const accessMode = (
+                accessModeRaw === "open" ||
+                accessModeRaw === "free" ||
+                accessModeRaw === "buy_now" ||
+                accessModeRaw === "recurring" ||
+                accessModeRaw === "closed"
+                  ? accessModeRaw
+                  : "open"
+              ) as LmsCourseAccessMode;
+
+              const cascadeToSteps = getMetaBoolean(courseMetaObject, "lms_course_access_cascade") ?? true;
+              const appliesToCurrentResource = isCourse ? true : Boolean(isStep && cascadeToSteps);
+              const buyNowUrl = getMetaString(courseMetaObject, "lms_course_buy_now_url");
+
+              lmsCourseAccess = {
+                courseId,
+                courseSlug,
+                accessMode,
+                cascadeToSteps,
+                buyNowUrl,
+                appliesToCurrentResource,
+              };
+            }
+          }
+
+          const decision = evaluateContentAccess({
+            subject: {
+              organizationId: organizationId ? String(organizationId) : null,
+              enabledPluginIds: ctx.enabledPluginIds,
+              userId: convexUserId ? String(convexUserId) : null,
+              contactId: null,
+              isAuthenticated,
+            },
+            resource: {
+              contentType: "post",
+              contentId: String(post._id),
+            },
+            data: {
+              contentRules,
+              lmsCourseAccess,
+              tagKeys,
+              roleNames,
+              permissionGrants,
+              userRole: viewer?.role ?? null,
+              post,
+              postType,
+              postMeta: postMetaObject,
+            },
+          });
           if (debugRouting) {
             console.log("[frontendRouting] content access: decision", decision);
           }
 
-          if (decision.kind === "deny" || decision.kind === "redirect") {
+          if (decision.kind === "redirect") {
+            const to = String(decision.to ?? "").trim();
+            const safe =
+              to.startsWith("/") || to.startsWith("https://") || to.startsWith("http://")
+                ? to
+                : "/";
+            redirect(safe);
+          }
+
+          if (decision.kind === "deny") {
             const currentPath = `/${segments.join("/")}`;
             const signInHref = `/auth/sign-in?redirect_url=${encodeURIComponent(
               currentPath,
             )}`;
+
+            const rawActions = applyFilters(
+              FRONTEND_ACCESS_DENIED_ACTIONS_FILTER,
+              [],
+              {
+                decision,
+                signInHref,
+                post,
+                postType,
+                postMeta: postMetaObject,
+                lmsCourseAccess,
+                enabledPluginIds: ctx.enabledPluginIds,
+              },
+            );
+            const actions = Array.isArray(rawActions)
+              ? rawActions
+                  .filter((a) => a && typeof a === "object")
+                  .map((a: any) => ({
+                    id: String(a.id ?? ""),
+                    label: String(a.label ?? ""),
+                    href: String(a.href ?? ""),
+                    variant:
+                      a.variant === "default" || a.variant === "outline"
+                        ? a.variant
+                        : undefined,
+                    external: a.external === true,
+                    reload: a.reload === true,
+                  }))
+                  .filter((a) => a.id && a.label && a.href)
+              : [];
+
             return (
               <AccessDeniedPage
                 reason={decision.reason}
@@ -698,6 +856,7 @@ export function registerCoreRouteHandlers(): void {
                   typeof post.title === "string" ? post.title : undefined
                 }
                 signInHref={signInHref}
+                actions={actions}
               />
             );
           }

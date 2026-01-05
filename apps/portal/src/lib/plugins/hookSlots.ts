@@ -46,6 +46,11 @@ export const FRONTEND_CONTENT_ACCESS_PROVIDERS_FILTER =
 export const FRONTEND_CONTENT_ACCESS_RULE_SOURCES_FILTER =
   "frontend.contentAccess.ruleSources";
 
+// Portal (frontend) access denied UI extension points
+// Plugins can contribute additional CTA buttons/links shown on the AccessDeniedPage.
+export const FRONTEND_ACCESS_DENIED_ACTIONS_FILTER =
+  "frontend.accessDenied.actions";
+
 // Admin edit meta box extension point for content access UI.
 // Plugins can contribute additional UI sections (e.g. CRM marketing tags) to the core Content Access metabox.
 export const ADMIN_CONTENT_ACCESS_SECTIONS_FILTER = "admin.contentAccess.sections";

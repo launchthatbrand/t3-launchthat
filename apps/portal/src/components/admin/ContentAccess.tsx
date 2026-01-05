@@ -19,15 +19,15 @@ import { toast } from "@acme/ui/toast";
 
 import type { ContentAccessAdminSection } from "~/lib/access/contentAccessAdminSections";
 import type { NormalizedContentAccessRules } from "~/lib/access/contentAccessMeta";
+import { useTenant } from "~/context/TenantContext";
 import {
   isEffectivelyEmptyContentAccessRules,
   normalizeContentAccessRules,
   parseContentAccessMetaValue,
   serializeContentAccessRules,
 } from "~/lib/access/contentAccessMeta";
-import { ADMIN_CONTENT_ACCESS_SECTIONS_FILTER } from "~/lib/plugins/hookSlots";
 import { pluginDefinitions } from "~/lib/plugins/definitions";
-import { useTenant } from "~/context/TenantContext";
+import { ADMIN_CONTENT_ACCESS_SECTIONS_FILTER } from "~/lib/plugins/hookSlots";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 
 export type AccessRule = NormalizedContentAccessRules;
@@ -176,7 +176,10 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
         if (isLmsComponent) {
           await saveLmsMeta({ id: contentId, meta: { content_access: value } });
         } else {
-          await saveCoreMeta({ id: contentId, meta: { content_access: value } });
+          await saveCoreMeta({
+            id: contentId,
+            meta: { content_access: value },
+          });
         }
       }
       setIsDirty(false);
@@ -233,31 +236,47 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 p-0">
-        {/* Public Access Checkbox */}
+        {/* Login gate */}
         <div className="flex items-center space-x-2">
+          {/*
+            UX rule:
+            - Default is public (no meta stored)
+            - Only show/enable restrictions if login is required
+          */}
           <Checkbox
-            id="isPublic"
-            checked={accessRules.isPublic}
-            onCheckedChange={(checked) =>
-              setAccessRulesDirty((prev) => ({
-                ...prev,
-                isPublic: checked as boolean,
-              }))
-            }
+            id="requiresLogin"
+            checked={!accessRules.isPublic}
+            onCheckedChange={(checked) => {
+              const requiresLogin = checked === true;
+              setAccessRulesDirty((prev) => {
+                if (!requiresLogin) {
+                  // If it's public, other restrictions are meaningless; clear them.
+                  return {
+                    ...prev,
+                    isPublic: true,
+                    requiredRoleNames: [],
+                    requiredPermissionKeys: [],
+                    requiredTags: { mode: "some", tagIds: [] },
+                    excludedTags: { mode: "some", tagIds: [] },
+                  };
+                }
+                return { ...prev, isPublic: false };
+              });
+            }}
           />
-          <Label htmlFor="isPublic" className="text-sm font-medium">
-            Publicly Accessible
+          <Label htmlFor="requiresLogin" className="text-sm font-medium">
+            Users must be logged in to view this page
           </Label>
         </div>
 
-        {accessRules.isPublic && (
+        {accessRules.isPublic ? (
           <div className="rounded-lg border border-green-200 bg-green-50 p-4">
             <p className="text-sm text-green-800">
-              This content is publicly accessible to all users. Additional
-              restrictions are disabled.
+              This content is public. Turn on “Users must be logged in…” to add
+              role/tag/permission restrictions.
             </p>
           </div>
-        )}
+        ) : null}
 
         {/* Core access controls (always available) */}
         <div
@@ -277,7 +296,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
                   <X
                     className="h-3 w-3 cursor-pointer"
                     onClick={() =>
-                  setAccessRulesDirty((prev) => ({
+                      setAccessRulesDirty((prev) => ({
                         ...prev,
                         requiredRoleNames: (
                           prev.requiredRoleNames ?? []

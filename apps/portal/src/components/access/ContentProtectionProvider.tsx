@@ -128,20 +128,6 @@ export function ContentProtectionProvider({
     [pathname],
   );
 
-  // Pre-load access for current page content (only when we have content)
-  const shouldLoadPageRules = !!(
-    currentPageContent.contentType && currentPageContent.contentId
-  );
-  const currentPageRules = useQuery(
-    api.plugins.lms.contentAccess.queries.getContentAccessRules,
-    shouldLoadPageRules
-      ? {
-          contentType: currentPageContent.contentType,
-          contentId: currentPageContent.contentId,
-        }
-      : "skip",
-  );
-
   // Calculate current page access (memoized to prevent flashing)
   const currentPageAccess = useMemo(() => {
     // Always allow access if no content type (e.g., homepage, general pages)
@@ -149,42 +135,21 @@ export function ContentProtectionProvider({
       return { hasAccess: true, isLoading: false };
     }
 
-    // Still loading user or rules
-    if (
-      userLoading ||
-      (shouldLoadPageRules && currentPageRules === undefined)
-    ) {
-      return { hasAccess: true, isLoading: true }; // Optimistic: show content while loading
-    }
-
-    // If CRM is disabled, tag-based rules are not enforced.
-    if (!crmEnabled) {
-      return { hasAccess: true, isLoading: false };
-    }
-
-    // No rules = public access
-    if (!currentPageRules) {
-      return { hasAccess: true, isLoading: false };
-    }
-
-    // Check access with current rules
-    const hasAccess = checkTagAccess(currentPageRules, userTagIds, !!userId);
-
-    return {
-      hasAccess,
-      isLoading: false,
-      reason: hasAccess
-        ? undefined
-        : getAccessDeniedReason(currentPageRules, !!userId),
-    };
+    // NOTE: Frontend access control is now enforced on the server during route
+    // resolution (see `registerCoreRouteHandlers.tsx`). This provider remains
+    // for compatibility with older client components and must never block
+    // rendering nor call removed Convex functions.
+    void crmEnabled;
+    void userLoading;
+    void userTagIds;
+    void userId;
+    return { hasAccess: true, isLoading: false };
   }, [
-    userLoading,
-    currentPageRules,
-    userTagIds,
-    userId,
-    currentPageContent,
-    shouldLoadPageRules,
     crmEnabled,
+    currentPageContent,
+    userId,
+    userLoading,
+    userTagIds,
   ]);
 
   // Cache page access to prevent re-queries on the same content
@@ -202,11 +167,11 @@ export function ContentProtectionProvider({
           contentId: currentPageContent.contentId!,
           hasAccess: currentPageAccess.hasAccess,
           reason: currentPageAccess.reason,
-          rules: currentPageRules,
+          rules: undefined,
         },
       }));
     }
-  }, [currentPageContent, currentPageAccess, currentPageRules]);
+  }, [currentPageContent, currentPageAccess]);
 
   // Core access checking function (memoized)
   const hasAccessToContent = useCallback(

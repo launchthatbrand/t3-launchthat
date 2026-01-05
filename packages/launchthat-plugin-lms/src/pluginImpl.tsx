@@ -9,12 +9,13 @@ import type { ComponentType } from "react";
 
 import type { CourseSummary } from "./frontend/CoursesArchive";
 import type { Id } from "./lib/convexId";
+import { lmsCourseCascadeAccessProvider } from "./access/lmsCourseCascadeAccessProvider";
 import { LmsBadgesMetaBox } from "./admin/metaBoxes/LmsBadgesMetaBox";
 import { LmsQuizPassPercentMetaBox } from "./admin/metaBoxes/LmsQuizPassPercentMetaBox";
 import { AdminLessonCompletionCallout } from "./components/AdminLessonCompletionCallout";
 import { CourseProgress } from "./components/CourseProgress";
-import { FrontendLmsAssistantButton } from "./components/FrontendLmsAssistantButton";
 import { FrontendLessonCompletionCallout } from "./components/FrontendLessonCompletionCallout";
+import { FrontendLmsAssistantButton } from "./components/FrontendLmsAssistantButton";
 import { CertificateViewer } from "./frontend/CertificateViewer";
 import { CourseNav } from "./frontend/CourseNav";
 import { CoursesArchive } from "./frontend/CoursesArchive";
@@ -105,6 +106,11 @@ const LMS_POST_TYPE_SLUG_SET = new Set([
 
 // Portal frontend post-store hook (string constant to avoid portal package coupling)
 const FRONTEND_POST_STORES_FILTER = "frontend.postStores";
+// Portal frontend content-access hook (string constant to avoid portal package coupling)
+const FRONTEND_CONTENT_ACCESS_PROVIDERS_FILTER =
+  "frontend.contentAccess.providers";
+// Portal access denied CTAs hook (string constant to avoid portal package coupling)
+const FRONTEND_ACCESS_DENIED_ACTIONS_FILTER = "frontend.accessDenied.actions";
 
 const FRONTEND_TAXONOMY_TERM_LINK_FILTER = "frontend.single.taxonomy.termLink";
 
@@ -667,6 +673,90 @@ export const createLmsPluginDefinitionImpl = ({
   ],
   hooks: {
     filters: [
+      {
+        hook: FRONTEND_ACCESS_DENIED_ACTIONS_FILTER,
+        acceptedArgs: 2,
+        callback: (value: unknown, context: unknown) => {
+          const actions = Array.isArray(value) ? value : [];
+          if (!context || typeof context !== "object") {
+            return actions;
+          }
+
+          const ctx = context as Record<string, unknown>;
+          const enabledPluginIds = Array.isArray(ctx.enabledPluginIds)
+            ? (ctx.enabledPluginIds as unknown[]).filter(
+                (v): v is string => typeof v === "string",
+              )
+            : [];
+          if (!enabledPluginIds.includes("lms")) {
+            return actions;
+          }
+
+          const lmsCourseAccess = (ctx.lmsCourseAccess ?? null) as {
+            accessMode?: unknown;
+            buyNowUrl?: unknown;
+            courseSlug?: unknown;
+          } | null;
+          if (!lmsCourseAccess) return actions;
+          if (lmsCourseAccess.accessMode !== "buy_now") return actions;
+
+          const raw =
+            typeof lmsCourseAccess.buyNowUrl === "string"
+              ? lmsCourseAccess.buyNowUrl.trim()
+              : "";
+          const courseSlug =
+            typeof lmsCourseAccess.courseSlug === "string" &&
+            lmsCourseAccess.courseSlug.trim().length > 0
+              ? lmsCourseAccess.courseSlug.trim()
+              : "";
+          const href =
+            raw.startsWith("https://") || raw.startsWith("http://")
+              ? raw
+              : raw.startsWith("/")
+                ? raw
+                : courseSlug
+                  ? `/course/${encodeURIComponent(courseSlug)}/purchase`
+                  : "/purchase";
+
+          return [
+            ...actions,
+            {
+              id: "lms.buyNow",
+              label: "Purchase this course",
+              href,
+              variant: "outline",
+              external:
+                href.startsWith("https://") || href.startsWith("http://"),
+              // Force a full navigation so the root layout re-evaluates canvas chrome
+              // for routes like /f/.../checkout.
+              reload: true,
+            },
+          ];
+        },
+      },
+      {
+        hook: FRONTEND_CONTENT_ACCESS_PROVIDERS_FILTER,
+        acceptedArgs: 2,
+        callback: (value: unknown, context: unknown) => {
+          const providers = Array.isArray(value) ? value : [];
+          if (!context || typeof context !== "object") {
+            return providers;
+          }
+
+          const ctx = context as Record<string, unknown>;
+          const enabledPluginIds = Array.isArray(ctx.enabledPluginIds)
+            ? (ctx.enabledPluginIds as unknown[]).filter(
+                (v): v is string => typeof v === "string",
+              )
+            : [];
+
+          if (!enabledPluginIds.includes("lms")) {
+            return providers;
+          }
+
+          return [...providers, lmsCourseCascadeAccessProvider];
+        },
+      },
       {
         hook: FRONTEND_POST_STORES_FILTER,
         acceptedArgs: 2,
