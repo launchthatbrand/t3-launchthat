@@ -22,6 +22,11 @@ const vimeoVideosTable = defineTable({
   .index("by_videoId", ["videoId"])
   .index("by_connection", ["connectionId"])
   .index("by_connection_and_status", ["connectionId", "status"])
+  .index("by_connection_and_status_and_createdAt", [
+    "connectionId",
+    "status",
+    "createdAt",
+  ])
   .index("by_connection_and_videoId", ["connectionId", "videoId"])
   .searchIndex("search_title", {
     searchField: "title",

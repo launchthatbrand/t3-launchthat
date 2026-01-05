@@ -35,7 +35,7 @@ export const lmsCourseCascadeAccessProvider: ContentAccessProvider = {
   id: "lms.courseCascade",
   pluginId: "lms",
   priority: 15,
-  decide: ({ subject, data }): ContentAccessDecision => {
+  decide: ({ subject, data, resource }): ContentAccessDecision => {
     const d = (data ?? {}) as EvalData;
     const ctx = d.lmsCourseAccess ?? null;
     if (!ctx) return { kind: "abstain" };
@@ -43,6 +43,12 @@ export const lmsCourseCascadeAccessProvider: ContentAccessProvider = {
     // Only enforce when the course is not open AND the policy applies to this resource.
     if (!ctx.appliesToCurrentResource) return { kind: "abstain" };
     if (ctx.accessMode === "open") return { kind: "abstain" };
+
+    // Allow logged-out users to view the course landing page itself.
+    // Enforcement should apply to step pages (lesson/topic/quiz) when cascade is enabled.
+    if (resource.contentType === "post" && resource.contentId === ctx.courseId) {
+      return { kind: "abstain" };
+    }
 
     // Minimal enforcement for now: non-open LMS courses require authentication.
     // (Future: "free/buy_now/recurring/closed" can enforce enrollment/purchase.)

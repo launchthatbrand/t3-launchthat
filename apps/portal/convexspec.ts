@@ -4551,6 +4551,12 @@ export type PublicApiType = {
             payload?: string;
           }>
         >;
+        getContactById: FunctionReference<
+          "query",
+          "public",
+          { contactId: string },
+          any
+        >;
         getRagIndexStatusForPost: FunctionReference<
           "query",
           "public",
