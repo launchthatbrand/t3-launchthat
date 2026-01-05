@@ -98,56 +98,34 @@ export const CourseBuilderScreen = ({
       : "skip",
   ) as LmsBuilderCertificate[] | undefined;
 
-  const addLessonToCourse = useMutation(
-    lmsMutations.addLessonToCourse,
-  );
+  const addLessonToCourse = useMutation(lmsMutations.addLessonToCourse);
   const reorderLessonsInCourse = useMutation(
     lmsMutations.reorderLessonsInCourse,
   );
-  const attachTopicToLesson = useMutation(
-    lmsMutations.attachTopicToLesson,
-  );
-  const reorderTopicsInLesson = useMutation(
-    lmsMutations.reorderTopicsInLesson,
-  );
-  const attachQuizToLesson = useMutation(
-    lmsMutations.attachQuizToLesson,
-  );
+  const attachTopicToLesson = useMutation(lmsMutations.attachTopicToLesson);
+  const reorderTopicsInLesson = useMutation(lmsMutations.reorderTopicsInLesson);
+  const attachQuizToLesson = useMutation(lmsMutations.attachQuizToLesson);
   const attachFinalQuizToCourse = useMutation(
     lmsMutations.attachFinalQuizToCourse,
   );
   const removeLessonFromCourse = useMutation(
     lmsMutations.removeLessonFromCourseStructure,
   );
-  const removeTopicFromLesson = useMutation(
-    lmsMutations.removeTopicFromLesson,
-  );
-  const removeQuizFromLesson = useMutation(
-    lmsMutations.removeQuizFromLesson,
-  );
+  const removeTopicFromLesson = useMutation(lmsMutations.removeTopicFromLesson);
+  const removeQuizFromLesson = useMutation(lmsMutations.removeQuizFromLesson);
   const removeFinalQuizFromCourse = useMutation(
     lmsMutations.removeFinalQuizFromCourse,
   );
-  const createLessonFromVimeo = useMutation(
-    lmsMutations.createLessonFromVimeo,
-  );
+  const createLessonFromVimeo = useMutation(lmsMutations.createLessonFromVimeo);
 
-  const setCourseCertificate = useMutation(
-    lmsMutations.setCourseCertificate,
+  const setCourseCertificate = useMutation(lmsMutations.setCourseCertificate);
+  const setLessonCertificate = useMutation(lmsMutations.setLessonCertificate);
+  const setTopicCertificate = useMutation(lmsMutations.setTopicCertificate);
+  const createTopicFromVimeo = useMutation(lmsMutations.createTopicFromVimeo);
+  const createQuizFromVimeo = useMutation(lmsMutations.createQuizFromVimeo);
+  const startVimeoSync = useMutation(
+    api.plugins.vimeo.mutations.startVimeoSync,
   );
-  const setLessonCertificate = useMutation(
-    lmsMutations.setLessonCertificate,
-  );
-  const setTopicCertificate = useMutation(
-    lmsMutations.setTopicCertificate,
-  );
-  const createTopicFromVimeo = useMutation(
-    lmsMutations.createTopicFromVimeo,
-  );
-  const createQuizFromVimeo = useMutation(
-    lmsMutations.createQuizFromVimeo,
-  );
-  const startVimeoSync = useMutation(api.plugins.vimeo.mutations.startVimeoSync);
   const vimeoEnabledOption = useQuery(
     api.core.options.get,
     organizationId
@@ -314,26 +292,30 @@ export const CourseBuilderScreen = ({
       editUrl: buildEditUrl("certificates", certificate._id),
     });
 
-    const lessonCertificateIds: Record<string, string | null> = Object.fromEntries(
-      (courseData.attachedLessons ?? []).map((lesson) => [
-        lesson._id,
-        lesson.certificateId ?? null,
-      ]),
-    );
+    const lessonCertificateIds: Record<string, string | null> =
+      Object.fromEntries(
+        (courseData.attachedLessons ?? []).map((lesson) => [
+          lesson._id,
+          lesson.certificateId ?? null,
+        ]),
+      );
 
-    const topicCertificateIds: Record<string, string | null> = Object.fromEntries(
-      (courseData.attachedTopics ?? []).map((topic) => [
-        topic._id,
-        topic.certificateId ?? null,
-      ]),
-    );
+    const topicCertificateIds: Record<string, string | null> =
+      Object.fromEntries(
+        (courseData.attachedTopics ?? []).map((topic) => [
+          topic._id,
+          topic.certificateId ?? null,
+        ]),
+      );
 
     return {
       mainContentItems: [...lessonItems, ...finalQuizzes],
       availableLessons: (availableLessons ?? []).map(normalizeLesson),
       availableTopics: (availableTopics ?? []).map(normalizeTopic),
       availableQuizzes: (availableQuizzes ?? []).map(normalizeQuiz),
-      availableCertificates: (availableCertificates ?? []).map(normalizeCertificate),
+      availableCertificates: (availableCertificates ?? []).map(
+        normalizeCertificate,
+      ),
 
       courseCertificateId: courseData.course.certificateId ?? null,
       lessonCertificateIds,
@@ -598,7 +580,12 @@ export const CourseBuilderScreen = ({
         toast.error("Failed to create lesson from Vimeo video.");
       }
     },
-    [courseId, createLessonFromVimeo, handleAutoAttachVimeoThumbnail, organizationId],
+    [
+      courseId,
+      createLessonFromVimeo,
+      handleAutoAttachVimeoThumbnail,
+      organizationId,
+    ],
   );
 
   const handleCreateTopicFromVimeo = useCallback(
@@ -666,7 +653,8 @@ export const CourseBuilderScreen = ({
       ? ({
           organizationId: organizationId as Id<"organizations">,
           paginationOpts: { cursor: vimeoCursor, numItems: 60 },
-          search: vimeoSearch.trim().length > 0 ? vimeoSearch.trim() : undefined,
+          search:
+            vimeoSearch.trim().length > 0 ? vimeoSearch.trim() : undefined,
         } as const)
       : "skip",
   );
@@ -692,7 +680,15 @@ export const CourseBuilderScreen = ({
       return;
     }
 
-    const normalized = (vimeoPage.page ?? []).map((row) => ({
+    type VimeoVideoRow = {
+      videoId: string;
+      title: string;
+      description?: string | null;
+      embedUrl?: string | null;
+      thumbnailUrl?: string | null;
+    };
+
+    const normalized = (vimeoPage.page ?? []).map((row: VimeoVideoRow) => ({
       videoId: row.videoId,
       title: row.title,
       description: row.description ?? undefined,
@@ -788,7 +784,7 @@ export const CourseBuilderScreen = ({
         onVimeoSearchChange={isVimeoEnabled ? setVimeoSearch : undefined}
         hasMoreVimeoVideos={isVimeoEnabled ? hasMoreVimeoVideos : undefined}
         onLoadMoreVimeoVideos={isVimeoEnabled ? handleLoadMoreVimeo : undefined}
-        vimeoSyncStatus={isVimeoEnabled ? vimeoSyncStatus ?? null : undefined}
+        vimeoSyncStatus={isVimeoEnabled ? (vimeoSyncStatus ?? null) : undefined}
         onStartVimeoSync={isVimeoEnabled ? handleStartVimeoSync : undefined}
         onCreateLessonFromVimeo={handleCreateLessonFromVimeo}
         onCreateTopicFromVimeo={handleCreateTopicFromVimeo}
