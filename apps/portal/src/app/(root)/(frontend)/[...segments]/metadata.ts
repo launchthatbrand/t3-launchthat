@@ -385,9 +385,16 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
               );
 
             if (entryMimeType.startsWith("image/")) {
+              // Prefer the direct URL when present to avoid redirect chains in the OG renderer.
+              if (/^https?:\/\//i.test(url)) {
+                return url;
+              }
               return `${origin}/api/media/${mediaItemId}`;
             }
             if (isConvexStorageUrl && entryTitle && !isLikelyNonImageTitle) {
+              if (/^https?:\/\//i.test(url)) {
+                return url;
+              }
               return `${origin}/api/media/${mediaItemId}`;
             }
 
@@ -689,9 +696,16 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
             );
 
           if (entryMimeType.startsWith("image/")) {
+            // Prefer the direct URL when present to avoid redirect chains in the OG renderer.
+            if (/^https?:\/\//i.test(url)) {
+              return url;
+            }
             return `${origin}/api/media/${mediaItemId}`;
           }
           if (isConvexStorageUrl && entryTitle && !isLikelyNonImageTitle) {
+            if (/^https?:\/\//i.test(url)) {
+              return url;
+            }
             return `${origin}/api/media/${mediaItemId}`;
           }
 
