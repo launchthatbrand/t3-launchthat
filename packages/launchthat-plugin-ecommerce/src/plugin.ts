@@ -54,7 +54,9 @@ export const createEcommercePluginDefinition = (
               priority: 5,
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               resolve: async (routeCtx: any) => {
-                const enabledPluginIds = Array.isArray(routeCtx?.enabledPluginIds)
+                const enabledPluginIds = Array.isArray(
+                  routeCtx?.enabledPluginIds,
+                )
                   ? (routeCtx.enabledPluginIds as string[])
                   : [];
                 if (!enabledPluginIds.includes(PLUGIN_ID)) {
@@ -106,15 +108,21 @@ export const createEcommercePluginDefinition = (
                   createElement(CheckoutClient as any, {
                     organizationId,
                     funnelId:
-                      typeof step?.funnelId === "string" ? step.funnelId : undefined,
+                      typeof step?.funnelId === "string"
+                        ? step.funnelId
+                        : undefined,
                     funnelSlug:
                       typeof step?.funnelSlug === "string"
                         ? step.funnelSlug
                         : undefined,
                     stepId:
-                      typeof step?.stepId === "string" ? step.stepId : undefined,
+                      typeof step?.stepId === "string"
+                        ? step.stepId
+                        : undefined,
                     stepSlug:
-                      typeof step?.stepSlug === "string" ? step.stepSlug : undefined,
+                      typeof step?.stepSlug === "string"
+                        ? step.stepSlug
+                        : undefined,
                     stepKind:
                       typeof step?.kind === "string" ? step.kind : undefined,
                     orderId: typeof orderId === "string" ? orderId : undefined,
@@ -140,7 +148,9 @@ export const createEcommercePluginDefinition = (
               priority: 5,
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               resolve: async (metaCtx: any) => {
-                const enabledPluginIds = Array.isArray(metaCtx?.enabledPluginIds)
+                const enabledPluginIds = Array.isArray(
+                  metaCtx?.enabledPluginIds,
+                )
                   ? (metaCtx.enabledPluginIds as string[])
                   : [];
                 if (!enabledPluginIds.includes(PLUGIN_ID)) {
@@ -191,6 +201,32 @@ export const createEcommercePluginDefinition = (
                 );
                 if (!step) return null;
 
+                const toTitleCase = (raw: string): string => {
+                  const cleaned = raw
+                    .trim()
+                    .replace(/[-_]+/g, " ")
+                    .replace(/\s+/g, " ");
+                  if (!cleaned) return "";
+                  return cleaned
+                    .split(" ")
+                    .map((word) =>
+                      word ? word[0]!.toUpperCase() + word.slice(1) : "",
+                    )
+                    .join(" ");
+                };
+
+                const funnel: any = await fetchQuery(
+                  api.plugins.commerce.funnels.queries.getFunnelBySlug,
+                  {
+                    slug: funnelSlug,
+                    ...(organizationId ? { organizationId } : {}),
+                  },
+                );
+                const funnelTitle =
+                  typeof funnel?.title === "string" && funnel.title.trim()
+                    ? funnel.title.trim()
+                    : toTitleCase(funnelSlug);
+
                 const postId =
                   typeof step?.stepId === "string" ? step.stepId : null;
                 if (!postId) return null;
@@ -204,12 +240,17 @@ export const createEcommercePluginDefinition = (
                 );
 
                 const kind = typeof step?.kind === "string" ? step.kind : "";
-                const pageTitle =
+                const stepTitle =
                   kind === "checkout"
                     ? "Checkout"
-                    : typeof step?.stepTitle === "string" && step.stepTitle.trim()
+                    : typeof step?.stepTitle === "string" &&
+                        step.stepTitle.trim()
                       ? step.stepTitle.trim()
                       : "Funnel";
+                const pageTitle =
+                  funnelTitle && stepTitle
+                    ? `${funnelTitle} | ${stepTitle}`
+                    : stepTitle || funnelTitle || "Funnel";
 
                 const canonicalPath = `/${segments.join("/")}`;
 
@@ -219,7 +260,7 @@ export const createEcommercePluginDefinition = (
                   postMeta: Array.isArray(postMeta) ? postMeta : [],
                   // Checkout funnels should not be indexed by default.
                   robots: { index: false, follow: false },
-                  openGraphLabel: "Checkout",
+                  openGraphLabel: stepTitle || "Checkout",
                 });
               },
             },
