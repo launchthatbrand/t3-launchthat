@@ -33,6 +33,22 @@ export const getCart = query({
     const getMetaValue = (meta: Array<{ key: string; value?: unknown }>, key: string) =>
       meta.find((m) => m.key === key)?.value;
 
+    const safeParseStringArray = (value: unknown): string[] => {
+      if (typeof value !== "string") return [];
+      const raw = value.trim();
+      if (!raw) return [];
+      try {
+        const parsed = JSON.parse(raw) as unknown;
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+          .map((v) => (typeof v === "string" ? v : ""))
+          .map((v) => v.trim())
+          .filter(Boolean);
+      } catch {
+        return [];
+      }
+    };
+
     const enrichedItems: any[] = [];
     for (const row of items) {
       const product = row?.productPostId
@@ -48,6 +64,8 @@ export const getCart = query({
       const regularPrice = getMetaValue(productMeta, metaKey("product.regularPrice"));
       const salePrice = getMetaValue(productMeta, metaKey("product.salePrice"));
       const isVirtual = getMetaValue(productMeta, metaKey("product.isVirtual")) === true;
+      const featuresRaw = getMetaValue(productMeta, metaKey("product.features"));
+      const features = safeParseStringArray(featuresRaw);
       const resolvedPrice =
         typeof salePrice === "number"
           ? salePrice
@@ -70,6 +88,7 @@ export const getCart = query({
               featuredImageUrl: product.featuredImageUrl ?? null,
               postTypeSlug: product.postTypeSlug,
               isVirtual,
+              features,
             }
           : null,
         unitPrice: resolvedPrice,

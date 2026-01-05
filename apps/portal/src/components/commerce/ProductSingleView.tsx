@@ -26,6 +26,22 @@ const buildPostMetaObject = (
   return obj;
 };
 
+const safeParseStringArray = (value: unknown): string[] => {
+  if (typeof value !== "string") return [];
+  const raw = value.trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((v) => (typeof v === "string" ? v : ""))
+      .map((v) => v.trim())
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+};
+
 export async function ProductSingleView({
   post,
   organizationId,
@@ -44,6 +60,7 @@ export async function ProductSingleView({
       })) as Array<{ key: string; value?: PostMetaValue }>)
     : [];
   const postMetaObject = buildPostMetaObject(postMetaRows ?? []);
+  const features = safeParseStringArray(postMetaObject["product.features"]);
 
   const lexicalContent = parseLexicalSerializedState(post?.content ?? null);
   const rawContent = isLexicalSerializedStateString(post?.content)
@@ -62,6 +79,13 @@ export async function ProductSingleView({
               <h1 className="text-4xl font-bold">{post?.title ?? "Product"}</h1>
               {post?.excerpt ? (
                 <p className="text-muted-foreground text-lg">{post.excerpt}</p>
+              ) : null}
+              {features.length > 0 ? (
+                <ul className="text-muted-foreground list-disc space-y-1 pl-5 text-sm">
+                  {features.map((feature) => (
+                    <li key={feature}>{feature}</li>
+                  ))}
+                </ul>
               ) : null}
               {organizationId ? (
                 <TaxonomyBadges

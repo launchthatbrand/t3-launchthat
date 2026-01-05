@@ -271,6 +271,29 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   // with slug `:value`. Otherwise, return safe, non-indexable metadata.
   const rootSegment = segments[0] ?? "";
   const secondSegment = segments[1] ?? "";
+  // Special-case funnel routes: `/f/:funnelSlug/:stepSlug/...`
+  // These are handled by the Commerce plugin route handler, not by post resolution.
+  // If we fall through to `resolveFrontendPostForRequest`, we'll incorrectly return
+  // "Not Found" metadata even though the page renders (and the browser tab shows it).
+  if (rootSegment === "f") {
+    const lastSegment = segments[segments.length - 1] ?? "";
+    const pageTitle =
+      lastSegment === "checkout"
+        ? "Checkout"
+        : lastSegment
+          ? "Funnel"
+          : "Checkout";
+    return {
+      metadataBase: new URL(origin),
+      title: resolveTitleWithSiteSettings({
+        pageTitle,
+        siteTitle: siteTitle ?? tenant?.name ?? undefined,
+        titleFormat,
+        separator,
+      }),
+      robots: { index: false, follow: false },
+    };
+  }
   if (
     (rootSegment === "disclaimer" || rootSegment === "disclaimers") &&
     typeof secondSegment === "string" &&

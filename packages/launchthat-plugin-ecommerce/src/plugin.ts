@@ -249,7 +249,8 @@ export const createEcommercePluginDefinition = (
             "Configure pricing, inventory, shipping, and other product settings.",
           location: "main",
           priority: 5,
-          fieldKeys: [],
+          // Register any meta keys written by the custom renderer so Admin saves persist them.
+          fieldKeys: ["product.features"],
           rendererKey: "ecommerce.product.details",
         },
       ],
@@ -537,6 +538,15 @@ export const createEcommercePluginDefinition = (
           key: "product.attributesJson",
           name: "Attributes (JSON)",
           type: "textarea",
+          readOnly: false,
+        },
+        {
+          key: "product.features",
+          name: "Features",
+          description:
+            "Bullet list features shown on the product page and checkout summary. Stored as a JSON string array.",
+          type: "text",
+          required: false,
           readOnly: false,
         },
         {

@@ -53,6 +53,7 @@ type CartItem = {
     slug?: string;
     isVirtual?: boolean;
     featuredImageUrl?: string;
+    features?: string[];
   } | null;
 };
 
@@ -223,6 +224,14 @@ const OrderSummary = ({
                       <span>·</span>
                       <span>{formatMoney(unit)} each</span>
                     </div>
+                    {Array.isArray(item.product?.features) &&
+                    item.product!.features!.length > 0 ? (
+                      <ul className="text-muted-foreground mt-2 list-disc space-y-1 pl-4 text-xs">
+                        {item.product!.features!.map((feature) => (
+                          <li key={feature}>{feature}</li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </div>
                 </div>
                 <div className="text-sm font-semibold">{formatMoney(line)}</div>

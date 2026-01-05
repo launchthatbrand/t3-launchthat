@@ -1,7 +1,7 @@
 "use client";
 
 import type { PluginMetaBoxRendererProps } from "launchthat-plugin-core";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
@@ -19,6 +19,8 @@ import { Switch } from "@acme/ui/switch";
 
 type ProductType = "simple" | "external" | "grouped";
 type StockStatus = "instock" | "outofstock" | "onbackorder";
+
+const PRODUCT_FEATURES_KEY = "product.features";
 
 const PRODUCT_TYPE_OPTIONS: Array<{ label: string; value: ProductType }> = [
   { label: "Simple product", value: "simple" },
@@ -39,6 +41,25 @@ const asString = (value: unknown): string => {
 };
 
 const asBoolean = (value: unknown): boolean => value === true;
+
+const safeParseStringArray = (value: unknown): string[] => {
+  if (typeof value !== "string") return [];
+  const raw = value.trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((v) => (typeof v === "string" ? v : ""))
+      .map((v) => v.trim())
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+};
+
+const serializeStringArray = (values: string[]): string =>
+  JSON.stringify(values.map((v) => v.trim()).filter(Boolean));
 
 export function ProductDetailsMetaBox({
   getValue,
@@ -84,6 +105,34 @@ export function ProductDetailsMetaBox({
       }
       const parsed = Number(trimmed);
       setValue(key, Number.isFinite(parsed) ? parsed : null);
+    },
+    [setValue],
+  );
+
+  const persistedFeatures = useMemo(
+    () => safeParseStringArray(getValue(PRODUCT_FEATURES_KEY)),
+    [getValue],
+  );
+  const [features, setFeatures] = useState<string[]>(persistedFeatures);
+
+  useEffect(() => {
+    // If the user has a draft/empty row in-progress, don't clobber their local edits
+    // from the persisted meta (which intentionally strips empty items).
+    const hasDraftRow = features.some((f) => f.trim().length === 0);
+    if (hasDraftRow) return;
+    setFeatures(persistedFeatures);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [persistedFeatures.join("\u0000")]);
+
+  const persistFeatures = useCallback(
+    (next: string[]) => {
+      setFeatures(next);
+      const normalized = next.map((v) => v.trim()).filter(Boolean);
+      if (normalized.length === 0) {
+        setValue(PRODUCT_FEATURES_KEY, null);
+        return;
+      }
+      setValue(PRODUCT_FEATURES_KEY, serializeStringArray(normalized));
     },
     [setValue],
   );
@@ -148,6 +197,7 @@ export function ProductDetailsMetaBox({
       <Tabs defaultValue="general" className="w-full">
         <TabsList className="flex h-9 w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="features">Features</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="shipping">Shipping</TabsTrigger>
           <TabsTrigger value="linked">Linked Products</TabsTrigger>
@@ -211,6 +261,75 @@ export function ProductDetailsMetaBox({
                 }
                 disabled={!canEdit}
               />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="features" className="space-y-4 pt-3">
+          <div className="space-y-2">
+            <div>
+              <Label className="text-base">Features</Label>
+              <p className="text-muted-foreground text-sm">
+                Add bullet-point features that show on the product page and in
+                checkout order summaries.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {features.length === 0 ? (
+                <div className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
+                  No features yet.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {features.map((feature, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Input
+                        value={feature}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          const next = [...features];
+                          next[idx] = e.currentTarget.value;
+                          persistFeatures(next);
+                        }}
+                        placeholder={`Feature ${idx + 1}`}
+                        disabled={!canEdit}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const next = features.filter((_, i) => i !== idx);
+                          persistFeatures(next);
+                        }}
+                        disabled={!canEdit}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setFeatures([...features, ""])}
+                  disabled={!canEdit}
+                >
+                  Add new
+                </Button>
+                {features.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => persistFeatures([])}
+                    disabled={!canEdit}
+                  >
+                    Clear all
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </div>
         </TabsContent>
