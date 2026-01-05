@@ -29,6 +29,8 @@ type LmsCourseAccessContext = {
 
 type EvalData = {
   lmsCourseAccess?: LmsCourseAccessContext | null;
+  userRole?: string | null;
+  lmsAdminBypassCourseAccess?: boolean;
 };
 
 export const lmsCourseCascadeAccessProvider: ContentAccessProvider = {
@@ -39,6 +41,13 @@ export const lmsCourseCascadeAccessProvider: ContentAccessProvider = {
     const d = (data ?? {}) as EvalData;
     const ctx = d.lmsCourseAccess ?? null;
     if (!ctx) return { kind: "abstain" };
+
+    const userRoleRaw =
+      typeof d.userRole === "string" ? d.userRole.trim().toLowerCase() : "";
+    const isAdmin = userRoleRaw === "admin";
+    if (d.lmsAdminBypassCourseAccess === true && isAdmin) {
+      return { kind: "allow", reason: "Admin bypass enabled" };
+    }
 
     // Only enforce when the course is not open AND the policy applies to this resource.
     if (!ctx.appliesToCurrentResource) return { kind: "abstain" };

@@ -44,7 +44,6 @@ import { resolveFrontendTaxonomyArchive } from "./resolveFrontendTaxonomyArchive
 type FetchQuery = typeof convexFetchQuery;
 
 type PostTypeDoc = Doc<"postTypes">;
-type PostFieldDoc = Doc<"postTypeFields">;
 type PostMetaDoc = Doc<"postsMeta">;
 type PostMetaValue = string | number | boolean | null | undefined;
 
@@ -242,47 +241,6 @@ const hasRenderableLexicalContent = (
   return true;
 };
 
-function FilteredContent(props: {
-  lexicalContent: ReturnType<typeof parseLexicalSerializedState>;
-  rawContent: string | null;
-  filterIds: string[];
-  filterContext: any;
-}) {
-  let contentNode: any;
-  if (hasRenderableLexicalContent(props.lexicalContent)) {
-    contentNode = (
-      <EditorViewer
-        editorSerializedState={props.lexicalContent as any}
-        className="prose max-w-none"
-      />
-    );
-  } else if (props.rawContent) {
-    contentNode = (
-      <div
-        className="prose max-w-none"
-        dangerouslySetInnerHTML={{ __html: props.rawContent }}
-      />
-    );
-  } else {
-    contentNode = (
-      <p className="text-muted-foreground flex min-h-32 items-center justify-center rounded-md border border-dashed border-gray-300 p-4 text-center text-sm">
-        No content for this post
-      </p>
-    );
-  }
-
-  if (!props.filterIds.length) return contentNode;
-
-  return (
-    <FrontendContentFilterHost
-      filterIds={props.filterIds}
-      context={props.filterContext}
-    >
-      {contentNode}
-    </FrontendContentFilterHost>
-  );
-}
-
 function PostArchive(props: { postType: PostTypeDoc; posts: Doc<"posts">[] }) {
   const description =
     props.postType.description ??
@@ -354,6 +312,7 @@ function TaxonomyArchive(props: any) {
       ) : (
         <section className="grid gap-6 md:grid-cols-2">
           {props.posts.map((post: any) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             const url = getCanonicalPostPath(post, props.postType, true);
             return (
               <article
@@ -366,7 +325,7 @@ function TaxonomyArchive(props: any) {
                       {props.postType.name}
                     </p>
                     <h2 className="text-foreground text-2xl font-semibold">
-                      {post.title || "Untitled"}
+                      {post.title ?? "Untitled"}
                     </h2>
                   </div>
                   {post.excerpt ? (
@@ -418,6 +377,7 @@ function TaxonomyArchiveGrouped(props: any) {
                 </div>
                 <div className="grid gap-6 md:grid-cols-2">
                   {section.posts.map((post: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
                     const url = getCanonicalPostPath(
                       post,
                       section.postType,
@@ -434,7 +394,7 @@ function TaxonomyArchiveGrouped(props: any) {
                               {section.postType.name}
                             </p>
                             <h3 className="text-foreground text-xl font-semibold">
-                              {post.title || "Untitled"}
+                              {post.title ?? "Untitled"}
                             </h3>
                           </div>
                           {post.excerpt ? (
@@ -604,6 +564,7 @@ export function registerCoreRouteHandlers(): void {
             organizationId: (ctx.organizationId ?? null) as any,
             searchParams: ctx.searchParams,
             fetchQuery: (await import("./fetchQueryAdapter")).adaptFetchQuery(
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
               ctx.fetchQuery as any,
             ) as any,
             getPostTypeBySingleSlugKey: (ctx.api as any).core.postTypes.queries
@@ -659,6 +620,7 @@ export function registerCoreRouteHandlers(): void {
             key: string;
             value?: string | number | boolean | null;
           }[];
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
           const postMetaMap = buildPostMetaMap(postMeta as any);
           const postMetaObject = Object.fromEntries(
             postMetaMap.entries(),
@@ -692,12 +654,18 @@ export function registerCoreRouteHandlers(): void {
               ...(organizationId ? { orgId: organizationId } : {}),
             },
           )) as Doc<"options">[];
-          const optionMap = new Map(
-            (siteOptions ?? []).map((o) => [o.metaKey, Boolean(o.metaValue)]),
-          );
-
           const convexUserId = viewer?._id ?? null;
           const isAuthenticated = Boolean(convexUserId);
+
+          // LMS global settings (stored under core options).
+          const lmsSettingsValue = (siteOptions ?? []).find(
+            (o) => o.metaKey === "plugin.lms.settings",
+          )?.metaValue;
+          const lmsAdminBypassCourseAccess =
+            typeof (lmsSettingsValue as any)?.adminBypassCourseAccess ===
+            "boolean"
+              ? Boolean((lmsSettingsValue as any)?.adminBypassCourseAccess)
+              : false;
 
           // Content access rules: stored as a single JSON blob in postmeta.
           const contentRules = parseContentAccessMetaValue(
@@ -730,8 +698,10 @@ export function registerCoreRouteHandlers(): void {
             ? userMarketingTags.flatMap((assignment: any) => {
                 const tag = assignment?.marketingTag;
                 const keys: string[] = [];
-                if (typeof tag?.slug === "string") keys.push(tag.slug);
-                if (typeof tag?._id === "string") keys.push(tag._id);
+                const slug = tag?.slug as unknown;
+                const id = tag?._id as unknown;
+                if (typeof slug === "string") keys.push(slug);
+                if (typeof id === "string") keys.push(id);
                 return keys;
               })
             : [];
@@ -900,6 +870,7 @@ export function registerCoreRouteHandlers(): void {
             data: {
               contentRules,
               lmsCourseAccess,
+              lmsAdminBypassCourseAccess,
               tagKeys,
               roleNames,
               permissionGrants,
@@ -1005,6 +976,7 @@ export function registerCoreRouteHandlers(): void {
             ? findPostTypeBySlug(post.postTypeSlug)
             : null;
 
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
           return await renderFrontendResolvedPost({
             post,
             postType,
