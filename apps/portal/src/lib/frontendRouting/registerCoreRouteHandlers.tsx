@@ -666,7 +666,15 @@ export function registerCoreRouteHandlers(): void {
 
           // ---- Frontend access control (post-type routes) ----
           // Evaluate access before rendering the resolved post.
-          const { userId: clerkUserId } = await auth();
+          // Note: For bot UAs (e.g. facebookexternalhit), middleware bypasses Clerk.
+          // In that mode `auth()` can throw; treat it as logged-out so we still render public HTML.
+          let clerkUserId: string | null = null;
+          try {
+            const authState = await auth();
+            clerkUserId = authState?.userId ?? null;
+          } catch {
+            clerkUserId = null;
+          }
           const viewer = clerkUserId
             ? await (ctx.fetchQuery as any)(
                 (ctx.api as any).core.users.queries.getUserByClerkId,
