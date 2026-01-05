@@ -96,6 +96,11 @@ function GeneralTabContent() {
                 <div className="text-muted-foreground">Name</div>
                 <div className="font-medium">{user.name ?? "—"}</div>
               </div>
+              <Separator />
+              <div className="flex items-center justify-between gap-4">
+                <div className="text-muted-foreground">Organization role</div>
+                <div className="font-medium">{user.role ?? "viewer"}</div>
+              </div>
             </>
           )}
         </CardContent>
