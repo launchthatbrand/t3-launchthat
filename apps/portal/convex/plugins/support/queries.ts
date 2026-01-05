@@ -295,6 +295,25 @@ export const listConversationEvents = query({
   },
 });
 
+/**
+ * Fetch a CRM contact by ID (used by the Support admin UI).
+ *
+ * Note: Contacts are not exposed as a first-class CRM API in the portal yet,
+ * so Support owns this small bridge query.
+ */
+export const getContactById = query({
+  args: {
+    // Accept as string to avoid coupling Support to whether "contacts" is mounted in this schema
+    // (and to keep `convexspec` generation stable).
+    contactId: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    return await ctx.db.get(args.contactId as any);
+  },
+});
+
 export const getRagIndexStatusForPost = query({
   args: {
     organizationId: v.string(),
