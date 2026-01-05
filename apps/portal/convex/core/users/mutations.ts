@@ -87,7 +87,11 @@ export const internalEnsureUser = internalMutation({
       const newImage =
         typeof identity.picture === "string" ? identity.picture : undefined; // Normalize to string | undefined
 
-      const updates: Partial<{ name: string; image: string | undefined }> = {}; // image can be undefined if not present
+      const updates: Partial<{
+        name: string;
+        image: string | undefined;
+        clerkId: string;
+      }> = {}; // image can be undefined if not present
       if (newName !== existingUser.name) {
         updates.name = newName;
       }
@@ -97,6 +101,10 @@ export const internalEnsureUser = internalMutation({
         (existingUser.image && !newImage)
       ) {
         updates.image = newImage; // This will set it to newImage (which could be string or undefined)
+      }
+      // Backfill Clerk user id for reliable lookups across environments.
+      if (!existingUser.clerkId && typeof identity.subject === "string") {
+        updates.clerkId = identity.subject;
       }
 
       if (Object.keys(updates).length > 0) {
@@ -149,6 +157,7 @@ export const internalEnsureUser = internalMutation({
     try {
       const userId = await ctx.db.insert("users", {
         tokenIdentifier: identity.tokenIdentifier,
+        clerkId: typeof identity.subject === "string" ? identity.subject : undefined,
         name: userName,
         email: userEmail ?? "", // Ensure email field matches schema (e.g., requires string)
         role: userRole,

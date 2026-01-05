@@ -18,12 +18,25 @@ const getUserByClerkId = async (
   _id: Id<"users">;
   organizationId?: Id<"organizations"> | null;
 } | null> => {
-  // Mirrors `core/users/queries:getUserByClerkId` (tokenIdentifier lookup).
-  const tokenIdentifier = `https://topical-raccoon-68.clerk.accounts.dev|${clerkId}`;
+  // Prefer the authenticated Convex identity (works in all environments).
+  const identity = await ctx.auth.getUserIdentity();
+  if (identity?.tokenIdentifier) {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) return null;
+    return {
+      _id: user._id,
+      organizationId: user.organizationId ?? null,
+    };
+  }
+
+  // Fallback to stored Clerk user id (subject).
   const user = await ctx.db
     .query("users")
-    .withIndex("by_token", (q) => q.eq("tokenIdentifier", tokenIdentifier))
-    .unique();
+    .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
+    .first();
   if (!user) return null;
   return {
     _id: user._id,

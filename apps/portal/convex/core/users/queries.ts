@@ -73,22 +73,25 @@ export const getUserByClerkId = query({
     }),
   ),
   handler: async (ctx, args) => {
-    // Get the user based on their Clerk ID (subject)
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq(
-          "tokenIdentifier",
-          `https://topical-raccoon-68.clerk.accounts.dev|${args.clerkId}`,
-        ),
-      )
-      .unique();
-
-    if (!user) {
-      return null;
+    // Prefer the authenticated Convex identity (works in all environments).
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity?.tokenIdentifier) {
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_token", (q) =>
+          q.eq("tokenIdentifier", identity.tokenIdentifier),
+        )
+        .unique();
+      return user ?? null;
     }
 
-    return user;
+    // Fallback: resolve by stored Clerk user id (subject).
+    // Note: this keeps backwards compatibility for code paths that only have a Clerk id.
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+    return user ?? null;
   },
 });
 
