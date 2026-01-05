@@ -6,9 +6,12 @@ import { adaptFetchQuery } from "@/lib/frontendRouting/fetchQueryAdapter";
 import { resolveFrontendPostForRequest } from "@/lib/frontendRouting/resolveFrontendPostForRequest";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
+import { applyFilters } from "@acme/admin-runtime/hooks";
 
 import { ATTACHMENTS_META_KEY } from "~/lib/posts/metaKeys";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
 import { findPostTypeBySlug } from "~/lib/plugins/frontend";
+import { FRONTEND_METADATA_RESOLVERS_FILTER } from "~/lib/plugins/hookSlots";
 import { getCanonicalPostSegments } from "~/lib/postTypes/routing";
 import { SEO_META_KEYS, SEO_OPTION_KEYS } from "~/lib/seo/constants";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
@@ -193,6 +196,30 @@ const buildPostMetaMap = (
   return map;
 };
 
+type PluginOptionDoc = Doc<"options">;
+
+const getEnabledPluginIds = (args: {
+  pluginOptions: PluginOptionDoc[] | undefined;
+}): string[] => {
+  const optionMap = new Map(
+    (args.pluginOptions ?? []).map((o) => [o.metaKey, Boolean(o.metaValue)]),
+  );
+
+  const enabledIds: string[] = [];
+  for (const plugin of pluginDefinitions) {
+    if (!plugin.activation) {
+      enabledIds.push(plugin.id);
+      continue;
+    }
+
+    const stored = optionMap.get(plugin.activation.optionKey);
+    const isEnabled = stored ?? plugin.activation.defaultEnabled ?? false;
+    if (isEnabled) enabledIds.push(plugin.id);
+  }
+
+  return enabledIds;
+};
+
 export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const resolvedParams = await props.params;
   const segments = normalizeSegments(resolvedParams?.segments ?? []);
@@ -263,75 +290,241 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
           | "player")
       : "summary_large_image";
 
-  // Special-case disclaimer signing links: `/disclaimer/:issueId?token=...`
-  // These are handled by the Disclaimers plugin route handler, but this metadata
-  // function traditionally attempts "post resolution" which will explode if the
-  // segment is a Convex ID from a *different* table (e.g. disclaimerIssues).
-  // We only treat `/disclaimer/:value` as a post if a real Disclaimers post exists
-  // with slug `:value`. Otherwise, return safe, non-indexable metadata.
-  const rootSegment = segments[0] ?? "";
-  const secondSegment = segments[1] ?? "";
-  // Special-case funnel routes: `/f/:funnelSlug/:stepSlug/...`
-  // These are handled by the Commerce plugin route handler, not by post resolution.
-  // If we fall through to `resolveFrontendPostForRequest`, we'll incorrectly return
-  // "Not Found" metadata even though the page renders (and the browser tab shows it).
-  if (rootSegment === "f") {
-    const lastSegment = segments[segments.length - 1] ?? "";
-    const pageTitle =
-      lastSegment === "checkout"
-        ? "Checkout"
-        : lastSegment
-          ? "Funnel"
-          : "Checkout";
+  const pluginOptions =
+    ((await fetchQuery(apiAny.core.options.getByType, {
+      type: "site",
+      ...(organizationId ? { orgId: organizationId } : {}),
+    })) as Doc<"options">[]) ?? [];
+
+  const enabledPluginIds = getEnabledPluginIds({ pluginOptions });
+
+  const siteTitleForFormat = siteTitle ?? tenant?.name ?? undefined;
+  const resolveSiteTitle = (pageTitle: string) =>
+    resolveTitleWithSiteSettings({
+      pageTitle,
+      siteTitle: siteTitleForFormat,
+      titleFormat,
+      separator,
+    });
+
+  const buildMetadataFromPostMeta = async (args: {
+    pageTitle: string;
+    canonicalPath: string;
+    postMeta?: Array<{ key: string; value?: string | number | boolean | null }>;
+    robots?: { index: boolean; follow: boolean };
+    openGraphLabel?: string;
+  }): Promise<Metadata> => {
+    const meta = Array.isArray(args.postMeta) ? args.postMeta : [];
+    const postMetaMap = buildPostMetaMap(meta);
+
+    const seoTitle =
+      metaValueToString(postMetaMap.get(SEO_META_KEYS.title))?.trim() ?? "";
+    const seoDescription =
+      metaValueToString(postMetaMap.get(SEO_META_KEYS.description))?.trim() ?? "";
+    const seoCanonical =
+      metaValueToString(postMetaMap.get(SEO_META_KEYS.canonical))?.trim() ?? "";
+    const seoNoindex = metaValueToBoolean(postMetaMap.get(SEO_META_KEYS.noindex));
+    const seoNofollow = metaValueToBoolean(postMetaMap.get(SEO_META_KEYS.nofollow));
+
+    const resolvedTitle = resolveSiteTitle(args.pageTitle);
+    const title = (seoTitle || resolvedTitle || args.pageTitle).trim();
+
+    const description = (seoDescription || siteDescription || "").trim();
+
+    const canonicalUrl = resolveCanonicalUrl({
+      origin,
+      canonicalPath: args.canonicalPath,
+      seoCanonical,
+    });
+
+    const robots = args.robots ?? {
+      index: !(seoNoindex ?? false),
+      follow: !(seoNofollow ?? false),
+    };
+
+    const siteNameForOg = siteTitle ?? tenant?.name ?? "LaunchThat Portal";
+    const ogCardUrl = new URL("/api/og/post", origin);
+    ogCardUrl.searchParams.set("title", title);
+    ogCardUrl.searchParams.set("site", siteNameForOg);
+    if (typeof args.openGraphLabel === "string" && args.openGraphLabel.trim()) {
+      ogCardUrl.searchParams.set("label", args.openGraphLabel.trim());
+    }
+
+    const pickOgBackgroundUrl = async (): Promise<string | null> => {
+      const rawAttachments = metaValueToString(postMetaMap.get(ATTACHMENTS_META_KEY));
+      if (!rawAttachments) return null;
+
+      interface AttachmentMetaEntry {
+        mediaItemId?: string;
+        url?: string;
+        mimeType?: string;
+        title?: string;
+      }
+
+      try {
+        const parsed = JSON.parse(rawAttachments) as unknown;
+        if (!Array.isArray(parsed)) return null;
+        for (const item of parsed) {
+          if (!item || typeof item !== "object") continue;
+          const entry = item as AttachmentMetaEntry;
+
+          const entryMimeType =
+            typeof entry.mimeType === "string" ? entry.mimeType : "";
+          const entryTitle = typeof entry.title === "string" ? entry.title : "";
+
+          const mediaItemId =
+            typeof entry.mediaItemId === "string" ? entry.mediaItemId : null;
+          if (mediaItemId) {
+            const url =
+              typeof entry.url === "string" && entry.url.trim() ? entry.url.trim() : "";
+            const isConvexStorageUrl =
+              url.includes(".convex.cloud/api/storage/") || url.includes("/api/storage/");
+            const isLikelyNonImageTitle =
+              /\.(pdf|mp4|mov|webm|mp3|wav|m4a|zip|rar|7z|docx?|xlsx?|pptx?)$/i.test(
+                entryTitle,
+              );
+
+            if (entryMimeType.startsWith("image/")) {
+              return `${origin}/api/media/${mediaItemId}`;
+            }
+            if (isConvexStorageUrl && entryTitle && !isLikelyNonImageTitle) {
+              return `${origin}/api/media/${mediaItemId}`;
+            }
+
+            const media = await fetchQuery(apiAny.core.media.queries.getMediaItem, {
+              id: mediaItemId as unknown as Id<"mediaItems">,
+            });
+            const mimeType =
+              media && typeof (media as { mimeType?: unknown }).mimeType === "string"
+                ? ((media as { mimeType: string }).mimeType ?? "")
+                : "";
+            if (mimeType.startsWith("image/")) {
+              return `${origin}/api/media/${mediaItemId}`;
+            }
+          }
+
+          const url =
+            typeof entry.url === "string" && entry.url.trim() ? entry.url.trim() : "";
+          if (!url) continue;
+
+          const looksLikeImageUrl =
+            /\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i.test(url) ||
+            url.includes("vimeocdn.com");
+          if (looksLikeImageUrl) {
+            return toAbsoluteUrl(origin, url);
+          }
+        }
+      } catch {
+        // ignore
+      }
+      return null;
+    };
+
+    const ogBackgroundUrl = await pickOgBackgroundUrl();
+    if (ogBackgroundUrl) {
+      ogCardUrl.searchParams.set("bg", ogBackgroundUrl);
+    }
+
+    const ogImages = [{ url: ogCardUrl.toString() }];
+
     return {
       metadataBase: new URL(origin),
-      title: resolveTitleWithSiteSettings({
-        pageTitle,
-        siteTitle: siteTitle ?? tenant?.name ?? undefined,
-        titleFormat,
-        separator,
-      }),
-      robots: { index: false, follow: false },
+      title,
+      description,
+      alternates: { canonical: stripTrailingSlash(canonicalUrl) },
+      robots,
+      ...(enableSocialMeta
+        ? {
+            openGraph: {
+              url: stripTrailingSlash(canonicalUrl),
+              title,
+              description,
+              type: "website" as const,
+              images: ogImages,
+            },
+            twitter: {
+              card: twitterCardType,
+              ...(twitterUsername
+                ? { site: twitterUsername, creator: twitterUsername }
+                : {}),
+              title,
+              description,
+              images: ogImages?.map((img) => img.url),
+            },
+          }
+        : {}),
     };
-  }
-  if (
-    (rootSegment === "disclaimer" || rootSegment === "disclaimers") &&
-    typeof secondSegment === "string" &&
-    secondSegment.trim().length > 0
-  ) {
-    const candidate = secondSegment.trim();
+  };
+
+  type FrontendMetadataResolver = {
+    id: string;
+    priority?: number;
+    resolve: (ctx: unknown) => Promise<Metadata | null> | Metadata | null;
+  };
+
+  const resolversRaw = applyFilters(FRONTEND_METADATA_RESOLVERS_FILTER, [], {
+    segments,
+    slug,
+    origin,
+    tenant,
+    organizationId: organizationId ?? null,
+    enabledPluginIds,
+    searchParams: resolvedSearchParams,
+    fetchQuery: adaptFetchQuery(fetchQuery),
+    api: apiAny,
+    site: {
+      siteTitle: siteTitleForFormat,
+      siteDescription,
+      titleFormat,
+      separator,
+      enableSocialMeta,
+      twitterUsername,
+      twitterCardType,
+    },
+    helpers: {
+      resolveSiteTitle,
+      buildMetadataFromPostMeta,
+    },
+  });
+  const resolvers = Array.isArray(resolversRaw)
+    ? (resolversRaw as FrontendMetadataResolver[])
+    : [];
+  const sortedResolvers = [...resolvers].sort(
+    (a, b) => (a?.priority ?? 10) - (b?.priority ?? 10),
+  );
+
+  for (const resolver of sortedResolvers) {
     try {
-      const org = organizationId ?? undefined;
-      const maybeDisclaimerPost = await fetchQuery(
-        apiAny.plugins.disclaimers.posts.queries.getPostBySlug,
-        {
-          slug: candidate,
-          ...(org ? { organizationId: org } : {}),
-        },
-      );
-      if (!maybeDisclaimerPost) {
-        return {
-          metadataBase: new URL(origin),
-          title: resolveTitleWithSiteSettings({
-            pageTitle: "Disclaimer",
-            siteTitle,
-            titleFormat,
-            separator,
-          }),
-          robots: { index: false, follow: false },
-        };
-      }
-    } catch {
-      return {
-        metadataBase: new URL(origin),
-        title: resolveTitleWithSiteSettings({
-          pageTitle: "Disclaimer",
-          siteTitle,
+      const result = await resolver.resolve({
+        segments,
+        slug,
+        origin,
+        tenant,
+        organizationId: organizationId ?? null,
+        enabledPluginIds,
+        searchParams: resolvedSearchParams,
+        fetchQuery: adaptFetchQuery(fetchQuery),
+        api: apiAny,
+        site: {
+          siteTitle: siteTitleForFormat,
+          siteDescription,
           titleFormat,
           separator,
-        }),
-        robots: { index: false, follow: false },
-      };
+          enableSocialMeta,
+          twitterUsername,
+          twitterCardType,
+        },
+        helpers: {
+          resolveSiteTitle,
+          buildMetadataFromPostMeta,
+        },
+      });
+      if (result) return result;
+    } catch (error) {
+      console.error("[frontendMetadata] resolver failed", {
+        resolverId: resolver?.id,
+        error,
+      });
     }
   }
 

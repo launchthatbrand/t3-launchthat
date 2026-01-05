@@ -127,6 +127,90 @@ export const createDisclaimersPluginDefinition = (
         acceptedArgs: 2,
       },
       {
+        hook: "frontend.metadata.resolvers",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        callback: (value: any, ctx: any) => {
+          const resolvers = Array.isArray(value) ? value : [];
+          return [
+            ...resolvers,
+            {
+              id: "disclaimers:signing-metadata",
+              // Run early to avoid post-based metadata trying to treat an issueId as a post ID.
+              priority: 5,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              resolve: async (metaCtx: any) => {
+                const enabledPluginIds = Array.isArray(metaCtx?.enabledPluginIds)
+                  ? (metaCtx.enabledPluginIds as string[])
+                  : [];
+                if (!enabledPluginIds.includes(PLUGIN_ID)) {
+                  return null;
+                }
+
+                const segmentsRaw = Array.isArray(metaCtx?.segments)
+                  ? (metaCtx.segments as unknown[])
+                  : [];
+                const segments = segmentsRaw
+                  .map((s) => (typeof s === "string" ? s.trim() : ""))
+                  .filter(Boolean);
+
+                if (segments.length < 2) return null;
+                const root = String(segments[0] ?? "");
+                if (!(root === "disclaimer" || root === "disclaimers")) return null;
+
+                const issueIdOrSlug = String(segments[1] ?? "").trim();
+                if (!issueIdOrSlug) return null;
+
+                const origin =
+                  typeof metaCtx?.origin === "string" ? metaCtx.origin : null;
+                if (!origin) return null;
+
+                const helpers = metaCtx?.helpers as
+                  | { resolveSiteTitle?: (pageTitle: string) => string }
+                  | undefined;
+                if (typeof helpers?.resolveSiteTitle !== "function") return null;
+
+                // If this is actually a real Disclaimers post slug, let core post-metadata handle it.
+                if (root === "disclaimer") {
+                  const fetchQuery = metaCtx?.fetchQuery;
+                  const apiAny = metaCtx?.api;
+                  if (typeof fetchQuery === "function" && apiAny) {
+                    const orgIdRaw = metaCtx?.organizationId;
+                    const organizationId =
+                      typeof orgIdRaw === "string" ? orgIdRaw : undefined;
+                    try {
+                      const maybePost = await fetchQuery(
+                        apiAny.plugins.disclaimers.posts.queries.getPostBySlug,
+                        {
+                          slug: issueIdOrSlug,
+                          ...(organizationId ? { organizationId } : {}),
+                        },
+                      );
+                      if (
+                        maybePost &&
+                        typeof maybePost === "object" &&
+                        "_id" in maybePost
+                      ) {
+                        return null;
+                      }
+                    } catch {
+                      // Fall through to safe, non-indexable metadata.
+                    }
+                  }
+                }
+
+                return {
+                  metadataBase: new URL(origin),
+                  title: helpers.resolveSiteTitle("Disclaimer"),
+                  robots: { index: false, follow: false },
+                };
+              },
+            },
+          ];
+        },
+        priority: 10,
+        acceptedArgs: 2,
+      },
+      {
         hook: "frontend.route.handlers",
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         callback: (value: any, ctx: any) => {

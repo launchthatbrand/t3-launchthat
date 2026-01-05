@@ -128,6 +128,107 @@ export const createEcommercePluginDefinition = (
         acceptedArgs: 2,
       },
       {
+        hook: "frontend.metadata.resolvers",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        callback: (value: any, ctx: any) => {
+          const resolvers = Array.isArray(value) ? value : [];
+          return [
+            ...resolvers,
+            {
+              id: "ecommerce:funnel-step-metadata",
+              // Must run before post-based metadata (which doesn't know how to resolve /f/...).
+              priority: 5,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              resolve: async (metaCtx: any) => {
+                const enabledPluginIds = Array.isArray(metaCtx?.enabledPluginIds)
+                  ? (metaCtx.enabledPluginIds as string[])
+                  : [];
+                if (!enabledPluginIds.includes(PLUGIN_ID)) {
+                  return null;
+                }
+
+                const segmentsRaw = Array.isArray(metaCtx?.segments)
+                  ? (metaCtx.segments as unknown[])
+                  : [];
+                const segments = segmentsRaw
+                  .map((s) => (typeof s === "string" ? s : ""))
+                  .filter(Boolean);
+
+                // Handle: /f/:funnelSlug/:stepSlug
+                if (!(segments.length >= 3 && segments[0] === "f")) return null;
+                const funnelSlug = String(segments[1] ?? "").trim();
+                const stepSlug = String(segments[2] ?? "").trim();
+                if (!funnelSlug || !stepSlug) return null;
+
+                const fetchQuery = metaCtx?.fetchQuery;
+                const api = metaCtx?.api;
+                if (typeof fetchQuery !== "function" || !api) return null;
+
+                const origin =
+                  typeof metaCtx?.origin === "string" ? metaCtx.origin : null;
+                if (!origin) return null;
+
+                const orgIdRaw = metaCtx?.organizationId;
+                const organizationId =
+                  typeof orgIdRaw === "string" ? orgIdRaw : undefined;
+
+                const helpers = metaCtx?.helpers as
+                  | {
+                      buildMetadataFromPostMeta?: (args: any) => Promise<any>;
+                    }
+                  | undefined;
+                if (typeof helpers?.buildMetadataFromPostMeta !== "function") {
+                  return null;
+                }
+
+                const step: any = await fetchQuery(
+                  api.plugins.commerce.funnelSteps.queries.getFunnelStepBySlug,
+                  {
+                    funnelSlug,
+                    stepSlug,
+                    ...(organizationId ? { organizationId } : {}),
+                  },
+                );
+                if (!step) return null;
+
+                const postId =
+                  typeof step?.stepId === "string" ? step.stepId : null;
+                if (!postId) return null;
+
+                const postMeta: any = await fetchQuery(
+                  api.plugins.commerce.queries.getPostMeta,
+                  {
+                    postId,
+                    ...(organizationId ? { organizationId } : {}),
+                  },
+                );
+
+                const kind = typeof step?.kind === "string" ? step.kind : "";
+                const pageTitle =
+                  kind === "checkout"
+                    ? "Checkout"
+                    : typeof step?.stepTitle === "string" && step.stepTitle.trim()
+                      ? step.stepTitle.trim()
+                      : "Funnel";
+
+                const canonicalPath = `/${segments.join("/")}`;
+
+                return await helpers.buildMetadataFromPostMeta({
+                  pageTitle,
+                  canonicalPath,
+                  postMeta: Array.isArray(postMeta) ? postMeta : [],
+                  // Checkout funnels should not be indexed by default.
+                  robots: { index: false, follow: false },
+                  openGraphLabel: "Checkout",
+                });
+              },
+            },
+          ];
+        },
+        priority: 10,
+        acceptedArgs: 2,
+      },
+      {
         hook: "frontend.account.tabs",
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         callback: (value: any, ctx: any) => {

@@ -24,6 +24,11 @@ export const FRONTEND_PORTAL_HEADER_RIGHT_FILTER =
 // Portal (frontend) account page extension points
 export const FRONTEND_ACCOUNT_TABS_FILTER = "frontend.account.tabs";
 
+// Portal (frontend) metadata generation extension points
+// Plugins can register metadata resolvers for non-post routes (e.g. /f/... checkout funnels).
+// Lower priority runs first (e.g. 5 overrides core priority 10).
+export const FRONTEND_METADATA_RESOLVERS_FILTER = "frontend.metadata.resolvers";
+
 // Portal (frontend) routing extension points
 // Plugins (and core) can register route handlers with priorities, used by the frontend catch-all route.
 // Lower priority runs first (e.g. 5 overrides core priority 10).
