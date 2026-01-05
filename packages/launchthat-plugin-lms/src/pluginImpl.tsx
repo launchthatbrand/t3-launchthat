@@ -112,6 +112,9 @@ const FRONTEND_CONTENT_ACCESS_PROVIDERS_FILTER =
 // Portal access denied CTAs hook (string constant to avoid portal package coupling)
 const FRONTEND_ACCESS_DENIED_ACTIONS_FILTER = "frontend.accessDenied.actions";
 
+// Portal notifications tabs hook (string constant to avoid portal package coupling)
+const FRONTEND_NOTIFICATIONS_TABS_FILTER = "frontend.notifications.tabs";
+
 const FRONTEND_TAXONOMY_TERM_LINK_FILTER = "frontend.single.taxonomy.termLink";
 
 export const createLmsPluginDefinitionImpl = ({
@@ -673,6 +676,31 @@ export const createLmsPluginDefinitionImpl = ({
   ],
   hooks: {
     filters: [
+      {
+        hook: FRONTEND_NOTIFICATIONS_TABS_FILTER,
+        acceptedArgs: 2,
+        callback: (value: unknown, context: unknown) => {
+          const tabs = Array.isArray(value) ? (value as unknown[]) : [];
+          if (!context || typeof context !== "object") return tabs;
+
+          const ctx = context as Record<string, unknown>;
+          const enabledPluginIds = Array.isArray(ctx.enabledPluginIds)
+            ? (ctx.enabledPluginIds as unknown[]).filter(
+                (v): v is string => typeof v === "string",
+              )
+            : [];
+          if (!enabledPluginIds.includes("lms")) return tabs;
+
+          return [
+            ...tabs,
+            {
+              id: "lms",
+              label: "LMS",
+              tabKey: "lms",
+            },
+          ];
+        },
+      },
       {
         hook: FRONTEND_ACCESS_DENIED_ACTIONS_FILTER,
         acceptedArgs: 2,

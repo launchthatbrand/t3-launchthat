@@ -21,7 +21,7 @@ export function useNotificationPreferences(userId?: string) {
 
   // Get notification preferences from API
   const preferencesQuery = useQuery(
-    api.notifications.preferences.getNotificationPreferences,
+    api.core.notifications.preferences.getNotificationPreferences,
     userId ? { userId: userId as Id<"users"> } : "skip",
   );
 

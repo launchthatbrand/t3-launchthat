@@ -41,7 +41,7 @@ function IntegrationsPageContent() {
   const testConnection = useMutation(
     api.integrations.connections.mutations.test,
   );
-  const triggerSync = useMutation(api.vimeo.mutations.triggerSync);
+  const triggerSync = useMutation(api.plugins.vimeo.mutations.triggerSync);
 
   useEffect(() => {
     // Update URL when tab changes

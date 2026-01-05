@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 
-import type { Doc } from "../_generated/dataModel";
-import { mutation, query } from "../_generated/server";
-import { throwInvalidInput, throwNotFound } from "../shared/errors";
+import type { Doc } from "../../_generated/dataModel";
+import { mutation, query } from "../../_generated/server";
+import { throwInvalidInput, throwNotFound } from "../../shared/errors";
 import {
   defaultAppPreferences,
   defaultEmailPreferences,
@@ -33,8 +33,8 @@ export const getNotificationPreferences = query({
 export const updateNotificationPreferences = mutation({
   args: {
     userId: v.id("users"),
-    emailPreferences: v.optional(v.object({})),
-    appPreferences: v.optional(v.object({})),
+    emailPreferences: v.optional(v.record(v.string(), v.boolean())),
+    appPreferences: v.optional(v.record(v.string(), v.boolean())),
     pushEnabled: v.optional(v.boolean()),
     pushToken: v.optional(v.string()),
   },
@@ -125,35 +125,17 @@ export const resetNotificationPreferences = mutation({
 export const updateSingleNotificationPreference = mutation({
   args: {
     userId: v.id("users"),
-    type: v.union(
-      v.literal("friendRequest"),
-      v.literal("friendAccepted"),
-      v.literal("message"),
-      v.literal("mention"),
-      v.literal("groupInvite"),
-      v.literal("groupJoinRequest"),
-      v.literal("groupJoinApproved"),
-      v.literal("groupJoinRejected"),
-      v.literal("groupInvitation"),
-      v.literal("invitationAccepted"),
-      v.literal("invitationDeclined"),
-      v.literal("groupPost"),
-      v.literal("groupComment"),
-      v.literal("eventInvite"),
-      v.literal("eventReminder"),
-      v.literal("eventUpdate"),
-      v.literal("newDownload"),
-      v.literal("courseUpdate"),
-      v.literal("orderConfirmation"),
-      v.literal("paymentSuccess"),
-      v.literal("paymentFailed"),
-      v.literal("productUpdate"),
-      v.literal("systemAnnouncement"),
-    ),
+    // Plugin-agnostic: any event key can be toggled.
+    type: v.string(),
     emailEnabled: v.optional(v.boolean()),
     appEnabled: v.optional(v.boolean()),
   },
+  returns: v.id("notificationPreferences"),
   handler: async (ctx, args) => {
+    const key = args.type.trim();
+    if (!key) {
+      throwInvalidInput("type (event key) must be a non-empty string");
+    }
     // Check if user exists
     const user = await ctx.db.get(args.userId);
     if (!user) {
@@ -178,14 +160,14 @@ export const updateSingleNotificationPreference = mutation({
       if (args.emailEnabled !== undefined) {
         updates.emailPreferences = {
           ...existingPrefs.emailPreferences,
-          [args.type]: args.emailEnabled,
+          [key]: args.emailEnabled,
         };
       }
 
       if (args.appEnabled !== undefined) {
         updates.appPreferences = {
           ...existingPrefs.appPreferences,
-          [args.type]: args.appEnabled,
+          [key]: args.appEnabled,
         };
       }
 
@@ -193,20 +175,15 @@ export const updateSingleNotificationPreference = mutation({
       return existingPrefs._id;
     } else {
       // Create new preferences with defaults, overriding just this type
-      const emailPreferences: Record<string, boolean> = {
-        ...defaultEmailPreferences,
-      };
-
-      const appPreferences: Record<string, boolean> = {
-        ...defaultAppPreferences,
-      };
+      const emailPreferences: Record<string, boolean> = {};
+      const appPreferences: Record<string, boolean> = {};
 
       if (args.emailEnabled !== undefined) {
-        emailPreferences[args.type] = args.emailEnabled;
+        emailPreferences[key] = args.emailEnabled;
       }
 
       if (args.appEnabled !== undefined) {
-        appPreferences[args.type] = args.appEnabled;
+        appPreferences[key] = args.appEnabled;
       }
 
       const prefId = await ctx.db.insert("notificationPreferences", {
@@ -230,6 +207,7 @@ export const updatePushSettings = mutation({
     pushEnabled: v.boolean(),
     pushToken: v.optional(v.string()),
   },
+  returns: v.id("notificationPreferences"),
   handler: async (ctx, args) => {
     // Look for existing preferences
     const existingPrefs = await ctx.db
@@ -249,58 +227,8 @@ export const updatePushSettings = mutation({
       // Create new preferences
       return await ctx.db.insert("notificationPreferences", {
         userId: args.userId,
-        emailPreferences: {
-          // Default all to true
-          friendRequest: true,
-          friendAccepted: true,
-          message: true,
-          mention: true,
-          groupInvite: true,
-          groupJoinRequest: true,
-          groupJoinApproved: true,
-          groupJoinRejected: true,
-          groupInvitation: true,
-          invitationAccepted: true,
-          invitationDeclined: true,
-          groupPost: true,
-          groupComment: true,
-          eventInvite: true,
-          eventReminder: true,
-          eventUpdate: true,
-          newDownload: true,
-          courseUpdate: true,
-          orderConfirmation: true,
-          paymentSuccess: true,
-          paymentFailed: true,
-          productUpdate: true,
-          systemAnnouncement: true,
-        },
-        appPreferences: {
-          // Default all to true
-          friendRequest: true,
-          friendAccepted: true,
-          message: true,
-          mention: true,
-          groupInvite: true,
-          groupJoinRequest: true,
-          groupJoinApproved: true,
-          groupJoinRejected: true,
-          groupInvitation: true,
-          invitationAccepted: true,
-          invitationDeclined: true,
-          groupPost: true,
-          groupComment: true,
-          eventInvite: true,
-          eventReminder: true,
-          eventUpdate: true,
-          newDownload: true,
-          courseUpdate: true,
-          orderConfirmation: true,
-          paymentSuccess: true,
-          paymentFailed: true,
-          productUpdate: true,
-          systemAnnouncement: true,
-        },
+        emailPreferences: defaultEmailPreferences,
+        appPreferences: defaultAppPreferences,
         pushEnabled: args.pushEnabled,
         pushToken: args.pushToken,
       });

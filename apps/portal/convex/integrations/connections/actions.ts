@@ -129,7 +129,7 @@ export const upsertForOwner = action({
       ) {
         try {
           await ctx.runAction(
-            internal.vimeo.actions.ensureWebhookSubscription,
+            internal.plugins.vimeo.actions.ensureWebhookSubscription,
             {
               connectionId: existing._id,
             },
@@ -161,7 +161,7 @@ export const upsertForOwner = action({
       (args.status ?? "connected") === "connected"
     ) {
       try {
-        await ctx.runAction(internal.vimeo.actions.ensureWebhookSubscription, {
+        await ctx.runAction(internal.plugins.vimeo.actions.ensureWebhookSubscription, {
           connectionId,
         });
       } catch (error) {
@@ -188,7 +188,7 @@ export const remove = action({
 
     if (connection.nodeType === "vimeo") {
       try {
-        await ctx.runAction(internal.vimeo.actions.removeWebhookSubscription, {
+        await ctx.runAction(internal.plugins.vimeo.actions.removeWebhookSubscription, {
           connectionId: args.id,
         });
       } catch (error) {
@@ -198,7 +198,7 @@ export const remove = action({
       // IMPORTANT: wipe per-connection Vimeo library rows so reconnecting doesn’t duplicate videos.
       try {
         await ctx.runMutation(
-          internal.vimeo.internalMutations.deleteVimeoDataForConnection,
+          internal.plugins.vimeo.internalMutations.deleteVimeoDataForConnection,
           {
             connectionId: args.id,
           },

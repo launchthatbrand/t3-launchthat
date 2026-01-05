@@ -31,11 +31,11 @@ export default function AdminNotificationSettingsPage() {
   const grouped = useMemo(() => groupCatalogByCategory(catalog), [catalog]);
 
   const orgDefaults = useQuery(
-    api.notifications.settings.getOrgDefaults,
+    api.core.notifications.settings.getOrgDefaults,
     orgId ? { orgId } : "skip",
   ) as { inAppDefaults?: Record<string, boolean> } | null | undefined;
 
-  const setOrgDefaults = useMutation(api.notifications.settings.setOrgDefaults);
+  const setOrgDefaults = useMutation(api.core.notifications.settings.setOrgDefaults);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleToggle = async (eventKey: string, enabled: boolean) => {

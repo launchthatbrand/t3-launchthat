@@ -1,10 +1,10 @@
 import { v } from "convex/values";
 
-import type { Id } from "../_generated/dataModel";
-import { mutation } from "../_generated/server";
-import { PORTAL_TENANT_ID } from "../constants";
-import { throwInvalidInput, throwNotFound } from "../shared/errors";
-import { userIdValidator } from "../shared/validators";
+import type { Id } from "../../_generated/dataModel";
+import { mutation } from "../../_generated/server";
+import { PORTAL_TENANT_ID } from "../../constants";
+import { throwInvalidInput, throwNotFound } from "../../shared/errors";
+import { userIdValidator } from "../../shared/validators";
 import { generateNotificationContent } from "./lib/formatters";
 
 /**
@@ -65,6 +65,7 @@ export const createNotification = mutation({
   args: {
     userId: userIdValidator,
     orgId: v.optional(v.id("organizations")),
+    tabKey: v.optional(v.string()),
     eventKey: v.optional(v.string()),
     // Legacy field name (pre-pluggable). Prefer `eventKey`.
     type: v.optional(v.string()),
@@ -90,6 +91,7 @@ export const createNotification = mutation({
     }
 
     const orgId = args.orgId ?? user.organizationId ?? PORTAL_TENANT_ID;
+    const tabKey = (args.tabKey ?? "system").trim() || "system";
 
     // Get user notification preferences to check if this notification type is enabled
     const preferencesDoc = await ctx.db
@@ -114,16 +116,15 @@ export const createNotification = mutation({
         userId: args.userId,
         orgId,
         eventKey,
+        tabKey,
         scopeKind: undefined,
         scopeId: undefined,
         title: args.title,
         content: args.content,
         sourceUserId: args.sourceUserId,
-        sourceOrderId: args.sourceOrderId,
         actionUrl: args.actionUrl,
         actionData: args.actionData,
         expiresAt: args.expiresAt,
-        relatedId: args.relatedId,
         read: true,
         createdAt: Date.now(),
       });
@@ -134,9 +135,7 @@ export const createNotification = mutation({
     if (!content) {
       content = await generateNotificationContent(ctx, {
         type: eventKey,
-        userId: args.userId,
         sourceUserId: args.sourceUserId,
-        sourceOrderId: args.sourceOrderId,
         title: args.title,
         message: args.message,
       });
@@ -147,17 +146,16 @@ export const createNotification = mutation({
       userId: args.userId,
       orgId,
       eventKey,
+      tabKey,
       scopeKind: undefined,
       scopeId: undefined,
       title: args.title,
       content,
       read: false,
       sourceUserId: args.sourceUserId,
-      sourceOrderId: args.sourceOrderId,
       actionUrl: args.actionUrl,
       actionData: args.actionData,
       expiresAt: args.expiresAt,
-      relatedId: args.relatedId,
       createdAt: Date.now(),
     });
   },
@@ -215,6 +213,7 @@ export const batchCreateNotifications = mutation({
   args: {
     userIds: v.array(userIdValidator),
     orgId: v.optional(v.id("organizations")),
+    tabKey: v.optional(v.string()),
     eventKey: v.optional(v.string()),
     // Legacy field name (pre-pluggable). Prefer `eventKey`.
     type: v.optional(v.string()),
@@ -245,18 +244,18 @@ export const batchCreateNotifications = mutation({
       if (!user) continue;
       const orgId =
         notificationData.orgId ?? user.organizationId ?? PORTAL_TENANT_ID;
+      const tabKey = (notificationData.tabKey ?? "system").trim() || "system";
       const notificationId = await ctx.db.insert("notifications", {
         title: notificationData.title,
         content: notificationData.content,
         sourceUserId: notificationData.sourceUserId,
-        sourceOrderId: notificationData.sourceOrderId,
         actionUrl: notificationData.actionUrl,
         actionData: notificationData.actionData,
         expiresAt: notificationData.expiresAt,
-        relatedId: notificationData.relatedId,
         userId,
         orgId,
         eventKey,
+        tabKey,
         scopeKind: undefined,
         scopeId: undefined,
         read: false,

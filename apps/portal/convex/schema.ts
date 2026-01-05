@@ -6,7 +6,7 @@ import { usersSchema } from "./core/users/schema";
 import { integrationsSchema } from "./integrations/schema";
 // Add integrations schema
 // import { integrationsSchema } from "./integrations/schema";
-import { notificationsSchema } from "./notifications/schema";
+import { notificationsSchema } from "./core/notifications/schema";
 
 // import { lmsSchema } from "./plugins/lms/schema";
 

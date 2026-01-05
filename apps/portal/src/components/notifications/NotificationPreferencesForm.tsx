@@ -132,13 +132,13 @@ export function NotificationPreferencesForm({
 
   // Get current notification preferences
   const preferencesQuery = useQuery(
-    api.notifications.preferences.getNotificationPreferences,
+    api.core.notifications.preferences.getNotificationPreferences,
     userId ? { userId: userId as Id<"users"> } : "skip",
   );
 
   // Mutation to update preferences
   const updatePreferences = useMutation(
-    api.notifications.preferences.updateNotificationPreferences,
+    api.core.notifications.preferences.updateNotificationPreferences,
   );
 
   // Default values for the form

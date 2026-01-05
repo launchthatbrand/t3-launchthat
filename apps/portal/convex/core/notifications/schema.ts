@@ -6,6 +6,8 @@ export const notificationsTable = defineTable({
   userId: v.id("users"),
   orgId: v.id("organizations"),
   eventKey: v.string(),
+  // Used for UI grouping (tabs). Core defaults to "system"; plugins can set their own (e.g. "lms").
+  tabKey: v.optional(v.string()),
   scopeKind: v.optional(v.string()),
   scopeId: v.optional(v.string()),
   title: v.string(),

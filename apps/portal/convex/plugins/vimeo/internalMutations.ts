@@ -4,8 +4,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { v } from "convex/values";
 
-import { components } from "../_generated/api";
-import { internalMutation } from "../_generated/server";
+import { components } from "../../_generated/api";
+import { internalMutation } from "../../_generated/server";
 
 const vAny = v as any;
 const internalMutationAny = internalMutation as any;

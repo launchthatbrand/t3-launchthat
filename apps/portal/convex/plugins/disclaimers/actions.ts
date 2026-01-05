@@ -209,7 +209,7 @@ export const resendDisclaimerAndSendEmail = action({
     );
 
     if (result.recipientUserId) {
-      await ctx.runMutation(api.notifications.mutations.createNotification, {
+      await ctx.runMutation(api.core.notifications.mutations.createNotification, {
         userId: result.recipientUserId,
         orgId: args.orgId,
         eventKey: "disclaimers.issue.resent",

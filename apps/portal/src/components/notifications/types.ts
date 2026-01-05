@@ -1,5 +1,12 @@
 import { Id } from "@/convex/_generated/dataModel";
 
+export type NotificationTabDefinition = {
+  id: string;
+  label: string;
+  // Matches `notifications.tabKey` in Convex.
+  tabKey?: string;
+};
+
 // Base notification type for notifications in the system
 export interface Notification {
   _id: string;
@@ -74,38 +81,13 @@ export const NOTIFICATION_CATEGORIES: Record<
   NotificationCategory,
   NotificationType[]
 > = {
-  all: [], // Empty array for "all" - special case handled in filters
-  activity: [
-    "friendRequest",
-    "friendAccepted",
-    "message",
-    "mention",
-    "groupPost",
-    "groupComment",
-    // Add social feed notification types to activity category
-    "reaction",
-    "comment",
-    "commentReply",
-    "share",
-    "newFollowedUserPost",
-  ],
-  group: [
-    "groupInvite",
-    "groupJoinRequest",
-    "groupJoinApproved",
-    "groupJoinRejected",
-    "groupInvitation",
-    "invitationAccepted",
-    "invitationDeclined",
-  ],
-  event: ["eventInvite", "eventReminder", "eventUpdate"],
-  system: ["systemAnnouncement", "courseUpdate", "newDownload"],
-  ecommerce: [
-    "orderConfirmation",
-    "paymentSuccess",
-    "paymentFailed",
-    "productUpdate",
-  ],
+  // Default UI should only show All + System. Other plugins can add tabs via hooks.
+  all: [],
+  activity: [],
+  group: [],
+  event: [],
+  system: ["systemAnnouncement"],
+  ecommerce: [],
 };
 
 // Define the UI categories

@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 
-import type { Id } from "../../_generated/dataModel";
-import { internalMutation } from "../../_generated/server";
-import { throwInvalidInput } from "../../shared/errors";
+import type { Id } from "../../../_generated/dataModel";
+import { internalMutation } from "../../../_generated/server";
+import { throwInvalidInput } from "../../../shared/errors";
 
 /**
  * Internal: dispatch a notification event to subscribed users in an org.
@@ -18,6 +18,7 @@ export const dispatchEvent = internalMutation({
   args: {
     orgId: v.id("organizations"),
     eventKey: v.string(),
+    tabKey: v.optional(v.string()),
     scopeKind: v.optional(v.string()),
     scopeId: v.optional(v.string()),
 
@@ -30,6 +31,7 @@ export const dispatchEvent = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const tabKey = (args.tabKey ?? "system").trim() || "system";
     const scopeKind = (args.scopeKind ?? "").trim();
     const scopeId = (args.scopeId ?? "").trim();
 
@@ -130,6 +132,7 @@ export const dispatchEvent = internalMutation({
         userId,
         orgId: args.orgId,
         eventKey: args.eventKey,
+        tabKey,
         scopeKind,
         scopeId: scopeId || undefined,
         title: args.title,
@@ -138,7 +141,6 @@ export const dispatchEvent = internalMutation({
         actionUrl: args.actionUrl,
         actionData: args.actionData,
         sourceUserId: args.sourceUserId,
-        sourceOrderId: args.sourceOrderId,
         expiresAt: args.expiresAt,
         createdAt: Date.now(),
       });

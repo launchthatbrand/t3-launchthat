@@ -112,13 +112,13 @@ export default function MediaSettingsPage() {
   const removeConnection = useAction(
     api.integrations.connections.actions.remove,
   );
-  const startVimeoSync = useMutation(api.vimeo.mutations.startVimeoSync);
+  const startVimeoSync = useMutation(api.plugins.vimeo.mutations.startVimeoSync);
   const syncNewestForConnection = useAction(
-    api.vimeo.actions.syncNewestForConnection,
+    api.plugins.vimeo.actions.syncNewestForConnection,
   );
 
   const vimeoSyncStatus = useQuery(
-    api.vimeo.syncState.getVimeoSyncStatus,
+    api.plugins.vimeo.syncState.getVimeoSyncStatus,
     organizationId
       ? ({ organizationId } as { organizationId: Id<"organizations"> })
       : "skip",

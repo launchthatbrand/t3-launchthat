@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
-import { mutation, query } from "../_generated/server";
-import { throwInvalidInput } from "../shared/errors";
+import { mutation, query } from "../../_generated/server";
+import { throwInvalidInput } from "../../shared/errors";
 
 /**
  * Org-level defaults (admin/owner).

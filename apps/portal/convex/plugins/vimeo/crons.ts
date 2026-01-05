@@ -1,5 +1,5 @@
 import { cronJobs } from "convex/server";
-import { internal } from "../_generated/api";
+import { internal } from "../../_generated/api";
 
 const crons = cronJobs();
 
@@ -8,7 +8,7 @@ const crons = cronJobs();
 crons.interval(
   "vimeo nightly backstop sync",
   { hours: 24 },
-  internal.vimeo.actions.runNightlyBackstopSync,
+  internal.plugins.vimeo.actions.runNightlyBackstopSync,
   {},
 );
 

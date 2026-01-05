@@ -420,18 +420,6 @@ http.route({
       });
     }
 
-    const state = await ctx.runQuery(
-      internalAny.vimeo.syncState.getSyncStateByConnection,
-      { connectionId: connectionId as Id<"connections"> },
-    );
-
-    if (!state?.webhookSecret || state.webhookSecret !== secret) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
     let payload: unknown = null;
     try {
       payload = await request.json();
@@ -452,54 +440,13 @@ http.route({
         : undefined;
     const eventType = String(headerEvent ?? bodyEvent ?? "unknown");
 
-    const pickNumericSegment = (value: string | undefined) => {
-      if (!value) return null;
-      const segments = value.split(/[/?#]/).filter(Boolean);
-      for (let i = segments.length - 1; i >= 0; i -= 1) {
-        if (/^\d+$/.test(segments[i] ?? "")) return segments[i] ?? null;
-      }
-      return null;
-    };
-
-    const extractVideoId = (obj: any): string | null => {
-      if (!obj || typeof obj !== "object") return null;
-      const candidates: Array<string | undefined> = [
-        obj.uri,
-        obj.videoUri,
-        obj.resourceUri,
-        obj.link,
-        obj.video?.uri,
-        obj.video?.link,
-        obj.resource?.uri,
-        obj.data?.uri,
-        obj.data?.video?.uri,
-        obj.entity?.uri,
-      ];
-      for (const candidate of candidates) {
-        const numeric = pickNumericSegment(candidate);
-        if (numeric) return numeric;
-      }
-      return null;
-    };
-
-    const videoId = extractVideoId(payload as any);
-
-    // Update last seen info even if we couldn't parse the videoId.
-    await ctx.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+    await ctx.scheduler.runAfter(0, internalAny.plugins.vimeo.actions.processWebhookRequest, {
       connectionId: connectionId as Id<"connections">,
-      webhookLastEventAt: Date.now(),
-      webhookStatus: "active",
-      webhookLastError: null,
+      secret,
+      headerEvent: eventType,
+      payload,
+      receivedAt: Date.now(),
     });
-
-    if (videoId) {
-      await ctx.scheduler.runAfter(0, internalAny.vimeo.actions.handleWebhookEvent, {
-        connectionId: connectionId as Id<"connections">,
-        eventType,
-        videoId,
-        receivedAt: Date.now(),
-      });
-    }
 
     // Vimeo expects a quick 2xx.
     return new Response(JSON.stringify({ ok: true }), {

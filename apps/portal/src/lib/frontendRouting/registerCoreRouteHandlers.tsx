@@ -20,21 +20,21 @@ import type {
   FrontendRouteHandler,
   FrontendRouteHandlerContext,
 } from "./resolveFrontendRoute";
+import type { parseLexicalSerializedState } from "~/lib/editor/lexical";
 import { AccessDeniedPage } from "~/components/access/AccessDeniedPage";
 import { EditorViewer } from "~/components/blocks/editor-x/viewer";
 import { FrontendContentFilterHost } from "~/components/frontend/FrontendContentFilterHost";
 import { PuckContentRenderer } from "~/components/puckeditor/PuckContentRenderer";
 import { BackgroundRippleEffect } from "~/components/ui/background-ripple-effect";
 import { env } from "~/env";
-import { evaluateContentAccess } from "~/lib/access/contentAccessRegistry";
 import { parseContentAccessMetaValue } from "~/lib/access/contentAccessMeta";
-import { FRONTEND_ACCESS_DENIED_ACTIONS_FILTER } from "~/lib/plugins/hookSlots";
-import {
-  isLexicalSerializedStateString,
-  parseLexicalSerializedState,
-} from "~/lib/editor/lexical";
+import { evaluateContentAccess } from "~/lib/access/contentAccessRegistry";
 import { findPostTypeBySlug } from "~/lib/plugins/frontend";
-import { FRONTEND_ROUTE_HANDLERS_FILTER } from "~/lib/plugins/hookSlots";
+import {
+  FRONTEND_ACCESS_DENIED_ACTIONS_FILTER,
+  FRONTEND_ROUTE_HANDLERS_FILTER,
+} from "~/lib/plugins/hookSlots";
+import { ATTACHMENTS_META_KEY } from "~/lib/posts/metaKeys";
 import { getCanonicalPostPath } from "~/lib/postTypes/routing";
 import { renderFrontendResolvedPost } from "./renderFrontendSinglePost";
 import { resolveFrontendArchive } from "./resolveFrontendArchive";
@@ -50,14 +50,14 @@ type PostMetaValue = string | number | boolean | null | undefined;
 
 type LmsCourseAccessMode = "open" | "free" | "buy_now" | "recurring" | "closed";
 
-type LmsCourseAccessContext = {
+interface LmsCourseAccessContext {
   courseId: string;
   courseSlug: string;
   accessMode: LmsCourseAccessMode;
   cascadeToSteps: boolean;
   buyNowUrl?: string | null;
   appliesToCurrentResource: boolean;
-};
+}
 
 if (env.NODE_ENV !== "production") {
   const g = globalThis as unknown as {
@@ -71,6 +71,77 @@ if (env.NODE_ENV !== "production") {
 
 const normalizeSegments = (segments: string[]) =>
   segments.map((s) => s.trim()).filter((s) => s.length > 0);
+
+const resolveFirstImageFromAttachmentsMeta = (
+  attachmentsMetaValue: PostMetaValue,
+): string | null => {
+  const raw =
+    typeof attachmentsMetaValue === "string" ? attachmentsMetaValue.trim() : "";
+  if (!raw) return null;
+
+  interface AttachmentMetaEntry {
+    mediaItemId?: string;
+    url?: string;
+    mimeType?: string;
+    title?: string;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    for (const item of parsed) {
+      if (!item || typeof item !== "object") continue;
+      const entry = item as AttachmentMetaEntry;
+
+      const entryMimeType =
+        typeof entry.mimeType === "string" ? entry.mimeType : "";
+      const entryTitle = typeof entry.title === "string" ? entry.title : "";
+
+      const mediaItemId =
+        typeof entry.mediaItemId === "string" ? entry.mediaItemId : null;
+      if (mediaItemId) {
+        const url =
+          typeof entry.url === "string" && entry.url.trim()
+            ? entry.url.trim()
+            : "";
+        const isConvexStorageUrl =
+          url.includes(".convex.cloud/api/storage/") ||
+          url.includes("/api/storage/");
+        const isLikelyNonImageTitle =
+          /\.(pdf|mp4|mov|webm|mp3|wav|m4a|zip|rar|7z|docx?|xlsx?|pptx?)$/i.test(
+            entryTitle,
+          );
+
+        if (entryMimeType.startsWith("image/")) {
+          // Prefer a direct URL when present (often already a signed Convex storage URL),
+          // so the browser can render without relying on the `/api/media/:id` indirection.
+          if (/^https?:\/\//i.test(url)) return url;
+          return `/api/media/${mediaItemId}`;
+        }
+        if (isConvexStorageUrl && entryTitle && !isLikelyNonImageTitle) {
+          if (/^https?:\/\//i.test(url)) return url;
+          return `/api/media/${mediaItemId}`;
+        }
+      }
+
+      const url =
+        typeof entry.url === "string" && entry.url.trim()
+          ? entry.url.trim()
+          : "";
+      if (!url) continue;
+
+      const looksLikeImageUrl =
+        /\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i.test(url) ||
+        url.includes("vimeocdn.com");
+      if (looksLikeImageUrl) {
+        return url;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+};
 
 const deriveSlugFromSegments = (segments: string[]): string | null => {
   for (let i = segments.length - 1; i >= 0; i -= 1) {
@@ -692,9 +763,13 @@ export function registerCoreRouteHandlers(): void {
           // ---- LMS course access cascade (course → steps) ----
           let lmsCourseAccess: LmsCourseAccessContext | null = null;
           if (ctx.enabledPluginIds.includes("lms")) {
-            const postTypeSlug = typeof post.postTypeSlug === "string" ? post.postTypeSlug : null;
+            const postTypeSlug =
+              typeof post.postTypeSlug === "string" ? post.postTypeSlug : null;
             const isCourse = postTypeSlug === "courses";
-            const isStep = postTypeSlug === "lessons" || postTypeSlug === "topics" || postTypeSlug === "quizzes";
+            const isStep =
+              postTypeSlug === "lessons" ||
+              postTypeSlug === "topics" ||
+              postTypeSlug === "quizzes";
 
             let courseId: string | null = null;
             if (isCourse) {
@@ -708,13 +783,22 @@ export function registerCoreRouteHandlers(): void {
                   (ctx.api as any).plugins.lms.posts.queries.getPostMeta,
                   {
                     postId: lessonId,
-                    organizationId: ctx.organizationId ? String(ctx.organizationId) : undefined,
+                    organizationId: ctx.organizationId
+                      ? String(ctx.organizationId)
+                      : undefined,
                   },
                 );
-                const lessonMeta = (lessonMetaResult ?? []) as { key: string; value?: PostMetaValue }[];
+                const lessonMeta = (lessonMetaResult ?? []) as {
+                  key: string;
+                  value?: PostMetaValue;
+                }[];
                 const lessonMap = new Map<string, PostMetaValue>();
-                lessonMeta.forEach((entry) => lessonMap.set(entry.key, entry.value ?? null));
-                const lessonMetaObject = Object.fromEntries(lessonMap.entries()) as Record<string, PostMetaValue>;
+                lessonMeta.forEach((entry) =>
+                  lessonMap.set(entry.key, entry.value ?? null),
+                );
+                const lessonMetaObject = Object.fromEntries(
+                  lessonMap.entries(),
+                ) as Record<string, PostMetaValue>;
                 courseId = getMetaString(lessonMetaObject, "courseId");
               }
             } else if (postTypeSlug === "quizzes") {
@@ -730,11 +814,12 @@ export function registerCoreRouteHandlers(): void {
                 (ctx.api as any).plugins.lms.posts.queries.getPostById,
                 { id: courseId, ...orgArg },
               );
-              const coursePost = (coursePostResult ?? null) as
-                | { slug?: unknown }
-                | null;
+              const coursePost = (coursePostResult ?? null) as {
+                slug?: unknown;
+              } | null;
               const courseSlug =
-                typeof coursePost?.slug === "string" && coursePost.slug.trim().length > 0
+                typeof coursePost?.slug === "string" &&
+                coursePost.slug.trim().length > 0
                   ? coursePost.slug.trim()
                   : courseId;
 
@@ -745,12 +830,21 @@ export function registerCoreRouteHandlers(): void {
                   ...orgArg,
                 },
               );
-              const courseMeta = (courseMetaResult ?? []) as { key: string; value?: PostMetaValue }[];
+              const courseMeta = (courseMetaResult ?? []) as {
+                key: string;
+                value?: PostMetaValue;
+              }[];
               const courseMap = new Map<string, PostMetaValue>();
-              courseMeta.forEach((entry) => courseMap.set(entry.key, entry.value ?? null));
-              const courseMetaObject = Object.fromEntries(courseMap.entries()) as Record<string, PostMetaValue>;
+              courseMeta.forEach((entry) =>
+                courseMap.set(entry.key, entry.value ?? null),
+              );
+              const courseMetaObject = Object.fromEntries(
+                courseMap.entries(),
+              ) as Record<string, PostMetaValue>;
 
-              const accessModeRaw = getMetaString(courseMetaObject, "lms_course_access_mode") ?? "open";
+              const accessModeRaw =
+                getMetaString(courseMetaObject, "lms_course_access_mode") ??
+                "open";
               const accessMode = (
                 accessModeRaw === "open" ||
                 accessModeRaw === "free" ||
@@ -761,9 +855,16 @@ export function registerCoreRouteHandlers(): void {
                   : "open"
               ) as LmsCourseAccessMode;
 
-              const cascadeToSteps = getMetaBoolean(courseMetaObject, "lms_course_access_cascade") ?? true;
-              const appliesToCurrentResource = isCourse ? true : Boolean(isStep && cascadeToSteps);
-              const buyNowUrl = getMetaString(courseMetaObject, "lms_course_buy_now_url");
+              const cascadeToSteps =
+                getMetaBoolean(courseMetaObject, "lms_course_access_cascade") ??
+                true;
+              const appliesToCurrentResource = isCourse
+                ? true
+                : Boolean(isStep && cascadeToSteps);
+              const buyNowUrl = getMetaString(
+                courseMetaObject,
+                "lms_course_buy_now_url",
+              );
 
               lmsCourseAccess = {
                 courseId,
@@ -807,7 +908,9 @@ export function registerCoreRouteHandlers(): void {
           if (decision.kind === "redirect") {
             const to = String(decision.to ?? "").trim();
             const safe =
-              to.startsWith("/") || to.startsWith("https://") || to.startsWith("http://")
+              to.startsWith("/") ||
+              to.startsWith("https://") ||
+              to.startsWith("http://")
                 ? to
                 : "/";
             redirect(safe);
@@ -820,7 +923,7 @@ export function registerCoreRouteHandlers(): void {
             )}`;
 
             const rawActions = applyFilters(
-              FRONTEND_ACCESS_DENIED_ACTIONS_FILTER,
+              FRONTEND_ACCESS_DENIED_ACTIONS_FILTER as string,
               [],
               {
                 decision,
@@ -854,6 +957,12 @@ export function registerCoreRouteHandlers(): void {
                 reason={decision.reason}
                 contentTitle={
                   typeof post.title === "string" ? post.title : undefined
+                }
+                featuredImageUrl={
+                  post.featuredImageUrl ??
+                  resolveFirstImageFromAttachmentsMeta(
+                    postMetaObject[ATTACHMENTS_META_KEY],
+                  )
                 }
                 signInHref={signInHref}
                 actions={actions}

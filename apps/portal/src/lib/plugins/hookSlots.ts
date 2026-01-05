@@ -51,6 +51,10 @@ export const FRONTEND_CONTENT_ACCESS_RULE_SOURCES_FILTER =
 export const FRONTEND_ACCESS_DENIED_ACTIONS_FILTER =
   "frontend.accessDenied.actions";
 
+// Portal (frontend) notifications UI extension points
+// Plugins can contribute additional notification tabs/groupings to the header dropdown + notifications page.
+export const FRONTEND_NOTIFICATIONS_TABS_FILTER = "frontend.notifications.tabs";
+
 // Admin edit meta box extension point for content access UI.
 // Plugins can contribute additional UI sections (e.g. CRM marketing tags) to the core Content Access metabox.
 export const ADMIN_CONTENT_ACCESS_SECTIONS_FILTER = "admin.contentAccess.sections";

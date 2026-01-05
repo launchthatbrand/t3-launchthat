@@ -6,8 +6,8 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 
-import { components } from "../_generated/api";
-import { query } from "../_generated/server";
+import { components } from "../../_generated/api";
+import { query } from "../../_generated/server";
 
 const queryAny = query as any;
 const componentsAny = components as any;

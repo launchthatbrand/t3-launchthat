@@ -211,7 +211,9 @@ export function VimeoLibrary({
     connectionArgs !== "skip" && connectionsResult === undefined;
   const connection = connections[0] ?? null;
 
-  const fetchLiveVideos = useActionHook(api.vimeo.actions.getCachedVimeoVideos);
+  const fetchLiveVideos = useActionHook(
+    api.plugins.vimeo.actions.getCachedVimeoVideos,
+  );
 
   const mapApiVideos = useCallback((payload: unknown): VimeoVideoRow[] => {
     const rawVideos = (() => {

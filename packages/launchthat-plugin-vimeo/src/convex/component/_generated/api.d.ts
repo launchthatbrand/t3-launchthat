@@ -9,6 +9,7 @@
  */
 
 import type * as index from "../index.js";
+import type * as internalActions from "../internalActions.js";
 import type * as internalMutations from "../internalMutations.js";
 import type * as syncState_mutations from "../syncState/mutations.js";
 import type * as syncState_queries from "../syncState/queries.js";
@@ -31,6 +32,7 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   index: typeof index;
+  internalActions: typeof internalActions;
   internalMutations: typeof internalMutations;
   "syncState/mutations": typeof syncState_mutations;
   "syncState/queries": typeof syncState_queries;

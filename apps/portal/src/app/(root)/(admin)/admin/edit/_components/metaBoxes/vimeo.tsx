@@ -72,7 +72,7 @@ const VimeoTranscriptMetaBox = ({
   );
   const isVimeoEnabled = Boolean(vimeoOption?.metaValue);
 
-  const fetchTranscript = useAction(api.vimeo.actions.fetchTranscript);
+  const fetchTranscript = useAction(api.plugins.vimeo.actions.fetchTranscript);
   const updateCorePost = useMutation(api.core.posts.mutations.updatePost);
   const updateLmsPost = useMutation(api.plugins.lms.posts.mutations.updatePost);
 

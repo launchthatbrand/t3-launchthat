@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { Check, Clock, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
+import { applyFilters } from "@acme/admin-runtime/hooks";
 
 import { Button } from "@acme/ui/button";
 import {
@@ -20,13 +21,32 @@ import { ScrollArea } from "@acme/ui/scroll-area";
 import { Skeleton } from "@acme/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
-import type {
-  NotificationCategory,
-  NotificationDropdownProps,
-  NotificationFilters,
-} from "./types";
+import type { NotificationDropdownProps, NotificationTabDefinition } from "./types";
 import { NotificationCard } from "./NotificationCard";
-import { NOTIFICATION_CATEGORIES } from "./types";
+import { FRONTEND_NOTIFICATIONS_TABS_FILTER } from "~/lib/plugins/hookSlots";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
+
+type PluginOptionDoc = { metaKey?: unknown; metaValue?: unknown };
+
+const getEnabledPluginIds = (args: {
+  pluginOptions: PluginOptionDoc[] | undefined;
+}): string[] => {
+  const optionMap = new Map(
+    (args.pluginOptions ?? []).map((o) => [String(o.metaKey ?? ""), Boolean(o.metaValue)]),
+  );
+
+  const enabledIds: string[] = [];
+  for (const plugin of pluginDefinitions) {
+    if (!plugin.activation) {
+      enabledIds.push(plugin.id);
+      continue;
+    }
+    const stored = optionMap.get(plugin.activation.optionKey);
+    const isEnabled = stored ?? plugin.activation.defaultEnabled ?? false;
+    if (isEnabled) enabledIds.push(plugin.id);
+  }
+  return enabledIds;
+};
 
 export function NotificationDropdown({
   clerkId,
@@ -36,8 +56,29 @@ export function NotificationDropdown({
   variant = "dropdown",
 }: NotificationDropdownProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<NotificationCategory>("all");
+  const [activeTabId, setActiveTabId] = useState<string>("all");
   const [paginationCursor, setPaginationCursor] = useState<string | null>(null);
+
+  const pluginOptions = useQuery(
+    api.core.options.getByType,
+    orgId ? ({ orgId: orgId as any, type: "site" } as const) : "skip",
+  ) as PluginOptionDoc[] | undefined;
+  const enabledPluginIds = getEnabledPluginIds({ pluginOptions });
+
+  const baseTabs: NotificationTabDefinition[] = [
+    { id: "all", label: "All" },
+    { id: "system", label: "System", tabKey: "system" },
+  ];
+  const tabsRaw: unknown = applyFilters(
+    FRONTEND_NOTIFICATIONS_TABS_FILTER,
+    baseTabs,
+    { enabledPluginIds, orgId },
+  );
+  const tabs: NotificationTabDefinition[] = Array.isArray(tabsRaw)
+    ? (tabsRaw as NotificationTabDefinition[])
+    : baseTabs;
+  const activeTab =
+    tabs.find((t) => t.id === activeTabId) ?? tabs[0] ?? baseTabs[0];
 
   // Get convex user by clerkId
   const convexUser = useQuery(
@@ -45,29 +86,14 @@ export function NotificationDropdown({
     clerkId ? { clerkId } : "skip",
   );
 
-  // Function to map category to notification types for filtering
-  const getFilterTypes = (
-    category: NotificationCategory,
-  ): Record<string, any> => {
-    if (category === "all") return {};
-
-    // Get the first type in the category array (API expects a single type)
-    const categoryTypes = NOTIFICATION_CATEGORIES[category];
-    if (categoryTypes.length > 0) {
-      return { eventKey: categoryTypes[0] };
-    }
-
-    return {};
-  };
-
   // Query for notifications
   const notificationsResult = useQuery(
-    api.notifications.queries.paginateByClerkIdAndOrgId,
+    api.core.notifications.queries.paginateByClerkIdAndOrgId,
     clerkId
       ? {
           clerkId,
           orgId: orgId as any,
-          filters: getFilterTypes(activeTab),
+          filters: activeTab.tabKey ? { tabKey: activeTab.tabKey } : undefined,
           paginationOpts: {
             numItems: 10,
             cursor: paginationCursor ?? null,
@@ -78,10 +104,10 @@ export function NotificationDropdown({
 
   // Mutations for marking notifications as read
   const markAsRead = useMutation(
-    api.notifications.mutations.markNotificationAsRead,
+    api.core.notifications.mutations.markNotificationAsRead,
   );
   const markAllAsRead = useMutation(
-    api.notifications.mutations.markAllNotificationsAsRead,
+    api.core.notifications.mutations.markAllNotificationsAsRead,
   );
 
   // Handle marking a notification as read
@@ -159,9 +185,9 @@ export function NotificationDropdown({
           icon={<Clock className="text-muted-foreground h-10 w-10" />}
           title="No notifications"
           description={
-            activeTab === "all"
+            activeTab.id === "all"
               ? "You don't have any notifications yet."
-              : `You don't have any ${activeTab} notifications.`
+              : `You don't have any ${activeTab.label} notifications.`
           }
         />
       );
@@ -169,11 +195,16 @@ export function NotificationDropdown({
 
     const notifications = notificationsResult.page;
     const hasMore = !notificationsResult.isDone && !!notificationsResult.continueCursor;
+    const visibleNotifications = activeTab.tabKey
+      ? notifications.filter(
+          (n: any) => typeof n?.tabKey === "string" && n.tabKey === activeTab.tabKey,
+        )
+      : notifications;
 
     return (
       <>
         <div className="space-y-1 p-1">
-          {notifications.map((notification) => (
+          {visibleNotifications.map((notification) => (
             <NotificationCard
               key={notification._id}
               notification={notification}
@@ -249,43 +280,28 @@ export function NotificationDropdown({
 
       <Tabs
         defaultValue="all"
-        value={activeTab}
+        value={activeTabId}
         onValueChange={(value) => {
-          setActiveTab(value as NotificationCategory);
+          setActiveTabId(value);
           setPaginationCursor(null);
         }}
         className="w-full"
       >
         <div className="border-b px-4">
           <TabsList className="h-10 w-full justify-start rounded-none border-b-0 bg-transparent p-0">
-            <TabsTrigger
-              value="all"
-              className="data-[state=active]:border-primary data-[state=active]:bg-transparent"
-            >
-              All
-            </TabsTrigger>
-            <TabsTrigger
-              value="activity"
-              className="data-[state=active]:border-primary data-[state=active]:bg-transparent"
-            >
-              Activity
-            </TabsTrigger>
-            <TabsTrigger
-              value="group"
-              className="data-[state=active]:border-primary data-[state=active]:bg-transparent"
-            >
-              Groups
-            </TabsTrigger>
-            <TabsTrigger
-              value="system"
-              className="data-[state=active]:border-primary data-[state=active]:bg-transparent"
-            >
-              System
-            </TabsTrigger>
+            {tabs.map((t) => (
+              <TabsTrigger
+                key={t.id}
+                value={t.id}
+                className="data-[state=active]:border-primary data-[state=active]:bg-transparent"
+              >
+                {t.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </div>
         <ScrollArea className="h-[350px]">
-          <TabsContent value={activeTab} className="m-0">
+          <TabsContent value={activeTabId} className="m-0">
             {renderNotificationContent()}
           </TabsContent>
         </ScrollArea>

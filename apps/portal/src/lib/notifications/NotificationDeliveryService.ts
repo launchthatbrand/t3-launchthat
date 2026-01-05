@@ -99,14 +99,13 @@ export class NotificationDeliveryService {
     try {
       // Use the listNotifications query with filters instead of getMissedNotifications
       const missedNotifications = await this.convexClient.query(
-        api.notifications.index.listNotifications,
+        // NOTE: Notifications are now namespaced under `core/notifications/*`.
+        // This service's legacy interface is userId-based; the current query API is ClerkId-based.
+        // We treat `userId` as `clerkId` here for compatibility.
+        api.core.notifications.queries.paginateByClerkIdAndOrgId as any,
         {
-          userId: userId as Id<"users">,
-          filters: {
-            // Filter by notification types
-            type: types.length === 1 ? types[0] : undefined,
-            // Add timestamp filter if available in the API
-          },
+          clerkId: userId,
+          filters: { eventKey: types.length === 1 ? types[0] : undefined },
           paginationOpts: {
             numItems: 50,
             cursor: null,
@@ -138,7 +137,7 @@ export class NotificationDeliveryService {
 
     try {
       await this.convexClient.mutation(
-        api.notifications.mutations.createNotification,
+        api.core.notifications.mutations.createNotification,
         {
           // Extract required fields for the API
           userId: notification.userId,
@@ -168,7 +167,7 @@ export class NotificationDeliveryService {
     try {
       // Since there's no direct email notification endpoint, create a notification and mark it for email delivery
       await this.convexClient.mutation(
-        api.notifications.mutations.createNotification,
+        api.core.notifications.mutations.createNotification,
         {
           // Extract required fields for the API
           userId: notification.userId,
@@ -198,7 +197,7 @@ export class NotificationDeliveryService {
     try {
       // Since there's no direct push notification endpoint, create a notification and mark it for push delivery
       await this.convexClient.mutation(
-        api.notifications.mutations.createNotification,
+        api.core.notifications.mutations.createNotification,
         {
           // Extract required fields for the API
           userId: notification.userId,
@@ -228,12 +227,11 @@ export class NotificationDeliveryService {
 
     // Use subscription instead of onUpdate
     const unsubscribe = this.convexClient.subscribe(
-      api.notifications.index.listNotifications,
+      // Legacy subscription helper; see comment in `checkMissedNotifications`.
+      api.core.notifications.queries.paginateByClerkIdAndOrgId as any,
       {
-        userId: "system" as Id<"users">, // This is a placeholder, should be replaced with actual user ID
-        filters: {
-          // Channel-specific filtering logic
-        },
+        clerkId: "system",
+        filters: {},
         paginationOpts: {
           numItems: 10,
           cursor: null,

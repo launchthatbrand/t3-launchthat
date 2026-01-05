@@ -6,234 +6,6 @@ export const internal: InternalApiType = anyApi as unknown as InternalApiType;
 
 export type PublicApiType = {
   env: { get: FunctionReference<"query", "public", { name: string }, any> };
-  notifications: {
-    mutations: {
-      markNotificationAsRead: FunctionReference<
-        "mutation",
-        "public",
-        { notificationId: Id<"notifications"> },
-        boolean
-      >;
-      markAllNotificationsAsRead: FunctionReference<
-        "mutation",
-        "public",
-        { orgId: Id<"organizations">; userId: Id<"users"> },
-        number
-      >;
-      createNotification: FunctionReference<
-        "mutation",
-        "public",
-        {
-          actionData?: Record<string, string>;
-          actionUrl?: string;
-          content?: string;
-          eventKey?: string;
-          expiresAt?: number;
-          message?: string;
-          orgId?: Id<"organizations">;
-          relatedId?: Id<"groupInvitations">;
-          sourceOrderId?: Id<"transactions">;
-          sourceUserId?: Id<"users">;
-          title: string;
-          type?: string;
-          userId: Id<"users">;
-        },
-        Id<"notifications">
-      >;
-      deleteNotification: FunctionReference<
-        "mutation",
-        "public",
-        { notificationId: Id<"notifications"> },
-        boolean
-      >;
-      deleteAllNotifications: FunctionReference<
-        "mutation",
-        "public",
-        { orgId: Id<"organizations">; userId: Id<"users"> },
-        number
-      >;
-      batchCreateNotifications: FunctionReference<
-        "mutation",
-        "public",
-        {
-          actionData?: Record<string, string>;
-          actionUrl?: string;
-          content?: string;
-          eventKey?: string;
-          expiresAt?: number;
-          message?: string;
-          orgId?: Id<"organizations">;
-          relatedId?: Id<"groupInvitations">;
-          sourceOrderId?: Id<"transactions">;
-          sourceUserId?: Id<"users">;
-          title: string;
-          type?: string;
-          userIds: Array<Id<"users">>;
-        },
-        Array<Id<"notifications">>
-      >;
-    };
-    preferences: {
-      getNotificationPreferences: FunctionReference<
-        "query",
-        "public",
-        { userId: Id<"users"> },
-        any
-      >;
-      updateNotificationPreferences: FunctionReference<
-        "mutation",
-        "public",
-        {
-          appPreferences?: Record<string, never>;
-          emailPreferences?: Record<string, never>;
-          pushEnabled?: boolean;
-          pushToken?: string;
-          userId: Id<"users">;
-        },
-        boolean
-      >;
-      resetNotificationPreferences: FunctionReference<
-        "mutation",
-        "public",
-        { userId: Id<"users"> },
-        boolean
-      >;
-      updateSingleNotificationPreference: FunctionReference<
-        "mutation",
-        "public",
-        {
-          appEnabled?: boolean;
-          emailEnabled?: boolean;
-          type:
-            | "friendRequest"
-            | "friendAccepted"
-            | "message"
-            | "mention"
-            | "groupInvite"
-            | "groupJoinRequest"
-            | "groupJoinApproved"
-            | "groupJoinRejected"
-            | "groupInvitation"
-            | "invitationAccepted"
-            | "invitationDeclined"
-            | "groupPost"
-            | "groupComment"
-            | "eventInvite"
-            | "eventReminder"
-            | "eventUpdate"
-            | "newDownload"
-            | "courseUpdate"
-            | "orderConfirmation"
-            | "paymentSuccess"
-            | "paymentFailed"
-            | "productUpdate"
-            | "systemAnnouncement";
-          userId: Id<"users">;
-        },
-        any
-      >;
-      updatePushSettings: FunctionReference<
-        "mutation",
-        "public",
-        { pushEnabled: boolean; pushToken?: string; userId: Id<"users"> },
-        any
-      >;
-    };
-    queries: {
-      getUnreadCountByClerkIdAndOrgId: FunctionReference<
-        "query",
-        "public",
-        { clerkId: string; orgId?: Id<"organizations"> },
-        number
-      >;
-      listLatestByClerkIdAndOrgId: FunctionReference<
-        "query",
-        "public",
-        { clerkId: string; limit?: number; orgId?: Id<"organizations"> },
-        Array<any>
-      >;
-      paginateByClerkIdAndOrgId: FunctionReference<
-        "query",
-        "public",
-        {
-          clerkId: string;
-          filters?: { eventKey?: string };
-          orgId?: Id<"organizations">;
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-        },
-        { continueCursor: string | null; isDone: boolean; page: Array<any> }
-      >;
-    };
-    settings: {
-      getOrgDefaults: FunctionReference<
-        "query",
-        "public",
-        { orgId: Id<"organizations"> },
-        { inAppDefaults: Record<string, boolean> }
-      >;
-      setOrgDefaults: FunctionReference<
-        "mutation",
-        "public",
-        {
-          actorUserId: Id<"users">;
-          inAppDefaults: Record<string, boolean>;
-          orgId: Id<"organizations">;
-        },
-        null
-      >;
-      getUserEventPrefs: FunctionReference<
-        "query",
-        "public",
-        { orgId: Id<"organizations">; userId: Id<"users"> },
-        { inAppEnabled: Record<string, boolean> }
-      >;
-      setUserEventPrefs: FunctionReference<
-        "mutation",
-        "public",
-        {
-          inAppEnabled: Record<string, boolean>;
-          orgId: Id<"organizations">;
-          userId: Id<"users">;
-        },
-        null
-      >;
-      listSubscriptions: FunctionReference<
-        "query",
-        "public",
-        { eventKey?: string; orgId: Id<"organizations">; userId: Id<"users"> },
-        Array<{
-          _creationTime: number;
-          _id: Id<"notificationSubscriptions">;
-          enabled: boolean;
-          eventKey: string;
-          orgId: Id<"organizations">;
-          scopeId: string | null;
-          scopeKind: string;
-          userId: Id<"users">;
-        }>
-      >;
-      upsertSubscription: FunctionReference<
-        "mutation",
-        "public",
-        {
-          enabled: boolean;
-          eventKey: string;
-          orgId: Id<"organizations">;
-          scopeId: string | null;
-          scopeKind: string;
-          userId: Id<"users">;
-        },
-        Id<"notificationSubscriptions">
-      >;
-    };
-  };
   tasks: {
     boards: {
       mutations: {
@@ -241,19 +13,19 @@ export type PublicApiType = {
           "mutation",
           "public",
           { name: string },
-          any
+          string
         >;
         updateBoard: FunctionReference<
           "mutation",
           "public",
-          { boardId: Id<"taskBoards">; name: string },
-          any
+          { boardId: string; name: string },
+          boolean
         >;
         deleteBoard: FunctionReference<
           "mutation",
           "public",
-          { boardId: Id<"taskBoards"> },
-          any
+          { boardId: string },
+          boolean
         >;
       };
       queries: {
@@ -266,7 +38,7 @@ export type PublicApiType = {
         getBoard: FunctionReference<
           "query",
           "public",
-          { boardId: Id<"taskBoards"> },
+          { boardId: string },
           any
         >;
       };
@@ -276,7 +48,7 @@ export type PublicApiType = {
         "mutation",
         "public",
         {
-          boardId?: Id<"taskBoards">;
+          boardId?: string;
           description?: string;
           dueDate?: number;
           isRecurring?: boolean;
@@ -284,7 +56,7 @@ export type PublicApiType = {
           status?: "pending" | "completed" | "cancelled";
           title: string;
         },
-        Id<"tasks">
+        string
       >;
       updateTask: FunctionReference<
         "mutation",
@@ -295,7 +67,7 @@ export type PublicApiType = {
           isRecurring?: boolean;
           recurrenceRule?: string;
           status?: "pending" | "completed" | "cancelled";
-          taskId: Id<"tasks">;
+          taskId: string;
           title?: string;
         },
         boolean
@@ -303,13 +75,13 @@ export type PublicApiType = {
       deleteTask: FunctionReference<
         "mutation",
         "public",
-        { taskId: Id<"tasks"> },
+        { taskId: string },
         boolean
       >;
       reorderTasks: FunctionReference<
         "mutation",
         "public",
-        { tasks: Array<{ sortIndex: number; taskId: Id<"tasks"> }> },
+        { tasks: Array<{ sortIndex: number; taskId: string }> },
         boolean
       >;
     };
@@ -318,273 +90,14 @@ export type PublicApiType = {
         "query",
         "public",
         Record<string, never>,
-        Array<{
-          _creationTime: number;
-          _id: Id<"tasks">;
-          boardId?: Id<"taskBoards">;
-          createdAt: number;
-          description?: string;
-          dueDate?: number;
-          isRecurring?: boolean;
-          recurrenceRule?: string;
-          sortIndex?: number;
-          status: "pending" | "completed" | "cancelled";
-          title: string;
-          updatedAt: number;
-        }>
+        any
       >;
-      getTask: FunctionReference<
-        "query",
-        "public",
-        { taskId: Id<"tasks"> },
-        null | {
-          _creationTime: number;
-          _id: Id<"tasks">;
-          boardId?: Id<"taskBoards">;
-          createdAt: number;
-          description?: string;
-          dueDate?: number;
-          isRecurring?: boolean;
-          recurrenceRule?: string;
-          sortIndex?: number;
-          status: "pending" | "completed" | "cancelled";
-          title: string;
-          updatedAt: number;
-        }
-      >;
+      getTask: FunctionReference<"query", "public", { taskId: string }, any>;
       listTasksByBoard: FunctionReference<
         "query",
         "public",
-        { boardId: Id<"taskBoards"> },
-        Array<{
-          _creationTime: number;
-          _id: Id<"tasks">;
-          boardId?: Id<"taskBoards">;
-          createdAt: number;
-          description?: string;
-          dueDate?: number;
-          isRecurring?: boolean;
-          recurrenceRule?: string;
-          sortIndex?: number;
-          status: "pending" | "completed" | "cancelled";
-          title: string;
-          updatedAt: number;
-        }>
-      >;
-    };
-  };
-  vimeo: {
-    actions: {
-      refreshVimeoLibrary: FunctionReference<
-        "action",
-        "public",
-        { ownerId: Id<"organizations"> | Id<"users"> | string },
-        {
-          finishedAt: number;
-          pagesFetched: number;
-          startedAt: number;
-          syncedCount: number;
-        }
-      >;
-      syncNewestForConnection: FunctionReference<
-        "action",
-        "public",
-        { connectionId: Id<"connections"> },
-        { inserted: number; updated: number }
-      >;
-      listFolders: FunctionReference<
-        "action",
-        "public",
-        { connectionId: Id<"connections"> },
-        Array<{ id: string; name: string }>
-      >;
-      getCachedVimeoVideos: FunctionReference<
-        "action",
-        "public",
-        { ownerId: Id<"users"> | string },
+        { boardId: string },
         any
-      >;
-      fetchTranscript: FunctionReference<
-        "action",
-        "public",
-        { ownerId: Id<"organizations"> | string; videoId: string },
-        {
-          rawVtt: string;
-          track: {
-            id: string;
-            label?: string;
-            language?: string;
-            type?: string;
-          };
-          transcript: string;
-        }
-      >;
-    };
-    mutations: {
-      createVideo: FunctionReference<
-        "mutation",
-        "public",
-        {
-          connectionId: Id<"connections">;
-          createdAt: number;
-          description?: string;
-          embedUrl: string;
-          publishedAt: number;
-          thumbnailUrl?: string;
-          title: string;
-          updatedAt: number;
-          videoId: string;
-        },
-        Id<"vimeoVideos">
-      >;
-      updateVideo: FunctionReference<
-        "mutation",
-        "public",
-        {
-          description?: string;
-          embedUrl?: string;
-          id: Id<"vimeoVideos">;
-          publishedAt?: number;
-          thumbnailUrl?: string;
-          title?: string;
-          updatedAt: number;
-        },
-        Id<"vimeoVideos">
-      >;
-      upsertVideosPage: FunctionReference<
-        "mutation",
-        "public",
-        {
-          connectionId: Id<"connections">;
-          now: number;
-          videos: Array<{
-            description?: string;
-            embedUrl: string;
-            publishedAt: number;
-            thumbnailUrl?: string;
-            title: string;
-            videoId: string;
-          }>;
-        },
-        { inserted: number; updated: number }
-      >;
-      upsertVideo: FunctionReference<
-        "mutation",
-        "public",
-        {
-          connectionId: Id<"connections">;
-          now: number;
-          video: {
-            description?: string;
-            embedUrl: string;
-            publishedAt: number;
-            thumbnailUrl?: string;
-            title: string;
-            videoId: string;
-          };
-        },
-        { id: Id<"vimeoVideos">; inserted: boolean }
-      >;
-      markVideoDeleted: FunctionReference<
-        "mutation",
-        "public",
-        { connectionId: Id<"connections">; deletedAt: number; videoId: string },
-        boolean
-      >;
-      startVimeoSync: FunctionReference<
-        "mutation",
-        "public",
-        { organizationId: Id<"organizations">; restart?: boolean },
-        { connectionId: Id<"connections">; workflowId: string }
-      >;
-      startVimeoSyncForConnection: FunctionReference<
-        "mutation",
-        "public",
-        {
-          connectionId: Id<"connections">;
-          maxPages?: number;
-          restart?: boolean;
-        },
-        { connectionId: Id<"connections">; workflowId: string }
-      >;
-      triggerSync: FunctionReference<
-        "mutation",
-        "public",
-        { connectionId: Id<"connections"> },
-        null
-      >;
-    };
-    queries: {
-      listVideos: FunctionReference<
-        "query",
-        "public",
-        {
-          organizationId: Id<"organizations">;
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-          search?: string;
-        },
-        {
-          continueCursor: string | null;
-          isDone: boolean;
-          page: Array<{
-            _id: Id<"vimeoVideos">;
-            description?: string;
-            embedUrl: string;
-            publishedAt: number;
-            thumbnailUrl?: string;
-            title: string;
-            videoId: string;
-          }>;
-        }
-      >;
-      getVideoByExternalId: FunctionReference<
-        "query",
-        "public",
-        { connectionId: Id<"connections">; videoId: string },
-        null | {
-          _id: Id<"vimeoVideos">;
-          connectionId: Id<"connections">;
-          embedUrl: string;
-          publishedAt: number;
-          thumbnailUrl?: string;
-          title: string;
-          videoId: string;
-        }
-      >;
-    };
-    syncState: {
-      getVimeoSyncStatus: FunctionReference<
-        "query",
-        "public",
-        { organizationId: Id<"organizations"> },
-        null | {
-          _id: Id<"vimeoSyncState">;
-          connectionId: Id<"connections">;
-          estimatedTotalPages?: number;
-          finishedAt?: number;
-          lastError?: string;
-          nextPage: number;
-          pagesFetched: number;
-          perPage: number;
-          startedAt?: number;
-          status: "idle" | "running" | "error" | "done";
-          syncedCount: number;
-          totalVideos?: number;
-          updatedAt: number;
-          webhookId?: string;
-          webhookLastError?: string;
-          webhookLastEventAt?: number;
-          webhookSecret?: string;
-          webhookStatus?: "idle" | "active" | "error" | "disabled";
-          workflowId?: string;
-        }
       >;
     };
   };
@@ -978,6 +491,12 @@ export type PublicApiType = {
           { id: Id<"posts"> },
           any
         >;
+        deletePostMetaKey: FunctionReference<
+          "mutation",
+          "public",
+          { key: string; postId: Id<"posts"> },
+          null
+        >;
         updatePostStatus: FunctionReference<
           "mutation",
           "public",
@@ -1057,6 +576,18 @@ export type PublicApiType = {
           "public",
           { organizationId?: Id<"organizations"> },
           any
+        >;
+        listPostsWithMetaKey: FunctionReference<
+          "query",
+          "public",
+          { key: string; organizationId?: Id<"organizations"> },
+          Array<{
+            organizationId?: Id<"organizations">;
+            postId: Id<"posts">;
+            postTypeSlug: string;
+            title?: string;
+            value?: string | number | boolean | null;
+          }>
         >;
         listTemplates: FunctionReference<
           "query",
@@ -1208,24 +739,6 @@ export type PublicApiType = {
             slug: string;
             updatedAt?: number;
           }>
-        >;
-      };
-    };
-    accessControl: {
-      mutations: {
-        assignDownloadRole: FunctionReference<
-          "mutation",
-          "public",
-          { roleToAssign: string; userIdToAssign: Id<"users"> },
-          boolean
-        >;
-      };
-      queries: {
-        checkIsAdmin: FunctionReference<
-          "query",
-          "public",
-          Record<string, never>,
-          boolean
         >;
       };
     };
@@ -1633,7 +1146,6 @@ export type PublicApiType = {
             description?: string;
             isPublic?: boolean;
             name: string;
-            planId?: Id<"plans">;
           },
           Id<"organizations">
         >;
@@ -1648,7 +1160,6 @@ export type PublicApiType = {
             logo?: string | null;
             name?: string;
             organizationId: Id<"organizations">;
-            planId?: Id<"plans">;
             primaryColor?: string;
           },
           null
@@ -1696,7 +1207,7 @@ export type PublicApiType = {
             customerUserId: Id<"users">;
             expiresAt?: number;
             organizationId: Id<"organizations">;
-            sourceId?: Id<"products"> | string;
+            sourceId?: string;
           },
           Id<"userOrganizations">
         >;
@@ -1725,45 +1236,6 @@ export type PublicApiType = {
             role: "admin" | "editor" | "viewer" | "student";
           },
           Id<"userOrganizations">
-        >;
-        createPlan: FunctionReference<
-          "mutation",
-          "public",
-          {
-            description: string;
-            displayName: string;
-            features: Array<string>;
-            isActive?: boolean;
-            maxOrganizations: number;
-            name: "free" | "starter" | "business" | "agency";
-            priceMonthly: number;
-            priceYearly?: number;
-            sortOrder?: number;
-          },
-          Id<"plans">
-        >;
-        updatePlan: FunctionReference<
-          "mutation",
-          "public",
-          {
-            description?: string;
-            displayName?: string;
-            features?: Array<string>;
-            isActive?: boolean;
-            maxOrganizations?: number;
-            name?: "free" | "starter" | "business" | "agency";
-            planId: Id<"plans">;
-            priceMonthly?: number;
-            priceYearly?: number;
-            sortOrder?: number;
-          },
-          null
-        >;
-        deletePlan: FunctionReference<
-          "mutation",
-          "public",
-          { planId: Id<"plans"> },
-          null
         >;
       };
       queries: {
@@ -1818,7 +1290,7 @@ export type PublicApiType = {
             memberCount?: number;
             name: string;
             ownerId: Id<"users">;
-            planId?: Id<"plans">;
+            planId?: string;
             primaryColor?: string;
             slug: string;
             subscriptionId?: string;
@@ -1877,7 +1349,7 @@ export type PublicApiType = {
             memberCount?: number;
             name: string;
             ownerId: Id<"users">;
-            planId?: Id<"plans">;
+            planId?: string;
             primaryColor?: string;
             slug: string;
             subscriptionId?: string;
@@ -1936,7 +1408,7 @@ export type PublicApiType = {
             memberCount?: number;
             name: string;
             ownerId: Id<"users">;
-            planId?: Id<"plans">;
+            planId?: string;
             primaryColor?: string;
             slug: string;
             subscriptionId?: string;
@@ -1956,7 +1428,7 @@ export type PublicApiType = {
           Record<string, never>,
           {
             _creationTime: number;
-            _id: Id<"plans">;
+            _id: string;
             description: string;
             displayName: string;
             features?: Array<string>;
@@ -1975,7 +1447,7 @@ export type PublicApiType = {
           Record<string, never>,
           Array<{
             _creationTime: number;
-            _id: Id<"plans">;
+            _id: string;
             description: string;
             displayName: string;
             features?: Array<string>;
@@ -2045,7 +1517,7 @@ export type PublicApiType = {
             memberCount?: number;
             name: string;
             ownerId: Id<"users">;
-            planId?: Id<"plans">;
+            planId?: string;
             primaryColor?: string;
             slug: string;
             subscriptionId?: string;
@@ -2127,7 +1599,7 @@ export type PublicApiType = {
           "mutation",
           "public",
           Record<string, never>,
-          Array<Id<"plans">>
+          Array<string>
         >;
         assignFreePlanToUser: FunctionReference<
           "mutation",
@@ -2150,7 +1622,7 @@ export type PublicApiType = {
             features?: Array<string>;
             isActive?: boolean;
             maxOrganizations?: number;
-            planId: Id<"plans">;
+            planId: string;
             priceMonthly?: number;
             priceYearly?: number;
             sortOrder?: number;
@@ -3107,97 +2579,6 @@ export type PublicApiType = {
       };
     };
     users: {
-      marketingTags: {
-        index: {
-          listMarketingTags: FunctionReference<
-            "query",
-            "public",
-            Record<string, never>,
-            Array<{
-              _creationTime: number;
-              _id: Id<"marketingTags">;
-              category?: string;
-              color?: string;
-              createdAt?: number;
-              createdBy?: Id<"users">;
-              description?: string;
-              isActive?: boolean;
-              name: string;
-              slug?: string;
-            }>
-          >;
-          createMarketingTag: FunctionReference<
-            "mutation",
-            "public",
-            {
-              category?: string;
-              color?: string;
-              description?: string;
-              isActive?: boolean;
-              name: string;
-              slug?: string;
-            },
-            Id<"marketingTags">
-          >;
-          assignMarketingTagToUser: FunctionReference<
-            "mutation",
-            "public",
-            {
-              assignedBy?: Id<"users">;
-              expiresAt?: number;
-              marketingTagId: Id<"marketingTags">;
-              source?: string;
-              userId: Id<"users">;
-            },
-            Id<"userMarketingTags">
-          >;
-          removeMarketingTagFromUser: FunctionReference<
-            "mutation",
-            "public",
-            { marketingTagId: Id<"marketingTags">; userId: Id<"users"> },
-            boolean
-          >;
-          getUserMarketingTags: FunctionReference<
-            "query",
-            "public",
-            { userId: Id<"users"> },
-            Array<{
-              _id: Id<"userMarketingTags">;
-              assignedAt: number;
-              assignedBy?: Id<"users">;
-              expiresAt?: number;
-              marketingTag: {
-                _creationTime: number;
-                _id: Id<"marketingTags">;
-                category?: string;
-                color?: string;
-                createdAt?: number;
-                createdBy?: Id<"users">;
-                description?: string;
-                isActive?: boolean;
-                name: string;
-                slug?: string;
-              };
-              source?: string;
-              userId: Id<"users">;
-            }>
-          >;
-          userHasMarketingTags: FunctionReference<
-            "query",
-            "public",
-            {
-              requireAll?: boolean;
-              tagSlugs: Array<string>;
-              userId: Id<"users">;
-            },
-            {
-              hasAccess: boolean;
-              matchingTags: Array<string>;
-              missingTags: Array<string>;
-            }
-          >;
-        };
-      };
       mutations: {
         makeCurrentUserAdmin: FunctionReference<
           "mutation",
@@ -3338,160 +2719,6 @@ export type PublicApiType = {
           username?: string;
         }
       >;
-    };
-    crm: {
-      queries: {
-        getTags: FunctionReference<"query", "public", { userId?: string }, any>;
-      };
-      contacts: {
-        mutations: {
-          upsert: FunctionReference<
-            "mutation",
-            "public",
-            {
-              company?: string;
-              email?: string;
-              firstName?: string;
-              fullName?: string;
-              lastName?: string;
-              metadata?: any;
-              organizationId: Id<"organizations"> | "portal-root";
-              phone?: string;
-              tags?: Array<string>;
-            },
-            any
-          >;
-          update: FunctionReference<
-            "mutation",
-            "public",
-            {
-              company?: string;
-              contactId: Id<"contacts">;
-              email?: string;
-              firstName?: string;
-              fullName?: string;
-              lastName?: string;
-              metadata?: any;
-              phone?: string;
-              tags?: Array<string>;
-            },
-            any
-          >;
-          remove: FunctionReference<
-            "mutation",
-            "public",
-            { contactId: Id<"contacts"> },
-            any
-          >;
-        };
-        queries: {
-          list: FunctionReference<
-            "query",
-            "public",
-            {
-              limit?: number;
-              organizationId: Id<"organizations"> | "portal-root";
-              search?: string;
-            },
-            Array<{
-              _creationTime: number;
-              _id: Id<"contacts">;
-              company?: string;
-              createdAt: number;
-              email?: string;
-              firstName?: string;
-              fullName?: string;
-              lastName?: string;
-              organizationId: Id<"organizations"> | "portal-root";
-              phone?: string;
-              tags?: Array<string>;
-              updatedAt: number;
-            }>
-          >;
-          get: FunctionReference<
-            "query",
-            "public",
-            { contactId: Id<"contacts"> },
-            {
-              _creationTime: number;
-              _id: Id<"contacts">;
-              company?: string;
-              createdAt: number;
-              email?: string;
-              firstName?: string;
-              fullName?: string;
-              lastName?: string;
-              organizationId: Id<"organizations"> | "portal-root";
-              phone?: string;
-              tags?: Array<string>;
-              updatedAt: number;
-            } | null
-          >;
-          findByEmail: FunctionReference<
-            "query",
-            "public",
-            {
-              email: string;
-              organizationId: Id<"organizations"> | "portal-root";
-            },
-            {
-              _creationTime: number;
-              _id: Id<"contacts">;
-              company?: string;
-              createdAt: number;
-              email?: string;
-              firstName?: string;
-              fullName?: string;
-              lastName?: string;
-              organizationId: Id<"organizations"> | "portal-root";
-              phone?: string;
-              tags?: Array<string>;
-              updatedAt: number;
-            } | null
-          >;
-          getContacts: FunctionReference<
-            "query",
-            "public",
-            {
-              filters?: {
-                customerType?:
-                  | "lead"
-                  | "prospect"
-                  | "customer"
-                  | "former-customer"
-                  | "partner";
-                leadStatus?:
-                  | "new"
-                  | "contacted"
-                  | "qualified"
-                  | "proposal"
-                  | "negotiation"
-                  | "won"
-                  | "lost"
-                  | "dormant";
-                tags?: Array<string>;
-              };
-              paginationOpts: {
-                cursor: string | null;
-                endCursor?: string | null;
-                id?: number;
-                maximumBytesRead?: number;
-                maximumRowsRead?: number;
-                numItems: number;
-              };
-              search?: string;
-              userId: string;
-            },
-            any
-          >;
-          exportContacts: FunctionReference<
-            "query",
-            "public",
-            { userId?: string },
-            any
-          >;
-        };
-      };
     };
     auditLog: {
       queries: {
@@ -3972,6 +3199,227 @@ export type PublicApiType = {
           "public",
           { orgId?: Id<"organizations">; to: string },
           Id<"emailOutbox">
+        >;
+      };
+    };
+    roles: {
+      queries: {
+        getRoleNamesForUser: FunctionReference<
+          "query",
+          "public",
+          {
+            scopeId?: string;
+            scopeType?: "global" | "group" | "course" | "organization";
+            userId: Id<"users">;
+          },
+          Array<string>
+        >;
+      };
+    };
+    notifications: {
+      mutations: {
+        markNotificationAsRead: FunctionReference<
+          "mutation",
+          "public",
+          { notificationId: Id<"notifications"> },
+          boolean
+        >;
+        markAllNotificationsAsRead: FunctionReference<
+          "mutation",
+          "public",
+          { orgId: Id<"organizations">; userId: Id<"users"> },
+          number
+        >;
+        createNotification: FunctionReference<
+          "mutation",
+          "public",
+          {
+            actionData?: Record<string, string>;
+            actionUrl?: string;
+            content?: string;
+            eventKey?: string;
+            expiresAt?: number;
+            message?: string;
+            orgId?: Id<"organizations">;
+            sourceUserId?: Id<"users">;
+            tabKey?: string;
+            title: string;
+            type?: string;
+            userId: Id<"users">;
+          },
+          Id<"notifications">
+        >;
+        deleteNotification: FunctionReference<
+          "mutation",
+          "public",
+          { notificationId: Id<"notifications"> },
+          boolean
+        >;
+        deleteAllNotifications: FunctionReference<
+          "mutation",
+          "public",
+          { orgId: Id<"organizations">; userId: Id<"users"> },
+          number
+        >;
+        batchCreateNotifications: FunctionReference<
+          "mutation",
+          "public",
+          {
+            actionData?: Record<string, string>;
+            actionUrl?: string;
+            content?: string;
+            eventKey?: string;
+            expiresAt?: number;
+            message?: string;
+            orgId?: Id<"organizations">;
+            sourceUserId?: Id<"users">;
+            tabKey?: string;
+            title: string;
+            type?: string;
+            userIds: Array<Id<"users">>;
+          },
+          Array<Id<"notifications">>
+        >;
+      };
+      preferences: {
+        getNotificationPreferences: FunctionReference<
+          "query",
+          "public",
+          { userId: Id<"users"> },
+          any
+        >;
+        updateNotificationPreferences: FunctionReference<
+          "mutation",
+          "public",
+          {
+            appPreferences?: Record<string, boolean>;
+            emailPreferences?: Record<string, boolean>;
+            pushEnabled?: boolean;
+            pushToken?: string;
+            userId: Id<"users">;
+          },
+          boolean
+        >;
+        resetNotificationPreferences: FunctionReference<
+          "mutation",
+          "public",
+          { userId: Id<"users"> },
+          boolean
+        >;
+        updateSingleNotificationPreference: FunctionReference<
+          "mutation",
+          "public",
+          {
+            appEnabled?: boolean;
+            emailEnabled?: boolean;
+            type: string;
+            userId: Id<"users">;
+          },
+          Id<"notificationPreferences">
+        >;
+        updatePushSettings: FunctionReference<
+          "mutation",
+          "public",
+          { pushEnabled: boolean; pushToken?: string; userId: Id<"users"> },
+          Id<"notificationPreferences">
+        >;
+      };
+      queries: {
+        getUnreadCountByClerkIdAndOrgId: FunctionReference<
+          "query",
+          "public",
+          { clerkId: string; orgId?: Id<"organizations"> },
+          number
+        >;
+        listLatestByClerkIdAndOrgId: FunctionReference<
+          "query",
+          "public",
+          { clerkId: string; limit?: number; orgId?: Id<"organizations"> },
+          Array<any>
+        >;
+        paginateByClerkIdAndOrgId: FunctionReference<
+          "query",
+          "public",
+          {
+            clerkId: string;
+            filters?: { eventKey?: string; tabKey?: string };
+            orgId?: Id<"organizations">;
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+          },
+          { continueCursor: string | null; isDone: boolean; page: Array<any> }
+        >;
+      };
+      settings: {
+        getOrgDefaults: FunctionReference<
+          "query",
+          "public",
+          { orgId: Id<"organizations"> },
+          { inAppDefaults: Record<string, boolean> }
+        >;
+        setOrgDefaults: FunctionReference<
+          "mutation",
+          "public",
+          {
+            actorUserId: Id<"users">;
+            inAppDefaults: Record<string, boolean>;
+            orgId: Id<"organizations">;
+          },
+          null
+        >;
+        getUserEventPrefs: FunctionReference<
+          "query",
+          "public",
+          { orgId: Id<"organizations">; userId: Id<"users"> },
+          { inAppEnabled: Record<string, boolean> }
+        >;
+        setUserEventPrefs: FunctionReference<
+          "mutation",
+          "public",
+          {
+            inAppEnabled: Record<string, boolean>;
+            orgId: Id<"organizations">;
+            userId: Id<"users">;
+          },
+          null
+        >;
+        listSubscriptions: FunctionReference<
+          "query",
+          "public",
+          {
+            eventKey?: string;
+            orgId: Id<"organizations">;
+            userId: Id<"users">;
+          },
+          Array<{
+            _creationTime: number;
+            _id: Id<"notificationSubscriptions">;
+            enabled: boolean;
+            eventKey: string;
+            orgId: Id<"organizations">;
+            scopeId: string | null;
+            scopeKind: string;
+            userId: Id<"users">;
+          }>
+        >;
+        upsertSubscription: FunctionReference<
+          "mutation",
+          "public",
+          {
+            enabled: boolean;
+            eventKey: string;
+            orgId: Id<"organizations">;
+            scopeId: string | null;
+            scopeKind: string;
+            userId: Id<"users">;
+          },
+          Id<"notificationSubscriptions">
         >;
       };
     };
@@ -4945,6 +4393,12 @@ export type PublicApiType = {
             { organizationId?: string; postTypeSlug?: string },
             any
           >;
+          listPostsWithMetaKey: FunctionReference<
+            "query",
+            "public",
+            { key: string; organizationId?: string },
+            any
+          >;
         };
         mutations: {
           createPost: FunctionReference<
@@ -5000,75 +4454,11 @@ export type PublicApiType = {
             { ids: Array<string>; status: "published" | "draft" | "archived" },
             Array<string>
           >;
-        };
-      };
-      contentAccess: {
-        queries: {
-          getContentAccessRules: FunctionReference<
-            "query",
-            "public",
-            {
-              contentId: string;
-              contentType:
-                | "course"
-                | "lesson"
-                | "topic"
-                | "download"
-                | "product"
-                | "quiz";
-            },
-            {
-              contentId: string;
-              contentType:
-                | "course"
-                | "lesson"
-                | "topic"
-                | "download"
-                | "product"
-                | "quiz";
-              excludedTags: { mode: "all" | "some"; tagIds: Array<string> };
-              isActive?: boolean;
-              isPublic?: boolean;
-              priority?: number;
-              requiredTags: { mode: "all" | "some"; tagIds: Array<string> };
-            } | null
-          >;
-        };
-        mutations: {
-          saveContentAccessRules: FunctionReference<
+          deletePostMetaKey: FunctionReference<
             "mutation",
             "public",
-            {
-              contentId: string;
-              contentType:
-                | "course"
-                | "lesson"
-                | "topic"
-                | "download"
-                | "product"
-                | "quiz";
-              excludedTags: { mode: "all" | "some"; tagIds: Array<string> };
-              isActive?: boolean;
-              isPublic?: boolean;
-              priority?: number;
-              requiredTags: { mode: "all" | "some"; tagIds: Array<string> };
-            },
-            string
-          >;
-          clearContentAccessRules: FunctionReference<
-            "mutation",
-            "public",
-            {
-              contentId: string;
-              contentType:
-                | "course"
-                | "lesson"
-                | "topic"
-                | "download"
-                | "product"
-                | "quiz";
-            },
-            boolean
+            { key: string; postId: string },
+            null
           >;
         };
       };
@@ -5229,7 +4619,7 @@ export type PublicApiType = {
           "public",
           { organizationId: string; postTypeSlug: string },
           null | {
-            _id: Id<"supportRagSources">;
+            _id: string;
             baseInstructions: string;
             isEnabled: boolean;
             postTypeSlug: string;
@@ -5483,9 +4873,9 @@ export type PublicApiType = {
             includeTags?: boolean;
             isEnabled?: boolean;
             metaFieldKeys?: Array<string>;
-            organizationId: Id<"organizations"> | "portal-root";
+            organizationId: string;
             postTypeSlug: string;
-            sourceId?: Id<"supportRagSources">;
+            sourceId?: string;
             sourceType?: "postType" | "lmsPostType";
             useCustomBaseInstructions?: boolean;
           },
@@ -5494,20 +4884,13 @@ export type PublicApiType = {
         deleteRagSourceConfig: FunctionReference<
           "mutation",
           "public",
-          {
-            organizationId: Id<"organizations"> | "portal-root";
-            sourceId: Id<"supportRagSources">;
-          },
+          { organizationId: string; sourceId: string },
           any
         >;
         triggerRagReindexForPost: FunctionReference<
           "mutation",
           "public",
-          {
-            organizationId: Id<"organizations"> | "portal-root";
-            postId: string;
-            postTypeSlug: string;
-          },
+          { organizationId: string; postId: string; postTypeSlug: string },
           null
         >;
       };
@@ -6218,7 +5601,7 @@ export type PublicApiType = {
         deleteEntity: FunctionReference<
           "mutation",
           "public",
-          { id: string; postTypeSlug: string },
+          { id: string; organizationId?: string; postTypeSlug: string },
           any
         >;
       };
@@ -6727,7 +6110,19 @@ export type PublicApiType = {
             { limit?: number; organizationId?: string },
             any
           >;
+          listMyOrders: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string },
+            any
+          >;
           getOrder: FunctionReference<
+            "query",
+            "public",
+            { orderId: string; organizationId?: string },
+            null | any
+          >;
+          getMyOrder: FunctionReference<
             "query",
             "public",
             { orderId: string; organizationId?: string },
@@ -6935,31 +6330,32 @@ export type PublicApiType = {
             "public",
             {
               billing: {
-                address1?: string;
-                address2?: string;
-                city?: string;
-                country?: string;
-                email?: string;
-                name?: string;
-                phone?: string;
-                postcode?: string;
-                state?: string;
+                address1?: string | null;
+                address2?: string | null;
+                city?: string | null;
+                country?: string | null;
+                email?: string | null;
+                name?: string | null;
+                phone?: string | null;
+                postcode?: string | null;
+                state?: string | null;
               };
               email: string;
               funnelStepId?: string;
               guestSessionId?: string;
+              idempotencyKey?: string;
               organizationId?: string;
               paymentData?: any;
               paymentMethodId: string;
               shipping: {
-                address1?: string;
-                address2?: string;
-                city?: string;
-                country?: string;
-                name?: string;
-                phone?: string;
-                postcode?: string;
-                state?: string;
+                address1?: string | null;
+                address2?: string | null;
+                city?: string | null;
+                country?: string | null;
+                name?: string | null;
+                phone?: string | null;
+                postcode?: string | null;
+                state?: string | null;
               };
               userId?: string;
             },
@@ -7018,6 +6414,18 @@ export type PublicApiType = {
             },
             string
           >;
+          ensureFunnelStepRoutingMeta: FunctionReference<
+            "mutation",
+            "public",
+            { organizationId?: string; stepId: string },
+            null
+          >;
+          backfillFunnelStepRoutingMeta: FunctionReference<
+            "mutation",
+            "public",
+            { organizationId?: string },
+            any
+          >;
         };
         queries: {
           getFunnelStepsForFunnel: FunctionReference<
@@ -7039,6 +6447,276 @@ export type PublicApiType = {
             any
           >;
         };
+      };
+    };
+    crm: {
+      marketingTags: {
+        queries: {
+          listMarketingTags: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string },
+            any
+          >;
+          getUserMarketingTags: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string; userId: string },
+            any
+          >;
+          getContactIdForUser: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string; userId: string },
+            any
+          >;
+          contactHasMarketingTags: FunctionReference<
+            "query",
+            "public",
+            {
+              contactId: string;
+              organizationId?: string;
+              requireAll?: boolean;
+              tagSlugs: Array<string>;
+            },
+            any
+          >;
+        };
+        mutations: {
+          createMarketingTag: FunctionReference<
+            "mutation",
+            "public",
+            {
+              category?: string;
+              color?: string;
+              description?: string;
+              isActive?: boolean;
+              name: string;
+              organizationId?: string;
+              slug?: string;
+            },
+            any
+          >;
+          assignMarketingTagToUser: FunctionReference<
+            "mutation",
+            "public",
+            {
+              assignedBy?: string;
+              expiresAt?: number;
+              marketingTagId: any;
+              notes?: string;
+              organizationId?: string;
+              source?: string;
+              userId: string;
+            },
+            any
+          >;
+          removeMarketingTagFromUser: FunctionReference<
+            "mutation",
+            "public",
+            { marketingTagId: any; organizationId?: string; userId: string },
+            any
+          >;
+        };
+      };
+    };
+    vimeo: {
+      actions: {
+        refreshVimeoLibrary: FunctionReference<
+          "action",
+          "public",
+          { ownerId: Id<"organizations"> | Id<"users"> | string },
+          {
+            finishedAt: number;
+            pagesFetched: number;
+            startedAt: number;
+            syncedCount: number;
+          }
+        >;
+        syncNewestForConnection: FunctionReference<
+          "action",
+          "public",
+          { connectionId: Id<"connections"> },
+          { inserted: number; updated: number }
+        >;
+        listFolders: FunctionReference<
+          "action",
+          "public",
+          { connectionId: Id<"connections"> },
+          Array<{ id: string; name: string }>
+        >;
+        getCachedVimeoVideos: FunctionReference<
+          "action",
+          "public",
+          { ownerId: Id<"users"> | string },
+          any
+        >;
+        fetchTranscript: FunctionReference<
+          "action",
+          "public",
+          { ownerId: Id<"organizations"> | string; videoId: string },
+          {
+            rawVtt: string;
+            track: {
+              id: string;
+              label?: string;
+              language?: string;
+              type?: string;
+            };
+            transcript: string;
+          }
+        >;
+      };
+      mutations: {
+        createVideo: FunctionReference<
+          "mutation",
+          "public",
+          {
+            connectionId: Id<"connections">;
+            createdAt: number;
+            description?: string;
+            embedUrl: string;
+            publishedAt: number;
+            thumbnailUrl?: string;
+            title: string;
+            updatedAt: number;
+            videoId: string;
+          },
+          string
+        >;
+        updateVideo: FunctionReference<
+          "mutation",
+          "public",
+          {
+            description?: string;
+            embedUrl?: string;
+            id: string;
+            publishedAt?: number;
+            thumbnailUrl?: string;
+            title?: string;
+            updatedAt: number;
+          },
+          string
+        >;
+        upsertVideosPage: FunctionReference<
+          "mutation",
+          "public",
+          {
+            connectionId: Id<"connections">;
+            now: number;
+            videos: Array<{
+              description?: string;
+              embedUrl: string;
+              publishedAt: number;
+              thumbnailUrl?: string;
+              title: string;
+              videoId: string;
+            }>;
+          },
+          { inserted: number; updated: number }
+        >;
+        upsertVideo: FunctionReference<
+          "mutation",
+          "public",
+          {
+            connectionId: Id<"connections">;
+            now: number;
+            video: {
+              description?: string;
+              embedUrl: string;
+              publishedAt: number;
+              thumbnailUrl?: string;
+              title: string;
+              videoId: string;
+            };
+          },
+          { id: string; inserted: boolean }
+        >;
+        markVideoDeleted: FunctionReference<
+          "mutation",
+          "public",
+          {
+            connectionId: Id<"connections">;
+            deletedAt: number;
+            videoId: string;
+          },
+          boolean
+        >;
+        startVimeoSync: FunctionReference<
+          "mutation",
+          "public",
+          { organizationId: Id<"organizations">; restart?: boolean },
+          { connectionId: Id<"connections">; workflowId: string }
+        >;
+        startVimeoSyncForConnection: FunctionReference<
+          "mutation",
+          "public",
+          {
+            connectionId: Id<"connections">;
+            maxPages?: number;
+            restart?: boolean;
+          },
+          { connectionId: Id<"connections">; workflowId: string }
+        >;
+        triggerSync: FunctionReference<
+          "mutation",
+          "public",
+          { connectionId: Id<"connections"> },
+          null
+        >;
+      };
+      queries: {
+        listVideos: FunctionReference<
+          "query",
+          "public",
+          {
+            organizationId: Id<"organizations">;
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+            search?: string;
+          },
+          any
+        >;
+        getVideoByExternalId: FunctionReference<
+          "query",
+          "public",
+          { connectionId: string; videoId: string },
+          any
+        >;
+      };
+      syncState: {
+        getVimeoSyncStatus: FunctionReference<
+          "query",
+          "public",
+          { organizationId: Id<"organizations"> },
+          null | {
+            _id: string;
+            connectionId: string;
+            estimatedTotalPages?: number;
+            finishedAt?: number;
+            lastError?: string;
+            nextPage: number;
+            pagesFetched: number;
+            perPage: number;
+            startedAt?: number;
+            status: "idle" | "running" | "error" | "done";
+            syncedCount: number;
+            totalVideos?: number;
+            updatedAt: number;
+            webhookId?: string;
+            webhookLastError?: string;
+            webhookLastEventAt?: number;
+            webhookSecret?: string;
+            webhookStatus?: "idle" | "active" | "error" | "disabled";
+            workflowId?: string;
+          }
+        >;
       };
     };
   };

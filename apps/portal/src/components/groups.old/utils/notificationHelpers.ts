@@ -8,7 +8,7 @@ import { useMutation } from "convex/react";
 export function useGroupNotifications() {
   // Use type casting to avoid TypeScript errors since we know the API exists
   const createNotification = useMutation(
-    api.notifications.createNotification as any,
+    api.core.notifications.mutations.createNotification as any,
   );
 
   return {

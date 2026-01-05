@@ -663,10 +663,11 @@ const attachLessonToCourseInternal = async (
         : String(lessonId);
 
     await ctx.runMutation(
-      internal.notifications.internal.dispatch.dispatchEvent,
+      internal.core.notifications.internal.dispatch.dispatchEvent,
       {
         orgId,
         eventKey: "lms.course.stepAdded",
+        tabKey: "lms",
         scopeKind: "course",
         scopeId: String(course._id),
         title:
@@ -836,10 +837,11 @@ export const reorderLessonsInCourse: any = mutation({
             : String(lessonId);
 
         await ctx.runMutation(
-          internal.notifications.internal.dispatch.dispatchEvent,
+          internal.core.notifications.internal.dispatch.dispatchEvent,
           {
             orgId,
             eventKey: "lms.course.stepAdded",
+            tabKey: "lms",
             scopeKind: "course",
             scopeId: String(course._id),
             title:

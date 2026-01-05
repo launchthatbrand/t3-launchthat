@@ -147,7 +147,7 @@ export const CourseBuilderScreen = ({
   const createQuizFromVimeo = useMutation(
     lmsMutations.createQuizFromVimeo,
   );
-  const startVimeoSync = useMutation(api.vimeo.mutations.startVimeoSync);
+  const startVimeoSync = useMutation(api.plugins.vimeo.mutations.startVimeoSync);
   const vimeoEnabledOption = useQuery(
     api.core.options.get,
     organizationId
@@ -653,7 +653,7 @@ export const CourseBuilderScreen = ({
 
   const isVimeoEnabled = Boolean(vimeoEnabledOption?.metaValue);
   const vimeoSyncStatus = useQuery(
-    api.vimeo.syncState.getVimeoSyncStatus,
+    api.plugins.vimeo.syncState.getVimeoSyncStatus,
     isVimeoEnabled && organizationId
       ? ({ organizationId: organizationId as Id<"organizations"> } as const)
       : "skip",
@@ -661,7 +661,7 @@ export const CourseBuilderScreen = ({
 
   const shouldLoadVimeo = Boolean(isVimeoEnabled && organizationId);
   const vimeoPage = useQuery(
-    api.vimeo.queries.listVideos,
+    api.plugins.vimeo.queries.listVideos,
     shouldLoadVimeo
       ? ({
           organizationId: organizationId as Id<"organizations">,

@@ -33,7 +33,7 @@ export function NotificationIcon() {
   ) as { metaValue?: unknown } | null | undefined;
 
   const unreadCount = useQuery(
-    api.notifications.queries.getUnreadCountByClerkIdAndOrgId,
+    api.core.notifications.queries.getUnreadCountByClerkIdAndOrgId,
     clerkId && orgId ? { clerkId, orgId } : "skip",
   );
 

@@ -5,6 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { Check, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { applyFilters } from "@acme/admin-runtime/hooks";
 
 import { Button } from "@acme/ui/button";
 import {
@@ -25,6 +26,30 @@ import {
 
 import type { Notification } from "./NotificationCard";
 import { NotificationCard } from "./NotificationCard";
+import type { NotificationTabDefinition } from "./types";
+import { FRONTEND_NOTIFICATIONS_TABS_FILTER } from "~/lib/plugins/hookSlots";
+import { pluginDefinitions } from "~/lib/plugins/definitions";
+
+type PluginOptionDoc = { metaKey?: unknown; metaValue?: unknown };
+const getEnabledPluginIds = (args: {
+  pluginOptions: PluginOptionDoc[] | undefined;
+}): string[] => {
+  const optionMap = new Map(
+    (args.pluginOptions ?? []).map((o) => [String(o.metaKey ?? ""), Boolean(o.metaValue)]),
+  );
+
+  const enabledIds: string[] = [];
+  for (const plugin of pluginDefinitions) {
+    if (!plugin.activation) {
+      enabledIds.push(plugin.id);
+      continue;
+    }
+    const stored = optionMap.get(plugin.activation.optionKey);
+    const isEnabled = stored ?? plugin.activation.defaultEnabled ?? false;
+    if (isEnabled) enabledIds.push(plugin.id);
+  }
+  return enabledIds;
+};
 
 interface NotificationsListProps {
   clerkId?: string;
@@ -32,9 +57,29 @@ interface NotificationsListProps {
 }
 
 export function NotificationsList({ clerkId, orgId }: NotificationsListProps) {
-  const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [activeTabId, setActiveTabId] = useState<string>("all");
   const [paginationCursor, setPaginationCursor] = useState<string | null>(null);
   const [items, setItems] = useState<Array<any>>([]);
+
+  const pluginOptions = useQuery(
+    api.core.options.getByType,
+    orgId ? ({ orgId: orgId as any, type: "site" } as const) : "skip",
+  ) as PluginOptionDoc[] | undefined;
+  const enabledPluginIds = getEnabledPluginIds({ pluginOptions });
+
+  const baseTabs: NotificationTabDefinition[] = [
+    { id: "all", label: "All" },
+    { id: "system", label: "System", tabKey: "system" },
+  ];
+  const tabsRaw: unknown = applyFilters(
+    FRONTEND_NOTIFICATIONS_TABS_FILTER,
+    baseTabs,
+    { enabledPluginIds, orgId },
+  );
+  const tabs: NotificationTabDefinition[] = Array.isArray(tabsRaw)
+    ? (tabsRaw as NotificationTabDefinition[])
+    : baseTabs;
+  const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0] ?? baseTabs[0];
 
   const convexUser = useQuery(
     api.core.users.queries.getUserByClerkId,
@@ -43,13 +88,13 @@ export function NotificationsList({ clerkId, orgId }: NotificationsListProps) {
 
   // Query for notifications
   const notificationsResult = useQuery(
-    api.notifications.queries.paginateByClerkIdAndOrgId,
+    api.core.notifications.queries.paginateByClerkIdAndOrgId,
     clerkId && orgId
       ? {
           clerkId,
           orgId: orgId as any,
           filters:
-            activeFilter !== "all" ? { eventKey: activeFilter } : undefined,
+            activeTab.tabKey ? { tabKey: activeTab.tabKey } : undefined,
           paginationOpts: {
             numItems: 20,
             cursor: paginationCursor ?? null,
@@ -60,15 +105,15 @@ export function NotificationsList({ clerkId, orgId }: NotificationsListProps) {
 
   // Mutations for marking notifications as read
   const markAsRead = useMutation(
-    api.notifications.mutations.markNotificationAsRead,
+    api.core.notifications.mutations.markNotificationAsRead,
   );
   const markAllAsRead = useMutation(
-    api.notifications.mutations.markAllNotificationsAsRead,
+    api.core.notifications.mutations.markAllNotificationsAsRead,
   );
 
   const cursorKey = useMemo(
-    () => `${activeFilter}:${paginationCursor ?? "null"}`,
-    [activeFilter, paginationCursor],
+    () => `${activeTabId}:${paginationCursor ?? "null"}`,
+    [activeTabId, paginationCursor],
   );
 
   useEffect(() => {
@@ -178,6 +223,11 @@ export function NotificationsList({ clerkId, orgId }: NotificationsListProps) {
   }
 
   const notifications = items;
+  const visibleNotifications = activeTab.tabKey
+    ? notifications.filter(
+        (n: any) => typeof n?.tabKey === "string" && n.tabKey === activeTab.tabKey,
+      )
+    : notifications;
   const hasMore =
     !!notificationsResult &&
     !notificationsResult.isDone &&
@@ -188,17 +238,16 @@ export function NotificationsList({ clerkId, orgId }: NotificationsListProps) {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Notifications</h2>
         <div className="flex items-center gap-2">
-          <Select value={activeFilter} onValueChange={setActiveFilter}>
+          <Select value={activeTabId} onValueChange={setActiveTabId}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Filter" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="activity">Activity</SelectItem>
-              <SelectItem value="group">Groups</SelectItem>
-              <SelectItem value="system">System</SelectItem>
-              <SelectItem value="event">Events</SelectItem>
-              <SelectItem value="e-commerce">E-commerce</SelectItem>
+              {tabs.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button
@@ -215,19 +264,19 @@ export function NotificationsList({ clerkId, orgId }: NotificationsListProps) {
         </div>
       </div>
 
-      {notifications.length === 0 ? (
+      {visibleNotifications.length === 0 ? (
         <EmptyState
           icon={<Clock className="text-muted-foreground h-12 w-12" />}
           title="No notifications"
           description={
-            activeFilter === "all"
+            activeTabId === "all"
               ? "You don't have any notifications yet."
-              : `You don't have any ${activeFilter} notifications.`
+              : `You don't have any ${activeTabId} notifications.`
           }
         />
       ) : (
         <div className="space-y-2">
-          {notifications.map((notification: any) => (
+          {visibleNotifications.map((notification: any) => (
             <NotificationCard
               key={notification._id}
               notification={{

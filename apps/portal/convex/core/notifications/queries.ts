@@ -1,10 +1,10 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 
-import type { Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
-import { query } from "../_generated/server";
-import { PORTAL_TENANT_ID } from "../constants";
+import type { Id } from "../../_generated/dataModel";
+import type { QueryCtx } from "../../_generated/server";
+import { query } from "../../_generated/server";
+import { PORTAL_TENANT_ID } from "../../constants";
 
 // NOTE: We intentionally avoid a large `v.object({...})` return validator here.
 // In this repo, TypeScript can sometimes hit inference limits ("excessively deep")
@@ -97,6 +97,7 @@ export const paginateByClerkIdAndOrgId = query({
     filters: v.optional(
       v.object({
         eventKey: v.optional(v.string()),
+        tabKey: v.optional(v.string()),
       }),
     ),
     paginationOpts: paginationOptsValidator,
@@ -116,15 +117,23 @@ export const paginateByClerkIdAndOrgId = query({
     const orgId: Id<"organizations"> =
       args.orgId ?? user.organizationId ?? PORTAL_TENANT_ID;
 
-    const eventKey = args.filters?.eventKey;
-    const qBase = eventKey
+    const eventKeyRaw =
+      typeof args.filters?.eventKey === "string"
+        ? args.filters.eventKey.trim()
+        : undefined;
+
+    // NOTE: tabKey filtering is currently applied client-side to avoid introducing
+    // additional index coupling/inference issues in this codebase.
+    // Server-side filtering can be added later if needed.
+
+    const qBase = eventKeyRaw
       ? ctx.db
           .query("notifications")
           .withIndex("by_user_org_eventKey", (q) =>
             q
               .eq("userId", user._id)
               .eq("orgId", orgId)
-              .eq("eventKey", eventKey),
+              .eq("eventKey", eventKeyRaw),
           )
       : ctx.db
           .query("notifications")

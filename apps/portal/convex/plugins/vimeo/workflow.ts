@@ -4,8 +4,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { v } from "convex/values";
 
-import { internal } from "../_generated/api";
-import { workflow } from "../workflow";
+import { internal } from "../../_generated/api";
+import { workflow } from "../../workflow";
 
 const workflowAny = workflow as any;
 const internalAny = internal as any;
@@ -24,7 +24,7 @@ export const vimeoSyncWorkflow = workflowAny.define({
     let processedPages = 0;
     while (true) {
       const state = await step.runQuery(
-        internalAny.vimeo.syncState.getSyncStateByConnection,
+        internalAny.plugins.vimeo.syncState.getSyncStateByConnection,
         { connectionId: args.connectionId },
       );
 
@@ -34,7 +34,7 @@ export const vimeoSyncWorkflow = workflowAny.define({
       let pageResult: any;
       try {
         pageResult = await step.runAction(
-        internalAny.vimeo.actions.fetchVimeoVideosPage,
+        internalAny.plugins.vimeo.actions.fetchVimeoVideosPage,
         {
           connectionId: args.connectionId,
           page: nextPage,
@@ -45,7 +45,7 @@ export const vimeoSyncWorkflow = workflowAny.define({
           { retry: false },
         );
       } catch (error: unknown) {
-        await step.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+        await step.runMutation(internalAny.plugins.vimeo.syncState.updateSyncState, {
           connectionId: args.connectionId,
           status: "error",
           lastError: error instanceof Error ? error.message : "Sync failed",
@@ -59,7 +59,7 @@ export const vimeoSyncWorkflow = workflowAny.define({
           1,
           Math.ceil(pageResult.total / Math.max(perPage, 1)),
       );
-        await step.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+        await step.runMutation(internalAny.plugins.vimeo.syncState.updateSyncState, {
           connectionId: args.connectionId,
           totalVideos: pageResult.total,
           estimatedTotalPages,
@@ -67,7 +67,7 @@ export const vimeoSyncWorkflow = workflowAny.define({
       }
 
       if (pageResult.videos.length === 0) {
-        await step.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+        await step.runMutation(internalAny.plugins.vimeo.syncState.updateSyncState, {
           connectionId: args.connectionId,
           status: "done",
           finishedAt: Date.now(),
@@ -75,13 +75,13 @@ export const vimeoSyncWorkflow = workflowAny.define({
         break;
       }
 
-      await step.runMutation(internalAny.vimeo.mutations.upsertVideosPage, {
+      await step.runMutation(internalAny.plugins.vimeo.mutations.upsertVideosPage, {
         connectionId: args.connectionId,
         videos: pageResult.videos,
         now: Date.now(),
       });
 
-      await step.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+      await step.runMutation(internalAny.plugins.vimeo.syncState.updateSyncState, {
         connectionId: args.connectionId,
         status: "running",
         nextPage: nextPage + 1,
@@ -92,7 +92,7 @@ export const vimeoSyncWorkflow = workflowAny.define({
 
       processedPages += 1;
       if (args.maxPages !== undefined && processedPages >= args.maxPages) {
-        await step.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+        await step.runMutation(internalAny.plugins.vimeo.syncState.updateSyncState, {
           connectionId: args.connectionId,
           status: "idle",
           finishedAt: Date.now(),

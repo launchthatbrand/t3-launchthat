@@ -5,10 +5,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { v } from "convex/values";
 
-import { internal } from "../_generated/api";
-import { components } from "../_generated/api";
-import { mutation } from "../_generated/server";
-import { workflow } from "../workflow";
+import { internal } from "../../_generated/api";
+import { components } from "../../_generated/api";
+import { mutation } from "../../_generated/server";
+import { workflow } from "../../workflow";
 
 const vAny = v as any;
 const mutationAny = mutation as any;
@@ -182,11 +182,11 @@ export const startVimeoSync = mutationAny({
 
     const workflowId = await workflowAny.start(
       ctx,
-      internalAny.vimeo.workflow.vimeoSyncWorkflow,
+      internalAny.plugins.vimeo.workflow.vimeoSyncWorkflow,
       { connectionId: connection._id },
     );
 
-    await ctx.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+    await ctx.runMutation(internalAny.plugins.vimeo.syncState.updateSyncState, {
       connectionId: String(connection._id),
       status: "running",
       workflowId,
@@ -236,11 +236,11 @@ export const startVimeoSyncForConnection = mutationAny({
 
     const workflowId = await workflowAny.start(
       ctx,
-      internalAny.vimeo.workflow.vimeoSyncWorkflow,
+      internalAny.plugins.vimeo.workflow.vimeoSyncWorkflow,
       { connectionId: args.connectionId, maxPages: args.maxPages },
     );
 
-    await ctx.runMutation(internalAny.vimeo.syncState.updateSyncState, {
+    await ctx.runMutation(internalAny.plugins.vimeo.syncState.updateSyncState, {
       connectionId: String(args.connectionId),
       status: "running",
       workflowId,
@@ -261,7 +261,7 @@ export const triggerSync = mutationAny({
   },
   returns: vAny.null(),
   handler: async (ctx: any, args: any) => {
-    await ctx.scheduler.runAfter(0, internalAny.vimeo.actions.syncVimeoVideos, {
+    await ctx.scheduler.runAfter(0, internalAny.plugins.vimeo.actions.syncVimeoVideos, {
       connectionId: args.connectionId,
     });
     return null;

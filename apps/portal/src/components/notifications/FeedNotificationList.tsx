@@ -35,7 +35,7 @@ export function FeedNotificationList({
 }: FeedNotificationListProps) {
   // Mutation to mark a notification as read
   const markAsRead = useMutation(
-    api.notifications.mutations.markNotificationAsRead,
+    api.core.notifications.mutations.markNotificationAsRead,
   );
 
   // Filter for only feed-related notifications
