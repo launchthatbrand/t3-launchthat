@@ -49,7 +49,9 @@ export const createEcommercePluginDefinition = (
             ...handlers,
             {
               id: "ecommerce:funnel-step",
-              priority: 20,
+              // Must run before core single-post routing (priority 10), otherwise a core
+              // page with slug "checkout" can win and canonicalize /f/.../checkout → /checkout.
+              priority: 5,
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               resolve: async (routeCtx: any) => {
                 const enabledPluginIds = Array.isArray(routeCtx?.enabledPluginIds)
