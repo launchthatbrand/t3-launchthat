@@ -862,13 +862,18 @@ export function CheckoutClient({
     apiAny.core.organizations.queries.getByCustomDomain,
     shouldTryCustomDomain && hostname ? { hostname } : "skip",
   ) as { name?: string; logo?: string | undefined | null } | null | undefined;
+  const resolvedOrgByCustomDomain = shouldTryCustomDomain
+    ? orgByCustomDomain
+    : null;
   const orgBySlug = useQuery(
     apiAny.core.organizations.queries.getBySlug,
-    !orgByCustomDomain && subdomainSlug ? { slug: subdomainSlug } : "skip",
+    !resolvedOrgByCustomDomain && subdomainSlug
+      ? { slug: subdomainSlug }
+      : "skip",
   ) as { name?: string; logo?: string | undefined | null } | null | undefined;
 
   const orgBrand = useMemo(() => {
-    const candidate = (orgByCustomDomain ?? orgBySlug) as
+    const candidate = (resolvedOrgByCustomDomain ?? orgBySlug) as
       | { name?: string; logo?: string | undefined | null }
       | null
       | undefined;
@@ -884,12 +889,21 @@ export function CheckoutClient({
           ? org.logo
           : undefined,
       isLoading:
-        (Boolean(hostname) && orgByCustomDomain === undefined) ||
-        (!orgByCustomDomain &&
+        (shouldTryCustomDomain &&
+          Boolean(hostname) &&
+          orgByCustomDomain === undefined) ||
+        (!resolvedOrgByCustomDomain &&
           Boolean(subdomainSlug) &&
           orgBySlug === undefined),
     };
-  }, [hostname, orgByCustomDomain, orgBySlug, subdomainSlug]);
+  }, [
+    hostname,
+    orgByCustomDomain,
+    orgBySlug,
+    resolvedOrgByCustomDomain,
+    shouldTryCustomDomain,
+    subdomainSlug,
+  ]);
 
   const hideShippingWhenVirtualOnly = useMemo(() => {
     const v =
