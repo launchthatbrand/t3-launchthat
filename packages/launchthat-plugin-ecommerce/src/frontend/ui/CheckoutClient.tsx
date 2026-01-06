@@ -175,12 +175,19 @@ const OrderSummary = ({
   items,
   subtotal,
   onApplyDiscount,
+  appliedCouponCode,
+  discountAmount,
 }: {
   items: Array<CartItem>;
   subtotal: number;
   onApplyDiscount?: (code: string) => void;
+  appliedCouponCode?: string;
+  discountAmount?: number;
 }) => {
   const [discountCode, setDiscountCode] = useState("");
+  const normalizedDiscount =
+    typeof discountAmount === "number" ? discountAmount : 0;
+  const total = Math.max(0, subtotal - normalizedDiscount);
 
   return (
     <div className="space-y-4">
@@ -266,6 +273,14 @@ const OrderSummary = ({
           Apply
         </Button>
       </div>
+      {appliedCouponCode ? (
+        <div className="text-muted-foreground text-xs">
+          Applied:{" "}
+          <span className="text-foreground font-medium">
+            {appliedCouponCode}
+          </span>
+        </div>
+      ) : null}
 
       <Separator />
 
@@ -274,6 +289,14 @@ const OrderSummary = ({
           <span className="text-muted-foreground">Subtotal</span>
           <span className="font-semibold">{formatMoney(subtotal)}</span>
         </div>
+        {normalizedDiscount > 0 ? (
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Discount</span>
+            <span className="font-semibold">
+              -{formatMoney(normalizedDiscount)}
+            </span>
+          </div>
+        ) : null}
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground">Shipping</span>
           <span className="text-muted-foreground">Calculated at next step</span>
@@ -288,7 +311,7 @@ const OrderSummary = ({
 
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold">Total</div>
-        <div className="text-lg font-semibold">{formatMoney(subtotal)}</div>
+        <div className="text-lg font-semibold">{formatMoney(total)}</div>
       </div>
     </div>
   );
@@ -503,6 +526,10 @@ export function CheckoutClient({
   const email = draft.email;
   const paymentMethodId = draft.paymentMethodId;
   const [paymentData, setPaymentData] = useState<unknown | null>(null);
+  const [appliedCouponCode, setAppliedCouponCode] = useState<string | null>(
+    null,
+  );
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [isPending, startTransition] = useTransition();
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const shipping = draft.shipping;
@@ -784,6 +811,48 @@ export function CheckoutClient({
       return sum + unit * (item.quantity ?? 0);
     }, 0);
   }, [items]);
+  const total = Math.max(
+    0,
+    subtotal - (Number.isFinite(discountAmount) ? discountAmount : 0),
+  );
+  const isFreeOrder = total <= 0;
+
+  const validateDiscountCode = useMutation(
+    apiAny.plugins.commerce.discounts.mutations.validateDiscountCode,
+  ) as (args: any) => Promise<any>;
+
+  const handleApplyDiscount = (code: string) => {
+    const trimmed = typeof code === "string" ? code.trim() : "";
+    if (!trimmed) return;
+
+    void validateDiscountCode({
+      organizationId,
+      code: trimmed,
+      subtotal,
+    })
+      .then((res) => {
+        if (!res || res.ok !== true) {
+          const reason =
+            typeof res?.reason === "string" ? res.reason : "Invalid coupon.";
+          setAppliedCouponCode(null);
+          setDiscountAmount(0);
+          toast.error(reason);
+          return;
+        }
+
+        const applied =
+          typeof res.appliedCode === "string" ? res.appliedCode : trimmed;
+        const amount =
+          typeof res.discountAmount === "number" ? res.discountAmount : 0;
+
+        setAppliedCouponCode(applied);
+        setDiscountAmount(amount);
+        toast.success("Coupon applied.");
+      })
+      .catch(() => {
+        toast.error("Failed to apply coupon.");
+      });
+  };
 
   const paymentMethods = useMemo(() => getPaymentMethods(), []);
   const pluginActiveOptionKeys = useMemo(
@@ -1030,6 +1099,15 @@ export function CheckoutClient({
   }, [paymentMethodId]);
 
   useEffect(() => {
+    // For free orders, force a non-gateway payment method and clear any gateway token.
+    if (!isFreeOrder) return;
+    if (paymentMethodId !== "free") {
+      setPaymentMethodId(orgKey, "free");
+    }
+    setPaymentData(null);
+  }, [isFreeOrder, orgKey, paymentMethodId, setPaymentMethodId]);
+
+  useEffect(() => {
     if (paymentMethodId) return;
     if (enabledPaymentMethods.length === 0) return;
     setPaymentMethodId(orgKey, enabledPaymentMethods[0]!.id);
@@ -1067,8 +1145,10 @@ export function CheckoutClient({
     !isPending &&
     !isPlacingOrder &&
     !isCreatingAccount &&
-    (!mustSelectPaymentMethod || paymentMethodId.trim().length > 0) &&
-    (!requiresPaymentData || paymentData !== null) &&
+    (!mustSelectPaymentMethod ||
+      paymentMethodId.trim().length > 0 ||
+      isFreeOrder) &&
+    (!requiresPaymentData || paymentData !== null || isFreeOrder) &&
     (!needsAccount || passwordOk);
 
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
@@ -1233,9 +1313,10 @@ export function CheckoutClient({
         },
         paymentMethodId,
         paymentData,
+        couponCode: appliedCouponCode ?? undefined,
       })
         .then((result: any) => {
-          toast.success("Payment successful.");
+          toast.success(isFreeOrder ? "Order placed." : "Payment successful.");
           resetDraft(orgKey);
           setPaymentData(null);
           setIsPlacingOrder(false);
@@ -1453,7 +1534,13 @@ export function CheckoutClient({
           </button>
           {mobileSummaryOpen ? (
             <div className="pt-4">
-              <OrderSummary items={items} subtotal={subtotal} />
+              <OrderSummary
+                items={items}
+                subtotal={subtotal}
+                appliedCouponCode={appliedCouponCode ?? undefined}
+                discountAmount={discountAmount}
+                onApplyDiscount={handleApplyDiscount}
+              />
             </div>
           ) : null}
         </CardContent>
@@ -1469,7 +1556,13 @@ export function CheckoutClient({
         <CardDescription>Review your items and totals.</CardDescription>
       </CardHeader>
       <CardContent>
-        <OrderSummary items={items} subtotal={subtotal} />
+        <OrderSummary
+          items={items}
+          subtotal={subtotal}
+          appliedCouponCode={appliedCouponCode ?? undefined}
+          discountAmount={discountAmount}
+          onApplyDiscount={handleApplyDiscount}
+        />
       </CardContent>
     </Card>
   );
@@ -1791,128 +1884,168 @@ export function CheckoutClient({
               </Card>
             )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment</CardTitle>
-                <CardDescription>Select how you’d like to pay.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {pluginActiveMap &&
-                paymentEnabledMap &&
-                configMap &&
-                enabledPaymentMethods.length === 0 ? (
-                  <div className="space-y-2">
-                    <div className="text-muted-foreground text-sm">
-                      No payment methods are enabled. An admin can enable one in
-                      Ecommerce → Settings → Payment processors.
-                    </div>
-                    {process.env.NODE_ENV !== "production" ? (
-                      <div className="rounded-md border p-3 text-xs">
-                        <div className="font-semibold">Debug</div>
-                        <div className="text-muted-foreground">
-                          orgId: {organizationId ?? "(undefined)"}
-                        </div>
-                        <div className="mt-2 space-y-1">
-                          {paymentMethods.map((m) => {
-                            const pluginActive =
-                              pluginActiveMap[
-                                m.config.pluginActiveOptionKey
-                              ] === true;
-                            const enabled =
-                              paymentEnabledMap[
-                                m.config.paymentEnabledOptionKey
-                              ] === true;
-                            const configured = m.isConfigured(
-                              configMap[m.config.configOptionKey],
-                            );
-                            return (
-                              <div
-                                key={m.id}
-                                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
-                              >
-                                <div className="font-medium">{m.id}</div>
-                                <div className="text-muted-foreground">
-                                  active:{String(pluginActive)} enabled:
-                                  {String(enabled)} configured:
-                                  {String(configured)}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : null}
+            {isFreeOrder ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Payment</CardTitle>
+                  <CardDescription>
+                    No payment is required for this order.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="text-muted-foreground text-sm">
+                    Your total is {formatMoney(total)}.
                   </div>
-                ) : (
-                  <RadioGroup
-                    value={paymentMethodId}
-                    onValueChange={(value) => setPaymentMethodId(orgKey, value)}
-                    className="gap-2"
+
+                  <Button
+                    type="button"
+                    className="w-full"
+                    onClick={handlePlaceOrder}
+                    disabled={!canSubmit}
                   >
-                    {enabledPaymentMethods.map((method) => (
-                      <label
-                        key={method.id}
-                        className="border-input hover:bg-muted/40 flex cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2"
-                      >
-                        <div className="flex items-center gap-3">
-                          <RadioGroupItem value={method.id} />
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-medium">
-                              {method.label}
-                            </div>
-                            {method.description ? (
-                              <div className="text-muted-foreground text-xs">
-                                {method.description}
-                              </div>
-                            ) : null}
+                    {isPlacingOrder ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing…
+                      </>
+                    ) : (
+                      <>Place order</>
+                    )}
+                  </Button>
+                  <div className="text-muted-foreground text-xs">
+                    By placing your order, you agree to our terms and privacy
+                    policy.
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Payment</CardTitle>
+                  <CardDescription>
+                    Select how you’d like to pay.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {pluginActiveMap &&
+                  paymentEnabledMap &&
+                  configMap &&
+                  enabledPaymentMethods.length === 0 ? (
+                    <div className="space-y-2">
+                      <div className="text-muted-foreground text-sm">
+                        No payment methods are enabled. An admin can enable one
+                        in Ecommerce → Settings → Payment processors.
+                      </div>
+                      {process.env.NODE_ENV !== "production" ? (
+                        <div className="rounded-md border p-3 text-xs">
+                          <div className="font-semibold">Debug</div>
+                          <div className="text-muted-foreground">
+                            orgId: {organizationId ?? "(undefined)"}
+                          </div>
+                          <div className="mt-2 space-y-1">
+                            {paymentMethods.map((m) => {
+                              const pluginActive =
+                                pluginActiveMap[
+                                  m.config.pluginActiveOptionKey
+                                ] === true;
+                              const enabled =
+                                paymentEnabledMap[
+                                  m.config.paymentEnabledOptionKey
+                                ] === true;
+                              const configured = m.isConfigured(
+                                configMap[m.config.configOptionKey],
+                              );
+                              return (
+                                <div
+                                  key={m.id}
+                                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
+                                >
+                                  <div className="font-medium">{m.id}</div>
+                                  <div className="text-muted-foreground">
+                                    active:{String(pluginActive)} enabled:
+                                    {String(enabled)} configured:
+                                    {String(configured)}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
-                      </label>
-                    ))}
-                  </RadioGroup>
-                )}
-
-                {selectedPaymentMethod &&
-                configMap &&
-                typeof selectedPaymentMethod.renderCheckoutForm ===
-                  "function" ? (
-                  <div>
-                    {
-                      selectedPaymentMethod.renderCheckoutForm({
-                        organizationId,
-                        configValue:
-                          configMap[
-                            selectedPaymentMethod.config.configOptionKey
-                          ],
-                        onPaymentDataChange: setPaymentData,
-                        testMode,
-                        testPrefill,
-                      }) as any
-                    }
-                  </div>
-                ) : null}
-
-                <Button
-                  type="button"
-                  className="w-full"
-                  onClick={handlePlaceOrder}
-                  disabled={!canSubmit}
-                >
-                  {isPlacingOrder ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing…
-                    </>
+                      ) : null}
+                    </div>
                   ) : (
-                    <>Pay {formatMoney(subtotal)}</>
+                    <RadioGroup
+                      value={paymentMethodId}
+                      onValueChange={(value) =>
+                        setPaymentMethodId(orgKey, value)
+                      }
+                      className="gap-2"
+                    >
+                      {enabledPaymentMethods.map((method) => (
+                        <label
+                          key={method.id}
+                          className="border-input hover:bg-muted/40 flex cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2"
+                        >
+                          <div className="flex items-center gap-3">
+                            <RadioGroupItem value={method.id} />
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-medium">
+                                {method.label}
+                              </div>
+                              {method.description ? (
+                                <div className="text-muted-foreground text-xs">
+                                  {method.description}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </RadioGroup>
                   )}
-                </Button>
-                <div className="text-muted-foreground text-xs">
-                  By placing your order, you agree to our terms and privacy
-                  policy.
-                </div>
-              </CardContent>
-            </Card>
+
+                  {selectedPaymentMethod &&
+                  configMap &&
+                  typeof selectedPaymentMethod.renderCheckoutForm ===
+                    "function" ? (
+                    <div>
+                      {
+                        selectedPaymentMethod.renderCheckoutForm({
+                          organizationId,
+                          configValue:
+                            configMap[
+                              selectedPaymentMethod.config.configOptionKey
+                            ],
+                          onPaymentDataChange: setPaymentData,
+                          testMode,
+                          testPrefill,
+                        }) as any
+                      }
+                    </div>
+                  ) : null}
+
+                  <Button
+                    type="button"
+                    className="w-full"
+                    onClick={handlePlaceOrder}
+                    disabled={!canSubmit}
+                  >
+                    {isPlacingOrder ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing…
+                      </>
+                    ) : (
+                      <>Pay {formatMoney(total)}</>
+                    )}
+                  </Button>
+                  <div className="text-muted-foreground text-xs">
+                    By placing your order, you agree to our terms and privacy
+                    policy.
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         }
         rightSummary={rightSummary}

@@ -229,6 +229,18 @@ const getMetaBoolean = (
   return null;
 };
 
+const safeParseJsonStringArray = (value: unknown): string[] => {
+  if (typeof value !== "string" || value.trim().length === 0) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((v): v is string => typeof v === "string" && v.trim())
+      : [];
+  } catch {
+    return [];
+  }
+};
+
 function PostArchive(props: { postType: PostTypeDoc; posts: Doc<"posts">[] }) {
   const description =
     props.postType.description ??
@@ -815,6 +827,7 @@ export function registerCoreRouteHandlers(): void {
 
           // ---- LMS course access cascade (course → steps) ----
           let lmsCourseAccess: LmsCourseAccessContext | null = null;
+          let lmsEnrollmentStatus: string | null = null;
           if (ctx.enabledPluginIds.includes("lms")) {
             const postTypeSlug =
               typeof post.postTypeSlug === "string" ? post.postTypeSlug : null;
@@ -927,6 +940,42 @@ export function registerCoreRouteHandlers(): void {
                 buyNowUrl,
                 appliesToCurrentResource,
               };
+
+              // Enrollment status (server-side access check):
+              // - Prefer stored enrollment row (if present)
+              // - Otherwise, treat as enrolled if user currently has any of the course's enrollment tags.
+              if (convexUserId) {
+                const enrollmentTagIds = safeParseJsonStringArray(
+                  courseMetaObject["lms.enrollmentTagIdsJson"],
+                );
+                const tagKeySet = new Set(tagKeys);
+                const shouldBeEnrolledByTag =
+                  enrollmentTagIds.length > 0
+                    ? enrollmentTagIds.some((id) => tagKeySet.has(id))
+                    : false;
+
+                const enrollmentResult: unknown = await (ctx.fetchQuery as any)(
+                  (ctx.api as any).plugins.lms.enrollments.queries.getEnrollment,
+                  { courseId: String(courseId), userId: String(convexUserId) },
+                );
+                const enrollment = (enrollmentResult ?? null) as {
+                  status?: unknown;
+                } | null;
+                const storedStatus =
+                  enrollment && typeof enrollment.status === "string"
+                    ? enrollment.status
+                    : null;
+
+                lmsEnrollmentStatus =
+                  storedStatus === "active" || storedStatus === "revoked"
+                    ? storedStatus
+                    : null;
+
+                if (lmsEnrollmentStatus !== "active" && shouldBeEnrolledByTag) {
+                  // Virtual enrollment: allow access immediately; client will persist via LmsCourseProvider.
+                  lmsEnrollmentStatus = "active";
+                }
+              }
             }
           }
 
@@ -945,6 +994,7 @@ export function registerCoreRouteHandlers(): void {
             data: {
               contentRules,
               lmsCourseAccess,
+              lmsEnrollmentStatus,
               lmsAdminBypassCourseAccess,
               tagKeys,
               roleNames,

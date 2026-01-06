@@ -69,3 +69,7 @@ export const ADMIN_CONTENT_ACCESS_SECTIONS_FILTER =
 // Plugins can contribute additional UI sections (e.g. CRM “grant tags on purchase”) to the Product Details metabox.
 export const ADMIN_ECOMMERCE_PRODUCT_DETAILS_SECTIONS_FILTER =
   "admin.ecommerce.productDetails.sections";
+
+// Admin (portal) user details extension point.
+// Plugins can contribute additional UI sections (e.g. CRM “linked contact + tags”) to the User page.
+export const ADMIN_USER_DETAILS_SECTIONS_FILTER = "admin.users.details.sections";

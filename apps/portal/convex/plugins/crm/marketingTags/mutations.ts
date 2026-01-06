@@ -87,4 +87,48 @@ export const removeMarketingTagFromUser = mutation({
   },
 });
 
+export const assignMarketingTagToContact = mutation({
+  args: {
+    organizationId: v.optional(v.string()),
+    contactId: v.string(),
+    marketingTagId: v.any(),
+    source: v.optional(v.string()),
+    assignedBy: v.optional(v.string()),
+    expiresAt: v.optional(v.number()),
+    notes: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const identity = await ctx.auth.getUserIdentity();
+    const assignedBy = args.assignedBy ?? identity?.tokenIdentifier ?? undefined;
+    return await ctx.runMutation(crmMarketingTagsMutations.assignMarketingTagToUser, {
+      organizationId: args.organizationId,
+      contactId: args.contactId as any,
+      marketingTagId: args.marketingTagId,
+      source: args.source,
+      assignedBy,
+      expiresAt: args.expiresAt,
+      notes: args.notes,
+    });
+  },
+});
+
+export const removeMarketingTagFromContact = mutation({
+  args: {
+    organizationId: v.optional(v.string()),
+    contactId: v.string(),
+    marketingTagId: v.any(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await ctx.runMutation(crmMarketingTagsMutations.removeMarketingTagFromUser, {
+      organizationId: args.organizationId,
+      contactId: args.contactId as any,
+      marketingTagId: args.marketingTagId,
+    });
+  },
+});
+
 

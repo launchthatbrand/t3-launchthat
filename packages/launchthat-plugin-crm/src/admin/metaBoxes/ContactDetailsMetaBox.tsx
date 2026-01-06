@@ -16,6 +16,8 @@ import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
 
+import { ContactMarketingTagsManager } from "./ContactMarketingTagsManager";
+
 // Avoid importing the generated Convex `api` with full types in a client component.
 // The generated api types are extremely deep and can trip TS' instantiation limit.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -40,6 +42,8 @@ export function ContactDetailsMetaBox({
 }: PluginMetaBoxRendererProps) {
   // Allow editing while creating a new record (values will be persisted on first save).
   const canEdit = Boolean(context.postId) || context.isNewRecord;
+  const organizationId =
+    typeof context.organizationId === "string" ? context.organizationId : null;
 
   const [userSelectOpen, setUserSelectOpen] = useState(false);
 
@@ -67,8 +71,9 @@ export function ContactDetailsMetaBox({
     (linkedUserId ? linkedUserId : "");
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <div className="space-y-2 md:col-span-2">
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-2 md:col-span-2">
         <Label className="text-muted-foreground text-xs">
           Linked portal user (optional)
         </Label>
@@ -118,56 +123,69 @@ export function ContactDetailsMetaBox({
           not change authentication; it is used for CRM identity + tagging
           workflows.
         </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="crm-contact-first-name">First name</Label>
+          <Input
+            id="crm-contact-first-name"
+            value={asString(getValue("contact.firstName"))}
+            onChange={(e) =>
+              setValue("contact.firstName", e.currentTarget.value.trim() || null)
+            }
+            disabled={!canEdit}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="crm-contact-last-name">Last name</Label>
+          <Input
+            id="crm-contact-last-name"
+            value={asString(getValue("contact.lastName"))}
+            onChange={(e) =>
+              setValue("contact.lastName", e.currentTarget.value.trim() || null)
+            }
+            disabled={!canEdit}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="crm-contact-email">Email address</Label>
+          <Input
+            id="crm-contact-email"
+            type="email"
+            value={asString(getValue("contact.email"))}
+            onChange={(e) =>
+              setValue("contact.email", e.currentTarget.value.trim() || null)
+            }
+            disabled={!canEdit}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="crm-contact-phone">Phone</Label>
+          <Input
+            id="crm-contact-phone"
+            value={asString(getValue("contact.phone"))}
+            onChange={(e) =>
+              setValue("contact.phone", e.currentTarget.value.trim() || null)
+            }
+            disabled={!canEdit}
+          />
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="crm-contact-first-name">First name</Label>
-        <Input
-          id="crm-contact-first-name"
-          value={asString(getValue("contact.firstName"))}
-          onChange={(e) =>
-            setValue("contact.firstName", e.currentTarget.value.trim() || null)
-          }
-          disabled={!canEdit}
+      {typeof context.postId === "string" && context.postId.trim() ? (
+        <ContactMarketingTagsManager
+          organizationId={organizationId}
+          contactId={context.postId}
+          canEdit={canEdit}
         />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="crm-contact-last-name">Last name</Label>
-        <Input
-          id="crm-contact-last-name"
-          value={asString(getValue("contact.lastName"))}
-          onChange={(e) =>
-            setValue("contact.lastName", e.currentTarget.value.trim() || null)
-          }
-          disabled={!canEdit}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="crm-contact-email">Email address</Label>
-        <Input
-          id="crm-contact-email"
-          type="email"
-          value={asString(getValue("contact.email"))}
-          onChange={(e) =>
-            setValue("contact.email", e.currentTarget.value.trim() || null)
-          }
-          disabled={!canEdit}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="crm-contact-phone">Phone</Label>
-        <Input
-          id="crm-contact-phone"
-          value={asString(getValue("contact.phone"))}
-          onChange={(e) =>
-            setValue("contact.phone", e.currentTarget.value.trim() || null)
-          }
-          disabled={!canEdit}
-        />
-      </div>
+      ) : (
+        <div className="text-muted-foreground text-sm">
+          Save this contact to manage marketing tags.
+        </div>
+      )}
     </div>
   );
 }

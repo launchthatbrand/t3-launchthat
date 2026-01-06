@@ -53,7 +53,6 @@ export default function ClientUsersPage() {
 
   // State for user form
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingUserId, setEditingUserId] = useState<Id<"users"> | null>(null);
 
   // First get current user to confirm admin status
   const me = useQuery(api.core.users.queries.getMe);
@@ -70,7 +69,6 @@ export default function ClientUsersPage() {
 
   const handleFormSuccess = () => {
     setIsFormOpen(false);
-    setEditingUserId(null);
   };
 
   if (me && !isMeAdmin) {
@@ -264,14 +262,13 @@ export default function ClientUsersPage() {
       label: "Edit User",
       icon: <PencilIcon className="h-4 w-4" />,
       onClick: (user) => {
-        setEditingUserId(user._id);
-        setIsFormOpen(true);
+        router.push(`/admin/user/${user._id}`);
       },
     },
     {
       id: "view",
       label: "View Details",
-      onClick: (user) => router.push(`/admin/users/${user._id}`),
+      onClick: (user) => router.push(`/admin/user/${user._id}`),
       variant: "outline",
     },
   ];
@@ -317,7 +314,7 @@ export default function ClientUsersPage() {
             <UserForm
               open={isFormOpen}
               onOpenChange={setIsFormOpen}
-              userId={editingUserId ?? undefined}
+              userId={undefined}
               onSuccess={handleFormSuccess}
               mode="dialog"
             />

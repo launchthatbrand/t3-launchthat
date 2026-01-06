@@ -32,7 +32,11 @@ const contactMarketingTagsTable = defineTable({
   .index("by_tag", ["marketingTagId"])
   .index("by_contact_tag", ["contactId", "marketingTagId"])
   .index("by_org_and_contact", ["organizationId", "contactId"])
-  .index("by_org_and_contact_tag", ["organizationId", "contactId", "marketingTagId"]);
+  .index("by_org_and_contact_tag", [
+    "organizationId",
+    "contactId",
+    "marketingTagId",
+  ]);
 
 const contactsTable = defineTable({
   title: v.string(),
@@ -74,5 +78,5 @@ export default defineSchema({
   marketingTags: marketingTagsTable,
   contactMarketingTags: contactMarketingTagsTable,
   contacts: contactsTable,
-  contactMeta: contactMetaTable,
+  contact_meta: contactMetaTable,
 });

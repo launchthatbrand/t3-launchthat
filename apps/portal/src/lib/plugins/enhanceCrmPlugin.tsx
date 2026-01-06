@@ -10,6 +10,7 @@ import type {
 import {
   ADMIN_CONTENT_ACCESS_SECTIONS_FILTER,
   ADMIN_ECOMMERCE_PRODUCT_DETAILS_SECTIONS_FILTER,
+  ADMIN_USER_DETAILS_SECTIONS_FILTER,
   FRONTEND_CONTENT_ACCESS_PROVIDERS_FILTER,
 } from "./hookSlots";
 
@@ -23,6 +24,11 @@ const CrmMarketingTagsContentAccessSection = React.lazy(async () => {
 const CrmProductMarketingTagsSection = React.lazy(async () => {
   const mod = await import("../../components/commerce/CrmProductMarketingTagsSection");
   return { default: mod.CrmProductMarketingTagsSection };
+});
+
+const CrmUserContactDetailsSection = React.lazy(async () => {
+  const mod = await import("../../components/admin/CrmUserContactDetailsSection");
+  return { default: mod.CrmUserContactDetailsSection };
 });
 
 interface TagRule {
@@ -150,15 +156,18 @@ export const enhanceCrmPluginDefinition = (
         const g = globalThis as unknown as {
           __portal_crm_content_access_sections_registered?: boolean;
           __portal_crm_ecommerce_product_sections_registered?: boolean;
+          __portal_crm_user_details_sections_registered?: boolean;
         };
         if (
           g.__portal_crm_content_access_sections_registered &&
-          g.__portal_crm_ecommerce_product_sections_registered
+          g.__portal_crm_ecommerce_product_sections_registered &&
+          g.__portal_crm_user_details_sections_registered
         ) {
           return;
         }
         g.__portal_crm_content_access_sections_registered = true;
         g.__portal_crm_ecommerce_product_sections_registered = true;
+        g.__portal_crm_user_details_sections_registered = true;
 
         void import("@acme/admin-runtime/hooks").then((hooks) => {
           if (typeof hooks.addFilter !== "function") return;
@@ -222,6 +231,39 @@ export const enhanceCrmPluginDefinition = (
                   />
                 </Suspense>,
               );
+
+              return list;
+            },
+            10,
+            2,
+          );
+
+          hooks.addFilter(
+            String(ADMIN_USER_DETAILS_SECTIONS_FILTER),
+            (value: unknown, ctx: unknown) => {
+              const list = Array.isArray(value)
+                ? ([...(value as unknown[])] as unknown[])
+                : ([] as unknown[]);
+
+              const c = (ctx ?? {}) as { userId?: string; organizationId?: string | null };
+              const userId = typeof c.userId === "string" ? c.userId : "";
+              if (!userId) return list;
+              const organizationId =
+                typeof c.organizationId === "string" ? c.organizationId : null;
+
+              list.push({
+                id: "crm:user-contact",
+                pluginId: "crm",
+                priority: 10,
+                render: (sectionCtx: { userId: string }) => (
+                  <Suspense fallback={null}>
+                    <CrmUserContactDetailsSection
+                      userId={sectionCtx.userId}
+                      organizationId={organizationId}
+                    />
+                  </Suspense>
+                ),
+              });
 
               return list;
             },

@@ -8,6 +8,7 @@ import { OrderItemsMetaBox } from "./admin/metaBoxes/OrderItemsMetaBox";
 import { ProductDetailsMetaBox } from "./admin/metaBoxes/ProductDetailsMetaBox";
 import { EcommercePageSetupSettingsPage } from "./admin/settings/EcommercePageSetupSettingsPage";
 import { EcommerceSettingsPage } from "./admin/settings/EcommerceSettingsPage";
+import { EcommerceCouponsPage } from "./admin/pages/EcommerceCouponsPage";
 import { EcommerceAccountOrdersTab } from "./frontend/account/EcommerceAccountOrdersTab";
 import { CheckoutClient } from "./frontend/ui/CheckoutClient";
 
@@ -1022,6 +1023,15 @@ export const createEcommercePluginDefinition = (
     },
   ],
   settingsPages: [
+    {
+      id: "ecommerce-coupons",
+      slug: "coupons",
+      label: "Coupons",
+      description: "Manage discount codes for checkout.",
+      order: 43,
+      icon: "Tag",
+      render: (props) => createElement(EcommerceCouponsPage, props),
+    },
     {
       id: "ecommerce-settings",
       slug: "settings",

@@ -73,20 +73,74 @@ export const getUserMarketingTags = query({
       return [];
     }
 
+    const allAssignments = await ctx.db
+      .query("contactMarketingTags")
+      .withIndex("by_contact", (q) => q.eq("contactId", contact._id))
+      .collect();
+
     const assignments =
       typeof args.organizationId === "string"
-        ? await ctx.db
-            .query("contactMarketingTags")
-            .withIndex("by_org_and_contact", (q) =>
-              q
-                .eq("organizationId", args.organizationId)
-                .eq("contactId", contact._id),
-            )
-            .collect()
-        : await ctx.db
-            .query("contactMarketingTags")
-            .withIndex("by_contact", (q) => q.eq("contactId", contact._id))
-            .collect();
+        ? allAssignments.filter(
+            (row) =>
+              row.organizationId === args.organizationId ||
+              row.organizationId === undefined,
+          )
+        : allAssignments;
+
+    const enriched = await Promise.all(
+      assignments.map(async (assignment) => {
+        const tag = await ctx.db.get(assignment.marketingTagId);
+        if (!tag) return null;
+        return {
+          _id: assignment._id,
+          contactId: assignment.contactId,
+          marketingTag: tag,
+          source: assignment.source,
+          assignedBy: assignment.assignedBy,
+          assignedAt: assignment.assignedAt,
+          expiresAt: assignment.expiresAt,
+          notes: assignment.notes,
+        };
+      }),
+    );
+
+    return enriched.filter(
+      (item): item is NonNullable<typeof item> => item !== null,
+    );
+  },
+});
+
+export const getContactMarketingTags = query({
+  args: {
+    organizationId: v.optional(v.string()),
+    contactId: v.id("contacts"),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("contactMarketingTags"),
+      contactId: v.id("contacts"),
+      marketingTag: marketingTagValidator,
+      source: v.optional(v.string()),
+      assignedBy: v.optional(v.string()),
+      assignedAt: v.number(),
+      expiresAt: v.optional(v.number()),
+      notes: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const allAssignments = await ctx.db
+      .query("contactMarketingTags")
+      .withIndex("by_contact", (q) => q.eq("contactId", args.contactId))
+      .collect();
+
+    const assignments =
+      typeof args.organizationId === "string"
+        ? allAssignments.filter(
+            (row) =>
+              row.organizationId === args.organizationId ||
+              row.organizationId === undefined,
+          )
+        : allAssignments;
 
     const enriched = await Promise.all(
       assignments.map(async (assignment) => {
@@ -157,20 +211,19 @@ export const contactHasMarketingTags = query({
       return { hasAccess: false, matchingTags: [], missingTags: [] };
     }
 
+    const allAssignments = await ctx.db
+      .query("contactMarketingTags")
+      .withIndex("by_contact", (q) => q.eq("contactId", args.contactId))
+      .collect();
+
     const assignments =
       typeof args.organizationId === "string"
-        ? await ctx.db
-            .query("contactMarketingTags")
-            .withIndex("by_org_and_contact", (q) =>
-              q
-                .eq("organizationId", args.organizationId)
-                .eq("contactId", args.contactId),
-            )
-            .collect()
-        : await ctx.db
-            .query("contactMarketingTags")
-            .withIndex("by_contact", (q) => q.eq("contactId", args.contactId))
-            .collect();
+        ? allAssignments.filter(
+            (row) =>
+              row.organizationId === args.organizationId ||
+              row.organizationId === undefined,
+          )
+        : allAssignments;
 
     const tagSlugs = await Promise.all(
       assignments.map(async (assignment) => {

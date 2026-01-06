@@ -14,9 +14,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import { Checkbox } from "@acme/ui/checkbox";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import { RadioGroup, RadioGroupItem } from "@acme/ui/radio-group";
+import { Separator } from "@acme/ui/separator";
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
@@ -34,6 +36,8 @@ import {
   LMS_COURSE_BUY_NOW_URL_META_KEY,
   LMS_COURSE_SETTINGS_META_KEY,
 } from "../constants/courseSettings";
+
+const LMS_COURSE_ENROLLMENT_TAG_IDS_META_KEY = "lms.enrollmentTagIdsJson";
 
 const ACCESS_MODE_OPTIONS: {
   value: CourseAccessMode;
@@ -110,6 +114,9 @@ export const CourseSettingsTab = ({
   organizationId,
   pluginName,
 }: PluginSingleViewComponentProps) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const apiAny = api as any;
+
   const normalizedOrganizationId = organizationId
     ? (organizationId as unknown as Id<"organizations">)
     : undefined;
@@ -165,11 +172,30 @@ export const CourseSettingsTab = ({
     return "";
   }, [postMeta]);
 
+  const resolvedEnrollmentTagIds = useMemo(() => {
+    const raw = Array.isArray(postMeta)
+      ? postMeta.find((m) => m?.key === LMS_COURSE_ENROLLMENT_TAG_IDS_META_KEY)
+          ?.value
+      : undefined;
+    if (typeof raw !== "string" || raw.trim().length === 0) return [];
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      return Array.isArray(parsed)
+        ? parsed.filter((v): v is string => typeof v === "string" && v.trim())
+        : [];
+    } catch {
+      return [];
+    }
+  }, [postMeta]);
+
   const [settings, setSettings] = useState<CourseSettings>(resolvedSettings);
   const [cascadeAccessToSteps, setCascadeAccessToSteps] = useState<boolean>(
     resolvedCascadeAccessToSteps,
   );
   const [buyNowUrl, setBuyNowUrl] = useState<string>(resolvedBuyNowUrl);
+  const [enrollmentTagIds, setEnrollmentTagIds] = useState<string[]>(
+    resolvedEnrollmentTagIds,
+  );
   const [prereqInput, setPrereqInput] = useState(
     resolvedSettings.prerequisites.join(", "),
   );
@@ -180,7 +206,26 @@ export const CourseSettingsTab = ({
     setPrereqInput(resolvedSettings.prerequisites.join(", "));
     setCascadeAccessToSteps(resolvedCascadeAccessToSteps);
     setBuyNowUrl(resolvedBuyNowUrl);
-  }, [resolvedBuyNowUrl, resolvedCascadeAccessToSteps, resolvedSettings]);
+    setEnrollmentTagIds(resolvedEnrollmentTagIds);
+  }, [
+    resolvedBuyNowUrl,
+    resolvedCascadeAccessToSteps,
+    resolvedSettings,
+    resolvedEnrollmentTagIds,
+  ]);
+
+  const crmEnabled = useQuery(apiAny.core.options.get, {
+    metaKey: "plugin_crm_enabled",
+    type: "site",
+    orgId: organizationId ?? null,
+  }) as { metaValue?: unknown } | null | undefined;
+
+  const isCrmEnabled = Boolean(crmEnabled?.metaValue);
+
+  const allMarketingTags = useQuery(
+    apiAny.plugins.crm.marketingTags.queries.listMarketingTags,
+    isCrmEnabled ? { organizationId } : "skip",
+  ) as { _id: string; name: string; slug: string }[] | undefined;
 
   const handleChange = useCallback(
     <Key extends keyof CourseSettings>(
@@ -221,6 +266,8 @@ export const CourseSettingsTab = ({
           [LMS_COURSE_ACCESS_CASCADE_META_KEY]: cascadeAccessToSteps,
           [LMS_COURSE_BUY_NOW_URL_META_KEY]:
             buyNowUrl.trim().length > 0 ? buyNowUrl.trim() : null,
+          [LMS_COURSE_ENROLLMENT_TAG_IDS_META_KEY]:
+            enrollmentTagIds.length > 0 ? JSON.stringify(enrollmentTagIds) : "[]",
         },
       });
       toast.success("Course settings saved", {
@@ -241,6 +288,7 @@ export const CourseSettingsTab = ({
     settings,
     cascadeAccessToSteps,
     buyNowUrl,
+    enrollmentTagIds,
     updatePost,
   ]);
 
@@ -365,6 +413,59 @@ export const CourseSettingsTab = ({
               checked={cascadeAccessToSteps}
               onCheckedChange={setCascadeAccessToSteps}
             />
+          </section>
+
+          <section className="space-y-3 rounded-lg border p-4">
+            <div className="space-y-1">
+              <Label>Enrollment tags (CRM)</Label>
+              <p className="text-muted-foreground text-sm">
+                Users who have at least one selected marketing tag are treated as
+                enrolled in this course.
+              </p>
+            </div>
+
+            {!isCrmEnabled ? (
+              <div className="text-muted-foreground text-sm">
+                CRM plugin is not enabled for this organization.
+              </div>
+            ) : allMarketingTags === undefined ? (
+              <div className="text-muted-foreground text-sm">
+                Loading marketing tags...
+              </div>
+            ) : allMarketingTags.length === 0 ? (
+              <div className="text-muted-foreground text-sm">
+                No marketing tags found.
+              </div>
+            ) : (
+              <>
+                <Separator />
+                <div className="grid gap-2">
+                  {allMarketingTags.map((tag) => {
+                    const checked = enrollmentTagIds.includes(tag._id);
+                    return (
+                      <div key={tag._id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`lms-enroll-tag-${tag._id}`}
+                          checked={checked}
+                          onCheckedChange={(next) => {
+                            const isChecked = Boolean(next);
+                            setEnrollmentTagIds((prev) =>
+                              isChecked
+                                ? Array.from(new Set([...prev, tag._id]))
+                                : prev.filter((id) => id !== tag._id),
+                            );
+                          }}
+                          disabled={isSaving}
+                        />
+                        <Label htmlFor={`lms-enroll-tag-${tag._id}`}>
+                          {tag.name}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </section>
 
           <section className="grid gap-4 md:grid-cols-2">

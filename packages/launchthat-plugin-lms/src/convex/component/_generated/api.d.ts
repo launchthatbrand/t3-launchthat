@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as enrollments_mutations from "../enrollments/mutations.js";
+import type * as enrollments_queries from "../enrollments/queries.js";
 import type * as index from "../index.js";
 import type * as posts_helpers from "../posts/helpers.js";
 import type * as posts_mutations from "../posts/mutations.js";
@@ -30,6 +32,8 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "enrollments/mutations": typeof enrollments_mutations;
+  "enrollments/queries": typeof enrollments_queries;
   index: typeof index;
   "posts/helpers": typeof posts_helpers;
   "posts/mutations": typeof posts_mutations;
@@ -38,6 +42,48 @@ declare const fullApi: ApiFromModules<{
   "progress/queries": typeof progress_queries;
 }>;
 export type Mounts = {
+  enrollments: {
+    mutations: {
+      revokeEnrollment: FunctionReference<
+        "mutation",
+        "public",
+        { courseId: string; userId: string },
+        null
+      >;
+      upsertEnrollment: FunctionReference<
+        "mutation",
+        "public",
+        {
+          courseId: string;
+          organizationId?: string;
+          source: "manual" | "crm_tag" | "purchase";
+          status: "active" | "revoked";
+          userId: string;
+        },
+        null
+      >;
+    };
+    queries: {
+      getEnrollment: FunctionReference<
+        "query",
+        "public",
+        { courseId: string; userId: string },
+        null | any
+      >;
+      listEnrollmentsForCourse: FunctionReference<
+        "query",
+        "public",
+        { courseId: string },
+        any
+      >;
+      listEnrollmentsForUser: FunctionReference<
+        "query",
+        "public",
+        { userId: string },
+        any
+      >;
+    };
+  };
   posts: {
     mutations: {
       bulkUpdatePostStatus: FunctionReference<

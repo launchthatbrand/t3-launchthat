@@ -41,8 +41,22 @@ const postsMetaTable = defineTable({
   .index("by_key", ["key"])
   .index("by_key_and_postId", ["key", "postId"]);
 
+const courseEnrollmentsTable = defineTable({
+  organizationId: v.optional(v.string()),
+  courseId: v.string(),
+  userId: v.string(),
+  status: v.union(v.literal("active"), v.literal("revoked")),
+  source: v.union(v.literal("manual"), v.literal("crm_tag"), v.literal("purchase")),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_course_and_user", ["courseId", "userId"])
+  .index("by_course", ["courseId"])
+  .index("by_user", ["userId"]);
+
 export default defineSchema({
   posts: postsTable,
   postsMeta: postsMetaTable,
+  courseEnrollments: courseEnrollmentsTable,
   ...progressSchema,
 });

@@ -20,6 +20,7 @@ const components: any = componentsGenerated;
 
 const DOWNLOADS_SLUGS = new Set<string>(["downloads", "download"]);
 const ATTACHMENTS_SLUGS = new Set<string>(["attachments", "attachment"]);
+const CONTACTS_SLUGS = new Set<string>(["contact", "contacts"]);
 
 type PostStatus =
   | "draft"
@@ -162,6 +163,166 @@ const adaptAttachment = (record: any): EntityRecord => ({
     mimeType: record.mimeType,
   },
 });
+
+const adaptCrmContact = (record: any): EntityRecord => ({
+  id: record._id,
+  postTypeSlug: record.postTypeSlug ?? "contact",
+  title: record.title ?? null,
+  content: record.content ?? null,
+  excerpt: record.excerpt ?? null,
+  slug: record.slug ?? null,
+  status: normalizeStatus(record.status),
+  category: record.category ?? null,
+  tags: record.tags ?? null,
+  featuredImageUrl: record.featuredImageUrl ?? null,
+  organizationId: record.organizationId ?? null,
+  authorId: record.authorId ?? null,
+  createdAt: record.createdAt ?? record._creationTime ?? null,
+  updatedAt: record.updatedAt ?? record._creationTime ?? null,
+});
+
+const crmContactsResolver: Resolver = {
+  read: async (ctx, { id, organizationId, postTypeSlug }) => {
+    const contact = await ctx.runQuery(
+      components.launchthat_crm.contacts.queries.getContactById,
+      {
+        contactId: id as any,
+        organizationId,
+      },
+    );
+    if (!contact) return null;
+    const record = contact as any;
+    if (
+      (record.postTypeSlug ?? "").toLowerCase() !== postTypeSlug.toLowerCase()
+    ) {
+      return null;
+    }
+    return adaptCrmContact(record);
+  },
+  list: async (ctx, { filters, organizationId, postTypeSlug }) => {
+    const slugFilter =
+      typeof filters?.slug === "string" ? filters.slug.trim() : "";
+    if (slugFilter) {
+      const contact = await ctx.runQuery(
+        components.launchthat_crm.contacts.queries.getContactBySlug,
+        { slug: slugFilter, organizationId },
+      );
+      if (!contact) return [];
+      const record = contact as any;
+      if (
+        (record.postTypeSlug ?? "").toLowerCase() !== postTypeSlug.toLowerCase()
+      ) {
+        return [];
+      }
+      return [adaptCrmContact(record)];
+    }
+
+    const limit = typeof filters?.limit === "number" ? filters.limit : undefined;
+    const status =
+      typeof filters?.status === "string" ? filters.status : undefined;
+    const results =
+      (await ctx.runQuery(
+        components.launchthat_crm.contacts.queries.listContacts,
+        {
+          organizationId,
+          status,
+          limit,
+        },
+      )) ?? [];
+    return (results as any[]).map(adaptCrmContact);
+  },
+  create: async (ctx, { data, organizationId, postTypeSlug }) => {
+    const raw = data as unknown as Record<string, unknown>;
+    const meta =
+      raw.meta && typeof raw.meta === "object" ? (raw.meta as any) : undefined;
+    const userId =
+      meta && typeof meta["contact.userId"] === "string"
+        ? (meta["contact.userId"] as string)
+        : undefined;
+
+    const id = await ctx.runMutation(
+      components.launchthat_crm.contacts.mutations.createContact,
+      {
+        organizationId,
+        postTypeSlug,
+        title: typeof raw.title === "string" ? raw.title : "",
+        content: typeof raw.content === "string" ? raw.content : undefined,
+        excerpt: typeof raw.excerpt === "string" ? raw.excerpt : undefined,
+        slug: typeof raw.slug === "string" ? raw.slug : "",
+        status: typeof raw.status === "string" ? raw.status : "published",
+        category: typeof raw.category === "string" ? raw.category : undefined,
+        tags: Array.isArray(raw.tags) ? (raw.tags as string[]) : undefined,
+        featuredImageUrl:
+          typeof (raw as any).featuredImageUrl === "string"
+            ? ((raw as any).featuredImageUrl as string)
+            : typeof (raw as any).featuredImage === "string"
+              ? ((raw as any).featuredImage as string)
+              : undefined,
+        userId,
+        meta,
+      },
+    );
+    const created = await ctx.runQuery(
+      components.launchthat_crm.contacts.queries.getContactById,
+      { contactId: id as any, organizationId },
+    );
+    return adaptCrmContact(created as any);
+  },
+  update: async (ctx, { id, data, organizationId, postTypeSlug }) => {
+    const raw = data as unknown as Record<string, unknown>;
+    const meta =
+      raw.meta && typeof raw.meta === "object" ? (raw.meta as any) : undefined;
+    const userId =
+      meta && typeof meta["contact.userId"] === "string"
+        ? (meta["contact.userId"] as string)
+        : undefined;
+
+    await ctx.runMutation(
+      components.launchthat_crm.contacts.mutations.updateContact,
+      {
+        organizationId,
+        contactId: id as any,
+        title: typeof raw.title === "string" ? raw.title : undefined,
+        content: typeof raw.content === "string" ? raw.content : undefined,
+        excerpt: typeof raw.excerpt === "string" ? raw.excerpt : undefined,
+        slug: typeof raw.slug === "string" ? raw.slug : undefined,
+        status: typeof raw.status === "string" ? raw.status : undefined,
+        category: typeof raw.category === "string" ? raw.category : undefined,
+        tags: Array.isArray(raw.tags) ? (raw.tags as string[]) : undefined,
+        featuredImageUrl:
+          typeof (raw as any).featuredImageUrl === "string"
+            ? ((raw as any).featuredImageUrl as string)
+            : typeof (raw as any).featuredImage === "string"
+              ? ((raw as any).featuredImage as string)
+              : undefined,
+        userId,
+        meta,
+      },
+    );
+
+    const updated = await ctx.runQuery(
+      components.launchthat_crm.contacts.queries.getContactById,
+      { contactId: id as any, organizationId },
+    );
+    if (!updated) return null;
+    const record = updated as any;
+    if (
+      (record.postTypeSlug ?? "").toLowerCase() !== postTypeSlug.toLowerCase()
+    ) {
+      return null;
+    }
+    return adaptCrmContact(record);
+  },
+  remove: async (ctx, { id, organizationId }) => {
+    await ctx.runMutation(
+      components.launchthat_crm.contacts.mutations.deleteContact,
+      {
+        organizationId,
+        contactId: id as any,
+      },
+    );
+  },
+};
 
 const inferStorageComponent = (tables: readonly string[] | undefined) => {
   const storageTables = tables ?? [];
@@ -630,6 +791,9 @@ const getResolver = async (
   organizationId?: string,
 ): Promise<Resolver> => {
   const normalized = postTypeSlug.toLowerCase();
+  if (CONTACTS_SLUGS.has(normalized)) {
+    return crmContactsResolver;
+  }
   if (DOWNLOADS_SLUGS.has(normalized)) {
     return downloadsResolver;
   }

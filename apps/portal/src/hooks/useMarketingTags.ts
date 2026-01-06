@@ -49,6 +49,13 @@ export function useUserMarketingTags(userId?: Id<"users">) {
   const organizationId =
     tenant?.slug === PORTAL_TENANT_SLUG ? PORTAL_TENANT_SLUG : tenant?._id ?? null;
 
+  const contactId = useQuery(
+    api.plugins.crm.marketingTags.queries.getContactIdForUser,
+    targetUserId && organizationId
+      ? ({ organizationId, userId: String(targetUserId) } as any)
+      : "skip",
+  ) as unknown as string | null | undefined;
+
   const userTags = useQuery(
     api.plugins.crm.marketingTags.queries.getUserMarketingTags,
     targetUserId && organizationId
@@ -103,7 +110,7 @@ export function useUserMarketingTags(userId?: Id<"users">) {
     assignTag,
     removeTag,
     isLoading: userTags === undefined,
-    contactId: null,
+    contactId: typeof contactId === "string" ? contactId : null,
   };
 }
 

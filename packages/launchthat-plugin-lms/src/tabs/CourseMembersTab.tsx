@@ -7,6 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import { api } from "@portal/convexspec";
+import { useMutation, useQuery } from "convex/react";
 import { CheckCircle, UserPlus } from "lucide-react";
 import {
   Table,
@@ -25,41 +27,85 @@ import { Label } from "@acme/ui/label";
 import type { PluginSingleViewComponentProps } from "launchthat-plugin-core";
 import { toast } from "sonner";
 
-const MOCK_MEMBERS = [
-  { id: "1", name: "Alex Carter", email: "alex@example.com", status: "Active" },
-  {
-    id: "2",
-    name: "Jamie Patel",
-    email: "jamie@example.com",
-    status: "Invited",
-  },
-  {
-    id: "3",
-    name: "Morgan Chen",
-    email: "morgan@example.com",
-    status: "Completed",
-  },
-] as const;
+type CourseMemberRow = {
+  userId: string;
+  status: "active" | "revoked" | string;
+  source?: string;
+  updatedAt?: number;
+  user?: { name?: string; email?: string } | null;
+};
 
 export const CourseMembersTab = ({
+  postId,
+  organizationId,
   pluginName,
 }: PluginSingleViewComponentProps) => {
   const [isInviting, startTransition] = useTransition();
   const [email, setEmail] = useState("");
-  const members = useMemo(() => MOCK_MEMBERS, []);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const apiAny = api as any;
+
+  const normalizedOrgId =
+    typeof organizationId === "string" && organizationId.trim().length > 0
+      ? organizationId.trim()
+      : null;
+
+  const courseId = typeof postId === "string" ? postId : null;
+
+  const membersRaw = useQuery(
+    apiAny.plugins.lms.enrollments.queries.listCourseMembers,
+    courseId ? { courseId } : "skip",
+  ) as CourseMemberRow[] | undefined;
+
+  const members = useMemo(() => {
+    return Array.isArray(membersRaw) ? membersRaw : [];
+  }, [membersRaw]);
+
+  const enrollUserByEmail = useMutation(
+    apiAny.plugins.lms.enrollments.mutations.enrollUserByEmail,
+  ) as (args: {
+    organizationId?: string;
+    courseId: string;
+    email: string;
+  }) => Promise<string | null>;
+
+  const revokeEnrollment = useMutation(
+    apiAny.plugins.lms.enrollments.mutations.revokeEnrollment,
+  ) as (args: { courseId: string; userId: string }) => Promise<null>;
 
   const handleInvite = () => {
+    if (!courseId) {
+      toast.error("Save this course first");
+      return;
+    }
     if (!email.trim()) {
       toast.error("Please enter an email address");
       return;
     }
 
     startTransition(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      toast.success(`Invite pending`, {
-        description: `Sent via ${pluginName}. Replace with real enrollment API.`,
-      });
-      setEmail("");
+      try {
+        const userId = await enrollUserByEmail({
+          organizationId: normalizedOrgId ?? undefined,
+          courseId,
+          email,
+        });
+        if (!userId) {
+          toast.error("User not found", {
+            description:
+              "No core user exists with that email address. Ask them to sign up first.",
+          });
+          return;
+        }
+        toast.success("Enrolled", {
+          description: `Enrollment created via ${pluginName}.`,
+        });
+        setEmail("");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Enrollment failed";
+        toast.error("Enrollment failed", { description: message });
+      }
     });
   };
 
@@ -69,7 +115,8 @@ export const CourseMembersTab = ({
         <CardHeader>
           <CardTitle>Enroll learners</CardTitle>
           <CardDescription>
-            Invite members manually or sync them via an automation later.
+            Manually enroll a user by email. (Enrollment is based on the core user
+            account.)
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 md:flex-row">
@@ -85,10 +132,10 @@ export const CourseMembersTab = ({
           <Button
             className="mt-6"
             onClick={handleInvite}
-            disabled={isInviting || !email.trim()}
+            disabled={isInviting || !email.trim() || !courseId}
           >
             <UserPlus className="mr-2 h-4 w-4" />
-            {isInviting ? "Inviting…" : "Send invite"}
+            {isInviting ? "Enrolling…" : "Enroll"}
           </Button>
         </CardContent>
       </Card>
@@ -97,7 +144,7 @@ export const CourseMembersTab = ({
         <CardHeader>
           <CardTitle>Current members</CardTitle>
           <CardDescription>
-            Replace this table with live enrollment data once APIs are wired up.
+            Live enrollments for this course.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -107,30 +154,76 @@ export const CourseMembersTab = ({
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {members.map((member) => (
-                <TableRow key={member.id}>
-                  <TableCell className="font-medium">{member.name}</TableCell>
-                  <TableCell>{member.email}</TableCell>
-                  <TableCell>
+              {members.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-muted-foreground">
+                    No enrollments yet.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                members.map((member) => (
+                  <TableRow key={member.userId}>
+                    <TableCell className="font-medium">
+                      {member.user?.name ?? "—"}
+                    </TableCell>
+                    <TableCell>{member.user?.email ?? "—"}</TableCell>
+                    <TableCell>
                     <Badge
                       variant={
-                        member.status === "Active"
+                        member.status === "active"
                           ? "default"
-                          : member.status === "Completed"
+                          : member.status === "revoked"
                             ? "secondary"
                             : "outline"
                       }
                       className="flex items-center gap-1"
                     >
                       <CheckCircle className="h-3 w-3" />
-                      {member.status}
+                      {member.status === "active"
+                        ? "Active"
+                        : member.status === "revoked"
+                          ? "Revoked"
+                          : member.status}
                     </Badge>
                   </TableCell>
+                    <TableCell>{member.source ?? "—"}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isInviting || member.status !== "active"}
+                        onClick={() => {
+                          if (!courseId) return;
+                          startTransition(async () => {
+                            try {
+                              await revokeEnrollment({
+                                courseId,
+                                userId: member.userId,
+                              });
+                              toast.success("Enrollment revoked");
+                            } catch (err) {
+                              const message =
+                                err instanceof Error
+                                  ? err.message
+                                  : "Revoke failed";
+                              toast.error("Revoke failed", {
+                                description: message,
+                              });
+                            }
+                          });
+                        }}
+                      >
+                        Revoke
+                      </Button>
+                    </TableCell>
                 </TableRow>
-              ))}
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

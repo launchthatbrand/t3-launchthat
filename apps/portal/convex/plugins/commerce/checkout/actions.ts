@@ -79,6 +79,7 @@ const ORDER_META_KEYS = {
   orderTotal: "order.orderTotal",
   currency: "order.currency",
   couponCode: "order.couponCode",
+  discountAmount: "order.discountAmount",
   orderStatus: "order.status",
   customerEmail: "order.customerEmail",
   paymentMethodId: "order.paymentMethodId",
@@ -192,6 +193,7 @@ export const placeOrder = action({
 
     paymentMethodId: v.string(),
     paymentData: v.optional(v.any()),
+    couponCode: v.optional(v.string()),
   },
   returns: v.object({
     success: v.boolean(),
@@ -216,18 +218,6 @@ export const placeOrder = action({
     const settingsValue = asRecord(ecommerceSettings?.metaValue);
     const currencyRaw = settingsValue.defaultCurrency;
     const currency = asString(currencyRaw).trim() || "USD";
-
-    // Validate payment token early so we don't create "orphan" orders.
-    if (args.paymentMethodId === "authorizenet") {
-      const paymentData = asRecord(args.paymentData);
-      const opaqueData = asRecord(paymentData.opaqueData);
-      if (
-        typeof opaqueData.dataDescriptor !== "string" ||
-        typeof opaqueData.dataValue !== "string"
-      ) {
-        throw new Error("Missing Authorize.Net payment token (opaqueData).");
-      }
-    }
 
     const idempotencyKey = asString(args.idempotencyKey).trim();
     if (idempotencyKey) {
@@ -303,6 +293,52 @@ export const placeOrder = action({
       throw new Error("Invalid order total");
     }
 
+    const couponRaw = asString(args.couponCode).trim();
+    let couponCode: string | null = null;
+    let discountAmount = 0;
+    let total = subtotal;
+    if (couponRaw) {
+      const couponResult = await ctx.runMutation(
+        apiAny.plugins.commerce.discounts.mutations.validateDiscountCode,
+        {
+          organizationId: args.organizationId,
+          code: couponRaw,
+          subtotal,
+        },
+      );
+
+      if (!couponResult || couponResult.ok !== true) {
+        throw new Error(
+          typeof couponResult?.reason === "string"
+            ? couponResult.reason
+            : "Invalid coupon code.",
+        );
+      }
+
+      couponCode =
+        typeof couponResult.appliedCode === "string"
+          ? couponResult.appliedCode
+          : couponRaw;
+      discountAmount =
+        typeof couponResult.discountAmount === "number"
+          ? couponResult.discountAmount
+          : 0;
+      total = Math.max(0, subtotal - discountAmount);
+    }
+
+    // Validate payment token before creating the order to avoid orphan orders.
+    // Skip validation entirely for free orders (total <= 0) and for explicit "free" method.
+    if (args.paymentMethodId === "authorizenet" && total > 0) {
+      const paymentData = asRecord(args.paymentData);
+      const opaqueData = asRecord(paymentData.opaqueData);
+      if (
+        typeof opaqueData.dataDescriptor !== "string" ||
+        typeof opaqueData.dataValue !== "string"
+      ) {
+        throw new Error("Missing Authorize.Net payment token (opaqueData).");
+      }
+    }
+
     const now = Date.now();
     const orderId = (await ctx.runMutation(
       commercePostsMutations.createPost as any,
@@ -327,8 +363,15 @@ export const placeOrder = action({
       value: JSON.stringify(lineItems),
     });
     metaEntries.push({ key: ORDER_META_KEYS.itemsSubtotal, value: subtotal });
-    metaEntries.push({ key: ORDER_META_KEYS.orderTotal, value: subtotal });
+    metaEntries.push({ key: ORDER_META_KEYS.orderTotal, value: total });
     metaEntries.push({ key: ORDER_META_KEYS.currency, value: currency });
+    if (couponCode) {
+      metaEntries.push({ key: ORDER_META_KEYS.couponCode, value: couponCode });
+      metaEntries.push({
+        key: ORDER_META_KEYS.discountAmount,
+        value: discountAmount,
+      });
+    }
     if (idempotencyKey) {
       metaEntries.push({
         key: ORDER_META_KEYS.idempotencyKey,
@@ -339,8 +382,15 @@ export const placeOrder = action({
       key: ORDER_META_KEYS.paymentMethodId,
       value: args.paymentMethodId,
     });
-    metaEntries.push({ key: ORDER_META_KEYS.paymentStatus, value: "pending" });
-    metaEntries.push({ key: ORDER_META_KEYS.orderStatus, value: "pending" });
+    const isFreeOrder = total <= 0 || args.paymentMethodId === "free";
+    metaEntries.push({
+      key: ORDER_META_KEYS.paymentStatus,
+      value: isFreeOrder ? "paid" : "pending",
+    });
+    metaEntries.push({
+      key: ORDER_META_KEYS.orderStatus,
+      value: isFreeOrder ? "processing" : "pending",
+    });
     metaEntries.push({
       key: ORDER_META_KEYS.customerEmail,
       value: args.email.trim(),
@@ -448,7 +498,7 @@ export const placeOrder = action({
       });
     }
     metaEntries.push({ key: ORDER_META_KEYS.legacySubtotal, value: subtotal });
-    metaEntries.push({ key: ORDER_META_KEYS.legacyTotal, value: subtotal });
+    metaEntries.push({ key: ORDER_META_KEYS.legacyTotal, value: total });
     metaEntries.push({
       key: ORDER_META_KEYS.legacyPayload,
       value: JSON.stringify({
@@ -459,7 +509,7 @@ export const placeOrder = action({
         },
         items: lineItems,
         currency,
-        totals: { subtotal, total: subtotal },
+        totals: { subtotal, total },
       }),
     });
 
@@ -472,40 +522,50 @@ export const placeOrder = action({
     }
 
     if (args.paymentMethodId === "authorizenet") {
-      const paymentData = asRecord(args.paymentData);
-      const opaqueData = asRecord(paymentData.opaqueData);
-      const opaqueDataPayload = {
-        dataDescriptor: asString(opaqueData.dataDescriptor),
-        dataValue: asString(opaqueData.dataValue),
-      };
+      // If a coupon discounts the cart to $0, treat as a "free" order (no gateway call).
+      let success = true;
+      let paymentStatus = "paid";
+      let orderStatus = "processing";
+      let gatewayTransactionId = "";
+      let gatewayAuthCode = "";
+      let gatewayResponseCode = "";
+      let gatewayErrorCode = "";
+      let gatewayErrorMessage = "";
 
-      const chargeResult = await ctx.runAction(
-        api.plugins.commerce.payments.authorizenet.actions
-          .chargeWithOpaqueData as any,
-        {
-          organizationId: args.organizationId,
-          amount: subtotal,
-          currency,
-          opaqueData: opaqueDataPayload,
-          billing: {
-            name: args.billing.name ?? undefined,
-            postcode: args.billing.postcode ?? undefined,
+      if (total > 0) {
+        const paymentData = asRecord(args.paymentData);
+        const opaqueData = asRecord(paymentData.opaqueData);
+        const opaqueDataPayload = {
+          dataDescriptor: asString(opaqueData.dataDescriptor),
+          dataValue: asString(opaqueData.dataValue),
+        };
+
+        const chargeResult = await ctx.runAction(
+          api.plugins.commerce.payments.authorizenet.actions
+            .chargeWithOpaqueData as any,
+          {
+            organizationId: args.organizationId,
+            amount: total,
+            currency,
+            opaqueData: opaqueDataPayload,
+            billing: {
+              name: args.billing.name ?? undefined,
+              postcode: args.billing.postcode ?? undefined,
+            },
+            orderId,
           },
-          orderId,
-        },
-      );
+        );
 
-      const charge = asRecord(chargeResult);
-      const success = Boolean(charge.success);
-      const paymentStatus = success ? "paid" : "failed";
-      const orderStatus = success ? "processing" : "failed";
-      const gatewayTransactionId = success
-        ? asString(charge.transactionId)
-        : "";
-      const gatewayAuthCode = success ? asString(charge.authCode) : "";
-      const gatewayResponseCode = success ? asString(charge.responseCode) : "";
-      const gatewayErrorCode = success ? "" : asString(charge.errorCode);
-      const gatewayErrorMessage = success ? "" : asString(charge.errorMessage);
+        const charge = asRecord(chargeResult);
+        success = Boolean(charge.success);
+        paymentStatus = success ? "paid" : "failed";
+        orderStatus = success ? "processing" : "failed";
+        gatewayTransactionId = success ? asString(charge.transactionId) : "";
+        gatewayAuthCode = success ? asString(charge.authCode) : "";
+        gatewayResponseCode = success ? asString(charge.responseCode) : "";
+        gatewayErrorCode = success ? "" : asString(charge.errorCode);
+        gatewayErrorMessage = success ? "" : asString(charge.errorMessage);
+      }
 
       await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
         postId: orderId,
@@ -563,137 +623,159 @@ export const placeOrder = action({
         organizationId: args.organizationId,
         status: "paid",
       });
+    } else if (args.paymentMethodId === "free" || total <= 0) {
+      await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
+        postId: orderId,
+        key: ORDER_META_KEYS.gateway,
+        value: "free",
+      });
+      await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
+        postId: orderId,
+        key: ORDER_META_KEYS.paymentStatus,
+        value: "paid",
+      });
+      await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
+        postId: orderId,
+        key: ORDER_META_KEYS.orderStatus,
+        value: "processing",
+      });
+      await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
+        postId: orderId,
+        key: ORDER_META_KEYS.paymentResponseJson,
+        value: JSON.stringify({ success: true, reason: "free_order" }),
+      });
+      await ctx.runMutation(commercePostsMutations.updatePost as any, {
+        id: orderId,
+        organizationId: args.organizationId,
+        status: "paid",
+      });
+    } else {
+      throw new Error(`Unsupported payment method: ${args.paymentMethodId}`);
+    }
 
-      // CRM sync (optional): ensure contact exists and assign any product tags.
-      if (
-        await isCrmEnabledForOrg(ctx, { organizationId: args.organizationId })
-      ) {
-        const crmOrganizationId = (args.organizationId ??
-          PORTAL_TENANT_SLUG) as any;
-        const contact = await ctx.runMutation(
-          internal.core.crm.identity.resolvers.resolveOrCreateContactForActor,
-          {
-            organizationId: crmOrganizationId,
-            userId: args.userId as any,
-            email: args.email,
-            name:
-              args.billing.name ?? args.shipping.name ?? undefined ?? undefined,
-            source: "commerce.checkout",
-          },
+    // CRM sync (optional): ensure contact exists and assign any product tags.
+    if (await isCrmEnabledForOrg(ctx, { organizationId: args.organizationId })) {
+      const crmOrganizationId = (args.organizationId ?? PORTAL_TENANT_SLUG) as any;
+      const contact = await ctx.runMutation(
+        internal.core.crm.identity.resolvers.resolveOrCreateContactForActor,
+        {
+          organizationId: crmOrganizationId,
+          userId: args.userId as any,
+          email: args.email,
+          name: args.billing.name ?? args.shipping.name ?? undefined ?? undefined,
+          source: "commerce.checkout",
+        },
+      );
+
+      const contactId = contact?.contactId;
+      if (contactId) {
+        const tagIds: string[] = [];
+        const tagSlugs: string[] = [];
+
+        for (const productId of uniqueProductIds) {
+          const meta = await getProductMeta(productId);
+          const rawIds = readMetaValue(meta, CRM_PRODUCT_TAG_IDS_META_KEY);
+          tagIds.push(...parseJsonStringArray(rawIds));
+
+          const rawSlugs = readMetaValue(meta, CRM_PRODUCT_TAG_SLUGS_META_KEY);
+          tagSlugs.push(...parseJsonStringArray(rawSlugs));
+        }
+
+        const normalizedIds = Array.from(
+          new Set(tagIds.map((s) => s.trim()).filter(Boolean)),
         );
 
-        const contactId = contact?.contactId;
-        if (contactId) {
-          const tagIds: string[] = [];
-          const tagSlugs: string[] = [];
-
-          for (const productId of uniqueProductIds) {
-            const meta = await getProductMeta(productId);
-            const rawIds = readMetaValue(meta, CRM_PRODUCT_TAG_IDS_META_KEY);
-            tagIds.push(...parseJsonStringArray(rawIds));
-
-            const rawSlugs = readMetaValue(meta, CRM_PRODUCT_TAG_SLUGS_META_KEY);
-            tagSlugs.push(...parseJsonStringArray(rawSlugs));
-          }
-
-          const normalizedIds = Array.from(
-            new Set(tagIds.map((s) => s.trim()).filter(Boolean)),
-          );
-
-          // Prefer IDs (new) and fall back to slugs (legacy).
-          if (normalizedIds.length > 0) {
-            for (const marketingTagId of normalizedIds) {
-              await ctx.runMutation(
-                internal.core.crm.marketingTags.index
-                  .assignMarketingTagToContactInternal,
-                {
-                  organizationId: crmOrganizationId,
-                  contactId,
-                  marketingTagId: marketingTagId as any,
-                  source: "commerce.product_purchase",
-                },
-              );
-            }
-          } else {
-            const normalizedSlugs = Array.from(
-              new Set(
-                tagSlugs.map((s) => s.trim().toLowerCase()).filter(Boolean),
-              ),
+        // Prefer IDs (new) and fall back to slugs (legacy).
+        if (normalizedIds.length > 0) {
+          for (const marketingTagId of normalizedIds) {
+            await ctx.runMutation(
+              internal.core.crm.marketingTags.index
+                .assignMarketingTagToContactInternal,
+              {
+                organizationId: crmOrganizationId,
+                contactId,
+                marketingTagId: marketingTagId as any,
+                source: "commerce.product_purchase",
+              },
             );
-            for (const slug of normalizedSlugs) {
-              const marketingTagId: string = await ctx.runMutation(
-                internal.core.crm.marketingTags.index
-                  .ensureCrmMarketingTagBySlugInternal,
-                { organizationId: crmOrganizationId, slug },
-              );
-              await ctx.runMutation(
-                internal.core.crm.marketingTags.index
-                  .assignMarketingTagToContactInternal,
-                {
-                  organizationId: crmOrganizationId,
-                  contactId,
-                  marketingTagId: marketingTagId as any,
-                  source: "commerce.product_purchase",
-                },
-              );
-            }
+          }
+        } else {
+          const normalizedSlugs = Array.from(
+            new Set(
+              tagSlugs.map((s) => s.trim().toLowerCase()).filter(Boolean),
+            ),
+          );
+          for (const slug of normalizedSlugs) {
+            const marketingTagId: string = await ctx.runMutation(
+              internal.core.crm.marketingTags.index
+                .ensureCrmMarketingTagBySlugInternal,
+              { organizationId: crmOrganizationId, slug },
+            );
+            await ctx.runMutation(
+              internal.core.crm.marketingTags.index
+                .assignMarketingTagToContactInternal,
+              {
+                organizationId: crmOrganizationId,
+                contactId,
+                marketingTagId: marketingTagId as any,
+                source: "commerce.product_purchase",
+              },
+            );
           }
         }
       }
+    }
 
-      await ctx.runMutation(commerceCartMutations.clearCart as any, {
-        userId: args.userId,
-        guestSessionId: args.guestSessionId,
-      });
+    await ctx.runMutation(commerceCartMutations.clearCart as any, {
+      userId: args.userId,
+      guestSessionId: args.guestSessionId,
+    });
 
-      let redirectUrl: string | undefined = undefined;
+    let redirectUrl: string | undefined = undefined;
 
-      if (typeof args.funnelStepId === "string" && args.funnelStepId.trim()) {
-        const step: any = await ctx.runQuery(
-          apiAny.plugins.commerce.funnelSteps.queries.getFunnelStepById,
+    if (typeof args.funnelStepId === "string" && args.funnelStepId.trim()) {
+      const step: any = await ctx.runQuery(
+        apiAny.plugins.commerce.funnelSteps.queries.getFunnelStepById,
+        {
+          stepId: args.funnelStepId,
+          organizationId: args.organizationId,
+        },
+      );
+
+      const funnelId = asString(step?.funnelId);
+      const funnelSlug = asString(step?.funnelSlug);
+      const isDefaultFunnel = Boolean(step?.isDefaultFunnel);
+      const currentOrder = asNumber(step?.order);
+
+      if (funnelId && funnelSlug) {
+        const steps: any[] = await ctx.runQuery(
+          apiAny.plugins.commerce.funnelSteps.queries.getFunnelStepsForFunnel,
           {
-            stepId: args.funnelStepId,
+            funnelId,
             organizationId: args.organizationId,
           },
         );
 
-        const funnelId = asString(step?.funnelId);
-        const funnelSlug = asString(step?.funnelSlug);
-        const isDefaultFunnel = Boolean(step?.isDefaultFunnel);
-        const currentOrder = asNumber(step?.order);
+        const sorted = Array.isArray(steps)
+          ? steps
+              .map((s) => ({
+                slug: asString(s?.slug),
+                order: asNumber(s?.order),
+              }))
+              .filter((s) => Boolean(s.slug))
+              .sort((a, b) => a.order - b.order)
+          : [];
 
-        if (funnelId && funnelSlug) {
-          const steps: any[] = await ctx.runQuery(
-            apiAny.plugins.commerce.funnelSteps.queries.getFunnelStepsForFunnel,
-            {
-              funnelId,
-              organizationId: args.organizationId,
-            },
-          );
-
-          const sorted = Array.isArray(steps)
-            ? steps
-                .map((s) => ({
-                  slug: asString(s?.slug),
-                  order: asNumber(s?.order),
-                }))
-                .filter((s) => Boolean(s.slug))
-                .sort((a, b) => a.order - b.order)
-            : [];
-
-          const next = sorted.find((s) => s.order > currentOrder);
-          if (next?.slug) {
-            const base = isDefaultFunnel
-              ? `/checkout/${next.slug}`
-              : `/f/${encodeURIComponent(funnelSlug)}/${encodeURIComponent(next.slug)}`;
-            redirectUrl = `${base}?orderId=${encodeURIComponent(orderId)}`;
-          }
+        const next = sorted.find((s) => s.order > currentOrder);
+        if (next?.slug) {
+          const base = isDefaultFunnel
+            ? `/checkout/${next.slug}`
+            : `/f/${encodeURIComponent(funnelSlug)}/${encodeURIComponent(next.slug)}`;
+          redirectUrl = `${base}?orderId=${encodeURIComponent(orderId)}`;
         }
       }
-
-      return { success: true, orderId, redirectUrl };
     }
 
-    throw new Error(`Unsupported payment method: ${args.paymentMethodId}`);
+    return { success: true, orderId, redirectUrl };
   },
 });

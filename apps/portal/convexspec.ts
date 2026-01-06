@@ -1161,6 +1161,7 @@ export type PublicApiType = {
             name?: string;
             organizationId: Id<"organizations">;
             primaryColor?: string;
+            slug?: string;
           },
           null
         >;
@@ -1550,6 +1551,7 @@ export type PublicApiType = {
               _id: Id<"users">;
               email: string;
               firstName?: string;
+              image?: string;
               lastName?: string;
               name?: string;
               username?: string;
@@ -6346,6 +6348,7 @@ export type PublicApiType = {
                 postcode?: string | null;
                 state?: string | null;
               };
+              couponCode?: string;
               email: string;
               funnelStepId?: string;
               guestSessionId?: string;
@@ -6451,6 +6454,67 @@ export type PublicApiType = {
             "public",
             { organizationId?: string; stepId: string },
             any
+          >;
+        };
+      };
+      discounts: {
+        mutations: {
+          createDiscountCode: FunctionReference<
+            "mutation",
+            "public",
+            {
+              active?: boolean;
+              amount: number;
+              code: string;
+              kind: "percent" | "fixed";
+              organizationId?: string;
+            },
+            string
+          >;
+          updateDiscountCode: FunctionReference<
+            "mutation",
+            "public",
+            {
+              active?: boolean;
+              amount?: number;
+              code?: string;
+              id: string;
+              kind?: "percent" | "fixed";
+            },
+            null
+          >;
+          deleteDiscountCode: FunctionReference<
+            "mutation",
+            "public",
+            { id: string },
+            null
+          >;
+          validateDiscountCode: FunctionReference<
+            "mutation",
+            "public",
+            { code: string; organizationId?: string; subtotal: number },
+            {
+              amount?: number;
+              appliedCode?: string;
+              discountAmount: number;
+              kind?: "percent" | "fixed";
+              ok: boolean;
+              reason?: string;
+            }
+          >;
+        };
+        queries: {
+          listDiscountCodes: FunctionReference<
+            "query",
+            "public",
+            { organizationId?: string },
+            any
+          >;
+          getDiscountCodeByCode: FunctionReference<
+            "query",
+            "public",
+            { code: string; organizationId?: string },
+            null | any
           >;
         };
       };

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { UserMarketingTagsManager } from "@/components/admin/UserMarketingTagsManager";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +11,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
 
+import { applyFilters } from "@acme/admin-runtime/hooks";
 import { Alert, AlertDescription, AlertTitle } from "@acme/ui/alert";
 import {
   AlertDialog,
@@ -52,6 +52,16 @@ import {
 } from "@acme/ui/select";
 import { Skeleton } from "@acme/ui/skeleton";
 
+import { ADMIN_USER_DETAILS_SECTIONS_FILTER } from "~/lib/plugins/hookSlots";
+import { useTenant } from "~/context/TenantContext";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+
+type AdminUserDetailsSection = {
+  id: string;
+  priority?: number;
+  render: (ctx: { userId: string; organizationId?: string | null }) => React.ReactNode;
+};
+
 // Define the form schema
 const userFormSchema = z.object({
   name: z.string().min(2, {
@@ -70,11 +80,24 @@ type UserFormValues = z.infer<typeof userFormSchema>;
 export default function UserEditPage() {
   const params = useParams();
   const router = useRouter();
+  const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant ?? undefined);
   // Extract userId directly from params (no need for React.use() in Next.js 13+)
   const userId = params.id as string;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const sectionsRaw = applyFilters(ADMIN_USER_DETAILS_SECTIONS_FILTER, [], {
+    userId,
+    organizationId,
+  });
+  const sections = Array.isArray(sectionsRaw)
+    ? (sectionsRaw as AdminUserDetailsSection[])
+    : ([] as AdminUserDetailsSection[]);
+  const sortedSections = [...sections].sort(
+    (a, b) => (a?.priority ?? 10) - (b?.priority ?? 10),
+  );
 
   // Get user by ID
   const user = useQuery(api.core.users.queries.getUserById, {
@@ -341,7 +364,11 @@ export default function UserEditPage() {
           </CardContent>
         </Card>
 
-        <UserMarketingTagsManager userId={userId as Id<"users">} />
+        {sortedSections.map((section) => (
+          <React.Fragment key={section.id}>
+            {section.render({ userId })}
+          </React.Fragment>
+        ))}
 
         <Card className="border-destructive">
           <CardHeader>

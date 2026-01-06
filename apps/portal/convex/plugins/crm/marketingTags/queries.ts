@@ -38,6 +38,20 @@ export const getContactIdForUser = query({
   },
 });
 
+export const getContactMarketingTags = query({
+  args: {
+    organizationId: v.optional(v.string()),
+    contactId: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    return await ctx.runQuery(crmMarketingTagsQueries.getContactMarketingTags, {
+      ...args,
+      contactId: args.contactId as any,
+    });
+  },
+});
+
 export const contactHasMarketingTags = query({
   args: {
     organizationId: v.optional(v.string()),

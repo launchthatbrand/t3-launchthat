@@ -10,6 +10,8 @@
 
 import type * as cart_mutations from "../cart/mutations.js";
 import type * as cart_queries from "../cart/queries.js";
+import type * as discounts_mutations from "../discounts/mutations.js";
+import type * as discounts_queries from "../discounts/queries.js";
 import type * as funnelSteps_mutations from "../funnelSteps/mutations.js";
 import type * as funnelSteps_queries from "../funnelSteps/queries.js";
 import type * as funnels_mutations from "../funnels/mutations.js";
@@ -38,6 +40,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   "cart/mutations": typeof cart_mutations;
   "cart/queries": typeof cart_queries;
+  "discounts/mutations": typeof discounts_mutations;
+  "discounts/queries": typeof discounts_queries;
   "funnelSteps/mutations": typeof funnelSteps_mutations;
   "funnelSteps/queries": typeof funnelSteps_queries;
   "funnels/mutations": typeof funnels_mutations;
@@ -119,6 +123,67 @@ export type Mounts = {
         "query",
         "public",
         { guestSessionId?: string; userId?: string },
+        any
+      >;
+    };
+  };
+  discounts: {
+    mutations: {
+      createDiscountCode: FunctionReference<
+        "mutation",
+        "public",
+        {
+          active?: boolean;
+          amount: number;
+          code: string;
+          kind: "percent" | "fixed";
+          organizationId?: string;
+        },
+        string
+      >;
+      deleteDiscountCode: FunctionReference<
+        "mutation",
+        "public",
+        { id: string },
+        null
+      >;
+      updateDiscountCode: FunctionReference<
+        "mutation",
+        "public",
+        {
+          active?: boolean;
+          amount?: number;
+          code?: string;
+          id: string;
+          kind?: "percent" | "fixed";
+        },
+        null
+      >;
+      validateDiscountCode: FunctionReference<
+        "mutation",
+        "public",
+        { code: string; organizationId?: string; subtotal: number },
+        {
+          amount?: number;
+          appliedCode?: string;
+          discountAmount: number;
+          kind?: "percent" | "fixed";
+          ok: boolean;
+          reason?: string;
+        }
+      >;
+    };
+    queries: {
+      getDiscountCodeByCode: FunctionReference<
+        "query",
+        "public",
+        { code: string; organizationId?: string },
+        null | any
+      >;
+      listDiscountCodes: FunctionReference<
+        "query",
+        "public",
+        { organizationId?: string },
         any
       >;
     };

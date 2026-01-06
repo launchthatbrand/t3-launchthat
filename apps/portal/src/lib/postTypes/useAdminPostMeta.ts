@@ -76,6 +76,13 @@ export const useAdminPostMeta = (params: Params): {
     shouldUseCoreMeta ? coreArgs : "skip",
   ) as Doc<"postsMeta">[] | undefined;
 
+  const crmContactMeta = useQuery(
+    (api as any).plugins.crm.contacts.queries.getContactMeta,
+    params.storageKind === "custom" && params.postTypeSlug === "contact" && params.postId
+      ? { contactId: params.postId }
+      : "skip",
+  ) as Array<{ key: string; value: unknown }> | null | undefined;
+
   // Component meta: we currently have explicit public query surfaces for commerce + lms.
   const componentArgs = params.postId
     ? ({
@@ -110,6 +117,10 @@ export const useAdminPostMeta = (params: Params): {
   ) as Array<{ key: string; value: unknown }> | null | undefined;
 
   const metaEntries = useMemo<AdminMetaEntry[] | undefined>(() => {
+    if (params.storageKind === "custom" && params.postTypeSlug === "contact") {
+      return normalizeComponentMeta(crmContactMeta);
+    }
+
     if (shouldUseCoreMeta) {
       return normalizeCoreMeta(coreMeta);
     }
@@ -138,10 +149,12 @@ export const useAdminPostMeta = (params: Params): {
   }, [
     commerceMeta,
     coreMeta,
+    crmContactMeta,
     lmsMeta,
     supportMeta,
     params.postId,
     params.storageKind,
+    params.postTypeSlug,
     shouldUseCoreMeta,
     storageComponent,
   ]);

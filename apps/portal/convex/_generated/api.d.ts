@@ -121,6 +121,8 @@ import type * as plugins_commerce_chargebacks_evidence_mutations from "../plugin
 import type * as plugins_commerce_chargebacks_evidence_queries from "../plugins/commerce/chargebacks/evidence/queries.js";
 import type * as plugins_commerce_checkout_actions from "../plugins/commerce/checkout/actions.js";
 import type * as plugins_commerce_checkout_mutations from "../plugins/commerce/checkout/mutations.js";
+import type * as plugins_commerce_discounts_mutations from "../plugins/commerce/discounts/mutations.js";
+import type * as plugins_commerce_discounts_queries from "../plugins/commerce/discounts/queries.js";
 import type * as plugins_commerce_funnelSteps_mutations from "../plugins/commerce/funnelSteps/mutations.js";
 import type * as plugins_commerce_funnelSteps_queries from "../plugins/commerce/funnelSteps/queries.js";
 import type * as plugins_commerce_funnels_mutations from "../plugins/commerce/funnels/mutations.js";
@@ -133,6 +135,8 @@ import type * as plugins_commerce_payments_authorizenet_actions from "../plugins
 import type * as plugins_commerce_products_queries from "../plugins/commerce/products/queries.js";
 import type * as plugins_commerce_queries from "../plugins/commerce/queries.js";
 import type * as plugins_commerce from "../plugins/commerce.js";
+import type * as plugins_crm_contacts_mutations from "../plugins/crm/contacts/mutations.js";
+import type * as plugins_crm_contacts_queries from "../plugins/crm/contacts/queries.js";
 import type * as plugins_crm_marketingTags_mutations from "../plugins/crm/marketingTags/mutations.js";
 import type * as plugins_crm_marketingTags_queries from "../plugins/crm/marketingTags/queries.js";
 import type * as plugins_disclaimers_actions from "../plugins/disclaimers/actions.js";
@@ -145,6 +149,8 @@ import type * as plugins_entity_queries from "../plugins/entity/queries.js";
 import type * as plugins_entity_resolvers from "../plugins/entity/resolvers.js";
 import type * as plugins_entity_types from "../plugins/entity/types.js";
 import type * as plugins_lms_actions from "../plugins/lms/actions.js";
+import type * as plugins_lms_enrollments_mutations from "../plugins/lms/enrollments/mutations.js";
+import type * as plugins_lms_enrollments_queries from "../plugins/lms/enrollments/queries.js";
 import type * as plugins_lms_helpers from "../plugins/lms/helpers.js";
 import type * as plugins_lms_mutations from "../plugins/lms/mutations.js";
 import type * as plugins_lms_posts_mutations from "../plugins/lms/posts/mutations.js";
@@ -320,6 +326,8 @@ declare const fullApi: ApiFromModules<{
   "plugins/commerce/chargebacks/evidence/queries": typeof plugins_commerce_chargebacks_evidence_queries;
   "plugins/commerce/checkout/actions": typeof plugins_commerce_checkout_actions;
   "plugins/commerce/checkout/mutations": typeof plugins_commerce_checkout_mutations;
+  "plugins/commerce/discounts/mutations": typeof plugins_commerce_discounts_mutations;
+  "plugins/commerce/discounts/queries": typeof plugins_commerce_discounts_queries;
   "plugins/commerce/funnelSteps/mutations": typeof plugins_commerce_funnelSteps_mutations;
   "plugins/commerce/funnelSteps/queries": typeof plugins_commerce_funnelSteps_queries;
   "plugins/commerce/funnels/mutations": typeof plugins_commerce_funnels_mutations;
@@ -332,6 +340,8 @@ declare const fullApi: ApiFromModules<{
   "plugins/commerce/products/queries": typeof plugins_commerce_products_queries;
   "plugins/commerce/queries": typeof plugins_commerce_queries;
   "plugins/commerce": typeof plugins_commerce;
+  "plugins/crm/contacts/mutations": typeof plugins_crm_contacts_mutations;
+  "plugins/crm/contacts/queries": typeof plugins_crm_contacts_queries;
   "plugins/crm/marketingTags/mutations": typeof plugins_crm_marketingTags_mutations;
   "plugins/crm/marketingTags/queries": typeof plugins_crm_marketingTags_queries;
   "plugins/disclaimers/actions": typeof plugins_disclaimers_actions;
@@ -344,6 +354,8 @@ declare const fullApi: ApiFromModules<{
   "plugins/entity/resolvers": typeof plugins_entity_resolvers;
   "plugins/entity/types": typeof plugins_entity_types;
   "plugins/lms/actions": typeof plugins_lms_actions;
+  "plugins/lms/enrollments/mutations": typeof plugins_lms_enrollments_mutations;
+  "plugins/lms/enrollments/queries": typeof plugins_lms_enrollments_queries;
   "plugins/lms/helpers": typeof plugins_lms_helpers;
   "plugins/lms/mutations": typeof plugins_lms_mutations;
   "plugins/lms/posts/mutations": typeof plugins_lms_posts_mutations;
@@ -5393,6 +5405,48 @@ export declare const components: {
     };
   };
   launchthat_lms: {
+    enrollments: {
+      mutations: {
+        revokeEnrollment: FunctionReference<
+          "mutation",
+          "internal",
+          { courseId: string; userId: string },
+          null
+        >;
+        upsertEnrollment: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            courseId: string;
+            organizationId?: string;
+            source: "manual" | "crm_tag" | "purchase";
+            status: "active" | "revoked";
+            userId: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        getEnrollment: FunctionReference<
+          "query",
+          "internal",
+          { courseId: string; userId: string },
+          null | any
+        >;
+        listEnrollmentsForCourse: FunctionReference<
+          "query",
+          "internal",
+          { courseId: string },
+          any
+        >;
+        listEnrollmentsForUser: FunctionReference<
+          "query",
+          "internal",
+          { userId: string },
+          any
+        >;
+      };
+    };
     posts: {
       mutations: {
         bulkUpdatePostStatus: FunctionReference<
@@ -6002,6 +6056,67 @@ export declare const components: {
         >;
       };
     };
+    discounts: {
+      mutations: {
+        createDiscountCode: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            active?: boolean;
+            amount: number;
+            code: string;
+            kind: "percent" | "fixed";
+            organizationId?: string;
+          },
+          string
+        >;
+        deleteDiscountCode: FunctionReference<
+          "mutation",
+          "internal",
+          { id: string },
+          null
+        >;
+        updateDiscountCode: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            active?: boolean;
+            amount?: number;
+            code?: string;
+            id: string;
+            kind?: "percent" | "fixed";
+          },
+          null
+        >;
+        validateDiscountCode: FunctionReference<
+          "mutation",
+          "internal",
+          { code: string; organizationId?: string; subtotal: number },
+          {
+            amount?: number;
+            appliedCode?: string;
+            discountAmount: number;
+            kind?: "percent" | "fixed";
+            ok: boolean;
+            reason?: string;
+          }
+        >;
+      };
+      queries: {
+        getDiscountCodeByCode: FunctionReference<
+          "query",
+          "internal",
+          { code: string; organizationId?: string },
+          null | any
+        >;
+        listDiscountCodes: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string },
+          any
+        >;
+      };
+    };
     funnelSteps: {
       mutations: {
         addFunnelStep: FunctionReference<
@@ -6372,6 +6487,147 @@ export declare const components: {
     };
   };
   launchthat_crm: {
+    contacts: {
+      mutations: {
+        createContact: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            authorId?: string;
+            category?: string;
+            content?: string;
+            excerpt?: string;
+            featuredImageUrl?: string;
+            meta?: any;
+            organizationId?: string;
+            postTypeSlug: string;
+            slug: string;
+            status: string;
+            tags?: Array<string>;
+            title: string;
+            userId?: string;
+          },
+          string
+        >;
+        deleteContact: FunctionReference<
+          "mutation",
+          "internal",
+          { contactId: string; organizationId?: string },
+          null
+        >;
+        updateContact: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            authorId?: string;
+            category?: string;
+            contactId: string;
+            content?: string;
+            excerpt?: string;
+            featuredImageUrl?: string;
+            meta?: any;
+            organizationId?: string;
+            slug?: string;
+            status?: string;
+            tags?: Array<string>;
+            title?: string;
+            userId?: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        getContactById: FunctionReference<
+          "query",
+          "internal",
+          { contactId: string; organizationId?: string },
+          null | {
+            _creationTime: number;
+            _id: string;
+            authorId?: string;
+            category?: string;
+            content?: string;
+            createdAt: number;
+            excerpt?: string;
+            featuredImageUrl?: string;
+            organizationId?: string;
+            postTypeSlug: string;
+            slug: string;
+            status: string;
+            tags?: Array<string>;
+            title: string;
+            updatedAt?: number;
+            userId?: string;
+          }
+        >;
+        getContactBySlug: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; slug: string },
+          null | {
+            _creationTime: number;
+            _id: string;
+            authorId?: string;
+            category?: string;
+            content?: string;
+            createdAt: number;
+            excerpt?: string;
+            featuredImageUrl?: string;
+            organizationId?: string;
+            postTypeSlug: string;
+            slug: string;
+            status: string;
+            tags?: Array<string>;
+            title: string;
+            updatedAt?: number;
+            userId?: string;
+          }
+        >;
+        getContactIdForUser: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; userId: string },
+          string | null
+        >;
+        getContactMeta: FunctionReference<
+          "query",
+          "internal",
+          { contactId: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            contactId: string;
+            createdAt: number;
+            key: string;
+            updatedAt?: number;
+            value?: string | number | boolean | null;
+          }>
+        >;
+        listContacts: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; organizationId?: string; status?: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            authorId?: string;
+            category?: string;
+            content?: string;
+            createdAt: number;
+            excerpt?: string;
+            featuredImageUrl?: string;
+            organizationId?: string;
+            postTypeSlug: string;
+            slug: string;
+            status: string;
+            tags?: Array<string>;
+            title: string;
+            updatedAt?: number;
+            userId?: string;
+          }>
+        >;
+      };
+    };
     marketingTags: {
       mutations: {
         assignMarketingTagToUser: FunctionReference<
@@ -6435,6 +6691,33 @@ export declare const components: {
           "internal",
           { organizationId?: string; userId: string },
           string | null
+        >;
+        getContactMarketingTags: FunctionReference<
+          "query",
+          "internal",
+          { contactId: string; organizationId?: string },
+          Array<{
+            _id: string;
+            assignedAt: number;
+            assignedBy?: string;
+            contactId: string;
+            expiresAt?: number;
+            marketingTag: {
+              _creationTime: number;
+              _id: string;
+              category?: string;
+              color?: string;
+              createdAt?: number;
+              createdBy?: string;
+              description?: string;
+              isActive?: boolean;
+              name: string;
+              organizationId?: string;
+              slug?: string;
+            };
+            notes?: string;
+            source?: string;
+          }>
         >;
         getUserMarketingTags: FunctionReference<
           "query",

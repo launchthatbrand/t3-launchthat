@@ -31,6 +31,7 @@ type EvalData = {
   lmsCourseAccess?: LmsCourseAccessContext | null;
   userRole?: string | null;
   lmsAdminBypassCourseAccess?: boolean;
+  lmsEnrollmentStatus?: string | null;
 };
 
 export const lmsCourseCascadeAccessProvider: ContentAccessProvider = {
@@ -59,8 +60,6 @@ export const lmsCourseCascadeAccessProvider: ContentAccessProvider = {
       return { kind: "abstain" };
     }
 
-    // Minimal enforcement for now: non-open LMS courses require authentication.
-    // (Future: "free/buy_now/recurring/closed" can enforce enrollment/purchase.)
     if (!subject.isAuthenticated) {
       if (ctx.accessMode === "buy_now") {
         // Keep default AccessDeniedPage UX (Sign In / Go Home), but allow LMS to
@@ -72,6 +71,19 @@ export const lmsCourseCascadeAccessProvider: ContentAccessProvider = {
         kind: "deny",
         reason: "Please log in to access this course content",
       };
+    }
+
+    // Enrollment enforcement for locked course modes.
+    // Enrollment is based on core user id + course id.
+    if (ctx.accessMode !== "open") {
+      const statusRaw =
+        typeof d.lmsEnrollmentStatus === "string"
+          ? d.lmsEnrollmentStatus.trim().toLowerCase()
+          : "";
+      const isEnrolled = statusRaw === "active";
+      if (!isEnrolled) {
+        return { kind: "deny", reason: "Not enrolled" };
+      }
     }
 
     return { kind: "abstain" };

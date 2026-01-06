@@ -68,7 +68,7 @@ export const assignMarketingTagToUser = mutation({
   },
   returns: v.id("contactMarketingTags"),
   handler: async (ctx, args) => {
-    const existing =
+    const existingByOrg =
       typeof args.organizationId === "string"
         ? await ctx.db
             .query("contactMarketingTags")
@@ -79,12 +79,24 @@ export const assignMarketingTagToUser = mutation({
                 .eq("marketingTagId", args.marketingTagId),
             )
             .first()
-        : await ctx.db
-            .query("contactMarketingTags")
-            .withIndex("by_contact_tag", (q) =>
-              q.eq("contactId", args.contactId).eq("marketingTagId", args.marketingTagId),
-            )
-            .first();
+        : null;
+
+    const existingByContact = await ctx.db
+      .query("contactMarketingTags")
+      .withIndex("by_contact_tag", (q) =>
+        q.eq("contactId", args.contactId).eq("marketingTagId", args.marketingTagId),
+      )
+      .first();
+
+    const existing =
+      existingByOrg ??
+      (typeof args.organizationId === "string"
+        ? existingByContact &&
+          (existingByContact.organizationId === undefined ||
+            existingByContact.organizationId === args.organizationId)
+          ? existingByContact
+          : null
+        : existingByContact);
 
     const payload = {
       organizationId: args.organizationId,
@@ -114,7 +126,7 @@ export const removeMarketingTagFromUser = mutation({
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const existing =
+    const existingByOrg =
       typeof args.organizationId === "string"
         ? await ctx.db
             .query("contactMarketingTags")
@@ -125,12 +137,24 @@ export const removeMarketingTagFromUser = mutation({
                 .eq("marketingTagId", args.marketingTagId),
             )
             .first()
-        : await ctx.db
-            .query("contactMarketingTags")
-            .withIndex("by_contact_tag", (q) =>
-              q.eq("contactId", args.contactId).eq("marketingTagId", args.marketingTagId),
-            )
-            .first();
+        : null;
+
+    const existingByContact = await ctx.db
+      .query("contactMarketingTags")
+      .withIndex("by_contact_tag", (q) =>
+        q.eq("contactId", args.contactId).eq("marketingTagId", args.marketingTagId),
+      )
+      .first();
+
+    const existing =
+      existingByOrg ??
+      (typeof args.organizationId === "string"
+        ? existingByContact &&
+          (existingByContact.organizationId === undefined ||
+            existingByContact.organizationId === args.organizationId)
+          ? existingByContact
+          : null
+        : existingByContact);
 
     if (!existing) return false;
     await ctx.db.delete(existing._id);

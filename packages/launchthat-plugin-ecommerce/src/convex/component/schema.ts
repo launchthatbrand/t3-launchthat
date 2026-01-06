@@ -70,9 +70,22 @@ const plansTable = defineTable({
   .index("by_active", ["isActive"])
   .index("by_sort_order", ["sortOrder"]);
 
+const discountCodesTable = defineTable({
+  organizationId: v.union(v.string(), v.null()), // null = global code
+  code: v.string(), // normalized (uppercase, trimmed)
+  kind: v.union(v.literal("percent"), v.literal("fixed")),
+  amount: v.number(), // percent: 0-100, fixed: currency units
+  active: v.boolean(),
+  createdAt: v.number(),
+  updatedAt: v.optional(v.number()),
+})
+  .index("by_org_and_code", ["organizationId", "code"])
+  .index("by_org_and_active", ["organizationId", "active"]);
+
 export default defineSchema({
   posts: postsTable,
   postsMeta: postsMetaTable,
   cartItems: cartItemsTable,
   plans: plansTable,
+  discountCodes: discountCodesTable,
 });

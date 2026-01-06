@@ -17,3 +17,5 @@ export const configureCrmPlugin = (options: CrmPluginOptions) => {
 };
 
 export default crmPlugin;
+
+export { ContactMarketingTagsManager } from "./admin/metaBoxes/ContactMarketingTagsManager";

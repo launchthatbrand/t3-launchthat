@@ -3,9 +3,9 @@
 import "../filters/registerFrontendFilters";
 
 import type { ReactNode } from "react";
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
 import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 
 import type { CourseSettings } from "../constants/courseSettings";
 import type { Id } from "../lib/convexId";
@@ -156,6 +156,20 @@ const LMS_POST_SLUGS = new Set([
   "certificates",
 ]);
 
+const LMS_COURSE_ENROLLMENT_TAG_IDS_META_KEY = "lms.enrollmentTagIdsJson";
+
+const safeParseStringArray = (value: unknown): string[] => {
+  if (typeof value !== "string" || value.trim().length === 0) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((v): v is string => typeof v === "string" && v.trim())
+      : [];
+  } catch {
+    return [];
+  }
+};
+
 export function LmsCourseProvider({
   children,
   post,
@@ -276,6 +290,7 @@ export function LmsCourseProvider({
   const isCourseProgressLoading =
     courseProgressArgs !== "skip" && rawCourseProgress === undefined;
   const courseProgress = (rawCourseProgress ?? null) as CourseProgressRecord;
+  const viewerUserId = courseProgress?.userId ? String(courseProgress.userId) : null;
 
   const courseMeta = useQuery(
     api.plugins.lms.posts.queries.getPostMeta,
@@ -283,6 +298,95 @@ export function LmsCourseProvider({
       ? { postId: String(resolvedCourseId), organizationId: String(normalizedOrganizationId) }
       : "skip",
   ) as unknown as Array<{ key: string; value?: unknown }> | undefined;
+
+  // ---- Enrollment sync (CRM tag → LMS enrollment) ----
+  // Runs client-side on LMS pages so we can safely call mutations.
+  const crmEnabled = useQuery((api as any).core.options.get, {
+    metaKey: "plugin_crm_enabled",
+    type: "site",
+    orgId: normalizedOrganizationId ? String(normalizedOrganizationId) : null,
+  }) as { metaValue?: unknown } | null | undefined;
+  const isCrmEnabled = Boolean(crmEnabled?.metaValue);
+
+  const enrollmentTagIds = useMemo(() => {
+    const raw = Array.isArray(courseMeta)
+      ? courseMeta.find((m) => m?.key === LMS_COURSE_ENROLLMENT_TAG_IDS_META_KEY)
+          ?.value
+      : undefined;
+    return safeParseStringArray(raw);
+  }, [courseMeta]);
+
+  const userMarketingTags = useQuery(
+    (api as any).plugins.crm.marketingTags.queries.getUserMarketingTags,
+    isCrmEnabled && viewerUserId && normalizedOrganizationId
+      ? { userId: viewerUserId, organizationId: String(normalizedOrganizationId) }
+      : "skip",
+  ) as any[] | undefined;
+
+  const tagKeySet = useMemo(() => {
+    const keys: string[] = Array.isArray(userMarketingTags)
+      ? userMarketingTags.flatMap((assignment: any) => {
+          const tag = assignment?.marketingTag;
+          const out: string[] = [];
+          const slug = tag?.slug as unknown;
+          const id = tag?._id as unknown;
+          if (typeof slug === "string") out.push(slug);
+          if (typeof id === "string") out.push(id);
+          return out;
+        })
+      : [];
+    return new Set(keys);
+  }, [userMarketingTags]);
+
+  const shouldBeEnrolledByTag =
+    viewerUserId && enrollmentTagIds.length > 0
+      ? enrollmentTagIds.some((id) => tagKeySet.has(id))
+      : null;
+
+  const enrollment = useQuery(
+    (api as any).plugins.lms.enrollments.queries.getEnrollment,
+    viewerUserId && resolvedCourseId
+      ? { courseId: String(resolvedCourseId), userId: String(viewerUserId) }
+      : "skip",
+  ) as { status?: unknown } | null | undefined;
+
+  const upsertEnrollment = useMutation(
+    (api as any).plugins.lms.enrollments.mutations.upsertEnrollment,
+  ) as (args: any) => Promise<null>;
+
+  useEffect(() => {
+    if (!viewerUserId) return;
+    if (!resolvedCourseId) return;
+    if (!isCrmEnabled) return;
+    if (enrollmentTagIds.length === 0) return;
+    if (shouldBeEnrolledByTag === null) return;
+    if (enrollment === undefined) return; // loading
+
+    const currentStatus =
+      enrollment && typeof enrollment.status === "string"
+        ? enrollment.status
+        : null;
+    const desiredStatus = shouldBeEnrolledByTag ? "active" : "revoked";
+
+    if (currentStatus === desiredStatus) return;
+
+    void upsertEnrollment({
+      organizationId: normalizedOrganizationId ? String(normalizedOrganizationId) : undefined,
+      courseId: String(resolvedCourseId),
+      userId: String(viewerUserId),
+      status: desiredStatus,
+      source: "crm_tag",
+    });
+  }, [
+    enrollment,
+    enrollmentTagIds.length,
+    isCrmEnabled,
+    normalizedOrganizationId,
+    resolvedCourseId,
+    shouldBeEnrolledByTag,
+    upsertEnrollment,
+    viewerUserId,
+  ]);
 
   const courseSettings = useMemo<CourseSettings>(() => {
     const raw = Array.isArray(courseMeta)
