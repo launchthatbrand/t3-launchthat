@@ -92,6 +92,7 @@ export const usersTable = defineTable({
   lastActiveAt: v.optional(v.number()), // Unix timestamp
   isEmailVerified: v.optional(v.boolean()),
   isPhoneVerified: v.optional(v.boolean()),
+  deletedAt: v.optional(v.number()),
   status: v.optional(
     v.union(
       v.literal("active"),

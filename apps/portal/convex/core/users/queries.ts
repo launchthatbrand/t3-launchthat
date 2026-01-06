@@ -124,9 +124,9 @@ export const listUsers = query({
       throwForbidden("Only administrators can view all users");
     }
 
-    // Get all users
+    // Get all users (hide deleted users by default)
     const users = await ctx.db.query("users").collect();
-    return users;
+    return users.filter((u) => u.status !== "deleted");
   },
 });
 
@@ -188,13 +188,28 @@ export const getUserByEmail = query({
   ),
   handler: async (ctx, args) => {
     try {
+      const project = (user: any) => {
+        if (!user) return null;
+        return {
+          _id: user._id,
+          _creationTime: user._creationTime,
+          name: user.name ?? undefined,
+          email: user.email,
+          role: user.role ?? undefined,
+          tokenIdentifier: user.tokenIdentifier ?? undefined,
+          username: user.username ?? undefined,
+          image: user.image ?? undefined,
+          addresses: user.addresses ?? undefined,
+        };
+      };
+
       // Find user by email
       const user = await ctx.db
         .query("users")
         .withIndex("by_email", (q) => q.eq("email", args.email))
         .first();
 
-      return user;
+      return project(user);
     } catch (error) {
       console.error("Error in getUserByEmail:", error);
       return null;
@@ -224,6 +239,20 @@ export const getUserById = query({
   ),
   handler: async (ctx, args) => {
     try {
+      const project = (user: any) => {
+        if (!user) return null;
+        return {
+          _id: user._id,
+          _creationTime: user._creationTime,
+          name: user.name ?? undefined,
+          email: user.email,
+          role: user.role ?? undefined,
+          tokenIdentifier: user.tokenIdentifier ?? undefined,
+          username: user.username ?? undefined,
+          image: user.image ?? undefined,
+        };
+      };
+
       // Check if user is an admin
       const identity = await ctx.auth.getUserIdentity();
       if (!identity) {
@@ -246,7 +275,7 @@ export const getUserById = query({
         userMakingRequest._id === args.userId
       ) {
         const user = await ctx.db.get(args.userId);
-        return user;
+        return project(user);
       }
       return null; // Not authorized
     } catch (error) {

@@ -6013,6 +6013,12 @@ export declare const components: {
           { guestSessionId?: string; userId?: string },
           any
         >;
+        mergeGuestCartIntoUserCart: FunctionReference<
+          "mutation",
+          "internal",
+          { guestSessionId: string; userId: string },
+          any
+        >;
         removeFromCart: FunctionReference<
           "mutation",
           "internal",

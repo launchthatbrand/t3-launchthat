@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
 import { v } from "convex/values";
 
-import { api, components, internal } from "../../../_generated/api";
+import { api, components } from "../../../_generated/api";
 import { action } from "../../../_generated/server";
 import {
   normalizeOrganizationId,
@@ -28,6 +28,7 @@ interface CommerceCartQueries {
 
 interface CommerceCartMutations {
   clearCart: unknown;
+  mergeGuestCartIntoUserCart: unknown;
 }
 
 const commercePostsMutations = (
@@ -53,6 +54,42 @@ const commerceCartMutations = (
     launchthat_ecommerce: { cart: { mutations: CommerceCartMutations } };
   }
 ).launchthat_ecommerce.cart.mutations;
+
+interface CrmContactsQueries {
+  getContactIdForUser: unknown;
+}
+interface CrmContactsMutations {
+  createContact: unknown;
+  updateContact: unknown;
+}
+interface CrmMarketingTagsQueries {
+  listMarketingTags: unknown;
+}
+interface CrmMarketingTagsMutations {
+  createMarketingTag: unknown;
+  assignMarketingTagToUser: unknown;
+}
+
+const crmContactsQueries = (
+  components as unknown as {
+    launchthat_crm: { contacts: { queries: CrmContactsQueries } };
+  }
+).launchthat_crm.contacts.queries;
+const crmContactsMutations = (
+  components as unknown as {
+    launchthat_crm: { contacts: { mutations: CrmContactsMutations } };
+  }
+).launchthat_crm.contacts.mutations;
+const crmMarketingTagsQueries = (
+  components as unknown as {
+    launchthat_crm: { marketingTags: { queries: CrmMarketingTagsQueries } };
+  }
+).launchthat_crm.marketingTags.queries;
+const crmMarketingTagsMutations = (
+  components as unknown as {
+    launchthat_crm: { marketingTags: { mutations: CrmMarketingTagsMutations } };
+  }
+).launchthat_crm.marketingTags.mutations;
 
 interface LineItem {
   productId: string;
@@ -117,6 +154,12 @@ const CRM_PLUGIN_ENABLED_KEY = "plugin_crm_enabled";
 const CRM_PRODUCT_TAG_IDS_META_KEY = "crm.marketingTagIdsJson";
 const CRM_PRODUCT_TAG_SLUGS_META_KEY = "crm.tagSlugsJson";
 const PRODUCT_REQUIRE_ACCOUNT_META_KEY = "product.requireAccount";
+
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
 const parseJsonStringArray = (value: unknown): string[] => {
   if (typeof value !== "string") return [];
@@ -205,6 +248,21 @@ export const placeOrder = action({
       throw new Error("Missing cart identity");
     }
 
+    // If checkout created/logged-in a user mid-flow, the cart may still live under the
+    // guestSessionId. The component cart `getCart` prioritizes `userId` if present, so
+    // merge guest cart items into the user cart before reading it.
+    const normalizedUserId = asString(args.userId).trim();
+    const normalizedGuestSessionId = asString(args.guestSessionId).trim();
+    if (normalizedUserId && normalizedGuestSessionId) {
+      await ctx.runMutation(
+        commerceCartMutations.mergeGuestCartIntoUserCart as any,
+        {
+          userId: normalizedUserId,
+          guestSessionId: normalizedGuestSessionId,
+        },
+      );
+    }
+
     const orgRaw = args.organizationId;
     const orgIdForOptions =
       typeof orgRaw === "string" && orgRaw.length > 0
@@ -240,8 +298,10 @@ export const placeOrder = action({
     }
 
     const cart = await ctx.runQuery(commerceCartQueries.getCart as any, {
-      userId: args.userId,
-      guestSessionId: args.guestSessionId,
+      userId: normalizedUserId || undefined,
+      guestSessionId: normalizedUserId
+        ? undefined
+        : normalizedGuestSessionId || undefined,
     });
     const cartItems: any[] = Array.isArray(cart?.items) ? cart.items : [];
     if (cartItems.length === 0) {
@@ -266,10 +326,13 @@ export const placeOrder = action({
     const productMetaCache: Record<string, unknown> = {};
     const getProductMeta = async (productId: string): Promise<unknown> => {
       if (productId in productMetaCache) return productMetaCache[productId];
-      const meta = await ctx.runQuery(apiAny.plugins.commerce.queries.getPostMeta, {
-        postId: productId,
-        organizationId: args.organizationId,
-      });
+      const meta = await ctx.runQuery(
+        apiAny.plugins.commerce.queries.getPostMeta,
+        {
+          postId: productId,
+          organizationId: args.organizationId,
+        },
+      );
       productMetaCache[productId] = meta;
       return meta;
     };
@@ -654,126 +717,210 @@ export const placeOrder = action({
     }
 
     // CRM sync (optional): ensure contact exists and assign any product tags.
-    if (await isCrmEnabledForOrg(ctx, { organizationId: args.organizationId })) {
-      const crmOrganizationId = (args.organizationId ?? PORTAL_TENANT_SLUG) as any;
-      const contact = await ctx.runMutation(
-        internal.core.crm.identity.resolvers.resolveOrCreateContactForActor,
-        {
-          organizationId: crmOrganizationId,
-          userId: args.userId as any,
-          email: args.email,
-          name: args.billing.name ?? args.shipping.name ?? undefined ?? undefined,
-          source: "commerce.checkout",
-        },
-      );
+    // IMPORTANT: CRM should never be able to fail checkout (order + payment already succeeded).
+    try {
+      const shouldSyncCrm = await isCrmEnabledForOrg(ctx, {
+        organizationId: args.organizationId,
+      });
+      const crmOrganizationId = (args.organizationId ?? PORTAL_TENANT_SLUG) as
+        | string
+        | undefined;
 
-      const contactId = contact?.contactId;
-      if (contactId) {
-        const tagIds: string[] = [];
-        const tagSlugs: string[] = [];
+      if (shouldSyncCrm && crmOrganizationId && normalizedUserId) {
+        const identity = await ctx.auth.getUserIdentity();
+        const assignedBy = identity?.tokenIdentifier ?? undefined;
+        const contactName =
+          asString(args.billing?.name).trim() ||
+          asString(args.shipping?.name).trim() ||
+          asString(args.email).trim();
 
-        for (const productId of uniqueProductIds) {
-          const meta = await getProductMeta(productId);
-          const rawIds = readMetaValue(meta, CRM_PRODUCT_TAG_IDS_META_KEY);
-          tagIds.push(...parseJsonStringArray(rawIds));
+        let contactId: string | null = (await ctx.runQuery(
+          crmContactsQueries.getContactIdForUser as any,
+          {
+            organizationId: crmOrganizationId,
+            userId: normalizedUserId,
+          },
+        )) as string | null;
 
-          const rawSlugs = readMetaValue(meta, CRM_PRODUCT_TAG_SLUGS_META_KEY);
-          tagSlugs.push(...parseJsonStringArray(rawSlugs));
+        if (!contactId) {
+          const baseSlug =
+            slugify(asString(args.email).trim()) || `contact-${Date.now()}`;
+          const createdContactId = (await ctx.runMutation(
+            crmContactsMutations.createContact as any,
+            {
+              organizationId: crmOrganizationId,
+              postTypeSlug: "contact",
+              title: contactName || "Contact",
+              slug: baseSlug,
+              status: "published",
+              userId: normalizedUserId,
+              meta: {
+                "contact.userId": normalizedUserId,
+                "contact.email": asString(args.email).trim(),
+                "contact.name": contactName,
+                "contact.source": "commerce.checkout",
+              },
+            },
+          )) as string;
+          contactId = createdContactId;
+        } else {
+          // Best-effort: keep basic fields up to date.
+          await ctx.runMutation(crmContactsMutations.updateContact as any, {
+            organizationId: crmOrganizationId,
+            contactId,
+            title: contactName || undefined,
+            userId: normalizedUserId,
+            meta: {
+              "contact.userId": normalizedUserId,
+              "contact.email": asString(args.email).trim(),
+              "contact.name": contactName,
+            },
+          });
         }
 
-        const normalizedIds = Array.from(
-          new Set(tagIds.map((s) => s.trim()).filter(Boolean)),
-        );
+        if (contactId) {
+          const tagIds: string[] = [];
+          const tagSlugs: string[] = [];
 
-        // Prefer IDs (new) and fall back to slugs (legacy).
-        if (normalizedIds.length > 0) {
+          for (const productId of uniqueProductIds) {
+            const meta = await getProductMeta(productId);
+            const rawIds = readMetaValue(meta, CRM_PRODUCT_TAG_IDS_META_KEY);
+            tagIds.push(...parseJsonStringArray(rawIds));
+
+            const rawSlugs = readMetaValue(
+              meta,
+              CRM_PRODUCT_TAG_SLUGS_META_KEY,
+            );
+            tagSlugs.push(...parseJsonStringArray(rawSlugs));
+          }
+
+          const normalizedIds = Array.from(
+            new Set(tagIds.map((s) => s.trim()).filter(Boolean)),
+          );
           for (const marketingTagId of normalizedIds) {
             await ctx.runMutation(
-              internal.core.crm.marketingTags.index
-                .assignMarketingTagToContactInternal,
+              crmMarketingTagsMutations.assignMarketingTagToUser as any,
               {
                 organizationId: crmOrganizationId,
-                contactId,
+                contactId: contactId as any,
                 marketingTagId: marketingTagId as any,
                 source: "commerce.product_purchase",
+                assignedBy,
               },
             );
           }
-        } else {
+
+          // Legacy: allow storing tag slugs on products. We'll resolve/create tags by slug.
           const normalizedSlugs = Array.from(
             new Set(
               tagSlugs.map((s) => s.trim().toLowerCase()).filter(Boolean),
             ),
           );
-          for (const slug of normalizedSlugs) {
-            const marketingTagId: string = await ctx.runMutation(
-              internal.core.crm.marketingTags.index
-                .ensureCrmMarketingTagBySlugInternal,
-              { organizationId: crmOrganizationId, slug },
-            );
-            await ctx.runMutation(
-              internal.core.crm.marketingTags.index
-                .assignMarketingTagToContactInternal,
-              {
-                organizationId: crmOrganizationId,
-                contactId,
-                marketingTagId: marketingTagId as any,
-                source: "commerce.product_purchase",
-              },
-            );
+          if (normalizedSlugs.length > 0) {
+            const tags = (await ctx.runQuery(
+              crmMarketingTagsQueries.listMarketingTags as any,
+              { organizationId: crmOrganizationId },
+            )) as Array<{ _id?: unknown; slug?: unknown; name?: unknown }>;
+            const slugToId: Record<string, string> = {};
+            for (const t of tags ?? []) {
+              const slug =
+                typeof t?.slug === "string" ? t.slug.trim().toLowerCase() : "";
+              const id = typeof t?._id === "string" ? t._id : "";
+              if (slug && id) slugToId[slug] = id;
+            }
+
+            for (const slug of normalizedSlugs) {
+              let tagId = slugToId[slug] ?? "";
+              if (!tagId) {
+                const createdId = (await ctx.runMutation(
+                  crmMarketingTagsMutations.createMarketingTag as any,
+                  {
+                    organizationId: crmOrganizationId,
+                    name: slug,
+                    slug,
+                    createdBy: assignedBy,
+                    isActive: true,
+                  },
+                )) as string;
+                tagId = createdId;
+                slugToId[slug] = createdId;
+              }
+
+              if (tagId) {
+                await ctx.runMutation(
+                  crmMarketingTagsMutations.assignMarketingTagToUser as any,
+                  {
+                    organizationId: crmOrganizationId,
+                    contactId: contactId as any,
+                    marketingTagId: tagId as any,
+                    source: "commerce.product_purchase",
+                    assignedBy,
+                  },
+                );
+              }
+            }
           }
         }
       }
+    } catch (err: unknown) {
+      console.error("[checkout] CRM sync failed (continuing)", err);
     }
 
     await ctx.runMutation(commerceCartMutations.clearCart as any, {
-      userId: args.userId,
-      guestSessionId: args.guestSessionId,
+      userId: normalizedUserId || undefined,
+      guestSessionId: normalizedGuestSessionId || undefined,
     });
 
     let redirectUrl: string | undefined = undefined;
 
-    if (typeof args.funnelStepId === "string" && args.funnelStepId.trim()) {
-      const step: any = await ctx.runQuery(
-        apiAny.plugins.commerce.funnelSteps.queries.getFunnelStepById,
-        {
-          stepId: args.funnelStepId,
-          organizationId: args.organizationId,
-        },
-      );
-
-      const funnelId = asString(step?.funnelId);
-      const funnelSlug = asString(step?.funnelSlug);
-      const isDefaultFunnel = Boolean(step?.isDefaultFunnel);
-      const currentOrder = asNumber(step?.order);
-
-      if (funnelId && funnelSlug) {
-        const steps: any[] = await ctx.runQuery(
-          apiAny.plugins.commerce.funnelSteps.queries.getFunnelStepsForFunnel,
+    try {
+      if (typeof args.funnelStepId === "string" && args.funnelStepId.trim()) {
+        const step: any = await ctx.runQuery(
+          apiAny.plugins.commerce.funnelSteps.queries.getFunnelStepById,
           {
-            funnelId,
+            stepId: args.funnelStepId,
             organizationId: args.organizationId,
           },
         );
 
-        const sorted = Array.isArray(steps)
-          ? steps
-              .map((s) => ({
-                slug: asString(s?.slug),
-                order: asNumber(s?.order),
-              }))
-              .filter((s) => Boolean(s.slug))
-              .sort((a, b) => a.order - b.order)
-          : [];
+        const funnelId = asString(step?.funnelId);
+        const funnelSlug = asString(step?.funnelSlug);
+        const isDefaultFunnel = Boolean(step?.isDefaultFunnel);
+        const currentOrder = asNumber(step?.order);
 
-        const next = sorted.find((s) => s.order > currentOrder);
-        if (next?.slug) {
-          const base = isDefaultFunnel
-            ? `/checkout/${next.slug}`
-            : `/f/${encodeURIComponent(funnelSlug)}/${encodeURIComponent(next.slug)}`;
-          redirectUrl = `${base}?orderId=${encodeURIComponent(orderId)}`;
+        if (funnelId && funnelSlug) {
+          const steps: any[] = await ctx.runQuery(
+            apiAny.plugins.commerce.funnelSteps.queries.getFunnelStepsForFunnel,
+            {
+              funnelId,
+              organizationId: args.organizationId,
+            },
+          );
+
+          const sorted = Array.isArray(steps)
+            ? steps
+                .map((s) => ({
+                  slug: asString(s?.slug),
+                  order: asNumber(s?.order),
+                }))
+                .filter((s) => Boolean(s.slug))
+                .sort((a, b) => a.order - b.order)
+            : [];
+
+          const next = sorted.find((s) => s.order > currentOrder);
+          if (next?.slug) {
+            const base = isDefaultFunnel
+              ? `/checkout/${next.slug}`
+              : `/f/${encodeURIComponent(funnelSlug)}/${encodeURIComponent(next.slug)}`;
+            redirectUrl = `${base}?orderId=${encodeURIComponent(orderId)}`;
+          }
         }
       }
+    } catch (err: unknown) {
+      console.error(
+        "[checkout] could not compute redirectUrl (continuing)",
+        err,
+      );
     }
 
     return { success: true, orderId, redirectUrl };

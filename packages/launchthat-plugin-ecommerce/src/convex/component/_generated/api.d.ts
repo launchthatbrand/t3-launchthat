@@ -84,6 +84,12 @@ export type Mounts = {
         { guestSessionId?: string; userId?: string },
         any
       >;
+      mergeGuestCartIntoUserCart: FunctionReference<
+        "mutation",
+        "public",
+        { guestSessionId: string; userId: string },
+        any
+      >;
       removeFromCart: FunctionReference<
         "mutation",
         "public",

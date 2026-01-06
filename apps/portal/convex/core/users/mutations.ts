@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import type { UserRole } from "./types";
-import { internal } from "../../_generated/api";
+import { components, internal } from "../../_generated/api";
 import { internalMutation, mutation } from "../../_generated/server";
 import {
   logError,
@@ -274,8 +274,68 @@ export const deleteUser = mutation({
       throwNotFound("User", args.userId);
     }
 
-    // Delete the user
-    await ctx.db.delete(args.userId);
+    const now = Date.now();
+
+    // Revoke org memberships (keep records, but disable access)
+    const memberships = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+    for (const membership of memberships) {
+      if (!membership.isActive) continue;
+      await ctx.db.patch(membership._id, { isActive: false, updatedAt: now });
+    }
+
+    // Unlink CRM contact (keep contact + tags)
+    try {
+      const crmContactsQueries = (components as any)?.launchthat_crm?.contacts
+        ?.queries;
+      const crmContactsMutations = (components as any)?.launchthat_crm?.contacts
+        ?.mutations;
+
+      if (crmContactsQueries?.getContactIdForUser && crmContactsMutations?.updateContact) {
+        const contactId = (await ctx.runQuery(
+          crmContactsQueries.getContactIdForUser,
+          {
+            // Prefer user.organizationId if present; otherwise fall back to global lookup
+            organizationId:
+              typeof (user as any).organizationId === "string"
+                ? ((user as any).organizationId as string)
+                : undefined,
+            userId: String(args.userId),
+          },
+        )) as string | null;
+
+        if (contactId) {
+          await ctx.runMutation(crmContactsMutations.updateContact, {
+            contactId,
+            // Clear link in both the contacts table + contact_meta
+            userId: "",
+            meta: { "contact.userId": null },
+          });
+        }
+      }
+    } catch (error) {
+      // Non-fatal: deleting a user should not fail due to CRM issues
+      console.warn("[deleteUser] failed to unlink CRM contact", error);
+    }
+
+    // Anonymize user record (do NOT delete Clerk user)
+    await ctx.db.patch(args.userId, {
+      status: "deleted",
+      deletedAt: now,
+      updatedAt: now,
+      // Anonymize PII
+      email: `deleted+${String(args.userId)}@example.invalid`,
+      name: "Deleted User",
+      username: "",
+      image: "",
+      addresses: [],
+      // Clear auth linkage (strings must remain valid Convex values)
+      tokenIdentifier: "",
+      clerkId: "",
+      externalId: "",
+    });
 
     return { success: true };
   },

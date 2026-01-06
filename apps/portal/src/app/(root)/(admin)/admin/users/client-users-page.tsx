@@ -4,9 +4,10 @@ import type { Id } from "@/convex/_generated/dataModel";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { formatDistanceToNow } from "date-fns";
-import { Check, PencilIcon, Plus, UserCog, X } from "lucide-react";
+import { Check, PencilIcon, Plus, Trash, UserCog, X } from "lucide-react";
+import { toast } from "sonner";
 
 // Import EntityList components
 import type {
@@ -18,6 +19,16 @@ import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { CopyText } from "@acme/ui/copy-text";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@acme/ui/alert-dialog";
 
 import {
   AdminLayout,
@@ -53,11 +64,15 @@ export default function ClientUsersPage() {
 
   // State for user form
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [deleteUserId, setDeleteUserId] = useState<Id<"users"> | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // First get current user to confirm admin status
   const me = useQuery(api.core.users.queries.getMe);
 
   const isMeAdmin = me?.role === "admin";
+
+  const deleteUser = useMutation(api.core.users.mutations.deleteUser);
 
   // Fetch all users only if admin; otherwise skip
   const allUsersResult = useQuery(
@@ -271,6 +286,15 @@ export default function ClientUsersPage() {
       onClick: (user) => router.push(`/admin/user/${user._id}`),
       variant: "outline",
     },
+    {
+      id: "delete",
+      label: "Delete",
+      icon: <Trash className="h-4 w-4" />,
+      variant: "destructive",
+      onClick: (user) => {
+        setDeleteUserId(user._id);
+      },
+    },
   ];
 
   return (
@@ -318,6 +342,53 @@ export default function ClientUsersPage() {
               onSuccess={handleFormSuccess}
               mode="dialog"
             />
+
+            <AlertDialog
+              open={Boolean(deleteUserId)}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setDeleteUserId(null);
+                }
+              }}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete user?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will anonymize and disable the user in LaunchThat. It
+                    will not delete the user from Clerk.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      if (!deleteUserId) return;
+                      setIsDeleting(true);
+                      try {
+                        await deleteUser({ userId: deleteUserId });
+                        toast.success("User deleted");
+                        setDeleteUserId(null);
+                        router.refresh();
+                      } catch (error) {
+                        toast.error(
+                          error instanceof Error
+                            ? error.message
+                            : "Failed to delete user",
+                        );
+                      } finally {
+                        setIsDeleting(false);
+                      }
+                    }}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? "Deleting…" : "Delete"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </AdminLayoutMain>
       </AdminLayoutContent>

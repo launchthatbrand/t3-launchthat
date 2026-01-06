@@ -107,10 +107,10 @@ export default function UserEditPage() {
   console.log("user", user);
 
   // Update user mutation
-  const updateUser = useMutation(api.core.users.updateUser);
+  const updateUser = useMutation(api.core.users.mutations.updateUser);
 
   // Delete user mutation
-  const deleteUser = useMutation(api.core.users.deleteUser);
+  const deleteUser = useMutation(api.core.users.mutations.deleteUser);
 
   // Setup form
   const form = useForm<UserFormValues>({

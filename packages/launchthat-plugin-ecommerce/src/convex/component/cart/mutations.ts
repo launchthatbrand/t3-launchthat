@@ -152,20 +152,97 @@ export const clearCart = mutation({
     const userId = args.userId ?? undefined;
     const guestSessionId = args.guestSessionId ?? undefined;
 
-    const rows = userId
-      ? await ctx.db
-          .query("cartItems")
-          .withIndex("by_user", (q: any) => q.eq("userId", userId))
-          .collect()
-      : guestSessionId
+    const rowsByUser =
+      userId
         ? await ctx.db
             .query("cartItems")
-            .withIndex("by_guest", (q: any) => q.eq("guestSessionId", guestSessionId))
+            .withIndex("by_user", (q: any) => q.eq("userId", userId))
+            .collect()
+        : [];
+    const rowsByGuest =
+      guestSessionId
+        ? await ctx.db
+            .query("cartItems")
+            .withIndex("by_guest", (q: any) =>
+              q.eq("guestSessionId", guestSessionId),
+            )
             .collect()
         : [];
 
+    const rows = [...rowsByUser, ...rowsByGuest];
+
     await Promise.all(rows.map((row: any) => ctx.db.delete(row._id)));
     return { success: true };
+  },
+});
+
+export const mergeGuestCartIntoUserCart = mutation({
+  args: {
+    userId: v.string(),
+    guestSessionId: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx: any, args: any) => {
+    const userId =
+      typeof args.userId === "string" ? args.userId.trim() : "";
+    const guestSessionId =
+      typeof args.guestSessionId === "string" ? args.guestSessionId.trim() : "";
+
+    if (!userId || !guestSessionId) {
+      return { success: true, movedCount: 0, mergedCount: 0 };
+    }
+
+    const guestRows = await ctx.db
+      .query("cartItems")
+      .withIndex("by_guest", (q: any) => q.eq("guestSessionId", guestSessionId))
+      .collect();
+
+    if (!Array.isArray(guestRows) || guestRows.length === 0) {
+      return { success: true, movedCount: 0, mergedCount: 0 };
+    }
+
+    const now = Date.now();
+    let movedCount = 0;
+    let mergedCount = 0;
+
+    for (const row of guestRows) {
+      const productPostId =
+        typeof row?.productPostId === "string" ? row.productPostId : "";
+      if (!productPostId) continue;
+
+      const variationId = row?.variationId ?? undefined;
+      const rowQty =
+        typeof row?.quantity === "number" && Number.isFinite(row.quantity)
+          ? Math.max(1, Math.floor(row.quantity))
+          : 1;
+
+      const existing = await ctx.db
+        .query("cartItems")
+        .withIndex("by_user_product", (q: any) =>
+          q.eq("userId", userId).eq("productPostId", productPostId),
+        )
+        .filter((q: any) => q.eq(q.field("variationId"), variationId))
+        .unique();
+
+      if (existing) {
+        await ctx.db.patch(existing._id, {
+          quantity: normalizeQuantity(existing.quantity + rowQty),
+          updatedAt: now,
+        });
+        await ctx.db.delete(row._id);
+        mergedCount += 1;
+        continue;
+      }
+
+      await ctx.db.patch(row._id, {
+        userId,
+        guestSessionId: undefined,
+        updatedAt: now,
+      });
+      movedCount += 1;
+    }
+
+    return { success: true, movedCount, mergedCount };
   },
 });
 

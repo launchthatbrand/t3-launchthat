@@ -217,7 +217,8 @@ const crmContactsResolver: Resolver = {
       return [adaptCrmContact(record)];
     }
 
-    const limit = typeof filters?.limit === "number" ? filters.limit : undefined;
+    const limit =
+      typeof filters?.limit === "number" ? filters.limit : undefined;
     const status =
       typeof filters?.status === "string" ? filters.status : undefined;
     const results =
