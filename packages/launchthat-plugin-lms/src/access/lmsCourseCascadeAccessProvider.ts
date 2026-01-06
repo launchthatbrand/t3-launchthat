@@ -56,7 +56,10 @@ export const lmsCourseCascadeAccessProvider: ContentAccessProvider = {
 
     // Allow logged-out users to view the course landing page itself.
     // Enforcement should apply to step pages (lesson/topic/quiz) when cascade is enabled.
-    if (resource.contentType === "post" && resource.contentId === ctx.courseId) {
+    if (
+      resource.contentType === "post" &&
+      resource.contentId === ctx.courseId
+    ) {
       return { kind: "abstain" };
     }
 
@@ -75,15 +78,16 @@ export const lmsCourseCascadeAccessProvider: ContentAccessProvider = {
 
     // Enrollment enforcement for locked course modes.
     // Enrollment is based on core user id + course id.
-    if (ctx.accessMode !== "open") {
-      const statusRaw =
-        typeof d.lmsEnrollmentStatus === "string"
-          ? d.lmsEnrollmentStatus.trim().toLowerCase()
-          : "";
-      const isEnrolled = statusRaw === "active";
-      if (!isEnrolled) {
-        return { kind: "deny", reason: "Not enrolled" };
-      }
+    // At this point `ctx.accessMode` is guaranteed to be non-"open" because we
+    // returned early above for `"open"`. Keep the logic explicit so TypeScript
+    // doesn't warn about impossible comparisons.
+    const statusRaw =
+      typeof d.lmsEnrollmentStatus === "string"
+        ? d.lmsEnrollmentStatus.trim().toLowerCase()
+        : "";
+    const isEnrolled = statusRaw === "active";
+    if (!isEnrolled) {
+      return { kind: "deny", reason: "Not enrolled" };
     }
 
     return { kind: "abstain" };

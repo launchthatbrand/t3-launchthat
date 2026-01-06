@@ -8,6 +8,9 @@ export const organizationsTable = defineTable({
   description: v.optional(v.string()),
   ownerId: v.id("users"), // Creator who owns this organization
 
+  // External identity providers (e.g. Clerk Organizations)
+  clerkOrganizationId: v.optional(v.string()),
+
   // Branding and customization
   logo: v.optional(v.union(v.string(), v.null())), // Logo URL
   primaryColor: v.optional(v.string()), // Hex color for branding

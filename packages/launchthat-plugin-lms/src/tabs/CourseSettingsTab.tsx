@@ -150,7 +150,8 @@ export const CourseSettingsTab = ({
 
   const resolvedCascadeAccessToSteps = useMemo(() => {
     const raw = Array.isArray(postMeta)
-      ? postMeta.find((m) => m?.key === LMS_COURSE_ACCESS_CASCADE_META_KEY)?.value
+      ? postMeta.find((m) => m?.key === LMS_COURSE_ACCESS_CASCADE_META_KEY)
+          ?.value
       : undefined;
     // Default: enabled (course lock applies to steps).
     if (raw === undefined || raw === null) return true;
@@ -181,7 +182,9 @@ export const CourseSettingsTab = ({
     try {
       const parsed = JSON.parse(raw) as unknown;
       return Array.isArray(parsed)
-        ? parsed.filter((v): v is string => typeof v === "string" && v.trim())
+        ? parsed.filter(
+            (v): v is string => typeof v === "string" && v.trim().length > 0,
+          )
         : [];
     } catch {
       return [];
@@ -267,7 +270,9 @@ export const CourseSettingsTab = ({
           [LMS_COURSE_BUY_NOW_URL_META_KEY]:
             buyNowUrl.trim().length > 0 ? buyNowUrl.trim() : null,
           [LMS_COURSE_ENROLLMENT_TAG_IDS_META_KEY]:
-            enrollmentTagIds.length > 0 ? JSON.stringify(enrollmentTagIds) : "[]",
+            enrollmentTagIds.length > 0
+              ? JSON.stringify(enrollmentTagIds)
+              : "[]",
         },
       });
       toast.success("Course settings saved", {
@@ -395,9 +400,11 @@ export const CourseSettingsTab = ({
               placeholder="Example: /checkout/forex-course or /product/forex-course or https://paypal.me/..."
             />
             <p className="text-muted-foreground text-sm">
-              Optional. When access mode is <span className="font-medium">Buy now</span> and a visitor is logged out,
-              they’ll be redirected here. Supports relative paths (starting with <code>/</code>) or full URLs
-              (<code>https://...</code>).
+              Optional. When access mode is{" "}
+              <span className="font-medium">Buy now</span> and a visitor is
+              logged out, they’ll be redirected here. Supports relative paths
+              (starting with <code>/</code>) or full URLs (
+              <code>https://...</code>).
             </p>
           </section>
 
@@ -419,8 +426,8 @@ export const CourseSettingsTab = ({
             <div className="space-y-1">
               <Label>Enrollment tags (CRM)</Label>
               <p className="text-muted-foreground text-sm">
-                Users who have at least one selected marketing tag are treated as
-                enrolled in this course.
+                Users who have at least one selected marketing tag are treated
+                as enrolled in this course.
               </p>
             </div>
 

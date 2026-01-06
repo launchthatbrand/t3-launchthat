@@ -146,13 +146,27 @@ export function OrganizationForm({
         toast.success("Organization updated successfully");
       } else {
         // Create new organization
-        await createOrganization({
+        const createdOrganizationId = await createOrganization({
           name: data.name,
           description: data.description,
           planId: data.planId as Id<"plans"> | undefined,
           isPublic: data.isPublic,
           allowSelfRegistration: data.allowSelfRegistration,
         });
+        // Best-effort: create matching Clerk org and link it to this tenant.
+        try {
+          const res = await fetch("/api/clerk/organizations/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ organizationId: createdOrganizationId }),
+          });
+          if (!res.ok) {
+            const raw = await res.text();
+            console.warn("[org] clerk sync failed", { status: res.status, raw });
+          }
+        } catch (err) {
+          console.warn("[org] clerk sync failed", err);
+        }
         toast.success("Organization created successfully");
       }
 

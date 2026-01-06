@@ -2,6 +2,50 @@ import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import { components } from "../../_generated/api";
 
+const getActiveClerkOrgIdFromIdentity = (identity: any): string | null => {
+  const raw = identity?.org?.id;
+  return typeof raw === "string" && raw.trim() ? raw.trim() : null;
+};
+
+/**
+ * Verify membership and (optionally) that the user's active Clerk org matches the tenant.
+ *
+ * If the JWT has no `org.id` claim (no active org), this does NOT block access.
+ * If the tenant org has no `clerkOrganizationId` mapping, this does NOT block access.
+ */
+export const verifyOrganizationAccessWithClerkContext = async (
+  ctx: MutationCtx | QueryCtx,
+  organizationId: Id<"organizations">,
+  userId: Id<"users">,
+  requiredRoles?: ("owner" | "admin" | "editor" | "viewer" | "student")[],
+) => {
+  const membership = await verifyOrganizationAccess(
+    ctx,
+    organizationId,
+    userId,
+    requiredRoles,
+  );
+
+  const identity = await ctx.auth.getUserIdentity();
+  const activeClerkOrgId = getActiveClerkOrgIdFromIdentity(identity);
+  if (!activeClerkOrgId) return membership;
+
+  const org = await ctx.db.get(organizationId);
+  const expected =
+    org && typeof (org as any).clerkOrganizationId === "string"
+      ? String((org as any).clerkOrganizationId).trim()
+      : "";
+  if (!expected) return membership;
+
+  if (expected !== activeClerkOrgId) {
+    throw new Error(
+      "Access denied: Active organization mismatch. Please switch to the correct organization.",
+    );
+  }
+
+  return membership;
+};
+
 /**
  * Verify that a user has access to an organization with a specific role
  */

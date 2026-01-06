@@ -39,6 +39,27 @@ export function CheckoutClientWithClerk(props: Props) {
 
         if (typeof createdSessionId === "string" && createdSessionId.trim()) {
           await setActive?.({ session: createdSessionId });
+
+          // Best-effort: join this tenant's Clerk org (tenants = Clerk Orgs) and set it active.
+          try {
+            const res = await fetch("/api/clerk/organizations/join-tenant", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+            });
+            const json: any = await res.json().catch(() => null);
+            const clerkOrganizationId =
+              res.ok && json && typeof json.clerkOrganizationId === "string"
+                ? json.clerkOrganizationId
+                : null;
+            if (clerkOrganizationId) {
+              await (setActive as any)?.({
+                session: createdSessionId,
+                organization: clerkOrganizationId,
+              });
+            }
+          } catch (err) {
+            console.warn("[checkout] failed to join tenant clerk org", err);
+          }
         }
 
         return {

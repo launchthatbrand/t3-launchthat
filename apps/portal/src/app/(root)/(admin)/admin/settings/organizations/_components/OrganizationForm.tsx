@@ -122,6 +122,7 @@ export function OrganizationForm({
 
   // State
   const [isFormInitialized, setIsFormInitialized] = useState(false);
+  const [isClerkSyncing, setIsClerkSyncing] = useState(false);
 
   // Queries
   const existingOrganization = useQuery(
@@ -138,6 +139,55 @@ export function OrganizationForm({
   const updateOrganization = useMutation(
     api.core.organizations.mutations.update,
   );
+
+  const syncClerkOrganizationBestEffort = async (
+    orgId: Id<"organizations">,
+    options?: { toastOnSuccess?: boolean; toastOnError?: boolean },
+  ) => {
+    const toastOnSuccess = options?.toastOnSuccess ?? false;
+    const toastOnError = options?.toastOnError ?? true;
+
+    try {
+      setIsClerkSyncing(true);
+      const res = await fetch("/api/clerk/organizations/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationId: orgId }),
+      });
+
+      if (!res.ok) {
+        const raw = await res.text();
+        console.warn("[org] clerk sync failed", { status: res.status, raw });
+        if (toastOnError) {
+          toast.error("Saved organization, but failed to sync it to Clerk.");
+        }
+        return;
+      }
+
+      const json = (await res.json()) as
+        | { ok: true; clerkOrganizationId?: string; alreadyLinked?: boolean }
+        | { ok?: false; error?: string };
+
+      // Only toast on success when we likely created the mapping (manual sync button).
+      if (
+        toastOnSuccess &&
+        typeof json === "object" &&
+        json &&
+        "ok" in json &&
+        json.ok === true &&
+        json.alreadyLinked !== true
+      ) {
+        toast.success("Clerk organization created and linked.");
+      }
+    } catch (err) {
+      console.warn("[org] clerk sync failed", err);
+      if (toastOnError) {
+        toast.error("Saved organization, but failed to sync it to Clerk.");
+      }
+    } finally {
+      setIsClerkSyncing(false);
+    }
+  };
 
 
   // Check if current user is admin
@@ -219,10 +269,21 @@ export function OrganizationForm({
               : {}),
             logo: data.logo?.trim() ? data.logo.trim() : null,
           });
+          // Best-effort: ensure a matching Clerk org exists (idempotent).
+          // This is important for orgs created before Clerk Organizations integration.
+          await syncClerkOrganizationBestEffort(organizationId, {
+            toastOnSuccess: false,
+            toastOnError: true,
+          });
           toast.success("Organization updated successfully");
         } else {
           // Create new organization
-          await createOrganization(submitData);
+          const createdOrganizationId = await createOrganization(submitData);
+          // Best-effort: create matching Clerk org and link it to this tenant.
+          await syncClerkOrganizationBestEffort(createdOrganizationId, {
+            toastOnSuccess: false,
+            toastOnError: false,
+          });
           toast.success("Organization created successfully");
         }
       }
@@ -312,6 +373,43 @@ export function OrganizationForm({
                     </FormItem>
                   )}
                 />
+              ) : null}
+
+              {organizationId ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Clerk organization</p>
+                      <p className="text-muted-foreground text-xs">
+                        This is created automatically on save if missing.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isClerkSyncing}
+                      onClick={async () => {
+                        if (!organizationId) return;
+                        await syncClerkOrganizationBestEffort(organizationId, {
+                          toastOnSuccess: true,
+                          toastOnError: true,
+                        });
+                      }}
+                    >
+                      {isClerkSyncing ? "Syncing..." : "Sync to Clerk"}
+                    </Button>
+                  </div>
+                  <Input
+                    value={
+                      typeof existingOrganization?.clerkOrganizationId === "string"
+                        ? existingOrganization.clerkOrganizationId
+                        : ""
+                    }
+                    readOnly
+                    placeholder="Not linked yet"
+                  />
+                </div>
               ) : null}
 
               <FormField

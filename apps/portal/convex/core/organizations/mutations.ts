@@ -6,10 +6,12 @@ import { mutation } from "../../_generated/server";
 import { getAuthenticatedUserId } from "../../lib/permissions/userAuth";
 import {
   checkOrganizationLimit,
+  generateOrganizationSlug,
   generateInvitationToken,
   grantCustomerAccess,
   validateInvitation,
   verifyOrganizationAccess,
+  verifyOrganizationAccessWithClerkContext,
 } from "./helpers";
 
 /**
@@ -104,7 +106,7 @@ export const update = mutation({
       // Admin bypass - can update any organization
     } else {
       // Non-admins must be organization owners or admins
-      await verifyOrganizationAccess(ctx, args.organizationId, userId, [
+      await verifyOrganizationAccessWithClerkContext(ctx, args.organizationId, userId, [
         "owner",
         "admin",
       ]);
@@ -158,6 +160,43 @@ export const update = mutation({
 });
 
 /**
+ * Store the Clerk Organization ID for a tenant organization.
+ * This is called by the portal server after creating the matching Clerk org.
+ */
+export const setClerkOrganizationId = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    clerkOrganizationId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthenticatedUserId(ctx);
+
+    // Only allow owners/admins to set external auth mappings.
+    // (Admins can update any org; others must have org owner/admin access.)
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+
+    if (user.role !== "admin") {
+      await verifyOrganizationAccessWithClerkContext(ctx, args.organizationId, userId, [
+        "owner",
+        "admin",
+      ]);
+    }
+
+    const normalized = args.clerkOrganizationId.trim();
+    if (!normalized) throw new Error("Missing Clerk organization id");
+
+    await ctx.db.patch(args.organizationId, {
+      clerkOrganizationId: normalized,
+      updatedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
+/**
  * Invite user to organization
  */
 export const inviteUser = mutation({
@@ -180,7 +219,7 @@ export const inviteUser = mutation({
     const userId = identity.subject;
 
     // Verify admin access (only owners and admins can invite)
-    await verifyOrganizationAccess(
+    await verifyOrganizationAccessWithClerkContext(
       ctx,
       args.organizationId,
       userId as Id<"users">,
@@ -329,7 +368,7 @@ export const removeUser = mutation({
 
     // Verify admin access or self-removal
     if (currentUserId !== args.userId) {
-      await verifyOrganizationAccess(
+      await verifyOrganizationAccessWithClerkContext(
         ctx,
         args.organizationId,
         currentUserId as Id<"users">,
@@ -387,7 +426,7 @@ export const updateUserRole = mutation({
     const currentUserId = identity.subject;
 
     // Only owners and admins can update roles
-    await verifyOrganizationAccess(
+    await verifyOrganizationAccessWithClerkContext(
       ctx,
       args.organizationId,
       currentUserId as Id<"users">,
@@ -444,7 +483,7 @@ export const grantCustomerAccessMutation = mutation({
     const currentUserId = identity.subject;
 
     // Verify admin access
-    await verifyOrganizationAccess(
+    await verifyOrganizationAccessWithClerkContext(
       ctx,
       args.organizationId,
       currentUserId as Id<"users">,
@@ -484,7 +523,7 @@ export const deleteOrganization = mutation({
       // Admin bypass - can delete any organization
     } else {
       // Non-admins must be organization owners
-      await verifyOrganizationAccess(ctx, args.organizationId, userId, [
+      await verifyOrganizationAccessWithClerkContext(ctx, args.organizationId, userId, [
         "owner",
       ]);
     }
@@ -585,7 +624,7 @@ async function ensureCanManageMembers(
   }
 
   if (currentUser.role !== "admin") {
-    await verifyOrganizationAccess(ctx, organizationId, actorUserId, [
+    await verifyOrganizationAccessWithClerkContext(ctx, organizationId, actorUserId, [
       "owner",
       "admin",
     ]);

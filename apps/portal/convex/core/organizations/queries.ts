@@ -7,6 +7,7 @@ import {
   getUserOrganizations,
   getUserPlan,
   verifyOrganizationAccess,
+  verifyOrganizationAccessWithClerkContext,
 } from "./helpers";
 import {
   organizationInvitationValidator,
@@ -21,6 +22,7 @@ import {
 const normalizeOrgForValidator = (org: any) => ({
   ...org,
   description: org.description ?? undefined,
+  clerkOrganizationId: org.clerkOrganizationId ?? undefined,
   logo: org.logo ?? undefined,
   primaryColor: org.primaryColor ?? undefined,
 
@@ -100,7 +102,11 @@ export const getById = query({
     }
 
     // Verify user has access to this organization
-    await verifyOrganizationAccess(ctx, args.organizationId, user._id);
+    await verifyOrganizationAccessWithClerkContext(
+      ctx,
+      args.organizationId,
+      user._id,
+    );
 
     const organization = await ctx.db.get(args.organizationId);
     if (!organization) {
@@ -151,7 +157,10 @@ export const getByCustomDomain = query({
   },
   returns: v.union(organizationValidator, v.null()),
   handler: async (ctx, args) => {
-    const normalized = args.hostname.trim().toLowerCase().replace(/^www\./, "");
+    const normalized = args.hostname
+      .trim()
+      .toLowerCase()
+      .replace(/^www\./, "");
     if (!normalized) return null;
 
     const org = await ctx.db
@@ -369,11 +378,12 @@ export const getOrganizationMembers = query({
     }
 
     // Verify user has access to this organization
-    await verifyOrganizationAccess(ctx, args.organizationId, user._id, [
-      "owner",
-      "admin",
-      "editor",
-    ]);
+    await verifyOrganizationAccessWithClerkContext(
+      ctx,
+      args.organizationId,
+      user._id,
+      ["owner", "admin", "editor"],
+    );
 
     const memberships = await ctx.db
       .query("userOrganizations")

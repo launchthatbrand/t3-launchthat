@@ -163,7 +163,9 @@ const safeParseStringArray = (value: unknown): string[] => {
   try {
     const parsed = JSON.parse(value) as unknown;
     return Array.isArray(parsed)
-      ? parsed.filter((v): v is string => typeof v === "string" && v.trim())
+      ? parsed.filter(
+          (v): v is string => typeof v === "string" && v.trim().length > 0,
+        )
       : [];
   } catch {
     return [];
@@ -290,12 +292,17 @@ export function LmsCourseProvider({
   const isCourseProgressLoading =
     courseProgressArgs !== "skip" && rawCourseProgress === undefined;
   const courseProgress = (rawCourseProgress ?? null) as CourseProgressRecord;
-  const viewerUserId = courseProgress?.userId ? String(courseProgress.userId) : null;
+  const viewerUserId = courseProgress?.userId
+    ? String(courseProgress.userId)
+    : null;
 
   const courseMeta = useQuery(
     api.plugins.lms.posts.queries.getPostMeta,
     resolvedCourseId && normalizedOrganizationId
-      ? { postId: String(resolvedCourseId), organizationId: String(normalizedOrganizationId) }
+      ? {
+          postId: String(resolvedCourseId),
+          organizationId: String(normalizedOrganizationId),
+        }
       : "skip",
   ) as unknown as Array<{ key: string; value?: unknown }> | undefined;
 
@@ -310,8 +317,9 @@ export function LmsCourseProvider({
 
   const enrollmentTagIds = useMemo(() => {
     const raw = Array.isArray(courseMeta)
-      ? courseMeta.find((m) => m?.key === LMS_COURSE_ENROLLMENT_TAG_IDS_META_KEY)
-          ?.value
+      ? courseMeta.find(
+          (m) => m?.key === LMS_COURSE_ENROLLMENT_TAG_IDS_META_KEY,
+        )?.value
       : undefined;
     return safeParseStringArray(raw);
   }, [courseMeta]);
@@ -319,7 +327,10 @@ export function LmsCourseProvider({
   const userMarketingTags = useQuery(
     (api as any).plugins.crm.marketingTags.queries.getUserMarketingTags,
     isCrmEnabled && viewerUserId && normalizedOrganizationId
-      ? { userId: viewerUserId, organizationId: String(normalizedOrganizationId) }
+      ? {
+          userId: viewerUserId,
+          organizationId: String(normalizedOrganizationId),
+        }
       : "skip",
   ) as any[] | undefined;
 
@@ -371,7 +382,9 @@ export function LmsCourseProvider({
     if (currentStatus === desiredStatus) return;
 
     void upsertEnrollment({
-      organizationId: normalizedOrganizationId ? String(normalizedOrganizationId) : undefined,
+      organizationId: normalizedOrganizationId
+        ? String(normalizedOrganizationId)
+        : undefined,
       courseId: String(resolvedCourseId),
       userId: String(viewerUserId),
       status: desiredStatus,
@@ -470,7 +483,10 @@ export function LmsCourseProvider({
       quizzesByKey.set(key, list);
     });
 
-    const certificatesById = new Map<string, { _id: LmsPostId; slug?: string; title?: string }>();
+    const certificatesById = new Map<
+      string,
+      { _id: LmsPostId; slug?: string; title?: string }
+    >();
     (courseStructure.attachedCertificates ?? []).forEach((cert) => {
       certificatesById.set(String(cert._id), {
         _id: cert._id,
@@ -584,7 +600,9 @@ export function LmsCourseProvider({
       });
 
     if (courseStructure.course?.certificateId) {
-      const cert = certificatesById.get(String(courseStructure.course.certificateId));
+      const cert = certificatesById.get(
+        String(courseStructure.course.certificateId),
+      );
       if (cert) {
         entries.push({
           type: "certificate",
@@ -686,10 +704,12 @@ export function LmsCourseProvider({
       : resolvedPostTypeSlug === "lessons"
         ? (lessonId ??
           (currentEntry?.type === "lesson" ? currentEntry.id : undefined))
-      : resolvedPostTypeSlug === "certificates"
-        ? (lessonId ??
-          (currentEntry?.type === "certificate" ? currentEntry.lessonId : undefined))
-        : undefined;
+        : resolvedPostTypeSlug === "certificates"
+          ? (lessonId ??
+            (currentEntry?.type === "certificate"
+              ? currentEntry.lessonId
+              : undefined))
+          : undefined;
 
   const isLinearBlocked =
     requiresLinearProgression &&
