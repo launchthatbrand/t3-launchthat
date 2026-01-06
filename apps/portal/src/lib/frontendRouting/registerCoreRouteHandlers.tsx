@@ -21,6 +21,7 @@ import type {
   FrontendRouteHandlerContext,
 } from "./resolveFrontendRoute";
 import { AccessDeniedPage } from "~/components/access/AccessDeniedPage";
+import { CheckoutClientWithClerk } from "~/components/commerce/CheckoutClientWithClerk";
 import { PuckContentRenderer } from "~/components/puckeditor/PuckContentRenderer";
 import { BackgroundRippleEffect } from "~/components/ui/background-ripple-effect";
 import { env } from "~/env";
@@ -423,6 +424,91 @@ export function registerCoreRouteHandlers(): void {
       const pushIfMissing = (h: FrontendRouteHandler) => {
         if (!hasId(h.id)) next.push(h);
       };
+
+      pushIfMissing({
+        id: "portal:ecommerce-checkout-with-clerk",
+        priority: 4,
+        resolve: async (ctx: FrontendRouteHandlerContext) => {
+          if (!ctx.enabledPluginIds.includes("ecommerce")) return null;
+
+          const segments = normalizeSegments(ctx.segments);
+          const organizationId = ctx.organizationId ?? undefined;
+
+          // /checkout (default funnel checkout)
+          if (segments.length === 1 && segments[0] === "checkout") {
+            const orderIdParam = ctx.searchParams?.orderId;
+            const orderId =
+              typeof orderIdParam === "string"
+                ? orderIdParam
+                : Array.isArray(orderIdParam)
+                  ? orderIdParam[0]
+                  : undefined;
+
+            return (
+              <main className="bg-background min-h-screen">
+                <CheckoutClientWithClerk
+                  organizationId={organizationId as any}
+                  orderId={typeof orderId === "string" ? orderId : undefined}
+                />
+              </main>
+            );
+          }
+
+          // /f/:funnelSlug/checkout
+          if (
+            segments.length >= 3 &&
+            segments[0] === "f" &&
+            segments[2] === "checkout"
+          ) {
+            const funnelSlug = (segments[1] ?? "").trim();
+            const stepSlug = (segments[2] ?? "").trim();
+            if (!funnelSlug || !stepSlug) return null;
+
+            const step = await (ctx.fetchQuery as any)(
+              (ctx.api as any).plugins.commerce.funnelSteps.queries
+                .getFunnelStepBySlug,
+              {
+                funnelSlug,
+                stepSlug,
+                ...(organizationId ? { organizationId } : {}),
+              },
+            );
+            if (!step) return null;
+
+            const orderIdParam = ctx.searchParams?.orderId;
+            const orderId =
+              typeof orderIdParam === "string"
+                ? orderIdParam
+                : Array.isArray(orderIdParam)
+                  ? orderIdParam[0]
+                  : undefined;
+
+            return (
+              <main className="bg-background min-h-screen">
+                <CheckoutClientWithClerk
+                  organizationId={organizationId as any}
+                  funnelId={
+                    typeof step?.funnelId === "string" ? step.funnelId : undefined
+                  }
+                  funnelSlug={
+                    typeof step?.funnelSlug === "string"
+                      ? step.funnelSlug
+                      : funnelSlug
+                  }
+                  stepId={typeof step?.stepId === "string" ? step.stepId : undefined}
+                  stepSlug={
+                    typeof step?.stepSlug === "string" ? step.stepSlug : stepSlug
+                  }
+                  stepKind={typeof step?.kind === "string" ? step.kind : undefined}
+                  orderId={typeof orderId === "string" ? orderId : undefined}
+                />
+              </main>
+            );
+          }
+
+          return null;
+        },
+      });
 
       pushIfMissing({
         id: "core:archive",

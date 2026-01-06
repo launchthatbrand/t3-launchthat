@@ -1,8 +1,36 @@
-import type { NextConfig } from "next";
 import { withMicrofrontends } from "@vercel/microfrontends/next/config";
 import { withVercelToolbar } from "@vercel/toolbar/plugins/next";
 
-const nextConfig: NextConfig = {
+const resolveClerkSharedFromNextjs = (): {
+  nextjs: string;
+  shared: string;
+  sharedReact: string;
+  clerkReact: string;
+} => {
+  const path = require("path") as typeof import("path");
+
+  const nextjs = require.resolve("@clerk/nextjs");
+  const marker = `${path.sep}node_modules${path.sep}@clerk${path.sep}nextjs${path.sep}`;
+  const idx = nextjs.lastIndexOf(marker);
+  const nextjsPkgRoot =
+    idx >= 0 ? nextjs.slice(0, idx + marker.length - 1) : path.dirname(nextjs);
+
+  // IMPORTANT: @clerk/nextjs can end up with a different @clerk/shared instance than the hoisted one.
+  // This causes `useClerk()` to throw “can only be used within <ClerkProvider />” even when wrapped.
+  const shared = require.resolve("@clerk/shared", { paths: [nextjsPkgRoot] });
+  const sharedReact = require.resolve("@clerk/shared/react", {
+    paths: [nextjsPkgRoot],
+  });
+  const clerkReact = require.resolve("@clerk/clerk-react", {
+    paths: [nextjsPkgRoot],
+  });
+
+  return { nextjs, shared, sharedReact, clerkReact };
+};
+
+const clerkResolved = resolveClerkSharedFromNextjs();
+
+const nextConfig = {
   /** Enables hot reloading for local packages without a build step */
   transpilePackages: [
     "@acme/api",
@@ -38,20 +66,32 @@ const nextConfig: NextConfig = {
     ],
   },
   allowedDevOrigins: ["http://*.localhost:*", "desmond-tatilian.localhost"],
+  // `experimental.turbo` isn't in the public NextConfig typings yet.
+  // We still configure it for Turbopack so workspace packages resolve to a single Clerk instance.
   experimental: {
     turbo: {
       resolveAlias: {
         "zod/v3": "zod",
+        // Ensure a single Clerk module instance across workspace packages (prevents Provider/context mismatch).
+        "@clerk/nextjs": clerkResolved.nextjs,
+        "@clerk/shared": clerkResolved.shared,
+        "@clerk/shared/react": clerkResolved.sharedReact,
+        "@clerk/clerk-react": clerkResolved.clerkReact,
       },
     },
-  },
-  webpack: (config) => {
+  } as unknown as any,
+  webpack: (config: any) => {
     config.resolve = config.resolve ?? {};
     config.resolve.alias = config.resolve.alias ?? {};
     config.resolve.alias["zod/v3"] = require.resolve("zod");
+    // Ensure a single Clerk module instance across workspace packages (prevents Provider/context mismatch).
+    config.resolve.alias["@clerk/nextjs"] = clerkResolved.nextjs;
+    config.resolve.alias["@clerk/shared"] = clerkResolved.shared;
+    config.resolve.alias["@clerk/shared/react"] = clerkResolved.sharedReact;
+    config.resolve.alias["@clerk/clerk-react"] = clerkResolved.clerkReact;
     return config;
   },
-};
+} as any;
 
 export default withMicrofrontends(nextConfig, { debug: true });
 

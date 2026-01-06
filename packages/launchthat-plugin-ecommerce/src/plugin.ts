@@ -392,7 +392,11 @@ export const createEcommercePluginDefinition = (
           location: "main",
           priority: 5,
           // Register any meta keys written by the custom renderer so Admin saves persist them.
-          fieldKeys: ["product.features"],
+          fieldKeys: [
+            "product.features",
+            "product.requireAccount",
+            "crm.marketingTagIdsJson",
+          ],
           rendererKey: "ecommerce.product.details",
         },
       ],
@@ -586,6 +590,23 @@ export const createEcommercePluginDefinition = (
           readOnly: false,
         },
         {
+          key: "product.requireAccount",
+          name: "Require account to purchase",
+          description:
+            "If enabled, logged-out buyers must create an account during checkout.",
+          type: "boolean",
+          defaultValue: false,
+          readOnly: false,
+        },
+        {
+          key: "crm.marketingTagIdsJson",
+          name: "CRM marketing tag ids (JSON)",
+          description:
+            "CRM-owned. A JSON array of marketingTagId strings to grant on purchase.",
+          type: "text",
+          readOnly: false,
+        },
+        {
           key: "product.regularPrice",
           name: "Regular price",
           type: "number",
@@ -687,6 +708,15 @@ export const createEcommercePluginDefinition = (
           name: "Features",
           description:
             "Bullet list features shown on the product page and checkout summary. Stored as a JSON string array.",
+          type: "text",
+          required: false,
+          readOnly: false,
+        },
+        {
+          key: "crm.marketingTagIdsJson",
+          name: "CRM marketing tag IDs (JSON)",
+          description:
+            "Internal. JSON string array of CRM marketingTag ids to assign on purchase.",
           type: "text",
           required: false,
           readOnly: false,

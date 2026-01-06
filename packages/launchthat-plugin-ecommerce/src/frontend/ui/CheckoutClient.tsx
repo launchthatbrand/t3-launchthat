@@ -54,6 +54,8 @@ type CartItem = {
     isVirtual?: boolean;
     featuredImageUrl?: string;
     features?: string[];
+    requiresAccount?: boolean;
+    crmMarketingTagIds?: string[];
   } | null;
 };
 
@@ -466,6 +468,7 @@ export function CheckoutClient({
   // Legacy props (deprecated)
   checkoutId,
   checkoutSlug,
+  clerk,
 }: {
   organizationId?: string;
   funnelId?: string;
@@ -476,6 +479,14 @@ export function CheckoutClient({
   orderId?: string;
   checkoutId?: string;
   checkoutSlug?: string;
+  clerk?: {
+    isLoaded: boolean;
+    openSignIn?: () => void;
+    signUpWithPassword?: (args: {
+      emailAddress: string;
+      password: string;
+    }) => Promise<{ createdSessionId: string | null }>;
+  };
 }) {
   const orgKey = organizationId ?? "portal-root";
   const [guestSessionId, setGuestSessionId] = useState<string | null>(null);
@@ -527,6 +538,20 @@ export function CheckoutClient({
       }
     | null
     | undefined;
+
+  const openSignIn = clerk?.openSignIn;
+  const isSignUpLoaded = clerk?.isLoaded ?? false;
+  const createOrGetUser = useMutation(
+    apiAny.core.users.mutations.createOrGetUser,
+  ) as (args: any) => Promise<any>;
+
+  const [checkoutPassword, setCheckoutPassword] = useState("");
+  const [checkoutPasswordConfirm, setCheckoutPasswordConfirm] = useState("");
+  const [accountError, setAccountError] = useState<string | null>(null);
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+  const [createdUserIdOverride, setCreatedUserIdOverride] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -744,6 +769,14 @@ export function CheckoutClient({
     () => (Array.isArray(cart?.items) ? (cart?.items ?? []) : []),
     [cart],
   );
+
+  const requiresAccountForCart = useMemo(() => {
+    return items.some((item) => Boolean(item.product?.requiresAccount));
+  }, [items]);
+
+  // Only prompt signup when we *know* the user is logged out (me === null).
+  const needsAccount =
+    requiresAccountForCart && me === null && !createdUserIdOverride;
 
   const subtotal = useMemo(() => {
     return items.reduce((sum, item) => {
@@ -1025,13 +1058,18 @@ export function CheckoutClient({
   const requiresPaymentData = Boolean(
     selectedPaymentMethod?.renderCheckoutForm,
   );
+  const passwordOk =
+    checkoutPassword.trim().length >= 8 &&
+    checkoutPassword.trim() === checkoutPasswordConfirm.trim();
   const canSubmit =
     items.length > 0 &&
     email.trim().length > 3 &&
     !isPending &&
     !isPlacingOrder &&
+    !isCreatingAccount &&
     (!mustSelectPaymentMethod || paymentMethodId.trim().length > 0) &&
-    (!requiresPaymentData || paymentData !== null);
+    (!requiresPaymentData || paymentData !== null) &&
+    (!needsAccount || passwordOk);
 
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
 
@@ -1073,15 +1111,99 @@ export function CheckoutClient({
     return "Payment failed. Please try again or use a different payment method.";
   };
 
-  const handlePlaceOrder = () => {
+  const ensureAccountIfRequired = async (): Promise<string | null> => {
+    if (!needsAccount) return null;
+    if (!guestSessionId) return null;
+
+    const emailAddress = email.trim();
+    if (!emailAddress) {
+      setAccountError("Please enter your email first.");
+      return null;
+    }
+    if (!checkoutPassword.trim() || !checkoutPasswordConfirm.trim()) {
+      setAccountError("Please choose a password to continue.");
+      return null;
+    }
+    if (checkoutPassword.trim().length < 8) {
+      setAccountError("Password must be at least 8 characters.");
+      return null;
+    }
+    if (checkoutPassword.trim() !== checkoutPasswordConfirm.trim()) {
+      setAccountError("Passwords do not match.");
+      return null;
+    }
+    if (!isSignUpLoaded || typeof clerk?.signUpWithPassword !== "function") {
+      setAccountError("Authentication is still loading. Please try again.");
+      return null;
+    }
+
+    setIsCreatingAccount(true);
+    setAccountError(null);
+    try {
+      const { createdSessionId } = await clerk.signUpWithPassword({
+        emailAddress,
+        password: checkoutPassword.trim(),
+      });
+
+      if (typeof createdSessionId === "string" && createdSessionId.trim()) {
+        // Already activated by the portal wrapper.
+      } else {
+        // Some Clerk configurations require email verification before a session exists.
+        setAccountError(
+          "Please verify your email to continue checkout (check your inbox).",
+        );
+        return null;
+      }
+
+      const userId = await createOrGetUser({});
+      if (userId && typeof userId === "string") {
+        setCreatedUserIdOverride(userId);
+        return userId;
+      }
+
+      return null;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "";
+      const lowered = message.toLowerCase();
+
+      // Common Clerk cases: account exists / identifier taken.
+      if (
+        lowered.includes("already exists") ||
+        lowered.includes("identifier")
+      ) {
+        setAccountError(
+          "An account with this email already exists. Please sign in.",
+        );
+        if (typeof openSignIn === "function") {
+          void openSignIn();
+        }
+        return null;
+      }
+
+      console.error("[checkout] account creation failed", err);
+      setAccountError("Could not create your account. Please try again.");
+      return null;
+    } finally {
+      setIsCreatingAccount(false);
+    }
+  };
+
+  const startPlaceOrder = (userIdOverride?: string | null) => {
     if (!guestSessionId) return;
     setIsPlacingOrder(true);
     startTransition(() => {
       const fullName = `${shipping.firstName} ${shipping.lastName}`.trim();
+      const effectiveUserId =
+        (typeof userIdOverride === "string" && userIdOverride.trim()
+          ? userIdOverride
+          : null) ??
+        createdUserIdOverride ??
+        (me && typeof me._id === "string" ? me._id : undefined);
+
       void placeOrder({
         organizationId,
         guestSessionId,
-        userId: me && typeof me._id === "string" ? me._id : undefined,
+        userId: effectiveUserId,
         funnelStepId:
           typeof resolvedStep?.stepId === "string"
             ? resolvedStep.stepId
@@ -1143,6 +1265,24 @@ export function CheckoutClient({
           setIsPlacingOrder(false);
         });
     });
+  };
+
+  const handlePlaceOrder = () => {
+    if (!guestSessionId) return;
+    if (needsAccount) {
+      void ensureAccountIfRequired().then((createdUserId) => {
+        if (!createdUserId) {
+          toast.error(
+            accountError ?? "Please create an account to continue checkout.",
+          );
+          return;
+        }
+        startPlaceOrder(createdUserId);
+      });
+      return;
+    }
+
+    startPlaceOrder(null);
   };
 
   const checkoutDesign = (() => {
@@ -1375,6 +1515,74 @@ export function CheckoutClient({
                 </div>
               </CardContent>
             </Card>
+
+            {needsAccount ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Create your account</CardTitle>
+                  <CardDescription>
+                    This product requires an account. Choose a password to
+                    continue checkout.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="checkout-password">Password</Label>
+                      <Input
+                        id="checkout-password"
+                        type="password"
+                        value={checkoutPassword}
+                        onChange={(e) =>
+                          setCheckoutPassword(e.currentTarget.value)
+                        }
+                        placeholder="At least 8 characters"
+                        autoComplete="new-password"
+                        disabled={isPlacingOrder || isCreatingAccount}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="checkout-password-confirm">
+                        Confirm password
+                      </Label>
+                      <Input
+                        id="checkout-password-confirm"
+                        type="password"
+                        value={checkoutPasswordConfirm}
+                        onChange={(e) =>
+                          setCheckoutPasswordConfirm(e.currentTarget.value)
+                        }
+                        placeholder="Re-enter password"
+                        autoComplete="new-password"
+                        disabled={isPlacingOrder || isCreatingAccount}
+                      />
+                    </div>
+                  </div>
+
+                  {accountError ? (
+                    <div className="text-destructive text-sm">
+                      {accountError}
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div className="text-muted-foreground text-xs">
+                      Already have an account?
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        if (typeof openSignIn === "function") void openSignIn();
+                      }}
+                      disabled={isPlacingOrder || isCreatingAccount}
+                    >
+                      Sign in
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
 
             {shouldHideDeliveryFields ? (
               <Card>

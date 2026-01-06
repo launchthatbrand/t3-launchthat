@@ -113,7 +113,9 @@ const ORDER_META_KEYS = {
 } as const;
 
 const CRM_PLUGIN_ENABLED_KEY = "plugin_crm_enabled";
+const CRM_PRODUCT_TAG_IDS_META_KEY = "crm.marketingTagIdsJson";
 const CRM_PRODUCT_TAG_SLUGS_META_KEY = "crm.tagSlugsJson";
+const PRODUCT_REQUIRE_ACCOUNT_META_KEY = "product.requireAccount";
 
 const parseJsonStringArray = (value: unknown): string[] => {
   if (typeof value !== "string") return [];
@@ -125,6 +127,9 @@ const parseJsonStringArray = (value: unknown): string[] => {
     return [];
   }
 };
+
+const parseBoolean = (value: unknown): boolean =>
+  value === true || value === "true" || value === 1 || value === "1";
 
 const readMetaValue = (entries: unknown, key: string): unknown => {
   if (!Array.isArray(entries)) return undefined;
@@ -263,6 +268,35 @@ export const placeOrder = action({
         return { productId, title, unitPrice, quantity } satisfies LineItem;
       })
       .filter(Boolean) as LineItem[];
+
+    const uniqueProductIds = Array.from(
+      new Set(lineItems.map((li) => li.productId).filter(Boolean)),
+    );
+
+    const productMetaCache: Record<string, unknown> = {};
+    const getProductMeta = async (productId: string): Promise<unknown> => {
+      if (productId in productMetaCache) return productMetaCache[productId];
+      const meta = await ctx.runQuery(apiAny.plugins.commerce.queries.getPostMeta, {
+        postId: productId,
+        organizationId: args.organizationId,
+      });
+      productMetaCache[productId] = meta;
+      return meta;
+    };
+
+    // Enforce account-required products: do not allow guest-only checkout.
+    let cartRequiresAccount = false;
+    for (const productId of uniqueProductIds) {
+      const meta = await getProductMeta(productId);
+      const rawRequire = readMetaValue(meta, PRODUCT_REQUIRE_ACCOUNT_META_KEY);
+      if (parseBoolean(rawRequire)) {
+        cartRequiresAccount = true;
+        break;
+      }
+    }
+    if (cartRequiresAccount && !asString(args.userId).trim()) {
+      throw new Error("Account required to purchase this product.");
+    }
 
     const subtotal = computeSubtotal(lineItems);
     if (!Number.isFinite(subtotal) || subtotal <= 0) {
@@ -550,43 +584,59 @@ export const placeOrder = action({
 
         const contactId = contact?.contactId;
         if (contactId) {
-          const productIds = lineItems
-            .map((li) => li.productId)
-            .filter(Boolean);
+          const tagIds: string[] = [];
           const tagSlugs: string[] = [];
-          for (const productId of productIds) {
-            const meta = await ctx.runQuery(
-              apiAny.plugins.commerce.queries.getPostMeta,
-              {
-                postId: productId,
-                organizationId: args.organizationId,
-              },
-            );
-            const raw = readMetaValue(meta, CRM_PRODUCT_TAG_SLUGS_META_KEY);
-            tagSlugs.push(...parseJsonStringArray(raw));
+
+          for (const productId of uniqueProductIds) {
+            const meta = await getProductMeta(productId);
+            const rawIds = readMetaValue(meta, CRM_PRODUCT_TAG_IDS_META_KEY);
+            tagIds.push(...parseJsonStringArray(rawIds));
+
+            const rawSlugs = readMetaValue(meta, CRM_PRODUCT_TAG_SLUGS_META_KEY);
+            tagSlugs.push(...parseJsonStringArray(rawSlugs));
           }
 
-          const normalizedSlugs = Array.from(
-            new Set(
-              tagSlugs.map((s) => s.trim().toLowerCase()).filter(Boolean),
-            ),
+          const normalizedIds = Array.from(
+            new Set(tagIds.map((s) => s.trim()).filter(Boolean)),
           );
-          for (const slug of normalizedSlugs) {
-            const marketingTagId: string = await ctx.runMutation(
-              internal.core.crm.marketingTags.index
-                .ensureCrmMarketingTagBySlugInternal,
-              { organizationId: crmOrganizationId, slug },
+
+          // Prefer IDs (new) and fall back to slugs (legacy).
+          if (normalizedIds.length > 0) {
+            for (const marketingTagId of normalizedIds) {
+              await ctx.runMutation(
+                internal.core.crm.marketingTags.index
+                  .assignMarketingTagToContactInternal,
+                {
+                  organizationId: crmOrganizationId,
+                  contactId,
+                  marketingTagId: marketingTagId as any,
+                  source: "commerce.product_purchase",
+                },
+              );
+            }
+          } else {
+            const normalizedSlugs = Array.from(
+              new Set(
+                tagSlugs.map((s) => s.trim().toLowerCase()).filter(Boolean),
+              ),
             );
-            await ctx.runMutation(
-              internal.core.crm.marketingTags.index
-                .assignMarketingTagToContactInternal,
-              {
-                organizationId: crmOrganizationId,
-                contactId,
-                marketingTagId: marketingTagId as any,
-                source: "commerce.product_purchase",
-              },
-            );
+            for (const slug of normalizedSlugs) {
+              const marketingTagId: string = await ctx.runMutation(
+                internal.core.crm.marketingTags.index
+                  .ensureCrmMarketingTagBySlugInternal,
+                { organizationId: crmOrganizationId, slug },
+              );
+              await ctx.runMutation(
+                internal.core.crm.marketingTags.index
+                  .assignMarketingTagToContactInternal,
+                {
+                  organizationId: crmOrganizationId,
+                  contactId,
+                  marketingTagId: marketingTagId as any,
+                  source: "commerce.product_purchase",
+                },
+              );
+            }
           }
         }
       }

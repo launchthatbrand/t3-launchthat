@@ -49,5 +49,12 @@
     "turbo": "^2.4.4",
     "typescript": "catalog:"
   },
+  "pnpm": {
+    "overrides": {
+      "@clerk/shared": "3.9.5",
+      "@clerk/nextjs>@clerk/shared": "3.9.5",
+      "@clerk/clerk-react>@clerk/shared": "3.9.5"
+    }
+  },
   "prettier": "@acme/prettier-config"
 }

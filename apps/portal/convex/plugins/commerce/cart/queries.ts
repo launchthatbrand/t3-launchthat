@@ -34,6 +34,9 @@ const safeParseStringArray = (value: unknown): string[] => {
   }
 };
 
+const safeParseBoolean = (value: unknown): boolean =>
+  value === true || value === "true" || value === 1 || value === "1";
+
 interface AttachmentMetaEntry {
   mediaItemId?: string;
   url?: string;
@@ -110,14 +113,29 @@ export const getCart = query({
 
     const enrichByPostId: Record<
       string,
-      { features: string[]; featuredImageUrl: string | null }
+      {
+        features: string[];
+        featuredImageUrl: string | null;
+        requiresAccount: boolean;
+        crmMarketingTagIds: string[];
+      }
     > = {};
     const getEnrichmentForPostId = async (
       postId: string,
-    ): Promise<{ features: string[]; featuredImageUrl: string | null }> => {
+    ): Promise<{
+      features: string[];
+      featuredImageUrl: string | null;
+      requiresAccount: boolean;
+      crmMarketingTagIds: string[];
+    }> => {
       if (postId in enrichByPostId) {
         return (
-          enrichByPostId[postId] ?? { features: [], featuredImageUrl: null }
+          enrichByPostId[postId] ?? {
+            features: [],
+            featuredImageUrl: null,
+            requiresAccount: false,
+            crmMarketingTagIds: [],
+          }
         );
       }
       const meta: unknown = await ctx.runQuery(
@@ -134,13 +152,27 @@ export const getCart = query({
       )?.value;
       const parsedFeatures = safeParseStringArray(rawFeatures);
 
+      const rawRequireAccount = rows.find(
+        (r) => r?.key === "product.requireAccount",
+      )?.value;
+
+      const rawCrmMarketingTagIds = rows.find(
+        (r) => r?.key === "crm.marketingTagIdsJson",
+      )?.value;
+      const parsedCrmMarketingTagIds = safeParseStringArray(rawCrmMarketingTagIds);
+
       const rawAttachments = rows.find(
         (r) => r?.key === "__core_attachments",
       )?.value;
       const featuredImageUrl =
         resolvePrimaryImageUrlFromAttachmentsMeta(rawAttachments);
 
-      const result = { features: parsedFeatures, featuredImageUrl };
+      const result = {
+        features: parsedFeatures,
+        featuredImageUrl,
+        requiresAccount: safeParseBoolean(rawRequireAccount),
+        crmMarketingTagIds: parsedCrmMarketingTagIds,
+      };
       enrichByPostId[postId] = result;
       return result;
     };
@@ -171,6 +203,8 @@ export const getCart = query({
         product: {
           ...product,
           features: enrichment.features,
+          requiresAccount: enrichment.requiresAccount,
+          crmMarketingTagIds: enrichment.crmMarketingTagIds,
           ...(existingFeatured
             ? {}
             : enrichment.featuredImageUrl

@@ -3,6 +3,7 @@
 import type { PluginMetaBoxRendererProps } from "launchthat-plugin-core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { applyFilters } from "@acme/admin-runtime/hooks";
 import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
@@ -21,6 +22,9 @@ type ProductType = "simple" | "external" | "grouped";
 type StockStatus = "instock" | "outofstock" | "onbackorder";
 
 const PRODUCT_FEATURES_KEY = "product.features";
+const PRODUCT_REQUIRE_ACCOUNT_KEY = "product.requireAccount";
+const ADMIN_ECOMMERCE_PRODUCT_DETAILS_SECTIONS_FILTER =
+  "admin.ecommerce.productDetails.sections";
 
 const PRODUCT_TYPE_OPTIONS: Array<{ label: string; value: ProductType }> = [
   { label: "Simple product", value: "simple" },
@@ -79,6 +83,10 @@ export function ProductDetailsMetaBox({
 
   const isVirtual = useMemo(() => {
     return asBoolean(getValue("product.isVirtual"));
+  }, [getValue]);
+
+  const requiresAccount = useMemo(() => {
+    return asBoolean(getValue(PRODUCT_REQUIRE_ACCOUNT_KEY));
   }, [getValue]);
 
   const stockStatus = useMemo<StockStatus>(() => {
@@ -525,6 +533,45 @@ export function ProductDetailsMetaBox({
         </TabsContent>
 
         <TabsContent value="advanced" className="space-y-4 pt-3">
+          <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-3">
+            <div className="space-y-0.5">
+              <div className="text-sm font-medium">
+                Require account to purchase
+              </div>
+              <div className="text-muted-foreground text-xs">
+                Logged-out buyers must create an account during checkout.
+              </div>
+            </div>
+            <Switch
+              checked={requiresAccount}
+              onCheckedChange={(checked) =>
+                setValue(PRODUCT_REQUIRE_ACCOUNT_KEY, Boolean(checked))
+              }
+              disabled={!canEdit}
+            />
+          </div>
+
+          {(() => {
+            const raw = applyFilters(
+              ADMIN_ECOMMERCE_PRODUCT_DETAILS_SECTIONS_FILTER,
+              [],
+              {
+                postId: context.postId ?? null,
+                organizationId: context.organizationId ?? null,
+                isNewRecord: context.isNewRecord ?? false,
+                canEdit,
+                getValue,
+                setValue,
+              },
+            );
+            const sections = Array.isArray(raw) ? (raw as unknown[]) : [];
+            const nodes = sections.filter(
+              (node): node is React.ReactNode => Boolean(node),
+            );
+            if (nodes.length === 0) return null;
+            return <div className="space-y-4">{nodes}</div>;
+          })()}
+
           <div className="space-y-2">
             <Label htmlFor="product-purchase-note">Purchase note</Label>
             <Textarea

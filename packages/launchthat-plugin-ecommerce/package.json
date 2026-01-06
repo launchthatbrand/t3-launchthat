@@ -49,6 +49,7 @@
     "typescript": "catalog:"
   },
   "peerDependencies": {
+    "@clerk/nextjs": "^6.18.0",
     "react": "catalog:react19"
   },
   "prettier": "@acme/prettier-config"

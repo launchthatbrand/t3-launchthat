@@ -62,4 +62,10 @@ export const FRONTEND_NOTIFICATIONS_TABS_FILTER = "frontend.notifications.tabs";
 
 // Admin edit meta box extension point for content access UI.
 // Plugins can contribute additional UI sections (e.g. CRM marketing tags) to the core Content Access metabox.
-export const ADMIN_CONTENT_ACCESS_SECTIONS_FILTER = "admin.contentAccess.sections";
+export const ADMIN_CONTENT_ACCESS_SECTIONS_FILTER =
+  "admin.contentAccess.sections";
+
+// Admin edit meta box extension point for ecommerce product details.
+// Plugins can contribute additional UI sections (e.g. CRM “grant tags on purchase”) to the Product Details metabox.
+export const ADMIN_ECOMMERCE_PRODUCT_DETAILS_SECTIONS_FILTER =
+  "admin.ecommerce.productDetails.sections";
