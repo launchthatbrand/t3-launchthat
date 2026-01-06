@@ -17,12 +17,24 @@ export type CheckoutDraft = {
   email: string;
   paymentMethodId: string;
   shipping: CheckoutShippingDraft;
+  delivery: CheckoutShippingDraft;
 };
 
 const emptyDraft = (): CheckoutDraft => ({
   email: "",
   paymentMethodId: "",
   shipping: {
+    country: "",
+    firstName: "",
+    lastName: "",
+    phone: "",
+    address1: "",
+    address2: "",
+    city: "",
+    state: "",
+    postcode: "",
+  },
+  delivery: {
     country: "",
     firstName: "",
     lastName: "",
@@ -49,6 +61,10 @@ type CheckoutDraftStore = {
     orgKey: string,
     updates: Partial<CheckoutShippingDraft>,
   ) => void;
+  setDelivery: (
+    orgKey: string,
+    updates: Partial<CheckoutShippingDraft>,
+  ) => void;
   resetDraft: (orgKey: string) => void;
 };
 
@@ -70,6 +86,10 @@ export const useCheckoutDraftStore = create<CheckoutDraftStore>()(
                   ...current.shipping,
                   ...(next.shipping ?? {}),
                 },
+                delivery: {
+                  ...current.delivery,
+                  ...(next.delivery ?? {}),
+                },
               },
             },
           };
@@ -84,6 +104,9 @@ export const useCheckoutDraftStore = create<CheckoutDraftStore>()(
       setShipping: (orgKey, updates) => {
         get().setDraft(orgKey, { shipping: updates as CheckoutShippingDraft });
       },
+      setDelivery: (orgKey, updates) => {
+        get().setDraft(orgKey, { delivery: updates as CheckoutShippingDraft });
+      },
       resetDraft: (orgKey) => {
         set((state) => {
           const next = { ...state.draftsByOrg };
@@ -96,9 +119,37 @@ export const useCheckoutDraftStore = create<CheckoutDraftStore>()(
       name: "launchthat-ecommerce-checkout-draft",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ draftsByOrg: state.draftsByOrg }),
-      version: 1,
+      version: 2,
+      migrate: (persisted: unknown, version) => {
+        // v1 -> v2: add `delivery` draft (default empty), keep existing shipping values.
+        if (!persisted || typeof persisted !== "object") {
+          return { draftsByOrg: {} };
+        }
+        const anyState = persisted as any;
+        const draftsByOrgRaw =
+          anyState && typeof anyState.draftsByOrg === "object"
+            ? (anyState.draftsByOrg as Record<string, unknown>)
+            : {};
+
+        if (version >= 2) return { draftsByOrg: draftsByOrgRaw as any };
+
+        const nextDrafts: Record<string, CheckoutDraft> = {};
+        for (const [orgKey, draftRaw] of Object.entries(draftsByOrgRaw)) {
+          const d =
+            draftRaw && typeof draftRaw === "object" ? (draftRaw as any) : {};
+          const shipping = d.shipping ?? EMPTY_CHECKOUT_DRAFT.shipping;
+          nextDrafts[orgKey] = {
+            ...EMPTY_CHECKOUT_DRAFT,
+            ...(d as Partial<CheckoutDraft>),
+            shipping: {
+              ...EMPTY_CHECKOUT_DRAFT.shipping,
+              ...(shipping ?? {}),
+            },
+            delivery: { ...EMPTY_CHECKOUT_DRAFT.delivery },
+          };
+        }
+        return { draftsByOrg: nextDrafts };
+      },
     },
   ),
 );
-
-
