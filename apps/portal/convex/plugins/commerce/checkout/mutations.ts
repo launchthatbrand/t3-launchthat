@@ -1,13 +1,23 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any */
 import { v } from "convex/values";
 
-import { api, components } from "../../../_generated/api";
+import { api, components, internal } from "../../../_generated/api";
 import { mutation } from "../../../_generated/server";
+import type { Id } from "../../../_generated/dataModel";
+import { grantCustomerAccess } from "../../../core/organizations/helpers";
+
+// Avoid TS "type instantiation is excessively deep" from generated `api` types in large orchestration code.
+const apiAny = api as any;
 
 interface CommercePostsMutations {
   createPost: unknown;
   setPostMeta: unknown;
   updatePost: unknown;
+}
+
+interface CommercePostsQueries {
+  getPostById: unknown;
+  getPostMeta: unknown;
 }
 
 interface CommerceCartQueries {
@@ -23,6 +33,12 @@ const commercePostsMutations = (
     launchthat_ecommerce: { posts: { mutations: CommercePostsMutations } };
   }
 ).launchthat_ecommerce.posts.mutations;
+
+const commercePostsQueries = (
+  components as unknown as {
+    launchthat_ecommerce: { posts: { queries: CommercePostsQueries } };
+  }
+).launchthat_ecommerce.posts.queries;
 
 const commerceCartQueries = (
   components as unknown as {
@@ -97,7 +113,237 @@ const ORDER_META_KEYS = {
   legacyTotal: "order:total",
   legacyEmail: "order:email",
   legacyUserId: "order:userId",
+  checkoutToken: "order.checkoutToken",
 } as const;
+
+const CRM_PLUGIN_ENABLED_KEY = "plugin_crm_enabled";
+const CRM_PRODUCT_TAG_IDS_META_KEY = "crm.marketingTagIdsJson";
+const CRM_PRODUCT_TAG_SLUGS_META_KEY = "crm.tagSlugsJson";
+
+const parseBoolean = (value: unknown): boolean =>
+  value === true || value === "true" || value === 1 || value === "1";
+
+const parseJsonStringArray = (value: unknown): string[] => {
+  if (typeof value !== "string") return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((v): v is string => typeof v === "string");
+  } catch {
+    return [];
+  }
+};
+
+const readMetaValue = (entries: unknown, key: string): unknown => {
+  if (!Array.isArray(entries)) return undefined;
+  for (const entry of entries) {
+    if (!entry || typeof entry !== "object") continue;
+    const e = entry as Record<string, unknown>;
+    if (e.key === key) return e.value;
+  }
+  return undefined;
+};
+
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const isCrmEnabledForOrg = async (
+  ctx: Parameters<(typeof mutation)["handler"]>[0],
+  args: { organizationId?: string | undefined },
+): Promise<boolean> => {
+  const option = await ctx.runQuery(api.core.options.get as any, {
+    metaKey: CRM_PLUGIN_ENABLED_KEY,
+    type: "site",
+    orgId: args.organizationId ?? null,
+  });
+  return Boolean((option as any)?.metaValue);
+};
+
+const parsePurchasedProductIdsFromOrderMeta = (meta: unknown): string[] => {
+  const itemsJsonRaw =
+    readMetaValue(meta, ORDER_META_KEYS.itemsJson) ??
+    readMetaValue(meta, "order:itemsJson") ??
+    readMetaValue(meta, ORDER_META_KEYS.legacyPayload);
+  const parsed =
+    typeof itemsJsonRaw === "string"
+      ? (() => {
+          try {
+            return JSON.parse(itemsJsonRaw) as unknown;
+          } catch {
+            return null;
+          }
+        })()
+      : itemsJsonRaw;
+
+  const rows: unknown[] = Array.isArray(parsed)
+    ? parsed
+    : parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? Array.isArray((parsed as any).items)
+        ? ((parsed as any).items as unknown[])
+        : []
+      : [];
+
+  return Array.from(
+    new Set(
+      rows
+        .map((row: any) =>
+          typeof row?.productId === "string" ? row.productId : "",
+        )
+        .filter(Boolean),
+    ),
+  );
+};
+
+const syncCrmContactAndTagsBestEffort = async (
+  ctx: Parameters<(typeof mutation)["handler"]>[0],
+  args: {
+    organizationId: string;
+    userId: string;
+    email: string;
+    name?: string | undefined;
+    assignedBy?: string | undefined;
+    meta: unknown;
+    source: "commerce.checkout" | "commerce.post_checkout_claim";
+  },
+): Promise<void> => {
+  const shouldSyncCrm = await isCrmEnabledForOrg(ctx, {
+    organizationId: args.organizationId,
+  });
+  if (!shouldSyncCrm) return;
+
+  const crmContactsQueries = (components as any)?.launchthat_crm?.contacts?.queries;
+  const crmContactsMutations =
+    (components as any)?.launchthat_crm?.contacts?.mutations;
+  const crmMarketingTagsQueries =
+    (components as any)?.launchthat_crm?.marketingTags?.queries;
+  const crmMarketingTagsMutations =
+    (components as any)?.launchthat_crm?.marketingTags?.mutations;
+
+  if (!crmContactsQueries || !crmContactsMutations || !crmMarketingTagsMutations) {
+    return;
+  }
+
+  const crmOrgId = args.organizationId;
+
+  let contactId: string | null = (await ctx.runQuery(
+    crmContactsQueries.getContactIdForUser as any,
+    {
+      organizationId: crmOrgId,
+      userId: args.userId,
+    },
+  )) as string | null;
+
+  const contactName = args.name?.trim() || args.email;
+
+  if (!contactId) {
+    const baseSlug = slugify(args.email) || `contact-${Date.now()}`;
+    contactId = (await ctx.runMutation(crmContactsMutations.createContact as any, {
+      organizationId: crmOrgId,
+      postTypeSlug: "contact",
+      title: contactName || "Contact",
+      slug: baseSlug,
+      status: "published",
+      userId: args.userId,
+      meta: {
+        "contact.userId": args.userId,
+        "contact.email": args.email,
+        "contact.name": contactName,
+        "contact.source": args.source,
+      },
+    })) as string;
+  } else {
+    await ctx.runMutation(crmContactsMutations.updateContact as any, {
+      organizationId: crmOrgId,
+      contactId,
+      title: contactName || undefined,
+      userId: args.userId,
+      meta: {
+        "contact.userId": args.userId,
+        "contact.email": args.email,
+        "contact.name": contactName,
+      },
+    });
+  }
+
+  if (!contactId) return;
+
+  const productIds = parsePurchasedProductIdsFromOrderMeta(args.meta);
+  if (productIds.length === 0) return;
+
+  const tagIds: string[] = [];
+  const tagSlugs: string[] = [];
+
+  for (const productId of productIds) {
+    const pmeta = await ctx.runQuery(apiAny.plugins.commerce.queries.getPostMeta, {
+      postId: productId,
+      organizationId: crmOrgId,
+    });
+    tagIds.push(
+      ...parseJsonStringArray(readMetaValue(pmeta, CRM_PRODUCT_TAG_IDS_META_KEY)),
+    );
+    tagSlugs.push(
+      ...parseJsonStringArray(readMetaValue(pmeta, CRM_PRODUCT_TAG_SLUGS_META_KEY)),
+    );
+  }
+
+  const normalizedIds = Array.from(
+    new Set(tagIds.map((s) => s.trim()).filter(Boolean)),
+  );
+  for (const marketingTagId of normalizedIds) {
+    await ctx.runMutation(crmMarketingTagsMutations.assignMarketingTagToUser as any, {
+      organizationId: crmOrgId,
+      contactId: contactId as any,
+      marketingTagId: marketingTagId as any,
+      source: "commerce.product_purchase",
+      assignedBy: args.assignedBy,
+    });
+  }
+
+  const normalizedSlugs = Array.from(
+    new Set(tagSlugs.map((s) => s.trim().toLowerCase()).filter(Boolean)),
+  );
+  if (normalizedSlugs.length === 0 || !crmMarketingTagsQueries) return;
+
+  const tags = (await ctx.runQuery(crmMarketingTagsQueries.listMarketingTags as any, {
+    organizationId: crmOrgId,
+  })) as Array<{ _id?: unknown; slug?: unknown; name?: unknown }>;
+  const slugToId: Record<string, string> = {};
+  for (const t of tags ?? []) {
+    const slug = typeof t?.slug === "string" ? t.slug.trim().toLowerCase() : "";
+    const id = typeof t?._id === "string" ? t._id : "";
+    if (slug && id) slugToId[slug] = id;
+  }
+
+  for (const slug of normalizedSlugs) {
+    let tagId = slugToId[slug] ?? "";
+    if (!tagId && crmMarketingTagsMutations?.createMarketingTag) {
+      const createdId = (await ctx.runMutation(
+        crmMarketingTagsMutations.createMarketingTag as any,
+        {
+          organizationId: crmOrgId,
+          name: slug,
+          slug,
+          createdBy: args.assignedBy,
+          isActive: true,
+        },
+      )) as string;
+      tagId = createdId;
+      slugToId[slug] = createdId;
+    }
+
+    if (!tagId) continue;
+    await ctx.runMutation(crmMarketingTagsMutations.assignMarketingTagToUser as any, {
+      organizationId: crmOrgId,
+      contactId: contactId as any,
+      marketingTagId: tagId as any,
+      source: "commerce.product_purchase",
+      assignedBy: args.assignedBy,
+    });
+  }
+};
 
 export const placeOrder = mutation({
   args: {
@@ -423,5 +669,302 @@ export const placeOrder = mutation({
     }
 
     throw new Error(`Unsupported payment method: ${args.paymentMethodId}`);
+  },
+});
+
+/**
+ * Claim / attach a guest order to the currently authenticated user.
+ * This is idempotent and safe to call multiple times.
+ */
+export const claimOrderAfterAuth = mutation({
+  args: {
+    organizationId: v.string(),
+    orderId: v.string(),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    orderId: v.string(),
+    claimed: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const normalizedOrgId = asString(args.organizationId).trim();
+    const normalizedOrderId = asString(args.orderId).trim();
+    if (!normalizedOrgId || !normalizedOrderId) {
+      throw new Error("Missing organizationId or orderId");
+    }
+
+    // Ensure a core user exists for this Clerk identity.
+    const userId = (await ctx.runMutation(
+      internal.core.users.mutations.internalEnsureUser,
+      {},
+    )) as Id<"users"> | null;
+    if (!userId) {
+      throw new Error("User not found");
+    }
+
+    const user = await ctx.db.get(userId);
+    const userEmail =
+      user && typeof user.email === "string" ? user.email.trim() : "";
+
+    // Load order + meta from the ecommerce component.
+    const post = (await ctx.runQuery(commercePostsQueries.getPostById as any, {
+      id: normalizedOrderId,
+      organizationId: normalizedOrgId,
+    })) as any | null;
+    if (!post) {
+      throw new Error("Order not found");
+    }
+
+    const meta = (await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
+      postId: post._id,
+      organizationId: normalizedOrgId,
+    })) as Array<{ key: string; value: unknown }>;
+
+    const assignedDot = readMetaValue(meta, "order.userId");
+    const assignedLegacy = readMetaValue(meta, "order:userId");
+    const assignedUserId =
+      typeof assignedDot === "string"
+        ? assignedDot
+        : typeof assignedLegacy === "string"
+          ? assignedLegacy
+          : "";
+
+    if (assignedUserId && assignedUserId !== String(userId)) {
+      // If the order is already linked to a "pending" user created post-checkout,
+      // and the current auth identity matches that same Clerk user, treat as the
+      // same user (avoid false "claimed by another user" on first login).
+      if (typeof (identity as any)?.subject === "string") {
+        const assigned = await ctx.db.get(assignedUserId as any);
+        const assignedClerkId =
+          assigned && typeof (assigned as any)?.clerkId === "string"
+            ? String((assigned as any).clerkId).trim()
+            : "";
+        const identityClerkId = String((identity as any).subject).trim();
+        if (assignedClerkId && identityClerkId && assignedClerkId === identityClerkId) {
+          // Continue; we'll overwrite the linkage below as idempotent.
+        } else {
+          throw new Error("Order already claimed by another user.");
+        }
+      } else {
+        throw new Error("Order already claimed by another user.");
+      }
+    }
+
+    const orderEmailRaw =
+      readMetaValue(meta, "order.customerEmail") ??
+      readMetaValue(meta, "order:email") ??
+      readMetaValue(meta, "billing.email") ??
+      readMetaValue(meta, "order.customerEmail");
+    const orderEmail =
+      typeof orderEmailRaw === "string" ? orderEmailRaw.trim() : "";
+
+    const orderPhoneRaw =
+      readMetaValue(meta, "order.customerPhone") ??
+      readMetaValue(meta, "billing.phone") ??
+      readMetaValue(meta, "shipping.phone");
+    const orderPhone =
+      typeof orderPhoneRaw === "string" ? orderPhoneRaw.trim() : "";
+
+    const identityEmail =
+      typeof (identity as any)?.email === "string"
+        ? String((identity as any).email).trim()
+        : "";
+    const identityPhone =
+      typeof (identity as any)?.phone_number === "string"
+        ? String((identity as any).phone_number).trim()
+        : typeof (identity as any)?.phoneNumber === "string"
+          ? String((identity as any).phoneNumber).trim()
+          : "";
+
+    const normalize = (s: string) => s.trim().toLowerCase();
+    const phoneDigits = (s: string): string => {
+      const digits = s.replace(/[^0-9]/g, "");
+      // Common US normalization: treat 1XXXXXXXXXX and XXXXXXXXXX as equivalent.
+      if (digits.length === 11 && digits.startsWith("1")) return digits.slice(1);
+      return digits;
+    };
+    const emailMatches =
+      orderEmail && (normalize(orderEmail) === normalize(identityEmail || userEmail));
+    const phoneMatches =
+      orderPhone &&
+      identityPhone &&
+      phoneDigits(orderPhone) === phoneDigits(identityPhone);
+
+    if (!emailMatches && !phoneMatches) {
+      throw new Error("Access denied: verification does not match this order.");
+    }
+
+    // Attach order → user (idempotent)
+    await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
+      postId: normalizedOrderId,
+      key: "order.userId",
+      value: String(userId),
+    });
+    await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
+      postId: normalizedOrderId,
+      key: "order:userId",
+      value: String(userId),
+    });
+    await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
+      postId: normalizedOrderId,
+      key: "order.requiresAccessVerification",
+      value: false,
+    });
+
+    // Grant tenant access in Convex (student role). Best-effort; idempotent.
+    await grantCustomerAccess(ctx, {
+      organizationId: normalizedOrgId as any,
+      customerUserId: userId,
+      grantedBy: userId,
+      accessType: "product_purchase",
+      sourceId: normalizedOrderId,
+    });
+
+    // Best-effort: sync CRM contact + assign marketing tags from purchased products.
+    try {
+      const assignedBy =
+        typeof (identity as any)?.tokenIdentifier === "string"
+          ? (identity as any).tokenIdentifier
+          : undefined;
+      await syncCrmContactAndTagsBestEffort(ctx, {
+        organizationId: normalizedOrgId,
+        userId: String(userId),
+        email: orderEmail || userEmail || "",
+        name: typeof user?.name === "string" ? user.name : undefined,
+        assignedBy,
+        meta,
+        source: "commerce.post_checkout_claim",
+      });
+    } catch (err) {
+      console.error("[checkout] post-auth claim CRM sync failed (continuing)", err);
+    }
+
+    return { ok: true, orderId: normalizedOrderId, claimed: true };
+  },
+});
+
+export const attachOrderToClerkUser = mutation({
+  args: {
+    organizationId: v.string(),
+    orderId: v.string(),
+    checkoutToken: v.string(),
+    clerkUserId: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    name: v.optional(v.string()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    coreUserId: v.string(),
+    orderId: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const organizationId = asString(args.organizationId).trim();
+    const orderId = asString(args.orderId).trim();
+    const checkoutToken = asString(args.checkoutToken).trim();
+    const clerkUserId = asString(args.clerkUserId).trim();
+    const email = asString(args.email).trim();
+    const phone = asString(args.phone).trim() || undefined;
+    const name = asString(args.name).trim() || undefined;
+
+    if (!organizationId || !orderId || !checkoutToken || !clerkUserId || !email) {
+      throw new Error("Missing required fields.");
+    }
+
+    const post = (await ctx.runQuery(commercePostsQueries.getPostById as any, {
+      id: orderId,
+      organizationId,
+    })) as any | null;
+    if (!post) throw new Error("Order not found.");
+
+    const meta = (await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
+      postId: post._id,
+      organizationId,
+    })) as Array<{ key: string; value: unknown }>;
+
+    const tokenInOrder = readMetaValue(meta, ORDER_META_KEYS.checkoutToken);
+    if (typeof tokenInOrder !== "string" || tokenInOrder.trim() !== checkoutToken) {
+      throw new Error("Invalid checkout token.");
+    }
+
+    const assigned = readMetaValue(meta, "order.userId");
+    if (typeof assigned === "string" && assigned.trim()) {
+      // Already linked.
+      return { ok: true, coreUserId: assigned.trim(), orderId };
+    }
+
+    // Upsert a core user record by Clerk id (pending until first real login).
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId))
+      .unique();
+
+    let coreUserId: Id<"users">;
+    if (existing) {
+      coreUserId = existing._id;
+      await ctx.db.patch(existing._id, {
+        email,
+        ...(name ? { name } : {}),
+        ...(phone ? { phoneNumber: phone } : {}),
+        ...(existing.status ? {} : { status: "pending" }),
+        updatedAt: Date.now(),
+      });
+    } else {
+      coreUserId = await ctx.db.insert("users", {
+        clerkId: clerkUserId,
+        tokenIdentifier: "",
+        email,
+        ...(name ? { name } : {}),
+        ...(phone ? { phoneNumber: phone } : {}),
+        role: "user",
+        status: "pending",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    }
+
+    // Link order → user (keep requiresAccessVerification true until they sign in).
+    await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
+      postId: orderId,
+      key: "order.userId",
+      value: String(coreUserId),
+    });
+    await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
+      postId: orderId,
+      key: "order:userId",
+      value: String(coreUserId),
+    });
+
+    // Give tenant access in Convex now (idempotent).
+    await grantCustomerAccess(ctx, {
+      organizationId: organizationId as any,
+      customerUserId: coreUserId,
+      grantedBy: coreUserId,
+      accessType: "product_purchase",
+      sourceId: orderId,
+    });
+
+    // Best-effort: create CRM contact + assign marketing tags immediately after purchase,
+    // so admins can see the contact/tags even before the user completes OTP/email sign-in.
+    try {
+      await syncCrmContactAndTagsBestEffort(ctx, {
+        organizationId,
+        userId: String(coreUserId),
+        email,
+        name,
+        assignedBy: undefined,
+        meta,
+        source: "commerce.checkout",
+      });
+    } catch (err) {
+      console.error("[attachOrderToClerkUser] CRM sync failed (continuing)", err);
+    }
+
+    return { ok: true, coreUserId: String(coreUserId), orderId };
   },
 });

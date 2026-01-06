@@ -45,11 +45,40 @@ export async function addClerkOrganizationMember(args: {
   } catch (err: unknown) {
     // Idempotency: if the user is already a member, Clerk will throw.
     // We keep this adapter dependency-light; callers can optionally fetch membership lists.
+    const e =
+      err && typeof err === "object"
+        ? (err as {
+            status?: unknown;
+            clerkTraceId?: unknown;
+            errors?: Array<{ code?: unknown; message?: unknown }>;
+            message?: unknown;
+          })
+        : null;
     const message =
       err instanceof Error ? err.message : typeof err === "string" ? err : "";
-    if (message.toLowerCase().includes("already")) {
+    const codes = Array.isArray(e?.errors)
+      ? e?.errors
+          .map((row) => (typeof row?.code === "string" ? row.code : ""))
+          .filter(Boolean)
+      : [];
+
+    // Clerk can express "already a member" in a few ways depending on version:
+    // - message contains "already"
+    // - errors[].code indicates a uniqueness violation / existing membership
+    if (
+      message.toLowerCase().includes("already") ||
+      codes.includes("organization_membership_exists") ||
+      codes.includes("organization_membership_already_exists") ||
+      codes.includes("already_exists")
+    ) {
       return { membershipId: "existing" };
     }
+    console.warn("[clerkOrgAdapter] addClerkOrganizationMember failed", {
+      status: typeof e?.status === "number" ? e.status : undefined,
+      clerkTraceId: typeof e?.clerkTraceId === "string" ? e.clerkTraceId : undefined,
+      codes,
+      message,
+    });
     throw err;
   }
 }

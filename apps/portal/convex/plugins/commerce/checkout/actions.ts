@@ -1,16 +1,28 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
 import { v } from "convex/values";
 
-import { api, components } from "../../../_generated/api";
+import type { Id } from "../../../_generated/dataModel";
+import type { ActionCtx } from "../../../_generated/server";
+import { components } from "../../../_generated/api";
 import { action } from "../../../_generated/server";
 import {
   normalizeOrganizationId,
+  PORTAL_TENANT_ID,
   PORTAL_TENANT_SLUG,
 } from "../../../constants";
 
 // Avoid TS "type instantiation is excessively deep" from the generated `api` types
-// when used with ctx.runQuery/runMutation/runAction in large orchestration functions.
-const apiAny = api as any;
+// in this large orchestration function by dynamically importing and erasing types.
+let cachedApiAny: any = null;
+let apiAny: any = null;
+const getApiAny = async (): Promise<any> => {
+  if (cachedApiAny) return cachedApiAny;
+  const mod = (await import("../../../_generated/api")) as unknown as {
+    api: unknown;
+  };
+  cachedApiAny = mod.api as any;
+  return cachedApiAny;
+};
 
 interface CommercePostsMutations {
   createPost: unknown;
@@ -119,6 +131,12 @@ const ORDER_META_KEYS = {
   discountAmount: "order.discountAmount",
   orderStatus: "order.status",
   customerEmail: "order.customerEmail",
+  secondaryEmailCandidate: "order.secondaryEmailCandidate",
+  customerPhone: "order.customerPhone",
+  requiresAccount: "order.requiresAccount",
+  requiresAccessVerification: "order.requiresAccessVerification",
+  checkoutToken: "order.checkoutToken",
+  tenantSlug: "order.tenantSlug",
   paymentMethodId: "order.paymentMethodId",
   paymentStatus: "order.paymentStatus",
   gateway: "order.gateway",
@@ -149,6 +167,18 @@ const ORDER_META_KEYS = {
   legacyUserId: "order:userId",
   userId: "order.userId",
 } as const;
+
+const createCheckoutToken = (): string => {
+  try {
+    const cryptoObj = (globalThis as unknown as { crypto?: Crypto }).crypto;
+    const id =
+      typeof cryptoObj?.randomUUID === "function" ? cryptoObj.randomUUID() : "";
+    if (typeof id === "string" && id.trim()) return id;
+  } catch {
+    // ignore
+  }
+  return `chk_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+};
 
 const CRM_PLUGIN_ENABLED_KEY = "plugin_crm_enabled";
 const CRM_PRODUCT_TAG_IDS_META_KEY = "crm.marketingTagIdsJson";
@@ -186,20 +216,28 @@ const readMetaValue = (entries: unknown, key: string): unknown => {
 };
 
 const isCrmEnabledForOrg = async (
-  ctx: Parameters<(typeof action)["handler"]>[0],
+  ctx: ActionCtx,
   args: { organizationId?: string | undefined },
 ): Promise<boolean> => {
   const orgRaw = args.organizationId;
-  const orgIdForOptions =
-    typeof orgRaw === "string" && orgRaw.length > 0
-      ? normalizeOrganizationId(orgRaw as any)
+  const orgIdForOptions: Id<"organizations"> | null =
+    typeof orgRaw === "string" && orgRaw.trim()
+      ? orgRaw === PORTAL_TENANT_SLUG
+        ? PORTAL_TENANT_ID
+        : /^[a-z0-9]{32}$/i.test(orgRaw)
+          ? (orgRaw as Id<"organizations">)
+          : null
       : null;
   const option = await ctx.runQuery(apiAny.core.options.get, {
     metaKey: CRM_PLUGIN_ENABLED_KEY,
     type: "site",
     orgId: orgIdForOptions,
   });
-  return Boolean((option as any)?.metaValue);
+  const metaValue =
+    option && typeof option === "object"
+      ? (option as Record<string, unknown>).metaValue
+      : undefined;
+  return Boolean(metaValue);
 };
 
 export const placeOrder = action({
@@ -242,8 +280,10 @@ export const placeOrder = action({
     success: v.boolean(),
     orderId: v.string(),
     redirectUrl: v.optional(v.string()),
+    checkoutToken: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
+    apiAny = await getApiAny();
     if (!args.userId && !args.guestSessionId) {
       throw new Error("Missing cart identity");
     }
@@ -264,9 +304,13 @@ export const placeOrder = action({
     }
 
     const orgRaw = args.organizationId;
-    const orgIdForOptions =
-      typeof orgRaw === "string" && orgRaw.length > 0
-        ? normalizeOrganizationId(orgRaw as any)
+    const orgIdForOptions: Id<"organizations"> | null =
+      typeof orgRaw === "string" && orgRaw.trim()
+        ? orgRaw === PORTAL_TENANT_SLUG
+          ? PORTAL_TENANT_ID
+          : /^[a-z0-9]{32}$/i.test(orgRaw)
+            ? (orgRaw as Id<"organizations">)
+            : null
         : null;
     const ecommerceSettings: any = await ctx.runQuery(apiAny.core.options.get, {
       metaKey: "plugin.ecommerce.settings",
@@ -337,7 +381,10 @@ export const placeOrder = action({
       return meta;
     };
 
-    // Enforce account-required products: do not allow guest-only checkout.
+    // Account-required products:
+    // We allow guest checkout (Whop-like), but mark the resulting order as requiring
+    // verification to access content. The post-auth "claim order" flow will attach
+    // the order to the authenticated user and apply grants/tags/enrollments.
     let cartRequiresAccount = false;
     for (const productId of uniqueProductIds) {
       const meta = await getProductMeta(productId);
@@ -346,9 +393,6 @@ export const placeOrder = action({
         cartRequiresAccount = true;
         break;
       }
-    }
-    if (cartRequiresAccount && !asString(args.userId).trim()) {
-      throw new Error("Account required to purchase this product.");
     }
 
     const subtotal = computeSubtotal(lineItems);
@@ -371,10 +415,12 @@ export const placeOrder = action({
       );
 
       if (!couponResult || couponResult.ok !== true) {
+        const reason =
+          couponResult && typeof couponResult === "object"
+            ? (couponResult as Record<string, unknown>).reason
+            : undefined;
         throw new Error(
-          typeof couponResult?.reason === "string"
-            ? couponResult.reason
-            : "Invalid coupon code.",
+          typeof reason === "string" ? reason : "Invalid coupon code.",
         );
       }
 
@@ -458,6 +504,74 @@ export const placeOrder = action({
       key: ORDER_META_KEYS.customerEmail,
       value: args.email.trim(),
     });
+    // Save the buyer-entered email so we can optionally attach it to a phone-matched user after OTP.
+    metaEntries.push({
+      key: ORDER_META_KEYS.secondaryEmailCandidate,
+      value: args.email.trim(),
+    });
+    metaEntries.push({
+      key: ORDER_META_KEYS.requiresAccount,
+      value: cartRequiresAccount,
+    });
+    metaEntries.push({
+      key: ORDER_META_KEYS.requiresAccessVerification,
+      value: cartRequiresAccount && !normalizedUserId,
+    });
+    // For guest account-required checkouts, create an unguessable token so the
+    // portal can safely upsert the Clerk + core user after purchase (before login),
+    // and link the order to that user.
+    const checkoutToken =
+      cartRequiresAccount && !normalizedUserId ? createCheckoutToken() : null;
+    if (checkoutToken) {
+      metaEntries.push({
+        key: ORDER_META_KEYS.checkoutToken,
+        value: checkoutToken,
+      });
+    }
+    // Persist tenant slug for post-purchase server-side workflows so we don't depend on request headers.
+    if (args.organizationId) {
+      try {
+        const orgIdCandidate =
+          typeof args.organizationId === "string" && args.organizationId.trim()
+            ? args.organizationId === PORTAL_TENANT_SLUG
+              ? PORTAL_TENANT_ID
+              : /^[a-z0-9]{32}$/i.test(args.organizationId)
+                ? (args.organizationId as Id<"organizations">)
+                : null
+            : null;
+        const orgIdForQuery = orgIdCandidate
+          ? normalizeOrganizationId(orgIdCandidate)
+          : null;
+        const org = orgIdForQuery
+          ? await ctx.runQuery(apiAny.core.organizations.queries.getById, {
+              organizationId: orgIdForQuery,
+            })
+          : null;
+        const orgSlug =
+          org && typeof org === "object"
+            ? (org as Record<string, unknown>).slug
+            : undefined;
+        const slug = typeof orgSlug === "string" ? orgSlug.trim() : "";
+        if (slug) {
+          metaEntries.push({ key: ORDER_META_KEYS.tenantSlug, value: slug });
+        }
+      } catch (err) {
+        console.warn(
+          "[placeOrder] could not load org slug for order meta",
+          err,
+        );
+      }
+    }
+
+    const buyerPhone =
+      asString(args.billing.phone).trim() ||
+      asString(args.shipping.phone).trim();
+    if (buyerPhone) {
+      metaEntries.push({
+        key: ORDER_META_KEYS.customerPhone,
+        value: buyerPhone,
+      });
+    }
 
     if (args.billing.name)
       metaEntries.push({
@@ -604,8 +718,8 @@ export const placeOrder = action({
         };
 
         const chargeResult = await ctx.runAction(
-          api.plugins.commerce.payments.authorizenet.actions
-            .chargeWithOpaqueData as any,
+          apiAny.plugins.commerce.payments.authorizenet.actions
+            .chargeWithOpaqueData,
           {
             organizationId: args.organizationId,
             amount: total,
@@ -722,16 +836,15 @@ export const placeOrder = action({
       const shouldSyncCrm = await isCrmEnabledForOrg(ctx, {
         organizationId: args.organizationId,
       });
-      const crmOrganizationId = (args.organizationId ?? PORTAL_TENANT_SLUG) as
-        | string
-        | undefined;
+      const crmOrganizationId =
+        asString(args.organizationId).trim() || PORTAL_TENANT_SLUG;
 
       if (shouldSyncCrm && crmOrganizationId && normalizedUserId) {
         const identity = await ctx.auth.getUserIdentity();
         const assignedBy = identity?.tokenIdentifier ?? undefined;
         const contactName =
-          asString(args.billing?.name).trim() ||
-          asString(args.shipping?.name).trim() ||
+          asString(args.billing.name).trim() ||
+          asString(args.shipping.name).trim() ||
           asString(args.email).trim();
 
         let contactId: string | null = (await ctx.runQuery(
@@ -820,12 +933,12 @@ export const placeOrder = action({
             const tags = (await ctx.runQuery(
               crmMarketingTagsQueries.listMarketingTags as any,
               { organizationId: crmOrganizationId },
-            )) as Array<{ _id?: unknown; slug?: unknown; name?: unknown }>;
+            )) as { _id?: unknown; slug?: unknown; name?: unknown }[];
             const slugToId: Record<string, string> = {};
-            for (const t of tags ?? []) {
+            for (const t of tags) {
               const slug =
-                typeof t?.slug === "string" ? t.slug.trim().toLowerCase() : "";
-              const id = typeof t?._id === "string" ? t._id : "";
+                typeof t.slug === "string" ? t.slug.trim().toLowerCase() : "";
+              const id = typeof t._id === "string" ? t._id : "";
               if (slug && id) slugToId[slug] = id;
             }
 
@@ -912,7 +1025,10 @@ export const placeOrder = action({
             const base = isDefaultFunnel
               ? `/checkout/${next.slug}`
               : `/f/${encodeURIComponent(funnelSlug)}/${encodeURIComponent(next.slug)}`;
-            redirectUrl = `${base}?orderId=${encodeURIComponent(orderId)}`;
+            const tokenParam = checkoutToken
+              ? `&t=${encodeURIComponent(checkoutToken)}`
+              : "";
+            redirectUrl = `${base}?orderId=${encodeURIComponent(orderId)}${tokenParam}`;
           }
         }
       }
@@ -923,6 +1039,11 @@ export const placeOrder = action({
       );
     }
 
-    return { success: true, orderId, redirectUrl };
+    return {
+      success: true,
+      orderId,
+      redirectUrl,
+      checkoutToken: checkoutToken ?? undefined,
+    };
   },
 });

@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { api } from "@portal/convexspec";
 import { useAction, useMutation, useQuery } from "convex/react";
+import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, Loader2, Lock } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
@@ -16,6 +17,8 @@ import {
   CardTitle,
 } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@acme/ui/input-otp";
+import { PhoneInput } from "@acme/ui/input-phone";
 import { Label } from "@acme/ui/label";
 import { RadioGroup, RadioGroupItem } from "@acme/ui/radio-group";
 import { Separator } from "@acme/ui/separator";
@@ -104,6 +107,30 @@ const CheckoutBrandHeader = ({
         </div>
       </a>
     </div>
+  );
+};
+
+const CheckoutPhoneField = ({
+  id,
+  value,
+  onValueChange,
+  disabled,
+}: {
+  id: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  disabled: boolean;
+}) => {
+  return (
+    <PhoneInput
+      id={id}
+      value={value}
+      onChange={(next) => onValueChange(typeof next === "string" ? next : "")}
+      placeholder="(555) 555-5555"
+      autoComplete="tel"
+      defaultCountry="US"
+      disabled={disabled}
+    />
   );
 };
 
@@ -327,6 +354,7 @@ const ThankYouReceipt = ({
   transactionId,
   items,
   total,
+  showActions,
 }: {
   isLoading: boolean;
   orderId: string;
@@ -337,6 +365,7 @@ const ThankYouReceipt = ({
   transactionId: string;
   items: Array<ReceiptLineItem>;
   total: number;
+  showActions?: boolean;
 }) => {
   return (
     <div className="mt-6 space-y-4">
@@ -408,16 +437,6 @@ const ThankYouReceipt = ({
                   <code className="truncate">{transactionId || "—"}</code>
                 )}
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-muted-foreground">Total</span>
-                {isLoading ? (
-                  <Skeleton className="h-4 w-20" />
-                ) : (
-                  <span className="text-base font-semibold">
-                    {formatMoney(total)}
-                  </span>
-                )}
-              </div>
             </div>
           </div>
 
@@ -432,7 +451,7 @@ const ThankYouReceipt = ({
                 <Skeleton className="h-5 w-4/6" />
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="mx-auto max-w-lg space-y-2">
                 {items.length === 0 ? (
                   <div className="text-muted-foreground text-sm">—</div>
                 ) : (
@@ -456,26 +475,39 @@ const ThankYouReceipt = ({
               </div>
             )}
           </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold">Total</div>
+            {isLoading ? (
+              <Skeleton className="h-5 w-20" />
+            ) : (
+              <div className="text-lg font-semibold">{formatMoney(total)}</div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          onClick={() => window.location.assign("/")}
-          disabled={isLoading}
-        >
-          Continue
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => window.location.assign("/checkout")}
-          disabled={isLoading}
-        >
-          Back to checkout
-        </Button>
-      </div>
+      {showActions ? (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            onClick={() => window.location.assign("/")}
+            disabled={isLoading}
+          >
+            Continue
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => window.location.assign("/checkout")}
+            disabled={isLoading}
+          >
+            Back to checkout
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 };
@@ -504,11 +536,20 @@ export function CheckoutClient({
   checkoutSlug?: string;
   clerk?: {
     isLoaded: boolean;
-    openSignIn?: () => void;
-    signUpWithPassword?: (args: {
+    isSignedIn?: boolean;
+    // Post-checkout access verification (implemented by the portal wrapper).
+    startEmailLinkSignIn?: (args: {
       emailAddress: string;
-      password: string;
-    }) => Promise<{ createdSessionId: string | null }>;
+      redirectUrl: string;
+    }) => Promise<void>;
+    startPhoneOtpSignIn?: (args: {
+      phoneNumber: string;
+      emailAddress?: string;
+    }) => Promise<void>;
+    attemptPhoneOtpSignIn?: (args: {
+      code: string;
+      emailAddress?: string;
+    }) => Promise<void>;
   };
 }) {
   const orgKey = organizationId ?? "portal-root";
@@ -566,19 +607,20 @@ export function CheckoutClient({
     | null
     | undefined;
 
-  const openSignIn = clerk?.openSignIn;
-  const isSignUpLoaded = clerk?.isLoaded ?? false;
-  const createOrGetUser = useMutation(
-    apiAny.core.users.mutations.createOrGetUser,
-  ) as (args: any) => Promise<any>;
-
-  const [checkoutPassword, setCheckoutPassword] = useState("");
-  const [checkoutPasswordConfirm, setCheckoutPasswordConfirm] = useState("");
   const [accountError, setAccountError] = useState<string | null>(null);
-  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
-  const [createdUserIdOverride, setCreatedUserIdOverride] = useState<
-    string | null
-  >(null);
+  const [accessMethod, setAccessMethod] = useState<"none" | "email" | "phone">(
+    "none",
+  );
+  const [accessOtpCode, setAccessOtpCode] = useState("");
+  const [accessStatus, setAccessStatus] = useState<string | null>(null);
+  const [accessError, setAccessError] = useState<string | null>(null);
+  const [isSendingAccess, setIsSendingAccess] = useState(false);
+  const [isVerifyingAccess, setIsVerifyingAccess] = useState(false);
+  const [isPreparingAccount, setIsPreparingAccount] = useState(false);
+  const [prepareAccountError, setPrepareAccountError] = useState<string | null>(
+    null,
+  );
+  const [hasPreparedAccount, setHasPreparedAccount] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -788,6 +830,200 @@ export function CheckoutClient({
     | null
     | undefined;
 
+  const claimOrderAfterAuth = useMutation(
+    apiAny.plugins.commerce.checkout.mutations.claimOrderAfterAuth,
+  ) as (args: { organizationId: string; orderId: string }) => Promise<{
+    ok?: boolean;
+    claimed?: boolean;
+  }>;
+
+  const [isClaimingOrder, setIsClaimingOrder] = useState(false);
+  const [claimOrderError, setClaimOrderError] = useState<string | null>(null);
+  const [hasClaimedOrder, setHasClaimedOrder] = useState(false);
+  const [hasRedirectedAfterAuth, setHasRedirectedAfterAuth] = useState(false);
+  const [hasAttemptedLinkEmail, setHasAttemptedLinkEmail] = useState(false);
+  const [accessPanel, setAccessPanel] = useState<
+    "choose" | "email" | "phone_send" | "phone_verify"
+  >("choose");
+
+  const resolvedOrderMetaEntries = useMemo(() => {
+    return Array.isArray((resolvedOrder as any)?.meta)
+      ? ((resolvedOrder as any).meta as Array<{ key: string; value: unknown }>)
+      : [];
+  }, [resolvedOrder]);
+  const orderRequiresAccessVerification = useMemo(() => {
+    const raw = getMetaValue(
+      resolvedOrderMetaEntries,
+      "order.requiresAccessVerification",
+    );
+    return raw === true || raw === "true" || raw === 1 || raw === "1";
+  }, [resolvedOrderMetaEntries]);
+
+  const checkoutTokenFromUrl = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    const raw = new URLSearchParams(window.location.search).get("t");
+    return typeof raw === "string" ? raw.trim() : "";
+  }, []);
+
+  // For account-required purchases, we upsert the Clerk user + create a pending core user
+  // immediately after purchase, so the confirmation step is sign-in only.
+  useEffect(() => {
+    if (!orderRequiresAccessVerification) return;
+    if (me !== null) return; // already signed in or still loading
+    if (hasPreparedAccount) return;
+    if (resolvedOrder === undefined) return; // still loading
+    if (typeof orderId !== "string" || !orderId.trim()) return;
+    if (typeof organizationId !== "string" || !organizationId.trim()) return;
+    if (!checkoutTokenFromUrl) {
+      setPrepareAccountError("Missing checkout token. Please refresh.");
+      return;
+    }
+
+    setIsPreparingAccount(true);
+    setPrepareAccountError(null);
+    void fetch("/api/clerk/users/upsert-for-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        organizationId,
+        orderId: orderId.trim(),
+        checkoutToken: checkoutTokenFromUrl,
+      }),
+    })
+      .then(async (res) => {
+        const json = (await res.json().catch(() => null)) as any;
+        if (!res.ok) {
+          const message =
+            json && typeof json.error === "string"
+              ? json.error
+              : "Could not prepare your account.";
+          throw new Error(message);
+        }
+        setHasPreparedAccount(true);
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : "";
+        setPrepareAccountError(
+          message.trim() ? message : "Could not prepare your account.",
+        );
+      })
+      .finally(() => setIsPreparingAccount(false));
+  }, [
+    checkoutTokenFromUrl,
+    hasPreparedAccount,
+    me,
+    orderId,
+    orderRequiresAccessVerification,
+    organizationId,
+    resolvedOrder,
+  ]);
+
+  useEffect(() => {
+    if (!clerk?.isSignedIn) return;
+    if (!clerk.isLoaded) return;
+    if (hasClaimedOrder) return;
+    if (!orderRequiresAccessVerification) return;
+    if (typeof orderId !== "string" || !orderId.trim()) return;
+    if (typeof organizationId !== "string" || !organizationId.trim()) return;
+
+    setIsClaimingOrder(true);
+    setClaimOrderError(null);
+    void claimOrderAfterAuth({
+      organizationId,
+      orderId: orderId.trim(),
+    })
+      .then((res) => {
+        if (res?.ok) {
+          setHasClaimedOrder(true);
+        }
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : "";
+        setClaimOrderError(
+          message || "Could not link your order. Please try again.",
+        );
+      })
+      .finally(() => setIsClaimingOrder(false));
+  }, [
+    claimOrderAfterAuth,
+    clerk?.isLoaded,
+    clerk?.isSignedIn,
+    hasClaimedOrder,
+    orderId,
+    orderRequiresAccessVerification,
+    organizationId,
+  ]);
+
+  // After post-purchase auth completes (or if the order is already verified), automatically continue.
+  useEffect(() => {
+    if (hasRedirectedAfterAuth) return;
+    if (effectiveStepKind !== "thankYou") return;
+    if (!clerk?.isLoaded) return;
+    if (!clerk.isSignedIn) return;
+    if (orderRequiresAccessVerification && !hasClaimedOrder) return;
+    if (typeof orderId !== "string" || !orderId.trim()) return;
+    if (typeof organizationId !== "string" || !organizationId.trim()) return;
+
+    const shouldTryLinkEmail =
+      orderRequiresAccessVerification &&
+      Boolean(checkoutTokenFromUrl) &&
+      !hasAttemptedLinkEmail;
+
+    if (!shouldTryLinkEmail) {
+      setHasRedirectedAfterAuth(true);
+      window.location.assign("/");
+      return;
+    }
+
+    setHasAttemptedLinkEmail(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1500);
+    void fetch("/api/clerk/users/link-email-for-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        organizationId,
+        orderId: orderId.trim(),
+        checkoutToken: checkoutTokenFromUrl,
+      }),
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        clearTimeout(timeout);
+        const json = (await res.json().catch(() => null)) as any;
+        if (!res.ok) {
+          const code = json && typeof json.code === "string" ? json.code : "";
+          if (code && code !== "email_owned_by_other_user") {
+            // Non-blocking: user is already signed in and order is claimed.
+            toast.error(
+              "Signed in, but we couldn’t link your email automatically.",
+            );
+          }
+          return;
+        }
+        // If linked, silently proceed; the user shouldn't have to care.
+      })
+      .catch(() => {
+        clearTimeout(timeout);
+      })
+      .finally(() => {
+        clearTimeout(timeout);
+        setHasRedirectedAfterAuth(true);
+        window.location.assign("/");
+      });
+  }, [
+    checkoutTokenFromUrl,
+    clerk?.isLoaded,
+    clerk?.isSignedIn,
+    effectiveStepKind,
+    hasClaimedOrder,
+    hasAttemptedLinkEmail,
+    hasRedirectedAfterAuth,
+    orderId,
+    orderRequiresAccessVerification,
+    organizationId,
+  ]);
+
   const placeOrder = useAction(
     apiAny.plugins.commerce.checkout.actions.placeOrder,
   ) as (args: any) => Promise<any>;
@@ -802,8 +1038,7 @@ export function CheckoutClient({
   }, [items]);
 
   // Only prompt signup when we *know* the user is logged out (me === null).
-  const needsAccount =
-    requiresAccountForCart && me === null && !createdUserIdOverride;
+  const needsAccount = requiresAccountForCart && me === null;
 
   const subtotal = useMemo(() => {
     return items.reduce((sum, item) => {
@@ -1136,20 +1371,17 @@ export function CheckoutClient({
   const requiresPaymentData = Boolean(
     selectedPaymentMethod?.renderCheckoutForm,
   );
-  const passwordOk =
-    checkoutPassword.trim().length >= 8 &&
-    checkoutPassword.trim() === checkoutPasswordConfirm.trim();
+  const phoneOk = shipping.phone.replace(/\D/g, "").length >= 7;
   const canSubmit =
     items.length > 0 &&
     email.trim().length > 3 &&
+    phoneOk &&
     !isPending &&
     !isPlacingOrder &&
-    !isCreatingAccount &&
     (!mustSelectPaymentMethod ||
       paymentMethodId.trim().length > 0 ||
       isFreeOrder) &&
-    (!requiresPaymentData || paymentData !== null || isFreeOrder) &&
-    (!needsAccount || passwordOk);
+    (!requiresPaymentData || paymentData !== null || isFreeOrder);
 
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
 
@@ -1191,94 +1423,13 @@ export function CheckoutClient({
     return "Payment failed. Please try again or use a different payment method.";
   };
 
-  const ensureAccountIfRequired = async (): Promise<string | null> => {
-    if (!needsAccount) return null;
-    if (!guestSessionId) return null;
-
-    const emailAddress = email.trim();
-    if (!emailAddress) {
-      setAccountError("Please enter your email first.");
-      return null;
-    }
-    if (!checkoutPassword.trim() || !checkoutPasswordConfirm.trim()) {
-      setAccountError("Please choose a password to continue.");
-      return null;
-    }
-    if (checkoutPassword.trim().length < 8) {
-      setAccountError("Password must be at least 8 characters.");
-      return null;
-    }
-    if (checkoutPassword.trim() !== checkoutPasswordConfirm.trim()) {
-      setAccountError("Passwords do not match.");
-      return null;
-    }
-    if (!isSignUpLoaded || typeof clerk?.signUpWithPassword !== "function") {
-      setAccountError("Authentication is still loading. Please try again.");
-      return null;
-    }
-
-    setIsCreatingAccount(true);
-    setAccountError(null);
-    try {
-      const { createdSessionId } = await clerk.signUpWithPassword({
-        emailAddress,
-        password: checkoutPassword.trim(),
-      });
-
-      if (typeof createdSessionId === "string" && createdSessionId.trim()) {
-        // Already activated by the portal wrapper.
-      } else {
-        // Some Clerk configurations require email verification before a session exists.
-        setAccountError(
-          "Please verify your email to continue checkout (check your inbox).",
-        );
-        return null;
-      }
-
-      const userId = await createOrGetUser({});
-      if (userId && typeof userId === "string") {
-        setCreatedUserIdOverride(userId);
-        return userId;
-      }
-
-      return null;
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "";
-      const lowered = message.toLowerCase();
-
-      // Common Clerk cases: account exists / identifier taken.
-      if (
-        lowered.includes("already exists") ||
-        lowered.includes("identifier")
-      ) {
-        setAccountError(
-          "An account with this email already exists. Please sign in.",
-        );
-        if (typeof openSignIn === "function") {
-          void openSignIn();
-        }
-        return null;
-      }
-
-      console.error("[checkout] account creation failed", err);
-      setAccountError("Could not create your account. Please try again.");
-      return null;
-    } finally {
-      setIsCreatingAccount(false);
-    }
-  };
-
-  const startPlaceOrder = (userIdOverride?: string | null) => {
+  const startPlaceOrder = () => {
     if (!guestSessionId) return;
     setIsPlacingOrder(true);
     startTransition(() => {
       const fullName = `${shipping.firstName} ${shipping.lastName}`.trim();
       const effectiveUserId =
-        (typeof userIdOverride === "string" && userIdOverride.trim()
-          ? userIdOverride
-          : null) ??
-        createdUserIdOverride ??
-        (me && typeof me._id === "string" ? me._id : undefined);
+        me && typeof me._id === "string" ? me._id : undefined;
 
       void placeOrder({
         organizationId,
@@ -1335,8 +1486,13 @@ export function CheckoutClient({
           const createdOrderId =
             result && typeof result.orderId === "string" ? result.orderId : "";
           if (createdOrderId) {
+            const token =
+              result && typeof result.checkoutToken === "string"
+                ? result.checkoutToken
+                : "";
+            const tokenParam = token ? `&t=${encodeURIComponent(token)}` : "";
             window.location.assign(
-              `/checkout/order-confirmed?orderId=${encodeURIComponent(createdOrderId)}`,
+              `/checkout/order-confirmed?orderId=${encodeURIComponent(createdOrderId)}${tokenParam}`,
             );
           }
         })
@@ -1350,20 +1506,12 @@ export function CheckoutClient({
 
   const handlePlaceOrder = () => {
     if (!guestSessionId) return;
-    if (needsAccount) {
-      void ensureAccountIfRequired().then((createdUserId) => {
-        if (!createdUserId) {
-          toast.error(
-            accountError ?? "Please create an account to continue checkout.",
-          );
-          return;
-        }
-        startPlaceOrder(createdUserId);
-      });
+    if (!shipping.phone.trim()) {
+      setAccountError("Please enter your phone number.");
+      toast.error("Please enter your phone number.");
       return;
     }
-
-    startPlaceOrder(null);
+    startPlaceOrder();
   };
 
   const checkoutDesign = (() => {
@@ -1453,6 +1601,26 @@ export function CheckoutClient({
       metaEntries,
       "order.gatewayTransactionId",
     );
+    const requiresAccessVerificationRaw = getMetaValue(
+      metaEntries,
+      "order.requiresAccessVerification",
+    );
+    const requiresAccessVerification =
+      requiresAccessVerificationRaw === true ||
+      requiresAccessVerificationRaw === "true" ||
+      requiresAccessVerificationRaw === 1 ||
+      requiresAccessVerificationRaw === "1";
+
+    const buyerEmailFromMeta = getMetaValue(metaEntries, "order.customerEmail");
+    const buyerPhoneFromMeta = getMetaValue(metaEntries, "order.customerPhone");
+    const buyerEmail =
+      (typeof buyerEmailFromMeta === "string"
+        ? buyerEmailFromMeta
+        : ""
+      ).trim() || (resolvedEmail || "").trim();
+    const buyerPhone = (
+      typeof buyerPhoneFromMeta === "string" ? buyerPhoneFromMeta : ""
+    ).trim();
 
     return (
       <CheckoutShell orgBrand={orgBrand} maxWidth="max-w-3xl">
@@ -1469,25 +1637,435 @@ export function CheckoutClient({
         ) : null}
 
         {effectiveStepKind === "thankYou" ? (
-          <ThankYouReceipt
-            isLoading={isOrderLoading}
-            orderId={resolvedOrderId || "(missing)"}
-            email={resolvedEmail || "customer@example.com"}
-            status={String((resolvedOrder as any)?.status ?? "paid")}
-            paymentMethodId={
-              typeof paymentMethodIdFromMeta === "string"
-                ? paymentMethodIdFromMeta
-                : ""
-            }
-            gateway={typeof gatewayFromMeta === "string" ? gatewayFromMeta : ""}
-            transactionId={
-              typeof transactionIdFromMeta === "string"
-                ? transactionIdFromMeta
-                : ""
-            }
-            items={receiptItems}
-            total={resolvedTotal}
-          />
+          <div className="mt-6 space-y-6">
+            <ThankYouReceipt
+              isLoading={isOrderLoading}
+              orderId={resolvedOrderId || "(missing)"}
+              email={resolvedEmail || "customer@example.com"}
+              status={String((resolvedOrder as any)?.status ?? "paid")}
+              paymentMethodId={
+                typeof paymentMethodIdFromMeta === "string"
+                  ? paymentMethodIdFromMeta
+                  : ""
+              }
+              gateway={
+                typeof gatewayFromMeta === "string" ? gatewayFromMeta : ""
+              }
+              transactionId={
+                typeof transactionIdFromMeta === "string"
+                  ? transactionIdFromMeta
+                  : ""
+              }
+              items={receiptItems}
+              total={resolvedTotal}
+              showActions={!requiresAccessVerification && me !== null}
+            />
+
+            {requiresAccessVerification && me === null ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    Login to your account
+                  </CardTitle>
+                  <CardDescription>
+                    Verify to access your content. No password required.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {isPreparingAccount ? (
+                    <div className="text-muted-foreground text-sm">
+                      Preparing your account…
+                    </div>
+                  ) : null}
+                  {prepareAccountError ? (
+                    <div className="text-destructive text-sm">
+                      {prepareAccountError}
+                    </div>
+                  ) : null}
+                  <AnimatePresence mode="wait">
+                    {accessPanel === "choose" ? (
+                      <motion.div
+                        key="choose"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.18 }}
+                        className="space-y-3"
+                      >
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={
+                              isSendingAccess ||
+                              isVerifyingAccess ||
+                              isClaimingOrder ||
+                              hasClaimedOrder ||
+                              isPreparingAccount ||
+                              Boolean(prepareAccountError)
+                            }
+                            onClick={() => {
+                              setAccessError(null);
+                              setAccessStatus(null);
+                              setAccessMethod("email");
+                              setAccessPanel("email");
+                            }}
+                          >
+                            Continue with email
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={
+                              isSendingAccess ||
+                              isVerifyingAccess ||
+                              isClaimingOrder ||
+                              hasClaimedOrder ||
+                              isPreparingAccount ||
+                              Boolean(prepareAccountError)
+                            }
+                            onClick={() => {
+                              setAccessError(null);
+                              setAccessStatus(null);
+                              setAccessOtpCode("");
+                              setAccessMethod("phone");
+                              setAccessPanel("phone_send");
+                            }}
+                          >
+                            Continue with phone
+                          </Button>
+                        </div>
+                      </motion.div>
+                    ) : null}
+
+                    {accessPanel === "phone_send" ? (
+                      <motion.div
+                        key="phone_send"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.18 }}
+                        className="space-y-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-muted-foreground text-xs">
+                            Step 2 of 3
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={isSendingAccess || isVerifyingAccess}
+                            onClick={() => {
+                              setAccessError(null);
+                              setAccessStatus(null);
+                              setAccessOtpCode("");
+                              setAccessPanel("choose");
+                            }}
+                          >
+                            Go back
+                          </Button>
+                        </div>
+                        <div className="text-sm">
+                          We’ll text a code to{" "}
+                          <span className="font-medium">
+                            {buyerPhone || "your phone"}
+                          </span>
+                          .
+                        </div>
+                        <Button
+                          type="button"
+                          disabled={
+                            isSendingAccess ||
+                            !clerk?.startPhoneOtpSignIn ||
+                            !buyerPhone
+                          }
+                          onClick={() => {
+                            if (!buyerPhone || !clerk?.startPhoneOtpSignIn)
+                              return;
+                            setAccessError(null);
+                            setAccessStatus(null);
+                            setIsSendingAccess(true);
+                            void clerk
+                              .startPhoneOtpSignIn({
+                                phoneNumber: buyerPhone,
+                                emailAddress: buyerEmail || undefined,
+                              })
+                              .then(() => {
+                                setAccessStatus(
+                                  "Enter the code we texted you.",
+                                );
+                                setAccessPanel("phone_verify");
+                              })
+                              .catch((err: unknown) => {
+                                const message =
+                                  err instanceof Error ? err.message : "";
+                                setAccessError(
+                                  message.trim()
+                                    ? message
+                                    : "Could not send SMS code. Please try again.",
+                                );
+                              })
+                              .finally(() => setIsSendingAccess(false));
+                          }}
+                        >
+                          {isSendingAccess ? "Sending…" : "Send code"}
+                        </Button>
+                      </motion.div>
+                    ) : null}
+
+                    {accessPanel === "phone_verify" ? (
+                      <motion.div
+                        key="phone_verify"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.18 }}
+                        className="space-y-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-muted-foreground text-xs">
+                            Step 3 of 3
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={isSendingAccess || isVerifyingAccess}
+                            onClick={() => {
+                              setAccessError(null);
+                              setAccessStatus(null);
+                              setAccessOtpCode("");
+                              setAccessPanel("phone_send");
+                            }}
+                          >
+                            Go back
+                          </Button>
+                        </div>
+                        <div className="text-sm">
+                          Enter the code we texted to{" "}
+                          <span className="font-medium">
+                            {buyerPhone || "your phone"}
+                          </span>
+                          .
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium">Code</div>
+                          <InputOTP
+                            value={accessOtpCode}
+                            onChange={setAccessOtpCode}
+                            maxLength={6}
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            disabled={isVerifyingAccess}
+                            aria-label="One-time code"
+                          >
+                            <InputOTPGroup>
+                              <InputOTPSlot index={0} />
+                              <InputOTPSlot index={1} />
+                              <InputOTPSlot index={2} />
+                              <InputOTPSlot index={3} />
+                              <InputOTPSlot index={4} />
+                              <InputOTPSlot index={5} />
+                            </InputOTPGroup>
+                          </InputOTP>
+                        </div>
+                        <Button
+                          type="button"
+                          disabled={
+                            isVerifyingAccess ||
+                            !clerk?.attemptPhoneOtpSignIn ||
+                            accessOtpCode.trim().length < 6
+                          }
+                          onClick={() => {
+                            if (!clerk?.attemptPhoneOtpSignIn) return;
+                            setAccessError(null);
+                            setAccessStatus(null);
+                            setIsVerifyingAccess(true);
+
+                            const sleep = (ms: number) =>
+                              new Promise((r) => setTimeout(r, ms));
+                            const attemptClaim = async () => {
+                              if (!orderRequiresAccessVerification) return;
+                              if (
+                                typeof orderId !== "string" ||
+                                !orderId.trim()
+                              )
+                                return;
+                              if (
+                                typeof organizationId !== "string" ||
+                                !organizationId.trim()
+                              )
+                                return;
+                              for (let i = 0; i < 3; i += 1) {
+                                try {
+                                  const res = await claimOrderAfterAuth({
+                                    organizationId,
+                                    orderId: orderId.trim(),
+                                  });
+                                  if (res?.ok) {
+                                    setHasClaimedOrder(true);
+                                    return;
+                                  }
+                                } catch {
+                                  // retry
+                                }
+                                await sleep(500);
+                              }
+                            };
+
+                            void clerk
+                              .attemptPhoneOtpSignIn({
+                                code: accessOtpCode.trim(),
+                                emailAddress: buyerEmail || undefined,
+                              })
+                              .then(async () => {
+                                setAccessStatus("Signed in. Redirecting…");
+                                await attemptClaim();
+                                if (
+                                  checkoutTokenFromUrl &&
+                                  typeof orderId === "string" &&
+                                  orderId.trim() &&
+                                  typeof organizationId === "string" &&
+                                  organizationId.trim()
+                                ) {
+                                  void fetch(
+                                    "/api/clerk/users/link-email-for-order",
+                                    {
+                                      method: "POST",
+                                      headers: {
+                                        "Content-Type": "application/json",
+                                      },
+                                      body: JSON.stringify({
+                                        organizationId,
+                                        orderId: orderId.trim(),
+                                        checkoutToken: checkoutTokenFromUrl,
+                                      }),
+                                    },
+                                  ).catch(() => null);
+                                }
+                                window.location.assign("/");
+                              })
+                              .catch((err: unknown) => {
+                                const message =
+                                  err instanceof Error ? err.message : "";
+                                setAccessError(
+                                  message.trim()
+                                    ? message
+                                    : "Invalid code. Please try again.",
+                                );
+                              })
+                              .finally(() => setIsVerifyingAccess(false));
+                          }}
+                        >
+                          {isVerifyingAccess ? "Verifying…" : "Verify code"}
+                        </Button>
+                      </motion.div>
+                    ) : null}
+
+                    {accessPanel === "email" ? (
+                      <motion.div
+                        key="email"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.18 }}
+                        className="space-y-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-muted-foreground text-xs">
+                            Step 2 of 3
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={isSendingAccess || isVerifyingAccess}
+                            onClick={() => {
+                              setAccessError(null);
+                              setAccessStatus(null);
+                              setAccessPanel("choose");
+                            }}
+                          >
+                            Go back
+                          </Button>
+                        </div>
+                        <div className="text-sm">
+                          We’ll email a sign-in link to{" "}
+                          <span className="font-medium">
+                            {buyerEmail || "your email"}
+                          </span>
+                          .
+                        </div>
+                        <Button
+                          type="button"
+                          disabled={
+                            isSendingAccess ||
+                            !clerk?.startEmailLinkSignIn ||
+                            !buyerEmail
+                          }
+                          onClick={() => {
+                            if (!buyerEmail || !clerk?.startEmailLinkSignIn)
+                              return;
+                            setAccessError(null);
+                            setAccessStatus(null);
+                            setIsSendingAccess(true);
+                            void clerk
+                              .startEmailLinkSignIn({
+                                emailAddress: buyerEmail,
+                                redirectUrl:
+                                  typeof window !== "undefined"
+                                    ? window.location.href
+                                    : "/",
+                              })
+                              .then(() => {
+                                setAccessStatus(
+                                  "Check your email for the sign-in link.",
+                                );
+                              })
+                              .catch(() => {
+                                setAccessError(
+                                  "Could not send the email link. Please try again.",
+                                );
+                              })
+                              .finally(() => setIsSendingAccess(false));
+                          }}
+                        >
+                          {isSendingAccess ? "Sending…" : "Send email link"}
+                        </Button>
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
+
+                  {accessStatus ? (
+                    <div className="text-muted-foreground text-sm">
+                      {accessStatus}
+                    </div>
+                  ) : null}
+                  {accessError ? (
+                    <div className="text-destructive text-sm">
+                      {accessError}
+                    </div>
+                  ) : null}
+                  {isClaimingOrder ? (
+                    <div className="text-muted-foreground text-sm">
+                      Linking your order…
+                    </div>
+                  ) : null}
+                  {claimOrderError ? (
+                    <div className="text-destructive text-sm">
+                      {claimOrderError}
+                    </div>
+                  ) : null}
+                  {hasClaimedOrder ? (
+                    <div className="text-muted-foreground text-sm">
+                      Access unlocked. You can continue browsing.
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
         ) : (
           <div className="mt-6 space-y-4">
             <Card>
@@ -1612,66 +2190,15 @@ export function CheckoutClient({
             {needsAccount ? (
               <Card>
                 <CardHeader>
-                  <CardTitle>Create your account</CardTitle>
+                  <CardTitle>Access after purchase</CardTitle>
                   <CardDescription>
-                    This product requires an account. Choose a password to
-                    continue checkout.
+                    This product requires an account to access. After checkout,
+                    you’ll verify via email link or SMS code.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="checkout-password">Password</Label>
-                      <Input
-                        id="checkout-password"
-                        type="password"
-                        value={checkoutPassword}
-                        onChange={(e) =>
-                          setCheckoutPassword(e.currentTarget.value)
-                        }
-                        placeholder="At least 8 characters"
-                        autoComplete="new-password"
-                        disabled={isPlacingOrder || isCreatingAccount}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="checkout-password-confirm">
-                        Confirm password
-                      </Label>
-                      <Input
-                        id="checkout-password-confirm"
-                        type="password"
-                        value={checkoutPasswordConfirm}
-                        onChange={(e) =>
-                          setCheckoutPasswordConfirm(e.currentTarget.value)
-                        }
-                        placeholder="Re-enter password"
-                        autoComplete="new-password"
-                        disabled={isPlacingOrder || isCreatingAccount}
-                      />
-                    </div>
-                  </div>
-
-                  {accountError ? (
-                    <div className="text-destructive text-sm">
-                      {accountError}
-                    </div>
-                  ) : null}
-
-                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div className="text-muted-foreground text-xs">
-                      Already have an account?
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        if (typeof openSignIn === "function") void openSignIn();
-                      }}
-                      disabled={isPlacingOrder || isCreatingAccount}
-                    >
-                      Sign in
-                    </Button>
+                <CardContent>
+                  <div className="text-muted-foreground text-sm">
+                    No password required during checkout.
                   </div>
                 </CardContent>
               </Card>
@@ -1718,17 +2245,13 @@ export function CheckoutClient({
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="ship-phone">Phone (optional)</Label>
-                    <Input
+                    <Label htmlFor="ship-phone">Phone</Label>
+                    <CheckoutPhoneField
                       id="ship-phone"
                       value={shipping.phone}
-                      onChange={(e) =>
-                        setShippingDraft(orgKey, {
-                          phone: e.currentTarget.value,
-                        })
+                      onValueChange={(phone) =>
+                        setShippingDraft(orgKey, { phone })
                       }
-                      placeholder="(555) 555-5555"
-                      autoComplete="tel"
                       disabled={isPlacingOrder}
                     />
                   </div>
@@ -1790,16 +2313,12 @@ export function CheckoutClient({
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="ship-phone">Phone</Label>
-                    <Input
+                    <CheckoutPhoneField
                       id="ship-phone"
                       value={shipping.phone}
-                      onChange={(e) =>
-                        setShippingDraft(orgKey, {
-                          phone: e.currentTarget.value,
-                        })
+                      onValueChange={(phone) =>
+                        setShippingDraft(orgKey, { phone })
                       }
-                      placeholder="(555) 555-5555"
-                      autoComplete="tel"
                       disabled={isPlacingOrder}
                     />
                   </div>

@@ -446,8 +446,8 @@ export function registerCoreRouteHandlers(): void {
           const segments = normalizeSegments(ctx.segments);
           const organizationId = ctx.organizationId ?? undefined;
 
-          // /checkout (default funnel checkout)
-          if (segments.length === 1 && segments[0] === "checkout") {
+          // /checkout/* (default funnel steps + legacy order-confirmed)
+          if (segments.length >= 1 && segments[0] === "checkout") {
             const orderIdParam = ctx.searchParams?.orderId;
             const orderId =
               typeof orderIdParam === "string"
@@ -455,6 +455,47 @@ export function registerCoreRouteHandlers(): void {
                 : Array.isArray(orderIdParam)
                   ? orderIdParam[0]
                   : undefined;
+
+            // /checkout/order-confirmed?orderId=... (legacy fallback)
+            if (segments.length === 2 && segments[1] === "order-confirmed") {
+              return (
+                <main className="bg-background min-h-screen">
+                  <CheckoutClientWithClerk
+                    organizationId={organizationId as any}
+                    stepKind="thankYou"
+                    orderId={typeof orderId === "string" ? orderId : undefined}
+                  />
+                </main>
+              );
+            }
+
+            // /checkout (default funnel checkout)
+            if (segments.length === 1) {
+              return (
+                <main className="bg-background min-h-screen">
+                  <CheckoutClientWithClerk
+                    organizationId={organizationId as any}
+                    orderId={typeof orderId === "string" ? orderId : undefined}
+                  />
+                </main>
+              );
+            }
+
+            // /checkout/:stepSlug (default funnel step)
+            if (segments.length === 2) {
+              const stepSlug = (segments[1] ?? "").trim();
+              if (!stepSlug) return null;
+              return (
+                <main className="bg-background min-h-screen">
+                  <CheckoutClientWithClerk
+                    organizationId={organizationId as any}
+                    funnelSlug="__default_funnel__"
+                    stepSlug={stepSlug}
+                    orderId={typeof orderId === "string" ? orderId : undefined}
+                  />
+                </main>
+              );
+            }
 
             return (
               <main className="bg-background min-h-screen">
@@ -466,11 +507,11 @@ export function registerCoreRouteHandlers(): void {
             );
           }
 
-          // /f/:funnelSlug/checkout
+          // /f/:funnelSlug/:stepSlug
           if (
             segments.length >= 3 &&
             segments[0] === "f" &&
-            segments[2] === "checkout"
+            typeof segments[2] === "string"
           ) {
             const funnelSlug = (segments[1] ?? "").trim();
             const stepSlug = (segments[2] ?? "").trim();

@@ -69,13 +69,34 @@ export const internalEnsureUser = internalMutation({
       `--- internalEnsureUser: Identity found for token ${identity.tokenIdentifier}, subject ${identity.subject} ---`,
     );
 
-    // Check if user already exists
-    const existingUser = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .first();
+    // Prefer lookup by tokenIdentifier, but fall back to Clerk user id.
+    // This prevents duplicate core users when a "pending" user is created after purchase
+    // (clerkId set, tokenIdentifier empty) and the user later signs in (tokenIdentifier set).
+    let existingUser =
+      (await ctx.db
+        .query("users")
+        .withIndex("by_token", (q) =>
+          q.eq("tokenIdentifier", identity.tokenIdentifier),
+        )
+        .first()) ?? null;
+    if (
+      !existingUser &&
+      typeof identity.subject === "string" &&
+      identity.subject.trim()
+    ) {
+      existingUser = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+        .first();
+      if (existingUser) {
+        // Backfill tokenIdentifier so future lookups hit by_token.
+        await ctx.db.patch(existingUser._id, {
+          tokenIdentifier: identity.tokenIdentifier,
+          status: "active",
+          updatedAt: Date.now(),
+        });
+      }
+    }
 
     if (existingUser) {
       console.log(
@@ -91,6 +112,8 @@ export const internalEnsureUser = internalMutation({
         name: string;
         image: string | undefined;
         clerkId: string;
+        tokenIdentifier: string;
+        status: "active";
       }> = {}; // image can be undefined if not present
       if (newName !== existingUser.name) {
         updates.name = newName;
@@ -105,6 +128,17 @@ export const internalEnsureUser = internalMutation({
       // Backfill Clerk user id for reliable lookups across environments.
       if (!existingUser.clerkId && typeof identity.subject === "string") {
         updates.clerkId = identity.subject;
+      }
+      // Ensure tokenIdentifier is set (migration from "pending" user created post-checkout).
+      if (
+        typeof identity.tokenIdentifier === "string" &&
+        identity.tokenIdentifier.trim() &&
+        existingUser.tokenIdentifier !== identity.tokenIdentifier
+      ) {
+        updates.tokenIdentifier = identity.tokenIdentifier;
+      }
+      if (existingUser.status !== "active") {
+        updates.status = "active";
       }
 
       if (Object.keys(updates).length > 0) {
