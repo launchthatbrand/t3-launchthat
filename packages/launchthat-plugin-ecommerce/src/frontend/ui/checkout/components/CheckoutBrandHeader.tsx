@@ -1,7 +1,6 @@
 "use client";
 
 import { Lock } from "lucide-react";
-
 import { Skeleton } from "@acme/ui/skeleton";
 
 export const CheckoutBrandHeader = ({

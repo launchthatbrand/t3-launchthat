@@ -1,11 +1,11 @@
 "use client";
 
-import type { UseFormReturn } from "react-hook-form";
 import { useEffect, useRef } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 import type { CheckoutShippingDraft } from "../../../state/useCheckoutDraftStore";
 import { EMPTY_CHECKOUT_DRAFT } from "../../../state/useCheckoutDraftStore";
+import type { UseFormReturn } from "react-hook-form";
 
 export type CheckoutFormValues = {
   email: string;

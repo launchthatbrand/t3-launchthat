@@ -1,15 +1,13 @@
 "use client";
 
-import { useState } from "react";
-
 import { Button } from "@acme/ui/button";
+import type { CartItem } from "../types";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import { Separator } from "@acme/ui/separator";
-
-import type { CartItem } from "../types";
-import { formatMoney } from "../utils/money";
 import { asNumber } from "../utils/number";
+import { formatMoney } from "../utils/money";
+import { useState } from "react";
 
 export const OrderSummary = ({
   items,

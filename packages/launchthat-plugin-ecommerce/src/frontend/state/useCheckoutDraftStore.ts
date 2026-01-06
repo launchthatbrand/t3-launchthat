@@ -1,5 +1,6 @@
-import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+
+import { create } from "zustand";
 
 export type CheckoutShippingDraft = {
   country: string;

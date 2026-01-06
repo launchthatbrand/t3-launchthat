@@ -1,8 +1,5 @@
 "use client";
 
-import { CheckCircle2, Loader2 } from "lucide-react";
-
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -10,10 +7,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import { CheckCircle2, Loader2 } from "lucide-react";
+
+import { Button } from "@acme/ui/button";
+import type { ReceiptLineItem } from "../types";
 import { Separator } from "@acme/ui/separator";
 import { Skeleton } from "@acme/ui/skeleton";
-
-import type { ReceiptLineItem } from "../types";
 import { formatMoney } from "../utils/money";
 
 export const ThankYouReceipt = ({
