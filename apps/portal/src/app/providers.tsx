@@ -249,13 +249,15 @@ function TenantConvexProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const useTenantAuth = React.useCallback(() => {
+  const tenantAuth = React.useMemo(() => {
     return {
       isLoading: isTokenLoading,
       isAuthenticated: Boolean(token),
       fetchAccessToken: async (_args: { forceRefreshToken: boolean }) => token,
     };
   }, [isTokenLoading, token]);
+
+  const useTenantAuth = React.useCallback(() => tenantAuth, [tenantAuth]);
 
   return (
     <ConvexProviderWithAuth client={convex} useAuth={useTenantAuth}>
