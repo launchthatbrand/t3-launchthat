@@ -3,7 +3,6 @@
 import type { SignInResource } from "@clerk/types";
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { SignIn, useAuth, useSignIn } from "@clerk/nextjs";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -236,7 +235,6 @@ export default function SignInClient(props: {
   tenantLogo: string | null;
   ui?: "custom" | "clerk";
 }) {
-  const router = useRouter();
   const { isLoaded, signIn, setActive } = useSignIn();
   const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -284,8 +282,11 @@ export default function SignInClient(props: {
   React.useEffect(() => {
     if (!isAuthLoaded) return;
     if (!isSignedIn) return;
-    router.replace(afterSignInUrl);
-  }, [afterSignInUrl, isAuthLoaded, isSignedIn, router]);
+    // Must be a full navigation because /api/auth/callback ultimately redirects
+    // cross-origin back to the tenant host. Using router.replace() can trigger a
+    // fetch-based navigation and fail with CORS.
+    window.location.assign(afterSignInUrl);
+  }, [afterSignInUrl, isAuthLoaded, isSignedIn]);
 
   React.useEffect(() => {
     if (!isLoaded) return;
@@ -377,7 +378,7 @@ export default function SignInClient(props: {
       // while already signed in on this host. In that case, just bounce through
       // our callback to mint the tenant session and redirect back.
       if (code === "session_exists") {
-        router.replace(afterSignInUrl);
+        window.location.assign(afterSignInUrl);
         return;
       }
       setFormError("Unable to start sign-in. Please try again.");
@@ -407,7 +408,7 @@ export default function SignInClient(props: {
       }
 
       await setActive({ session: result.createdSessionId });
-      router.replace(afterSignInUrl);
+      window.location.assign(afterSignInUrl);
     } catch (err: unknown) {
       const message = (() => {
         if (!err || typeof err !== "object") return "Unable to sign in.";
@@ -546,7 +547,7 @@ export default function SignInClient(props: {
 
       if (typeof createdSessionId === "string" && createdSessionId.trim()) {
         await setActive({ session: createdSessionId });
-        router.replace(afterSignInUrl);
+        window.location.assign(afterSignInUrl);
         return;
       }
 

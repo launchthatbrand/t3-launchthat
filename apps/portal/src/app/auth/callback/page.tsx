@@ -1,14 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 const CONVEX_TOKEN_STORAGE_KEY = "convex_token";
 const TOKEN_UPDATED_EVENT = "convex-token-updated";
 const TENANT_SESSION_UPDATED_EVENT = "tenant-session-updated";
 
 export default function AuthCallbackPage() {
-  const router = useRouter();
   const params = useSearchParams();
 
   const code = (params.get("code") ?? "").trim();
@@ -20,7 +19,7 @@ export default function AuthCallbackPage() {
 
     const run = async () => {
       if (!code) {
-        router.replace("/");
+        window.location.assign("/");
         return;
       }
 
@@ -40,13 +39,13 @@ export default function AuthCallbackPage() {
           body: JSON.stringify({ code }),
         });
         if (!res.ok) {
-          router.replace("/");
+          window.location.assign("/");
           return;
         }
         // Notify any persistent UI (like header) that the tenant session cookie is now set.
         window.dispatchEvent(new Event(TENANT_SESSION_UPDATED_EVENT));
       } catch {
-        if (!cancelled) router.replace("/");
+        if (!cancelled) window.location.assign("/");
         return;
       }
 
@@ -57,21 +56,21 @@ export default function AuthCallbackPage() {
         try {
           const url = new URL(returnTo);
           if (url.origin === window.location.origin) {
-            router.replace(url.pathname + url.search + url.hash);
+            window.location.assign(url.pathname + url.search + url.hash);
             return;
           }
         } catch {
           // ignore
         }
       }
-      router.replace("/");
+      window.location.assign("/");
     };
 
     void run();
     return () => {
       cancelled = true;
     };
-  }, [code, returnTo, router, token]);
+  }, [code, returnTo, token]);
 
   return (
     <div className="flex min-h-screen items-center justify-center">
