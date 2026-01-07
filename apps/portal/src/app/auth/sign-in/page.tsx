@@ -1,8 +1,8 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { getAuthHostForHost, getHostFromHeaders } from "~/lib/host";
 
 import { env } from "~/env";
-import { getAuthHostForHost, getHostFromHeaders } from "~/lib/host";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 const coerceFirst = (
   value: string | string[] | undefined,
