@@ -996,7 +996,7 @@ export function CheckoutClient({
     selectedPaymentMethod?.renderCheckoutForm,
   );
   // Avoid forcing resolver validation on initial page load (which can surface as
-  // noisy runtime ZodErrors in dev). We'll validate on submit/touch instead.
+  // noisy runtime ZodErrors in dev). We'll validate on submit/touch instead..
   const canValidateNow = formState.isSubmitted || formState.submitCount > 0;
   const canSubmit =
     items.length > 0 &&
