@@ -762,19 +762,19 @@ export function registerCoreRouteHandlers(): void {
 
           // ---- Frontend access control (post-type routes) ----
           // Evaluate access before rendering the resolved post.
-          // Note: For bot UAs (e.g. facebookexternalhit), middleware bypasses Clerk.
-          // In that mode `auth()` can throw; treat it as logged-out so we still render public HTML.
+          //
+          // IMPORTANT:
+          // Tenant/custom domains intentionally do NOT rely on Clerk cookies (satellite domains).
+          // In production, Clerk cookies may still be scoped broadly enough that `auth()` could
+          // report a user even after tenant logout, which would incorrectly grant access.
+          //
+          // Therefore, resolve viewer identity ONLY from our tenant session cookie.
           let clerkUserId: string | null = null;
-          try {
-            const authState = await auth();
-            clerkUserId = authState?.userId ?? null;
-          } catch {
-            clerkUserId = null;
-          }
 
-          // Tenant/custom domains do NOT mount Clerk, so when Clerk auth is unavailable,
-          // fall back to our tenant session cookie (if present) to resolve viewer identity.
-          if (!clerkUserId && typeof ctx.tenantSessionId === "string" && ctx.tenantSessionId.trim()) {
+          if (
+            typeof ctx.tenantSessionId === "string" &&
+            ctx.tenantSessionId.trim()
+          ) {
             try {
               const sessionIdHash = sha256Base64Url(ctx.tenantSessionId.trim());
               const sessionResult: unknown = await (ctx.fetchQuery as any)(
@@ -783,18 +783,27 @@ export function registerCoreRouteHandlers(): void {
               );
               const session =
                 sessionResult && typeof sessionResult === "object"
-                  ? (sessionResult as { clerkUserId?: unknown; organizationId?: unknown })
+                  ? (sessionResult as {
+                      clerkUserId?: unknown;
+                      organizationId?: unknown;
+                    })
                   : null;
 
               const sessionClerkUserId =
-                typeof session?.clerkUserId === "string" ? session.clerkUserId : null;
+                typeof session?.clerkUserId === "string"
+                  ? session.clerkUserId
+                  : null;
               const sessionOrgId =
-                typeof session?.organizationId === "string" ? session.organizationId : null;
+                typeof session?.organizationId === "string"
+                  ? session.organizationId
+                  : null;
 
               // Ensure session is for the active tenant (defense-in-depth).
               if (
                 sessionClerkUserId &&
-                (!ctx.organizationId || (sessionOrgId && sessionOrgId === String(ctx.organizationId)))
+                (!ctx.organizationId ||
+                  (sessionOrgId &&
+                    sessionOrgId === String(ctx.organizationId)))
               ) {
                 clerkUserId = sessionClerkUserId;
               }
