@@ -11,7 +11,7 @@ import { usePathname } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
 import { SessionProvider } from "convex-helpers/react/sessions";
-import { ConvexProvider, ConvexReactClient, useQuery } from "convex/react";
+import { ConvexProviderWithAuth, ConvexReactClient, useQuery } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { SupportChatWidget } from "launchthat-plugin-support";
 import { useLocalStorage } from "usehooks-ts";
@@ -222,6 +222,7 @@ const TOKEN_UPDATED_EVENT = "convex-token-updated";
 
 function TenantConvexProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = React.useState<string | null>(null);
+  const [isTokenLoading, setIsTokenLoading] = React.useState(true);
 
   React.useEffect(() => {
     const read = () => {
@@ -230,6 +231,8 @@ function TenantConvexProvider({ children }: { children: React.ReactNode }) {
         setToken(typeof t === "string" && t.length > 0 ? t : null);
       } catch {
         setToken(null);
+      } finally {
+        setIsTokenLoading(false);
       }
     };
     read();
@@ -246,9 +249,17 @@ function TenantConvexProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  React.useEffect(() => {
-    convex.setAuth(async () => token);
-  }, [token]);
+  const useTenantAuth = React.useCallback(() => {
+    return {
+      isLoading: isTokenLoading,
+      isAuthenticated: Boolean(token),
+      fetchAccessToken: async (_args: { forceRefreshToken: boolean }) => token,
+    };
+  }, [isTokenLoading, token]);
 
-  return <ConvexProvider client={convex}>{children}</ConvexProvider>;
+  return (
+    <ConvexProviderWithAuth client={convex} useAuth={useTenantAuth}>
+      {children}
+    </ConvexProviderWithAuth>
+  );
 }
