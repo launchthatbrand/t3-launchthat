@@ -5,6 +5,7 @@ import * as React from "react";
 import Link from "next/link";
 import { SignIn, useAuth, useSignIn } from "@clerk/nextjs";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AnimatePresence, motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -25,6 +26,13 @@ import {
   FormMessage,
 } from "@acme/ui/form";
 import { Input } from "@acme/ui/input";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "@acme/ui/input-otp";
+import { PhoneInput } from "@acme/ui/input-phone";
 import { cn } from "@acme/ui/lib/utils";
 import { Skeleton } from "@acme/ui/skeleton";
 
@@ -209,15 +217,17 @@ const hasPhoneOtpEnabled = (root: unknown): boolean => {
   return found;
 };
 
-const signInSchema = z.object({
+const emailSchema = z.object({
   email: z.string().email("Enter a valid email"),
-  password: z.string().min(1, "Password is required"),
 });
 
-type SignInValues = z.infer<typeof signInSchema>;
+type EmailValues = z.infer<typeof emailSchema>;
 
 const phoneStartSchema = z.object({
-  phoneNumber: z.string().min(6, "Enter a valid phone number"),
+  // NOTE: `PhoneInput` can keep RHF's value empty until the number is valid,
+  // so we validate "real" phone-ness inside `startPhoneOtp` where we can
+  // normalize raw user input to E.164.
+  phoneNumber: z.string().min(1, "Enter a phone number"),
 });
 
 type PhoneStartValues = z.infer<typeof phoneStartSchema>;
@@ -227,6 +237,8 @@ const phoneCodeSchema = z.object({
 });
 
 type PhoneCodeValues = z.infer<typeof phoneCodeSchema>;
+
+type AuthStep = "choose" | "email" | "email_sent" | "phone" | "phone_code";
 
 export default function SignInClient(props: {
   returnTo: string | null;
@@ -246,15 +258,13 @@ export default function SignInClient(props: {
     [],
   );
   const [isPhoneOtpEnabled, setIsPhoneOtpEnabled] = React.useState(false);
-  const [authMethod, setAuthMethod] = React.useState<"password" | "phone">(
-    "password",
-  );
-  const [phoneStep, setPhoneStep] = React.useState<"enter" | "code">("enter");
+  const [authStep, setAuthStep] = React.useState<AuthStep>("choose");
   const [phoneNumberValue, setPhoneNumberValue] = React.useState<string>("");
+  const [phoneInputText, setPhoneInputText] = React.useState<string>("");
 
-  const form = useForm<SignInValues>({
-    resolver: zodResolver(signInSchema),
-    defaultValues: { email: "", password: "" },
+  const emailForm = useForm<EmailValues>({
+    resolver: zodResolver(emailSchema),
+    defaultValues: { email: "" },
     mode: "onTouched",
     reValidateMode: "onChange",
   });
@@ -262,7 +272,7 @@ export default function SignInClient(props: {
   const phoneStartForm = useForm<PhoneStartValues>({
     resolver: zodResolver(phoneStartSchema),
     defaultValues: { phoneNumber: "" },
-    mode: "onTouched",
+    mode: "onChange",
     reValidateMode: "onChange",
   });
 
@@ -277,7 +287,8 @@ export default function SignInClient(props: {
     const params = new URLSearchParams();
     if (props.returnTo) params.set("return_to", props.returnTo);
     if (props.tenantSlug) params.set("tenant", props.tenantSlug);
-    return `${window.location.origin}/api/auth/callback?${params.toString()}`;
+    // Must be safe during server pre-render (no `window`).
+    return `/api/auth/callback?${params.toString()}`;
   }, [props.returnTo, props.tenantSlug]);
 
   const startPhoneOtp = React.useCallback(
@@ -286,8 +297,22 @@ export default function SignInClient(props: {
       setFormError(null);
       setIsSubmitting(true);
       try {
-        const phoneNumber = values.phoneNumber.trim();
-        if (!phoneNumber) {
+        const raw = values.phoneNumber.trim() || phoneInputText.trim();
+        const digitsOnly = raw.replace(/[^0-9]/g, "");
+        const normalized = (() => {
+          if (!raw) return "";
+          if (raw.startsWith("+")) return raw.replace(/[()\-\s]/g, "");
+          // US default: allow "(850) 509-9483" style input.
+          if (digitsOnly.length === 10) return `+1${digitsOnly}`;
+          if (digitsOnly.length === 11 && digitsOnly.startsWith("1")) {
+            return `+${digitsOnly}`;
+          }
+          // If it's already a long digit string, try prefixing "+".
+          if (digitsOnly.length >= 11) return `+${digitsOnly}`;
+          return raw;
+        })();
+
+        if (!normalized) {
           setFormError("Enter a valid phone number.");
           setIsSubmitting(false);
           return;
@@ -297,7 +322,7 @@ export default function SignInClient(props: {
           signIn as unknown as {
             create: (args: { identifier: string }) => Promise<unknown>;
           }
-        ).create({ identifier: phoneNumber });
+        ).create({ identifier: normalized });
 
         const firstFactors: unknown[] = Array.isArray(
           (signIn as unknown as { supportedFirstFactors?: unknown })
@@ -348,8 +373,8 @@ export default function SignInClient(props: {
           phoneNumberId: phoneNumberId.trim(),
         });
 
-        setPhoneNumberValue(phoneNumber);
-        setPhoneStep("code");
+        setPhoneNumberValue(raw || normalized);
+        setAuthStep("phone_code");
         setIsSubmitting(false);
       } catch (err: unknown) {
         setFormError(
@@ -358,8 +383,83 @@ export default function SignInClient(props: {
         setIsSubmitting(false);
       }
     },
-    [isLoaded, signIn],
+    [isLoaded, phoneInputText, signIn],
   );
+
+  const startEmailMagicLink = React.useCallback(async () => {
+    if (!isLoaded) return;
+    setFormError(null);
+    setIsSubmitting(true);
+    try {
+      const email = emailForm.getValues("email").trim().toLowerCase();
+      if (!email) {
+        setFormError("Enter a valid email.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      await (
+        signIn as unknown as {
+          create: (args: { identifier: string }) => Promise<unknown>;
+        }
+      ).create({ identifier: email });
+
+      const firstFactors: unknown[] = Array.isArray(
+        (signIn as unknown as { supportedFirstFactors?: unknown })
+          .supportedFirstFactors,
+      )
+        ? ((signIn as unknown as { supportedFirstFactors?: unknown })
+            .supportedFirstFactors as unknown[])
+        : [];
+
+      const emailLinkFactor = firstFactors.find((f) => {
+        if (!f || typeof f !== "object") return false;
+        const obj = f as { strategy?: unknown; emailAddressId?: unknown };
+        const strategy = obj.strategy;
+        const emailAddressId = obj.emailAddressId;
+        return (
+          (strategy === "email_link" || strategy === "emailLink") &&
+          typeof emailAddressId === "string" &&
+          emailAddressId.trim().length > 0
+        );
+      });
+
+      const emailAddressId =
+        emailLinkFactor &&
+        typeof (emailLinkFactor as { emailAddressId?: unknown })
+          .emailAddressId === "string"
+          ? String(
+              (emailLinkFactor as { emailAddressId?: unknown }).emailAddressId,
+            )
+          : "";
+
+      if (!emailAddressId.trim()) {
+        setFormError(
+          "Email magic link isn't available. Please use another sign-in method.",
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      await (
+        signIn as unknown as {
+          prepareFirstFactor: (args: {
+            strategy: "email_link";
+            emailAddressId: string;
+          }) => Promise<unknown>;
+        }
+      ).prepareFirstFactor({
+        strategy: "email_link",
+        emailAddressId: emailAddressId.trim(),
+      });
+
+      setAuthStep("email_sent");
+      setIsSubmitting(false);
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : "Unable to send link.");
+      setIsSubmitting(false);
+    }
+  }, [emailForm, isLoaded, signIn]);
 
   // Prefill phone/email when arriving from checkout, and optionally auto-send the OTP.
   React.useEffect(() => {
@@ -373,8 +473,7 @@ export default function SignInClient(props: {
       typeof props.prefillEmail === "string" ? props.prefillEmail.trim() : "";
 
     if (method === "phone" && isPhoneOtpEnabled) {
-      setAuthMethod("phone");
-      setPhoneStep("enter");
+      setAuthStep("phone");
       setFormError(null);
 
       if (phone) {
@@ -385,26 +484,23 @@ export default function SignInClient(props: {
         // Auto-send code once on load if we have a phone number.
         // Defer to next tick so RHF state settles before submit.
         setTimeout(() => {
-          void phoneStartForm.handleSubmit(startPhoneOtp)();
+          void startPhoneOtp({ phoneNumber: phone });
         }, 0);
       }
       return;
     }
 
     if (method === "email") {
-      // We don't currently support email magic-link in the custom UI; still prefill
-      // the identifier so the user can choose OAuth or password if available.
       if (email) {
-        form.setValue("email", email, {
+        emailForm.setValue("email", email, {
           shouldDirty: true,
           shouldValidate: true,
         });
       }
-      setAuthMethod("password");
-      setPhoneStep("enter");
+      setAuthStep("email");
     }
   }, [
-    form,
+    emailForm,
     isLoaded,
     isPhoneOtpEnabled,
     phoneStartForm,
@@ -491,6 +587,16 @@ export default function SignInClient(props: {
     }
   }, [isLoaded, signIn, oauthProviders.length]);
 
+  const phoneNumberCurrent = phoneStartForm.watch("phoneNumber");
+  const isPhoneNumberReady =
+    (typeof phoneNumberCurrent === "string" &&
+      phoneNumberCurrent.trim().length > 0) ||
+    phoneInputText.trim().length > 0;
+
+  const emailCurrent = emailForm.watch("email");
+  const isEmailReady =
+    typeof emailCurrent === "string" && emailCurrent.trim().length > 0;
+
   const handleOauth = async (strategy: RedirectStrategy) => {
     if (!isLoaded) return;
     setFormError(null);
@@ -527,105 +633,96 @@ export default function SignInClient(props: {
     ? `Continue to ${props.tenantName}`
     : "Continue to LaunchThat";
 
-  const handleSubmit = async (values: SignInValues) => {
-    if (!isLoaded) return;
-    setFormError(null);
-    setIsSubmitting(true);
-    try {
-      const result = await signIn.create({
-        identifier: values.email,
-        password: values.password,
-      });
+  const submitPhoneCode = React.useCallback(
+    async (values: PhoneCodeValues) => {
+      if (!isLoaded) return;
+      setFormError(null);
+      setIsSubmitting(true);
+      try {
+        const code = values.code.trim();
+        if (!code) {
+          setFormError("Enter the code.");
+          setIsSubmitting(false);
+          return;
+        }
 
-      if (result.status !== "complete") {
+        const result = await (
+          signIn as unknown as {
+            attemptFirstFactor: (args: {
+              strategy: "phone_code";
+              code: string;
+            }) => Promise<unknown>;
+            createdSessionId?: unknown;
+          }
+        ).attemptFirstFactor({
+          strategy: "phone_code",
+          code,
+        });
+
+        const createdSessionId =
+          (result as { createdSessionId?: unknown }).createdSessionId ??
+          (signIn as unknown as { createdSessionId?: unknown })
+            .createdSessionId ??
+          null;
+
+        if (typeof createdSessionId === "string" && createdSessionId.trim()) {
+          await setActive({ session: createdSessionId });
+          window.location.assign(afterSignInUrl);
+          return;
+        }
+
+        const status =
+          typeof (result as { status?: unknown }).status === "string"
+            ? String((result as { status?: unknown }).status)
+            : "";
         setFormError(
-          "This account requires a different sign-in method. Please use the standard sign-in flow.",
+          status
+            ? `Could not sign in (status: ${status}).`
+            : "Could not sign in with that code.",
         );
         setIsSubmitting(false);
-        return;
-      }
-
-      await setActive({ session: result.createdSessionId });
-      window.location.assign(afterSignInUrl);
-    } catch (err: unknown) {
-      const message = (() => {
-        if (!err || typeof err !== "object") return "Unable to sign in.";
-        const anyErr = err as {
-          errors?: { longMessage?: unknown; message?: unknown }[];
-          message?: unknown;
-        };
-        const first = Array.isArray(anyErr.errors)
-          ? anyErr.errors[0]
-          : undefined;
-        const longMessage =
-          first && typeof first.longMessage === "string"
-            ? first.longMessage
-            : null;
-        const shortMessage =
-          first && typeof first.message === "string" ? first.message : null;
-        const fallback =
-          typeof anyErr.message === "string"
-            ? anyErr.message
-            : "Unable to sign in.";
-        return longMessage ?? shortMessage ?? fallback;
-      })();
-      setFormError(message);
-      setIsSubmitting(false);
-    }
-  };
-
-  const submitPhoneCode = async (values: PhoneCodeValues) => {
-    if (!isLoaded) return;
-    setFormError(null);
-    setIsSubmitting(true);
-    try {
-      const code = values.code.trim();
-      if (!code) {
-        setFormError("Enter the code.");
+      } catch (err: unknown) {
+        setFormError(err instanceof Error ? err.message : "Invalid code.");
         setIsSubmitting(false);
-        return;
       }
+    },
+    [afterSignInUrl, isLoaded, setActive, signIn],
+  );
 
-      const result = await (
-        signIn as unknown as {
-          attemptFirstFactor: (args: {
-            strategy: "phone_code";
-            code: string;
-          }) => Promise<unknown>;
-          createdSessionId?: unknown;
-        }
-      ).attemptFirstFactor({
-        strategy: "phone_code",
-        code,
-      });
+  // Auto-verify OTP once the 6th digit is entered.
+  const phoneCodeValue = phoneCodeForm.watch("code");
+  React.useEffect(() => {
+    if (authStep !== "phone_code") return;
+    const code =
+      typeof phoneCodeValue === "string" ? phoneCodeValue.trim() : "";
+    if (code.length !== 6) return;
+    if (isSubmitting) return;
+    void submitPhoneCode({ code });
+  }, [authStep, isSubmitting, phoneCodeValue, submitPhoneCode]);
 
-      const createdSessionId =
-        (result as { createdSessionId?: unknown }).createdSessionId ??
-        (signIn as unknown as { createdSessionId?: unknown })
-          .createdSessionId ??
-        null;
+  const currentMethodLabel =
+    authStep === "email" || authStep === "email_sent"
+      ? "Email"
+      : authStep === "phone" || authStep === "phone_code"
+        ? "Phone"
+        : null;
 
-      if (typeof createdSessionId === "string" && createdSessionId.trim()) {
-        await setActive({ session: createdSessionId });
-        window.location.assign(afterSignInUrl);
-        return;
-      }
-
-      const status =
-        typeof (result as { status?: unknown }).status === "string"
-          ? String((result as { status?: unknown }).status)
-          : "";
-      setFormError(
-        status
-          ? `Could not sign in (status: ${status}).`
-          : "Could not sign in with that code.",
-      );
-      setIsSubmitting(false);
-    } catch (err: unknown) {
-      setFormError(err instanceof Error ? err.message : "Invalid code.");
-      setIsSubmitting(false);
-    }
+  const goBackToChoose = () => {
+    setFormError(null);
+    setIsSubmitting(false);
+    setAuthStep("choose");
+    phoneStartForm.reset();
+    phoneCodeForm.reset();
+    setPhoneInputText("");
+    setPhoneNumberValue("");
   };
+
+  const stepMotion = {
+    initial: { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -8 },
+    transition: { duration: 0.18 },
+  } as const;
 
   return (
     <div className="flex min-h-[calc(100vh-64px)] items-center justify-center px-4 py-10">
@@ -649,7 +746,9 @@ export default function SignInClient(props: {
                 {continueLabel}
               </CardTitle>
               <CardDescription className="truncate">
-                Sign in to continue.
+                {currentMethodLabel
+                  ? `${currentMethodLabel} sign-in`
+                  : "Sign in to continue."}
               </CardDescription>
             </div>
           </div>
@@ -668,221 +767,323 @@ export default function SignInClient(props: {
             </div>
           ) : (
             <div className="space-y-4">
-              {isPhoneOtpEnabled ? (
-                <div className="grid grid-cols-2 gap-2">
+              {authStep !== "choose" ? (
+                <div className="flex items-center justify-center">
                   <Button
                     type="button"
-                    variant={authMethod === "password" ? "default" : "outline"}
-                    onClick={() => {
-                      setFormError(null);
-                      setAuthMethod("password");
-                      setPhoneStep("enter");
-                      phoneStartForm.reset();
-                      phoneCodeForm.reset();
-                    }}
+                    variant="ghost"
+                    onClick={goBackToChoose}
                   >
-                    Email
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={authMethod === "phone" ? "default" : "outline"}
-                    onClick={() => {
-                      setFormError(null);
-                      setAuthMethod("phone");
-                      setPhoneStep("enter");
-                      phoneCodeForm.reset();
-                    }}
-                  >
-                    Phone
+                    ← Choose a different login method
                   </Button>
                 </div>
               ) : null}
 
-              {oauthProviders.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {oauthProviders.map((p) => (
+              <AnimatePresence mode="popLayout" initial={false}>
+                {authStep === "choose" ? (
+                  <motion.div
+                    key="choose"
+                    {...stepMotion}
+                    className="space-y-4"
+                  >
+                    {oauthProviders.length > 0 ? (
+                      <div className="space-y-3">
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                          {oauthProviders.map((p) => (
+                            <Button
+                              key={p.strategy}
+                              type="button"
+                              variant="outline"
+                              className="shrink-0"
+                              onClick={() => void handleOauth(p.strategy)}
+                            >
+                              {p.iconUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={p.iconUrl}
+                                  alt=""
+                                  aria-hidden="true"
+                                  className="mr-2 h-4 w-4"
+                                />
+                              ) : null}
+                              {p.label}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="flex items-center gap-3 py-1">
+                      <div className="bg-border h-px flex-1" />
+                      <div className="text-muted-foreground text-xs">or</div>
+                      <div className="bg-border h-px flex-1" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
                       <Button
-                        key={p.strategy}
                         type="button"
                         variant="outline"
-                        className="shrink-0"
-                        onClick={() => void handleOauth(p.strategy)}
+                        onClick={() => {
+                          setFormError(null);
+                          setAuthStep("email");
+                        }}
                       >
-                        {p.iconUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={p.iconUrl}
-                            alt=""
-                            aria-hidden="true"
-                            className="mr-2 h-4 w-4"
-                          />
-                        ) : null}
-                        {p.label}
+                        Email
                       </Button>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-3 py-1">
-                    <div className="bg-border h-px flex-1" />
-                    <div className="text-muted-foreground text-xs">or</div>
-                    <div className="bg-border h-px flex-1" />
-                  </div>
-                </div>
-              ) : null}
-
-              {authMethod === "password" ? (
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(handleSubmit)}
-                    className="space-y-4"
-                  >
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input
-                              autoComplete="email"
-                              inputMode="email"
-                              placeholder="you@company.com"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="password"
-                              autoComplete="current-password"
-                              placeholder="••••••••"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={!isPhoneOtpEnabled}
+                        onClick={() => {
+                          setFormError(null);
+                          setAuthStep("phone");
+                          phoneCodeForm.reset();
+                        }}
+                      >
+                        Phone
+                      </Button>
+                    </div>
 
                     {formError ? (
                       <div className="text-sm text-red-600">{formError}</div>
                     ) : null}
+                  </motion.div>
+                ) : null}
 
-                    <Button
-                      type="submit"
-                      className={cn("w-full", isSubmitting ? "opacity-80" : "")}
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? "Signing in…" : "Sign in"}
-                    </Button>
-                  </form>
-                </Form>
-              ) : phoneStep === "enter" ? (
-                <Form {...phoneStartForm}>
-                  <form
-                    onSubmit={phoneStartForm.handleSubmit(startPhoneOtp)}
+                {authStep === "email" ? (
+                  <motion.div key="email" {...stepMotion} className="space-y-4">
+                    <Form {...emailForm}>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          void startEmailMagicLink();
+                        }}
+                        className="space-y-4"
+                      >
+                        <FormField
+                          control={emailForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input
+                                  autoComplete="email"
+                                  inputMode="email"
+                                  placeholder="you@company.com"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {formError ? (
+                          <div className="text-sm text-red-600">
+                            {formError}
+                          </div>
+                        ) : null}
+
+                        <Button
+                          type="submit"
+                          className={cn(
+                            "w-full",
+                            isSubmitting ? "opacity-80" : "",
+                          )}
+                          disabled={isSubmitting || !isEmailReady}
+                        >
+                          {isSubmitting ? "Sending link…" : "Send magic link"}
+                        </Button>
+                      </form>
+                    </Form>
+                  </motion.div>
+                ) : null}
+
+                {authStep === "email_sent" ? (
+                  <motion.div
+                    key="email_sent"
+                    {...stepMotion}
                     className="space-y-4"
                   >
-                    <FormField
-                      control={phoneStartForm.control}
-                      name="phoneNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone number</FormLabel>
-                          <FormControl>
-                            <Input
-                              autoComplete="tel"
-                              inputMode="tel"
-                              placeholder="+1 555 555 5555"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
+                    <div className="text-sm">
+                      Check your email for a sign-in link. You can close this
+                      tab after you click it.
+                    </div>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      variant="outline"
+                      disabled={isSubmitting}
+                      onClick={() => void startEmailMagicLink()}
+                    >
+                      Resend link
+                    </Button>
                     {formError ? (
                       <div className="text-sm text-red-600">{formError}</div>
                     ) : null}
+                  </motion.div>
+                ) : null}
 
-                    <Button
-                      type="submit"
-                      className={cn("w-full", isSubmitting ? "opacity-80" : "")}
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? "Sending code…" : "Send code"}
-                    </Button>
-                  </form>
-                </Form>
-              ) : (
-                <Form {...phoneCodeForm}>
-                  <form
-                    onSubmit={phoneCodeForm.handleSubmit(submitPhoneCode)}
+                {authStep === "phone" ? (
+                  <motion.div key="phone" {...stepMotion} className="space-y-4">
+                    <Form {...phoneStartForm}>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          void startPhoneOtp({
+                            phoneNumber:
+                              phoneInputText.trim() ||
+                              phoneStartForm.getValues("phoneNumber").trim(),
+                          });
+                        }}
+                        className="space-y-4"
+                      >
+                        <FormField
+                          control={phoneStartForm.control}
+                          name="phoneNumber"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Phone number</FormLabel>
+                              <div
+                                onChangeCapture={(event) => {
+                                  if (
+                                    !(event.target instanceof HTMLInputElement)
+                                  ) {
+                                    return;
+                                  }
+                                  const next = event.target.value;
+                                  setPhoneInputText(next);
+                                  if (!field.value) {
+                                    field.onChange(next);
+                                  }
+                                }}
+                              >
+                                <FormControl>
+                                  <PhoneInput
+                                    autoComplete="tel"
+                                    placeholder="+1 555 555 5555"
+                                    defaultCountry="US"
+                                    name={field.name}
+                                    value={field.value}
+                                    onChange={(value) => field.onChange(value)}
+                                    onBlur={field.onBlur}
+                                    ref={field.ref}
+                                  />
+                                </FormControl>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {formError ? (
+                          <div className="text-sm text-red-600">
+                            {formError}
+                          </div>
+                        ) : null}
+
+                        <Button
+                          type="submit"
+                          className={cn(
+                            "w-full",
+                            isSubmitting ? "opacity-80" : "",
+                          )}
+                          disabled={isSubmitting || !isPhoneNumberReady}
+                        >
+                          {isSubmitting ? "Sending code…" : "Send code"}
+                        </Button>
+                      </form>
+                    </Form>
+                  </motion.div>
+                ) : null}
+
+                {authStep === "phone_code" ? (
+                  <motion.div
+                    key="phone_code"
+                    {...stepMotion}
                     className="space-y-4"
                   >
-                    <div className="text-muted-foreground text-sm">
+                    <div className="text-muted-foreground flex items-center justify-center text-sm">
                       Enter the code sent to{" "}
                       <span className="font-medium">{phoneNumberValue}</span>.
                     </div>
 
-                    <FormField
-                      control={phoneCodeForm.control}
-                      name="code"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Code</FormLabel>
-                          <FormControl>
-                            <Input
-                              inputMode="numeric"
-                              placeholder="123456"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <Form {...phoneCodeForm}>
+                      <form
+                        onSubmit={phoneCodeForm.handleSubmit(submitPhoneCode)}
+                        className="space-y-4"
+                      >
+                        <FormField
+                          control={phoneCodeForm.control}
+                          name="code"
+                          render={({ field }) => (
+                            <FormItem className="TEST flex w-full flex-col items-center justify-center">
+                              <FormLabel>Code</FormLabel>
+                              <FormControl>
+                                <InputOTP
+                                  maxLength={6}
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  containerClassName="justify-center"
+                                >
+                                  <InputOTPGroup>
+                                    <InputOTPSlot
+                                      index={0}
+                                      className="h-12 w-12 text-lg"
+                                    />
+                                    <InputOTPSlot
+                                      index={1}
+                                      className="h-12 w-12 text-lg"
+                                    />
+                                    <InputOTPSlot
+                                      index={2}
+                                      className="h-12 w-12 text-lg"
+                                    />
+                                    <InputOTPSeparator />
+                                    <InputOTPSlot
+                                      index={3}
+                                      className="h-12 w-12 text-lg"
+                                    />
+                                    <InputOTPSlot
+                                      index={4}
+                                      className="h-12 w-12 text-lg"
+                                    />
+                                    <InputOTPSlot
+                                      index={5}
+                                      className="h-12 w-12 text-lg"
+                                    />
+                                  </InputOTPGroup>
+                                </InputOTP>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                    {formError ? (
-                      <div className="text-sm text-red-600">{formError}</div>
-                    ) : null}
+                        {formError ? (
+                          <div className="text-sm text-red-600">
+                            {formError}
+                          </div>
+                        ) : null}
 
-                    <Button
-                      type="submit"
-                      className={cn("w-full", isSubmitting ? "opacity-80" : "")}
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? "Verifying…" : "Verify code"}
-                    </Button>
+                        <Button
+                          type="submit"
+                          className={cn(
+                            "w-full",
+                            isSubmitting ? "opacity-80" : "",
+                          )}
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? "Verifying…" : "Verify"}
+                        </Button>
+                      </form>
+                    </Form>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => {
-                        setFormError(null);
-                        setPhoneStep("enter");
-                        phoneCodeForm.reset();
-                      }}
-                    >
-                      Back
-                    </Button>
-                  </form>
-                </Form>
-              )}
-
-              <div className="text-muted-foreground text-center text-xs">
+              <div className="text-muted-foreground text-center text-sm">
                 Need a different sign-in method?{" "}
                 <Link
                   className="underline"
