@@ -11,7 +11,7 @@ const useOrganizationId = (): Id<"organizations"> | null => {
   return raw ? (raw as Id<"organizations">) : null;
 };
 
-export const useMenus = () => {
+export const useMenus = (): { data: Doc<"menus">[]; isLoading: boolean } => {
   const organizationId = useOrganizationId();
   const result = useQuery(
     api.core.menus.queries.listMenus,
