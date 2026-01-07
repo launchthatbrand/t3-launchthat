@@ -120,9 +120,6 @@ const CRM_PLUGIN_ENABLED_KEY = "plugin_crm_enabled";
 const CRM_PRODUCT_TAG_IDS_META_KEY = "crm.marketingTagIdsJson";
 const CRM_PRODUCT_TAG_SLUGS_META_KEY = "crm.tagSlugsJson";
 
-const parseBoolean = (value: unknown): boolean =>
-  value === true || value === "true" || value === 1 || value === "1";
-
 const parseJsonStringArray = (value: unknown): string[] => {
   if (typeof value !== "string") return [];
   try {
@@ -186,15 +183,15 @@ const parsePurchasedProductIdsFromOrderMeta = (meta: unknown): string[] => {
         : []
       : [];
 
-  return Array.from(
-    new Set(
-      rows
-        .map((row: any) =>
-          typeof row?.productId === "string" ? row.productId : "",
-        )
-        .filter(Boolean),
-    ),
-  );
+  const ids: string[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+    const productId = (row as Record<string, unknown>).productId;
+    if (typeof productId === "string" && productId.trim()) {
+      ids.push(productId);
+    }
+  }
+  return Array.from(new Set(ids));
 };
 
 const syncCrmContactAndTagsBestEffort = async (
@@ -236,7 +233,7 @@ const syncCrmContactAndTagsBestEffort = async (
     },
   )) as string | null;
 
-  const contactName = args.name?.trim() || args.email;
+  const contactName = (args.name?.trim() ?? "") || args.email;
 
   if (!contactId) {
     const baseSlug = slugify(args.email) || `contact-${Date.now()}`;
@@ -311,7 +308,7 @@ const syncCrmContactAndTagsBestEffort = async (
     organizationId: crmOrgId,
   })) as { _id?: unknown; slug?: unknown; name?: unknown }[];
   const slugToId: Record<string, string> = {};
-  for (const t of tags ?? []) {
+  for (const t of tags) {
     const slug = typeof t.slug === "string" ? t.slug.trim().toLowerCase() : "";
     const id = typeof t._id === "string" ? t._id : "";
     if (slug && id) slugToId[slug] = id;
@@ -680,6 +677,11 @@ export const claimOrderAfterAuth = mutation({
   args: {
     organizationId: v.string(),
     orderId: v.string(),
+    // Optional: allow an authenticated user to claim an order even if their verified
+    // email/phone doesn't match the checkout info, as long as they present the
+    // checkout token and explicitly confirm.
+    checkoutToken: v.optional(v.string()),
+    force: v.optional(v.boolean()),
   },
   returns: v.object({
     ok: v.boolean(),
@@ -739,7 +741,7 @@ export const claimOrderAfterAuth = mutation({
       // and the current auth identity matches that same Clerk user, treat as the
       // same user (avoid false "claimed by another user" on first login).
       if (typeof (identity as any)?.subject === "string") {
-        const assigned = await ctx.db.get(assignedUserId as any);
+        const assigned = await ctx.db.get(assignedUserId as Id<"users">);
         const assignedClerkId =
           assigned && typeof (assigned as any)?.clerkId === "string"
             ? String((assigned as any).clerkId).trim()
@@ -796,7 +798,18 @@ export const claimOrderAfterAuth = mutation({
       phoneDigits(orderPhone) === phoneDigits(identityPhone);
 
     if (!emailMatches && !phoneMatches) {
-      throw new Error("Access denied: verification does not match this order.");
+      const wantsForce = args.force === true;
+      const token = asString(args.checkoutToken).trim();
+      const tokenInOrder = readMetaValue(meta, ORDER_META_KEYS.checkoutToken);
+      const tokenMatches =
+        wantsForce &&
+        token &&
+        typeof tokenInOrder === "string" &&
+        tokenInOrder.trim() === token;
+
+      if (!tokenMatches) {
+        throw new Error("Access denied: verification does not match this order.");
+      }
     }
 
     // Attach order → user (idempotent)

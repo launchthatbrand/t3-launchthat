@@ -24,9 +24,15 @@ export default async function Page({
   const returnToRaw = resolvedSearchParams?.return_to;
   const tenantRaw = resolvedSearchParams?.tenant;
   const uiRaw = resolvedSearchParams?.ui;
+  const methodRaw = resolvedSearchParams?.method;
+  const phoneRaw = resolvedSearchParams?.phone;
+  const emailRaw = resolvedSearchParams?.email;
   const returnTo = Array.isArray(returnToRaw) ? returnToRaw[0] : returnToRaw;
   const tenantSlug = Array.isArray(tenantRaw) ? tenantRaw[0] : tenantRaw;
   const ui = Array.isArray(uiRaw) ? uiRaw[0] : uiRaw;
+  const method = Array.isArray(methodRaw) ? methodRaw[0] : methodRaw;
+  const phone = Array.isArray(phoneRaw) ? phoneRaw[0] : phoneRaw;
+  const email = Array.isArray(emailRaw) ? emailRaw[0] : emailRaw;
 
   if (!onAuthHost) {
     const proto = headerList.get("x-forwarded-proto") ?? "https";
@@ -44,21 +50,24 @@ export default async function Page({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
   const apiAny = (await import("@/convex/_generated/api")).api as any;
 
-  const org =
+  const orgResult: unknown =
     typeof tenantSlug === "string" && tenantSlug.trim().length > 0
-      ? await fetchQuery(apiAny.core.organizations.queries.getBySlug, {
+      ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        await fetchQuery(apiAny.core.organizations.queries.getBySlug, {
           slug: tenantSlug.trim(),
         })
       : null;
 
-  const tenantName =
-    org && typeof org === "object" && typeof (org as any).name === "string"
-      ? ((org as any).name as string)
+  const org =
+    orgResult && typeof orgResult === "object"
+      ? (orgResult as { name?: unknown; logo?: unknown })
       : null;
-  const tenantLogo =
-    org && typeof org === "object" && typeof (org as any).logo === "string"
-      ? ((org as any).logo as string)
-      : null;
+
+  const tenantName = typeof org?.name === "string" ? org.name : null;
+  const tenantLogo = typeof org?.logo === "string" ? org.logo : null;
+
+  const prefillMethod: "phone" | "email" | null =
+    method === "phone" || method === "email" ? method : null;
 
   return (
     <SignInClient
@@ -67,6 +76,9 @@ export default async function Page({
       tenantName={tenantName}
       tenantLogo={tenantLogo}
       ui={ui === "clerk" ? "clerk" : "custom"}
+      prefillMethod={prefillMethod}
+      prefillPhone={typeof phone === "string" ? phone : null}
+      prefillEmail={typeof email === "string" ? email : null}
     />
   );
 }

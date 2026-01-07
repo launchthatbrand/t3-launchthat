@@ -12,10 +12,127 @@ import React, { useMemo, useRef } from "react";
 import { useAuth, useClerk, useSignIn, useSignUp } from "@clerk/nextjs";
 
 import { CheckoutClient } from "launchthat-plugin-ecommerce";
+import { useHostContext } from "~/context/HostContext";
+import { useTenant } from "~/context/TenantContext";
 
 type Props = Omit<React.ComponentProps<typeof CheckoutClient>, "clerk">;
 
 export function CheckoutClientWithClerk(props: Props) {
+  // IMPORTANT:
+  // Tenant/custom domains intentionally do NOT mount <ClerkProvider />, so we must
+  // never call Clerk hooks on those hosts (it will crash).
+  //
+  // We split into two components to satisfy the Rules of Hooks.
+  // `CheckoutClientWithClerk` is just a host-aware wrapper.
+  const { isAuthHost } = useHostContext();
+
+  return isAuthHost ? (
+    <CheckoutClientAuthHost {...props} />
+  ) : (
+    <CheckoutClientTenantHost {...props} />
+  );
+}
+
+function CheckoutClientTenantHost(props: Props) {
+  const { authHost } = useHostContext();
+  const tenant = useTenant();
+
+  const CONVEX_TOKEN_STORAGE_KEY = "convex_token";
+  const TOKEN_UPDATED_EVENT = "convex-token-updated";
+
+  const tenantSlug =
+    typeof (tenant as { slug?: unknown } | null)?.slug === "string"
+      ? (tenant as { slug: string }).slug
+      : "";
+
+  const [isSignedIn, setIsSignedIn] = React.useState(() => {
+    try {
+      return Boolean(localStorage.getItem(CONVEX_TOKEN_STORAGE_KEY));
+    } catch {
+      return false;
+    }
+  });
+
+  React.useEffect(() => {
+    const read = () => {
+      try {
+        setIsSignedIn(Boolean(localStorage.getItem(CONVEX_TOKEN_STORAGE_KEY)));
+      } catch {
+        setIsSignedIn(false);
+      }
+    };
+
+    const onUpdated = () => read();
+    window.addEventListener(TOKEN_UPDATED_EVENT, onUpdated as EventListener);
+    window.addEventListener("storage", onUpdated);
+    return () => {
+      window.removeEventListener(TOKEN_UPDATED_EVENT, onUpdated as EventListener);
+      window.removeEventListener("storage", onUpdated);
+    };
+  }, []);
+
+  const redirectToAuthSignIn = React.useCallback((opts?: {
+    method?: "phone" | "email";
+    phoneNumber?: string;
+    emailAddress?: string;
+  }) => {
+    const returnTo = window.location.href;
+    const params = new URLSearchParams();
+    params.set("return_to", returnTo);
+    if (tenantSlug) params.set("tenant", tenantSlug);
+    if (opts?.method) params.set("method", opts.method);
+    if (opts?.phoneNumber) params.set("phone", opts.phoneNumber);
+    if (opts?.emailAddress) params.set("email", opts.emailAddress);
+    window.location.assign(
+      `${window.location.protocol}//${authHost}/sign-in?${params.toString()}`,
+    );
+  }, [authHost, tenantSlug]);
+
+  const clerkAdapter = React.useMemo(() => {
+    return {
+      isLoaded: true,
+      isSignedIn,
+      startEmailLinkSignIn: async () => {
+        // Redirect to auth host to complete email sign-in (magic link / OAuth / etc).
+        // Returning a never-resolving promise avoids tenant UI flipping panels before navigation.
+        redirectToAuthSignIn({ method: "email" });
+        await new Promise<never>(() => {
+          // intentionally never resolves (navigation should unload the page)
+          void 0;
+        });
+      },
+      startPhoneOtpSignIn: async (args: {
+        phoneNumber: string;
+        emailAddress?: string;
+      }) => {
+        redirectToAuthSignIn({
+          method: "phone",
+          phoneNumber: args.phoneNumber,
+          emailAddress: args.emailAddress,
+        });
+        await new Promise<never>(() => {
+          // intentionally never resolves (navigation should unload the page)
+          void 0;
+        });
+      },
+      attemptPhoneOtpSignIn: async (args: {
+        code: string;
+        emailAddress?: string;
+      }) => {
+        // If tenant UI reaches verify step, still bounce to auth host (no inline OTP on tenant).
+        redirectToAuthSignIn({ method: "phone", emailAddress: args.emailAddress });
+        await new Promise<never>(() => {
+          // intentionally never resolves (navigation should unload the page)
+          void 0;
+        });
+      },
+    };
+  }, [isSignedIn, redirectToAuthSignIn]);
+
+  return <CheckoutClient {...props} clerk={clerkAdapter} />;
+}
+
+function CheckoutClientAuthHost(props: Props) {
   const clerk = useClerk();
   const { isSignedIn } = useAuth();
   const { isLoaded: isSignInLoaded, signIn } = useSignIn();

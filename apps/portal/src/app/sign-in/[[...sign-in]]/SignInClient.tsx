@@ -234,6 +234,9 @@ export default function SignInClient(props: {
   tenantName: string | null;
   tenantLogo: string | null;
   ui?: "custom" | "clerk";
+  prefillMethod?: "phone" | "email" | null;
+  prefillPhone?: string | null;
+  prefillEmail?: string | null;
 }) {
   const { isLoaded, signIn, setActive } = useSignIn();
   const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
@@ -276,6 +279,141 @@ export default function SignInClient(props: {
     if (props.tenantSlug) params.set("tenant", props.tenantSlug);
     return `${window.location.origin}/api/auth/callback?${params.toString()}`;
   }, [props.returnTo, props.tenantSlug]);
+
+  const startPhoneOtp = React.useCallback(
+    async (values: PhoneStartValues) => {
+      if (!isLoaded) return;
+      setFormError(null);
+      setIsSubmitting(true);
+      try {
+        const phoneNumber = values.phoneNumber.trim();
+        if (!phoneNumber) {
+          setFormError("Enter a valid phone number.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        await (
+          signIn as unknown as {
+            create: (args: { identifier: string }) => Promise<unknown>;
+          }
+        ).create({ identifier: phoneNumber });
+
+        const firstFactors: unknown[] = Array.isArray(
+          (signIn as unknown as { supportedFirstFactors?: unknown })
+            .supportedFirstFactors,
+        )
+          ? ((signIn as unknown as { supportedFirstFactors?: unknown })
+              .supportedFirstFactors as unknown[])
+          : [];
+
+        const phoneCodeFactor = firstFactors.find((f) => {
+          if (!f || typeof f !== "object") return false;
+          const obj = f as { strategy?: unknown; phoneNumberId?: unknown };
+          const strategy = obj.strategy;
+          const phoneNumberId = obj.phoneNumberId;
+          return (
+            (strategy === "phone_code" || strategy === "phoneCode") &&
+            typeof phoneNumberId === "string" &&
+            phoneNumberId.trim().length > 0
+          );
+        });
+
+        const phoneNumberId =
+          phoneCodeFactor &&
+          typeof (phoneCodeFactor as { phoneNumberId?: unknown })
+            .phoneNumberId === "string"
+            ? String(
+                (phoneCodeFactor as { phoneNumberId?: unknown }).phoneNumberId,
+              )
+            : "";
+
+        if (!phoneNumberId.trim()) {
+          setFormError(
+            "Phone sign-in isn't available for this account. Please use email instead.",
+          );
+          setIsSubmitting(false);
+          return;
+        }
+
+        await (
+          signIn as unknown as {
+            prepareFirstFactor: (args: {
+              strategy: "phone_code";
+              phoneNumberId: string;
+            }) => Promise<unknown>;
+          }
+        ).prepareFirstFactor({
+          strategy: "phone_code",
+          phoneNumberId: phoneNumberId.trim(),
+        });
+
+        setPhoneNumberValue(phoneNumber);
+        setPhoneStep("code");
+        setIsSubmitting(false);
+      } catch (err: unknown) {
+        setFormError(
+          err instanceof Error ? err.message : "Unable to start phone sign-in.",
+        );
+        setIsSubmitting(false);
+      }
+    },
+    [isLoaded, signIn],
+  );
+
+  // Prefill phone/email when arriving from checkout, and optionally auto-send the OTP.
+  React.useEffect(() => {
+    if (!isLoaded) return;
+    if (props.ui === "clerk") return;
+
+    const method = props.prefillMethod ?? null;
+    const phone =
+      typeof props.prefillPhone === "string" ? props.prefillPhone.trim() : "";
+    const email =
+      typeof props.prefillEmail === "string" ? props.prefillEmail.trim() : "";
+
+    if (method === "phone" && isPhoneOtpEnabled) {
+      setAuthMethod("phone");
+      setPhoneStep("enter");
+      setFormError(null);
+
+      if (phone) {
+        phoneStartForm.setValue("phoneNumber", phone, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+        // Auto-send code once on load if we have a phone number.
+        // Defer to next tick so RHF state settles before submit.
+        setTimeout(() => {
+          void phoneStartForm.handleSubmit(startPhoneOtp)();
+        }, 0);
+      }
+      return;
+    }
+
+    if (method === "email") {
+      // We don't currently support email magic-link in the custom UI; still prefill
+      // the identifier so the user can choose OAuth or password if available.
+      if (email) {
+        form.setValue("email", email, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+      }
+      setAuthMethod("password");
+      setPhoneStep("enter");
+    }
+  }, [
+    form,
+    isLoaded,
+    isPhoneOtpEnabled,
+    phoneStartForm,
+    startPhoneOtp,
+    props.prefillEmail,
+    props.prefillMethod,
+    props.prefillPhone,
+    props.ui,
+  ]);
 
   // If the user already has an active Clerk session on the auth host,
   // skip showing the sign-in UI and just mint the tenant session via our callback.
@@ -432,84 +570,6 @@ export default function SignInClient(props: {
         return longMessage ?? shortMessage ?? fallback;
       })();
       setFormError(message);
-      setIsSubmitting(false);
-    }
-  };
-
-  const startPhoneOtp = async (values: PhoneStartValues) => {
-    if (!isLoaded) return;
-    setFormError(null);
-    setIsSubmitting(true);
-    try {
-      const phoneNumber = values.phoneNumber.trim();
-      if (!phoneNumber) {
-        setFormError("Enter a valid phone number.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      await (
-        signIn as unknown as {
-          create: (args: { identifier: string }) => Promise<unknown>;
-        }
-      ).create({ identifier: phoneNumber });
-
-      const firstFactors: unknown[] = Array.isArray(
-        (signIn as unknown as { supportedFirstFactors?: unknown })
-          .supportedFirstFactors,
-      )
-        ? ((signIn as unknown as { supportedFirstFactors?: unknown })
-            .supportedFirstFactors as unknown[])
-        : [];
-
-      const phoneCodeFactor = firstFactors.find((f) => {
-        if (!f || typeof f !== "object") return false;
-        const obj = f as { strategy?: unknown; phoneNumberId?: unknown };
-        const strategy = obj.strategy;
-        const phoneNumberId = obj.phoneNumberId;
-        return (
-          (strategy === "phone_code" || strategy === "phoneCode") &&
-          typeof phoneNumberId === "string" &&
-          phoneNumberId.trim().length > 0
-        );
-      });
-
-      const phoneNumberId =
-        phoneCodeFactor &&
-        typeof (phoneCodeFactor as { phoneNumberId?: unknown })
-          .phoneNumberId === "string"
-          ? String(
-              (phoneCodeFactor as { phoneNumberId?: unknown }).phoneNumberId,
-            )
-          : "";
-
-      if (!phoneNumberId.trim()) {
-        setFormError(
-          "Phone sign-in isn't available for this account. Please use email instead.",
-        );
-        setIsSubmitting(false);
-        return;
-      }
-
-      await (
-        signIn as unknown as {
-          prepareFirstFactor: (args: {
-            strategy: "phone_code";
-            phoneNumberId: string;
-          }) => Promise<unknown>;
-        }
-      ).prepareFirstFactor({
-        strategy: "phone_code",
-        phoneNumberId: phoneNumberId.trim(),
-      });
-
-      setPhoneNumberValue(phoneNumber);
-      setPhoneStep("code");
-      setIsSubmitting(false);
-    } catch (err: unknown) {
-      setFormError(
-        err instanceof Error ? err.message : "Unable to start phone sign-in.",
-      );
       setIsSubmitting(false);
     }
   };

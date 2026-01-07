@@ -33,7 +33,6 @@ import {
   FormMessage,
 } from "@acme/ui/form";
 import { Input } from "@acme/ui/input";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@acme/ui/input-otp";
 import { Label } from "@acme/ui/label";
 import { NoiseBackground } from "@acme/ui/noise-background";
 import { RadioGroup, RadioGroupItem } from "@acme/ui/radio-group";
@@ -58,7 +57,6 @@ import { CheckoutShell } from "./components/CheckoutShell";
 import { OrderSummary } from "./components/OrderSummary";
 import { ThankYouReceipt } from "./components/ThankYouReceipt";
 import { useCheckoutFormSync } from "./form/useCheckoutFormSync";
-import { usePhoneOtp } from "./otp/usePhoneOtp";
 import { safeJsonParse } from "./utils/json";
 import { getMetaValue } from "./utils/meta";
 import { formatMoney } from "./utils/money";
@@ -68,7 +66,6 @@ const apiAny = api as any;
 
 const DEFAULT_CHECKOUT_SLUG = "__default_checkout__";
 const DEFAULT_FUNNEL_SLUG = "__default_funnel__";
-const OTP_RESEND_COOLDOWN_MS = 30_000;
 
 const isLocalCheckoutHost = (): boolean => {
   if (typeof window === "undefined") return false;
@@ -176,15 +173,6 @@ export function CheckoutClient({
     | undefined;
 
   const [accountError, setAccountError] = useState<string | null>(null);
-  const [accessMethod, setAccessMethod] = useState<"none" | "email" | "phone">(
-    "none",
-  );
-  const [accessOtpCode, setAccessOtpCode] = useState("");
-  const [accessStatus, setAccessStatus] = useState<string | null>(null);
-  const [accessError, setAccessError] = useState<string | null>(null);
-  const [isSendingAccess, setIsSendingAccess] = useState(false);
-  const [isVerifyingAccess, setIsVerifyingAccess] = useState(false);
-  const [otpResendAvailableAtMs, setOtpResendAvailableAtMs] = useState(0);
   const [isPreparingAccount, setIsPreparingAccount] = useState(false);
   const [prepareAccountError, setPrepareAccountError] = useState<string | null>(
     null,
@@ -405,7 +393,12 @@ export function CheckoutClient({
 
   const claimOrderAfterAuth = useMutation(
     apiAny.plugins.commerce.checkout.mutations.claimOrderAfterAuth,
-  ) as (args: { organizationId: string; orderId: string }) => Promise<{
+  ) as (args: {
+    organizationId: string;
+    orderId: string;
+    checkoutToken?: string;
+    force?: boolean;
+  }) => Promise<{
     ok?: boolean;
     claimed?: boolean;
   }>;
@@ -415,10 +408,12 @@ export function CheckoutClient({
   const [hasClaimedOrder, setHasClaimedOrder] = useState(false);
   const [hasRedirectedAfterAuth, setHasRedirectedAfterAuth] = useState(false);
   const [hasAttemptedLinkEmail, setHasAttemptedLinkEmail] = useState(false);
-  const [accessPanel, setAccessPanel] = useState<
-    "choose" | "email" | "phone_send" | "phone_verify"
-  >("choose");
-
+  const [claimMismatch, setClaimMismatch] = useState<{
+    orderEmail: string;
+    accountEmail: string;
+  } | null>(null);
+  const [isForceClaiming, setIsForceClaiming] = useState(false);
+  const [forceClaimError, setForceClaimError] = useState<string | null>(null);
   const resolvedOrderMetaEntries = useMemo(() => {
     return Array.isArray((resolvedOrder as any)?.meta)
       ? ((resolvedOrder as any).meta as Array<{ key: string; value: unknown }>)
@@ -496,6 +491,7 @@ export function CheckoutClient({
     if (!clerk.isLoaded) return;
     if (hasClaimedOrder) return;
     if (!orderRequiresAccessVerification) return;
+    if (claimMismatch) return;
     if (typeof orderId !== "string" || !orderId.trim()) return;
     if (typeof organizationId !== "string" || !organizationId.trim()) return;
 
@@ -512,19 +508,39 @@ export function CheckoutClient({
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : "";
-        setClaimOrderError(
-          message || "Could not link your order. Please try again.",
-        );
+        if (message.includes("verification does not match this order")) {
+          const buyerEmailFromMeta = getMetaValue(
+            resolvedOrderMetaEntries,
+            "order.customerEmail",
+          );
+          const orderEmail =
+            (typeof buyerEmailFromMeta === "string" ? buyerEmailFromMeta : "").trim() ||
+            (typeof (resolvedOrder as any)?.email === "string"
+              ? String((resolvedOrder as any).email).trim()
+              : "");
+          const accountEmail =
+            me && typeof (me as any)?.email === "string"
+              ? String((me as any).email).trim()
+              : "";
+          setClaimMismatch({ orderEmail, accountEmail });
+          setClaimOrderError(null);
+          return;
+        }
+        setClaimOrderError(message || "Could not link your order. Please try again.");
       })
       .finally(() => setIsClaimingOrder(false));
   }, [
     claimOrderAfterAuth,
+    claimMismatch,
     clerk?.isLoaded,
     clerk?.isSignedIn,
     hasClaimedOrder,
+    me,
     orderId,
     orderRequiresAccessVerification,
     organizationId,
+    resolvedOrder,
+    resolvedOrderMetaEntries,
   ]);
 
   // After post-purchase auth completes (or if the order is already verified), automatically continue.
@@ -1253,10 +1269,44 @@ export function CheckoutClient({
       typeof buyerPhoneFromMeta === "string" ? buyerPhoneFromMeta : ""
     ).trim();
 
+    const forceClaimWithConfirmation = async () => {
+      if (!orderRequiresAccessVerification) return;
+      if (!checkoutTokenFromUrl) {
+        setForceClaimError("Missing checkout token. Please refresh the page.");
+        return;
+      }
+      if (typeof orderId !== "string" || !orderId.trim()) return;
+      if (typeof organizationId !== "string" || !organizationId.trim()) return;
+
+      setForceClaimError(null);
+      setIsForceClaiming(true);
+      try {
+        const res = await claimOrderAfterAuth({
+          organizationId,
+          orderId: orderId.trim(),
+          checkoutToken: checkoutTokenFromUrl,
+          force: true,
+        });
+        if (res?.ok) {
+          setHasClaimedOrder(true);
+          setClaimMismatch(null);
+        }
+      } catch (err: unknown) {
+        setForceClaimError(
+          err instanceof Error
+            ? err.message
+            : "Could not attach purchase to this account.",
+        );
+      } finally {
+        setIsForceClaiming(false);
+      }
+    };
+
     const attemptClaimAfterAuth = async () => {
       if (!orderRequiresAccessVerification) return;
       if (typeof orderId !== "string" || !orderId.trim()) return;
       if (typeof organizationId !== "string" || !organizationId.trim()) return;
+      if (claimMismatch) return;
 
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
       for (let i = 0; i < 3; i += 1) {
@@ -1269,7 +1319,19 @@ export function CheckoutClient({
             setHasClaimedOrder(true);
             return;
           }
-        } catch {
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "";
+          if (message.includes("verification does not match this order")) {
+            const accountEmail =
+              me && typeof (me as any)?.email === "string"
+                ? String((me as any).email).trim()
+                : "";
+            setClaimMismatch({
+              orderEmail: buyerEmail,
+              accountEmail,
+            });
+            return;
+          }
           // retry
         }
         await sleep(500);
@@ -1296,30 +1358,6 @@ export function CheckoutClient({
       }
       window.location.assign("/");
     };
-
-    const {
-      otpResendSecondsLeft,
-      handleSendPhoneCode,
-      handleVerifyPhoneCode,
-      bindOtpInputOnChange,
-    } = usePhoneOtp({
-      clerk,
-      buyerPhone,
-      buyerEmail: buyerEmail || undefined,
-      isSendingAccess,
-      isVerifyingAccess,
-      accessOtpCode,
-      otpResendCooldownMs: OTP_RESEND_COOLDOWN_MS,
-      otpResendAvailableAtMs,
-      setOtpResendAvailableAtMs,
-      setAccessStatus,
-      setAccessError,
-      setIsSendingAccess,
-      setIsVerifyingAccess,
-      setAccessPanel,
-      attemptClaimAfterAuth,
-      postVerifyRedirect,
-    });
 
     return (
       <CheckoutShell orgBrand={orgBrand} maxWidth="max-w-3xl">
@@ -1364,10 +1402,10 @@ export function CheckoutClient({
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">
-                    Login to your account
+                    Log in to access
                   </CardTitle>
                   <CardDescription>
-                    Verify to access your content. No password required.
+                    Use any configured provider (Google/Discord/Phone OTP, etc).
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -1381,323 +1419,26 @@ export function CheckoutClient({
                       {prepareAccountError}
                     </div>
                   ) : null}
-                  <AnimatePresence mode="wait">
-                    {accessPanel === "choose" ? (
-                      <motion.div
-                        key="choose"
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.18 }}
-                        className="space-y-3"
-                      >
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            disabled={
-                              isSendingAccess ||
-                              isVerifyingAccess ||
-                              isClaimingOrder ||
-                              hasClaimedOrder ||
-                              isPreparingAccount ||
-                              Boolean(prepareAccountError)
-                            }
-                            onClick={() => {
-                              setAccessError(null);
-                              setAccessStatus(null);
-                              setAccessMethod("email");
-                              setAccessPanel("email");
-                            }}
-                          >
-                            Continue with email
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            disabled={
-                              isSendingAccess ||
-                              isVerifyingAccess ||
-                              isClaimingOrder ||
-                              hasClaimedOrder ||
-                              isPreparingAccount ||
-                              Boolean(prepareAccountError)
-                            }
-                            onClick={() => {
-                              setAccessError(null);
-                              setAccessStatus(null);
-                              setAccessOtpCode("");
-                              setAccessMethod("phone");
-                              setAccessPanel("phone_send");
-                            }}
-                          >
-                            Continue with phone
-                          </Button>
-                        </div>
-                      </motion.div>
-                    ) : null}
 
-                    {accessPanel === "phone_send" ? (
-                      <motion.div
-                        key="phone_send"
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.18 }}
-                        className="space-y-3"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="text-muted-foreground text-xs">
-                            Step 2 of 3
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={isSendingAccess || isVerifyingAccess}
-                            onClick={() => {
-                              setAccessError(null);
-                              setAccessStatus(null);
-                              setAccessOtpCode("");
-                              setAccessPanel("choose");
-                            }}
-                          >
-                            Go back
-                          </Button>
-                        </div>
-                        <div className="text-sm">
-                          We’ll text a code to{" "}
-                          <span className="font-medium">
-                            {buyerPhone || "your phone"}
-                          </span>
-                          .
-                        </div>
-                        <div className="text-muted-foreground text-xs">
-                          Wrong number?{" "}
-                          <button
-                            type="button"
-                            className="text-foreground underline underline-offset-2"
-                            disabled={isSendingAccess || isVerifyingAccess}
-                            onClick={() => {
-                              setAccessError(null);
-                              setAccessStatus(null);
-                              setAccessOtpCode("");
-                              setAccessMethod("email");
-                              setAccessPanel("email");
-                            }}
-                          >
-                            Use email instead
-                          </button>
-                        </div>
-                        <Button
-                          type="button"
-                          disabled={
-                            isSendingAccess ||
-                            !clerk?.startPhoneOtpSignIn ||
-                            !buyerPhone
-                          }
-                          onClick={() => void handleSendPhoneCode()}
-                        >
-                          {isSendingAccess ? "Sending…" : "Send code"}
-                        </Button>
-                      </motion.div>
-                    ) : null}
-
-                    {accessPanel === "phone_verify" ? (
-                      <motion.div
-                        key="phone_verify"
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.18 }}
-                        className="space-y-3"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="text-muted-foreground text-xs">
-                            Step 3 of 3
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={isSendingAccess || isVerifyingAccess}
-                            onClick={() => {
-                              setAccessError(null);
-                              setAccessStatus(null);
-                              setAccessOtpCode("");
-                              setAccessPanel("phone_send");
-                            }}
-                          >
-                            Go back
-                          </Button>
-                        </div>
-                        <div className="text-sm">
-                          Enter the code we texted to{" "}
-                          <span className="font-medium">
-                            {buyerPhone || "your phone"}
-                          </span>
-                          .
-                        </div>
-                        <div className="space-y-2">
-                          <div className="text-sm font-medium">Code</div>
-                          <InputOTP
-                            value={accessOtpCode}
-                            onChange={bindOtpInputOnChange(setAccessOtpCode)}
-                            maxLength={6}
-                            inputMode="numeric"
-                            autoComplete="one-time-code"
-                            disabled={isVerifyingAccess}
-                            aria-label="One-time code"
-                          >
-                            <InputOTPGroup>
-                              <InputOTPSlot index={0} />
-                              <InputOTPSlot index={1} />
-                              <InputOTPSlot index={2} />
-                              <InputOTPSlot index={3} />
-                              <InputOTPSlot index={4} />
-                              <InputOTPSlot index={5} />
-                            </InputOTPGroup>
-                          </InputOTP>
-                        </div>
-                        <Button
-                          type="button"
-                          disabled={
-                            isVerifyingAccess ||
-                            !clerk?.attemptPhoneOtpSignIn ||
-                            accessOtpCode.trim().length < 6
-                          }
-                          onClick={() => void handleVerifyPhoneCode()}
-                        >
-                          {isVerifyingAccess ? "Verifying…" : "Verify code"}
-                        </Button>
-
-                        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                          <div className="text-muted-foreground text-xs">
-                            Didn’t get a code?
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={
-                              isSendingAccess ||
-                              isVerifyingAccess ||
-                              !clerk?.startPhoneOtpSignIn ||
-                              !buyerPhone ||
-                              otpResendSecondsLeft > 0
-                            }
-                            onClick={() => void handleSendPhoneCode()}
-                          >
-                            {otpResendSecondsLeft > 0
-                              ? `Resend in ${otpResendSecondsLeft}s`
-                              : "Resend code"}
-                          </Button>
-                        </div>
-
-                        <div className="text-muted-foreground text-xs">
-                          Wrong number?{" "}
-                          <button
-                            type="button"
-                            className="text-foreground underline underline-offset-2"
-                            disabled={isSendingAccess || isVerifyingAccess}
-                            onClick={() => {
-                              setAccessError(null);
-                              setAccessStatus(null);
-                              setAccessOtpCode("");
-                              setAccessMethod("email");
-                              setAccessPanel("email");
-                            }}
-                          >
-                            Use email instead
-                          </button>
-                        </div>
-                      </motion.div>
-                    ) : null}
-
-                    {accessPanel === "email" ? (
-                      <motion.div
-                        key="email"
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.18 }}
-                        className="space-y-3"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="text-muted-foreground text-xs">
-                            Step 2 of 3
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={isSendingAccess || isVerifyingAccess}
-                            onClick={() => {
-                              setAccessError(null);
-                              setAccessStatus(null);
-                              setAccessPanel("choose");
-                            }}
-                          >
-                            Go back
-                          </Button>
-                        </div>
-                        <div className="text-sm">
-                          We’ll email a sign-in link to{" "}
-                          <span className="font-medium">
-                            {buyerEmail || "your email"}
-                          </span>
-                          .
-                        </div>
-                        <Button
-                          type="button"
-                          disabled={
-                            isSendingAccess ||
-                            !clerk?.startEmailLinkSignIn ||
-                            !buyerEmail
-                          }
-                          onClick={() => {
-                            if (!buyerEmail || !clerk?.startEmailLinkSignIn)
-                              return;
-                            setAccessError(null);
-                            setAccessStatus(null);
-                            setIsSendingAccess(true);
-                            void clerk
-                              .startEmailLinkSignIn({
-                                emailAddress: buyerEmail,
-                                redirectUrl:
-                                  typeof window !== "undefined"
-                                    ? window.location.href
-                                    : "/",
-                              })
-                              .then(() => {
-                                setAccessStatus(
-                                  "Check your email for the sign-in link.",
-                                );
-                              })
-                              .catch(() => {
-                                setAccessError(
-                                  "Could not send the email link. Please try again.",
-                                );
-                              })
-                              .finally(() => setIsSendingAccess(false));
-                          }}
-                        >
-                          {isSendingAccess ? "Sending…" : "Send email link"}
-                        </Button>
-                      </motion.div>
-                    ) : null}
-                  </AnimatePresence>
-
-                  {accessStatus ? (
-                    <div className="text-muted-foreground text-sm">
-                      {accessStatus}
-                    </div>
-                  ) : null}
-                  {accessError ? (
-                    <div className="text-destructive text-sm">
-                      {accessError}
-                    </div>
-                  ) : null}
+                  <Button
+                    type="button"
+                    className="w-full"
+                    disabled={isPreparingAccount || Boolean(prepareAccountError)}
+                    onClick={() => {
+                      if (typeof window === "undefined") return;
+                      const redirectUrl =
+                        window.location.pathname +
+                        window.location.search +
+                        window.location.hash;
+                      window.location.assign(
+                        `/auth/sign-in?redirect_url=${encodeURIComponent(
+                          redirectUrl,
+                        )}`,
+                      );
+                    }}
+                  >
+                    Log in to access
+                  </Button>
                   {isClaimingOrder ? (
                     <div className="text-muted-foreground text-sm">
                       Linking your order…
@@ -1713,6 +1454,77 @@ export function CheckoutClient({
                       Access unlocked. You can continue browsing.
                     </div>
                   ) : null}
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {requiresAccessVerification && me !== null && !hasClaimedOrder ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Attach purchase</CardTitle>
+                  <CardDescription>
+                    {claimMismatch
+                      ? "You signed in with a different email than checkout."
+                      : "Finalizing access…"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {claimMismatch ? (
+                    <>
+                      <div className="text-sm">
+                        Checkout email:{" "}
+                        <span className="font-medium">
+                          {claimMismatch.orderEmail || "—"}
+                        </span>
+                        <br />
+                        Signed-in email:{" "}
+                        <span className="font-medium">
+                          {claimMismatch.accountEmail || "—"}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          disabled={isForceClaiming}
+                          onClick={() => void forceClaimWithConfirmation()}
+                        >
+                          {isForceClaiming
+                            ? "Attaching…"
+                            : "Attach to this account"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={isForceClaiming}
+                          onClick={() => {
+                            if (typeof window === "undefined") return;
+                            const redirectUrl =
+                              window.location.pathname +
+                              window.location.search +
+                              window.location.hash;
+                            window.location.assign(
+                              `/auth/sign-in?redirect_url=${encodeURIComponent(
+                                redirectUrl,
+                              )}`,
+                            );
+                          }}
+                        >
+                          Use a different account
+                        </Button>
+                      </div>
+
+                      {forceClaimError ? (
+                        <div className="text-destructive text-sm">
+                          {forceClaimError}
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="text-muted-foreground text-sm">
+                      If this doesn’t complete automatically, refresh the page.
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ) : null}
