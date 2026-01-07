@@ -46,7 +46,7 @@ import {
 
 import { Button } from "@acme/ui/button";
 import { CSS } from "@dnd-kit/utilities";
-import { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { Input } from "@acme/ui/input";
@@ -135,7 +135,7 @@ const SortableMenuCard = ({
 
 export default function MenuItemsPage() {
   const params = useParams<{ id: string }>();
-  const idParam = params?.id;
+  const idParam = params.id;
   const menuId =
     typeof idParam === "string" ? (idParam as Id<"menus">) : undefined;
   const menu = useMenu(menuId);

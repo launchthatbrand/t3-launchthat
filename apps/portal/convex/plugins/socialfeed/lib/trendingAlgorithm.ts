@@ -1,5 +1,6 @@
-import { Doc, Id } from "../../_generated/dataModel";
-import { MutationCtx, QueryCtx } from "../../_generated/server";
+import type { Doc, Id } from "../../_generated/dataModel";
+import type { MutationCtx} from "../../_generated/server";
+import { QueryCtx } from "../../_generated/server";
 
 // Constants for score calculation
 const HOUR_MS = 60 * 60 * 1000;

@@ -1,10 +1,11 @@
-import { type FunctionReference, anyApi } from "convex/server";
-import { type GenericId as Id } from "convex/values";
+import {  anyApi } from "convex/server";
+import type {FunctionReference} from "convex/server";
+import type {GenericId as Id} from "convex/values";
 
 export const api: PublicApiType = anyApi as unknown as PublicApiType;
 export const internal: InternalApiType = anyApi as unknown as InternalApiType;
 
-export type PublicApiType = {
+export interface PublicApiType {
   env: { get: FunctionReference<"query", "public", { name: string }, any> };
   tasks: {
     boards: {
@@ -81,7 +82,7 @@ export type PublicApiType = {
       reorderTasks: FunctionReference<
         "mutation",
         "public",
-        { tasks: Array<{ sortIndex: number; taskId: string }> },
+        { tasks: { sortIndex: number; taskId: string }[] },
         boolean
       >;
     };
@@ -128,13 +129,13 @@ export type PublicApiType = {
           "query",
           "public",
           Record<string, never>,
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"tags">;
             description?: string;
             name: string;
             slug: string;
-          }>
+          }[]
         >;
       };
     };
@@ -170,7 +171,7 @@ export type PublicApiType = {
           "public",
           {
             menuId: Id<"menus">;
-            updates: Array<{ itemId: Id<"menuItems">; order: number }>;
+            updates: { itemId: Id<"menuItems">; order: number }[];
           },
           any
         >;
@@ -200,7 +201,7 @@ export type PublicApiType = {
           "query",
           "public",
           Record<string, never>,
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"menus">;
             createdAt: number;
@@ -209,7 +210,7 @@ export type PublicApiType = {
             location: string;
             name: string;
             updatedAt?: number;
-          }>
+          }[]
         >;
         getMenu: FunctionReference<
           "query",
@@ -230,7 +231,7 @@ export type PublicApiType = {
           "query",
           "public",
           { menuId: Id<"menus"> },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"menuItems">;
             createdAt: number;
@@ -241,7 +242,7 @@ export type PublicApiType = {
             parentId?: Id<"menuItems"> | null;
             updatedAt?: number;
             url: string;
-          }>
+          }[]
         >;
         getMenuByLocation: FunctionReference<
           "query",
@@ -263,7 +264,7 @@ export type PublicApiType = {
           "public",
           { location: string },
           {
-            items: Array<{
+            items: {
               _creationTime: number;
               _id: Id<"menuItems">;
               createdAt: number;
@@ -274,7 +275,7 @@ export type PublicApiType = {
               parentId?: Id<"menuItems"> | null;
               updatedAt?: number;
               url: string;
-            }>;
+            }[];
             menu: {
               _creationTime: number;
               _id: Id<"menus">;
@@ -310,7 +311,7 @@ export type PublicApiType = {
         "query",
         "public",
         {
-          metaKeys: Array<string>;
+          metaKeys: string[];
           orgId?: Id<"organizations">;
           type?: "store" | "site";
         },
@@ -337,7 +338,7 @@ export type PublicApiType = {
         "mutation",
         "public",
         {
-          options: Array<{ metaKey: string; metaValue: any }>;
+          options: { metaKey: string; metaValue: any }[];
           orgId?: Id<"organizations">;
           type?: "store" | "site";
         },
@@ -387,25 +388,25 @@ export type PublicApiType = {
           "query",
           "public",
           Record<string, never>,
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"permissions">;
             action: string;
             category?: string;
             defaultLevel: "none" | "own" | "group" | "all";
-            dependencies?: Array<string>;
+            dependencies?: string[];
             description: string;
             isSystem: boolean;
             key: string;
             name: string;
             resource: string;
-          }>
+          }[]
         >;
         getRoles: FunctionReference<
           "query",
           "public",
           Record<string, never>,
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"roles">;
             customData?: any;
@@ -416,7 +417,7 @@ export type PublicApiType = {
             parentId?: Id<"roles">;
             priority: number;
             scope: "global" | "group" | "course" | "organization";
-          }>
+          }[]
         >;
         checkUserPermission: FunctionReference<
           "query",
@@ -447,8 +448,8 @@ export type PublicApiType = {
             postTypeSlug?: string;
             slug: string;
             status: "published" | "draft" | "archived";
-            tags?: Array<string>;
-            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
+            tags?: string[];
+            taxonomyTermIds?: Id<"taxonomyTerms">[];
             title: string;
           },
           any
@@ -479,8 +480,8 @@ export type PublicApiType = {
             postTypeSlug?: string;
             slug?: string;
             status?: "published" | "draft" | "archived";
-            tags?: Array<string>;
-            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
+            tags?: string[];
+            taxonomyTermIds?: Id<"taxonomyTerms">[];
             title?: string;
           },
           any
@@ -507,7 +508,7 @@ export type PublicApiType = {
           "mutation",
           "public",
           {
-            ids: Array<Id<"posts">>;
+            ids: Id<"posts">[];
             status: "published" | "draft" | "archived";
           },
           any
@@ -581,13 +582,13 @@ export type PublicApiType = {
           "query",
           "public",
           { key: string; organizationId?: Id<"organizations"> },
-          Array<{
+          {
             organizationId?: Id<"organizations">;
             postId: Id<"posts">;
             postTypeSlug: string;
             title?: string;
             value?: string | number | boolean | null;
-          }>
+          }[]
         >;
         listTemplates: FunctionReference<
           "query",
@@ -615,7 +616,7 @@ export type PublicApiType = {
             postId: string;
             postTypeSlug?: string;
           },
-          Array<{
+          {
             _creationTime: number;
             _id: string;
             createdAt: number;
@@ -623,7 +624,7 @@ export type PublicApiType = {
             postId: string;
             updatedAt?: number;
             value?: string | number | boolean | null;
-          }>
+          }[]
         >;
       };
     };
@@ -653,7 +654,7 @@ export type PublicApiType = {
           "query",
           "public",
           Record<string, never>,
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"categories">;
             createdAt?: number;
@@ -661,16 +662,16 @@ export type PublicApiType = {
             metadata?: Record<string, string | number | boolean>;
             name: string;
             parentId?: Id<"categories">;
-            postTypes?: Array<string>;
+            postTypes?: string[];
             slug: string;
             updatedAt?: number;
-          }>
+          }[]
         >;
         getProductCategories: FunctionReference<
           "query",
           "public",
           Record<string, never>,
-          Array<{ categoryId: Id<"categories">; count: number }>
+          { categoryId: Id<"categories">; count: number }[]
         >;
         getCategoryBySlug: FunctionReference<
           "query",
@@ -684,7 +685,7 @@ export type PublicApiType = {
             metadata?: Record<string, string | number | boolean>;
             name: string;
             parentId?: Id<"categories">;
-            postTypes?: Array<string>;
+            postTypes?: string[];
             slug: string;
             updatedAt?: number;
           } | null
@@ -701,7 +702,7 @@ export type PublicApiType = {
             metadata?: Record<string, string | number | boolean>;
             name: string;
             parentId?: Id<"categories">;
-            postTypes?: Array<string>;
+            postTypes?: string[];
             slug: string;
             updatedAt?: number;
           } | null
@@ -710,7 +711,7 @@ export type PublicApiType = {
           "query",
           "public",
           { parentId?: Id<"categories"> },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"categories">;
             createdAt?: number;
@@ -718,16 +719,16 @@ export type PublicApiType = {
             metadata?: Record<string, string | number | boolean>;
             name: string;
             parentId?: Id<"categories">;
-            postTypes?: Array<string>;
+            postTypes?: string[];
             slug: string;
             updatedAt?: number;
-          }>
+          }[]
         >;
         listCategoriesByPostType: FunctionReference<
           "query",
           "public",
           { postType: string },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"categories">;
             createdAt?: number;
@@ -735,10 +736,10 @@ export type PublicApiType = {
             metadata?: Record<string, string | number | boolean>;
             name: string;
             parentId?: Id<"categories">;
-            postTypes?: Array<string>;
+            postTypes?: string[];
             slug: string;
             updatedAt?: number;
-          }>
+          }[]
         >;
       };
     };
@@ -761,7 +762,7 @@ export type PublicApiType = {
           {
             alt?: string;
             caption?: string;
-            categories?: Array<string>;
+            categories?: string[];
             externalUrl?: string;
             organizationId?: Id<"organizations">;
             status?: "draft" | "published";
@@ -800,14 +801,14 @@ export type PublicApiType = {
           "mutation",
           "public",
           {
-            mediaItems: Array<{
+            mediaItems: {
               alt?: string;
               isPrimary?: boolean;
               mediaItemId: Id<"mediaItems">;
               position?: number;
-            }>;
+            }[];
           },
-          Array<{
+          {
             alt?: string;
             isPrimary?: boolean;
             name?: string;
@@ -815,22 +816,22 @@ export type PublicApiType = {
             size?: number;
             storageId?: Id<"_storage">;
             url: string;
-          }>
+          }[]
         >;
         bulkCreateMedia: FunctionReference<
           "mutation",
           "public",
           {
-            items: Array<{
+            items: {
               alt?: string;
               caption?: string;
-              categories?: Array<string>;
+              categories?: string[];
               externalUrl?: string;
               storageId?: Id<"_storage">;
               title?: string;
-            }>;
+            }[];
           },
-          Array<{ mediaItemId: Id<"mediaItems">; url?: string }>
+          { mediaItemId: Id<"mediaItems">; url?: string }[]
         >;
       };
       mutations: {
@@ -846,21 +847,21 @@ export type PublicApiType = {
           {
             alt?: string;
             caption?: string;
-            categories?: Array<string>;
+            categories?: string[];
             organizationId?: Id<"organizations">;
             status?: "draft" | "published";
             storageId: Id<"_storage">;
-            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
+            taxonomyTermIds?: Id<"taxonomyTerms">[];
             title?: string;
           },
           {
             _id: Id<"mediaItems">;
             alt?: string;
             caption?: string;
-            categories?: Array<string>;
+            categories?: string[];
             status: "draft" | "published";
             storageId: Id<"_storage">;
-            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
+            taxonomyTermIds?: Id<"taxonomyTerms">[];
             title?: string;
             url: string;
           }
@@ -871,7 +872,7 @@ export type PublicApiType = {
           {
             alt?: string;
             caption?: string;
-            categories?: Array<string>;
+            categories?: string[];
             id: Id<"mediaItems">;
             status?: "draft" | "published";
             title?: string;
@@ -890,7 +891,7 @@ export type PublicApiType = {
           {
             alt?: string;
             caption?: string;
-            categories?: Array<string>;
+            categories?: string[];
             status?: "draft" | "published";
             storageId: Id<"_storage">;
             title?: string;
@@ -908,13 +909,13 @@ export type PublicApiType = {
             _id: Id<"mediaItems">;
             alt?: string;
             caption?: string;
-            categories?: Array<string>;
+            categories?: string[];
             externalUrl?: string;
             height?: number;
             mimeType?: string;
             status?: "draft" | "published";
             storageId?: Id<"_storage">;
-            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
+            taxonomyTermIds?: Id<"taxonomyTerms">[];
             title?: string;
             url?: string;
             width?: number;
@@ -929,13 +930,13 @@ export type PublicApiType = {
             _id: Id<"mediaItems">;
             alt?: string;
             caption?: string;
-            categories?: Array<string>;
+            categories?: string[];
             externalUrl?: string;
             height?: number;
             mimeType?: string;
             status?: "draft" | "published";
             storageId?: Id<"_storage">;
-            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
+            taxonomyTermIds?: Id<"taxonomyTerms">[];
             title?: string;
             url?: string;
             width?: number;
@@ -956,13 +957,13 @@ export type PublicApiType = {
             _id: Id<"mediaItems">;
             alt?: string;
             caption?: string;
-            categories?: Array<string>;
+            categories?: string[];
             externalUrl?: string;
             height?: number;
             mimeType?: string;
             status?: "draft" | "published";
             storageId?: Id<"_storage">;
-            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
+            taxonomyTermIds?: Id<"taxonomyTerms">[];
             title?: string;
             url?: string;
             width?: number;
@@ -983,29 +984,29 @@ export type PublicApiType = {
             };
             searchTerm?: string;
             status?: "draft" | "published";
-            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
+            taxonomyTermIds?: Id<"taxonomyTerms">[];
           },
           {
             continueCursor: string | null;
             isDone: boolean;
-            page: Array<{
+            page: {
               _creationTime: number;
               _id: Id<"mediaItems">;
               alt?: string;
               caption?: string;
-              categories?: Array<string>;
+              categories?: string[];
               externalUrl?: string;
               height?: number;
               mimeType?: string;
               organizationId?: Id<"organizations">;
               status?: "draft" | "published";
               storageId?: Id<"_storage">;
-              taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
+              taxonomyTermIds?: Id<"taxonomyTerms">[];
               title?: string;
               uploadedAt?: number;
               url?: string;
               width?: number;
-            }>;
+            }[];
             pageStatus?: string | null;
             splitCursor?: string | null;
           }
@@ -1026,22 +1027,22 @@ export type PublicApiType = {
           {
             continueCursor: string | null;
             isDone: boolean;
-            page: Array<{
+            page: {
               _creationTime: number;
               _id: Id<"mediaItems">;
               alt?: string;
               caption?: string;
-              categories?: Array<string>;
+              categories?: string[];
               externalUrl?: string;
               height?: number;
               mimeType?: string;
               status?: "draft" | "published";
               storageId?: Id<"_storage">;
-              taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
+              taxonomyTermIds?: Id<"taxonomyTerms">[];
               title?: string;
               url?: string;
               width?: number;
-            }>;
+            }[];
           }
         >;
         listImages: FunctionReference<
@@ -1060,22 +1061,22 @@ export type PublicApiType = {
           {
             continueCursor: string | null;
             isDone: boolean;
-            page: Array<{
+            page: {
               _creationTime: number;
               _id: Id<"mediaItems">;
               alt?: string;
               caption?: string;
-              categories?: Array<string>;
+              categories?: string[];
               externalUrl?: string;
               height?: number;
               mimeType?: string;
               status?: "draft" | "published";
               storageId?: Id<"_storage">;
-              taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
+              taxonomyTermIds?: Id<"taxonomyTerms">[];
               title?: string;
               url?: string;
               width?: number;
-            }>;
+            }[];
           }
         >;
         searchMedia: FunctionReference<
@@ -1085,24 +1086,24 @@ export type PublicApiType = {
             limit?: number;
             searchTerm: string;
             status?: "draft" | "published";
-            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
+            taxonomyTermIds?: Id<"taxonomyTerms">[];
           },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"mediaItems">;
             alt?: string;
             caption?: string;
-            categories?: Array<string>;
+            categories?: string[];
             externalUrl?: string;
             height?: number;
             mimeType?: string;
             status?: "draft" | "published";
             storageId?: Id<"_storage">;
-            taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
+            taxonomyTermIds?: Id<"taxonomyTerms">[];
             title?: string;
             url?: string;
             width?: number;
-          }>
+          }[]
         >;
       };
       meta: {
@@ -1113,7 +1114,7 @@ export type PublicApiType = {
             mediaItemId: Id<"mediaItems">;
             organizationId: Id<"organizations">;
           },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"mediaItemsMeta">;
             createdAt: number;
@@ -1122,7 +1123,7 @@ export type PublicApiType = {
             organizationId: Id<"organizations">;
             updatedAt?: number;
             value?: string | number | boolean | null;
-          }>
+          }[]
         >;
         upsertMediaItemMeta: FunctionReference<
           "mutation",
@@ -1244,7 +1245,7 @@ export type PublicApiType = {
           "query",
           "public",
           Record<string, never>,
-          Array<any>
+          any[]
         >;
         getById: FunctionReference<
           "query",
@@ -1259,11 +1260,11 @@ export type PublicApiType = {
             currentPeriodStart?: number;
             customDomain?: string;
             customDomainLastError?: string;
-            customDomainRecords?: Array<{
+            customDomainRecords?: {
               name: string;
               type: string;
               value: string;
-            }>;
+            }[];
             customDomainStatus?:
               | "unconfigured"
               | "pending"
@@ -1274,11 +1275,11 @@ export type PublicApiType = {
             description?: string;
             emailDomain?: string;
             emailDomainLastError?: string;
-            emailDomainRecords?: Array<{
+            emailDomainRecords?: {
               name: string;
               type: string;
               value: string;
-            }>;
+            }[];
             emailDomainStatus?:
               | "unconfigured"
               | "pending"
@@ -1318,11 +1319,11 @@ export type PublicApiType = {
             currentPeriodStart?: number;
             customDomain?: string;
             customDomainLastError?: string;
-            customDomainRecords?: Array<{
+            customDomainRecords?: {
               name: string;
               type: string;
               value: string;
-            }>;
+            }[];
             customDomainStatus?:
               | "unconfigured"
               | "pending"
@@ -1333,11 +1334,11 @@ export type PublicApiType = {
             description?: string;
             emailDomain?: string;
             emailDomainLastError?: string;
-            emailDomainRecords?: Array<{
+            emailDomainRecords?: {
               name: string;
               type: string;
               value: string;
-            }>;
+            }[];
             emailDomainStatus?:
               | "unconfigured"
               | "pending"
@@ -1377,11 +1378,11 @@ export type PublicApiType = {
             currentPeriodStart?: number;
             customDomain?: string;
             customDomainLastError?: string;
-            customDomainRecords?: Array<{
+            customDomainRecords?: {
               name: string;
               type: string;
               value: string;
-            }>;
+            }[];
             customDomainStatus?:
               | "unconfigured"
               | "pending"
@@ -1392,11 +1393,11 @@ export type PublicApiType = {
             description?: string;
             emailDomain?: string;
             emailDomainLastError?: string;
-            emailDomainRecords?: Array<{
+            emailDomainRecords?: {
               name: string;
               type: string;
               value: string;
-            }>;
+            }[];
             emailDomainStatus?:
               | "unconfigured"
               | "pending"
@@ -1432,7 +1433,7 @@ export type PublicApiType = {
             _id: string;
             description: string;
             displayName: string;
-            features?: Array<string>;
+            features?: string[];
             isActive: boolean;
             maxOrganizations: number;
             name: "free" | "starter" | "business" | "agency";
@@ -1446,12 +1447,12 @@ export type PublicApiType = {
           "query",
           "public",
           Record<string, never>,
-          Array<{
+          {
             _creationTime: number;
             _id: string;
             description: string;
             displayName: string;
-            features?: Array<string>;
+            features?: string[];
             isActive: boolean;
             maxOrganizations: number;
             name: "free" | "starter" | "business" | "agency";
@@ -1459,7 +1460,7 @@ export type PublicApiType = {
             priceYearly?: number;
             sortOrder: number;
             updatedAt: number;
-          }>
+          }[]
         >;
         canCreateOrganization: FunctionReference<
           "query",
@@ -1477,7 +1478,7 @@ export type PublicApiType = {
           "query",
           "public",
           { limit?: number; query: string },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"organizations">;
             allowSelfRegistration: boolean;
@@ -1486,11 +1487,11 @@ export type PublicApiType = {
             currentPeriodStart?: number;
             customDomain?: string;
             customDomainLastError?: string;
-            customDomainRecords?: Array<{
+            customDomainRecords?: {
               name: string;
               type: string;
               value: string;
-            }>;
+            }[];
             customDomainStatus?:
               | "unconfigured"
               | "pending"
@@ -1501,11 +1502,11 @@ export type PublicApiType = {
             description?: string;
             emailDomain?: string;
             emailDomainLastError?: string;
-            emailDomainRecords?: Array<{
+            emailDomainRecords?: {
               name: string;
               type: string;
               value: string;
-            }>;
+            }[];
             emailDomainStatus?:
               | "unconfigured"
               | "pending"
@@ -1530,13 +1531,13 @@ export type PublicApiType = {
               | "unpaid";
             updatedAt: number;
             userRole?: "owner" | "admin" | "editor" | "viewer" | "student";
-          }>
+          }[]
         >;
         getOrganizationMembers: FunctionReference<
           "query",
           "public",
           { organizationId: Id<"organizations"> },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"userOrganizations">;
             invitedAt?: number;
@@ -1544,7 +1545,7 @@ export type PublicApiType = {
             isActive: boolean;
             joinedAt: number;
             organizationId: Id<"organizations">;
-            permissions?: Array<string>;
+            permissions?: string[];
             role: "owner" | "admin" | "editor" | "viewer" | "student";
             updatedAt: number;
             user: {
@@ -1557,13 +1558,13 @@ export type PublicApiType = {
               username?: string;
             };
             userId: Id<"users">;
-          }>
+          }[]
         >;
         getPendingInvitations: FunctionReference<
           "query",
           "public",
           { organizationId: Id<"organizations"> },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"organizationInvitations">;
             acceptedAt?: number;
@@ -1575,7 +1576,7 @@ export type PublicApiType = {
             role: "admin" | "editor" | "viewer" | "student";
             status: "pending" | "accepted" | "expired" | "revoked";
             token: string;
-          }>
+          }[]
         >;
         getInvitationByToken: FunctionReference<
           "query",
@@ -1601,7 +1602,7 @@ export type PublicApiType = {
           "mutation",
           "public",
           Record<string, never>,
-          Array<string>
+          string[]
         >;
         assignFreePlanToUser: FunctionReference<
           "mutation",
@@ -1621,7 +1622,7 @@ export type PublicApiType = {
           {
             description?: string;
             displayName?: string;
-            features?: Array<string>;
+            features?: string[];
             isActive?: boolean;
             maxOrganizations?: number;
             planId: string;
@@ -1639,7 +1640,7 @@ export type PublicApiType = {
           { domain: string; organizationId: Id<"organizations"> },
           {
             customDomain: string;
-            records: Array<{ name: string; type: string; value: string }>;
+            records: { name: string; type: string; value: string }[];
             status: "unconfigured" | "pending" | "verified" | "error";
           }
         >;
@@ -1649,7 +1650,7 @@ export type PublicApiType = {
           { organizationId: Id<"organizations"> },
           {
             customDomain: string;
-            records: Array<{ name: string; type: string; value: string }>;
+            records: { name: string; type: string; value: string }[];
             status: "unconfigured" | "pending" | "verified" | "error";
           }
         >;
@@ -1662,7 +1663,7 @@ export type PublicApiType = {
           {
             emailDomain: string | null;
             lastError?: string;
-            records: Array<{ name: string; type: string; value: string }>;
+            records: { name: string; type: string; value: string }[];
             status: "unconfigured" | "pending" | "verified" | "error";
             updatedAt: number;
           }
@@ -1707,15 +1708,15 @@ export type PublicApiType = {
             enableVersioning?: boolean;
             includeTimestamps?: boolean;
             isPublic: boolean;
-            metaBoxes?: Array<{
+            metaBoxes?: {
               description?: string;
-              fieldKeys: Array<string>;
+              fieldKeys: string[];
               id: string;
               location?: string;
               priority?: number;
               rendererKey?: string;
               title: string;
-            }>;
+            }[];
             name: string;
             organizationId?: Id<"organizations">;
             rewrite?: {
@@ -1723,13 +1724,13 @@ export type PublicApiType = {
               feeds?: boolean;
               hasArchive?: boolean;
               pages?: boolean;
-              permalink?: { aliases?: Array<string>; canonical: string };
+              permalink?: { aliases?: string[]; canonical: string };
               singleSlug?: string;
               withFront?: boolean;
             };
             slug: string;
             storageKind?: "posts" | "custom" | "component";
-            storageTables?: Array<string>;
+            storageTables?: string[];
             supports?: {
               attachments?: boolean;
               comments?: boolean;
@@ -1764,15 +1765,15 @@ export type PublicApiType = {
               enableVersioning?: boolean;
               includeTimestamps?: boolean;
               isPublic: boolean;
-              metaBoxes?: Array<{
+              metaBoxes?: {
                 description?: string;
-                fieldKeys: Array<string>;
+                fieldKeys: string[];
                 id: string;
                 location?: string;
                 priority?: number;
                 rendererKey?: string;
                 title: string;
-              }>;
+              }[];
               name: string;
               pageTemplateSlug?: string;
               rewrite?: {
@@ -1780,13 +1781,13 @@ export type PublicApiType = {
                 feeds?: boolean;
                 hasArchive?: boolean;
                 pages?: boolean;
-                permalink?: { aliases?: Array<string>; canonical: string };
+                permalink?: { aliases?: string[]; canonical: string };
                 singleSlug?: string;
                 withFront?: boolean;
               };
               storageComponent?: string;
               storageKind?: "posts" | "custom" | "component";
-              storageTables?: Array<string>;
+              storageTables?: string[];
               supports?: {
                 attachments?: boolean;
                 comments?: boolean;
@@ -1829,21 +1830,21 @@ export type PublicApiType = {
               enableApi?: boolean;
               enableVersioning?: boolean;
               frontendVisibility?: {
-                disabledSingleSlotIds?: Array<string>;
+                disabledSingleSlotIds?: string[];
                 showComments?: boolean;
                 showCustomFields?: boolean;
               };
               includeTimestamps?: boolean;
               isPublic?: boolean;
-              metaBoxes?: Array<{
+              metaBoxes?: {
                 description?: string;
-                fieldKeys: Array<string>;
+                fieldKeys: string[];
                 id: string;
                 location?: string;
                 priority?: number;
                 rendererKey?: string;
                 title: string;
-              }>;
+              }[];
               name?: string;
               pageTemplateSlug?: string;
               rewrite?: {
@@ -1851,13 +1852,13 @@ export type PublicApiType = {
                 feeds?: boolean;
                 hasArchive?: boolean;
                 pages?: boolean;
-                permalink?: { aliases?: Array<string>; canonical: string };
+                permalink?: { aliases?: string[]; canonical: string };
                 singleSlug?: string;
                 withFront?: boolean;
               };
               slug?: string;
               storageKind?: "posts" | "custom" | "component";
-              storageTables?: Array<string>;
+              storageTables?: string[];
               supports?: {
                 attachments?: boolean;
                 comments?: boolean;
@@ -1951,7 +1952,7 @@ export type PublicApiType = {
           "query",
           "public",
           { includeBuiltIn?: boolean; organizationId?: Id<"organizations"> },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"postTypes">;
             adminMenu?: {
@@ -1969,26 +1970,26 @@ export type PublicApiType = {
             description?: string;
             enableApi?: boolean;
             enableVersioning?: boolean;
-            enabledOrganizationIds?: Array<Id<"organizations"> | "portal-root">;
+            enabledOrganizationIds?: (Id<"organizations"> | "portal-root")[];
             entryCount?: number;
             fieldCount?: number;
             frontendVisibility?: {
-              disabledSingleSlotIds?: Array<string>;
+              disabledSingleSlotIds?: string[];
               showComments?: boolean;
               showCustomFields?: boolean;
             };
             includeTimestamps?: boolean;
             isBuiltIn: boolean;
             isPublic: boolean;
-            metaBoxes?: Array<{
+            metaBoxes?: {
               description?: string;
-              fieldKeys: Array<string>;
+              fieldKeys: string[];
               id: string;
               location?: string;
               priority?: number;
               rendererKey?: string;
               title: string;
-            }>;
+            }[];
             name: string;
             organizationId?: Id<"organizations"> | "portal-root";
             pageTemplateSlug?: string;
@@ -1997,7 +1998,7 @@ export type PublicApiType = {
               feeds?: boolean;
               hasArchive?: boolean;
               pages?: boolean;
-              permalink?: { aliases?: Array<string>; canonical: string };
+              permalink?: { aliases?: string[]; canonical: string };
               singleSlug?: string;
               withFront?: boolean;
             };
@@ -2005,7 +2006,7 @@ export type PublicApiType = {
             slug: string;
             storageComponent?: string;
             storageKind?: "posts" | "custom" | "component";
-            storageTables?: Array<string>;
+            storageTables?: string[];
             supports?: {
               attachments?: boolean;
               comments?: boolean;
@@ -2019,7 +2020,7 @@ export type PublicApiType = {
               title?: boolean;
             };
             updatedAt?: number;
-          }>
+          }[]
         >;
         get: FunctionReference<
           "query",
@@ -2043,26 +2044,26 @@ export type PublicApiType = {
             description?: string;
             enableApi?: boolean;
             enableVersioning?: boolean;
-            enabledOrganizationIds?: Array<Id<"organizations"> | "portal-root">;
+            enabledOrganizationIds?: (Id<"organizations"> | "portal-root")[];
             entryCount?: number;
             fieldCount?: number;
             frontendVisibility?: {
-              disabledSingleSlotIds?: Array<string>;
+              disabledSingleSlotIds?: string[];
               showComments?: boolean;
               showCustomFields?: boolean;
             };
             includeTimestamps?: boolean;
             isBuiltIn: boolean;
             isPublic: boolean;
-            metaBoxes?: Array<{
+            metaBoxes?: {
               description?: string;
-              fieldKeys: Array<string>;
+              fieldKeys: string[];
               id: string;
               location?: string;
               priority?: number;
               rendererKey?: string;
               title: string;
-            }>;
+            }[];
             name: string;
             organizationId?: Id<"organizations"> | "portal-root";
             pageTemplateSlug?: string;
@@ -2071,7 +2072,7 @@ export type PublicApiType = {
               feeds?: boolean;
               hasArchive?: boolean;
               pages?: boolean;
-              permalink?: { aliases?: Array<string>; canonical: string };
+              permalink?: { aliases?: string[]; canonical: string };
               singleSlug?: string;
               withFront?: boolean;
             };
@@ -2079,7 +2080,7 @@ export type PublicApiType = {
             slug: string;
             storageComponent?: string;
             storageKind?: "posts" | "custom" | "component";
-            storageTables?: Array<string>;
+            storageTables?: string[];
             supports?: {
               attachments?: boolean;
               comments?: boolean;
@@ -2117,26 +2118,26 @@ export type PublicApiType = {
             description?: string;
             enableApi?: boolean;
             enableVersioning?: boolean;
-            enabledOrganizationIds?: Array<Id<"organizations"> | "portal-root">;
+            enabledOrganizationIds?: (Id<"organizations"> | "portal-root")[];
             entryCount?: number;
             fieldCount?: number;
             frontendVisibility?: {
-              disabledSingleSlotIds?: Array<string>;
+              disabledSingleSlotIds?: string[];
               showComments?: boolean;
               showCustomFields?: boolean;
             };
             includeTimestamps?: boolean;
             isBuiltIn: boolean;
             isPublic: boolean;
-            metaBoxes?: Array<{
+            metaBoxes?: {
               description?: string;
-              fieldKeys: Array<string>;
+              fieldKeys: string[];
               id: string;
               location?: string;
               priority?: number;
               rendererKey?: string;
               title: string;
-            }>;
+            }[];
             name: string;
             organizationId?: Id<"organizations"> | "portal-root";
             pageTemplateSlug?: string;
@@ -2145,7 +2146,7 @@ export type PublicApiType = {
               feeds?: boolean;
               hasArchive?: boolean;
               pages?: boolean;
-              permalink?: { aliases?: Array<string>; canonical: string };
+              permalink?: { aliases?: string[]; canonical: string };
               singleSlug?: string;
               withFront?: boolean;
             };
@@ -2153,7 +2154,7 @@ export type PublicApiType = {
             slug: string;
             storageComponent?: string;
             storageKind?: "posts" | "custom" | "component";
-            storageTables?: Array<string>;
+            storageTables?: string[];
             supports?: {
               attachments?: boolean;
               comments?: boolean;
@@ -2191,26 +2192,26 @@ export type PublicApiType = {
             description?: string;
             enableApi?: boolean;
             enableVersioning?: boolean;
-            enabledOrganizationIds?: Array<Id<"organizations"> | "portal-root">;
+            enabledOrganizationIds?: (Id<"organizations"> | "portal-root")[];
             entryCount?: number;
             fieldCount?: number;
             frontendVisibility?: {
-              disabledSingleSlotIds?: Array<string>;
+              disabledSingleSlotIds?: string[];
               showComments?: boolean;
               showCustomFields?: boolean;
             };
             includeTimestamps?: boolean;
             isBuiltIn: boolean;
             isPublic: boolean;
-            metaBoxes?: Array<{
+            metaBoxes?: {
               description?: string;
-              fieldKeys: Array<string>;
+              fieldKeys: string[];
               id: string;
               location?: string;
               priority?: number;
               rendererKey?: string;
               title: string;
-            }>;
+            }[];
             name: string;
             organizationId?: Id<"organizations"> | "portal-root";
             pageTemplateSlug?: string;
@@ -2219,7 +2220,7 @@ export type PublicApiType = {
               feeds?: boolean;
               hasArchive?: boolean;
               pages?: boolean;
-              permalink?: { aliases?: Array<string>; canonical: string };
+              permalink?: { aliases?: string[]; canonical: string };
               singleSlug?: string;
               withFront?: boolean;
             };
@@ -2227,7 +2228,7 @@ export type PublicApiType = {
             slug: string;
             storageComponent?: string;
             storageKind?: "posts" | "custom" | "component";
-            storageTables?: Array<string>;
+            storageTables?: string[];
             supports?: {
               attachments?: boolean;
               comments?: boolean;
@@ -2265,26 +2266,26 @@ export type PublicApiType = {
             description?: string;
             enableApi?: boolean;
             enableVersioning?: boolean;
-            enabledOrganizationIds?: Array<Id<"organizations"> | "portal-root">;
+            enabledOrganizationIds?: (Id<"organizations"> | "portal-root")[];
             entryCount?: number;
             fieldCount?: number;
             frontendVisibility?: {
-              disabledSingleSlotIds?: Array<string>;
+              disabledSingleSlotIds?: string[];
               showComments?: boolean;
               showCustomFields?: boolean;
             };
             includeTimestamps?: boolean;
             isBuiltIn: boolean;
             isPublic: boolean;
-            metaBoxes?: Array<{
+            metaBoxes?: {
               description?: string;
-              fieldKeys: Array<string>;
+              fieldKeys: string[];
               id: string;
               location?: string;
               priority?: number;
               rendererKey?: string;
               title: string;
-            }>;
+            }[];
             name: string;
             organizationId?: Id<"organizations"> | "portal-root";
             pageTemplateSlug?: string;
@@ -2293,7 +2294,7 @@ export type PublicApiType = {
               feeds?: boolean;
               hasArchive?: boolean;
               pages?: boolean;
-              permalink?: { aliases?: Array<string>; canonical: string };
+              permalink?: { aliases?: string[]; canonical: string };
               singleSlug?: string;
               withFront?: boolean;
             };
@@ -2301,7 +2302,7 @@ export type PublicApiType = {
             slug: string;
             storageComponent?: string;
             storageKind?: "posts" | "custom" | "component";
-            storageTables?: Array<string>;
+            storageTables?: string[];
             supports?: {
               attachments?: boolean;
               comments?: boolean;
@@ -2325,7 +2326,7 @@ export type PublicApiType = {
             organizationId?: Id<"organizations">;
             slug: string;
           },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"postTypeFields">;
             createdAt: number;
@@ -2346,7 +2347,7 @@ export type PublicApiType = {
             uiConfig?: any;
             updatedAt?: number;
             validationRules?: any;
-          }>
+          }[]
         >;
       };
     };
@@ -2356,7 +2357,7 @@ export type PublicApiType = {
           "query",
           "public",
           { organizationId?: Id<"organizations"> },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"taxonomies">;
             builtIn: boolean;
@@ -2365,10 +2366,10 @@ export type PublicApiType = {
             hierarchical: boolean;
             name: string;
             organizationId?: Id<"organizations">;
-            postTypeSlugs?: Array<string>;
+            postTypeSlugs?: string[];
             slug: string;
             updatedAt?: number;
-          }>
+          }[]
         >;
         getTaxonomyBySlug: FunctionReference<
           "query",
@@ -2383,7 +2384,7 @@ export type PublicApiType = {
             hierarchical: boolean;
             name: string;
             organizationId?: Id<"organizations">;
-            postTypeSlugs?: Array<string>;
+            postTypeSlugs?: string[];
             slug: string;
             updatedAt?: number;
           } | null
@@ -2396,7 +2397,7 @@ export type PublicApiType = {
             postTypeSlug?: string;
             taxonomySlug: string;
           },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"taxonomyTerms">;
             createdAt: number;
@@ -2405,11 +2406,11 @@ export type PublicApiType = {
             name: string;
             organizationId: Id<"organizations">;
             parentId?: Id<"taxonomyTerms">;
-            postTypeSlugs?: Array<string>;
+            postTypeSlugs?: string[];
             slug: string;
             taxonomyId: Id<"taxonomies">;
             updatedAt?: number;
-          }>
+          }[]
         >;
         getTermBySlug: FunctionReference<
           "query",
@@ -2428,7 +2429,7 @@ export type PublicApiType = {
             name: string;
             organizationId: Id<"organizations">;
             parentId?: Id<"taxonomyTerms">;
-            postTypeSlugs?: Array<string>;
+            postTypeSlugs?: string[];
             slug: string;
             taxonomyId: Id<"taxonomies">;
             updatedAt?: number;
@@ -2438,7 +2439,7 @@ export type PublicApiType = {
           "query",
           "public",
           { objectId: string; organizationId: Id<"organizations"> },
-          Array<Id<"taxonomyTerms">>
+          Id<"taxonomyTerms">[]
         >;
         listObjectsByTerm: FunctionReference<
           "query",
@@ -2448,13 +2449,13 @@ export type PublicApiType = {
             postTypeSlug?: string;
             termId: Id<"taxonomyTerms">;
           },
-          Array<string>
+          string[]
         >;
         listAssignmentsByTerm: FunctionReference<
           "query",
           "public",
           { organizationId: Id<"organizations">; termId: Id<"taxonomyTerms"> },
-          Array<{ objectId: string; postTypeSlug: string }>
+          { objectId: string; postTypeSlug: string }[]
         >;
         listObjectTermBadges: FunctionReference<
           "query",
@@ -2464,13 +2465,13 @@ export type PublicApiType = {
             organizationId: Id<"organizations">;
             postTypeSlug?: string;
           },
-          Array<{
+          {
             taxonomyName: string;
             taxonomySlug: string;
             termId: Id<"taxonomyTerms">;
             termName: string;
             termSlug: string;
-          }>
+          }[]
         >;
       };
       mutations: {
@@ -2482,7 +2483,7 @@ export type PublicApiType = {
             hierarchical: boolean;
             name: string;
             organizationId: Id<"organizations">;
-            postTypeSlugs?: Array<string>;
+            postTypeSlugs?: string[];
             slug?: string;
           },
           Id<"taxonomies">
@@ -2495,7 +2496,7 @@ export type PublicApiType = {
             name: string;
             organizationId: Id<"organizations">;
             parentId?: Id<"taxonomyTerms">;
-            postTypeSlugs?: Array<string>;
+            postTypeSlugs?: string[];
             slug?: string;
             taxonomySlug: string;
           },
@@ -2521,7 +2522,7 @@ export type PublicApiType = {
           "mutation",
           "public",
           Record<string, never>,
-          Array<string>
+          string[]
         >;
         setObjectTerms: FunctionReference<
           "mutation",
@@ -2530,7 +2531,7 @@ export type PublicApiType = {
             objectId: string;
             organizationId: Id<"organizations">;
             postTypeSlug: string;
-            termIds: Array<Id<"taxonomyTerms">>;
+            termIds: Id<"taxonomyTerms">[];
           },
           null
         >;
@@ -2553,7 +2554,7 @@ export type PublicApiType = {
               description?: string;
               hierarchical?: boolean;
               name?: string;
-              postTypeSlugs?: Array<string>;
+              postTypeSlugs?: string[];
               slug?: string;
             };
             id: Id<"taxonomies">;
@@ -2569,7 +2570,7 @@ export type PublicApiType = {
               description?: string;
               name?: string;
               parentId?: Id<"taxonomyTerms">;
-              postTypeSlugs?: Array<string>;
+              postTypeSlugs?: string[];
               slug?: string;
             };
             organizationId: Id<"organizations">;
@@ -2630,7 +2631,7 @@ export type PublicApiType = {
           null | {
             _creationTime: number;
             _id: Id<"users">;
-            addresses?: Array<{
+            addresses?: {
               addressLine1: string;
               addressLine2?: string;
               city: string;
@@ -2639,7 +2640,7 @@ export type PublicApiType = {
               phoneNumber?: string;
               postalCode: string;
               stateOrProvince: string;
-            }>;
+            }[];
             email: string;
             image?: string;
             name?: string;
@@ -2662,7 +2663,7 @@ export type PublicApiType = {
           null | {
             _creationTime: number;
             _id: Id<"users">;
-            addresses?: Array<{
+            addresses?: {
               addressLine1: string;
               addressLine2?: string;
               city: string;
@@ -2671,7 +2672,7 @@ export type PublicApiType = {
               phoneNumber?: string;
               postalCode: string;
               stateOrProvince: string;
-            }>;
+            }[];
             email: string;
             image?: string;
             name?: string;
@@ -2703,7 +2704,7 @@ export type PublicApiType = {
         null | {
           _creationTime: number;
           _id: Id<"users">;
-          addresses?: Array<{
+          addresses?: {
             addressLine1: string;
             addressLine2?: string;
             city: string;
@@ -2712,7 +2713,7 @@ export type PublicApiType = {
             phoneNumber?: string;
             postalCode: string;
             stateOrProvince: string;
-          }>;
+          }[];
           email: string;
           image?: string;
           name?: string;
@@ -2821,7 +2822,7 @@ export type PublicApiType = {
             organizationId: Id<"organizations">;
             status?: "draft" | "published";
           },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"downloads">;
             access: { kind: "public" | "gated" };
@@ -2837,7 +2838,7 @@ export type PublicApiType = {
             status: "draft" | "published";
             title: string;
             updatedAt?: number;
-          }>
+          }[]
         >;
       };
       mutations: {
@@ -2897,7 +2898,7 @@ export type PublicApiType = {
           "query",
           "public",
           { downloadId: Id<"downloads">; organizationId: Id<"organizations"> },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"downloadsMeta">;
             createdAt: number;
@@ -2906,7 +2907,7 @@ export type PublicApiType = {
             organizationId: Id<"organizations">;
             updatedAt?: number;
             value?: string | number | boolean | null;
-          }>
+          }[]
         >;
         upsertDownloadMeta: FunctionReference<
           "mutation",
@@ -2953,7 +2954,7 @@ export type PublicApiType = {
           "query",
           "public",
           { orgId?: Id<"organizations"> },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"emailTemplates">;
             copyOverrides?: Record<string, string>;
@@ -2966,13 +2967,13 @@ export type PublicApiType = {
             templateKey: string;
             updatedAt: number;
             updatedBy?: Id<"users">;
-          }>
+          }[]
         >;
         listTemplateCatalog: FunctionReference<
           "query",
           "public",
           { orgId?: Id<"organizations"> },
-          Array<{
+          {
             designOverrideKey?: "inherit" | "clean" | "bold" | "minimal";
             hasOverride: boolean;
             subject: string;
@@ -2980,7 +2981,7 @@ export type PublicApiType = {
             templateKey: string;
             title: string;
             updatedAt?: number;
-          }>
+          }[]
         >;
         resetTemplateOverride: FunctionReference<
           "mutation",
@@ -3008,7 +3009,7 @@ export type PublicApiType = {
           { orgId?: Id<"organizations">; templateId: Id<"emailTemplates"> },
           {
             definition: {
-              copySchema: Array<{
+              copySchema: {
                 description?: string;
                 key: string;
                 kind?: "singleLine" | "multiLine" | "url";
@@ -3016,7 +3017,7 @@ export type PublicApiType = {
                 maxLength?: number;
                 multiline?: boolean;
                 placeholder?: string;
-              }>;
+              }[];
               defaultCopy: Record<string, string>;
               defaultSubject: string;
               templateKey: string;
@@ -3058,7 +3059,7 @@ export type PublicApiType = {
           {
             continueCursor: string | null;
             isDone: boolean;
-            page: Array<{
+            page: {
               _creationTime: number;
               _id: Id<"emailOutbox">;
               createdAt: number;
@@ -3075,7 +3076,7 @@ export type PublicApiType = {
               templateKey?: string;
               textBody: string;
               to: string;
-            }>;
+            }[];
           }
         >;
         updateSettings: FunctionReference<
@@ -3159,7 +3160,7 @@ export type PublicApiType = {
             subject: string;
             subjectTemplateUsed: string;
             text: string;
-            warnings: Array<string>;
+            warnings: string[];
           }
         >;
         previewTemplateByIdWithOverrides: FunctionReference<
@@ -3182,7 +3183,7 @@ export type PublicApiType = {
             subject: string;
             subjectTemplateUsed: string;
             text: string;
-            warnings: Array<string>;
+            warnings: string[];
           }
         >;
         sendTransactionalEmail: FunctionReference<
@@ -3214,7 +3215,7 @@ export type PublicApiType = {
             scopeType?: "global" | "group" | "course" | "organization";
             userId: Id<"users">;
           },
-          Array<string>
+          string[]
         >;
       };
     };
@@ -3278,9 +3279,9 @@ export type PublicApiType = {
             tabKey?: string;
             title: string;
             type?: string;
-            userIds: Array<Id<"users">>;
+            userIds: Id<"users">[];
           },
-          Array<Id<"notifications">>
+          Id<"notifications">[]
         >;
       };
       preferences: {
@@ -3337,7 +3338,7 @@ export type PublicApiType = {
           "query",
           "public",
           { clerkId: string; limit?: number; orgId?: Id<"organizations"> },
-          Array<any>
+          any[]
         >;
         paginateByClerkIdAndOrgId: FunctionReference<
           "query",
@@ -3355,7 +3356,7 @@ export type PublicApiType = {
               numItems: number;
             };
           },
-          { continueCursor: string | null; isDone: boolean; page: Array<any> }
+          { continueCursor: string | null; isDone: boolean; page: any[] }
         >;
       };
       settings: {
@@ -3399,7 +3400,7 @@ export type PublicApiType = {
             orgId: Id<"organizations">;
             userId: Id<"users">;
           },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"notificationSubscriptions">;
             enabled: boolean;
@@ -3408,7 +3409,7 @@ export type PublicApiType = {
             scopeId: string | null;
             scopeKind: string;
             userId: Id<"users">;
-          }>
+          }[]
         >;
         upsertSubscription: FunctionReference<
           "mutation",
@@ -3433,7 +3434,7 @@ export type PublicApiType = {
           "mutation",
           "public",
           Record<string, never>,
-          { connectionsCreated: number; errors: Array<string> }
+          { connectionsCreated: number; errors: string[] }
         >;
       };
       mutations: {
@@ -3497,7 +3498,7 @@ export type PublicApiType = {
             ownerId?: Id<"users"> | string;
             status?: string;
           },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"connections">;
             config?: string;
@@ -3514,19 +3515,19 @@ export type PublicApiType = {
             ownerId: Id<"users"> | string;
             status: string;
             updatedAt: number;
-          }>
+          }[]
         >;
         listForOwners: FunctionReference<
           "query",
           "public",
           {
-            filters: Array<{ nodeType: string; ownerId: Id<"users"> | string }>;
+            filters: { nodeType: string; ownerId: Id<"users"> | string }[];
           },
-          Array<{
+          {
             nodeType: string;
             ownerId: Id<"users"> | string;
             status: string | null;
-          }>
+          }[]
         >;
         get: FunctionReference<
           "query",
@@ -3555,7 +3556,7 @@ export type PublicApiType = {
           "query",
           "public",
           { nodeType?: string; status?: string },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"connections">;
             config?: string;
@@ -3572,7 +3573,7 @@ export type PublicApiType = {
             ownerId: Id<"users"> | string;
             status: string;
             updatedAt: number;
-          }>
+          }[]
         >;
       };
       actions: {
@@ -3629,7 +3630,7 @@ export type PublicApiType = {
           "public",
           { mockOrderData?: any },
           {
-            errors: Array<string>;
+            errors: string[];
             success: boolean;
             testData: any;
             webhooksSent: number;
@@ -3664,7 +3665,7 @@ export type PublicApiType = {
             integrationType: string;
             name: string;
             outputSchema: string;
-            tags?: Array<string>;
+            tags?: string[];
             uiConfig?: string;
             updatedAt: number;
             version: string;
@@ -3674,7 +3675,7 @@ export type PublicApiType = {
           "query",
           "public",
           Record<string, never>,
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"integrationNodes">;
             category: string;
@@ -3687,17 +3688,17 @@ export type PublicApiType = {
             integrationType: string;
             name: string;
             outputSchema: string;
-            tags?: Array<string>;
+            tags?: string[];
             uiConfig?: string;
             updatedAt: number;
             version: string;
-          }>
+          }[]
         >;
         getIntegrationNodesByCategory: FunctionReference<
           "query",
           "public",
           { category: string },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"integrationNodes">;
             category: string;
@@ -3710,17 +3711,17 @@ export type PublicApiType = {
             integrationType: string;
             name: string;
             outputSchema: string;
-            tags?: Array<string>;
+            tags?: string[];
             uiConfig?: string;
             updatedAt: number;
             version: string;
-          }>
+          }[]
         >;
         getIntegrationNodesByType: FunctionReference<
           "query",
           "public",
           { integrationType: string },
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"integrationNodes">;
             category: string;
@@ -3733,17 +3734,17 @@ export type PublicApiType = {
             integrationType: string;
             name: string;
             outputSchema: string;
-            tags?: Array<string>;
+            tags?: string[];
             uiConfig?: string;
             updatedAt: number;
             version: string;
-          }>
+          }[]
         >;
         getActiveIntegrationNodes: FunctionReference<
           "query",
           "public",
           Record<string, never>,
-          Array<{
+          {
             _creationTime: number;
             _id: Id<"integrationNodes">;
             category: string;
@@ -3756,11 +3757,11 @@ export type PublicApiType = {
             integrationType: string;
             name: string;
             outputSchema: string;
-            tags?: Array<string>;
+            tags?: string[];
             uiConfig?: string;
             updatedAt: number;
             version: string;
-          }>
+          }[]
         >;
         getIntegrationNode: FunctionReference<
           "query",
@@ -3779,7 +3780,7 @@ export type PublicApiType = {
             integrationType: string;
             name: string;
             outputSchema: string;
-            tags?: Array<string>;
+            tags?: string[];
             uiConfig?: string;
             updatedAt: number;
             version: string;
@@ -3795,31 +3796,31 @@ export type PublicApiType = {
           "query",
           "public",
           { organizationId?: Id<"organizations"> },
-          Array<{ _id: string; slug?: string; status?: string; title: string }>
+          { _id: string; slug?: string; status?: string; title: string }[]
         >;
         listCertificates: FunctionReference<
           "query",
           "public",
           { organizationId?: Id<"organizations"> },
-          Array<{
+          {
             _id: string;
             content?: string;
             excerpt?: string;
             slug?: string;
             status?: string;
             title: string;
-          }>
+          }[]
         >;
         listCompletedCoursesForCertificateViewer: FunctionReference<
           "query",
           "public",
           { certificateId: string; organizationId?: Id<"organizations"> },
-          null | Array<{
+          null | {
             completedAt: number;
             courseId: string;
             courseSlug?: string;
             courseTitle: string;
-          }>
+          }[]
         >;
         getCertificateViewerContext: FunctionReference<
           "query",
@@ -3846,15 +3847,15 @@ export type PublicApiType = {
             organizationId?: Id<"organizations">;
           },
           {
-            attachedCertificates: Array<{
+            attachedCertificates: {
               _id: string;
               content?: string;
               excerpt?: string;
               slug?: string;
               status?: string;
               title: string;
-            }>;
-            attachedLessons: Array<{
+            }[];
+            attachedLessons: {
               _id: string;
               certificateId?: string;
               content?: string;
@@ -3864,8 +3865,8 @@ export type PublicApiType = {
               slug?: string;
               status?: string;
               title: string;
-            }>;
-            attachedQuizzes: Array<{
+            }[];
+            attachedQuizzes: {
               _id: string;
               content?: string;
               excerpt?: string;
@@ -3876,8 +3877,8 @@ export type PublicApiType = {
               slug?: string;
               title: string;
               topicId?: string;
-            }>;
-            attachedTopics: Array<{
+            }[];
+            attachedTopics: {
               _id: string;
               certificateId?: string;
               content?: string;
@@ -3887,11 +3888,11 @@ export type PublicApiType = {
               order?: number;
               slug?: string;
               title: string;
-            }>;
+            }[];
             course: {
               _id: string;
               certificateId?: string;
-              courseStructure: Array<{ lessonId: string }>;
+              courseStructure: { lessonId: string }[];
               firstAttachmentUrl?: string;
               organizationId?: Id<"organizations">;
               slug?: string;
@@ -3906,8 +3907,8 @@ export type PublicApiType = {
           { courseId: string; organizationId?: Id<"organizations"> },
           {
             completedAt?: number;
-            completedLessonIds: Array<string>;
-            completedTopicIds: Array<string>;
+            completedLessonIds: string[];
+            completedTopicIds: string[];
             courseId: string;
             lastAccessedAt?: number;
             lastAccessedId?: string;
@@ -3921,18 +3922,18 @@ export type PublicApiType = {
           "query",
           "public",
           { organizationId?: Id<"organizations">; postId: string },
-          Array<{
+          {
             badgeId: string;
             firstAttachmentUrl?: string;
             slug?: string;
             title: string;
-          }>
+          }[]
         >;
         getAvailableLessons: FunctionReference<
           "query",
           "public",
           { courseId: string; organizationId?: Id<"organizations"> },
-          Array<{
+          {
             _id: string;
             certificateId?: string;
             content?: string;
@@ -3942,13 +3943,13 @@ export type PublicApiType = {
             slug?: string;
             status?: string;
             title: string;
-          }>
+          }[]
         >;
         getAvailableTopics: FunctionReference<
           "query",
           "public",
           { organizationId?: Id<"organizations"> },
-          Array<{
+          {
             _id: string;
             certificateId?: string;
             content?: string;
@@ -3958,13 +3959,13 @@ export type PublicApiType = {
             order?: number;
             slug?: string;
             title: string;
-          }>
+          }[]
         >;
         getAvailableQuizzes: FunctionReference<
           "query",
           "public",
           { organizationId?: Id<"organizations"> },
-          Array<{
+          {
             _id: string;
             content?: string;
             excerpt?: string;
@@ -3975,18 +3976,18 @@ export type PublicApiType = {
             slug?: string;
             title: string;
             topicId?: string;
-          }>
+          }[]
         >;
         getQuizBuilderState: FunctionReference<
           "query",
           "public",
           { organizationId?: Id<"organizations">; quizId: string },
           {
-            questions: Array<{
+            questions: {
               _id: string;
               answerText?: string | null;
-              correctOptionIds: Array<string>;
-              options: Array<{ id: string; label: string }>;
+              correctOptionIds: string[];
+              options: { id: string; label: string }[];
               order: number;
               prompt: string;
               questionType:
@@ -3996,7 +3997,7 @@ export type PublicApiType = {
                 | "longText";
               quizId: string;
               title: string;
-            }>;
+            }[];
             quiz: {
               _id: string;
               slug?: string;
@@ -4009,7 +4010,7 @@ export type PublicApiType = {
           "query",
           "public",
           { quizId: string },
-          Array<{
+          {
             _id: string;
             completedAt: number;
             correctCount: number;
@@ -4017,7 +4018,7 @@ export type PublicApiType = {
             gradedQuestions: number;
             scorePercent: number;
             totalQuestions: number;
-          }>
+          }[]
         >;
       };
       mutations: {
@@ -4060,7 +4061,7 @@ export type PublicApiType = {
         reorderLessonsInCourse: FunctionReference<
           "mutation",
           "public",
-          { courseId: string; orderedLessonIds: Array<string> },
+          { courseId: string; orderedLessonIds: string[] },
           { success: boolean }
         >;
         attachTopicToLesson: FunctionReference<
@@ -4078,7 +4079,7 @@ export type PublicApiType = {
         reorderTopicsInLesson: FunctionReference<
           "mutation",
           "public",
-          { lessonId: string; orderedTopicIds: Array<string> },
+          { lessonId: string; orderedTopicIds: string[] },
           { success: boolean }
         >;
         attachQuizToLesson: FunctionReference<
@@ -4170,8 +4171,8 @@ export type PublicApiType = {
             organizationId?: Id<"organizations">;
             question: {
               answerText?: string | null;
-              correctOptionIds?: Array<string>;
-              options?: Array<{ id: string; label: string }>;
+              correctOptionIds?: string[];
+              options?: { id: string; label: string }[];
               prompt: string;
               questionType:
                 | "singleChoice"
@@ -4185,8 +4186,8 @@ export type PublicApiType = {
             question: {
               _id: string;
               answerText?: string | null;
-              correctOptionIds: Array<string>;
-              options: Array<{ id: string; label: string }>;
+              correctOptionIds: string[];
+              options: { id: string; label: string }[];
               order: number;
               prompt: string;
               questionType:
@@ -4205,8 +4206,8 @@ export type PublicApiType = {
           {
             question: {
               answerText?: string | null;
-              correctOptionIds?: Array<string>;
-              options?: Array<{ id: string; label: string }>;
+              correctOptionIds?: string[];
+              options?: { id: string; label: string }[];
               prompt: string;
               questionType:
                 | "singleChoice"
@@ -4221,8 +4222,8 @@ export type PublicApiType = {
             question: {
               _id: string;
               answerText?: string | null;
-              correctOptionIds: Array<string>;
-              options: Array<{ id: string; label: string }>;
+              correctOptionIds: string[];
+              options: { id: string; label: string }[];
               order: number;
               prompt: string;
               questionType:
@@ -4244,7 +4245,7 @@ export type PublicApiType = {
         reorderQuizQuestions: FunctionReference<
           "mutation",
           "public",
-          { orderedQuestionIds: Array<string>; quizId: string },
+          { orderedQuestionIds: string[]; quizId: string },
           { success: boolean }
         >;
         submitQuizAttempt: FunctionReference<
@@ -4255,7 +4256,7 @@ export type PublicApiType = {
             durationMs?: number;
             lessonId?: string;
             quizId: string;
-            responses: Array<{
+            responses: {
               answerText?: string;
               questionId: string;
               questionType:
@@ -4263,8 +4264,8 @@ export type PublicApiType = {
                 | "multipleChoice"
                 | "shortText"
                 | "longText";
-              selectedOptionIds?: Array<string>;
-            }>;
+              selectedOptionIds?: string[];
+            }[];
           },
           {
             attempt: {
@@ -4282,7 +4283,7 @@ export type PublicApiType = {
           "mutation",
           "public",
           { completed: boolean; courseId?: string; lessonId: string },
-          { completedLessonIds: Array<string> }
+          { completedLessonIds: string[] }
         >;
         setTopicCompletionStatus: FunctionReference<
           "mutation",
@@ -4293,7 +4294,7 @@ export type PublicApiType = {
             lessonId?: string;
             topicId: string;
           },
-          { completedTopicIds: Array<string> }
+          { completedTopicIds: string[] }
         >;
       };
       actions: {
@@ -4416,7 +4417,7 @@ export type PublicApiType = {
               postTypeSlug: string;
               slug: string;
               status: "published" | "draft" | "archived";
-              tags?: Array<string>;
+              tags?: string[];
               title: string;
             },
             string
@@ -4433,7 +4434,7 @@ export type PublicApiType = {
               meta?: Record<string, string | number | boolean | null>;
               slug?: string;
               status?: "published" | "draft" | "archived";
-              tags?: Array<string>;
+              tags?: string[];
               title?: string;
             },
             string
@@ -4453,8 +4454,8 @@ export type PublicApiType = {
           bulkUpdatePostStatus: FunctionReference<
             "mutation",
             "public",
-            { ids: Array<string>; status: "published" | "draft" | "archived" },
-            Array<string>
+            { ids: string[]; status: "published" | "draft" | "archived" },
+            string[]
           >;
           deletePostMetaKey: FunctionReference<
             "mutation",
@@ -4497,7 +4498,7 @@ export type PublicApiType = {
           "query",
           "public",
           { limit?: number; organizationId: string },
-          Array<{
+          {
             agentThreadId?: string;
             assignedAgentId?: string;
             assignedAgentName?: string;
@@ -4514,44 +4515,44 @@ export type PublicApiType = {
             status?: "open" | "snoozed" | "closed";
             threadId: string;
             totalMessages?: number;
-          }>
+          }[]
         >;
         listMessages: FunctionReference<
           "query",
           "public",
           { organizationId: string; sessionId?: string; threadId?: string },
-          Array<{
+          {
             _id: string;
             agentName?: string;
             content: string;
             createdAt: number;
             role: "user" | "assistant";
-          }>
+          }[]
         >;
         listConversationNotes: FunctionReference<
           "query",
           "public",
           { organizationId: string; sessionId?: string; threadId?: string },
-          Array<{
+          {
             _id: string;
             actorId?: string;
             actorName?: string;
             createdAt: number;
             note: string;
-          }>
+          }[]
         >;
         listConversationEvents: FunctionReference<
           "query",
           "public",
           { organizationId: string; sessionId?: string; threadId?: string },
-          Array<{
+          {
             _id: string;
             actorId?: string;
             actorName?: string;
             createdAt: number;
             eventType: string;
             payload?: string;
-          }>
+          }[]
         >;
         getContactById: FunctionReference<
           "query",
@@ -4567,10 +4568,10 @@ export type PublicApiType = {
             config?: {
               additionalMetaKeys?: string;
               displayName?: string;
-              fields?: Array<string>;
+              fields?: string[];
               includeTags?: boolean;
               lastIndexedAt?: number;
-              metaFieldKeys?: Array<string>;
+              metaFieldKeys?: string[];
             };
             entryKey?: string;
             isEnabledForPostType: boolean;
@@ -4656,7 +4657,7 @@ export type PublicApiType = {
             contactEmail?: string;
             contactId?: string;
             contactName?: string;
-            contextTags?: Array<string>;
+            contextTags?: string[];
             organizationId: string;
             prompt: string;
             threadId: string;
@@ -4673,12 +4674,12 @@ export type PublicApiType = {
             organizationId: Id<"organizations">;
             query: string;
           },
-          Array<{
+          {
             content: string;
             slug?: string;
             source?: string;
             title: string;
-          }>
+          }[]
         >;
         searchKnowledgeForContext: FunctionReference<
           "action",
@@ -4687,14 +4688,14 @@ export type PublicApiType = {
             limit?: number;
             organizationId: Id<"organizations">;
             query: string;
-            tags?: Array<string>;
+            tags?: string[];
           },
-          Array<{
+          {
             content: string;
             slug?: string;
             source?: string;
             title: string;
-          }>
+          }[]
         >;
       };
       mutations: {
@@ -4758,17 +4759,17 @@ export type PublicApiType = {
             authorId?: string;
             content?: string;
             excerpt?: string;
-            meta?: Array<{
+            meta?: {
               key: string;
               value?: string | number | boolean | null;
-            }>;
+            }[];
             organizationId: string;
             parentId?: Id<"posts">;
             parentTypeSlug?: string;
             postTypeSlug: string;
             slug: string;
             status: "published" | "draft" | "archived";
-            tags?: Array<string>;
+            tags?: string[];
             title: string;
           },
           any
@@ -4781,17 +4782,17 @@ export type PublicApiType = {
             content?: string;
             excerpt?: string;
             id: Id<"posts">;
-            meta?: Array<{
+            meta?: {
               key: string;
               value?: string | number | boolean | null;
-            }>;
+            }[];
             organizationId: string;
             parentId?: Id<"posts">;
             parentTypeSlug?: string;
             postTypeSlug: string;
             slug: string;
             status: "published" | "draft" | "archived";
-            tags?: Array<string>;
+            tags?: string[];
             title: string;
           },
           any
@@ -4800,10 +4801,10 @@ export type PublicApiType = {
           "mutation",
           "public",
           {
-            entries: Array<{
+            entries: {
               key: string;
               value?: string | number | boolean | null;
-            }>;
+            }[];
             organizationId: string;
             postId: Id<"posts">;
           },
@@ -4877,10 +4878,10 @@ export type PublicApiType = {
             additionalMetaKeys?: string;
             baseInstructions?: string;
             displayName?: string;
-            fields?: Array<string>;
+            fields?: string[];
             includeTags?: boolean;
             isEnabled?: boolean;
-            metaFieldKeys?: Array<string>;
+            metaFieldKeys?: string[];
             organizationId: string;
             postTypeSlug: string;
             sourceId?: string;
@@ -4925,7 +4926,7 @@ export type PublicApiType = {
           "action",
           "public",
           { organizationId: string },
-          Array<string>
+          string[]
         >;
       };
       posts: {
@@ -4989,7 +4990,7 @@ export type PublicApiType = {
             "query",
             "public",
             {
-              calendarIds?: Array<Id<"posts">>;
+              calendarIds?: Id<"posts">[];
               endDate: number;
               includeRecurrences?: boolean;
               paginationOpts?: {
@@ -5008,7 +5009,7 @@ export type PublicApiType = {
             "query",
             "public",
             {
-              calendarIds?: Array<Id<"posts">>;
+              calendarIds?: Id<"posts">[];
               includeRecurrences?: boolean;
               viewDate: number;
               viewType: "day" | "week" | "month" | "year";
@@ -5032,7 +5033,7 @@ export type PublicApiType = {
                 url?: string;
               };
               recurrence?: {
-                byDay?: Array<"MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU">;
+                byDay?: ("MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU")[];
                 count?: number;
                 frequency: "daily" | "weekly" | "monthly" | "yearly";
                 interval?: number;
@@ -5072,7 +5073,7 @@ export type PublicApiType = {
                 url?: string;
               } | null;
               recurrence?: {
-                byDay?: Array<"MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU">;
+                byDay?: ("MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU")[];
                 count?: number;
                 frequency: "daily" | "weekly" | "monthly" | "yearly";
                 interval?: number;
@@ -5205,7 +5206,7 @@ export type PublicApiType = {
           {
             content: string;
             creatorId: Id<"users">;
-            mediaUrls?: Array<string>;
+            mediaUrls?: string[];
             moduleId?: string;
             moduleType?: "blog" | "course" | "group" | "event";
             visibility: "public" | "private" | "group";
@@ -5217,7 +5218,7 @@ export type PublicApiType = {
           "public",
           {
             content?: string;
-            mediaUrls?: Array<string>;
+            mediaUrls?: string[];
             postId: string;
             userId: Id<"users">;
             visibility?: "public" | "private" | "group";
@@ -5265,7 +5266,7 @@ export type PublicApiType = {
           {
             content: string;
             feedItemId?: string;
-            mediaUrls?: Array<string>;
+            mediaUrls?: string[];
             parentCommentId?: string;
             parentId?: string;
             parentType?:
@@ -5630,7 +5631,7 @@ export type PublicApiType = {
               postTypeSlug: string;
               slug: string;
               status: "published" | "draft" | "archived";
-              tags?: Array<string>;
+              tags?: string[];
               title: string;
             },
             string
@@ -5647,7 +5648,7 @@ export type PublicApiType = {
               meta?: Record<string, string | number | boolean | null>;
               slug?: string;
               status?: "published" | "draft" | "archived";
-              tags?: Array<string>;
+              tags?: string[];
               title?: string;
             },
             string
@@ -5849,10 +5850,10 @@ export type PublicApiType = {
           "action",
           "public",
           {
-            fieldSignatures?: Array<{
+            fieldSignatures?: {
               fieldId: string;
               signatureDataUrl: string;
-            }>;
+            }[];
             ip?: string;
             issueId: string;
             signatureDataUrl?: string;
@@ -5922,7 +5923,7 @@ export type PublicApiType = {
             "public",
             {
               guestSessionId?: string;
-              productPostIds: Array<string>;
+              productPostIds: string[];
               userId?: string;
             },
             any
@@ -5950,10 +5951,10 @@ export type PublicApiType = {
                 fileStorageId?: Id<"_storage">;
                 importance: string;
                 status?: string;
-                tags?: Array<string>;
+                tags?: string[];
                 textContent?: string;
                 title: string;
-                urls?: Array<string>;
+                urls?: string[];
               },
               any
             >;
@@ -6547,7 +6548,7 @@ export type PublicApiType = {
               contactId: string;
               organizationId?: string;
               requireAll?: boolean;
-              tagSlugs: Array<string>;
+              tagSlugs: string[];
             },
             any
           >;
@@ -6613,7 +6614,7 @@ export type PublicApiType = {
           "action",
           "public",
           { connectionId: Id<"connections"> },
-          Array<{ id: string; name: string }>
+          { id: string; name: string }[]
         >;
         getCachedVimeoVideos: FunctionReference<
           "action",
@@ -6674,14 +6675,14 @@ export type PublicApiType = {
           {
             connectionId: Id<"connections">;
             now: number;
-            videos: Array<{
+            videos: {
               description?: string;
               embedUrl: string;
               publishedAt: number;
               thumbnailUrl?: string;
               title: string;
               videoId: string;
-            }>;
+            }[];
           },
           { inserted: number; updated: number }
         >;
@@ -6855,5 +6856,5 @@ export type PublicApiType = {
       >;
     };
   };
-};
-export type InternalApiType = {};
+}
+export interface InternalApiType {}

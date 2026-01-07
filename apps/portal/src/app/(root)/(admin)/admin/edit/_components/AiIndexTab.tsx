@@ -8,7 +8,7 @@ import { useMutation } from "convex/react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-type RagIndexStatus = {
+interface RagIndexStatus {
   isEnabledForPostType: boolean;
   sourceType?: "postType" | "lmsPostType";
   entryKey?: string;
@@ -26,7 +26,7 @@ type RagIndexStatus = {
     additionalMetaKeys?: string;
     lastIndexedAt?: number;
   };
-};
+}
 
 const formatTime = (value?: number) => {
   if (!value) return "—";

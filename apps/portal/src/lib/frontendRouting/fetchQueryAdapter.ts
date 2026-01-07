@@ -14,7 +14,7 @@ export function adaptFetchQuery(fetchQuery: typeof convexFetchQuery): FetchQuery
     return (await (fetchQuery as unknown as (q: unknown, a: unknown) => Promise<unknown>)(
       fn,
       args,
-    )) as unknown;
+    ));
   }) as FetchQueryLike;
 }
 

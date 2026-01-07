@@ -22,7 +22,7 @@ const actionAny = action as any;
 const internalActionAny = internalAction as any;
 
 const resolveConvexHttpUrl = () => {
-  // eslint-disable-next-line turbo/no-undeclared-env-vars
+   
   const url =
     process.env.NEXT_PUBLIC_CONVEX_HTTP_URL ??
     // eslint-disable-next-line turbo/no-undeclared-env-vars

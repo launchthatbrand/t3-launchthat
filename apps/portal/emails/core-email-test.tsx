@@ -9,11 +9,11 @@ import {
   Text,
 } from "@react-email/components";
 
-export type CoreEmailTestProps = {
+export interface CoreEmailTestProps {
   appName: string;
   orgName: string;
   sentAt: string;
-};
+}
 
 export const CoreEmailTest = ({ appName, orgName, sentAt }: CoreEmailTestProps) => {
   return (

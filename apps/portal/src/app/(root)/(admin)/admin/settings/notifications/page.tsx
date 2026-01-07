@@ -3,7 +3,6 @@
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { useMemo, useState } from "react";
 import { api } from "@/convex/_generated/api";
-import { useClerk } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
@@ -11,21 +10,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Switch } from "@acme/ui/switch";
 
 import { useTenant } from "~/context/TenantContext";
+import { useConvexUser } from "~/hooks/useConvexUser";
 import {
   buildNotificationEventCatalog,
   groupCatalogByCategory,
 } from "~/lib/notifications/notificationCatalog";
 
 export default function AdminNotificationSettingsPage() {
-  const { user } = useClerk();
-  const clerkId = user?.id;
+  const { user: convexUser } = useConvexUser();
   const tenant = useTenant();
   const orgId: Id<"organizations"> | undefined = tenant?._id;
 
-  const convexUser: Doc<"users"> | null | undefined = useQuery(
-    api.core.users.queries.getUserByClerkId,
-    clerkId ? { clerkId } : "skip",
-  );
+  const convexUserDoc = convexUser as Doc<"users"> | null | undefined;
 
   const catalog = useMemo(() => buildNotificationEventCatalog(), []);
   const grouped = useMemo(() => groupCatalogByCategory(catalog), [catalog]);
@@ -39,7 +35,7 @@ export default function AdminNotificationSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const handleToggle = async (eventKey: string, enabled: boolean) => {
-    if (!orgId || !convexUser?._id) return;
+    if (!orgId || !convexUserDoc?._id) return;
     const next: Record<string, boolean> = {
       ...(orgDefaults?.inAppDefaults ?? {}),
       [eventKey]: enabled,
@@ -48,7 +44,7 @@ export default function AdminNotificationSettingsPage() {
     try {
       await setOrgDefaults({
         orgId,
-        actorUserId: convexUser._id,
+        actorUserId: convexUserDoc._id,
         inAppDefaults: next,
       });
     } finally {
@@ -94,7 +90,7 @@ export default function AdminNotificationSettingsPage() {
                     </div>
                     <Switch
                       checked={!!defaultValue}
-                      disabled={!orgId || !convexUser || isSaving}
+                      disabled={!orgId || !convexUserDoc || isSaving}
                       onCheckedChange={(checked) =>
                         void handleToggle(item.eventKey, checked)
                       }

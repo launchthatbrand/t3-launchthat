@@ -157,7 +157,7 @@ export function Plugins({
   organizationId?: Id<"organizations">;
   postTypeSlug?: string | null;
   attachmentsContext?: {
-    attachments: Array<{
+    attachments: {
       mediaItemId: Id<"mediaItems">;
       url: string;
       title?: string;
@@ -165,10 +165,10 @@ export function Plugins({
       mimeType?: string;
       width?: number;
       height?: number;
-    }>;
+    }[];
     setAttachments: (
       updater: (
-        prev: Array<{
+        prev: {
           mediaItemId: Id<"mediaItems">;
           url: string;
           title?: string;
@@ -176,8 +176,8 @@ export function Plugins({
           mimeType?: string;
           width?: number;
           height?: number;
-        }>,
-      ) => Array<{
+        }[],
+      ) => {
         mediaItemId: Id<"mediaItems">;
         url: string;
         title?: string;
@@ -185,7 +185,7 @@ export function Plugins({
         mimeType?: string;
         width?: number;
         height?: number;
-      }>,
+      }[],
     ) => void;
   };
   registerMetaPayloadCollectorAction?: (

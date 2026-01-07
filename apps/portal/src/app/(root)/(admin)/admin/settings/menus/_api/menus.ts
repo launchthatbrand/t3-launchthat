@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 export const useMenus = () => {
   const result = useQuery(api.core.menus.queries.listMenus, {});
   return {
-    data: (result ?? []) as Doc<"menus">[],
+    data: (result ?? []),
     isLoading: result === undefined,
   };
 };
@@ -21,14 +21,14 @@ export const useMenuItems = (menuId: Id<"menus"> | undefined) => {
   return useQuery(
     api.core.menus.queries.getMenuItems,
     menuId ? { menuId } : "skip",
-  ) as Doc<"menuItems">[] | undefined;
+  );
 };
 
 export const useMenuByLocation = (location?: string) => {
   return useQuery(
     api.core.menus.queries.getMenuByLocation,
     location ? { location } : "skip",
-  ) as Doc<"menus"> | null | undefined;
+  );
 };
 
 export const useMenuWithItemsByLocation = (location?: string) => {

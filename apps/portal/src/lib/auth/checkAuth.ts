@@ -4,7 +4,7 @@ import { ConvexHttpClient } from "convex/browser";
 
 // Create a Convex client for server-side use
 const convex = new ConvexHttpClient(
-  process.env.NEXT_PUBLIC_CONVEX_URL as string,
+  process.env.NEXT_PUBLIC_CONVEX_URL!,
 );
 
 export async function checkAuth() {

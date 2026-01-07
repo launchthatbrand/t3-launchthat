@@ -38,7 +38,7 @@ export const setOrgDefaults = mutation({
         q.eq("userId", args.actorUserId).eq("organizationId", args.orgId),
       )
       .first();
-    if (!membership || !membership.isActive) {
+    if (!membership?.isActive) {
       throwInvalidInput("Access denied: not a member of this organization");
     }
     if (membership.role !== "owner" && membership.role !== "admin") {
@@ -82,7 +82,7 @@ export const getUserEventPrefs = query({
         q.eq("userId", args.userId).eq("organizationId", args.orgId),
       )
       .first();
-    if (!membership || !membership.isActive) {
+    if (!membership?.isActive) {
       return { inAppEnabled: {} };
     }
 
@@ -111,7 +111,7 @@ export const setUserEventPrefs = mutation({
         q.eq("userId", args.userId).eq("organizationId", args.orgId),
       )
       .first();
-    if (!membership || !membership.isActive) {
+    if (!membership?.isActive) {
       throwInvalidInput("Access denied: not a member of this organization");
     }
 
@@ -164,7 +164,7 @@ export const listSubscriptions = query({
         q.eq("userId", args.userId).eq("organizationId", args.orgId),
       )
       .first();
-    if (!membership || !membership.isActive) return [];
+    if (!membership?.isActive) return [];
 
     const qBase = args.eventKey
       ? ctx.db
@@ -208,7 +208,7 @@ export const upsertSubscription = mutation({
         q.eq("userId", args.userId).eq("organizationId", args.orgId),
       )
       .first();
-    if (!membership || !membership.isActive) {
+    if (!membership?.isActive) {
       console.log("[notifications.settings.upsertSubscription] denied", {
         hasMembership: !!membership,
         isActive: membership?.isActive,

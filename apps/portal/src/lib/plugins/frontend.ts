@@ -14,15 +14,15 @@ const normalizeSlugKey = (value?: string | null) =>
 
 const warnDuplicate = (kind: string, key: string) => {
   if (process.env.NODE_ENV === "production") return;
-  // eslint-disable-next-line no-console
+   
   console.warn(
     `[frontendRouting] Duplicate ${kind} slug detected: "${key}". Routing should be unique per org; please fix plugin definitions.`,
   );
 };
 
-const singleSlugIndex: Map<string, PluginPostTypeMatch> = new Map();
-const archiveSlugIndex: Map<string, PluginPostTypeMatch> = new Map();
-const postTypeSlugIndex: Map<string, PluginPostTypeMatch> = new Map();
+const singleSlugIndex = new Map<string, PluginPostTypeMatch>();
+const archiveSlugIndex = new Map<string, PluginPostTypeMatch>();
+const postTypeSlugIndex = new Map<string, PluginPostTypeMatch>();
 
 // Build lookup maps once at module init.
 for (const plugin of pluginDefinitions) {

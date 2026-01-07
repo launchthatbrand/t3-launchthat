@@ -36,11 +36,11 @@ const loadAllEvents = async (ctx: QueryCtx) => {
   return events;
 };
 
-type DateRangeFilters = {
+interface DateRangeFilters {
   startDate: number;
   endDate: number;
   calendarIds?: Id<"posts">[];
-};
+}
 
 const filterEventsByRange = (
   events: EventRecord[],
@@ -104,11 +104,11 @@ export const getCalendarEvents = query({
   },
 });
 
-type EventsRangeResponse = {
+interface EventsRangeResponse {
   events: EventRecord[];
   hasMore: boolean;
   cursor: string | null;
-};
+}
 
 export const getEventsInDateRange = query({
   args: {
@@ -120,7 +120,7 @@ export const getEventsInDateRange = query({
   },
   handler: async (ctx, args): Promise<EventsRangeResponse> => {
     const events = await loadAllEvents(ctx);
-    let filtered = filterEventsByRange(events, {
+    const filtered = filterEventsByRange(events, {
       startDate: args.startDate,
       endDate: args.endDate,
       calendarIds: args.calendarIds,

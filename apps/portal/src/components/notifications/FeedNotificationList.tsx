@@ -147,7 +147,7 @@ export function FeedNotificationList({
             <TabsContent value="reactions" className="space-y-2 p-2">
               {groupedNotifications.reaction ? (
                 renderNotifications(
-                  groupedNotifications.reaction as Notification[],
+                  groupedNotifications.reaction,
                 )
               ) : (
                 <div className="p-4 text-center text-sm text-muted-foreground">
@@ -175,7 +175,7 @@ export function FeedNotificationList({
             <TabsContent value="mentions" className="space-y-2 p-2">
               {groupedNotifications.mention ? (
                 renderNotifications(
-                  groupedNotifications.mention as Notification[],
+                  groupedNotifications.mention,
                 )
               ) : (
                 <div className="p-4 text-center text-sm text-muted-foreground">
@@ -187,7 +187,7 @@ export function FeedNotificationList({
             <TabsContent value="shares" className="space-y-2 p-2">
               {groupedNotifications.share ? (
                 renderNotifications(
-                  groupedNotifications.share as Notification[],
+                  groupedNotifications.share,
                 )
               ) : (
                 <div className="p-4 text-center text-sm text-muted-foreground">

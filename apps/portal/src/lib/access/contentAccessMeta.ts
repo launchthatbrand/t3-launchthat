@@ -1,23 +1,23 @@
-export type ContentAccessTagRule = {
+export interface ContentAccessTagRule {
   mode: "all" | "some";
   tagIds: string[];
-};
+}
 
-export type ContentAccessRules = {
+export interface ContentAccessRules {
   isPublic?: boolean;
   requiredRoleNames?: string[];
   requiredPermissionKeys?: string[];
   requiredTags?: ContentAccessTagRule;
   excludedTags?: ContentAccessTagRule;
-};
+}
 
-export type NormalizedContentAccessRules = {
+export interface NormalizedContentAccessRules {
   isPublic: boolean;
   requiredRoleNames: string[];
   requiredPermissionKeys: string[];
   requiredTags: ContentAccessTagRule;
   excludedTags: ContentAccessTagRule;
-};
+}
 
 const DEFAULT_TAG_RULE: ContentAccessTagRule = { mode: "some", tagIds: [] };
 

@@ -33,7 +33,7 @@ export const IS_IOS: boolean =
   !window.MSStream
 
 export const IS_ANDROID: boolean =
-  CAN_USE_DOM && /Android/.test(navigator.userAgent)
+  CAN_USE_DOM && navigator.userAgent.includes('Android')
 
 // Keep these in case we need to use them in the future.
 // export const IS_WINDOWS: boolean = CAN_USE_DOM && /Win/.test(navigator.platform);

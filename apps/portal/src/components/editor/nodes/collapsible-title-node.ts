@@ -1,14 +1,15 @@
-import {
-  $createParagraphNode,
-  $isElementNode,
+import type {
   DOMConversionMap,
   DOMConversionOutput,
   EditorConfig,
-  ElementNode,
   LexicalEditor,
   LexicalNode,
   RangeSelection,
-  SerializedElementNode,
+  SerializedElementNode} from 'lexical';
+import {
+  $createParagraphNode,
+  $isElementNode,
+  ElementNode
 } from 'lexical'
 
 import { IS_CHROME } from '~/components/editor/shared/environment'

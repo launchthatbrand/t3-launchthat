@@ -27,7 +27,7 @@ export const getAllPosts = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(lmsPostsQueries.getAllPosts as any, args)) as any;
+    return (await ctx.runQuery(lmsPostsQueries.getAllPosts, args));
   },
 });
 
@@ -38,7 +38,7 @@ export const getPostById = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(lmsPostsQueries.getPostById as any, args)) as any;
+    return (await ctx.runQuery(lmsPostsQueries.getPostById, args));
   },
 });
 
@@ -49,7 +49,7 @@ export const getPostBySlug = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(lmsPostsQueries.getPostBySlug as any, args)) as any;
+    return (await ctx.runQuery(lmsPostsQueries.getPostBySlug, args));
   },
 });
 
@@ -60,7 +60,7 @@ export const getPostMeta = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(lmsPostsQueries.getPostMeta as any, args)) as any;
+    return (await ctx.runQuery(lmsPostsQueries.getPostMeta, args));
   },
 });
 
@@ -73,7 +73,7 @@ export const searchPosts = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(lmsPostsQueries.searchPosts as any, args)) as any;
+    return (await ctx.runQuery(lmsPostsQueries.searchPosts, args));
   },
 });
 
@@ -84,7 +84,7 @@ export const getPostTags = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(lmsPostsQueries.getPostTags as any, args)) as any;
+    return (await ctx.runQuery(lmsPostsQueries.getPostTags, args));
   },
 });
 
@@ -96,9 +96,9 @@ export const getPostCategories = query({
   returns: v.any(),
   handler: async (ctx, args) => {
     return (await ctx.runQuery(
-      lmsPostsQueries.getPostCategories as any,
+      lmsPostsQueries.getPostCategories,
       args,
-    )) as any;
+    ));
   },
 });
 
@@ -109,7 +109,7 @@ export const listPostsWithMetaKey = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(lmsPostsQueries.listPostsWithMetaKey as any, args)) as any;
+    return (await ctx.runQuery(lmsPostsQueries.listPostsWithMetaKey, args));
   },
 });
 

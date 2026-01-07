@@ -88,7 +88,7 @@ export const FrontendSinglePostHeader = React.forwardRef<
               ) : null}
               {author && (
                 <div className="mt-6 flex items-center gap-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  { }
                   {author.avatarUrl ? (
                     <img
                       src={author.avatarUrl}

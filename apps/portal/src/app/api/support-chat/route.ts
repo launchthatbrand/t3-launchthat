@@ -14,8 +14,8 @@ import {
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/await-thenable */
+ 
+ 
 
 interface SupportMessage {
   id?: string;
@@ -302,7 +302,7 @@ export async function POST(req: Request) {
       }),
     );
 
-    return streamTextResponse(agentResult?.text ?? "");
+    return streamTextResponse(agentResult.text ?? "");
   } catch (error) {
     if (error instanceof SupportChatBadRequestError) {
       return NextResponse.json(

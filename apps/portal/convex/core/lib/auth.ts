@@ -1,5 +1,5 @@
-import { Id } from "../../_generated/dataModel";
-import { ActionCtx, MutationCtx, QueryCtx } from "../../_generated/server";
+import type { Id } from "../../_generated/dataModel";
+import type { ActionCtx, MutationCtx, QueryCtx } from "../../_generated/server";
 
 /**
  * Retrieves the authenticated user's ID (subject) from the context.

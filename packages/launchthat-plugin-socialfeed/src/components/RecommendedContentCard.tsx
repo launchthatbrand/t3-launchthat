@@ -1,6 +1,5 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import { api } from "@portal/convexspec";
 import { useMutation } from "convex/react";
 import { Info, ThumbsDown, ThumbsUp, XCircle } from "lucide-react";
@@ -33,7 +32,6 @@ export function RecommendedContentCard({
   recommendation,
   onRemove,
 }: RecommendedContentCardProps) {
-  const { userId } = useAuth();
   const { convexId } = useConvexUser();
 
   // Mark recommendation as interacted with

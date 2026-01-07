@@ -4,7 +4,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
-import { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useMutation, useQuery } from "convex/react";
 import { formatDistanceToNow } from "date-fns";
 import {

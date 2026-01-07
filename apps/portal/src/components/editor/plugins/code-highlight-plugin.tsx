@@ -7,7 +7,8 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { useEffect, JSX } from 'react'
+import type { JSX } from 'react';
+import { useEffect } from 'react'
 
 import { registerCodeHighlighting } from '@lexical/code'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'

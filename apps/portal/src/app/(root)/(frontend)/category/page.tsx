@@ -47,7 +47,7 @@ export default function CategoriesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {categories?.map((category) => (
+            {categories.map((category) => (
               <Link
                 key={category.name}
                 href={`/category/${encodeURIComponent(

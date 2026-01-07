@@ -622,8 +622,7 @@ export function parseAppActions(configTemplate: string): ActionDefinition[] {
 
     // Parse triggers - they are nested under triggers.default
     if (
-      config.triggers &&
-      config.triggers.default &&
+      config.triggers?.default &&
       typeof config.triggers.default === "object"
     ) {
       Object.entries(config.triggers.default).forEach(
@@ -642,8 +641,7 @@ export function parseAppActions(configTemplate: string): ActionDefinition[] {
 
     // Parse actions - they are nested under actions.default
     if (
-      config.actions &&
-      config.actions.default &&
+      config.actions?.default &&
       typeof config.actions.default === "object"
     ) {
       Object.entries(config.actions.default).forEach(

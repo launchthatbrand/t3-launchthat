@@ -1,8 +1,9 @@
 'use client'
 
-import { createContext, useContext, JSX } from 'react'
+import type { JSX } from 'react';
+import { createContext, useContext } from 'react'
 
-import { LexicalEditor } from 'lexical'
+import type { LexicalEditor } from 'lexical'
 
 const Context = createContext<{
   activeEditor: LexicalEditor

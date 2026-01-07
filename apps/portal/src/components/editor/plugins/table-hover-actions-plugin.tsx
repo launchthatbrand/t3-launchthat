@@ -7,11 +7,15 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { useEffect, useMemo, useRef, useState, JSX } from 'react'
+import type { JSX } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as React from 'react'
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useLexicalEditable } from '@lexical/react/useLexicalEditable'
+import type {
+  TableCellNode,
+  TableRowNode} from '@lexical/table';
 import {
   $getTableColumnIndexFromTableCellNode,
   $getTableRowIndexFromTableCellNode,
@@ -19,12 +23,11 @@ import {
   $insertTableRow__EXPERIMENTAL,
   $isTableCellNode,
   $isTableNode,
-  TableCellNode,
-  TableNode,
-  TableRowNode,
+  TableNode
 } from '@lexical/table'
 import { $findMatchingParent, mergeRegister } from '@lexical/utils'
-import { $getNearestNodeFromDOMNode, NodeKey } from 'lexical'
+import type { NodeKey } from 'lexical';
+import { $getNearestNodeFromDOMNode } from 'lexical'
 import { PlusIcon } from 'lucide-react'
 import { createPortal } from 'react-dom'
 
@@ -78,13 +81,13 @@ function TableHoverActionsContainer({
             return
           }
 
-          tableDOMElement = editor.getElementByKey(table?.getKey())
+          tableDOMElement = editor.getElementByKey(table.getKey())
 
           if (tableDOMElement) {
             const rowCount = table.getChildrenSize()
             const colCount = (
-              (table as TableNode).getChildAtIndex(0) as TableRowNode
-            )?.getChildrenSize()
+              (table).getChildAtIndex(0)!
+            ).getChildrenSize()
 
             const rowIndex = $getTableRowIndexFromTableCellNode(maybeTableCell)
             const colIndex =

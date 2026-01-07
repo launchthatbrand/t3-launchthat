@@ -229,7 +229,7 @@ const syncCrmContactAndTagsBestEffort = async (
   const crmOrgId = args.organizationId;
 
   let contactId: string | null = (await ctx.runQuery(
-    crmContactsQueries.getContactIdForUser as any,
+    crmContactsQueries.getContactIdForUser,
     {
       organizationId: crmOrgId,
       userId: args.userId,
@@ -240,7 +240,7 @@ const syncCrmContactAndTagsBestEffort = async (
 
   if (!contactId) {
     const baseSlug = slugify(args.email) || `contact-${Date.now()}`;
-    contactId = (await ctx.runMutation(crmContactsMutations.createContact as any, {
+    contactId = (await ctx.runMutation(crmContactsMutations.createContact, {
       organizationId: crmOrgId,
       postTypeSlug: "contact",
       title: contactName || "Contact",
@@ -255,7 +255,7 @@ const syncCrmContactAndTagsBestEffort = async (
       },
     })) as string;
   } else {
-    await ctx.runMutation(crmContactsMutations.updateContact as any, {
+    await ctx.runMutation(crmContactsMutations.updateContact, {
       organizationId: crmOrgId,
       contactId,
       title: contactName || undefined,
@@ -293,7 +293,7 @@ const syncCrmContactAndTagsBestEffort = async (
     new Set(tagIds.map((s) => s.trim()).filter(Boolean)),
   );
   for (const marketingTagId of normalizedIds) {
-    await ctx.runMutation(crmMarketingTagsMutations.assignMarketingTagToUser as any, {
+    await ctx.runMutation(crmMarketingTagsMutations.assignMarketingTagToUser, {
       organizationId: crmOrgId,
       contactId: contactId as any,
       marketingTagId: marketingTagId as any,
@@ -307,13 +307,13 @@ const syncCrmContactAndTagsBestEffort = async (
   );
   if (normalizedSlugs.length === 0 || !crmMarketingTagsQueries) return;
 
-  const tags = (await ctx.runQuery(crmMarketingTagsQueries.listMarketingTags as any, {
+  const tags = (await ctx.runQuery(crmMarketingTagsQueries.listMarketingTags, {
     organizationId: crmOrgId,
-  })) as Array<{ _id?: unknown; slug?: unknown; name?: unknown }>;
+  })) as { _id?: unknown; slug?: unknown; name?: unknown }[];
   const slugToId: Record<string, string> = {};
   for (const t of tags ?? []) {
-    const slug = typeof t?.slug === "string" ? t.slug.trim().toLowerCase() : "";
-    const id = typeof t?._id === "string" ? t._id : "";
+    const slug = typeof t.slug === "string" ? t.slug.trim().toLowerCase() : "";
+    const id = typeof t._id === "string" ? t._id : "";
     if (slug && id) slugToId[slug] = id;
   }
 
@@ -321,7 +321,7 @@ const syncCrmContactAndTagsBestEffort = async (
     let tagId = slugToId[slug] ?? "";
     if (!tagId && crmMarketingTagsMutations?.createMarketingTag) {
       const createdId = (await ctx.runMutation(
-        crmMarketingTagsMutations.createMarketingTag as any,
+        crmMarketingTagsMutations.createMarketingTag,
         {
           organizationId: crmOrgId,
           name: slug,
@@ -335,7 +335,7 @@ const syncCrmContactAndTagsBestEffort = async (
     }
 
     if (!tagId) continue;
-    await ctx.runMutation(crmMarketingTagsMutations.assignMarketingTagToUser as any, {
+    await ctx.runMutation(crmMarketingTagsMutations.assignMarketingTagToUser, {
       organizationId: crmOrgId,
       contactId: contactId as any,
       marketingTagId: tagId as any,
@@ -715,7 +715,7 @@ export const claimOrderAfterAuth = mutation({
     const post = (await ctx.runQuery(commercePostsQueries.getPostById as any, {
       id: normalizedOrderId,
       organizationId: normalizedOrgId,
-    })) as any | null;
+    }));
     if (!post) {
       throw new Error("Order not found");
     }
@@ -723,7 +723,7 @@ export const claimOrderAfterAuth = mutation({
     const meta = (await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
       postId: post._id,
       organizationId: normalizedOrgId,
-    })) as Array<{ key: string; value: unknown }>;
+    })) as { key: string; value: unknown }[];
 
     const assignedDot = readMetaValue(meta, "order.userId");
     const assignedLegacy = readMetaValue(meta, "order:userId");
@@ -879,13 +879,13 @@ export const attachOrderToClerkUser = mutation({
     const post = (await ctx.runQuery(commercePostsQueries.getPostById as any, {
       id: orderId,
       organizationId,
-    })) as any | null;
+    }));
     if (!post) throw new Error("Order not found.");
 
     const meta = (await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
       postId: post._id,
       organizationId,
-    })) as Array<{ key: string; value: unknown }>;
+    })) as { key: string; value: unknown }[];
 
     const tokenInOrder = readMetaValue(meta, ORDER_META_KEYS.checkoutToken);
     if (typeof tokenInOrder !== "string" || tokenInOrder.trim() !== checkoutToken) {

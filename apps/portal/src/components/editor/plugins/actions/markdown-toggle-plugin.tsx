@@ -4,10 +4,11 @@ import { useCallback } from 'react'
 
 import { $isCodeNode } from '@lexical/code'
 import { $createCodeNode } from '@lexical/code'
+import type {
+  Transformer} from '@lexical/markdown';
 import {
   $convertFromMarkdownString,
-  $convertToMarkdownString,
-  Transformer,
+  $convertToMarkdownString
 } from '@lexical/markdown'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $createTextNode } from 'lexical'
@@ -21,7 +22,7 @@ export function MarkdownTogglePlugin({
   transformers,
 }: {
   shouldPreserveNewLinesInMarkdown: boolean
-  transformers: Array<Transformer>
+  transformers: Transformer[]
 }) {
   const [editor] = useLexicalComposerContext()
 

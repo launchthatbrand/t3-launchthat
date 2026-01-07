@@ -94,7 +94,7 @@ export function MediaLibrary({
           <button
             key={item._id}
             type="button"
-            onClick={() => isSelectable && onSelect?.(item)}
+            onClick={() => isSelectable && onSelect(item)}
             className={cn(
               "group hover:border-primary overflow-hidden rounded-md border text-left transition",
               !isSelectable && "cursor-default",

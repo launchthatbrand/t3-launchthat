@@ -92,7 +92,7 @@ export default async function OrganizationHomepage() {
       : null;
 
   const allowedPageTemplates = await loadAllowedPageTemplates(
-    organizationId ? (organizationId as Id<"organizations">) : null,
+    organizationId ? (organizationId) : null,
   );
 
   const pluginMatch = post.postTypeSlug ? findPostTypeBySlug(post.postTypeSlug) : null;
@@ -106,7 +106,7 @@ export default async function OrganizationHomepage() {
     postMetaMap: postMetaMap as any,
     puckData: puckData as any,
     pluginMatch: pluginMatch as any,
-    organizationId: organizationId as Id<"organizations">,
+    organizationId: organizationId!,
     allowedPageTemplates,
     segments: [],
     enforceCanonicalRedirect: false,

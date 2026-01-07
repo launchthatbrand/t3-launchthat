@@ -9,12 +9,12 @@ import { v } from "convex/values";
 
 import { internalAction } from "../_generated/server";
 
-type QueryContext = {
+interface QueryContext {
   db: any;
   auth: any;
   scheduler: any;
   storage: any;
-};
+}
 
 /**
  * Runs a performance analysis on queries and logs the results

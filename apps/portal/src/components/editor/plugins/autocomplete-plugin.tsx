@@ -7,7 +7,8 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { useCallback, useEffect, JSX } from 'react'
+import type { JSX } from 'react';
+import { useCallback, useEffect } from 'react'
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $isAtNodeEnd } from '@lexical/selection'
@@ -33,7 +34,7 @@ import {
 
 import { addSwipeRightListener } from '~/components/editor/utils/swipe'
 
-type SearchPromise = {
+interface SearchPromise {
   dismiss: () => void
   promise: Promise<null | string>
 }
@@ -243,7 +244,7 @@ class AutocompleteServer {
     const dismiss = () => {
       isDismissed = true
     }
-    const promise: Promise<null | string> = new Promise((resolve, reject) => {
+    const promise = new Promise<null | string>((resolve, reject) => {
       setTimeout(() => {
         if (isDismissed) {
           // TODO cache result

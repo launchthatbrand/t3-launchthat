@@ -32,7 +32,7 @@ export const EVENT_META_KEYS = {
   createdBy: "event:createdBy",
 } as const;
 
-export type CalendarRecord = {
+export interface CalendarRecord {
   _id: Id<"posts">;
   title: string;
   name: string;
@@ -44,17 +44,17 @@ export type CalendarRecord = {
   isPublic?: boolean;
   organizationId?: Id<"organizations"> | null;
   slug?: string | null;
-};
+}
 
-export type EventLocation = {
+export interface EventLocation {
   type: "virtual" | "physical" | "hybrid";
   address?: string;
   url?: string;
   meetingId?: string;
   passcode?: string;
-};
+}
 
-export type EventRecurrence = {
+export interface EventRecurrence {
   frequency: "daily" | "weekly" | "monthly" | "yearly";
   interval?: number;
   count?: number;
@@ -62,9 +62,9 @@ export type EventRecurrence = {
   byDay?: string[];
   byMonthDay?: number[];
   byMonth?: number[];
-};
+}
 
-export type EventRecord = {
+export interface EventRecord {
   _id: Id<"posts">;
   title: string;
   description?: string | null;
@@ -81,7 +81,7 @@ export type EventRecord = {
   recurrence?: EventRecurrence;
   organizationId?: Id<"organizations"> | null;
   slug?: string | null;
-};
+}
 
 export async function getPostMetaMap(
   ctx: Ctx,

@@ -4,7 +4,6 @@ import type { Id } from "@portal/convex/_generated/dataModel";
 import type { FeedType } from "launchthat-plugin-socialfeed/components";
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
 import { useConvexAuth } from "convex/react";
 import {
   FeedFilters,
@@ -15,6 +14,7 @@ import { Plus } from "lucide-react";
 import type { FilterValue } from "@acme/ui/entity-list/types";
 import { Button } from "@acme/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { useConvexUser } from "~/hooks/useConvexUser";
 
 // Wrapper component for FeedFilters to handle Suspense
 function FeedFiltersWrapper({
@@ -35,7 +35,7 @@ function FeedFiltersWrapper({
 
 export default function FeedPage() {
   const { isAuthenticated } = useConvexAuth();
-  const { userId } = useAuth();
+  const { convexId } = useConvexUser();
   const [activeTab, setActiveTab] = useState<FeedType>("universal");
   const [activeFilters, setActiveFilters] = useState<
     Record<string, FilterValue>
@@ -96,7 +96,7 @@ export default function FeedPage() {
                 feedType="personalized"
                 filters={{
                   ...activeFilters,
-                  userId: userId as Id<"users">,
+                  userId: convexId as Id<"users">,
                 }}
                 limit={10}
                 className="pt-4"

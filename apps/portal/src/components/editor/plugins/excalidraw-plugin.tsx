@@ -8,16 +8,18 @@ import type { AppState, BinaryFiles } from "@excalidraw/excalidraw/types";
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { JSX, useEffect, useState } from "react";
+import type { JSX} from "react";
+import { useEffect, useState } from "react";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $wrapNodeInElement } from "@lexical/utils";
+import type {
+  LexicalCommand} from "lexical";
 import {
   $createParagraphNode,
   $insertNodes,
   $isRootOrShadowRoot,
   COMMAND_PRIORITY_EDITOR,
-  createCommand,
-  LexicalCommand,
+  createCommand
 } from "lexical";
 
 import type { ExcalidrawInitialElements } from "~/components/editor/editor-ui/excalidraw-modal";

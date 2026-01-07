@@ -17,22 +17,22 @@ export function useGroupData() {
   // Extract current group ID from URL
   const currentGroupId = useMemo(() => {
     // Direct group ID from params
-    if (params?.groupId && typeof params.groupId === "string") {
+    if (params.groupId && typeof params.groupId === "string") {
       return params.groupId;
     }
 
     // For /groups/[id] pattern
     if (
-      params?.id &&
+      params.id &&
       typeof params.id === "string" &&
-      pathname?.includes("/groups/")
+      pathname.includes("/groups/")
     ) {
       return params.id;
     }
 
     // Extract from URL path patterns like /groups/[groupId]
-    const groupPathMatch = pathname?.match(/\/groups\/([^\/]+)/);
-    if (groupPathMatch && groupPathMatch[1]) {
+    const groupPathMatch = /\/groups\/([^\/]+)/.exec(pathname);
+    if (groupPathMatch?.[1]) {
       return groupPathMatch[1];
     }
 

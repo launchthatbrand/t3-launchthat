@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@clerk/nextjs";
 import { api } from "@portal/convexspec";
 import { useMutation } from "convex/react";
 import { AlertCircle, Flag } from "lucide-react";
@@ -29,6 +28,7 @@ import {
 import { Textarea } from "@acme/ui/textarea";
 
 import type { Id } from "../lib/types";
+import { useSocialFeedAuth } from "../context/SocialFeedClientProvider";
 
 // Report categories for content moderation
 const REPORT_CATEGORIES = [
@@ -55,7 +55,7 @@ export function ReportDialog({
   trigger,
   onSuccess,
 }: ReportDialogProps) {
-  const { userId } = useAuth();
+  const { userId } = useSocialFeedAuth();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<string>("");
   const [description, setDescription] = useState("");

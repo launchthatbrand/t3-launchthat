@@ -4,13 +4,13 @@ import { v } from "convex/values";
 import { components } from "../../../_generated/api";
 import { mutation, query } from "../../../_generated/server";
 
-type CommercePostsQueries = {
+interface CommercePostsQueries {
   getPostMeta: unknown;
-};
+}
 
-type CommercePostsMutations = {
+interface CommercePostsMutations {
   setPostMeta: unknown;
-};
+}
 
 const commercePostsQueries = (
   components as unknown as {
@@ -26,19 +26,19 @@ const commercePostsMutations = (
 
 const ORDER_NOTES_META_KEY = "order:notes_json";
 
-type OrderNote = {
+interface OrderNote {
   id: string;
   content: string;
   createdAt: number;
   createdBy?: string;
   isPrivate?: boolean;
-};
+}
 
-function parseNotes(raw: unknown): Array<OrderNote> {
+function parseNotes(raw: unknown): OrderNote[] {
   if (typeof raw !== "string" || raw.length === 0) return [];
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as Array<OrderNote>) : [];
+    return Array.isArray(parsed) ? (parsed as OrderNote[]) : [];
   } catch {
     return [];
   }
@@ -52,7 +52,7 @@ export const getOrderNotes = query({
   handler: async (ctx, args) => {
     const meta = (await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
       postId: args.orderId,
-    })) as Array<{ key: string; value: unknown }>;
+    })) as { key: string; value: unknown }[];
 
     const raw = meta.find((m) => m.key === ORDER_NOTES_META_KEY)?.value ?? null;
     return parseNotes(raw);
@@ -70,7 +70,7 @@ export const addOrderNote = mutation({
   handler: async (ctx, args) => {
     const meta = (await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
       postId: args.orderId,
-    })) as Array<{ key: string; value: unknown }>;
+    })) as { key: string; value: unknown }[];
 
     const raw = meta.find((m) => m.key === ORDER_NOTES_META_KEY)?.value ?? null;
     const notes = parseNotes(raw);
@@ -102,7 +102,7 @@ export const deleteOrderNote = mutation({
   handler: async (ctx, args) => {
     const meta = (await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
       postId: args.orderId,
-    })) as Array<{ key: string; value: unknown }>;
+    })) as { key: string; value: unknown }[];
     const raw = meta.find((m) => m.key === ORDER_NOTES_META_KEY)?.value ?? null;
     const notes = parseNotes(raw);
     const next = notes.filter((n) => n.id !== args.noteId);
@@ -116,6 +116,7 @@ export const deleteOrderNote = mutation({
     return { success: true };
   },
 });
+
 
 
 

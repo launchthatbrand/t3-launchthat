@@ -4,11 +4,11 @@ import { v } from "convex/values";
 import { components } from "../../../_generated/api";
 import { query } from "../../../_generated/server";
 
-type CommercePostsQueries = {
+interface CommercePostsQueries {
   getAllPosts: unknown;
   getPostById: unknown;
   getPostMeta: unknown;
-};
+}
 
 const commercePostsQueries = (
   components as unknown as {
@@ -17,7 +17,7 @@ const commercePostsQueries = (
 ).launchthat_ecommerce.posts.queries;
 
 function getMetaValue(
-  meta: Array<{ key: string; value: unknown }>,
+  meta: { key: string; value: unknown }[],
   key: string,
 ): unknown {
   return meta.find((m) => m.key === key)?.value;
@@ -44,14 +44,14 @@ export const listOrders = query({
     const posts = (await ctx.runQuery(commercePostsQueries.getAllPosts as any, {
       organizationId: args.organizationId,
       filters: { postTypeSlug: "orders", limit: args.limit ?? 50 },
-    })) as Array<any>;
+    })) as any[];
 
-    const result: Array<any> = [];
+    const result: any[] = [];
     for (const post of posts) {
       const meta = (await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
         postId: post._id,
         organizationId: args.organizationId,
-      })) as Array<{ key: string; value: unknown }>;
+      })) as { key: string; value: unknown }[];
 
       const payload = getMetaValue(meta, ORDER_META_KEYS.payload);
       const total = getMetaValue(meta, ORDER_META_KEYS.total);
@@ -145,22 +145,22 @@ export const listMyOrders = query({
       new Set([...(idsByUserId ?? []), ...(idsByUserIdDot ?? []), ...(idsByEmail ?? [])]),
     );
 
-    const result: Array<any> = [];
+    const result: any[] = [];
     for (const id of uniqueIds) {
       const post = (await ctx.runQuery(commercePostsQueries.getPostById as any, {
         id,
         organizationId,
-      })) as any | null;
+      }));
       if (!post) continue;
 
       const meta = (await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
         postId: post._id,
         organizationId,
-      })) as Array<{ key: string; value: unknown }>;
+      })) as { key: string; value: unknown }[];
 
       const total =
-        (getMetaValue(meta, "order.orderTotal") as unknown) ??
-        (getMetaValue(meta, "order:total") as unknown);
+        (getMetaValue(meta, "order.orderTotal")) ??
+        (getMetaValue(meta, "order:total"));
       const currency = getMetaValue(meta, "order.currency");
       const itemsJson = getMetaValue(meta, "order.itemsJson");
 
@@ -201,13 +201,13 @@ export const getOrder = query({
     const post = (await ctx.runQuery(commercePostsQueries.getPostById as any, {
       id: args.orderId,
       organizationId: args.organizationId,
-    })) as any | null;
+    }));
     if (!post) return null;
 
     const meta = (await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
       postId: post._id,
       organizationId: args.organizationId,
-    })) as Array<{ key: string; value: unknown }>;
+    })) as { key: string; value: unknown }[];
 
     const payload = getMetaValue(meta, ORDER_META_KEYS.payload);
     const total = getMetaValue(meta, ORDER_META_KEYS.total);
@@ -265,13 +265,13 @@ export const getMyOrder = query({
     const post = (await ctx.runQuery(commercePostsQueries.getPostById as any, {
       id: args.orderId,
       organizationId: args.organizationId,
-    })) as any | null;
+    }));
     if (!post) return null;
 
     const meta = (await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
       postId: post._id,
       organizationId: args.organizationId,
-    })) as Array<{ key: string; value: unknown }>;
+    })) as { key: string; value: unknown }[];
 
     const assignedLegacy = getMetaValue(meta, "order:userId");
     const assignedDot = getMetaValue(meta, "order.userId");
@@ -287,12 +287,12 @@ export const getMyOrder = query({
     }
 
     const total =
-      (getMetaValue(meta, "order.orderTotal") as unknown) ??
-      (getMetaValue(meta, "order:total") as unknown);
+      (getMetaValue(meta, "order.orderTotal")) ??
+      (getMetaValue(meta, "order:total"));
     const currency = getMetaValue(meta, "order.currency");
     const itemsJson =
-      (getMetaValue(meta, "order.itemsJson") as unknown) ??
-      (getMetaValue(meta, "order:itemsJson") as unknown);
+      (getMetaValue(meta, "order.itemsJson")) ??
+      (getMetaValue(meta, "order:itemsJson"));
 
     const items =
       typeof itemsJson === "string"

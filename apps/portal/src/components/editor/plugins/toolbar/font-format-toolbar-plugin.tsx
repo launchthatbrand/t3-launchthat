@@ -3,11 +3,12 @@
 import { useState } from 'react'
 
 import { $isTableSelection } from '@lexical/table'
+import type {
+  BaseSelection,
+  TextFormatType} from 'lexical';
 import {
   $isRangeSelection,
-  BaseSelection,
-  FORMAT_TEXT_COMMAND,
-  TextFormatType,
+  FORMAT_TEXT_COMMAND
 } from 'lexical'
 import {
   BoldIcon,
@@ -47,7 +48,7 @@ export function FontFormatToolbarPlugin({
 
   useUpdateToolbarHandler($updateToolbar)
 
-  const Icon = Icons[format as TextFormatType] as React.ElementType
+  const Icon = Icons[format as TextFormatType]!
 
   return (
     <Toggle

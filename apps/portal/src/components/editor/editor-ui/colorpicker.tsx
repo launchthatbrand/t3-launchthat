@@ -10,7 +10,7 @@ import {
   PopoverTrigger,
 } from '@acme/ui/popover'
 
-type Props = {
+interface Props {
   disabled?: boolean
   icon?: React.ReactNode
   label?: string
@@ -51,7 +51,7 @@ export default function ColorPicker({
           maxLength={7}
           onChange={(e) => {
             e.stopPropagation()
-            onChange?.(e?.currentTarget?.value, false)
+            onChange?.(e.currentTarget.value, false)
           }}
           value={color}
         />

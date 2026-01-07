@@ -7,13 +7,14 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import {
+import type {
   Dispatch,
+  JSX} from 'react';
+import {
   useCallback,
   useEffect,
   useRef,
-  useState,
-  JSX,
+  useState
 } from 'react'
 import * as React from 'react'
 
@@ -21,6 +22,8 @@ import { $isCodeHighlightNode } from '@lexical/code'
 import { $isLinkNode, TOGGLE_LINK_COMMAND } from '@lexical/link'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
+import type {
+  LexicalEditor} from 'lexical';
 import {
   $getSelection,
   $isParagraphNode,
@@ -28,7 +31,6 @@ import {
   $isTextNode,
   COMMAND_PRIORITY_LOW,
   FORMAT_TEXT_COMMAND,
-  LexicalEditor,
   SELECTION_CHANGE_COMMAND,
 } from 'lexical'
 import {
@@ -90,7 +92,7 @@ function FloatingTextFormat({
 
   function mouseMoveListener(e: MouseEvent) {
     if (
-      popupCharStylesEditorRef?.current &&
+      popupCharStylesEditorRef.current &&
       (e.buttons === 1 || e.buttons === 3)
     ) {
       if (popupCharStylesEditorRef.current.style.pointerEvents !== 'none') {
@@ -106,7 +108,7 @@ function FloatingTextFormat({
     }
   }
   function mouseUpListener(e: MouseEvent) {
-    if (popupCharStylesEditorRef?.current) {
+    if (popupCharStylesEditorRef.current) {
       if (popupCharStylesEditorRef.current.style.pointerEvents !== 'auto') {
         popupCharStylesEditorRef.current.style.pointerEvents = 'auto'
       }
@@ -114,7 +116,7 @@ function FloatingTextFormat({
   }
 
   useEffect(() => {
-    if (popupCharStylesEditorRef?.current) {
+    if (popupCharStylesEditorRef.current) {
       document.addEventListener('mousemove', mouseMoveListener)
       document.addEventListener('mouseup', mouseUpListener)
 
@@ -340,8 +342,7 @@ function useFloatingTextFormatToolbar(
       if (
         nativeSelection !== null &&
         (!$isRangeSelection(selection) ||
-          rootElement === null ||
-          !rootElement.contains(nativeSelection.anchorNode))
+          !rootElement?.contains(nativeSelection.anchorNode))
       ) {
         setIsText(false)
         return

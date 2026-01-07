@@ -119,11 +119,11 @@ export const listForOwners = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const results: Array<{
+    const results: {
       nodeType: string;
       ownerId: string;
       status: string | null;
-    }> = [];
+    }[] = [];
 
     for (const filter of args.filters) {
       const conn = await ctx.db

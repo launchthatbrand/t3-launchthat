@@ -3,7 +3,7 @@
  * Handles extraction and formatting of mentions and hashtags
  */
 
-import { TextPart } from "./types";
+import type { TextPart } from "./types";
 
 /**
  * Extract all @mentions from a text string

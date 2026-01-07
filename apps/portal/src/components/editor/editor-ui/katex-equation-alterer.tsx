@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { useCallback, useState, JSX } from 'react'
+import type { JSX } from 'react';
+import { useCallback, useState } from 'react'
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -12,7 +13,7 @@ import { Textarea } from '@acme/ui/textarea'
 
 import KatexRenderer from '~/components/editor/editor-ui/katex-renderer'
 
-type Props = {
+interface Props {
   initialEquation?: string
   onConfirm: (equation: string, inline: boolean) => void
 }

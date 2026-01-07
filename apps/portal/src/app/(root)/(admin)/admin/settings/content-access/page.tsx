@@ -55,8 +55,8 @@ export default async function ContentAccessPage() {
     enabledPluginIds,
     query: (fn, args) =>
       fetchQuery(
-        fn as unknown as Parameters<typeof fetchQuery>[0],
-        args as unknown as Parameters<typeof fetchQuery>[1],
+        fn as Parameters<typeof fetchQuery>[0],
+        args as Parameters<typeof fetchQuery>[1],
       ),
     api: apiModule.api,
   });

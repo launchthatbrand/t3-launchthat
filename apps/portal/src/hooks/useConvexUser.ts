@@ -1,6 +1,5 @@
 import type { Id } from "../../convex/_generated/dataModel";
 import { api } from "../../convex/_generated/api";
-import { useAuth } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 
 /**
@@ -12,15 +11,20 @@ import { useQuery } from "convex/react";
  *   - isLoading: True if the user data is still being loaded
  */
 export function useConvexUser() {
-  const { userId: clerkId, isLoaded: isClerkLoaded } = useAuth();
+  /**
+   * IMPORTANT:
+   * Tenant/custom hosts intentionally do NOT mount <ClerkProvider />, so we must
+   * never call Clerk hooks here.
+   *
+   * `getUserByClerkId` already prefers the authenticated Convex identity
+   * (tokenIdentifier) when available, so we can safely pass a placeholder
+   * clerkId and still resolve "current user" whenever Convex auth is set.
+   */
+  const user = useQuery(api.core.users.queries.getUserByClerkId, {
+    clerkId: "__self__",
+  });
 
-  const user = useQuery(
-    api.core.users.queries.getUserByClerkId,
-    clerkId ? { clerkId } : "skip",
-  );
-
-  // User is still loading if Clerk hasn't loaded or if the query is still running
-  const isLoading = !isClerkLoaded || (clerkId && user === undefined);
+  const isLoading = user === undefined;
 
   // Only return the ID if we have a valid user
   const convexId = user ? (user._id as Id<"users">) : null;

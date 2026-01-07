@@ -68,29 +68,29 @@ const getPrimaryEmailForUser = (user: {
   return primary ? primary.emailAddress : "";
 };
 
-type ClerkErrorLike = {
+interface ClerkErrorLike {
   status?: number;
   clerkTraceId?: string;
-  errors?: Array<{
+  errors?: {
     code?: string;
     message?: string;
     longMessage?: string;
     meta?: unknown;
-  }>;
-};
+  }[];
+}
 
 const formatClerkErrorForLogs = (err: unknown) => {
   const e = err && typeof err === "object" ? (err as ClerkErrorLike) : null;
-  const errors = Array.isArray(e?.errors) ? e?.errors : [];
+  const errors = Array.isArray(e?.errors) ? e.errors : [];
   return {
     status: typeof e?.status === "number" ? e.status : undefined,
     clerkTraceId: typeof e?.clerkTraceId === "string" ? e.clerkTraceId : undefined,
     errors: errors.map((row) => ({
-      code: typeof row?.code === "string" ? row.code : undefined,
-      message: typeof row?.message === "string" ? row.message : undefined,
+      code: typeof row.code === "string" ? row.code : undefined,
+      message: typeof row.message === "string" ? row.message : undefined,
       longMessage:
-        typeof row?.longMessage === "string" ? row.longMessage : undefined,
-      meta: row?.meta,
+        typeof row.longMessage === "string" ? row.longMessage : undefined,
+      meta: row.meta,
     })),
   };
 };

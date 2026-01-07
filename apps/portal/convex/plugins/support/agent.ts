@@ -346,7 +346,7 @@ export const generateAgentReply = action({
       };
 
       type Role = "user" | "assistant";
-      type HistoryItem = { role: Role; content: string };
+      interface HistoryItem { role: Role; content: string }
 
       const historyRaw = (threadMessagesPage.page ?? []).flatMap(
         (row): HistoryItem[] => {

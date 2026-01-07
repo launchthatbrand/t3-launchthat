@@ -5,7 +5,7 @@
  * to provide strong typing and replace 'any' types throughout the CMS codebase.
  */
 
-import { Id } from "../_generated/dataModel";
+import type { Id } from "../_generated/dataModel";
 
 /**
  * Field default value types

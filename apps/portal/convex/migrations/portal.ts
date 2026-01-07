@@ -13,7 +13,7 @@ async function migrateIndexedCollection(
 ) {
   const docs = await ctx.db
     .query(table)
-    .withIndex(indexName, (q) => q.eq(fieldName as string, PORTAL_TENANT_SLUG))
+    .withIndex(indexName, (q) => q.eq(fieldName, PORTAL_TENANT_SLUG))
     .collect();
 
   await Promise.all(

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@clerk/nextjs";
 import { api } from "@portal/convexspec";
 import { useMutation, useQuery } from "convex/react";
 import { CheckIcon, HashIcon, PlusIcon } from "lucide-react";
@@ -19,7 +18,6 @@ interface TopicCardProps {
 }
 
 export function TopicCard({ topicId, onToggleFollow }: TopicCardProps) {
-  const { userId } = useAuth();
   const { convexId } = useConvexUser();
   const [isFollowing, setIsFollowing] = useState<boolean | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);

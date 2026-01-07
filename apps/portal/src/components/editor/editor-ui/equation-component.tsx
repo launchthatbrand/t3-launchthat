@@ -1,16 +1,18 @@
 import * as React from 'react'
-import { useCallback, useEffect, useRef, useState, JSX } from 'react'
+import type { JSX } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useLexicalEditable } from '@lexical/react/useLexicalEditable'
 import { mergeRegister } from '@lexical/utils'
+import type {
+  NodeKey} from 'lexical';
 import {
   $getNodeByKey,
   $getSelection,
   $isNodeSelection,
   COMMAND_PRIORITY_HIGH,
   KEY_ESCAPE_COMMAND,
-  NodeKey,
   SELECTION_CHANGE_COMMAND,
 } from 'lexical'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -19,7 +21,7 @@ import { $isEquationNode } from '~/components/editor/nodes/equation-node'
 import EquationEditor from '~/components/editor/editor-ui/equation-editor'
 import KatexRenderer from '~/components/editor/editor-ui/katex-renderer'
 
-type EquationComponentProps = {
+interface EquationComponentProps {
   equation: string
   inline: boolean
   nodeKey: NodeKey

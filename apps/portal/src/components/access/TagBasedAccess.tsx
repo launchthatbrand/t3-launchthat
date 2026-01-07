@@ -15,7 +15,7 @@ import {
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 interface TagBasedAccessProps {
   /** Array of tag slugs that grant access to this content */

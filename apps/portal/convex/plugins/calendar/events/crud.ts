@@ -232,7 +232,7 @@ export const updateEvent = mutation({
       await ctx.db.patch(args.eventId, updates);
     }
 
-    const metaUpdates: Array<Promise<void>> = [];
+    const metaUpdates: Promise<void>[] = [];
     if (args.calendarId) {
       metaUpdates.push(
         setPostMetaValue(

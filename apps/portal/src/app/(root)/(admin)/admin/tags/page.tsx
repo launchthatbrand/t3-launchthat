@@ -8,7 +8,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import TagForm, { TagFormValues } from "./_components/TagForm";
+import type { TagFormValues } from "./_components/TagForm";
+import TagForm from "./_components/TagForm";
 import { useMemo, useState } from "react";
 
 import { Badge } from "@acme/ui/badge";

@@ -65,7 +65,7 @@ export default function TaxonomiesSettingsPage() {
   const taxonomies = useMemo(() => taxonomyData ?? [], [taxonomyData]);
   const { data: postTypesData } = usePostTypes(true);
   const postTypes = useMemo(
-    () => (postTypesData ?? []) as Doc<"postTypes">[],
+    () => (postTypesData ?? []),
     [postTypesData],
   );
   const createTaxonomy = useCreateTaxonomy();

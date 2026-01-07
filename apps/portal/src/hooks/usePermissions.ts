@@ -2,16 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-import { useUser } from "@clerk/nextjs";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
+
+import { useConvexUser } from "~/hooks/useConvexUser";
 
 type PermissionLevel = "none" | "own" | "group" | "all";
 type PermissionScope = "global" | "group" | "course" | "organization";
 
-interface PermissionsMap {
-  [key: string]: PermissionLevel;
-}
+type PermissionsMap = Record<string, PermissionLevel>;
 
 interface UsePermissionsResult {
   /**
@@ -53,19 +52,13 @@ export function usePermissions(
   scopeType?: PermissionScope,
   scopeId?: string,
 ): UsePermissionsResult {
-  const { user } = useUser();
-  const userId = user?.id;
+  const { convexId: userId, isLoading: userLoading } = useConvexUser();
   const [error, setError] = useState<Error | null>(null);
 
   // Get all permissions for the current user
   const permissionsResult = useQuery(
     api.permissions.getUserPermissions,
-    userId
-      ? {
-          scopeType,
-          scopeId,
-        }
-      : "skip",
+    userId ? { scopeType, scopeId } : "skip",
   );
 
   // For direct permission checking
@@ -153,12 +146,12 @@ export function useHasPermission(
   scopeType?: PermissionScope,
   scopeId?: string,
 ): boolean {
-  const { user } = useUser();
+  const { convexId: userId } = useConvexUser();
 
   // Query the permission directly
   const hasPermission = useQuery(
     api.permissions.checkPermission,
-    user
+    userId
       ? {
           permissionKey,
           resourceOwnerId,

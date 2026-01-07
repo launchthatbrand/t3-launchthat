@@ -7,18 +7,20 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { useEffect, useState, JSX } from 'react'
+import type { JSX } from 'react';
+import { useEffect, useState } from 'react'
 import * as React from 'react'
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $wrapNodeInElement } from '@lexical/utils'
+import type {
+  LexicalCommand,
+  LexicalEditor} from 'lexical';
 import {
   $createParagraphNode,
   $insertNodes,
   $isRootOrShadowRoot,
   COMMAND_PRIORITY_EDITOR,
-  LexicalCommand,
-  LexicalEditor,
   createCommand,
 } from 'lexical'
 

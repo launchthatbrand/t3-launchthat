@@ -33,7 +33,7 @@ const PageTemplateMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
 
   const currentOverrideRaw = context.getMetaValue
     ? context.getMetaValue("page_template")
-    : (context.customFields?.postMetaMap?.page_template ?? undefined);
+    : (context.customFields?.postMetaMap.page_template ?? undefined);
   const currentOverride =
     typeof currentOverrideRaw === "string" ? currentOverrideRaw : undefined;
 

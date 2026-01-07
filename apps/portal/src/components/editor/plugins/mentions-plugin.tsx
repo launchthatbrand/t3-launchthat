@@ -8,18 +8,20 @@
  *
  */
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState, JSX } from 'react'
+import type { JSX } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import dynamic from 'next/dynamic'
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import type {
+  MenuTextMatch} from '@lexical/react/LexicalTypeaheadMenuPlugin';
 import {
   MenuOption,
-  MenuTextMatch,
   useBasicTypeaheadTriggerMatch,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin'
-import { TextNode } from 'lexical'
+import type { TextNode } from 'lexical'
 import { CircleUserRoundIcon } from 'lucide-react'
 
 import { Command, CommandList, CommandGroup, CommandItem } from "@acme/ui/command"
@@ -503,7 +505,7 @@ const dummyMentionsData = [
 ]
 
 const dummyLookupService = {
-  search(string: string, callback: (results: Array<string>) => void): void {
+  search(string: string, callback: (results: string[]) => void): void {
     setTimeout(() => {
       const results = dummyMentionsData.filter((mention) =>
         mention.toLowerCase().includes(string.toLowerCase())
@@ -514,7 +516,7 @@ const dummyLookupService = {
 }
 
 function useMentionLookupService(mentionString: string | null) {
-  const [results, setResults] = useState<Array<string>>([])
+  const [results, setResults] = useState<string[]>([])
 
   useEffect(() => {
     const cachedResults = mentionsCache.get(mentionString)

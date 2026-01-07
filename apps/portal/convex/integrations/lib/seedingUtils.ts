@@ -259,7 +259,7 @@ export function validateIntegrationNode(
  */
 export class PerformanceTimer {
   private startTime: number;
-  private marks: Map<string, number> = new Map();
+  private marks = new Map<string, number>();
 
   constructor() {
     this.startTime = Date.now();

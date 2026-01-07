@@ -35,9 +35,9 @@ export interface AccessRules {
   isPublic?: boolean;
 }
 
-export type ContactTagAssignment = {
+export interface ContactTagAssignment {
   marketingTag: { _id: string; slug: string; name: string };
-};
+}
 
 export type UserTag = ContactTagAssignment;
 

@@ -290,7 +290,7 @@ export async function loadQuizQuestionById(
   if (!post || post.postTypeSlug !== "lms-quiz-question") {
     return null;
   }
-  return buildQuizQuestionFromPost(ctx, post as any);
+  return buildQuizQuestionFromPost(ctx, post);
 }
 
 export async function fetchQuizQuestionsForQuiz(

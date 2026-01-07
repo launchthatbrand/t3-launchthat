@@ -17,7 +17,7 @@ import { EmptyState } from "@acme/ui/entity-list/EmptyState";
 import { Skeleton } from "@acme/ui/skeleton";
 
 import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 // Type definitions for join requests
 interface JoinRequest {

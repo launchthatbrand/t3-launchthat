@@ -19,7 +19,7 @@ const RocketModel: React.FC<{ url: string }> = ({ url }) => {
   const groupRef = useRef<THREE_NS.Group>(null);
 
   // Continuous spinning animation
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+   
   useFrame((state, delta) => {
     if (groupRef.current) {
       groupRef.current.rotation.z += delta * 0.3;
@@ -72,10 +72,10 @@ const ShootingStar: React.FC<ShootingStarProps> = ({
 }) => {
   const ref = useRef<THREE_NS.Mesh>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+   
   useFrame((state) => {
     if (!ref.current) return;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+     
     const elapsed = state.clock.getElapsedTime() + offset;
     const t = (elapsed * 0.15) % 4; // Slower: Loop every 4 seconds
 
@@ -142,7 +142,7 @@ const TrackingSpotlight: React.FC<{
   const spotlightRef = useRef<THREE_NS.SpotLight>(null);
   const targetRef = useRef<THREE_NS.Object3D>(new THREE_NS.Object3D());
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+   
   useFrame(() => {
     const light = spotlightRef.current;
     const tgt = targetRef.current;

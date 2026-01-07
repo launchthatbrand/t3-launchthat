@@ -1,4 +1,5 @@
-import { $createHeadingNode, HeadingTagType } from '@lexical/rich-text'
+import type { HeadingTagType } from '@lexical/rich-text';
+import { $createHeadingNode } from '@lexical/rich-text'
 import { $setBlocksType } from '@lexical/selection'
 import { $getSelection } from 'lexical'
 

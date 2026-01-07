@@ -33,11 +33,11 @@ export interface DiscoveryConfig {
 // Discovery result interface
 export interface DiscoveryResult {
   manifests: IntegrationManifest[];
-  errors: Array<{
+  errors: {
     filePath: string;
     error: string;
     details?: string[];
-  }>;
+  }[];
   stats: {
     totalFiles: number;
     validManifests: number;
@@ -216,7 +216,7 @@ async function processManifestFile(
     } else {
       // Basic validation
       if (validateManifest(manifestData)) {
-        result.manifests.push(manifestData as IntegrationManifest);
+        result.manifests.push(manifestData);
       } else {
         result.errors.push({
           filePath,

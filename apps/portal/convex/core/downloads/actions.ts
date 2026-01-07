@@ -15,8 +15,8 @@ const toUint8Array = async (raw: unknown): Promise<Uint8Array> => {
   }
   if (raw instanceof Uint8Array) return raw;
   if (raw instanceof ArrayBuffer) return new Uint8Array(raw);
-  if (typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView?.(raw)) {
-    const view = raw as ArrayBufferView;
+  if (typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView(raw)) {
+    const view = raw;
     return new Uint8Array(
       view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength),
     );

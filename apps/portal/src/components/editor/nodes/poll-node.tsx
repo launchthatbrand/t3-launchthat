@@ -1,23 +1,25 @@
 import * as React from 'react'
-import { Suspense, JSX } from 'react'
+import type { JSX } from 'react';
+import { Suspense } from 'react'
 
-import {
+import type {
   DOMConversionMap,
   DOMConversionOutput,
   DOMExportOutput,
-  DecoratorNode,
   LexicalNode,
   NodeKey,
   SerializedLexicalNode,
-  Spread,
+  Spread} from 'lexical';
+import {
+  DecoratorNode
 } from 'lexical'
 
-export type Options = ReadonlyArray<Option>
+export type Options = readonly Option[]
 
 export type Option = Readonly<{
   text: string
   uid: string
-  votes: Array<number>
+  votes: number[]
 }>
 
 const PollComponent = React.lazy(() => import('../editor-ui/poll-component'))
@@ -40,7 +42,7 @@ export function createPollOption(text = ''): Option {
 function cloneOption(
   option: Option,
   text: string,
-  votes?: Array<number>
+  votes?: number[]
 ): Option {
   return {
     text,

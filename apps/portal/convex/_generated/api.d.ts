@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as auth_exchange from "../auth/exchange.js";
+import type * as auth_sessions from "../auth/sessions.js";
 import type * as constants from "../constants.js";
 import type * as core_auditLog_queries from "../core/auditLog/queries.js";
 import type * as core_categories_mutations from "../core/categories/mutations.js";
@@ -213,6 +215,8 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "auth/exchange": typeof auth_exchange;
+  "auth/sessions": typeof auth_sessions;
   constants: typeof constants;
   "core/auditLog/queries": typeof core_auditLog_queries;
   "core/categories/mutations": typeof core_categories_mutations;

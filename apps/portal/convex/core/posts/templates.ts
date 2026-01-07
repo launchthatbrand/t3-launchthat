@@ -38,7 +38,7 @@ export const buildTemplatePageIdentifier = ({
   postId: Id<"posts">;
 }) => {
   const normalizedTarget =
-    (targetPostType && targetPostType.trim().toLowerCase()) || "global";
+    (targetPostType?.trim().toLowerCase()) || "global";
   const base = `templates-${templateCategory}-${normalizedTarget}-${postId}`;
   if (!organizationId) {
     return base;

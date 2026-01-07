@@ -7,7 +7,8 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { useCallback, useMemo, JSX } from 'react'
+import type { JSX } from 'react';
+import { useCallback, useMemo } from 'react'
 import * as React from 'react'
 
 import dynamic from 'next/dynamic'
@@ -22,9 +23,10 @@ import {
   $isRangeSelection,
   COPY_COMMAND,
   CUT_COMMAND,
-  type LexicalNode,
-  PASTE_COMMAND,
+  
+  PASTE_COMMAND
 } from 'lexical'
+import type {LexicalNode} from 'lexical';
 
 import { Command, CommandItem, CommandList } from '@acme/ui/command'
 import {
@@ -202,7 +204,7 @@ export function ContextMenuPlugin(): JSX.Element {
                 <PopoverTrigger
                   ref={setMenuRef}
                   style={{
-                    marginLeft: anchorElementRef.current?.style.width,
+                    marginLeft: anchorElementRef.current.style.width,
                     userSelect: 'none',
                   }}
                 />

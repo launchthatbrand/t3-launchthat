@@ -33,10 +33,10 @@ import { useMemo, useState } from "react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import type { EntityAction } from "@acme/ui/entity-list/types";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
-import { Id } from "@convex-config/_generated/dataModel";
+import type { Id } from "@convex-config/_generated/dataModel";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import { Textarea } from "@acme/ui/textarea";

@@ -76,7 +76,7 @@ const buildPortalStripeCallbackUrl = (origin: string) => {
 };
 
 const resolveVimeoClientId = () =>
-  // eslint-disable-next-line turbo/no-undeclared-env-vars
+   
   process.env.NEXT_PUBLIC_VIMEO_CLIENT_ID ??
   // eslint-disable-next-line turbo/no-undeclared-env-vars
   process.env.VIMEO_CLIENT_ID ??
@@ -85,7 +85,7 @@ const resolveVimeoClientId = () =>
 const VIMEO_SCOPE = "public private video_files";
 
 const resolveStripeConnectClientId = () =>
-  // eslint-disable-next-line turbo/no-undeclared-env-vars
+   
   process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID ??
   // eslint-disable-next-line turbo/no-undeclared-env-vars
   process.env.STRIPE_CONNECT_CLIENT_ID ??

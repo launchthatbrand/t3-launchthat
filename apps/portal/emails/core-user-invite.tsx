@@ -10,11 +10,11 @@ import {
   Text,
 } from "@react-email/components";
 
-export type CoreUserInviteProps = {
+export interface CoreUserInviteProps {
   appName: string;
   inviteeName: string;
   inviteUrl: string;
-};
+}
 
 export const CoreUserInvite = ({
   appName,

@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Suspense, useCallback, useEffect, useRef, useState, JSX } from 'react'
+import type { JSX } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -39,8 +40,8 @@ import {
 } from '@acme/ui/select'
 
 import { useEditorModal } from '~/components/editor/editor-hooks/use-modal'
-import type { Position } from '~/components/editor/nodes/inline-image-node'
-import { $isInlineImageNode, InlineImageNode } from '~/components/editor/nodes/inline-image-node'
+import type { Position , InlineImageNode } from '~/components/editor/nodes/inline-image-node'
+import { $isInlineImageNode } from '~/components/editor/nodes/inline-image-node'
 import { LinkPlugin } from '~/components/editor/plugins/link-plugin'
 import { ContentEditable } from '~/components/editor/editor-ui/content-editable'
 
@@ -104,7 +105,7 @@ export function UpdateInlineImageDialog({
   onClose: () => void
 }): JSX.Element {
   const editorState = activeEditor.getEditorState()
-  const node = editorState.read(() => $getNodeByKey(nodeKey) as InlineImageNode)
+  const node = editorState.read(() => $getNodeByKey(nodeKey)!)
   const [altText, setAltText] = useState(node.getAltText())
   const [showCaption, setShowCaption] = useState(node.getShowCaption())
   const [position, setPosition] = useState<Position>(node.getPosition())

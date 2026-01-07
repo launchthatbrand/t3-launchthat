@@ -20,7 +20,7 @@ export function PuckContentRenderer({ data }: PuckContentRendererProps) {
   const tenant = useTenant();
   const organizationId = tenant?._id;
   const dataSourceRef = useRef<Record<string, boolean>>({});
-  const postTypesCacheRef = useRef<Record<string, Array<{ slug: string; name: string }>>>({});
+  const postTypesCacheRef = useRef<Record<string, { slug: string; name: string }[]>>({});
 
   useEffect(() => {
     if (!convex) {

@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
-import { Id } from "@convex-config/_generated/dataModel";
+import type { Id } from "@convex-config/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { Activity, PlusCircle, RefreshCw, Search } from "lucide-react";
 
@@ -154,7 +154,7 @@ function IntegrationsPageContent() {
                     <div>
                       <CardTitle>{app.name}</CardTitle>
                       <CardDescription>
-                        {app.authType === "internal" || (app as any).isInternal
+                        {app.authType === "internal" || (app).isInternal
                           ? "Built-in App"
                           : app.authType === "none"
                             ? "No Authentication Required"
@@ -170,7 +170,7 @@ function IntegrationsPageContent() {
                     </p>
                   </CardContent>
                   <CardFooter>
-                    {app.authType === "internal" || (app as any).isInternal ? (
+                    {app.authType === "internal" || (app).isInternal ? (
                       <Button
                         variant="outline"
                         className="w-full"

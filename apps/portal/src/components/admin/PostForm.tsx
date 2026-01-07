@@ -1,14 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+ 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 "use client";
 
 import type { Id } from "@convex-config/_generated/dataModel";
 import type { UseFormReturn } from "react-hook-form";
 import { useEffect, useMemo } from "react";
-import { useAuth } from "@clerk/nextjs";
 import { api } from "@convex-config/_generated/api";
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@acme/ui/button";
@@ -69,10 +68,11 @@ export function PostForm({
   title = "Post",
   formApi,
 }: PostFormProps) {
-  const { isLoaded: isAuthLoaded } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
+  const canLoadUsers = !isAuthLoading && isAuthenticated;
   const users = useQuery(
     api.core.users.queries.listUsers,
-    isAuthLoaded ? {} : "skip",
+    canLoadUsers ? {} : "skip",
   );
 
   const internalForm = useForm<PostFormData>({

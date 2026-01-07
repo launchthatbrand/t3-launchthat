@@ -1,20 +1,22 @@
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState, JSX } from 'react'
+import type { JSX } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useCollaborationContext } from '@lexical/react/LexicalCollaborationContext'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useLexicalNodeSelection } from '@lexical/react/useLexicalNodeSelection'
 import { mergeRegister } from '@lexical/utils'
+import type {
+  BaseSelection,
+  NodeKey} from 'lexical';
 import {
   $getNodeByKey,
   $getSelection,
   $isNodeSelection,
-  BaseSelection,
   CLICK_COMMAND,
   COMMAND_PRIORITY_LOW,
   KEY_BACKSPACE_COMMAND,
-  KEY_DELETE_COMMAND,
-  NodeKey,
+  KEY_DELETE_COMMAND
 } from 'lexical'
 
 import { Button } from '@acme/ui/button'

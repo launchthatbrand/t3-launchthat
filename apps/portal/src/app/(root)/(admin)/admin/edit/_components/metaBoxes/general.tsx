@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+ 
+ 
+ 
+ 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ExternalLink, Pencil } from "lucide-react";

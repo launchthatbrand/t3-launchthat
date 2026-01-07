@@ -3,7 +3,8 @@
 import { useState } from 'react'
 
 import { $isTableSelection } from '@lexical/table'
-import { $isRangeSelection, BaseSelection, FORMAT_TEXT_COMMAND } from 'lexical'
+import type { BaseSelection} from 'lexical';
+import { $isRangeSelection, FORMAT_TEXT_COMMAND } from 'lexical'
 import { SubscriptIcon, SuperscriptIcon } from 'lucide-react'
 
 import { ToggleGroup, ToggleGroupItem } from '@acme/ui/toggle-group'

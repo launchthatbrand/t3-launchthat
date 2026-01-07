@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import type {
+  BaseSelection} from "lexical";
 import {
   $getSelection,
-  BaseSelection,
   COMMAND_PRIORITY_CRITICAL,
   SELECTION_CHANGE_COMMAND,
 } from "lexical";

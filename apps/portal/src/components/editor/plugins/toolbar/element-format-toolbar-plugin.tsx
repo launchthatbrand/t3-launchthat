@@ -4,11 +4,12 @@ import { useState } from 'react'
 
 import { $isLinkNode } from '@lexical/link'
 import { $findMatchingParent } from '@lexical/utils'
+import type {
+  BaseSelection,
+  ElementFormatType} from 'lexical';
 import {
   $isElementNode,
   $isRangeSelection,
-  BaseSelection,
-  ElementFormatType,
   FORMAT_ELEMENT_COMMAND,
   INDENT_CONTENT_COMMAND,
   OUTDENT_CONTENT_COMMAND,
@@ -26,13 +27,11 @@ import { useToolbarContext } from '~/components/editor/context/toolbar-context'
 import { useUpdateToolbarHandler } from '~/components/editor/editor-hooks/use-update-toolbar'
 import { getSelectedNode } from '~/components/editor/utils/get-selected-node'
 
-const ELEMENT_FORMAT_OPTIONS: {
-  [key in Exclude<ElementFormatType, 'start' | 'end' | ''>]: {
+const ELEMENT_FORMAT_OPTIONS: Record<Exclude<ElementFormatType, 'start' | 'end' | ''>, {
     icon: React.ReactNode
     iconRTL: string
     name: string
-  }
-} = {
+  }> = {
   left: {
     icon: <AlignLeftIcon className="size-4" />,
     iconRTL: 'left-align',

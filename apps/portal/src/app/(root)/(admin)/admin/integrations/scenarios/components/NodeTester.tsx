@@ -28,7 +28,8 @@ import {
 } from "@acme/ui";
 import { JSONView } from "@acme/ui/json-view";
 
-import { appActions, NodeTestResult, SupportedApp } from "../types";
+import type { NodeTestResult, SupportedApp } from "../types";
+import { appActions } from "../types";
 import { getNodeMockData } from "../utils";
 
 interface NodeTesterProps {
@@ -123,7 +124,7 @@ export function NodeTester({
       const contentType = (config?.contentType as string) ?? "application/json";
       const requestBody = (config?.requestBody as string) ?? "{}";
       const headers =
-        (config?.headers as Array<{ key: string; value: string }>) ?? [];
+        (config?.headers as { key: string; value: string }[]) ?? [];
 
       if (!webhookUrl) {
         throw new Error("Webhook URL is required");

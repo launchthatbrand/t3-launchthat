@@ -1,8 +1,10 @@
-import { $isParagraphNode, $isTextNode, LexicalNode } from 'lexical'
+import type { LexicalNode } from 'lexical';
+import { $isParagraphNode, $isTextNode } from 'lexical'
+import type {
+  ElementTransformer} from '@lexical/markdown';
 import {
   $convertFromMarkdownString,
   $convertToMarkdownString,
-  ElementTransformer,
   CHECK_LIST,
   ELEMENT_TRANSFORMERS,
   MULTILINE_ELEMENT_TRANSFORMERS,
@@ -192,9 +194,9 @@ const $createTableCell = (textContent: string): TableCellNode => {
   return cell
 }
 
-const mapToTableCells = (textContent: string): Array<TableCellNode> | null => {
-  const match = textContent.match(TABLE_ROW_REG_EXP)
-  if (!match || !match[1]) {
+const mapToTableCells = (textContent: string): TableCellNode[] | null => {
+  const match = TABLE_ROW_REG_EXP.exec(textContent)
+  if (!match?.[1]) {
     return null
   }
   return match[1].split('|').map((text) => $createTableCell(text))

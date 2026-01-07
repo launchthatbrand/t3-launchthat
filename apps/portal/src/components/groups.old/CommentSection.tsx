@@ -27,7 +27,7 @@ import { Textarea } from "@acme/ui/textarea";
 import { NoiseBackground } from "@acme/ui/noise-background";
 
 import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 interface CommentSectionProps {
   postId: Id<"groupPosts">;

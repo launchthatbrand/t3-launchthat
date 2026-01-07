@@ -171,7 +171,7 @@ export function OrganizationForm({
       }
 
       onSuccess?.();
-      onOpenChange?.(false);
+      onOpenChange(false);
     } catch (error) {
       console.error("Error saving organization:", error);
       toast.error(

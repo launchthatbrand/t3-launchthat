@@ -11,10 +11,10 @@ type ProviderComponent = (
   props: { children: ReactNode } & Record<string, unknown>,
 ) => ReactNode;
 
-type NormalizedProviderSpec = {
+interface NormalizedProviderSpec {
   Provider: ProviderComponent;
   getProps?: (ctx: ProviderContext) => Record<string, unknown>;
-};
+}
 
 const isProviderSpec = (value: PluginProviderEntry): value is ProviderSpec => {
   return (

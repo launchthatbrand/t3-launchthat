@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
 import { formatDistanceToNow } from "date-fns";
 import {
   Bookmark,
@@ -45,6 +44,7 @@ import { Textarea } from "@acme/ui/textarea";
 import type { Id } from "../lib/types";
 import {
   useSocialFeedApi,
+  useSocialFeedAuth,
   useSocialFeedMutation,
   useSocialFeedQuery,
 } from "../context/SocialFeedClientProvider";
@@ -106,7 +106,7 @@ export function PostCard({
   isDetailView = false,
 }: PostCardProps) {
   const router = useRouter();
-  const { userId } = useAuth();
+  const { userId } = useSocialFeedAuth();
   const socialfeedApi = useSocialFeedApi<any>();
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);

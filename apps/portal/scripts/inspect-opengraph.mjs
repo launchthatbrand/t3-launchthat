@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+ 
 
 const META_TAG_RE = /<meta\s+[^>]*>/gi;
 const ATTR_RE = /(\w+)\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/gi;

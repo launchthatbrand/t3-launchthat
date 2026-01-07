@@ -13,6 +13,7 @@ import type { fetchQuery as convexFetchQuery } from "convex/nextjs";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
+import { createHash } from "crypto";
 
 import { addFilter, applyFilters } from "@acme/admin-runtime/hooks";
 
@@ -68,6 +69,11 @@ if (env.NODE_ENV !== "production") {
 
 const normalizeSegments = (segments: string[]) =>
   segments.map((s) => s.trim()).filter((s) => s.length > 0);
+
+const sha256Base64Url = (value: string): string => {
+  const hash = createHash("sha256").update(value, "utf8").digest("base64");
+  return hash.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+};
 
 const resolveFirstImageFromAttachmentsMeta = (
   attachmentsMetaValue: PostMetaValue,
@@ -765,6 +771,38 @@ export function registerCoreRouteHandlers(): void {
           } catch {
             clerkUserId = null;
           }
+
+          // Tenant/custom domains do NOT mount Clerk, so when Clerk auth is unavailable,
+          // fall back to our tenant session cookie (if present) to resolve viewer identity.
+          if (!clerkUserId && typeof ctx.tenantSessionId === "string" && ctx.tenantSessionId.trim()) {
+            try {
+              const sessionIdHash = sha256Base64Url(ctx.tenantSessionId.trim());
+              const sessionResult: unknown = await (ctx.fetchQuery as any)(
+                (ctx.api as any).auth.sessions.getTenantSessionByIdHash,
+                { sessionIdHash },
+              );
+              const session =
+                sessionResult && typeof sessionResult === "object"
+                  ? (sessionResult as { clerkUserId?: unknown; organizationId?: unknown })
+                  : null;
+
+              const sessionClerkUserId =
+                typeof session?.clerkUserId === "string" ? session.clerkUserId : null;
+              const sessionOrgId =
+                typeof session?.organizationId === "string" ? session.organizationId : null;
+
+              // Ensure session is for the active tenant (defense-in-depth).
+              if (
+                sessionClerkUserId &&
+                (!ctx.organizationId || (sessionOrgId && sessionOrgId === String(ctx.organizationId)))
+              ) {
+                clerkUserId = sessionClerkUserId;
+              }
+            } catch {
+              // ignore, treat as logged out
+            }
+          }
+
           const viewer = clerkUserId
             ? await (ctx.fetchQuery as any)(
                 (ctx.api as any).core.users.queries.getUserByClerkId,

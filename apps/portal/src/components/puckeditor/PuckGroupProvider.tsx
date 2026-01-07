@@ -1,13 +1,14 @@
 "use client";
 
 import type { Id } from "@/convex/_generated/dataModel";
-import React, { createContext, ReactNode, useContext } from "react";
+import type { ReactNode} from "react";
+import React, { createContext, useContext } from "react";
 
 import { useCurrentGroupId, useGroupOptions } from "./utils/group-helpers";
 
 interface GroupContextType {
   currentGroupId: Id<"groups"> | undefined;
-  groupOptions: Array<{ label: string; value: string }>;
+  groupOptions: { label: string; value: string }[];
   isLoading: boolean;
 }
 

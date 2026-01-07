@@ -6,10 +6,11 @@ import { OverflowNode } from "@lexical/overflow";
 import { HorizontalRuleNode } from "@lexical/react/LexicalHorizontalRuleNode";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
-import {
+import type {
   Klass,
   LexicalNode,
-  LexicalNodeReplacement,
+  LexicalNodeReplacement} from "lexical";
+import {
   ParagraphNode,
   TextNode,
 } from "lexical";

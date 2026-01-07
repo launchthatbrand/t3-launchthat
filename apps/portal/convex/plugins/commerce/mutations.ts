@@ -9,7 +9,7 @@ const ECOMMERCE_COMPONENT_TABLES = [
   "launchthat_ecommerce:postsMeta",
 ] as const;
 
-const ECOMMERCE_COMPONENT_NAME = "launchthat_ecommerce" as const;
+const ECOMMERCE_COMPONENT_NAME = "launchthat_ecommerce";
 
 export const ensureDefaultPagesAndAssign = mutation({
   args: {

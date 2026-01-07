@@ -14,7 +14,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
-import { Id } from "@convex-config/_generated/dataModel";
+import type { Id } from "@convex-config/_generated/dataModel";
 import { useQuery } from "convex/react";
 import { Activity, ArrowLeft, Loader2 } from "lucide-react";
 

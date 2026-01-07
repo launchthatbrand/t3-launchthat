@@ -62,7 +62,7 @@ const parseFirstAttachmentUrl = (value: unknown): string | undefined => {
   try {
     const parsed = JSON.parse(value) as unknown;
     if (!Array.isArray(parsed)) return undefined;
-    const first = parsed[0] as any;
+    const first = parsed[0];
     if (first && typeof first.url === "string" && first.url.trim().length > 0) {
       return first.url.trim();
     }
@@ -612,10 +612,10 @@ export const getBadgeSummariesForPost = query({
               if (
                 typeof entry === "object" &&
                 entry !== null &&
-                typeof (entry as any).url === "string" &&
-                (entry as any).url.trim().length > 0
+                typeof (entry).url === "string" &&
+                (entry).url.trim().length > 0
               ) {
-                return (entry as any).url.trim() as string;
+                return (entry).url.trim() as string;
               }
             }
             return undefined;
@@ -633,12 +633,12 @@ export const getBadgeSummariesForPost = query({
       }),
     );
 
-    return resolved.filter(Boolean) as Array<{
+    return resolved.filter(Boolean) as {
       badgeId: string;
       title: string;
       slug?: string;
       firstAttachmentUrl?: string;
-    }>;
+    }[];
   },
 });
 

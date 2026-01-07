@@ -20,7 +20,7 @@ if (!CONVEX_URL) {
 function convertActionToNodeDefinition(
   action: any,
   integrationType: string,
-  category: string = "action",
+  category = "action",
 ) {
   return {
     identifier: `${integrationType}_${action.id}`,

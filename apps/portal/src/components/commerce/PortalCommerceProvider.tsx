@@ -19,11 +19,11 @@ export function PortalCommerceProvider({ children }: { children: ReactNode }) {
 
   const hooks: CommerceHooks = useMemo(() => {
     const useQueryHook: UseQueryHook = (queryRef, args) => {
-      return useQuery(queryRef as any, args as any) as any;
+      return useQuery(queryRef, args);
     };
 
     const useMutationHook: UseMutationHook = (mutationRef) => {
-      return useMutation(mutationRef as any) as any;
+      return useMutation(mutationRef) as any;
     };
 
     return {

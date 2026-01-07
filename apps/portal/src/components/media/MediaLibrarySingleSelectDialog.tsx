@@ -21,14 +21,14 @@ import { Input } from "@acme/ui/input";
 import { Separator } from "@acme/ui/separator";
 import { toast } from "@acme/ui/toast";
 
-type MediaItemWithUrl = {
+interface MediaItemWithUrl {
   _id: Id<"mediaItems">;
   _creationTime: number;
   url?: string | null;
   title?: string | null;
   status?: "draft" | "published" | null;
   mimeType?: string | null;
-};
+}
 
 interface MediaLibrarySingleSelectDialogProps {
   open: boolean;
@@ -243,6 +243,7 @@ export function MediaLibrarySingleSelectDialog({
     </Dialog>
   );
 }
+
 
 
 

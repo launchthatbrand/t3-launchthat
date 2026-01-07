@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { api } from "@/convex/_generated/api";
-import { useClerk } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { Bell } from "lucide-react";
 
@@ -11,11 +10,15 @@ import { Drawer, DrawerContent, DrawerTrigger } from "@acme/ui/drawer";
 import { useMediaQuery } from "@acme/ui/hooks/use-media-query";
 
 import { useTenant } from "~/context/TenantContext";
+import { useConvexUser } from "~/hooks/useConvexUser";
 import { NotificationDropdown } from "./NotificationDropdown";
 
 export function NotificationIcon() {
-  const { user } = useClerk();
-  const clerkId = user?.id;
+  const { user } = useConvexUser();
+  const clerkId =
+    user && typeof (user as { clerkId?: unknown }).clerkId === "string"
+      ? (user as { clerkId: string }).clerkId
+      : null;
   const tenant = useTenant();
   const orgId = tenant?._id;
   const [isOpen, setIsOpen] = useState(false);

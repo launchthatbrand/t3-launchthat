@@ -7,7 +7,8 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { Dispatch, useCallback, useEffect, useRef, useState, JSX } from 'react'
+import type { Dispatch, JSX } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react'
 import * as React from 'react'
 
 import {
@@ -18,17 +19,18 @@ import {
 } from '@lexical/link'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $findMatchingParent, mergeRegister } from '@lexical/utils'
+import type {
+  BaseSelection,
+  LexicalEditor} from 'lexical';
 import {
   $getSelection,
   $isLineBreakNode,
   $isRangeSelection,
-  BaseSelection,
   CLICK_COMMAND,
   COMMAND_PRIORITY_CRITICAL,
   COMMAND_PRIORITY_HIGH,
   COMMAND_PRIORITY_LOW,
   KEY_ESCAPE_COMMAND,
-  LexicalEditor,
   SELECTION_CHANGE_COMMAND,
 } from 'lexical'
 import { Check, Pencil, Trash, X } from 'lucide-react'

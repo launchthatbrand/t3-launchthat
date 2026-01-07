@@ -63,7 +63,7 @@ export function GroupProfile({ groupId }: GroupProfileProps) {
   // Use the imported API reference with proper typing
   const groupQuery = useQuery(api.groups.queries.getGroupById, {
     groupId: groupId as Id<"groups">,
-  }) as GroupWithDetails | undefined;
+  });
 
   const isLoading = groupQuery === undefined;
 

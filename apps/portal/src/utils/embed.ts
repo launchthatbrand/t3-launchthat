@@ -22,7 +22,7 @@ interface GenerateEmbedHtmlOptions {
 /**
  * Generates a URL for embedding a page
  */
-// eslint-disable-next-line @typescript-eslint/require-await
+ 
 export async function generateEmbedUrl({
   page,
   params = {},

@@ -7,11 +7,15 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { useEffect, useRef, useState, JSX } from 'react'
+import type { JSX } from 'react';
+import { useEffect, useRef, useState } from 'react'
 import * as React from 'react'
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $wrapNodeInElement, mergeRegister } from '@lexical/utils'
+import type {
+  LexicalCommand,
+  LexicalEditor} from 'lexical';
 import {
   $createParagraphNode,
   $createRangeSelection,
@@ -26,8 +30,6 @@ import {
   DRAGOVER_COMMAND,
   DRAGSTART_COMMAND,
   DROP_COMMAND,
-  LexicalCommand,
-  LexicalEditor,
   createCommand,
 } from 'lexical'
 
@@ -37,11 +39,12 @@ import { Input } from '@acme/ui/input'
 import { Label } from '@acme/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@acme/ui/tabs'
 
+import type {
+  ImagePayload} from '~/components/editor/nodes/image-node';
 import {
   $createImageNode,
   $isImageNode,
-  ImageNode,
-  ImagePayload,
+  ImageNode
 } from '~/components/editor/nodes/image-node'
 import { CAN_USE_DOM } from '~/components/editor/shared/can-use-dom'
 

@@ -420,11 +420,11 @@ export const validateSeededNodes = internalAction({
         totalExpected: seedData.integrationNodes.length,
         found: 0,
         missing: [] as string[],
-        versionMismatches: [] as Array<{
+        versionMismatches: [] as {
           identifier: string;
           expected: string;
           actual: string;
-        }>,
+        }[],
         errors: [] as string[],
       };
 

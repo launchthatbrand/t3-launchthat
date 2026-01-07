@@ -7,17 +7,17 @@ import { Checkbox } from "@acme/ui/checkbox";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const apiAny: any = require("@/convex/_generated/api").api;
 
 const CRM_MARKETING_TAG_IDS_KEY = "crm.marketingTagIdsJson";
 
-type MarketingTag = {
+interface MarketingTag {
   _id: string;
   name: string;
   slug?: string;
   isActive?: boolean;
-};
+}
 
 const safeParseStringArray = (value: unknown): string[] => {
   if (typeof value !== "string") return [];

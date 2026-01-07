@@ -21,7 +21,7 @@ import React, { useState } from "react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import { CopyText } from "@acme/ui/copy-text";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
 import type { PDFColumn } from "@acme/ui/pdf-export";
@@ -154,7 +154,7 @@ export default function EntityListDemoPage() {
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <span className="font-mono text-sm">{row.getValue("id")}</span>
-          <CopyText value={row.getValue("id") as string}>
+          <CopyText value={row.getValue("id")}>
             {row.getValue("id")}
           </CopyText>
         </div>
@@ -412,7 +412,7 @@ export default function EntityListDemoPage() {
       key={`export-${index}`}
       variant="outline"
       onClick={workflow.action}
-      disabled={isGenerating || !mockData?.length}
+      disabled={isGenerating || !mockData.length}
       className="flex items-center gap-2"
       title={workflow.description}
     >

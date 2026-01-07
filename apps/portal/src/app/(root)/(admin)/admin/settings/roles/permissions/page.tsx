@@ -152,7 +152,7 @@ export default function PermissionsAdminPage() {
           <Badge
             variant={
               levelColors[
-                permission.defaultLevel as keyof typeof levelColors
+                permission.defaultLevel
               ] ?? "secondary"
             }
           >

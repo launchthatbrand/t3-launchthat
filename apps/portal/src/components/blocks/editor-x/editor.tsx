@@ -1,12 +1,13 @@
 "use client";
 
 import type { Id } from "@/convex/_generated/dataModel";
+import type {
+  InitialConfigType} from "@lexical/react/LexicalComposer";
 import {
-  InitialConfigType,
   LexicalComposer,
 } from "@lexical/react/LexicalComposer";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
-import { EditorState, SerializedEditorState } from "lexical";
+import type { EditorState, SerializedEditorState } from "lexical";
 
 import { TooltipProvider } from "@acme/ui/tooltip";
 
@@ -47,7 +48,7 @@ export function Editor({
   organizationId?: Id<"organizations">;
   postTypeSlug?: string | null;
   attachmentsContext?: {
-    attachments: Array<{
+    attachments: {
       mediaItemId: Id<"mediaItems">;
       url: string;
       title?: string;
@@ -55,10 +56,10 @@ export function Editor({
       mimeType?: string;
       width?: number;
       height?: number;
-    }>;
+    }[];
     setAttachments: (
       updater: (
-        prev: Array<{
+        prev: {
           mediaItemId: Id<"mediaItems">;
           url: string;
           title?: string;
@@ -66,8 +67,8 @@ export function Editor({
           mimeType?: string;
           width?: number;
           height?: number;
-        }>,
-      ) => Array<{
+        }[],
+      ) => {
         mediaItemId: Id<"mediaItems">;
         url: string;
         title?: string;
@@ -75,7 +76,7 @@ export function Editor({
         mimeType?: string;
         width?: number;
         height?: number;
-      }>,
+      }[],
     ) => void;
   };
   registerMetaPayloadCollectorAction?: RegisterMetaPayloadCollector;

@@ -1,5 +1,5 @@
 import { api } from "@convex-config/_generated/api";
-import { Id } from "@convex-config/_generated/dataModel";
+import type { Id } from "@convex-config/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 
 import { useTenant } from "~/context/TenantContext";
@@ -135,7 +135,7 @@ export function useMarketingTagAccess(tagSlugs: string[], requireAll = false) {
           requireAll,
         }
       : "skip",
-  ) as any;
+  );
 
   return {
     hasAccess: access?.hasAccess ?? false,

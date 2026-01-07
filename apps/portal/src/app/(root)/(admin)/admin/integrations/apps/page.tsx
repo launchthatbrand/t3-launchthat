@@ -307,8 +307,7 @@ export default function AppsPage() {
       node.description.toLowerCase().includes(searchLower) ||
       node.category.toLowerCase().includes(searchLower) ||
       node.integrationType.toLowerCase().includes(searchLower) ||
-      (node.tags &&
-        node.tags.some((tag) => tag.toLowerCase().includes(searchLower)))
+      (node.tags?.some((tag) => tag.toLowerCase().includes(searchLower)))
     );
   };
 

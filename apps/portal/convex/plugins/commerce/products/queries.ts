@@ -4,11 +4,11 @@ import { v } from "convex/values";
 import { components } from "../../../_generated/api";
 import { query } from "../../../_generated/server";
 
-type CommercePostsQueries = {
+interface CommercePostsQueries {
   getAllPosts: unknown;
   getPostById: unknown;
   getPostMeta: unknown;
-};
+}
 
 const commercePostsQueries = (
   components as unknown as {
@@ -17,7 +17,7 @@ const commercePostsQueries = (
 ).launchthat_ecommerce.posts.queries;
 
 function getMetaValue(
-  meta: Array<{ key: string; value: unknown }>,
+  meta: { key: string; value: unknown }[],
   key: string,
 ) {
   const row = meta.find((m) => m.key === key);
@@ -37,9 +37,9 @@ export const listProducts = query({
         postTypeSlug: "products",
         limit: args.limit ?? 50,
       },
-    })) as Array<any>;
+    })) as any[];
 
-    const result: Array<any> = [];
+    const result: any[] = [];
     for (const post of posts) {
       const meta = (await ctx.runQuery(
         commercePostsQueries.getPostMeta as any,
@@ -47,7 +47,7 @@ export const listProducts = query({
           postId: post._id,
           organizationId: args.organizationId,
         },
-      )) as Array<{ key: string; value: unknown }>;
+      )) as { key: string; value: unknown }[];
 
       const price = getMetaValue(meta, "product:price");
       const sku = getMetaValue(meta, "product:sku");
@@ -76,14 +76,14 @@ export const getProductById = query({
     const post = (await ctx.runQuery(commercePostsQueries.getPostById as any, {
       id: args.postId,
       organizationId: args.organizationId,
-    })) as any | null;
+    }));
     if (!post) return null;
     if ((post.postTypeSlug ?? "").toLowerCase() !== "products") return null;
 
     const meta = (await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
       postId: post._id,
       organizationId: args.organizationId,
-    })) as Array<{ key: string; value: unknown }>;
+    })) as { key: string; value: unknown }[];
 
     const price = getMetaValue(meta, "product:price");
     const sku = getMetaValue(meta, "product:sku");
@@ -98,6 +98,7 @@ export const getProductById = query({
     };
   },
 });
+
 
 
 

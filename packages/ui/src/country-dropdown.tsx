@@ -70,7 +70,7 @@ const CountryDropdownComponent = (
         return (
           country.alpha3?.toLowerCase() === normalized ||
           country.alpha2?.toLowerCase() === normalized
-        );
+      );
       });
       if (initialCountry) {
         setSelectedCountry(initialCountry);

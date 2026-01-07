@@ -16,13 +16,13 @@ export function useCurrentGroupId(): Id<"groups"> | undefined {
 
   return useMemo(() => {
     // Direct group ID from params
-    if (params?.groupId && typeof params.groupId === "string") {
+    if (params.groupId && typeof params.groupId === "string") {
       return params.groupId as Id<"groups">;
     }
 
     // Extract from URL path patterns like /groups/[groupId]
-    const groupPathMatch = pathname?.match(/\/groups\/([^\/]+)/);
-    if (groupPathMatch && groupPathMatch[1]) {
+    const groupPathMatch = /\/groups\/([^\/]+)/.exec(pathname);
+    if (groupPathMatch?.[1]) {
       return groupPathMatch[1] as Id<"groups">;
     }
 

@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+ 
+ 
+ 
+ 
 import { registerMetaBoxHook } from "@acme/admin-runtime";
 import { Label } from "@acme/ui/label";
 import { Textarea } from "@acme/ui/textarea";
@@ -27,9 +27,9 @@ const ContentMetaBox = ({
   } = data;
 
   const initialAutoThumbnailUrl =
-    typeof context.customFields?.postMetaMap?.lmsAutoThumbnailSourceUrl ===
+    typeof context.customFields?.postMetaMap.lmsAutoThumbnailSourceUrl ===
     "string"
-      ? (context.customFields?.postMetaMap?.lmsAutoThumbnailSourceUrl as string)
+      ? (context.customFields.postMetaMap.lmsAutoThumbnailSourceUrl)
       : undefined;
 
   return (

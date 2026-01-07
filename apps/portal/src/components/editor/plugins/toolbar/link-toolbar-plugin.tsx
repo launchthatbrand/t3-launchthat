@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { $isLinkNode, TOGGLE_LINK_COMMAND } from '@lexical/link'
+import type {
+  BaseSelection} from 'lexical';
 import {
   $isRangeSelection,
-  BaseSelection,
   COMMAND_PRIORITY_NORMAL,
 } from 'lexical'
 import { KEY_MODIFIER_COMMAND } from 'lexical'

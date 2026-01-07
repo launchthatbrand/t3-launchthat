@@ -19,7 +19,7 @@ import {
 import { useTenant } from "~/context/TenantContext";
 import { OrganizationDomainsCard } from "../organizations/_components/OrganizationDomainsCard";
 
-type DomainRecord = { type: string; name: string; value: string };
+interface DomainRecord { type: string; name: string; value: string }
 
 type OrgEmailDomainMeta = Pick<
   Doc<"organizations">,
@@ -33,7 +33,7 @@ type OrgEmailDomainMeta = Pick<
 
 export default function AdminDomainsSettingsPage() {
   const tenant = useTenant();
-  const orgId = tenant?._id as Id<"organizations"> | undefined;
+  const orgId = tenant?._id;
 
   const org = useQuery(
     api.core.organizations.queries.getById,

@@ -8,10 +8,15 @@
  *
  */
 import * as React from 'react'
-import { ReactPortal, useCallback, useEffect, useRef, useState, JSX } from 'react'
+import type { ReactPortal, JSX } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useLexicalEditable } from '@lexical/react/useLexicalEditable'
+import type {
+  HTMLTableElementWithWithTableSelectionState,
+  TableRowNode,
+  TableSelection} from '@lexical/table';
 import {
   $deleteTableColumn__EXPERIMENTAL,
   $deleteTableRow__EXPERIMENTAL,
@@ -26,11 +31,8 @@ import {
   $isTableRowNode,
   $isTableSelection,
   $unmergeCell,
-  HTMLTableElementWithWithTableSelectionState,
   TableCellHeaderStates,
   TableCellNode,
-  TableRowNode,
-  TableSelection,
   getTableObserverFromTableElement,
 } from '@lexical/table'
 import type { ElementNode, LexicalEditor } from 'lexical'

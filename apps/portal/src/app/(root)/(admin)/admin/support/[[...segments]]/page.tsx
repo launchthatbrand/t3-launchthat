@@ -20,14 +20,12 @@ export default async function SupportPage({
   searchParams,
 }: SupportPageProps) {
   const resolvedParams =
-    typeof (params as Promise<unknown>)?.then === "function"
+    typeof (params as Promise<unknown>).then === "function"
       ? await (params as Promise<{ segments?: string[] }>)
       : (params as { segments?: string[] });
   const resolvedSearchParams = isPromise(searchParams)
     ? await searchParams
-    : (searchParams as
-        | Record<string, string | string[] | undefined>
-        | undefined);
+    : (searchParams);
   const segmentKey = (resolvedParams.segments ?? []).join("/") || "root";
   const sanitizedSearchParams = resolvedSearchParams
     ? Object.fromEntries(

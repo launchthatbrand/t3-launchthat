@@ -45,7 +45,7 @@ export const SupportPluginPage = ({ page }: SupportPluginPageProps) => {
 
   const buildNavHref = useCallback(
     (slug: string) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      const params = new URLSearchParams(searchParams.toString() ?? "");
       params.set("plugin", "support");
       const targetPage =
         NAV_SLUG_TO_PAGE[slug as keyof typeof NAV_SLUG_TO_PAGE] ?? "dashboard";

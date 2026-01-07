@@ -4,10 +4,10 @@ import { v } from "convex/values";
 import { components } from "../../../../_generated/api";
 import { mutation } from "../../../../_generated/server";
 
-type CommerceChargebackEvidenceMutations = {
+interface CommerceChargebackEvidenceMutations {
   createEvidence: unknown;
   deleteEvidence: unknown;
-};
+}
 
 const evidenceMutations = (
   components as unknown as {
@@ -49,6 +49,7 @@ export const deleteEvidence = mutation({
     });
   },
 });
+
 
 
 

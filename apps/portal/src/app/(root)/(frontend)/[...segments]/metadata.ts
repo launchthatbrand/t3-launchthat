@@ -189,7 +189,7 @@ function resolveTitleWithSiteSettings(args: {
 const isConvexId = (value: string): boolean => /^[a-z0-9]{32}$/.test(value);
 
 const buildPostMetaMap = (
-  meta: Array<{ key: string; value?: string | number | boolean | null }>,
+  meta: { key: string; value?: string | number | boolean | null }[],
 ): Map<string, string | number | boolean | null> => {
   const map = new Map<string, string | number | boolean | null>();
   meta.forEach((entry) => map.set(entry.key, entry.value ?? null));
@@ -243,7 +243,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const organizationId = getTenantOrganizationId(tenant);
 
   // Avoid TS deep instantiation issues in this file by avoiding a module-scope import of the huge generated `api` type.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const apiAny = (await import("@/convex/_generated/api")).api as any;
 
   const generalOption = await fetchQuery(apiAny.core.options.get, {
@@ -310,7 +310,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const buildMetadataFromPostMeta = async (args: {
     pageTitle: string;
     canonicalPath: string;
-    postMeta?: Array<{ key: string; value?: string | number | boolean | null }>;
+    postMeta?: { key: string; value?: string | number | boolean | null }[];
     robots?: { index: boolean; follow: boolean };
     openGraphLabel?: string;
   }): Promise<Metadata> => {
@@ -463,11 +463,11 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
     };
   };
 
-  type FrontendMetadataResolver = {
+  interface FrontendMetadataResolver {
     id: string;
     priority?: number;
     resolve: (ctx: unknown) => Promise<Metadata | null> | Metadata | null;
-  };
+  }
 
   const resolversRaw = applyFilters(FRONTEND_METADATA_RESOLVERS_FILTER, [], {
     segments,

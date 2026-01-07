@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
-import { Id } from "@convex-config/_generated/dataModel";
+import type { Id } from "@convex-config/_generated/dataModel";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "convex/react";
 import { Loader2, Save } from "lucide-react";
@@ -28,8 +28,8 @@ import {
   Separator,
 } from "@acme/ui";
 
-import type { App, Connection } from "../types";
-import { formSchema, FormValues } from "../types";
+import type { App, Connection , FormValues } from "../types";
+import { formSchema } from "../types";
 import { validateScenarioForm } from "../utils";
 import ScenarioGraph from "./ScenarioGraph";
 

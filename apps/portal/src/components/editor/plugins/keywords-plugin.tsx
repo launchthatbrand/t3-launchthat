@@ -7,7 +7,8 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { useCallback, useEffect, JSX } from 'react'
+import type { JSX } from 'react';
+import { useCallback, useEffect } from 'react'
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useLexicalTextEntity } from '@lexical/react/useLexicalTextEntity'

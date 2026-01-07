@@ -4,14 +4,14 @@ import { v } from "convex/values";
 import { components } from "../../../_generated/api";
 import { query } from "../../../_generated/server";
 
-type CommerceCartQueries = { getCart: unknown };
+interface CommerceCartQueries { getCart: unknown }
 const commerceCartQueries = (
   components as unknown as {
     launchthat_ecommerce: { cart: { queries: CommerceCartQueries } };
   }
 ).launchthat_ecommerce.cart.queries;
 
-type CommercePostsQueries = { getPostMeta: unknown };
+interface CommercePostsQueries { getPostMeta: unknown }
 const commercePostsQueries = (
   components as unknown as {
     launchthat_ecommerce: { posts: { queries: CommercePostsQueries } };
@@ -145,24 +145,24 @@ export const getCart = query({
         },
       );
       const rows = Array.isArray(meta)
-        ? (meta as Array<{ key?: unknown; value?: unknown }>)
+        ? (meta as { key?: unknown; value?: unknown }[])
         : [];
       const rawFeatures = rows.find(
-        (r) => r?.key === "product.features",
+        (r) => r.key === "product.features",
       )?.value;
       const parsedFeatures = safeParseStringArray(rawFeatures);
 
       const rawRequireAccount = rows.find(
-        (r) => r?.key === "product.requireAccount",
+        (r) => r.key === "product.requireAccount",
       )?.value;
 
       const rawCrmMarketingTagIds = rows.find(
-        (r) => r?.key === "crm.marketingTagIdsJson",
+        (r) => r.key === "crm.marketingTagIdsJson",
       )?.value;
       const parsedCrmMarketingTagIds = safeParseStringArray(rawCrmMarketingTagIds);
 
       const rawAttachments = rows.find(
-        (r) => r?.key === "__core_attachments",
+        (r) => r.key === "__core_attachments",
       )?.value;
       const featuredImageUrl =
         resolvePrimaryImageUrlFromAttachmentsMeta(rawAttachments);

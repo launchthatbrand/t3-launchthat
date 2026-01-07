@@ -142,10 +142,10 @@ class PluginRegistry extends EventEmitter {
     slotName: string,
     context: PluginContext,
   ): React.ComponentType<PluginContext>[] {
-    const components: Array<{
+    const components: {
       component: React.ComponentType<PluginContext>;
       order: number;
-    }> = [];
+    }[] = [];
 
     for (const plugin of this.getActivePlugins()) {
       const slots = plugin.slots?.[slotName];
@@ -201,10 +201,10 @@ class PluginRegistry extends EventEmitter {
     position: "top" | "bottom",
     context: PluginContext,
   ): React.ComponentType<PluginContext>[] {
-    const components: Array<{
+    const components: {
       component: React.ComponentType<PluginContext>;
       order: number;
-    }> = [];
+    }[] = [];
 
     for (const plugin of this.getActivePlugins()) {
       if (!plugin.sidebar) continue;

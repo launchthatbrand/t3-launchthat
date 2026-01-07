@@ -16,7 +16,7 @@ import { useTenant } from "~/context/TenantContext";
 export default function AdminEmailTestPage() {
   const tenant = useTenant();
   const orgId: Id<"organizations"> | undefined = tenant?._id;
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+   
   const sendTestEmail = useAction(
     api.core.emails.reactEmailRender.sendTestEmail,
   ) as (args: {

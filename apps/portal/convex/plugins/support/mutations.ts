@@ -8,7 +8,7 @@ import { normalizeOrganizationId } from "../../constants";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+ 
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
@@ -90,7 +90,7 @@ const isCrmEnabledForOrg = async (
     type: "site",
     orgId: orgIdForOptions,
   });
-  return Boolean((option as any)?.metaValue);
+  return Boolean((option)?.metaValue);
 };
 
 // ---------- mutations ----------
@@ -678,7 +678,7 @@ export const saveRagSourceConfig = mutation({
       useCustomBaseInstructions: args.useCustomBaseInstructions,
       baseInstructions: args.baseInstructions,
     });
-    return { ragSourceId: String((result as any)?.ragSourceId ?? "") };
+    return { ragSourceId: String((result)?.ragSourceId ?? "") };
   },
 });
 

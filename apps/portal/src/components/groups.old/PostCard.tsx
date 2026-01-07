@@ -31,7 +31,7 @@ import {
 import { Textarea } from "@acme/ui/textarea";
 
 import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { CommentSection } from "./CommentSection";
 
 interface PostCardProps {
@@ -42,12 +42,12 @@ interface PostCardProps {
     authorId: Id<"users">;
     content: string;
     pinnedAt?: number;
-    attachments?: Array<{
+    attachments?: {
       type: "image" | "video" | "file";
       url: string;
       name?: string;
       size?: number;
-    }>;
+    }[];
     author?: {
       id: Id<"users">;
       name: string;
@@ -219,7 +219,7 @@ export function PostCard({ post, groupId }: PostCardProps) {
             src={post.author?.image}
             alt={post.author?.name || "User"}
           />
-          <AvatarFallback>{post.author?.name?.charAt(0) || "U"}</AvatarFallback>
+          <AvatarFallback>{post.author?.name.charAt(0) || "U"}</AvatarFallback>
         </Avatar>
         <div className="flex-1 space-y-1">
           <div className="flex items-center justify-between">

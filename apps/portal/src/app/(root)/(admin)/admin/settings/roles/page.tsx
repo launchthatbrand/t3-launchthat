@@ -40,14 +40,14 @@ type RoleData = Doc<"roles"> & {
   permissionCount: number;
 };
 
-type NewRoleState = {
+interface NewRoleState {
   name: string;
   description: string;
   scope: "global" | "group" | "course" | "organization";
   isAssignable: boolean;
   priority: number;
   parentId?: string;
-};
+}
 
 const defaultRoleState: NewRoleState = {
   name: "",

@@ -6,9 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 import type { AdminMetaBoxContext } from "../types";
 
-type TermOption = { label: string; value: string };
+interface TermOption { label: string; value: string }
 
-type TaxonomyBlock = {
+interface TaxonomyBlock {
   options: TermOption[];
   selected: string[];
   onChange: (values: string[]) => void;
@@ -16,7 +16,7 @@ type TaxonomyBlock = {
   loadingLabel?: string | null;
   footerLabel?: string | null;
   disabled?: boolean;
-};
+}
 
 const readTaxonomyBlock = (
   context: AdminMetaBoxContext,

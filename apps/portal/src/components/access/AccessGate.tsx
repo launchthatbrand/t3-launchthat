@@ -8,11 +8,12 @@ import { AlertCircle, Lock } from "lucide-react";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
-import {
+import type {
   AccessRules,
   ContentType,
-  useContentAccess,
-  UserTag,
+  UserTag} from "~/hooks/useContentAccess";
+import {
+  useContentAccess
 } from "~/hooks/useContentAccess";
 
 // Access context type

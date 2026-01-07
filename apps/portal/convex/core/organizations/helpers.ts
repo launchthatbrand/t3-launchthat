@@ -171,7 +171,7 @@ export const getUserPlan = async (ctx: QueryCtx, userId: Id<"users">) => {
   return (await ctx.runQuery(
     components.launchthat_ecommerce.plans.queries.getPlanById as any,
     { planId: String(user.planId) },
-  )) as any;
+  ));
 };
 
 /**

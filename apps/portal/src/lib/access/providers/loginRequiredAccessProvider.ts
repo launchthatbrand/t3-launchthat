@@ -3,20 +3,20 @@ import type {
   ContentAccessProvider,
 } from "../contentAccessRegistry";
 
-type ContentAccessRulesLike = {
+interface ContentAccessRulesLike {
   isPublic?: boolean | null;
-};
+}
 
-type EvalData = {
+interface EvalData {
   contentRules?: ContentAccessRulesLike | null;
-};
+}
 
 export const loginRequiredAccessProvider: ContentAccessProvider = {
   id: "core.loginRequired",
   priority: 10,
   decide: ({ subject, data }): ContentAccessDecision => {
     const d = (data ?? {}) as EvalData;
-    const rules = (d.contentRules ?? null) as ContentAccessRulesLike | null;
+    const rules = (d.contentRules ?? null);
     if (!rules) return { kind: "abstain" };
 
     const isPublic = Boolean(rules.isPublic);

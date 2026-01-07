@@ -6,7 +6,8 @@ import {
   $getSelectionStyleValueForProperty,
   $patchStyleText,
 } from '@lexical/selection'
-import { $getSelection, $isRangeSelection, BaseSelection } from 'lexical'
+import type { BaseSelection } from 'lexical';
+import { $getSelection, $isRangeSelection } from 'lexical'
 import { TypeIcon } from 'lucide-react'
 
 import {

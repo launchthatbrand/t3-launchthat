@@ -17,13 +17,13 @@ const normalizeSlugKey = (value: string) =>
   value.replace(/^\/+|\/+$/g, "").trim().toLowerCase();
 
 const getEnabledPluginIds = (args: {
-  pluginOptions: Array<{ metaKey?: unknown; metaValue?: unknown }> | undefined;
+  pluginOptions: { metaKey?: unknown; metaValue?: unknown }[] | undefined;
 }): string[] => {
   const optionMap = new Map(
     (args.pluginOptions ?? [])
       .map((o) => [
-        typeof o?.metaKey === "string" ? o.metaKey : "",
-        Boolean(o?.metaValue),
+        typeof o.metaKey === "string" ? o.metaKey : "",
+        Boolean(o.metaValue),
       ])
       .filter(([k]) => Boolean(k)),
   );

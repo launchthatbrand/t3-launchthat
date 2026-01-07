@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
+import type {
+  ReactNode} from "react";
 import {
   createContext,
-  ReactNode,
   useContext,
   useEffect,
   useMemo,
@@ -33,7 +34,7 @@ export function SharedAutocompleteContext({
 }) {
   const context: ContextShape = useMemo(() => {
     let suggestion: Suggestion | null = null;
-    const listeners: Set<CallbackFn> = new Set();
+    const listeners = new Set<CallbackFn>();
     return [
       (cb: (newSuggestion: Suggestion) => void) => {
         cb(suggestion);

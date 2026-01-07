@@ -50,15 +50,15 @@ export async function addClerkOrganizationMember(args: {
         ? (err as {
             status?: unknown;
             clerkTraceId?: unknown;
-            errors?: Array<{ code?: unknown; message?: unknown }>;
+            errors?: { code?: unknown; message?: unknown }[];
             message?: unknown;
           })
         : null;
     const message =
       err instanceof Error ? err.message : typeof err === "string" ? err : "";
     const codes = Array.isArray(e?.errors)
-      ? e?.errors
-          .map((row) => (typeof row?.code === "string" ? row.code : ""))
+      ? e.errors
+          .map((row) => (typeof row.code === "string" ? row.code : ""))
           .filter(Boolean)
       : [];
 

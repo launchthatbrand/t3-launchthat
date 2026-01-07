@@ -19,7 +19,7 @@ import { Card, CardContent, CardFooter } from "@acme/ui/card";
 import { Skeleton } from "@acme/ui/skeleton";
 
 import { api } from "../../../convex/_generated/api";
-import { NotificationData } from "../../utils/types";
+import type { NotificationData } from "../../utils/types";
 
 interface FeedNotificationCardProps {
   notification: NotificationData;

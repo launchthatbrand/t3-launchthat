@@ -116,7 +116,7 @@ async function main() {
   }
 
   // Initialize client
-  client = new ConvexHttpClient(CONVEX_URL!);
+  client = new ConvexHttpClient(CONVEX_URL);
 
   console.log("🌱 Integration Seeding CLI");
   console.log("==========================\n");

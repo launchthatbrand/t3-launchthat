@@ -163,7 +163,7 @@ export const internalEnsureUser = internalMutation({
     );
 
     // Check environment variable for admin email
-    // eslint-disable-next-line @typescript-eslint/no-restricted-imports, turbo/no-undeclared-env-vars
+    // eslint-disable-next-line turbo/no-undeclared-env-vars
     const adminEmail = process.env.CONVEX_ADMIN_EMAIL;
 
     let userRole: UserRole = "user"; // Default role

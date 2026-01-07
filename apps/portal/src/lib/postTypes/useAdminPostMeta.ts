@@ -34,20 +34,20 @@ const normalizeCoreMeta = (
 };
 
 const normalizeComponentMeta = (
-  meta: Array<{ key: string; value: unknown }> | null | undefined,
+  meta: { key: string; value: unknown }[] | null | undefined,
 ): AdminMetaEntry[] | undefined => {
   if (meta === undefined) return undefined;
   if (meta === null) return [];
   return meta.map((row) => ({ key: row.key, value: row.value ?? null }));
 };
 
-type Params = {
+interface Params {
   postId?: string;
   postTypeSlug: string;
   postType?: Doc<"postTypes"> | null;
   organizationId?: Id<"organizations">;
   storageKind: StorageKind;
-};
+}
 
 export const useAdminPostMeta = (params: Params): {
   metaEntries: AdminMetaEntry[] | undefined;
@@ -81,7 +81,7 @@ export const useAdminPostMeta = (params: Params): {
     params.storageKind === "custom" && params.postTypeSlug === "contact" && params.postId
       ? { contactId: params.postId }
       : "skip",
-  ) as Array<{ key: string; value: unknown }> | null | undefined;
+  ) as { key: string; value: unknown }[] | null | undefined;
 
   // Component meta: we currently have explicit public query surfaces for commerce + lms.
   const componentArgs = params.postId
@@ -99,14 +99,14 @@ export const useAdminPostMeta = (params: Params): {
       storageComponent === "launchthat_ecommerce"
       ? (componentArgs as any)
       : "skip",
-  ) as Array<{ key: string; value: unknown }> | null | undefined;
+  ) as { key: string; value: unknown }[] | null | undefined;
 
   const lmsMeta = useQuery(
     api.plugins.lms.posts.queries.getPostMeta,
     params.storageKind === "component" && storageComponent === "launchthat_lms"
       ? (componentArgs as any)
       : "skip",
-  ) as Array<{ key: string; value: unknown }> | null | undefined;
+  ) as { key: string; value: unknown }[] | null | undefined;
 
   const supportMeta = useQuery(
     api.plugins.support.posts.queries.getPostMeta,
@@ -114,7 +114,7 @@ export const useAdminPostMeta = (params: Params): {
       storageComponent === "launchthat_support"
       ? (componentArgs as any)
       : "skip",
-  ) as Array<{ key: string; value: unknown }> | null | undefined;
+  ) as { key: string; value: unknown }[] | null | undefined;
 
   const metaEntries = useMemo<AdminMetaEntry[] | undefined>(() => {
     if (params.storageKind === "custom" && params.postTypeSlug === "contact") {

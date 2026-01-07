@@ -57,12 +57,12 @@ const GridCity = () => {
     group.rotation.y += delta * 0.08;
   });
 
-  const blocks: Array<{
+  const blocks: {
     pos: [number, number, number];
     size: [number, number, number];
     color: string;
     emissive: string;
-  }> = [];
+  }[] = [];
 
   // Expand city footprint and add variation + spacing/jitter for a tron-like grid.
   const spacing = 1.8;

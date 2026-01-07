@@ -14,7 +14,7 @@ import { Skeleton } from "@acme/ui/skeleton";
 
 // Define the PostItem component to handle individual posts
 const PostItem = ({ post }: any) => {
-  if (!post || !post._id) return null;
+  if (!post?._id) return null;
 
   return (
     <Link href={`/social/post/${post._id}`} key={post._id}>

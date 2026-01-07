@@ -109,9 +109,9 @@ const ValidationFeedback = ({
     scenarioId
       ? {
           nodes: nodes.map((n) => ({
-            _id: n.data?.nodeId || n.id,
-            type: n.data?.type || "unknown",
-            label: n.data?.label || "Untitled",
+            _id: n.data.nodeId || n.id,
+            type: n.data.type || "unknown",
+            label: n.data.label || "Untitled",
           })),
           edges: edges.map((e) => ({
             _id: e.id,
@@ -212,13 +212,13 @@ export const ScenarioGraph = ({ scenarioId }: ScenarioGraphProps) => {
 
         // Prepare nodes with React Flow properties
         const formattedNodes = flow.nodes.map((node) => ({
-          _id: node.data?.nodeId || undefined,
-          type: node.data?.type || "core.passThrough",
-          label: node.data?.label || "Untitled",
-          config: node.data?.config || {},
+          _id: node.data.nodeId || undefined,
+          type: node.data.type || "core.passThrough",
+          label: node.data.label || "Untitled",
+          config: node.data.config || {},
           rfType: node.type || "node-with-toolbar",
           rfPosition: node.position,
-          rfLabel: node.data?.label,
+          rfLabel: node.data.label,
           rfWidth: node.width,
           rfHeight: node.height,
         }));
@@ -226,7 +226,7 @@ export const ScenarioGraph = ({ scenarioId }: ScenarioGraphProps) => {
         // Create mapping from React Flow node IDs to Convex node IDs
         const rfIdToConvexId = new Map<string, string>();
         flow.nodes.forEach((node) => {
-          if (node.data?.nodeId && typeof node.data.nodeId === "string") {
+          if (node.data.nodeId && typeof node.data.nodeId === "string") {
             rfIdToConvexId.set(node.id, node.data.nodeId);
           }
         });
@@ -305,7 +305,7 @@ export const ScenarioGraph = ({ scenarioId }: ScenarioGraphProps) => {
           // Create mapping from React Flow node IDs to Convex node IDs
           const rfIdToConvexId = new Map<string, string>();
           flow.nodes.forEach((node) => {
-            if (node.data?.nodeId && typeof node.data.nodeId === "string") {
+            if (node.data.nodeId && typeof node.data.nodeId === "string") {
               rfIdToConvexId.set(node.id, node.data.nodeId);
             }
           });
@@ -314,13 +314,13 @@ export const ScenarioGraph = ({ scenarioId }: ScenarioGraphProps) => {
           await upsertGraph({
             scenarioId,
             nodes: flow.nodes.map((node) => ({
-              _id: node.data?.nodeId || undefined,
-              type: node.data?.type || "core.passThrough",
-              label: node.data?.label || "Untitled",
-              config: node.data?.config || {},
+              _id: node.data.nodeId || undefined,
+              type: node.data.type || "core.passThrough",
+              label: node.data.label || "Untitled",
+              config: node.data.config || {},
               rfType: node.type || "node-with-toolbar",
               rfPosition: node.position,
-              rfLabel: node.data?.label,
+              rfLabel: node.data.label,
               rfWidth: node.width,
               rfHeight: node.height,
             })),
@@ -453,7 +453,7 @@ export const ScenarioGraph = ({ scenarioId }: ScenarioGraphProps) => {
         );
         if (isolatedNodes.length > 0) {
           errors.push(
-            `Isolated nodes detected: ${isolatedNodes.map((n) => n.data?.label || n.id).join(", ")}`,
+            `Isolated nodes detected: ${isolatedNodes.map((n) => n.data.label || n.id).join(", ")}`,
           );
         }
       }
@@ -546,10 +546,10 @@ export const ScenarioGraph = ({ scenarioId }: ScenarioGraphProps) => {
           const tgtNode = flowNodes.find((n) => String(n.id) === tgt);
           const mid = {
             x: Math.round(
-              ((srcNode?.position?.x ?? 0) + (tgtNode?.position?.x ?? 0)) / 2,
+              ((srcNode?.position.x ?? 0) + (tgtNode?.position.x ?? 0)) / 2,
             ),
             y: Math.round(
-              ((srcNode?.position?.y ?? 0) + (tgtNode?.position?.y ?? 0)) / 2,
+              ((srcNode?.position.y ?? 0) + (tgtNode?.position.y ?? 0)) / 2,
             ),
           };
 
@@ -923,12 +923,12 @@ export const ScenarioGraph = ({ scenarioId }: ScenarioGraphProps) => {
       // Transform nodes to the format expected by upsertScenarioGraph
       const transformedNodes = dataNodes.map((node) => ({
         _id: node.id as Id<"nodes">,
-        type: node.data?.type || "core.passThrough",
-        label: node.data?.label || "Untitled",
-        config: node.data?.config || {},
+        type: node.data.type || "core.passThrough",
+        label: node.data.label || "Untitled",
+        config: node.data.config || {},
         rfType: node.type || "node-with-toolbar",
         rfPosition: node.position,
-        rfLabel: node.data?.label,
+        rfLabel: node.data.label,
         rfWidth: node.width,
         rfHeight: node.height,
       }));

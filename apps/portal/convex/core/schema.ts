@@ -1,4 +1,5 @@
 import { auditLogSchema } from "./auditLog/schema";
+import { authSchema } from "./auth/schema";
 import { downloadsSchema } from "./downloads/schema";
 import { emailsSchema } from "./emails/schema";
 import { mediaSchema } from "./media/schema";
@@ -12,6 +13,7 @@ import { rolesSchema } from "./roles/schema";
 import { taxonomiesSchema } from "./taxonomies/schema";
 
 export const coreSchema = {
+  ...authSchema,
   ...auditLogSchema,
   ...emailsSchema,
   ...postTypesSchema,

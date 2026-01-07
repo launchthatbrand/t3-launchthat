@@ -8,9 +8,10 @@ import { useQuery } from "convex/react";
 import { CourseNav } from "launchthat-plugin-lms";
 import { ArrowLeft, LayoutDashboardIcon } from "lucide-react";
 
+import type {
+  TeamSwitcherOrganization} from "@acme/ui/general/team-switcher";
 import {
-  TeamSwitcher,
-  TeamSwitcherOrganization,
+  TeamSwitcher
 } from "@acme/ui/general/team-switcher";
 import {
   Sidebar,

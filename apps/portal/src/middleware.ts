@@ -7,6 +7,33 @@ import {
 import { rootDomain } from "@/lib/utils";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
+const getAuthHostForMiddleware = (
+  host: string,
+  rootDomainFormatted: string,
+): string => {
+  const normalized = host.trim().toLowerCase();
+  const hostname = (normalized.split(":")[0] ?? "").toLowerCase();
+  const port = normalized.split(":")[1] ?? "";
+
+  const isLocal =
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".127.0.0.1");
+
+  if (isLocal) {
+    const base =
+      hostname === "127.0.0.1" || hostname.endsWith(".127.0.0.1")
+        ? "127.0.0.1"
+        : "localhost";
+    return `auth.${base}${port ? `:${port}` : ""}`;
+  }
+
+  return rootDomainFormatted
+    ? `auth.${rootDomainFormatted}`
+    : "auth.launchthat.app";
+};
+
 // Routes requiring authentication
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/forum(.*)"]);
 const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
@@ -84,10 +111,14 @@ function extractSubdomain(request: NextRequest): string | null {
 
 const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
   const { pathname } = req.nextUrl;
-  const subdomain = extractSubdomain(req);
+  const subdomainRaw = extractSubdomain(req);
   const host = req.headers.get("host") ?? "unknown-host";
   const hostname = host.split(":")[0]?.toLowerCase() ?? "";
   const rootDomainFormatted = rootDomain.split(":")[0]?.toLowerCase() ?? "";
+  const authHost = getAuthHostForMiddleware(host, rootDomainFormatted);
+  const authHostname = (authHost.split(":")[0] ?? "").toLowerCase();
+  const subdomain =
+    hostname === authHostname || subdomainRaw === "auth" ? null : subdomainRaw;
 
   // Resolve tenant:
   // - If we have a subdomain under our root domain, resolve by slug.
@@ -142,6 +173,25 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
 
   // Protected + Admin route logic
   if (isProtectedRoute(req) || isAdminRoute(req)) {
+    // On non-auth hosts (tenant subdomains + custom domains), we cannot rely on Clerk cookies
+    // without satellite domains. Enforce our tenant session instead.
+    if (hostname !== authHost) {
+      const hasSessionCookie = Boolean(
+        req.cookies.get("tenant_session")?.value,
+      );
+      if (!hasSessionCookie) {
+        const redirectTo = req.nextUrl.clone();
+        const signInUrl = new URL(`https://${authHost}/sign-in`);
+        signInUrl.searchParams.set("return_to", redirectTo.toString());
+        if (tenant?.slug) signInUrl.searchParams.set("tenant", tenant.slug);
+        return NextResponse.redirect(signInUrl);
+      }
+
+      // Admin routes require a server-side role check later (via /api/me or route handlers).
+      // For now, a valid session cookie gates access.
+      return response;
+    }
+
     try {
       await auth.protect();
     } catch (error) {
@@ -187,10 +237,14 @@ interface TenantContext {
 
 async function buildTenantResponse(req: NextRequest): Promise<TenantContext> {
   const { pathname } = req.nextUrl;
-  const subdomain = extractSubdomain(req);
+  const subdomainRaw = extractSubdomain(req);
   const host = req.headers.get("host") ?? "unknown-host";
   const hostname = host.split(":")[0]?.toLowerCase() ?? "";
   const rootDomainFormatted = rootDomain.split(":")[0]?.toLowerCase() ?? "";
+  const authHost = getAuthHostForMiddleware(host, rootDomainFormatted);
+  const authHostname = (authHost.split(":")[0] ?? "").toLowerCase();
+  const subdomain =
+    hostname === authHostname || subdomainRaw === "auth" ? null : subdomainRaw;
 
   const tenant =
     subdomain !== null

@@ -28,7 +28,7 @@ export function useContentSharing({
   const shareToFeed = async (
     userId: string,
     content: ContentToShare,
-    comment: string = "",
+    comment = "",
     visibility: "public" | "private" | "group" = "public",
   ) => {
     if (!userId) {
@@ -76,7 +76,7 @@ export function useContentSharing({
     senderId: string,
     receiverId: string,
     content: ContentToShare,
-    message: string = "",
+    message = "",
   ) => {
     setIsSharing(true);
 
@@ -115,7 +115,7 @@ export function useContentSharing({
     userId: string,
     groupId: string,
     content: ContentToShare,
-    message: string = "",
+    message = "",
   ) => {
     setIsSharing(true);
 

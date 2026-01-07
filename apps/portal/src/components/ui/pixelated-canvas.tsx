@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 
-type PixelatedCanvasProps = {
+interface PixelatedCanvasProps {
   src: string;
   width?: number;
   height?: number;
@@ -48,7 +48,7 @@ type PixelatedCanvasProps = {
   fadeOnLeave?: boolean;
   /** 0..1 smoothing factor for leave fade. Higher = faster fade. */
   fadeSpeed?: number;
-};
+}
 
 export const PixelatedCanvas: React.FC<PixelatedCanvasProps> = ({
   src,
@@ -79,7 +79,7 @@ export const PixelatedCanvas: React.FC<PixelatedCanvasProps> = ({
 }) => {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const samplesRef = React.useRef<
-    Array<{
+    {
       x: number;
       y: number;
       r: number;
@@ -88,7 +88,7 @@ export const PixelatedCanvas: React.FC<PixelatedCanvasProps> = ({
       a: number;
       drop: boolean;
       seed: number;
-    }>
+    }[]
   >([]);
   const dimsRef = React.useRef<{
     width: number;
@@ -210,7 +210,7 @@ export const PixelatedCanvas: React.FC<PixelatedCanvasProps> = ({
         return s - Math.floor(s);
       };
 
-      const samples: Array<{
+      const samples: {
         x: number;
         y: number;
         r: number;
@@ -219,7 +219,7 @@ export const PixelatedCanvas: React.FC<PixelatedCanvasProps> = ({
         a: number;
         drop: boolean;
         seed: number;
-      }> = [];
+      }[] = [];
 
       let tintRGB: [number, number, number] | null = null;
       if (tintColor && tintStrength > 0) {
@@ -237,7 +237,7 @@ export const PixelatedCanvas: React.FC<PixelatedCanvasProps> = ({
             const b = parseInt(hex.slice(4, 6), 16);
             return [r, g, b];
           }
-          const m = c.match(/rgb\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\)/i);
+          const m = /rgb\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\)/i.exec(c);
           if (m)
             return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10)];
           return null;

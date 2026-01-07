@@ -1,5 +1,5 @@
-import { Id, TableNames } from "../_generated/dataModel";
-import { DatabaseReader } from "../_generated/server";
+import type { Id, TableNames } from "../_generated/dataModel";
+import type { DatabaseReader } from "../_generated/server";
 
 /**
  * Generate a URL-friendly slug from a string

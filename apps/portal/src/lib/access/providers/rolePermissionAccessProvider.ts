@@ -3,17 +3,17 @@ import type {
   ContentAccessProvider,
 } from "../contentAccessRegistry";
 
-type ContentAccessRulesLike = {
+interface ContentAccessRulesLike {
   requiredRoleNames?: string[] | null;
   requiredPermissionKeys?: string[] | null;
-};
+}
 
-type EvalData = {
+interface EvalData {
   contentRules?: ContentAccessRulesLike | null;
   roleNames?: string[]; // resolved role names for the viewer
   permissionGrants?: Record<string, boolean>; // permissionKey -> allowed
   userRole?: string | null; // legacy user.role string
-};
+}
 
 const normalize = (value: unknown): string =>
   typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -23,7 +23,7 @@ export const rolePermissionAccessProvider: ContentAccessProvider = {
   priority: 20,
   decide: ({ subject, data }): ContentAccessDecision => {
     const d = (data ?? {}) as EvalData;
-    const rules = (d.contentRules ?? null) as ContentAccessRulesLike | null;
+    const rules = (d.contentRules ?? null);
     if (!rules) return { kind: "abstain" };
 
     const requiredRoles = Array.isArray(rules.requiredRoleNames)

@@ -9,7 +9,7 @@ import type { Id } from "@/convex/_generated/dataModel";
  * reads/writes through backend-specific adapters.
  */
 
-export const SYNTHETIC_ID_PREFIX = "custom:" as const;
+export const SYNTHETIC_ID_PREFIX = "custom:";
 
 export interface SyntheticIdParts {
   postTypeSlug: string;
@@ -123,7 +123,7 @@ export interface AdminPostSaveAdapter {
     status: AdminEditorStatus;
     metaPayload: Record<string, unknown>;
     supportsTaxonomy: boolean;
-    taxonomyTermIds: Array<Id<"taxonomyTerms">>;
+    taxonomyTermIds: Id<"taxonomyTerms">[];
 
     publishDownload?: (args: {
       organizationId: Id<"organizations">;
@@ -143,7 +143,7 @@ export interface AdminPostSaveAdapter {
       organizationId: Id<"organizations">;
       objectId: string;
       postTypeSlug: string;
-      termIds: Array<Id<"taxonomyTerms">>;
+      termIds: Id<"taxonomyTerms">[];
     }) => Promise<unknown>;
   }) => Promise<void>;
 }

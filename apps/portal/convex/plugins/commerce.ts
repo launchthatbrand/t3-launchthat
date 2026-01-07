@@ -27,7 +27,7 @@ export const getAllPosts = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(ecommercePostsQueries.getAllPosts as any, args)) as any;
+    return (await ctx.runQuery(ecommercePostsQueries.getAllPosts, args));
   },
 });
 
@@ -38,10 +38,10 @@ export const getPostById = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(ecommercePostsQueries.getPostById as any, {
+    return (await ctx.runQuery(ecommercePostsQueries.getPostById, {
       id: args.id as any,
       organizationId: args.organizationId,
-    })) as any;
+    }));
   },
 });
 
@@ -52,7 +52,7 @@ export const getPostBySlug = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(ecommercePostsQueries.getPostBySlug as any, args)) as any;
+    return (await ctx.runQuery(ecommercePostsQueries.getPostBySlug, args));
   },
 });
 
@@ -63,10 +63,10 @@ export const getPostMeta = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(ecommercePostsQueries.getPostMeta as any, {
+    return (await ctx.runQuery(ecommercePostsQueries.getPostMeta, {
       postId: args.postId as any,
       organizationId: args.organizationId,
-    })) as any;
+    }));
   },
 });
 
@@ -79,7 +79,7 @@ export const searchPosts = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(ecommercePostsQueries.searchPosts as any, args)) as any;
+    return (await ctx.runQuery(ecommercePostsQueries.searchPosts, args));
   },
 });
 
@@ -90,7 +90,7 @@ export const getPostTags = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(ecommercePostsQueries.getPostTags as any, args)) as any;
+    return (await ctx.runQuery(ecommercePostsQueries.getPostTags, args));
   },
 });
 
@@ -101,7 +101,7 @@ export const getPostCategories = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(ecommercePostsQueries.getPostCategories as any, args)) as any;
+    return (await ctx.runQuery(ecommercePostsQueries.getPostCategories, args));
   },
 });
 

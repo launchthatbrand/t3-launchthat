@@ -7,7 +7,8 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { useEffect, JSX } from 'react'
+import type { JSX } from 'react';
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -16,7 +17,7 @@ import { TextNode } from 'lexical'
 
 import { $createEmojiNode, EmojiNode } from '~/components/editor/nodes/emoji-node'
 
-const emojis: Map<string, [string, string]> = new Map([
+const emojis = new Map<string, [string, string]>([
   [':)', ['emoji happysmile', '🙂']],
   [':D', ['emoji veryhappysmile', '😀']],
   [':(', ['emoji unhappysmile', '🙁']],

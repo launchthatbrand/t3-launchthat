@@ -215,7 +215,7 @@ export const getPlans = query({
     return (await ctx.runQuery(
       components.launchthat_ecommerce.plans.queries.getPlans as any,
       { isActive: true },
-    )) as any;
+    ));
   },
 });
 
@@ -269,7 +269,7 @@ export const canCreateOrganization = query({
     const plan = (await ctx.runQuery(
       components.launchthat_ecommerce.plans.queries.getPlanById as any,
       { planId: String(user.planId) },
-    )) as any | null;
+    ));
     if (!plan) {
       return {
         canCreate: false,

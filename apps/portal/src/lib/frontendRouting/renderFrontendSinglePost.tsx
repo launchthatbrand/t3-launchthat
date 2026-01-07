@@ -13,7 +13,7 @@ import {
   getPageTemplate,
   PAGE_TEMPLATE_ACCESS_OPTION_KEY,
 } from "~/lib/pageTemplates/registry";
-import { findPostTypeBySlug } from "~/lib/plugins/frontend";
+import type { findPostTypeBySlug } from "~/lib/plugins/frontend";
 import { getFrontendProvidersForPostType } from "~/lib/plugins/frontendProviders";
 import {
   getFrontendSingleSlotsForSlug,
@@ -31,10 +31,11 @@ import { FrontendContentFilterHost } from "~/components/frontend/FrontendContent
 import { TaxonomyBadges } from "~/components/taxonomies/TaxonomyBadges";
 import { PostCommentsSection } from "~/components/comments/PostCommentsSection";
 import { EditorViewer } from "~/components/blocks/editor-x/viewer";
+import type {
+  parseLexicalSerializedState as parseLexicalSerializedStateInternal} from "~/lib/editor/lexical";
 import {
   isLexicalSerializedStateString,
-  parseLexicalSerializedState,
-  parseLexicalSerializedState as parseLexicalSerializedStateInternal,
+  parseLexicalSerializedState
 } from "~/lib/editor/lexical";
 import { PuckContentRenderer } from "~/components/puckeditor/PuckContentRenderer";
 
@@ -434,7 +435,7 @@ function readFrontendVisibility(postType: Doc<"postTypes"> | null): {
   disabledSingleSlotIds?: unknown;
 } | null {
   const raw = (postType as unknown as { frontendVisibility?: unknown })
-    ?.frontendVisibility;
+    .frontendVisibility;
   if (!raw || typeof raw !== "object") {
     return null;
   }
@@ -511,7 +512,7 @@ function buildCustomFieldEntries({
 
   const sorted = [...fields].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-  return sorted?.map((field) => {
+  return sorted.map((field) => {
     const defaultValue = coerceFieldDefault(field);
     const metaValue = metaMap.has(field.key)
       ? metaMap.get(field.key)
@@ -714,7 +715,7 @@ function PostMetaSummary({
 
   return (
     <dl className="text-muted-foreground flex flex-wrap gap-4 text-sm">
-      {details?.map((item) => (
+      {details.map((item) => (
         <div key={item.label}>
           <dt className="sr-only">{item.label}</dt>
           <dd>
@@ -776,7 +777,7 @@ function PostDetail({
     "showComments",
     true,
   );
-  const hasPuckContent = Boolean(puckData?.content?.length);
+  const hasPuckContent = Boolean(puckData?.content.length);
   const lexicalContent = parseLexicalSerializedState(post.content ?? null);
   const rawContent = isLexicalSerializedStateString(post.content)
     ? null
@@ -864,7 +865,7 @@ function PostDetail({
                   Custom Fields
                 </h2>
                 <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                  {customFieldEntries?.map((entry) => (
+                  {customFieldEntries.map((entry) => (
                     <div key={entry.key} className="space-y-1">
                       <dt className="text-muted-foreground text-sm font-medium">
                         {entry.label}

@@ -3,6 +3,7 @@ import "~/lib/plugins/installHooks.server";
 
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import { resolveFrontendRoute as resolveFrontendRouteTyped } from "@/lib/frontendRouting/resolveFrontendRoute";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
 import { fetchQuery } from "convex/nextjs";
@@ -35,6 +36,8 @@ export default async function FrontendCatchAllPage(
 
   const tenant = await getActiveTenantFromHeaders();
   const organizationId = getTenantOrganizationId(tenant);
+  const cookieStore = await cookies();
+  const tenantSessionId = cookieStore.get("tenant_session")?.value ?? null;
 
   const debugRouting = (() => {
     const raw = resolvedSearchParams?.debugRouting;
@@ -61,6 +64,7 @@ export default async function FrontendCatchAllPage(
     },
     organizationId: (organizationId ?? null) as any,
     fetchQuery,
+    tenantSessionId,
   });
 
   if (!node) {

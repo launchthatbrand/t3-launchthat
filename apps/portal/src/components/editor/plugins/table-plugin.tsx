@@ -7,7 +7,8 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { createContext, useContext, useEffect, useMemo, useState, JSX } from 'react'
+import type { JSX } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import * as React from 'react'
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -16,14 +17,15 @@ import {
   INSERT_TABLE_COMMAND,
   TableNode,
 } from '@lexical/table'
-import {
-  $insertNodes,
-  COMMAND_PRIORITY_EDITOR,
+import type {
   EditorThemeClasses,
   Klass,
   LexicalCommand,
   LexicalEditor,
-  LexicalNode,
+  LexicalNode} from 'lexical';
+import {
+  $insertNodes,
+  COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
 
@@ -40,18 +42,18 @@ export type InsertTableCommandPayload = Readonly<{
   includeHeaders?: boolean
 }>
 
-export type CellContextShape = {
+export interface CellContextShape {
   cellEditorConfig: null | CellEditorConfig
-  cellEditorPlugins: null | JSX.Element | Array<JSX.Element>
+  cellEditorPlugins: null | JSX.Element | JSX.Element[]
   set: (
     cellEditorConfig: null | CellEditorConfig,
-    cellEditorPlugins: null | JSX.Element | Array<JSX.Element>
+    cellEditorPlugins: null | JSX.Element | JSX.Element[]
   ) => void
 }
 
 export type CellEditorConfig = Readonly<{
   namespace: string
-  nodes?: ReadonlyArray<Klass<LexicalNode>>
+  nodes?: readonly Klass<LexicalNode>[]
   onError: (error: Error, editor: LexicalEditor) => void
   readOnly?: boolean
   theme?: EditorThemeClasses
@@ -71,7 +73,7 @@ export const CellContext = createContext<CellContextShape>({
 export function TableContext({ children }: { children: JSX.Element }) {
   const [contextValue, setContextValue] = useState<{
     cellEditorConfig: null | CellEditorConfig
-    cellEditorPlugins: null | JSX.Element | Array<JSX.Element>
+    cellEditorPlugins: null | JSX.Element | JSX.Element[]
   }>({
     cellEditorConfig: null,
     cellEditorPlugins: null,
@@ -164,7 +166,7 @@ export function TablePlugin({
   children,
 }: {
   cellEditorConfig: CellEditorConfig
-  children: JSX.Element | Array<JSX.Element>
+  children: JSX.Element | JSX.Element[]
 }): JSX.Element | null {
   const [editor] = useLexicalComposerContext()
   const cellContext = useContext(CellContext)

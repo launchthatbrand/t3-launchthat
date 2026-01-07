@@ -7,19 +7,20 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { useCallback, useMemo, useState, JSX } from 'react'
+import type { JSX } from 'react';
+import { useCallback, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import dynamic from 'next/dynamic'
 
-import { TextNode } from 'lexical'
+import type { TextNode } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useBasicTypeaheadTriggerMatch } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 
 import { Command, CommandGroup, CommandItem, CommandList } from '@acme/ui/command'
 
 import { useEditorModal } from '~/components/editor/editor-hooks/use-modal'
-import { ComponentPickerOption } from '~/components/editor/plugins/picker/component-picker-option'
+import type { ComponentPickerOption } from '~/components/editor/plugins/picker/component-picker-option'
 
 const LexicalTypeaheadMenuPlugin = dynamic(
   () => import('./default/lexical-typeahead-menu-plugin'),
@@ -30,8 +31,8 @@ export function ComponentPickerMenuPlugin({
   baseOptions = [],
   dynamicOptionsFn,
 }: {
-  baseOptions?: Array<ComponentPickerOption>
-  dynamicOptionsFn?: ({ queryString }: { queryString: string }) => Array<ComponentPickerOption>
+  baseOptions?: ComponentPickerOption[]
+  dynamicOptionsFn?: ({ queryString }: { queryString: string }) => ComponentPickerOption[]
 }): JSX.Element {
   const [editor] = useLexicalComposerContext()
   const [modal, showModal] = useEditorModal()

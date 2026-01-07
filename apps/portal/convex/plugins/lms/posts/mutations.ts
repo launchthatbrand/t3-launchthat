@@ -94,7 +94,7 @@ export const deletePost = mutation({
       { id: args.id },
     )) as { postTypeSlug?: string; organizationId?: string } | null;
     await ctx.runMutation(lmsPostsMutations.deletePost, args);
-    if (post?.postTypeSlug && post?.organizationId) {
+    if (post?.postTypeSlug && post.organizationId) {
       await ctx.scheduler.runAfter(0, internal.plugins.support.rag.removeLmsEntry, {
         organizationId: post.organizationId as any,
         postTypeSlug: post.postTypeSlug,

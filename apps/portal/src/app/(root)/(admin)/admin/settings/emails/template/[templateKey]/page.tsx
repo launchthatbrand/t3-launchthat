@@ -272,7 +272,7 @@ export default function AdminEmailTemplateEditorPage() {
   const effectiveDesign =
     designOverrideKey === "inherit"
       ? loaded?.orgDesignKey
-      : (designOverrideKey as "clean" | "bold" | "minimal");
+      : (designOverrideKey);
 
   const effectiveSubjectPreview = useMemo(() => {
     if (!definition) return "";
@@ -415,7 +415,7 @@ export default function AdminEmailTemplateEditorPage() {
               </div>
             </div>
 
-            {definition?.copySchema?.length ? (
+            {definition?.copySchema.length ? (
               <div className="space-y-4">
                 {definition.copySchema.map((field) => {
                   const value = copyOverrides[field.key] ?? "";
@@ -578,7 +578,7 @@ export default function AdminEmailTemplateEditorPage() {
             {previewError ? (
               <div className="text-destructive text-sm">{previewError}</div>
             ) : null}
-            {previewState?.warnings?.length ? (
+            {previewState?.warnings.length ? (
               <div className="rounded-md border p-3 text-sm">
                 <div className="font-medium">Warnings</div>
                 <ul className="text-muted-foreground list-disc pl-5">

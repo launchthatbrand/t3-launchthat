@@ -18,14 +18,14 @@ import {
 
 import type { AccessRule } from "~/components/admin/ContentAccess";
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const apiAny: any = require("@/convex/_generated/api").api;
 
-type MarketingTag = {
+interface MarketingTag {
   _id: string;
   name: string;
   slug?: string;
-};
+}
 
 export function CrmMarketingTagsContentAccessSection(props: {
   rules: AccessRule;

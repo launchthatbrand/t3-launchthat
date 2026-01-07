@@ -7,10 +7,10 @@ import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 
 import { api } from "../../../../convex/_generated/api";
-import { Id } from "../../../../convex/_generated/dataModel";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 // Define a type that includes the featuredImageId property
-type DownloadWithFeaturedImage = {
+interface DownloadWithFeaturedImage {
   _id: Id<"downloads">;
   title: string;
   description?: string;
@@ -23,7 +23,7 @@ type DownloadWithFeaturedImage = {
   createdAt: number;
   updatedAt: number;
   featuredImageId?: Id<"_storage">;
-};
+}
 
 export function UploadWithPreview() {
   const [file, setFile] = useState<File | null>(null);

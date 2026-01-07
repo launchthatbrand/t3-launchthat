@@ -35,7 +35,7 @@ export type AccessRule = NormalizedContentAccessRules;
 // Avoid importing Convex generated API as a typed ESM import here; it can trigger
 // TS "excessively deep" instantiation in some client modules. We only need the
 // runtime function references.
-// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const apiAny: any = require("@/convex/_generated/api").api;
 
 interface ContentAccessProps {
@@ -79,7 +79,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     apiAny.core.options.getByType,
     portalAwareOrgId ? { orgId: portalAwareOrgId, type: "site" } : "skip",
-  ) as unknown as Array<{ metaKey: string; metaValue?: unknown }> | undefined;
+  ) as unknown as { metaKey: string; metaValue?: unknown }[] | undefined;
 
   const enabledPluginIds = useMemo(() => {
     const optionMap = new Map<string, boolean>(
@@ -112,7 +112,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
     | undefined;
   const isLmsComponent =
     postType?.storageKind === "component" &&
-    (postType?.storageTables ?? []).some((t) =>
+    (postType.storageTables ?? []).some((t) =>
       String(t).includes("launchthat_lms:posts"),
     );
 
@@ -125,11 +125,11 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
       postTypeSlug,
       ...(portalAwareOrgId ? { organizationId: portalAwareOrgId } : {}),
     },
-  ) as unknown as Array<{ key: string; value?: unknown }> | undefined;
+  ) as unknown as { key: string; value?: unknown }[] | undefined;
 
   const currentRules = useMemo(() => {
     const entry = Array.isArray(postMeta)
-      ? postMeta.find((m) => m?.key === "content_access")
+      ? postMeta.find((m) => m.key === "content_access")
       : undefined;
     const parsed = parseContentAccessMetaValue(entry?.value);
     return parsed;
@@ -219,7 +219,7 @@ export const ContentAccess: React.FC<ContentAccessProps> = ({
     : [];
   const visibleSections = useMemo(() => {
     const filtered = sections.filter((s) => {
-      if (!s?.pluginId) return true;
+      if (!s.pluginId) return true;
       return enabledPluginIds.includes(s.pluginId);
     });
     return filtered.sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));

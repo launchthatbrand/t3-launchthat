@@ -45,8 +45,8 @@ export function registerCorePostStores(): void {
       const stores = Array.isArray(value) ? (value as FrontendPostStore[]) : [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const handlerCtx = ctx as any;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const apiAny = handlerCtx?.api as any;
+       
+      const apiAny = handlerCtx?.api;
 
       const entityStore: FrontendPostStore = {
         id: "portal:entity-default",

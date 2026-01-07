@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@clerk/nextjs";
 import { api } from "@portal/convexspec";
 import { useMutation, useQuery } from "convex/react";
 import { RefreshCw, Sparkles } from "lucide-react";
@@ -32,7 +31,6 @@ export function RecommendedContentSection({
   limit = 8,
   className = "",
 }: RecommendedContentSectionProps) {
-  const { userId } = useAuth();
   const { convexId } = useConvexUser();
   const [cursor, setCursor] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);

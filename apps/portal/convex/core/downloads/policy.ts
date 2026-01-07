@@ -2,9 +2,9 @@ import type { Doc } from "../../_generated/dataModel";
 
 export type DownloadDoc = Doc<"downloads">;
 
-export type ViewerContext = {
+export interface ViewerContext {
   isAuthenticated: boolean;
-};
+}
 
 /**
  * Central policy engine entrypoint. Keep this stable and extend by composing

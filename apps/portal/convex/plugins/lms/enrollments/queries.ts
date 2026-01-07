@@ -51,7 +51,7 @@ export const listCourseMembers = query({
     const usersById = new Map<string, any>();
     await Promise.all(
       userIds.map(async (userId) => {
-        const user = await ctx.db.get(userId as any);
+        const user = await ctx.db.get(userId);
         if (user) usersById.set(userId, user);
       }),
     );

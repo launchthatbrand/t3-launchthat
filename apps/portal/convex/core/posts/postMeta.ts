@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return */
+ 
 import { v } from "convex/values";
 
 import type { Id } from "../../_generated/dataModel";

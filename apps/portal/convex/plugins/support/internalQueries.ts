@@ -4,10 +4,10 @@ import type { Id } from "../../_generated/dataModel";
 import { components } from "../../_generated/api";
 import { internalQuery } from "../../_generated/server";
 
-type SupportPostRecord = {
+interface SupportPostRecord {
   _id: string;
   slug: string;
-};
+}
 
 const supportQueries = components.launchthat_support.queries as unknown as {
   listSupportPosts: unknown;
@@ -41,7 +41,7 @@ export const getConversationMetadata = internalQuery({
     const metas = (await ctx.runQuery(supportQueries.getSupportPostMeta as any, {
       postId: convo._id as Id<"posts">,
       organizationId: args.organizationId,
-    })) as Array<{ key: string; value: unknown }>;
+    })) as { key: string; value: unknown }[];
 
     const meta: Record<string, unknown> = {};
     for (const m of metas) {

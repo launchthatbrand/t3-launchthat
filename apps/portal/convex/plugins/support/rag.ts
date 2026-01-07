@@ -51,7 +51,7 @@ const buildSearchFilters = (args: {
 type PostDoc = Doc<"posts">;
 type LmsPostTypeSlug = string;
 
-type SupportRagSourceConfig = {
+interface SupportRagSourceConfig {
   _id: string;
   postTypeSlug?: string;
   displayName?: string;
@@ -59,8 +59,8 @@ type SupportRagSourceConfig = {
   includeTags?: boolean;
   metaFieldKeys?: string[];
   additionalMetaKeys?: string;
-  fields?: Array<"title" | "excerpt" | "content">;
-};
+  fields?: ("title" | "excerpt" | "content")[];
+}
 
 const namespaceForOrganization = (organizationId: Id<"organizations">) =>
   `org-${organizationId}`;
@@ -186,7 +186,7 @@ const buildPostText = async (
 
 const buildLmsPostText = async (args: {
   lmsPost: Record<string, unknown>;
-  lmsMeta: Array<{ key?: unknown; value?: unknown }>;
+  lmsMeta: { key?: unknown; value?: unknown }[];
   config: SupportRagSourceConfig;
 }): Promise<string> => {
   const segments: string[] = [];
@@ -213,7 +213,7 @@ const buildLmsPostText = async (args: {
     }
   }
 
-  const allMetaKeys: Array<string> = [];
+  const allMetaKeys: string[] = [];
   if (Array.isArray(config.metaFieldKeys)) {
     for (const key of config.metaFieldKeys) {
       if (typeof key === "string" && key.trim()) allMetaKeys.push(key.trim());
@@ -274,7 +274,7 @@ export const getSupportRagSourceForPostType = internalQuery({
         postTypeSlug: args.postTypeSlug,
         sourceType: args.sourceType,
       },
-    )) as any | null;
+    ));
 
     if (!doc) return null;
 
@@ -477,7 +477,7 @@ export const ingestPostIfConfigured = internalAction({
     const post = await ctx.runQuery(internal.plugins.support.rag.getPostForIngestion, {
       postId: args.postId,
     });
-    if (!post || !post.organizationId || !post.postTypeSlug) {
+    if (!post?.organizationId || !post.postTypeSlug) {
       return { status: "missingPost" };
     }
 
@@ -677,7 +677,7 @@ export const ingestLmsPostIfConfigured = internalAction({
     const lmsMeta = (await ctx.runQuery(
       (components.launchthat_lms.posts.queries.getPostMetaInternal as unknown as any),
       { postId: args.id },
-    )) as Array<{ key?: unknown; value?: unknown }>;
+    )) as { key?: unknown; value?: unknown }[];
 
     const text = await buildLmsPostText({
       lmsPost,

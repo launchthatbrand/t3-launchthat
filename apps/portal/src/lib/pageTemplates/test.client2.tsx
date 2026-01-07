@@ -4,14 +4,14 @@ import * as React from "react";
 
 import type { PageTemplateContext } from "./registry";
 
-type SectionDef = {
+interface SectionDef {
   key: string;
   eyebrow: string;
   title: string;
   description: string;
   bg: string;
   card: string;
-};
+}
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
@@ -20,7 +20,7 @@ export const TestHeroTemplate2 = ({
   meta: _meta,
 }: PageTemplateContext) => {
   const scrollerRef = React.useRef<HTMLDivElement>(null);
-  const sectionRefs = React.useRef<Array<HTMLDivElement | null>>([]);
+  const sectionRefs = React.useRef<(HTMLDivElement | null)[]>([]);
 
   const sections = React.useMemo<SectionDef[]>(
     () => [

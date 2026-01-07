@@ -24,7 +24,7 @@ export const registerPluginDefinitionHooks = (
     typeof window !== "undefined" && window.location.search.includes("debugPlugins=1");
 
   if (debugPlugins) {
-    // eslint-disable-next-line no-console
+     
     console.log("[plugins][debugPlugins=1] registering hooks for", {
       plugins: definitions.map((p) => p.id),
     });
@@ -48,7 +48,7 @@ export const registerPluginDefinitionHooks = (
       registeredHookKeys.add(key);
 
       if (debugPlugins) {
-        // eslint-disable-next-line no-console
+         
         console.log("[plugins][debugPlugins=1] addAction", {
           pluginId: plugin.id,
           hook,
@@ -71,7 +71,7 @@ export const registerPluginDefinitionHooks = (
       registeredHookKeys.add(key);
 
       if (debugPlugins) {
-        // eslint-disable-next-line no-console
+         
         console.log("[plugins][debugPlugins=1] addFilter", {
           pluginId: plugin.id,
           hook,

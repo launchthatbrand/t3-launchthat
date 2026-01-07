@@ -8,11 +8,15 @@
  *
  */
 import * as React from 'react'
-import { useEffect, useRef, useState, JSX } from 'react'
+import type { JSX } from 'react';
+import { useEffect, useRef, useState } from 'react'
 
 // import '../nodes/inline-image-node.css';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $wrapNodeInElement, mergeRegister } from '@lexical/utils'
+import type {
+  LexicalCommand,
+  LexicalEditor} from 'lexical';
 import {
   $createParagraphNode,
   $createRangeSelection,
@@ -27,8 +31,6 @@ import {
   DRAGOVER_COMMAND,
   DRAGSTART_COMMAND,
   DROP_COMMAND,
-  LexicalCommand,
-  LexicalEditor,
   createCommand,
 } from 'lexical'
 
@@ -44,12 +46,12 @@ import {
   SelectValue,
 } from '@acme/ui/select'
 
-import type { Position } from '~/components/editor/nodes/inline-image-node'
+import type { Position ,
+  InlineImagePayload} from '~/components/editor/nodes/inline-image-node'
 import {
   $createInlineImageNode,
   $isInlineImageNode,
-  InlineImageNode,
-  InlineImagePayload,
+  InlineImageNode
 } from '~/components/editor/nodes/inline-image-node'
 import { CAN_USE_DOM } from '~/components/editor/shared/can-use-dom'
 

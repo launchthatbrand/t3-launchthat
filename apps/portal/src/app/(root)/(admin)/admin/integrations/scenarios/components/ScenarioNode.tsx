@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api as convexApi } from "@convex-config/_generated/api";
 import { useAction } from "convex/react";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
-import {
+import type {
   Control,
   UseFormRegister,
   UseFormSetValue,
@@ -34,7 +34,7 @@ import { MultiSelect } from "@acme/ui/components/multi-select";
 import { Input } from "@acme/ui/input";
 
 import type { App, Connection as ConnectionType } from "../types";
-import { FormValues, SupportedApp } from "../types";
+import type { FormValues, SupportedApp } from "../types";
 import { getAppActions } from "../utils";
 import { FieldMapperInput } from "./FieldMapperInput";
 import { NodeTester } from "./NodeTester";
@@ -78,7 +78,7 @@ export function ScenarioNode({
   const nodeId = watch(`nodes.${index}.id`);
 
   // Check if this is a saved node (has a database ID)
-  const isSavedNode = nodeId?.startsWith("nod_");
+  const isSavedNode = nodeId.startsWith("nod_");
 
   // Get the selected app details
   const selectedApp = availableApps.find((app) => app._id === selectedAppId);

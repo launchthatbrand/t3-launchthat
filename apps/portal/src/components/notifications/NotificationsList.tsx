@@ -30,7 +30,7 @@ import type { NotificationTabDefinition } from "./types";
 import { FRONTEND_NOTIFICATIONS_TABS_FILTER } from "~/lib/plugins/hookSlots";
 import { pluginDefinitions } from "~/lib/plugins/definitions";
 
-type PluginOptionDoc = { metaKey?: unknown; metaValue?: unknown };
+interface PluginOptionDoc { metaKey?: unknown; metaValue?: unknown }
 const getEnabledPluginIds = (args: {
   pluginOptions: PluginOptionDoc[] | undefined;
 }): string[] => {
@@ -59,7 +59,7 @@ interface NotificationsListProps {
 export function NotificationsList({ clerkId, orgId }: NotificationsListProps) {
   const [activeTabId, setActiveTabId] = useState<string>("all");
   const [paginationCursor, setPaginationCursor] = useState<string | null>(null);
-  const [items, setItems] = useState<Array<any>>([]);
+  const [items, setItems] = useState<any[]>([]);
 
   const pluginOptions = useQuery(
     api.core.options.getByType,
@@ -154,7 +154,7 @@ export function NotificationsList({ clerkId, orgId }: NotificationsListProps) {
 
     try {
       await markAllAsRead({
-        userId: convexUser._id as any,
+        userId: convexUser._id,
         orgId: orgId as any,
       });
       toast.success("All notifications marked as read");

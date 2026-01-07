@@ -17,13 +17,13 @@ export function TablePickerPlugin() {
 
 
 export function DynamicTablePickerPlugin({queryString}: {queryString: string}) {
-  const options: Array<ComponentPickerOption> = []
+  const options: ComponentPickerOption[] = []
 
   if (queryString == null) {
     return options
   }
 
-  const tableMatch = queryString.match(/^([1-9]\d?)(?:x([1-9]\d?)?)?$/)
+  const tableMatch = /^([1-9]\d?)(?:x([1-9]\d?)?)?$/.exec(queryString)
 
   if (tableMatch !== null) {
     const rows = tableMatch[1]

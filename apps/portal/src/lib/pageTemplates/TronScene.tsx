@@ -19,7 +19,7 @@ const Bike: React.FC<BikeProps> = ({ color, speed, offset }) => {
 
   // Create a path that follows the grid
   const pathSegments = useMemo(() => {
-    const segments: Array<{ start: THREE.Vector3; end: THREE.Vector3; axis: 'x' | 'z' }> = [];
+    const segments: { start: THREE.Vector3; end: THREE.Vector3; axis: 'x' | 'z' }[] = [];
     const gridSize = 20;
     const spacing = 3;
     
@@ -259,7 +259,7 @@ const Building: React.FC<{ position: [number, number, number]; height: number; c
 
   // Simplified - fewer windows
   const windowData = useMemo(() => {
-    const windows: Array<{ pos: [number, number, number] }> = [];
+    const windows: { pos: [number, number, number] }[] = [];
     const floors = Math.min(Math.floor(height / 1.5), 8); // Cap at 8 floors
     const windowsPerFloor = 4;
     
@@ -426,7 +426,7 @@ const Particle: React.FC<{ position: [number, number, number]; color: string }> 
 
 const FloatingData: React.FC = () => {
   const particles = useMemo(() => {
-    const result: Array<{ pos: [number, number, number]; color: string }> = [];
+    const result: { pos: [number, number, number]; color: string }[] = [];
     const colors = ["#00d4ff", "#ff00ff", "#00ff88", "#ffaa00"];
     
     // Reduced from 100 to 30
@@ -526,7 +526,7 @@ const CentralSpire: React.FC = () => {
 
 const City: React.FC = () => {
   const buildings = useMemo(() => {
-    const result: Array<{ pos: [number, number, number]; height: number; color: string; type: 'tower' | 'short' | 'antenna' }> = [];
+    const result: { pos: [number, number, number]; height: number; color: string; type: 'tower' | 'short' | 'antenna' }[] = [];
     const gridSize = 12;
     const spacing = 3;
     const colors = ["#00d4ff", "#0099ff", "#00ffcc"];
@@ -659,7 +659,7 @@ const EnergyBeam: React.FC<{ from: [number, number, number]; to: [number, number
 
 const DataStreams: React.FC = () => {
   const beams = useMemo(() => {
-    const result: Array<{ from: [number, number, number]; to: [number, number, number]; color: string }> = [];
+    const result: { from: [number, number, number]; to: [number, number, number]; color: string }[] = [];
     const colors = ["#00d4ff", "#ff00ff", "#00ff88"];
     
     // Reduced from 20 to 8

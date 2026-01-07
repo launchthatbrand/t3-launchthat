@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { Suspense, useCallback, useEffect, useRef, useState, JSX } from 'react'
+import type { JSX } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin'
 import { useCollaborationContext } from '@lexical/react/LexicalCollaborationContext'
@@ -250,7 +251,7 @@ export default function ImageComponent({
           $isRangeSelection(latestSelection) &&
           latestSelection.getNodes().length === 1
         ) {
-          editor.dispatchCommand(RIGHT_CLICK_IMAGE_COMMAND, event as MouseEvent)
+          editor.dispatchCommand(RIGHT_CLICK_IMAGE_COMMAND, event)
         }
       })
     },

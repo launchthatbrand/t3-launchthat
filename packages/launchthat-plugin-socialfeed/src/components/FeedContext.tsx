@@ -7,7 +7,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useSocialFeedAuth } from "../context/SocialFeedClientProvider";
 
 interface FeedInteraction {
   type: "view" | "like" | "comment" | "share";
@@ -36,18 +36,18 @@ interface FeedProviderProps {
 export function FeedProvider({ children }: FeedProviderProps) {
   const [lastInteraction, setLastInteraction] =
     useState<FeedInteraction | null>(null);
-  const { user } = useUser();
+  const { isAuthenticated } = useSocialFeedAuth();
 
   // Track when user views the feed (on component mount)
   useEffect(() => {
-    if (user) {
+    if (isAuthenticated) {
       const viewInteraction: FeedInteraction = {
         type: "view",
         timestamp: Date.now(),
       };
       setLastInteraction(viewInteraction);
     }
-  }, [user]);
+  }, [isAuthenticated]);
 
   // Function to track different interactions with the feed
   const trackInteraction = (type: FeedInteraction["type"], itemId?: string) => {

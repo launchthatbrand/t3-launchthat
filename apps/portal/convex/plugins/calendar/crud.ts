@@ -3,10 +3,11 @@ import { v } from "convex/values";
 import { mutation } from "../../_generated/server";
 import { generateUniqueSlug, sanitizeSlug } from "../../lib/slugs";
 import { getAuthenticatedUserId } from "../../shared/auth";
+import type {
+  CalendarOwnerType} from "./helpers";
 import {
   CALENDAR_META_KEYS,
   CALENDAR_POST_TYPE,
-  CalendarOwnerType,
   deleteAllMetaForPost,
   setPostMetaValue,
 } from "./helpers";
@@ -123,7 +124,7 @@ export const updateCalendar = mutation({
       await ctx.db.patch(args.calendarId, updates);
     }
 
-    const metaUpdates: Array<Promise<void>> = [];
+    const metaUpdates: Promise<void>[] = [];
     if (args.color !== undefined) {
       metaUpdates.push(
         setPostMetaValue(

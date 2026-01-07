@@ -4,10 +4,10 @@ import { v } from "convex/values";
 import { components } from "../../../../_generated/api";
 import { query } from "../../../../_generated/server";
 
-type CommerceChargebackEvidenceQueries = {
+interface CommerceChargebackEvidenceQueries {
   getChargebackEvidence: unknown;
   getEvidenceSummary: unknown;
-};
+}
 
 const evidenceQueries = (
   components as unknown as {
@@ -40,6 +40,7 @@ export const getEvidenceSummary = query({
     });
   },
 });
+
 
 
 

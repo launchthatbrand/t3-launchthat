@@ -86,12 +86,12 @@ const lmsLockedCoursesRuleSource: ContentAccessRuleSource = {
           ? String(ctx.organizationId)
           : undefined,
       },
-    )) as Array<{
+    )) as {
       postId: string;
       postTypeSlug: string;
       title?: string;
       value?: unknown;
-    }>;
+    }[];
 
     for (const row of Array.isArray(lmsMetaRows) ? lmsMetaRows : []) {
       const postTypeSlug = safeString((row as any).postTypeSlug);
@@ -135,12 +135,12 @@ const contentAccessRulesRuleSource: ContentAccessRuleSource = {
         key: "content_access",
         ...orgArg,
       },
-    )) as Array<{
+    )) as {
       postId: string;
       postTypeSlug: string;
       title?: string;
       value?: unknown;
-    }>;
+    }[];
 
     for (const row of Array.isArray(coreRows) ? coreRows : []) {
       const postId = safeString((row as any).postId);
@@ -176,12 +176,12 @@ const contentAccessRulesRuleSource: ContentAccessRuleSource = {
             ? String(ctx.organizationId)
             : undefined,
         },
-      )) as Array<{
+      )) as {
         postId: string;
         postTypeSlug: string;
         title?: string;
         value?: unknown;
-      }>;
+      }[];
 
       for (const row of Array.isArray(lmsRows) ? lmsRows : []) {
         const postId = safeString((row as any).postId);

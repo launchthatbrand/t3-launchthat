@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { Textarea } from "@acme/ui/textarea";
 
 import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { FileUpload } from "./FileUpload";
 
 // Form validation schema

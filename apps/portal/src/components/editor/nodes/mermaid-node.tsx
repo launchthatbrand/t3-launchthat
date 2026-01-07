@@ -10,7 +10,8 @@ import type {
   Spread,
 } from "lexical";
 import * as React from "react";
-import { JSX, Suspense } from "react";
+import type { JSX} from "react";
+import { Suspense } from "react";
 import { DecoratorNode } from "lexical";
 
 const MermaidComponent = React.lazy(

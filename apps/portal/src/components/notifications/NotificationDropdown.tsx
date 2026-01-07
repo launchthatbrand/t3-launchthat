@@ -26,7 +26,7 @@ import { NotificationCard } from "./NotificationCard";
 import { FRONTEND_NOTIFICATIONS_TABS_FILTER } from "~/lib/plugins/hookSlots";
 import { pluginDefinitions } from "~/lib/plugins/definitions";
 
-type PluginOptionDoc = { metaKey?: unknown; metaValue?: unknown };
+interface PluginOptionDoc { metaKey?: unknown; metaValue?: unknown }
 
 const getEnabledPluginIds = (args: {
   pluginOptions: PluginOptionDoc[] | undefined;

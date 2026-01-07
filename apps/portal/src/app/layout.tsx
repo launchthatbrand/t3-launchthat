@@ -4,6 +4,7 @@ import "./globals.css";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { headers } from "next/headers";
 import { getActiveTenantFromHeaders } from "@/lib/tenant-headers";
+import { getHostFromHeaders } from "@/lib/host";
 import { fetchQuery } from "convex/nextjs";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
@@ -37,6 +38,7 @@ export default async function RootLayout(props: {
   registerPluginPageTemplates();
 
   const headerList = await headers();
+  const host = getHostFromHeaders(headerList);
   const pathnameHeader = headerList.get("x-pathname");
   const pathname =
     typeof pathnameHeader === "string" && pathnameHeader.length > 0
@@ -104,6 +106,15 @@ export default async function RootLayout(props: {
     showFooter = false;
   }
 
+  // Auth routes should render as a full-screen canvas (no portal chrome).
+  // This ensures Clerk paths like /sign-in/[[...sign-in]] and OAuth callbacks
+  // don't show the portal header/sidebar.
+  if (firstSegment === "sign-in" || firstSegment === "sso-callback") {
+    showHeader = false;
+    showSidebar = false;
+    showFooter = false;
+  }
+
   if (!isCanvasFromPostType && isCanvasFromPageTemplate) {
     const slug = firstSegment;
     const pagePost = (await fetchQuery(
@@ -155,7 +166,7 @@ export default async function RootLayout(props: {
           GeistMono.variable,
         )}
       >
-        <Providers tenant={tenant}>
+        <Providers tenant={tenant} host={host}>
           <StandardLayout
             appName={appName}
             sidebar={showSidebar ? props.sidebar : undefined}

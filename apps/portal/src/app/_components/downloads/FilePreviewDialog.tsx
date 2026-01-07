@@ -103,10 +103,7 @@ export function FilePreviewDialog({
           </div>
         );
       case "no_preview": {
-        const noPreviewInfo = previewInfo as Extract<
-          typeof previewInfo,
-          { status: "no_preview" }
-        >;
+        const noPreviewInfo = previewInfo;
         return (
           <p>
             {noPreviewInfo.message ??

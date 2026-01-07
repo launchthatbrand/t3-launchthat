@@ -16,11 +16,11 @@ import { ProductPurchaseBox } from "./ProductPurchaseBox";
 type PostMetaValue = string | number | boolean | null | undefined;
 
 const buildPostMetaObject = (
-  meta: Array<{ key: string; value?: PostMetaValue }>,
+  meta: { key: string; value?: PostMetaValue }[],
 ): Record<string, PostMetaValue> => {
   const obj: Record<string, PostMetaValue> = {};
   meta.forEach((entry) => {
-    if (entry?.key) {
+    if (entry.key) {
       obj[String(entry.key)] = entry.value ?? null;
     }
   });
@@ -43,13 +43,13 @@ const safeParseStringArray = (value: unknown): string[] => {
   }
 };
 
-type AttachmentMetaEntry = {
+interface AttachmentMetaEntry {
   mediaItemId?: string;
   url?: string;
   mimeType?: string;
   title?: string;
   alt?: string;
-};
+}
 
 const resolvePrimaryImageFromAttachmentsMeta = (
   attachmentsMetaValue: PostMetaValue,
@@ -117,7 +117,7 @@ export async function ProductSingleView({
     ? ((await fetchQuery(api.plugins.commerce.getPostMeta as any, {
         postId,
         ...(organizationId ? { organizationId } : {}),
-      })) as Array<{ key: string; value?: PostMetaValue }>)
+      })) as { key: string; value?: PostMetaValue }[])
     : [];
   const postMetaObject = buildPostMetaObject(postMetaRows ?? []);
   const features = safeParseStringArray(postMetaObject["product.features"]);

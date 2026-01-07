@@ -9,14 +9,14 @@ import type { MutationCtx } from "../_generated/server";
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 
-type UpdateDataArgs = {
+interface UpdateDataArgs {
   pageIdentifier: string;
   data: string;
   postId?: Id<"posts">;
   organizationId?: Id<"organizations">;
   postTypeSlug?: string;
   title?: string;
-};
+}
 
 export const updateData = mutation({
   args: {

@@ -78,7 +78,7 @@ export const extractVimeoVideoId = (value?: string | null) => {
   } catch {
     // Ignore parsing errors and fall back to regex extraction.
   }
-  const fallbackMatch = value.match(/(?:video\/|\/)(\d{5,})/i);
+  const fallbackMatch = /(?:video\/|\/)(\d{5,})/i.exec(value);
   return fallbackMatch ? (fallbackMatch[1] ?? null) : null;
 };
 

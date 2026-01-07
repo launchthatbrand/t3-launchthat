@@ -105,14 +105,14 @@ export type ExternalMetaBoxRenderer = (props: {
     postType: Doc<"postTypes"> | null;
   };
   metaBox: Pick<ResolvedMetaBox, "id" | "title" | "description" | "location">;
-  fields: Array<{
+  fields: {
     key: string;
     name: string;
     description: string | null | undefined;
     type: string;
     required: boolean;
     options: EditorCustomField["options"] | null;
-  }>;
+  }[];
   getValue: (fieldKey: string) => unknown;
   setValue: (fieldKey: string, value: unknown) => void;
   renderField: (fieldKey: string, options?: { idSuffix?: string }) => ReactNode;

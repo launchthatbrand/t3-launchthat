@@ -12,11 +12,11 @@ export const getData = query({
     organizationId: v.optional(v.id("organizations")),
   },
   handler: async (ctx, args): Promise<string | null> => {
-    type MinimalPost = {
+    interface MinimalPost {
       _id: Id<"posts">;
       content?: string | null;
       organizationId?: Id<"organizations"> | undefined;
-    };
+    }
 
     const resolvePost = async (): Promise<MinimalPost | null> => {
       if (args.postId) {

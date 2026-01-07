@@ -19,6 +19,11 @@ export interface FrontendRouteHandlerContext {
   enabledPluginIds: string[];
   fetchQuery: FetchQuery;
   api: unknown;
+  /**
+   * Tenant-session cookie value (if present). Used on tenant/custom domains where
+   * Clerk is not mounted, so server routing can still resolve the viewer.
+   */
+  tenantSessionId?: string | null;
 }
 
 export interface FrontendRouteHandler {
@@ -56,6 +61,7 @@ export async function resolveFrontendRoute(args: {
   searchParams?: Record<string, string | string[] | undefined>;
   organizationId: Id<"organizations"> | null;
   fetchQuery: FetchQuery;
+  tenantSessionId?: string | null;
 }): Promise<ReactNode | null> {
   // Avoid importing Convex generated API at module scope to prevent TS “excessively deep” instantiation issues.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
@@ -80,6 +86,7 @@ export async function resolveFrontendRoute(args: {
     enabledPluginIds: getEnabledPluginIds({ pluginOptions }),
     fetchQuery: args.fetchQuery,
     api: apiAny,
+    tenantSessionId: args.tenantSessionId ?? null,
   };
 
   const handlersRaw = applyFilters(FRONTEND_ROUTE_HANDLERS_FILTER, [], ctx);
@@ -88,7 +95,7 @@ export async function resolveFrontendRoute(args: {
     : [];
 
   const sorted = [...handlers].sort(
-    (a, b) => (a?.priority ?? 10) - (b?.priority ?? 10),
+    (a, b) => (a.priority ?? 10) - (b.priority ?? 10),
   );
 
   if (debugRouting) {
@@ -97,7 +104,7 @@ export async function resolveFrontendRoute(args: {
       organizationId: args.organizationId,
       enabledPluginIds: ctx.enabledPluginIds,
       handlerCount: sorted.length,
-      handlerIds: sorted.map((h) => h?.id).filter(Boolean),
+      handlerIds: sorted.map((h) => h.id).filter(Boolean),
     });
   }
 
@@ -105,14 +112,14 @@ export async function resolveFrontendRoute(args: {
     try {
       if (debugRouting) {
         console.log("[frontendRouting] try handler", {
-          handlerId: handler?.id,
-          priority: handler?.priority,
+          handlerId: handler.id,
+          priority: handler.priority,
         });
       }
       const result = await handler.resolve(ctx);
       if (debugRouting) {
         console.log("[frontendRouting] handler result", {
-          handlerId: handler?.id,
+          handlerId: handler.id,
           isNull: result === null,
           type: typeof result,
         });
@@ -131,14 +138,14 @@ export async function resolveFrontendRoute(args: {
       ) {
         if (debugRouting) {
           console.log("[frontendRouting] navigation error (rethrow)", {
-            handlerId: handler?.id,
+            handlerId: handler.id,
             digest,
           });
         }
         throw error;
       }
       console.error("[frontendRouting] route handler failed", {
-        handlerId: handler?.id,
+        handlerId: handler.id,
         error,
       });
     }

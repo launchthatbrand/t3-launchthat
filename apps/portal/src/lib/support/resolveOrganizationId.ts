@@ -6,7 +6,7 @@ import {
 
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { getConvex } from "~/lib/convex";
+import type { getConvex } from "~/lib/convex";
 
 export async function resolveSupportOrganizationId(
   convex: ReturnType<typeof getConvex>,

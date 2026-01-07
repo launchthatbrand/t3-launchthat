@@ -2,28 +2,28 @@ import { applyFilters } from "@acme/admin-runtime/hooks";
 
 import { FRONTEND_IDENTITY_RESOLVERS_FILTER } from "~/lib/plugins/hookSlots";
 
-export type IdentityResolveInput = {
+export interface IdentityResolveInput {
   organizationId: string | null;
   enabledPluginIds: string[];
   userId?: string | null;
   email?: string | null;
   name?: string | null;
-};
+}
 
-export type IdentityResolveResult = {
+export interface IdentityResolveResult {
   contactId?: string;
   contactEmail?: string;
   contactName?: string;
-};
+}
 
-export type IdentityResolver = {
+export interface IdentityResolver {
   id: string;
   pluginId?: string;
   priority?: number;
   resolve: (
     args: IdentityResolveInput,
   ) => Promise<IdentityResolveResult | null> | IdentityResolveResult | null;
-};
+}
 
 const isResolverEnabled = (
   resolver: IdentityResolver,
@@ -56,6 +56,7 @@ export async function resolveIdentityToContact(
 
   return null;
 }
+
 
 
 

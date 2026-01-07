@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
+import type { Id } from "@/convex/_generated/dataModel";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Loader2, Save, Trash } from "lucide-react";
@@ -56,11 +56,11 @@ import { ADMIN_USER_DETAILS_SECTIONS_FILTER } from "~/lib/plugins/hookSlots";
 import { useTenant } from "~/context/TenantContext";
 import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 
-type AdminUserDetailsSection = {
+interface AdminUserDetailsSection {
   id: string;
   priority?: number;
   render: (ctx: { userId: string; organizationId?: string | null }) => React.ReactNode;
-};
+}
 
 // Define the form schema
 const userFormSchema = z.object({
@@ -96,7 +96,7 @@ export default function UserEditPage() {
     ? (sectionsRaw as AdminUserDetailsSection[])
     : ([] as AdminUserDetailsSection[]);
   const sortedSections = [...sections].sort(
-    (a, b) => (a?.priority ?? 10) - (b?.priority ?? 10),
+    (a, b) => (a.priority ?? 10) - (b.priority ?? 10),
   );
 
   // Get user by ID

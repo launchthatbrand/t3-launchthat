@@ -81,7 +81,7 @@ export function TaxonomyTermsView({
 }: TaxonomyTermsViewProps) {
   const tenant = useTenant();
   const organizationId =
-    (tenant?._id as Id<"organizations"> | undefined) ?? undefined;
+    (tenant?._id) ?? undefined;
 
   const taxonomy = useTaxonomyBySlug(taxonomySlug, organizationId);
   const taxonomyTermsData = useTaxonomyTerms(
@@ -207,7 +207,7 @@ export function TaxonomyTermsView({
         await updateTerm({
           organizationId,
           taxonomySlug,
-          termId: editingTerm._id as Id<"taxonomyTerms">,
+          termId: editingTerm._id,
           data: {
             name: basePayload.name,
             slug: basePayload.slug,
@@ -247,7 +247,7 @@ export function TaxonomyTermsView({
       await deleteTerm({
         organizationId,
         taxonomySlug,
-        termId: term._id as Id<"taxonomyTerms">,
+        termId: term._id,
       });
       toast.success(`Deleted ${term.name}`);
     } catch (error) {

@@ -179,7 +179,7 @@ const tryExtractEmbeddedImageByMagic = (
     const head = new TextDecoder().decode(
       bytes.slice(0, Math.min(4096, bytes.length)),
     );
-    const m = head.match(/^-{2,}([A-Za-z0-9'()+_,.\/:=?-]+)\s*$/m);
+    const m = /^-{2,}([A-Za-z0-9'()+_,.\/:=?-]+)\s*$/m.exec(head);
     // If we can’t confidently find boundary, just return the remainder.
     if (!m) return slice;
     const boundary = m[0].trim();
@@ -228,8 +228,8 @@ const getStorageBytes = async (
   ): Promise<ArrayBuffer | null> => {
     if (!value) return null;
     if (value instanceof ArrayBuffer) return value;
-    if (typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView?.(value)) {
-      const view = value as ArrayBufferView;
+    if (typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView(value)) {
+      const view = value;
       return view.buffer.slice(
         view.byteOffset,
         view.byteOffset + view.byteLength,
@@ -423,13 +423,13 @@ const buildQuizSlug = (title: string) => {
   return `${base}-${Math.random().toString(36).slice(-6)}`;
 };
 
-type QuizQuestionInput = {
+interface QuizQuestionInput {
   prompt: string;
   questionType: "singleChoice" | "shortText";
-  options?: Array<{ id: string; label: string }>;
+  options?: { id: string; label: string }[];
   correctOptionIds?: string[];
   answerText?: string | null;
-};
+}
 
 export const generateQuizFromTranscript = action({
   args: {
@@ -525,7 +525,7 @@ export const generateQuizFromTranscript = action({
 
     let createdQuestions = 0;
     for (const question of questions) {
-      const promptText = question.prompt?.trim();
+      const promptText = question.prompt.trim();
       if (!promptText) {
         continue;
       }
@@ -535,7 +535,7 @@ export const generateQuizFromTranscript = action({
             label: choice,
           }))
         : [];
-      const normalizedCorrect = question.correctAnswer?.trim().toLowerCase();
+      const normalizedCorrect = question.correctAnswer.trim().toLowerCase();
       const resolvedCorrect =
         options.find(
           (option) =>
@@ -577,12 +577,11 @@ export const generateQuizFromTranscript = action({
 
 const CERTIFICATE_TEMPLATE_META_KEY = "certificateTemplate";
 
-type CertificateTemplateV1 = {
+interface CertificateTemplateV1 {
   version: 1;
   page: { size: "letter" | "a4"; orientation: "portrait" | "landscape" };
   background?: { storageId: string; widthPx: number; heightPx: number };
-  elements: Array<
-    | {
+  elements: (| {
         id: string;
         kind: "image";
         storageId: string;
@@ -615,9 +614,8 @@ type CertificateTemplateV1 = {
           align: "left" | "center" | "right";
           fontWeight: number;
         };
-      }
-  >;
-};
+      })[];
+}
 
 const parseHexColor = (hex: string) => {
   const normalized = hex.trim().replace("#", "");
@@ -696,7 +694,7 @@ export const generateCertificatePdf = action({
       if (typeof raw !== "string" || raw.trim().length === 0) return null;
       try {
         const parsed = JSON.parse(raw) as CertificateTemplateV1;
-        return parsed?.version === 1 ? parsed : null;
+        return parsed.version === 1 ? parsed : null;
       } catch {
         return null;
       }
@@ -988,7 +986,7 @@ const requestQuizFromOpenAi = async ({
   }
 
   const json = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: { message?: { content?: string } }[];
   };
 
   const content = json.choices?.[0]?.message?.content;

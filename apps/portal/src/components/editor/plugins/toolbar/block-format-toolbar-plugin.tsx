@@ -3,7 +3,8 @@
 import { $isListNode, ListNode } from '@lexical/list'
 import { $isHeadingNode } from '@lexical/rich-text'
 import { $findMatchingParent, $getNearestNodeOfType } from '@lexical/utils'
-import { $isRangeSelection, $isRootOrShadowRoot, BaseSelection } from 'lexical'
+import type { BaseSelection } from 'lexical';
+import { $isRangeSelection, $isRootOrShadowRoot } from 'lexical'
 
 import { useToolbarContext } from '~/components/editor/context/toolbar-context'
 import { useUpdateToolbarHandler } from '~/components/editor/editor-hooks/use-update-toolbar'
@@ -57,7 +58,7 @@ export function BlockFormatDropDown({
             ? element.getTag()
             : element.getType()
           if (type in blockTypeToBlockName) {
-            setBlockType(type as keyof typeof blockTypeToBlockName)
+            setBlockType(type)
           }
         }
       }
@@ -70,7 +71,7 @@ export function BlockFormatDropDown({
     <Select
       value={blockType}
       onValueChange={(value) => {
-        setBlockType(value as keyof typeof blockTypeToBlockName)
+        setBlockType(value)
       }}
     >
       <SelectTrigger className="h-8 w-min gap-1">

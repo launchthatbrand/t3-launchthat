@@ -2,9 +2,7 @@
 
 /* eslint-disable
   @typescript-eslint/no-unsafe-assignment,
-  @typescript-eslint/no-unsafe-call,
-  @typescript-eslint/no-unsafe-member-access,
-  @typescript-eslint/no-unsafe-argument
+  @typescript-eslint/no-unsafe-member-access
 */
 import type React from "react";
 import { render } from "@react-email/render";

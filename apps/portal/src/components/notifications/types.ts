@@ -1,11 +1,11 @@
-import { Id } from "@/convex/_generated/dataModel";
+import type { Id } from "@/convex/_generated/dataModel";
 
-export type NotificationTabDefinition = {
+export interface NotificationTabDefinition {
   id: string;
   label: string;
   // Matches `notifications.tabKey` in Convex.
   tabKey?: string;
-};
+}
 
 // Base notification type for notifications in the system
 export interface Notification {

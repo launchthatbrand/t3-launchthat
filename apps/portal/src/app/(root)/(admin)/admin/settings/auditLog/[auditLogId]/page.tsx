@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
-import { Id } from "@convex-config/_generated/dataModel";
+import type { Id } from "@convex-config/_generated/dataModel";
 import { useQuery } from "convex/react";
 import { format } from "date-fns";
 import {

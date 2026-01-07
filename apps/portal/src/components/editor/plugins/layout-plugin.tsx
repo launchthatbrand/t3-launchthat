@@ -8,7 +8,8 @@
  *
  */
 import * as React from 'react'
-import { useState, useEffect, JSX } from 'react'
+import type { JSX } from 'react';
+import { useState, useEffect } from 'react'
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
@@ -16,7 +17,7 @@ import {
   $insertNodeToNearestRoot,
   mergeRegister,
 } from '@lexical/utils'
-import { LexicalEditor } from 'lexical'
+import type { LexicalEditor } from 'lexical'
 import type { ElementNode, LexicalCommand, LexicalNode, NodeKey } from 'lexical'
 import {
   $createParagraphNode,
@@ -129,7 +130,7 @@ export function LayoutPlugin(): null {
             parent &&
             (before
               ? parent.getFirstChild<LexicalNode>()
-              : parent?.getLastChild<LexicalNode>())
+              : parent.getLastChild<LexicalNode>())
           const descendant = before
             ? container.getFirstDescendant<LexicalNode>()?.getKey()
             : container.getLastDescendant<LexicalNode>()?.getKey()

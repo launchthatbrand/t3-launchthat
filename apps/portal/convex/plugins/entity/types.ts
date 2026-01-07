@@ -1,6 +1,6 @@
 export type EntityStatus = string;
 
-export type EntityRecord = {
+export interface EntityRecord {
   id: string;
   postTypeSlug: string;
   title?: string | null;
@@ -16,17 +16,17 @@ export type EntityRecord = {
   createdAt?: number | null;
   updatedAt?: number | null;
   meta?: Record<string, unknown> | null;
-};
+}
 
-export type EntityFilters = {
+export interface EntityFilters {
   status?: EntityStatus;
   category?: string;
   authorId?: string;
   limit?: number;
   slug?: string;
-};
+}
 
-export type EntitySaveInput = {
+export interface EntitySaveInput {
   title: string;
   content?: string;
   excerpt?: string;
@@ -37,12 +37,12 @@ export type EntitySaveInput = {
   featuredImage?: string;
   meta?: Record<string, string | number | boolean | null>;
   organizationId?: string;
-};
+}
 
-export type EntityFiltersInput = {
+export interface EntityFiltersInput {
   status?: EntityStatus;
   category?: string;
   authorId?: string;
   limit?: number;
   slug?: string;
-};
+}

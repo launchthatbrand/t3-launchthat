@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
 import { useConvexAuth } from "convex/react";
 import { PostCreator } from "launchthat-plugin-socialfeed/components";
 import { toast } from "sonner";
+import { useConvexUser } from "~/hooks/useConvexUser";
 
 export default function CreatePostPage() {
   const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
-  const { userId } = useAuth();
+  const { convexId } = useConvexUser();
 
   // Handle post creation success
   const handlePostSuccess = () => {
@@ -27,7 +27,7 @@ export default function CreatePostPage() {
   };
 
   // If not authenticated, show a message
-  if (!isAuthenticated || !userId) {
+  if (!isAuthenticated || !convexId) {
     return (
       <div className="container mx-auto px-4 py-6 md:px-6">
         <div className="mx-auto max-w-3xl">

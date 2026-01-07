@@ -1,14 +1,15 @@
-import {
+import type {
   DOMConversionMap,
   DOMConversionOutput,
   DOMExportOutput,
   EditorConfig,
-  ElementNode,
   LexicalEditor,
   LexicalNode,
   NodeKey,
   SerializedElementNode,
-  Spread,
+  Spread} from 'lexical';
+import {
+  ElementNode,
   isHTMLElement,
 } from 'lexical'
 

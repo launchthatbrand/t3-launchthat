@@ -7,26 +7,28 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { useCallback, useEffect, JSX } from 'react'
+import type { JSX } from 'react';
+import { useCallback, useEffect } from 'react'
 import * as React from 'react'
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $wrapNodeInElement } from '@lexical/utils'
 import 'katex/dist/katex.css'
+import type {
+  LexicalCommand,
+  LexicalEditor} from 'lexical';
 import {
   $createParagraphNode,
   $insertNodes,
   $isRootOrShadowRoot,
   COMMAND_PRIORITY_EDITOR,
-  LexicalCommand,
-  LexicalEditor,
   createCommand,
 } from 'lexical'
 
 import { $createEquationNode, EquationNode } from '~/components/editor/nodes/equation-node'
 import KatexEquationAlterer from '~/components/editor/editor-ui/katex-equation-alterer'
 
-type CommandPayload = {
+interface CommandPayload {
   equation: string
   inline: boolean
 }

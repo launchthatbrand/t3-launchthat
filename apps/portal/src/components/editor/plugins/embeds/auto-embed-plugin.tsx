@@ -8,11 +8,13 @@ import type { LexicalEditor } from "lexical";
  * LICENSE file in the root directory of this source tree.
  *
  */
-import { JSX, useMemo, useState } from "react";
+import type { JSX} from "react";
+import { useMemo, useState } from "react";
+import type {
+  EmbedConfig,
+  EmbedMatchResult} from "@lexical/react/LexicalAutoEmbedPlugin";
 import {
   AutoEmbedOption,
-  EmbedConfig,
-  EmbedMatchResult,
   LexicalAutoEmbedPlugin,
   URL_MATCHER,
 } from "@lexical/react/LexicalAutoEmbedPlugin";
@@ -52,7 +54,7 @@ export interface CustomEmbedConfig<TData = unknown> extends EmbedConfig<TData> {
   exampleUrl: string;
 
   // For extra searching.
-  keywords: Array<string>;
+  keywords: string[];
 
   // Embed a Figma Project.
   description?: string;
@@ -77,7 +79,7 @@ export const YoutubeEmbedConfig: CustomEmbedConfig = {
     const match =
       /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/.exec(url);
 
-    const id = match ? (match?.[2].length === 11 ? match[2] : null) : null;
+    const id = match ? (match[2].length === 11 ? match[2] : null) : null;
 
     if (id != null) {
       return {

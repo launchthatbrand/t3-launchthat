@@ -163,7 +163,7 @@ export function ContentProtectionProvider({
       setAccessCache((prev) => ({
         ...prev,
         [cacheKey]: {
-          contentType: currentPageContent.contentType!,
+          contentType: currentPageContent.contentType,
           contentId: currentPageContent.contentId!,
           hasAccess: currentPageAccess.hasAccess,
           reason: currentPageAccess.reason,

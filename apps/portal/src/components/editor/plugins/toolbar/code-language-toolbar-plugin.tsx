@@ -66,7 +66,7 @@ export function CodeLanguageToolbarPlugin() {
 
         if (!$isListNode(element) && $isCodeNode(element)) {
           const language =
-            element.getLanguage() as keyof typeof CODE_LANGUAGE_MAP;
+            element.getLanguage()!;
           setCodeLanguage(
             language ? CODE_LANGUAGE_MAP[language] || language : "",
           );

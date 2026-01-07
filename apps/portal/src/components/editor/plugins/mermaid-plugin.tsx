@@ -1,15 +1,17 @@
 "use client";
 
-import { JSX, useEffect, useState } from "react";
+import type { JSX} from "react";
+import { useEffect, useState } from "react";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $wrapNodeInElement } from "@lexical/utils";
+import type {
+  LexicalCommand} from "lexical";
 import {
   $createParagraphNode,
   $insertNodes,
   $isRootOrShadowRoot,
   COMMAND_PRIORITY_EDITOR,
-  createCommand,
-  LexicalCommand,
+  createCommand
 } from "lexical";
 
 import { Button } from "@acme/ui/button";

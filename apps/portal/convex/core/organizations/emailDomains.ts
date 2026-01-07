@@ -24,11 +24,11 @@ type InternalMutationRef = FunctionReference<"mutation", "internal">;
 
 type EmailDomainStatus = "unconfigured" | "pending" | "verified" | "error";
 
-type DnsRecord = {
+interface DnsRecord {
   type: string;
   name: string;
   value: string;
-};
+}
 
 const dnsRecordValidator = v.object({
   type: v.string(),
@@ -126,16 +126,16 @@ const mapStatus = (raw: unknown): EmailDomainStatus => {
   return "pending";
 };
 
-type ResendListDomainsResponse = {
-  data?: Array<{ id?: string; name?: string }>;
-};
+interface ResendListDomainsResponse {
+  data?: { id?: string; name?: string }[];
+}
 
-type ResendDomainResponse = {
+interface ResendDomainResponse {
   id?: string;
   name?: string;
   status?: string;
   records?: unknown;
-};
+}
 
 const findOrCreateResendDomain = async (args: {
   key: string;

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
-import { type Data } from "@measured/puck";
+import type {Data} from "@measured/puck";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 

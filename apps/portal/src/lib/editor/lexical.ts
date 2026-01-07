@@ -1,7 +1,7 @@
 import type { SerializedEditorState } from "lexical";
 
 const hasRootNode = (value: unknown): value is { root: unknown } =>
-  Boolean(value) && typeof value === "object" && "root" in (value as object);
+  Boolean(value) && typeof value === "object" && "root" in (value!);
 
 export const parseLexicalSerializedState = (
   value: string | null | undefined,

@@ -8,7 +8,7 @@ export default function MermaidComponent({ code }: { code: string }) {
   const [svg, setSvg] = useState<string>("");
 
   useEffect(() => {
-    let cancelled = false; // eslint-disable-line @typescript-eslint/no-unused-vars
+    let cancelled = false;  
     void (async () => {
       try {
         mermaid.initialize({ startOnLoad: false, securityLevel: "loose" });
@@ -28,7 +28,7 @@ export default function MermaidComponent({ code }: { code: string }) {
 
   return (
     <div className="my-4 w-full overflow-x-auto">
-      {/* eslint-disable-next-line react/no-danger */}
+      { }
       <div dangerouslySetInnerHTML={{ __html: svg }} />
     </div>
   );

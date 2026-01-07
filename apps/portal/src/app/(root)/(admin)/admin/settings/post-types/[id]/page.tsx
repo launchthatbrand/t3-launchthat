@@ -166,7 +166,7 @@ const defaultFrontendVisibility: ContentTypeFormValues["frontendVisibility"] = {
 export default function ContentTypeDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const contentTypeId = params?.id as Id<"postTypes"> | undefined;
+  const contentTypeId = params.id as Id<"postTypes"> | undefined;
 
   const tenant = useTenant();
   const tenantOrgId = getTenantOrganizationId(tenant) as string | undefined;
@@ -213,7 +213,7 @@ export default function ContentTypeDetailPage() {
             ...(contentType.frontendVisibility ?? {}),
             disabledSingleSlotIds: Array.isArray(
               (contentType.frontendVisibility as { disabledSingleSlotIds?: unknown })
-                ?.disabledSingleSlotIds,
+                .disabledSingleSlotIds,
             )
               ? ((contentType.frontendVisibility as { disabledSingleSlotIds: string[] })
                   .disabledSingleSlotIds ?? [])
@@ -246,7 +246,7 @@ export default function ContentTypeDetailPage() {
   const supportsComments = form.watch("supports.comments");
   const rewriteValues = form.watch(
     "rewrite",
-  ) as ContentTypeFormValues["rewrite"];
+  );
 
   const previewPaths = useMemo(() => {
     const archiveSlug = rewriteValues.archiveSlug?.length

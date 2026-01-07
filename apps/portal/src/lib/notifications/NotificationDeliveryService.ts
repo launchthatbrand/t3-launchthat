@@ -10,7 +10,7 @@
 import type { Notification } from "@/components/notifications/types";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { ConvexReactClient } from "convex/react";
+import type { ConvexReactClient } from "convex/react";
 
 export type NotificationChannel =
   | "feed-activity"
@@ -114,7 +114,7 @@ export class NotificationDeliveryService {
       );
 
       // Filter client-side for notifications after the 'since' timestamp
-      if (missedNotifications && missedNotifications.page) {
+      if (missedNotifications?.page) {
         return missedNotifications.page.filter(
           (n) => n._creationTime > since,
         ) as Notification[];

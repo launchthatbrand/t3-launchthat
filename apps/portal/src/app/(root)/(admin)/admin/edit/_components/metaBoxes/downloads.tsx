@@ -48,7 +48,7 @@ const DownloadsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
   const accessKindValue = context.getMetaValue("accessKind");
   const accessKind =
     accessKindValue === "gated" || accessKindValue === "public"
-      ? (accessKindValue as "public" | "gated")
+      ? (accessKindValue)
       : "public";
 
   const descriptionValue = context.getMetaValue("description");
@@ -158,8 +158,8 @@ const DownloadsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
             mode="select"
             onSelect={(media) => {
               context.setMetaValue("mediaItemId", media._id as unknown as string);
-              if (context.general?.title?.trim() === "") {
-                context.general?.setTitle(media.title ?? "");
+              if (context.general?.title.trim() === "") {
+                context.general.setTitle(media.title ?? "");
               }
               setDialogOpen(false);
             }}

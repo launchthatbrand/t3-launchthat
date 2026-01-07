@@ -1,5 +1,5 @@
-import { Doc, Id } from "../../_generated/dataModel";
-import { MutationCtx, QueryCtx } from "../../_generated/server";
+import type { Doc, Id } from "../../_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../../_generated/server";
 
 /**
  * Generate content recommendations for a user
@@ -7,7 +7,7 @@ import { MutationCtx, QueryCtx } from "../../_generated/server";
 export async function generateRecommendations(
   ctx: MutationCtx,
   userId: Id<"users">,
-  limit: number = 10,
+  limit = 10,
 ): Promise<void> {
   // Get user's followed topics
   const followedTopics = await ctx.db
@@ -48,7 +48,7 @@ export async function generateRecommendations(
   // Extract hashtags from engaged content
   const engagedHashtags: string[] = [];
   engagedContent.forEach((content) => {
-    if (content && content.hashtags) {
+    if (content?.hashtags) {
       engagedHashtags.push(...content.hashtags);
     }
   });
@@ -74,7 +74,7 @@ export async function generateRecommendations(
   const trendingContentIds = trendingContent.map((tc) => tc.contentId);
 
   // Get content from followed topics
-  let topicContent: Doc<"feedItems">[] = [];
+  const topicContent: Doc<"feedItems">[] = [];
 
   if (followedTopicIds.length > 0) {
     // Get hashtag tags from IDs
@@ -99,7 +99,7 @@ export async function generateRecommendations(
   }
 
   // Get content from followed users
-  let userContent: Doc<"feedItems">[] = [];
+  const userContent: Doc<"feedItems">[] = [];
 
   if (followedUserIds.length > 0) {
     for (const followedId of followedUserIds) {
@@ -240,7 +240,7 @@ export async function generateRecommendations(
 export async function findSimilarUsers(
   ctx: QueryCtx,
   userId: Id<"users">,
-  limit: number = 5,
+  limit = 5,
 ): Promise<Id<"users">[]> {
   // Get user's engagement
   const userReactions = await ctx.db
@@ -263,7 +263,7 @@ export async function findSimilarUsers(
     const reactions = await ctx.db
       .query("reactions")
       .withIndex("by_feed_item", (q) =>
-        q.eq("feedItemId", contentId as unknown as Id<"feedItems">),
+        q.eq("feedItemId", contentId as Id<"feedItems">),
       )
       .filter((q) => q.neq(q.field("userId"), userId))
       .collect();

@@ -6,7 +6,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useTenant } from "~/context/TenantContext";
 import { getTenantOrganizationId } from "./tenant-fetcher";
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 
 const LMS_COMPONENT_POST_TYPE_SLUGS = new Set<string>([
   "courses",
@@ -205,7 +205,7 @@ export function useGetPostById(
       : ("skip" as const),
   );
   if (postTypeSlug && isLmsComponentPostTypeSlug(postTypeSlug)) {
-    return lmsPost as any;
+    return lmsPost;
   }
   return adaptEntityToPost(entity);
 }
@@ -332,7 +332,7 @@ export function useCreatePost() {
           organizationId: toOrgString(tenantOrganizationId),
         },
       });
-      return entity?.id as Id<"posts"> | undefined;
+      return entity.id as Id<"posts"> | undefined;
     },
     [lmsCreatePost, saveEntity, tenant],
   );

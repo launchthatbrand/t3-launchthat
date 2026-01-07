@@ -1,20 +1,23 @@
 "use client";
 
 import { useEffect } from "react";
-import { useUser } from "@clerk/nextjs";
 
 import { useNotificationPreferences } from "../../hooks/useNotificationPreferences";
 import { NotificationDeliveryService } from "../../lib/notifications/NotificationDeliveryService";
 import { useFeedContext } from "../social/FeedContext";
-import { Notification } from "./types";
+import type { Notification } from "./types";
+import { useConvexUser } from "~/hooks/useConvexUser";
 
 /**
  * This component handles the integration between the feed system and notification infrastructure.
  * It doesn't render any UI but rather manages the background processes connecting the two systems.
  */
 export function FeedNotificationIntegration() {
-  const { user } = useUser();
-  const userId = user?.id;
+  const { user } = useConvexUser();
+  const userId =
+    user && typeof (user as { clerkId?: unknown }).clerkId === "string"
+      ? (user as { clerkId: string }).clerkId
+      : null;
   const { lastInteraction } = useFeedContext();
   const { preferences, isLoading } = useNotificationPreferences(userId);
 
@@ -103,7 +106,7 @@ export function FeedNotificationIntegration() {
     userPreferences: NotificationPreference | null,
   ): boolean => {
     // Default to showing if preferences not loaded
-    if (!userPreferences || !userPreferences.inApp) return true;
+    if (!userPreferences?.inApp) return true;
 
     // Map notification types to preference settings
     const preferenceMap: Record<string, string> = {
@@ -129,8 +132,7 @@ export function FeedNotificationIntegration() {
     userPreferences: NotificationPreference | null,
   ) => {
     if (
-      !userPreferences ||
-      !userPreferences.inApp ||
+      !userPreferences?.inApp ||
       !userPreferences.email ||
       !userPreferences.push
     )

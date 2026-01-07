@@ -8,14 +8,15 @@
  *
  */
 import * as React from 'react'
-import {
+import type {
   MouseEventHandler,
+  JSX} from 'react';
+import {
   useCallback,
   useEffect,
   useMemo,
   useRef,
-  useState,
-  JSX,
+  useState
 } from 'react'
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -35,7 +36,7 @@ import type { LexicalEditor } from 'lexical'
 import { $getNearestNodeFromDOMNode } from 'lexical'
 import { createPortal } from 'react-dom'
 
-type MousePosition = {
+interface MousePosition {
   x: number
   y: number
 }

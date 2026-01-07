@@ -27,7 +27,7 @@ export interface BatchMigrationResult {
   successCount: number;
   failureCount: number;
   results: MigrationResult[];
-  errors: Array<{ nodeId: Id<"nodes">; error: string }>;
+  errors: { nodeId: Id<"nodes">; error: string }[];
 }
 
 /**
@@ -253,7 +253,7 @@ export async function migrateScenarioNodes(
     );
 
     const results: MigrationResult[] = [];
-    const errors: Array<{ nodeId: Id<"nodes">; error: string }> = [];
+    const errors: { nodeId: Id<"nodes">; error: string }[] = [];
     let successCount = 0;
     let failureCount = 0;
 

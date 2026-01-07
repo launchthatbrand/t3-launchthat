@@ -1,7 +1,7 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+ 
+ 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { api } from "@convex-config/_generated/api";
 import { useMutation } from "convex/react";

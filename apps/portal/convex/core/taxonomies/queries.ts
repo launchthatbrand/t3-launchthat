@@ -284,13 +284,13 @@ export const listObjectTermBadges = query({
       : rows;
 
     const seenTermIds = new Set<Id<"taxonomyTerms">>();
-    const results: Array<{
+    const results: {
       taxonomySlug: string;
       taxonomyName: string;
       termId: Id<"taxonomyTerms">;
       termSlug: string;
       termName: string;
-    }> = [];
+    }[] = [];
 
     for (const row of filtered) {
       if (seenTermIds.has(row.termId)) {

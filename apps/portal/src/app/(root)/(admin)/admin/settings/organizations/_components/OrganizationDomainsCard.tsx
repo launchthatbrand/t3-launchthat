@@ -19,7 +19,7 @@ import { Input } from "@acme/ui/input";
 
 import { rootDomain } from "~/lib/utils";
 
-type DomainRecord = { type: string; name: string; value: string };
+interface DomainRecord { type: string; name: string; value: string }
 
 type OrganizationDomainMeta = Pick<Doc<"organizations">, "slug"> & {
   customDomain?: string;

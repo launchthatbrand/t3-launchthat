@@ -22,7 +22,7 @@ interface SupportPostRecord {
   parentTypeSlug?: string;
 }
 
-type RagSourceRecord = {
+interface RagSourceRecord {
   _id: string;
   _creationTime: number;
   postTypeSlug?: string;
@@ -34,15 +34,15 @@ type RagSourceRecord = {
   fields?: string[];
   useCustomBaseInstructions?: boolean;
   baseInstructions?: string;
-};
+}
 
-type EmailSettings = {
+interface EmailSettings {
   defaultAlias: string;
   customDomain?: string | null;
   allowEmailIntake?: boolean;
   verificationStatus?: "unverified" | "pending" | "verified" | "failed";
-  dnsRecords?: Array<{ type: string; host: string; value: string }>;
-};
+  dnsRecords?: { type: string; host: string; value: string }[];
+}
 
 const supportQueries = components.launchthat_support.queries;
 
@@ -174,7 +174,7 @@ export const listConversations = query({
     }),
   ),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(supportQueries.listConversations, args)) as any;
+    return (await ctx.runQuery(supportQueries.listConversations, args));
   },
 });
 
@@ -270,7 +270,7 @@ export const listConversationNotes = query({
     }),
   ),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(supportQueries.listConversationNotes, args)) as any;
+    return (await ctx.runQuery(supportQueries.listConversationNotes, args));
   },
 });
 
@@ -291,7 +291,7 @@ export const listConversationEvents = query({
     }),
   ),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(supportQueries.listConversationEvents, args)) as any;
+    return (await ctx.runQuery(supportQueries.listConversationEvents, args));
   },
 });
 
@@ -344,7 +344,7 @@ export const getRagIndexStatusForPost = query({
     ),
   }),
   handler: async (ctx, args) => {
-    return (await ctx.runQuery(supportQueries.getRagIndexStatusForPost, args)) as any;
+    return (await ctx.runQuery(supportQueries.getRagIndexStatusForPost, args));
   },
 });
 
@@ -527,12 +527,12 @@ export const getRagSourceConfigForPostType = query({
     const result = await ctx.runQuery(supportQueries.getRagSourceConfigForPostType, args);
     if (!result) return null;
     return {
-      _id: String((result as any)._id ?? ""),
-      postTypeSlug: (result as any).postTypeSlug,
-      sourceType: (result as any).sourceType,
-      isEnabled: Boolean((result as any).isEnabled),
-      useCustomBaseInstructions: Boolean((result as any).useCustomBaseInstructions),
-      baseInstructions: String((result as any).baseInstructions ?? ""),
+      _id: String((result)._id ?? ""),
+      postTypeSlug: (result).postTypeSlug,
+      sourceType: (result).sourceType,
+      isEnabled: Boolean((result).isEnabled),
+      useCustomBaseInstructions: Boolean((result).useCustomBaseInstructions),
+      baseInstructions: String((result).baseInstructions ?? ""),
     };
   },
 });
