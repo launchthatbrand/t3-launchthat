@@ -68,6 +68,8 @@ function PortalNavUserTenant() {
   const lastFetchAtRef = React.useRef(0);
 
   const TENANT_SESSION_UPDATED_EVENT = "tenant-session-updated";
+  const CONVEX_TOKEN_STORAGE_KEY = "convex_token";
+  const CONVEX_TOKEN_UPDATED_EVENT = "convex-token-updated";
 
   const fetchMe = React.useCallback(async () => {
     // Avoid storms (multiple events firing in quick succession).
@@ -174,6 +176,15 @@ function PortalNavUserTenant() {
     } catch {
       // ignore
     } finally {
+      // Clear tenant-side Convex auth token so queries cannot continue to read protected data
+      // after the tenant session cookie is revoked.
+      try {
+        localStorage.removeItem(CONVEX_TOKEN_STORAGE_KEY);
+        window.dispatchEvent(new Event(CONVEX_TOKEN_UPDATED_EVENT));
+        window.dispatchEvent(new Event(TENANT_SESSION_UPDATED_EVENT));
+      } catch {
+        // ignore
+      }
       if (typeof window !== "undefined") {
         window.location.reload();
       }
