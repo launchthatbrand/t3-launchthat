@@ -1,10 +1,10 @@
 "use client";
 
-import type { Doc } from "@/convex/_generated/dataModel";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Edit, Plus } from "lucide-react";
+import { Edit, Plus } from "lucide-react";
 
 import type { ColumnDefinition } from "@acme/ui/entity-list";
 import { Button } from "@acme/ui/button";
@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@acme/ui/select";
 
+import { useTenant } from "~/context/TenantContext";
 import { useCreateMenu, useMenus, useUpdateMenu } from "./_api/menus";
 
 const MENU_LOCATIONS = [
@@ -48,9 +49,14 @@ const getLocationLabel = (location: string) =>
 
 export default function MenusSettingsPage() {
   const router = useRouter();
+  const tenant = useTenant();
+  const organizationId =
+    tenant && typeof (tenant as { _id?: unknown })._id === "string"
+      ? ((tenant as { _id: string })._id as Id<"organizations">)
+      : null;
   const [newMenuName, setNewMenuName] = useState("");
   const [newMenuLocation, setNewMenuLocation] = useState("");
-  const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
+  const [editingMenuId, setEditingMenuId] = useState<Id<"menus"> | null>(null);
   const [editingName, setEditingName] = useState("");
   const [editingLocation, setEditingLocation] = useState<string>("primary");
 
@@ -75,24 +81,28 @@ export default function MenusSettingsPage() {
       id: "name",
       accessorKey: "name",
       header: "Menu Name",
-      cell: (menu) => <span className="font-medium">{menu.name}</span>,
+      cell: (menu: Doc<"menus">) => (
+        <span className="font-medium">{menu.name}</span>
+      ),
     },
     {
       id: "location",
       accessorKey: "location",
       header: "Location",
-      cell: (menu) => getLocationLabel(menu.location),
+      cell: (menu: Doc<"menus">) => getLocationLabel(menu.location),
     },
     {
       id: "itemCount",
       accessorKey: "itemCount",
       header: <div className="text-center">Items</div>,
-      cell: (menu) => <div className="text-center">{menu.itemCount ?? 0}</div>,
+      cell: (menu: Doc<"menus">) => (
+        <div className="text-center">{menu.itemCount ?? 0}</div>
+      ),
     },
     {
       id: "actions",
       header: <div className="text-right">Actions</div>,
-      cell: (menu) => {
+      cell: (menu: Doc<"menus">) => {
         return (
           <div className="flex justify-end">
             <DropdownMenu>
@@ -167,7 +177,9 @@ export default function MenusSettingsPage() {
             onClick={async (e) => {
               e.preventDefault();
               if (!newMenuName || !newMenuLocation) return;
+              if (!organizationId) return;
               await createMenu({
+                organizationId,
                 name: newMenuName,
                 location: newMenuLocation,
               });
@@ -261,7 +273,9 @@ export default function MenusSettingsPage() {
             <Button
               onClick={async () => {
                 if (!editingMenuId || !editingName) return;
+                if (!organizationId) return;
                 await updateMenu({
+                  organizationId,
                   menuId: editingMenuId,
                   data: {
                     name: editingName,

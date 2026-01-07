@@ -10,6 +10,7 @@ import { query } from "../../_generated/server";
 const menuValidator = v.object({
   _id: v.id("menus"),
   _creationTime: v.number(),
+  organizationId: v.id("organizations"),
   name: v.string(),
   location: v.string(),
   isBuiltIn: v.optional(v.boolean()),
@@ -35,10 +36,18 @@ const menuItemValidator = v.object({
  * List all menus
  */
 export const listMenus = query({
-  args: {},
+  args: {
+    organizationId: v.id("organizations"),
+  },
   returns: v.array(menuValidator),
-  handler: async (ctx) => {
-    return await ctx.db.query("menus").collect();
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("menus")
+      .withIndex("by_org_and_location", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .collect();
+    return rows;
   },
 });
 
@@ -47,11 +56,15 @@ export const listMenus = query({
  */
 export const getMenu = query({
   args: {
+    organizationId: v.id("organizations"),
     menuId: v.id("menus"),
   },
   returns: v.union(menuValidator, v.null()),
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.menuId);
+    const menu = await ctx.db.get(args.menuId);
+    if (!menu) return null;
+    if (menu.organizationId !== args.organizationId) return null;
+    return menu;
   },
 });
 
@@ -60,34 +73,45 @@ export const getMenu = query({
  */
 export const getMenuItems = query({
   args: {
+    organizationId: v.id("organizations"),
     menuId: v.id("menus"),
   },
   returns: v.array(menuItemValidator),
   handler: async (ctx, args) => {
+    const menu = await ctx.db.get(args.menuId);
+    if (!menu) return [];
+    if (menu.organizationId !== args.organizationId) return [];
+
     const menuItems = await ctx.db
       .query("menuItems")
       .withIndex("by_menu", (q) => q.eq("menuId", args.menuId))
       .collect();
 
-    return menuItems.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    return menuItems.sort((a, b) => a.order - b.order);
   },
 });
 
 export const getMenuByLocation = query({
   args: {
+    organizationId: v.id("organizations"),
     location: v.string(),
   },
   returns: v.union(menuValidator, v.null()),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("menus")
-      .withIndex("by_location", (q) => q.eq("location", args.location))
+      .withIndex("by_org_and_location", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("location", args.location),
+      )
       .unique();
   },
 });
 
 export const getMenuWithItemsByLocation = query({
   args: {
+    organizationId: v.id("organizations"),
     location: v.string(),
   },
   returns: v.union(
@@ -100,7 +124,11 @@ export const getMenuWithItemsByLocation = query({
   handler: async (ctx, args) => {
     const menu = await ctx.db
       .query("menus")
-      .withIndex("by_location", (q) => q.eq("location", args.location))
+      .withIndex("by_org_and_location", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("location", args.location),
+      )
       .unique();
 
     if (!menu) {
@@ -114,7 +142,7 @@ export const getMenuWithItemsByLocation = query({
 
     return {
       menu,
-      items: items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+      items: items.sort((a, b) => a.order - b.order),
     };
   },
 });

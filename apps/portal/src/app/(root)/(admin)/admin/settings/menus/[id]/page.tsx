@@ -1,7 +1,31 @@
 "use client";
 
-import { Card, CardContent } from "@acme/ui/card";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { DragEndEvent } from "@dnd-kit/core";
+import type { ColumnDef } from "@tanstack/react-table";
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { ChevronLeft, Edit, GripVertical, Plus, Trash } from "lucide-react";
+
+import { Button } from "@acme/ui/button";
+import { Card, CardContent } from "@acme/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -11,16 +35,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog";
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import React, { useEffect, useMemo, useState } from "react";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -28,13 +45,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+
+import { useTenant } from "~/context/TenantContext";
 import {
   useAddMenuItem,
   useMenu,
@@ -43,16 +55,6 @@ import {
   useReorderMenuItems,
   useUpdateMenuItem,
 } from "../_api/menus";
-
-import { Button } from "@acme/ui/button";
-import { CSS } from "@dnd-kit/utilities";
-import type { ColumnDef } from "@tanstack/react-table";
-import type { DragEndEvent } from "@dnd-kit/core";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 
 const getOrderValue = (value: number | null | undefined) =>
   typeof value === "number" ? value : 0;
@@ -90,14 +92,14 @@ const SortableMenuCard = ({
     <div
       ref={setNodeRef}
       style={style}
-      className={`w-full border-b bg-card px-4 py-3 transition-shadow ${
-        isDragging ? "shadow-lg ring-2 ring-primary/30" : ""
+      className={`bg-card w-full border-b px-4 py-3 transition-shadow ${
+        isDragging ? "ring-primary/30 shadow-lg ring-2" : ""
       }`}
     >
       <div className="grid gap-3 md:grid-cols-[auto_minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,0.5fr)_auto] md:items-center">
         <button
           type="button"
-          className="flex h-10 w-10 items-center justify-center rounded border bg-muted text-muted-foreground"
+          className="bg-muted text-muted-foreground flex h-10 w-10 items-center justify-center rounded border"
           {...attributes}
           {...listeners}
         >
@@ -107,13 +109,13 @@ const SortableMenuCard = ({
           className="font-medium"
           style={{ marginLeft: depth > 0 ? depth * 16 : 0 }}
         >
-          {depth > 0 && <span className="mr-2 text-muted-foreground">↳</span>}
+          {depth > 0 && <span className="text-muted-foreground mr-2">↳</span>}
           {item.label}
         </div>
-        <div className="truncate text-sm text-muted-foreground">{item.url}</div>
+        <div className="text-muted-foreground truncate text-sm">{item.url}</div>
         <div>{parentItemLabel ?? "-"}</div>
-        <div className="font-mono text-sm text-muted-foreground">
-          {item.order ?? 0}
+        <div className="text-muted-foreground font-mono text-sm">
+          {item.order}
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="icon" onClick={() => onEditItem(item)}>
@@ -125,7 +127,7 @@ const SortableMenuCard = ({
             onClick={() => onDeleteItem(item._id)}
             disabled={item.isBuiltIn}
           >
-            <Trash className="h-4 w-4 text-destructive" />
+            <Trash className="text-destructive h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -138,6 +140,11 @@ export default function MenuItemsPage() {
   const idParam = params.id;
   const menuId =
     typeof idParam === "string" ? (idParam as Id<"menus">) : undefined;
+  const tenant = useTenant();
+  const organizationId =
+    tenant && typeof (tenant as { _id?: unknown })._id === "string"
+      ? ((tenant as { _id: string })._id as Id<"organizations">)
+      : null;
   const menu = useMenu(menuId);
   const fetchedMenuItems = useMenuItems(menuId);
   const addMenuItem = useAddMenuItem();
@@ -248,8 +255,15 @@ export default function MenuItemsPage() {
           console.error("Menu ID is missing. Unable to reorder menu items.");
           return currentItems;
         }
+        if (!organizationId) {
+          console.error(
+            "Organization ID is missing. Unable to reorder menu items.",
+          );
+          return currentItems;
+        }
 
         void reorderMenuItems({
+          organizationId,
           menuId,
           updates,
         });
@@ -312,7 +326,11 @@ export default function MenuItemsPage() {
 
     traverse(null, 0);
 
-    return { orderedMenuItems: ordered, depthMap: depth, parentLabelMap: parentLabels };
+    return {
+      orderedMenuItems: ordered,
+      depthMap: depth,
+      parentLabelMap: parentLabels,
+    };
   }, [menuItems]);
 
   if (!menu) return null;
@@ -332,7 +350,7 @@ export default function MenuItemsPage() {
           </Button>
           <h1 className="text-2xl font-bold">{menu.name}</h1>
         </div>
-        <p className="mt-2 text-muted-foreground">
+        <p className="text-muted-foreground mt-2">
           Manage menu items for {menu.name}
         </p>
       </div>
@@ -409,7 +427,9 @@ export default function MenuItemsPage() {
                   if (!newItemLabel || !newItemUrl || !menuId) {
                     return;
                   }
+                  if (!organizationId) return;
                   await addMenuItem({
+                    organizationId,
                     menuId,
                     label: newItemLabel,
                     url: newItemUrl,
@@ -505,7 +525,9 @@ export default function MenuItemsPage() {
                   if (!editingItem || !editLabel || !editUrl) {
                     return;
                   }
+                  if (!organizationId) return;
                   await updateMenuItem({
+                    organizationId,
                     itemId: editingItem._id,
                     data: {
                       label: editLabel,
@@ -542,7 +564,11 @@ export default function MenuItemsPage() {
                 variant="destructive"
                 onClick={async () => {
                   if (itemToDelete) {
-                    await removeMenuItem({ itemId: itemToDelete });
+                    if (!organizationId) return;
+                    await removeMenuItem({
+                      organizationId,
+                      itemId: itemToDelete,
+                    });
                     setItemToDelete(null);
                   }
                 }}
@@ -573,7 +599,7 @@ export default function MenuItemsPage() {
                 hideFilters
                 isLoading={!fetchedMenuItems}
                 emptyState={
-                  <div className="py-8 text-center text-muted-foreground">
+                  <div className="text-muted-foreground py-8 text-center">
                     No menu items yet
                   </div>
                 }

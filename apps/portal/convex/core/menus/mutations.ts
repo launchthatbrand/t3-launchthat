@@ -25,6 +25,7 @@ const normalizeLocation = (value: string): MenuLocation => {
  */
 export const createMenu = mutation({
   args: {
+    organizationId: v.id("organizations"),
     name: v.string(),
     location: v.string(),
     isBuiltIn: v.optional(v.boolean()),
@@ -34,7 +35,9 @@ export const createMenu = mutation({
 
     const existingMenu = await ctx.db
       .query("menus")
-      .withIndex("by_location", (q) => q.eq("location", location))
+      .withIndex("by_org_and_location", (q) =>
+        q.eq("organizationId", args.organizationId).eq("location", location),
+      )
       .unique();
 
     if (existingMenu) {
@@ -44,6 +47,7 @@ export const createMenu = mutation({
     }
 
     return await ctx.db.insert("menus", {
+      organizationId: args.organizationId,
       name: args.name,
       location,
       isBuiltIn: args.isBuiltIn ?? false,
@@ -58,6 +62,7 @@ export const createMenu = mutation({
  */
 export const addMenuItem = mutation({
   args: {
+    organizationId: v.id("organizations"),
     menuId: v.id("menus"),
     parentId: v.optional(v.union(v.id("menuItems"), v.null())),
     label: v.string(),
@@ -68,6 +73,9 @@ export const addMenuItem = mutation({
   handler: async (ctx, args) => {
     const menu = await ctx.db.get(args.menuId);
     if (!menu) {
+      throw new ConvexError("Menu not found");
+    }
+    if (menu.organizationId !== args.organizationId) {
       throw new ConvexError("Menu not found");
     }
 
@@ -104,6 +112,7 @@ export const addMenuItem = mutation({
  */
 export const removeMenuItem = mutation({
   args: {
+    organizationId: v.id("organizations"),
     itemId: v.id("menuItems"),
   },
   handler: async (ctx, args) => {
@@ -111,17 +120,18 @@ export const removeMenuItem = mutation({
     if (!menuItem) {
       throw new ConvexError("Menu item not found");
     }
+    const menu = await ctx.db.get(menuItem.menuId);
+    if (!menu || menu.organizationId !== args.organizationId) {
+      throw new ConvexError("Menu item not found");
+    }
 
     await ctx.db.delete(args.itemId);
 
     // Update menu item count
-    const menu = await ctx.db.get(menuItem.menuId);
-    if (menu) {
-      await ctx.db.patch(menuItem.menuId, {
-        itemCount: Math.max((menu.itemCount ?? 1) - 1, 0),
-        updatedAt: Date.now(),
-      });
-    }
+    await ctx.db.patch(menuItem.menuId, {
+      itemCount: Math.max((menu.itemCount ?? 1) - 1, 0),
+      updatedAt: Date.now(),
+    });
 
     return null;
   },
@@ -132,6 +142,7 @@ export const removeMenuItem = mutation({
  */
 export const reorderMenuItems = mutation({
   args: {
+    organizationId: v.id("organizations"),
     menuId: v.id("menus"),
     updates: v.array(
       v.object({
@@ -141,6 +152,14 @@ export const reorderMenuItems = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const menu = await ctx.db.get(args.menuId);
+    if (!menu) {
+      throw new ConvexError("Menu not found");
+    }
+    if (menu.organizationId !== args.organizationId) {
+      throw new ConvexError("Menu not found");
+    }
+
     for (const item of args.updates) {
       await ctx.db.patch(item.itemId, {
         order: item.order,
@@ -159,6 +178,7 @@ export const reorderMenuItems = mutation({
 
 export const updateMenu = mutation({
   args: {
+    organizationId: v.id("organizations"),
     menuId: v.id("menus"),
     data: v.object({
       name: v.optional(v.string()),
@@ -168,6 +188,9 @@ export const updateMenu = mutation({
   handler: async (ctx, args) => {
     const existingMenu = await ctx.db.get(args.menuId);
     if (!existingMenu) {
+      throw new ConvexError("Menu not found");
+    }
+    if (existingMenu.organizationId !== args.organizationId) {
       throw new ConvexError("Menu not found");
     }
 
@@ -182,7 +205,9 @@ export const updateMenu = mutation({
       if (location !== existingMenu.location) {
         const locationInUse = await ctx.db
           .query("menus")
-          .withIndex("by_location", (q) => q.eq("location", location))
+          .withIndex("by_org_and_location", (q) =>
+            q.eq("organizationId", args.organizationId).eq("location", location),
+          )
           .unique();
         if (locationInUse && locationInUse._id !== args.menuId) {
           throw new ConvexError(
@@ -205,6 +230,7 @@ export const updateMenu = mutation({
 
 export const updateMenuItem = mutation({
   args: {
+    organizationId: v.id("organizations"),
     itemId: v.id("menuItems"),
     data: v.object({
       label: v.optional(v.string()),
@@ -216,6 +242,10 @@ export const updateMenuItem = mutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db.get(args.itemId);
     if (!existing) {
+      throw new ConvexError("Menu item not found");
+    }
+    const menu = await ctx.db.get(existing.menuId);
+    if (!menu || menu.organizationId !== args.organizationId) {
       throw new ConvexError("Menu item not found");
     }
 

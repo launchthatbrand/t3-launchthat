@@ -78,9 +78,17 @@ export default function DefaultSidebar() {
   const [switchingOrganizationId, setSwitchingOrganizationId] = useState<
     string | null
   >(null);
-  const menuData = useQuery(api.core.menus.queries.getMenuWithItemsByLocation, {
-    location: MENU_LOCATION,
-  }) as
+  // Tenant-scoped menus: if we don't have a tenant org id (e.g. auth host),
+  // fall back to default nav instead of showing a global menu.
+  const organizationId =
+    tenant && typeof (tenant as { _id?: unknown })._id === "string"
+      ? ((tenant as { _id: string })._id as Id<"organizations">)
+      : null;
+
+  const menuData = useQuery(
+    api.core.menus.queries.getMenuWithItemsByLocation,
+    organizationId ? { organizationId, location: MENU_LOCATION } : "skip",
+  ) as
     | {
         menu: Doc<"menus">;
         items: MenuItemDoc[];

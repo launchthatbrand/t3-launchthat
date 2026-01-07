@@ -2,13 +2,16 @@ import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export const menusTable = defineTable({
+  organizationId: v.id("organizations"),
   name: v.string(),
   location: v.string(),
   isBuiltIn: v.optional(v.boolean()),
   itemCount: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.optional(v.number()),
-}).index("by_location", ["location"]);
+})
+  .index("by_location", ["location"])
+  .index("by_org_and_location", ["organizationId", "location"]);
 
 export const menuItemsTable = defineTable({
   menuId: v.id("menus"),
