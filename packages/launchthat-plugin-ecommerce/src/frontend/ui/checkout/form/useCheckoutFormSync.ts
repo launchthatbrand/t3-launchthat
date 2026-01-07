@@ -1,184 +1,124 @@
 "use client";
 
+import type { UseFormReturn } from "react-hook-form";
 import { useEffect, useRef } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 
-import type { CheckoutShippingDraft } from "../../../state/useCheckoutDraftStore";
-import { EMPTY_CHECKOUT_DRAFT } from "../../../state/useCheckoutDraftStore";
-import type { UseFormReturn } from "react-hook-form";
+import type {
+  CheckoutDraft,
+  CheckoutShippingDraft,
+} from "../../../state/useCheckoutDraftStore";
+import { createCheckoutFormSchema } from "./schema";
 
 export type CheckoutFormValues = {
   email: string;
+  paymentMethodId: string;
+  shipToDifferentAddress: boolean;
   shipping: CheckoutShippingDraft;
   delivery: CheckoutShippingDraft;
 };
 
 export const useCheckoutFormSync = (args: {
   orgKey: string;
-  email: string;
-  shipping: CheckoutShippingDraft;
-  delivery: CheckoutShippingDraft;
-  setEmail: (orgKey: string, email: string) => void;
-  setShippingDraft: (orgKey: string, updates: CheckoutShippingDraft) => void;
-  setDeliveryDraft: (orgKey: string, updates: CheckoutShippingDraft) => void;
+  draft: CheckoutDraft;
+  setDraft: (orgKey: string, next: Partial<CheckoutDraft>) => void;
+  allowDifferentShipping: boolean;
+  isFreeOrder: boolean;
+  enabledPaymentMethodIds: Array<string>;
 }): {
   form: UseFormReturn<CheckoutFormValues>;
   formEmail: string;
   formShippingPhone: string;
+  formPaymentMethodId: string;
+  formShipToDifferentAddress: boolean;
 } => {
   const {
     orgKey,
-    email,
-    shipping,
-    delivery,
-    setEmail,
-    setShippingDraft,
-    setDeliveryDraft,
+    draft,
+    setDraft,
+    allowDifferentShipping,
+    isFreeOrder,
+    enabledPaymentMethodIds,
   } = args;
 
+  const schema = createCheckoutFormSchema({
+    allowDifferentShipping,
+    requiresPaymentMethod: !isFreeOrder && enabledPaymentMethodIds.length > 0,
+    allowedPaymentMethodIds: enabledPaymentMethodIds,
+  });
+
   const form = useForm<CheckoutFormValues>({
-    defaultValues: { email, shipping, delivery },
-    mode: "onChange",
+    defaultValues: {
+      email: draft.email,
+      paymentMethodId: draft.paymentMethodId,
+      shipToDifferentAddress:
+        allowDifferentShipping && draft.shipToDifferentAddress === true,
+      shipping: draft.shipping,
+      delivery: draft.delivery,
+    },
+    mode: "onTouched",
+    reValidateMode: "onChange",
+    resolver: zodResolver(schema),
+    // Keep values stable even when we render skeleton UIs (unmounted fields),
+    // otherwise Zod sees `undefined` and produces noisy "invalid_type" issues.
+    shouldUnregister: false,
   });
   const { control, reset, formState, watch } = form;
 
-  const formEmail = useWatch({ control, name: "email" }) ?? email;
+  const formEmail = useWatch({ control, name: "email" }) ?? draft.email;
   const formShippingPhone =
-    useWatch({ control, name: "shipping.phone" }) ?? shipping.phone;
+    useWatch({ control, name: "shipping.phone" }) ?? draft.shipping.phone;
+  const formPaymentMethodId =
+    useWatch({ control, name: "paymentMethodId" }) ?? draft.paymentMethodId;
+  const formShipToDifferentAddress =
+    useWatch({ control, name: "shipToDifferentAddress" }) ??
+    (allowDifferentShipping && draft.shipToDifferentAddress === true);
 
-  const lastSyncedRef = useRef<{
-    email: string;
-    shippingJson: string;
-    deliveryJson: string;
-  }>({
-    email,
-    shippingJson: JSON.stringify(shipping),
-    deliveryJson: JSON.stringify(delivery),
+  const lastSyncedRef = useRef<{ json: string }>({
+    json: JSON.stringify(draft),
   });
   const syncTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!formState.isDirty) {
-      reset({ email, shipping, delivery });
-      lastSyncedRef.current = {
-        email,
-        shippingJson: JSON.stringify(shipping),
-        deliveryJson: JSON.stringify(delivery),
-      };
+      reset({
+        email: draft.email,
+        paymentMethodId: draft.paymentMethodId,
+        shipToDifferentAddress:
+          allowDifferentShipping && draft.shipToDifferentAddress === true,
+        shipping: draft.shipping,
+        delivery: draft.delivery,
+      });
+      lastSyncedRef.current = { json: JSON.stringify(draft) };
     }
-  }, [delivery, email, formState.isDirty, reset, shipping]);
+  }, [allowDifferentShipping, draft, formState.isDirty, reset]);
 
   useEffect(() => {
     const subscription = watch((values) => {
       if (syncTimerRef.current) window.clearTimeout(syncTimerRef.current);
       syncTimerRef.current = window.setTimeout(() => {
-        const nextEmail = typeof values.email === "string" ? values.email : "";
-        const rawShipping =
-          values.shipping && typeof values.shipping === "object"
-            ? (values.shipping as Partial<CheckoutShippingDraft>)
-            : {};
-        const base = EMPTY_CHECKOUT_DRAFT.shipping as CheckoutShippingDraft;
-        const nextShipping: CheckoutShippingDraft = {
-          country:
-            typeof rawShipping.country === "string"
-              ? rawShipping.country
-              : base.country,
-          firstName:
-            typeof rawShipping.firstName === "string"
-              ? rawShipping.firstName
-              : base.firstName,
-          lastName:
-            typeof rawShipping.lastName === "string"
-              ? rawShipping.lastName
-              : base.lastName,
-          phone:
-            typeof rawShipping.phone === "string"
-              ? rawShipping.phone
-              : base.phone,
-          address1:
-            typeof rawShipping.address1 === "string"
-              ? rawShipping.address1
-              : base.address1,
-          address2:
-            typeof rawShipping.address2 === "string"
-              ? rawShipping.address2
-              : base.address2,
-          city:
-            typeof rawShipping.city === "string" ? rawShipping.city : base.city,
-          state:
-            typeof rawShipping.state === "string"
-              ? rawShipping.state
-              : base.state,
-          postcode:
-            typeof rawShipping.postcode === "string"
-              ? rawShipping.postcode
-              : base.postcode,
+        const next: CheckoutDraft = {
+          ...draft,
+          email: typeof values.email === "string" ? values.email : "",
+          paymentMethodId:
+            typeof values.paymentMethodId === "string"
+              ? values.paymentMethodId
+              : "",
+          shipToDifferentAddress:
+            allowDifferentShipping && values.shipToDifferentAddress === true,
+          shipping: (values.shipping ??
+            draft.shipping) as CheckoutShippingDraft,
+          delivery: (values.delivery ??
+            draft.delivery) as CheckoutShippingDraft,
         };
 
-        const rawDelivery =
-          values.delivery && typeof values.delivery === "object"
-            ? (values.delivery as Partial<CheckoutShippingDraft>)
-            : {};
-        const baseDelivery =
-          EMPTY_CHECKOUT_DRAFT.delivery as CheckoutShippingDraft;
-        const nextDelivery: CheckoutShippingDraft = {
-          country:
-            typeof rawDelivery.country === "string"
-              ? rawDelivery.country
-              : baseDelivery.country,
-          firstName:
-            typeof rawDelivery.firstName === "string"
-              ? rawDelivery.firstName
-              : baseDelivery.firstName,
-          lastName:
-            typeof rawDelivery.lastName === "string"
-              ? rawDelivery.lastName
-              : baseDelivery.lastName,
-          phone:
-            typeof rawDelivery.phone === "string"
-              ? rawDelivery.phone
-              : baseDelivery.phone,
-          address1:
-            typeof rawDelivery.address1 === "string"
-              ? rawDelivery.address1
-              : baseDelivery.address1,
-          address2:
-            typeof rawDelivery.address2 === "string"
-              ? rawDelivery.address2
-              : baseDelivery.address2,
-          city:
-            typeof rawDelivery.city === "string"
-              ? rawDelivery.city
-              : baseDelivery.city,
-          state:
-            typeof rawDelivery.state === "string"
-              ? rawDelivery.state
-              : baseDelivery.state,
-          postcode:
-            typeof rawDelivery.postcode === "string"
-              ? rawDelivery.postcode
-              : baseDelivery.postcode,
-        };
-
-        const nextShippingJson = JSON.stringify(nextShipping);
-        const nextDeliveryJson = JSON.stringify(nextDelivery);
-        const prev = lastSyncedRef.current;
-        if (
-          prev.email === nextEmail &&
-          prev.shippingJson === nextShippingJson &&
-          prev.deliveryJson === nextDeliveryJson
-        ) {
+        const nextJson = JSON.stringify(next);
+        if (lastSyncedRef.current.json === nextJson) {
           return;
         }
-        lastSyncedRef.current = {
-          email: nextEmail,
-          shippingJson: nextShippingJson,
-          deliveryJson: nextDeliveryJson,
-        };
-
-        setEmail(orgKey, nextEmail);
-        setShippingDraft(orgKey, nextShipping);
-        setDeliveryDraft(orgKey, nextDelivery);
+        lastSyncedRef.current = { json: nextJson };
+        setDraft(orgKey, next);
       }, 200);
     });
 
@@ -186,7 +126,13 @@ export const useCheckoutFormSync = (args: {
       subscription.unsubscribe();
       if (syncTimerRef.current) window.clearTimeout(syncTimerRef.current);
     };
-  }, [orgKey, setDeliveryDraft, setEmail, setShippingDraft, watch]);
+  }, [allowDifferentShipping, draft, orgKey, setDraft, watch]);
 
-  return { form, formEmail, formShippingPhone };
+  return {
+    form,
+    formEmail,
+    formShippingPhone,
+    formPaymentMethodId,
+    formShipToDifferentAddress,
+  };
 };

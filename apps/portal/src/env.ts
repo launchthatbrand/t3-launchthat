@@ -25,6 +25,7 @@ export const env = createEnv({
     CLERK_JWT_ISSUER_DOMAIN: z.string().url(),
     OPENAI_API_KEY: z.string().min(1).optional(),
     STRIPE_SECRET_KEY: z.string().min(1).optional(),
+    GEOAPIFY_API_KEY: z.string().min(1).optional(),
   },
 
   /**

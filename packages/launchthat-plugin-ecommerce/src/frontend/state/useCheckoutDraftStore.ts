@@ -17,6 +17,7 @@ export type CheckoutShippingDraft = {
 export type CheckoutDraft = {
   email: string;
   paymentMethodId: string;
+  shipToDifferentAddress: boolean;
   shipping: CheckoutShippingDraft;
   delivery: CheckoutShippingDraft;
 };
@@ -24,6 +25,7 @@ export type CheckoutDraft = {
 const emptyDraft = (): CheckoutDraft => ({
   email: "",
   paymentMethodId: "",
+  shipToDifferentAddress: false,
   shipping: {
     country: "",
     firstName: "",
@@ -58,6 +60,7 @@ type CheckoutDraftStore = {
   setDraft: (orgKey: string, next: Partial<CheckoutDraft>) => void;
   setEmail: (orgKey: string, email: string) => void;
   setPaymentMethodId: (orgKey: string, paymentMethodId: string) => void;
+  setShipToDifferentAddress: (orgKey: string, enabled: boolean) => void;
   setShipping: (
     orgKey: string,
     updates: Partial<CheckoutShippingDraft>,
@@ -102,6 +105,9 @@ export const useCheckoutDraftStore = create<CheckoutDraftStore>()(
       setPaymentMethodId: (orgKey, paymentMethodId) => {
         get().setDraft(orgKey, { paymentMethodId });
       },
+      setShipToDifferentAddress: (orgKey, enabled) => {
+        get().setDraft(orgKey, { shipToDifferentAddress: enabled });
+      },
       setShipping: (orgKey, updates) => {
         get().setDraft(orgKey, { shipping: updates as CheckoutShippingDraft });
       },
@@ -120,9 +126,10 @@ export const useCheckoutDraftStore = create<CheckoutDraftStore>()(
       name: "launchthat-ecommerce-checkout-draft",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ draftsByOrg: state.draftsByOrg }),
-      version: 2,
+      version: 3,
       migrate: (persisted: unknown, version) => {
         // v1 -> v2: add `delivery` draft (default empty), keep existing shipping values.
+        // v2 -> v3: add `shipToDifferentAddress` boolean (default false).
         if (!persisted || typeof persisted !== "object") {
           return { draftsByOrg: {} };
         }
@@ -132,7 +139,7 @@ export const useCheckoutDraftStore = create<CheckoutDraftStore>()(
             ? (anyState.draftsByOrg as Record<string, unknown>)
             : {};
 
-        if (version >= 2) return { draftsByOrg: draftsByOrgRaw as any };
+        if (version >= 3) return { draftsByOrg: draftsByOrgRaw as any };
 
         const nextDrafts: Record<string, CheckoutDraft> = {};
         for (const [orgKey, draftRaw] of Object.entries(draftsByOrgRaw)) {
@@ -142,11 +149,15 @@ export const useCheckoutDraftStore = create<CheckoutDraftStore>()(
           nextDrafts[orgKey] = {
             ...EMPTY_CHECKOUT_DRAFT,
             ...(d as Partial<CheckoutDraft>),
+            shipToDifferentAddress: Boolean(d.shipToDifferentAddress),
             shipping: {
               ...EMPTY_CHECKOUT_DRAFT.shipping,
               ...(shipping ?? {}),
             },
-            delivery: { ...EMPTY_CHECKOUT_DRAFT.delivery },
+            delivery: {
+              ...EMPTY_CHECKOUT_DRAFT.delivery,
+              ...((d.delivery ?? {}) as Partial<CheckoutShippingDraft>),
+            },
           };
         }
         return { draftsByOrg: nextDrafts };

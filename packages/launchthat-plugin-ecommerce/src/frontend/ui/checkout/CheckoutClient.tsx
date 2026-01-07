@@ -23,6 +23,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import { CountryDropdown } from "@acme/ui/country-dropdown";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@acme/ui/form";
 import { Input } from "@acme/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@acme/ui/input-otp";
 import { Label } from "@acme/ui/label";
@@ -43,6 +52,7 @@ import {
 import { CheckoutDesignDefault } from "../designs/CheckoutDesignDefault";
 import { CheckoutDesignMinimal } from "../designs/CheckoutDesignMinimal";
 import { CheckoutDesignSidebar } from "../designs/CheckoutDesignSidebar";
+import { AddressAutocompleteInput } from "./components/AddressAutocompleteInput";
 import { CheckoutPhoneField } from "./components/CheckoutPhoneField";
 import { CheckoutShell } from "./components/CheckoutShell";
 import { OrderSummary } from "./components/OrderSummary";
@@ -115,14 +125,13 @@ export function CheckoutClient({
   const draft = useCheckoutDraftStore(
     (s) => s.draftsByOrg[orgKey] ?? EMPTY_CHECKOUT_DRAFT,
   );
+  const setDraft = useCheckoutDraftStore((s) => s.setDraft);
   const setEmail = useCheckoutDraftStore((s) => s.setEmail);
-  const setPaymentMethodId = useCheckoutDraftStore((s) => s.setPaymentMethodId);
   const setShippingDraft = useCheckoutDraftStore((s) => s.setShipping);
   const setDeliveryDraft = useCheckoutDraftStore((s) => s.setDelivery);
   const resetDraft = useCheckoutDraftStore((s) => s.resetDraft);
 
   const email = draft.email;
-  const paymentMethodId = draft.paymentMethodId;
   const [paymentData, setPaymentData] = useState<unknown | null>(null);
   const [appliedCouponCode, setAppliedCouponCode] = useState<string | null>(
     null,
@@ -132,16 +141,6 @@ export function CheckoutClient({
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const shipping = draft.shipping;
   const delivery = draft.delivery;
-  const { form, formEmail, formShippingPhone } = useCheckoutFormSync({
-    orgKey,
-    email,
-    shipping,
-    delivery,
-    setEmail,
-    setShippingDraft,
-    setDeliveryDraft,
-  });
-  const { control, register, getValues, setValue } = form;
 
   const [hasEnsuredDefaultCheckout, setHasEnsuredDefaultCheckout] =
     useState(false);
@@ -822,13 +821,63 @@ export function CheckoutClient({
     return items.some((item) => item.product?.isVirtual !== true);
   }, [hasResolvedCart, items]);
 
-  const [shipToDifferentAddress, setShipToDifferentAddress] = useState(false);
+  const {
+    form,
+    formEmail,
+    formShippingPhone,
+    formPaymentMethodId,
+    formShipToDifferentAddress,
+  } = useCheckoutFormSync({
+    orgKey,
+    draft,
+    setDraft,
+    allowDifferentShipping: hasNonVirtualProducts,
+    isFreeOrder,
+    enabledPaymentMethodIds: enabledPaymentMethods.map((m) => m.id),
+  });
+  const { control, getValues, setValue, formState } = form;
+  const paymentMethodId = formPaymentMethodId;
+
+  const applyGeoapifySuggestion = (
+    prefix: "shipping" | "delivery",
+    s: {
+      address1: string;
+      address2: string;
+      city: string;
+      state: string;
+      postcode: string;
+      countryCode: string;
+    },
+  ) => {
+    const current = getValues()[prefix];
+    const currentAddress2 =
+      current && typeof current.address2 === "string" ? current.address2 : "";
+    const suggestedAddress2 = typeof s.address2 === "string" ? s.address2 : "";
+    const suggestedLooksLikeUnit =
+      /(\bapt\b|\bapartment\b|\bsuite\b|\bste\b|\bunit\b|\bfloor\b|\bflr\b|#)/i.test(
+        suggestedAddress2,
+      );
+
+    setValue(`${prefix}.address1`, s.address1 ?? "", { shouldDirty: true });
+    // Geoapify `address_line2` is often "City, State ZIP, Country".
+    // Never overwrite Address 2 (apt/suite) with locality. Only fill it if it
+    // actually looks like a unit AND the user hasn't already entered one.
+    if (!currentAddress2.trim() && suggestedLooksLikeUnit) {
+      setValue(`${prefix}.address2`, suggestedAddress2, { shouldDirty: true });
+    }
+    setValue(`${prefix}.city`, s.city ?? "", { shouldDirty: true });
+    setValue(`${prefix}.state`, s.state ?? "", { shouldDirty: true });
+    setValue(`${prefix}.postcode`, s.postcode ?? "", { shouldDirty: true });
+    if (s.countryCode) {
+      setValue(`${prefix}.country`, s.countryCode, { shouldDirty: true });
+    }
+  };
 
   useEffect(() => {
-    if (!hasNonVirtualProducts && shipToDifferentAddress) {
-      setShipToDifferentAddress(false);
+    if (!hasNonVirtualProducts && formShipToDifferentAddress) {
+      setValue("shipToDifferentAddress", false, { shouldDirty: true });
     }
-  }, [hasNonVirtualProducts, shipToDifferentAddress]);
+  }, [formShipToDifferentAddress, hasNonVirtualProducts, setValue]);
 
   const effectivePaymentMethodId =
     paymentMethodId || enabledPaymentMethods[0]?.id || "";
@@ -913,10 +962,10 @@ export function CheckoutClient({
     // For free orders, force a non-gateway payment method and clear any gateway token.
     if (!isFreeOrder) return;
     if (paymentMethodId !== "free") {
-      setPaymentMethodId(orgKey, "free");
+      setValue("paymentMethodId", "free", { shouldDirty: true });
     }
     setPaymentData(null);
-  }, [isFreeOrder, orgKey, paymentMethodId, setPaymentMethodId]);
+  }, [isFreeOrder, paymentMethodId, setValue]);
 
   useEffect(() => {
     if (enabledPaymentMethods.length === 0) return;
@@ -924,15 +973,9 @@ export function CheckoutClient({
     const firstId = enabledPaymentMethods[0]!.id;
     const isValid = enabledPaymentMethods.some((m) => m.id === paymentMethodId);
     if (!paymentMethodId || !isValid) {
-      setPaymentMethodId(orgKey, firstId);
+      setValue("paymentMethodId", firstId, { shouldDirty: true });
     }
-  }, [
-    enabledPaymentMethods,
-    isFreeOrder,
-    orgKey,
-    paymentMethodId,
-    setPaymentMethodId,
-  ]);
+  }, [enabledPaymentMethods, isFreeOrder, paymentMethodId, setValue]);
 
   useEffect(() => {
     if (!testMode) return;
@@ -943,26 +986,21 @@ export function CheckoutClient({
       (m) => m.id === "authorizenet",
     );
     if (preferred) {
-      setPaymentMethodId(orgKey, preferred.id);
+      setValue("paymentMethodId", preferred.id, { shouldDirty: true });
     }
-  }, [
-    enabledPaymentMethods,
-    orgKey,
-    paymentMethodId,
-    setPaymentMethodId,
-    testMode,
-  ]);
+  }, [enabledPaymentMethods, paymentMethodId, setValue, testMode]);
 
   const mustSelectPaymentMethod = enabledPaymentMethods.length > 0;
   const showPaymentMethodSelector = enabledPaymentMethods.length > 1;
   const requiresPaymentData = Boolean(
     selectedPaymentMethod?.renderCheckoutForm,
   );
-  const phoneOk = formShippingPhone.replace(/\D/g, "").length >= 7;
+  // Avoid forcing resolver validation on initial page load (which can surface as
+  // noisy runtime ZodErrors in dev). We'll validate on submit/touch instead.
+  const canValidateNow = formState.isSubmitted || formState.submitCount > 0;
   const canSubmit =
     items.length > 0 &&
-    formEmail.trim().length > 3 &&
-    phoneOk &&
+    (!canValidateNow || formState.isValid) &&
     !isPending &&
     !isPlacingOrder &&
     (!mustSelectPaymentMethod ||
@@ -1011,17 +1049,15 @@ export function CheckoutClient({
     return "Payment failed. Please try again or use a different payment method.";
   };
 
-  const startPlaceOrder = () => {
+  const startPlaceOrder = (values: CheckoutFormValues) => {
     if (!guestSessionId) return;
-    const values = getValues();
-    const billingForOrder = values.shipping ?? shipping;
-    const deliveryForOrder = values.delivery ?? delivery;
+    const billingForOrder = values.shipping;
+    const deliveryForOrder = values.delivery;
     const shippingForOrder =
-      shipToDifferentAddress && hasNonVirtualProducts
+      formShipToDifferentAddress && hasNonVirtualProducts
         ? deliveryForOrder
         : billingForOrder;
-    const emailForOrder =
-      typeof values.email === "string" ? values.email : email;
+    const emailForOrder = values.email;
 
     setIsPlacingOrder(true);
     startTransition(() => {
@@ -1105,17 +1141,9 @@ export function CheckoutClient({
     });
   };
 
-  const handlePlaceOrder = () => {
-    if (!guestSessionId) return;
-    const values = getValues();
-    const phone = (values.shipping?.phone ?? shipping.phone).trim();
-    if (!phone) {
-      setAccountError("Please enter your phone number.");
-      toast.error("Please enter your phone number.");
-      return;
-    }
-    startPlaceOrder();
-  };
+  const handlePlaceOrder = form.handleSubmit((values) => {
+    startPlaceOrder(values);
+  });
 
   const checkoutDesign = (() => {
     const raw =
@@ -1842,534 +1870,771 @@ export function CheckoutClient({
         </div>
       ) : null}
 
-      <Layout
-        mobileSummary={mobileSummaryResolved}
-        left={
-          isCartLoading ? (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <Skeleton className="h-5 w-44" />
-                  <Skeleton className="h-4 w-60" />
-                </CardHeader>
-                <CardContent className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                </CardContent>
-              </Card>
+      <Form {...form}>
+        <Layout
+          mobileSummary={mobileSummaryResolved}
+          left={
+            isCartLoading ? (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <Skeleton className="h-5 w-44" />
+                    <Skeleton className="h-4 w-60" />
+                  </CardHeader>
+                  <CardContent className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader>
-                  <Skeleton className="h-5 w-56" />
-                  <Skeleton className="h-4 w-72" />
-                </CardHeader>
-                <CardContent className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2 md:col-span-2">
-                    <Skeleton className="h-4 w-28" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Skeleton className="h-4 w-28" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Skeleton className="h-4 w-28" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-20" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-28" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-28" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader>
+                    <Skeleton className="h-5 w-56" />
+                    <Skeleton className="h-4 w-72" />
+                  </CardHeader>
+                  <CardContent className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2 md:col-span-2">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader>
-                  <Skeleton className="h-5 w-28" />
-                  <Skeleton className="h-4 w-52" />
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Contact information</CardTitle>
-                  <CardDescription>
-                    We’ll use this to send your receipt and updates.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="contact-first">First name</Label>
-                    <Input
-                      id="contact-first"
-                      placeholder="Jane"
-                      autoComplete="given-name"
-                      disabled={isPlacingOrder}
-                      {...register("shipping.firstName")}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contact-last">Last name</Label>
-                    <Input
-                      id="contact-last"
-                      placeholder="Doe"
-                      autoComplete="family-name"
-                      disabled={isPlacingOrder}
-                      {...register("shipping.lastName")}
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="checkout-email">Email</Label>
-                    <Input
-                      id="checkout-email"
-                      type="email"
-                      placeholder="you@example.com"
-                      autoComplete="email"
-                      disabled={isPlacingOrder}
-                      {...register("email")}
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="contact-phone">Phone</Label>
-                    <Controller
+                <Card>
+                  <CardHeader>
+                    <Skeleton className="h-5 w-28" />
+                    <Skeleton className="h-4 w-52" />
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Contact information</CardTitle>
+                    <CardDescription>
+                      We’ll use this to send your receipt and updates.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-4 md:grid-cols-2">
+                    <FormField
                       control={control}
-                      name="shipping.phone"
+                      name="shipping.firstName"
                       render={({ field }) => (
-                        <CheckoutPhoneField
-                          id="contact-phone"
-                          value={
-                            typeof field.value === "string" ? field.value : ""
-                          }
-                          onValueChange={field.onChange}
-                          disabled={isPlacingOrder}
-                        />
+                        <FormItem>
+                          <FormLabel>First name</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Jane"
+                              autoComplete="given-name"
+                              disabled={isPlacingOrder}
+                              {...field}
+                              value={
+                                typeof field.value === "string"
+                                  ? field.value
+                                  : ""
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                       )}
                     />
-                  </div>
-
-                  {needsAccount ? (
-                    <div className="text-muted-foreground text-sm md:col-span-2">
-                      This product requires an account to access. After
-                      checkout, you’ll verify via email link or SMS code (no
-                      password required).
-                    </div>
-                  ) : null}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Billing / shipping address</CardTitle>
-                  <CardDescription>
-                    Enter your billing address. Add a separate shipping address
-                    if you’re shipping a physical product.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4 md:grid-cols-2">
-                  {hasNonVirtualProducts ? (
-                    <div className="md:col-span-2">
-                      <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium">
-                            Ship to a different address
-                          </div>
-                          <div className="text-muted-foreground text-xs">
-                            Turn this on only if your shipping address is
-                            different from billing.
-                          </div>
+                    <FormField
+                      control={control}
+                      name="shipping.lastName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Last name</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Doe"
+                              autoComplete="family-name"
+                              disabled={isPlacingOrder}
+                              {...field}
+                              value={
+                                typeof field.value === "string"
+                                  ? field.value
+                                  : ""
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="email"
+                              placeholder="you@example.com"
+                              autoComplete="email"
+                              disabled={isPlacingOrder}
+                              {...field}
+                              value={
+                                typeof field.value === "string"
+                                  ? field.value
+                                  : ""
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="contact-phone">Phone</Label>
+                      <Controller
+                        control={control}
+                        name="shipping.phone"
+                        render={({ field }) => (
+                          <CheckoutPhoneField
+                            id="contact-phone"
+                            value={
+                              typeof field.value === "string" ? field.value : ""
+                            }
+                            onValueChange={field.onChange}
+                            disabled={isPlacingOrder}
+                          />
+                        )}
+                      />
+                      {formState.errors.shipping?.phone?.message ? (
+                        <div className="text-destructive text-sm">
+                          {String(formState.errors.shipping.phone.message)}
                         </div>
-                        <Switch
-                          checked={shipToDifferentAddress}
-                          onCheckedChange={(next) => {
-                            setShipToDifferentAddress(next);
-                            if (!next) return;
-                            const values = getValues();
-                            const d = values.delivery;
-                            const looksEmpty =
-                              !d.address1.trim() &&
-                              !d.city.trim() &&
-                              !d.postcode.trim() &&
-                              !d.country.trim();
-                            if (looksEmpty) {
-                              setValue("delivery", values.shipping, {
+                      ) : null}
+                    </div>
+
+                    {needsAccount ? (
+                      <div className="text-muted-foreground text-sm md:col-span-2">
+                        This product requires an account to access. After
+                        checkout, you’ll verify via email link or SMS code (no
+                        password required).
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Billing / shipping address</CardTitle>
+                    <CardDescription>
+                      Enter your billing address. Add a separate shipping
+                      address if you’re shipping a physical product.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-4 md:grid-cols-2">
+                    {hasNonVirtualProducts ? (
+                      <div className="md:col-span-2">
+                        <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium">
+                              Ship to a different address
+                            </div>
+                            <div className="text-muted-foreground text-xs">
+                              Turn this on only if your shipping address is
+                              different from billing.
+                            </div>
+                          </div>
+                          <Switch
+                            checked={formShipToDifferentAddress}
+                            onCheckedChange={(next) => {
+                              setValue("shipToDifferentAddress", next, {
                                 shouldDirty: true,
                               });
-                            }
-                          }}
-                          disabled={isPlacingOrder}
-                          aria-label="Ship to a different address"
-                        />
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="bill-country">Country/region</Label>
-                    <Input
-                      id="bill-country"
-                      placeholder="United States"
-                      autoComplete="country-name"
-                      disabled={isPlacingOrder}
-                      {...register("shipping.country")}
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="bill-address">Address</Label>
-                    <Input
-                      id="bill-address"
-                      placeholder="123 Main St"
-                      autoComplete="street-address"
-                      disabled={isPlacingOrder}
-                      {...register("shipping.address1")}
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="bill-address2">
-                      Apartment, suite, etc. (optional)
-                    </Label>
-                    <Input
-                      id="bill-address2"
-                      placeholder="Apt 4B"
-                      autoComplete="address-line2"
-                      disabled={isPlacingOrder}
-                      {...register("shipping.address2")}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bill-city">City</Label>
-                    <Input
-                      id="bill-city"
-                      placeholder="New York"
-                      autoComplete="address-level2"
-                      disabled={isPlacingOrder}
-                      {...register("shipping.city")}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bill-state">State/Province</Label>
-                    <Input
-                      id="bill-state"
-                      placeholder="NY"
-                      autoComplete="address-level1"
-                      disabled={isPlacingOrder}
-                      {...register("shipping.state")}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bill-zip">Postal code</Label>
-                    <Input
-                      id="bill-zip"
-                      placeholder="10001"
-                      autoComplete="postal-code"
-                      disabled={isPlacingOrder}
-                      {...register("shipping.postcode")}
-                    />
-                  </div>
-
-                  {shipToDifferentAddress ? (
-                    <div className="md:col-span-2">
-                      <Separator className="my-2" />
-                      <div className="text-sm font-medium">
-                        Shipping address
-                      </div>
-                      <div className="text-muted-foreground mt-1 text-xs">
-                        We’ll ship physical items to this address.
-                      </div>
-                      <div className="h-4" />
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor="ship-country">Country/region</Label>
-                          <Input
-                            id="ship-country"
-                            placeholder="United States"
-                            autoComplete="country-name"
+                              if (!next) return;
+                              const values = getValues();
+                              const d = values.delivery;
+                              const looksEmpty =
+                                !d.address1.trim() &&
+                                !d.city.trim() &&
+                                !d.postcode.trim() &&
+                                !d.country.trim();
+                              if (looksEmpty) {
+                                setValue("delivery", values.shipping, {
+                                  shouldDirty: true,
+                                });
+                              }
+                            }}
                             disabled={isPlacingOrder}
-                            {...register("delivery.country")}
+                            aria-label="Ship to a different address"
                           />
                         </div>
-                        <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor="ship-address">Address</Label>
-                          <Input
-                            id="ship-address"
-                            placeholder="123 Main St"
-                            autoComplete="street-address"
-                            disabled={isPlacingOrder}
-                            {...register("delivery.address1")}
-                          />
-                        </div>
-                        <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor="ship-address2">
+                      </div>
+                    ) : null}
+
+                    <FormField
+                      control={control}
+                      name="shipping.address1"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>Address</FormLabel>
+                          <FormControl>
+                            <AddressAutocompleteInput
+                              value={
+                                typeof field.value === "string"
+                                  ? field.value
+                                  : ""
+                              }
+                              disabled={isPlacingOrder}
+                              placeholder="123 Main St"
+                              countryCode={String(
+                                getValues().shipping.country ?? "",
+                              )}
+                              onValueChange={(next) => field.onChange(next)}
+                              onSelectSuggestion={(s) =>
+                                applyGeoapifySuggestion("shipping", s)
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={control}
+                      name="shipping.address2"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>
                             Apartment, suite, etc. (optional)
-                          </Label>
-                          <Input
-                            id="ship-address2"
-                            placeholder="Apt 4B"
-                            autoComplete="address-line2"
-                            disabled={isPlacingOrder}
-                            {...register("delivery.address2")}
-                          />
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Apt 4B"
+                              autoComplete="address-line2"
+                              disabled={isPlacingOrder}
+                              {...field}
+                              value={
+                                typeof field.value === "string"
+                                  ? field.value
+                                  : ""
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={control}
+                      name="shipping.city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>City</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="New York"
+                              autoComplete="address-level2"
+                              disabled={isPlacingOrder}
+                              {...field}
+                              value={
+                                typeof field.value === "string"
+                                  ? field.value
+                                  : ""
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={control}
+                      name="shipping.state"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>State/Province</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="NY"
+                              autoComplete="address-level1"
+                              disabled={isPlacingOrder}
+                              {...field}
+                              value={
+                                typeof field.value === "string"
+                                  ? field.value
+                                  : ""
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={control}
+                      name="shipping.country"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Country/region</FormLabel>
+                          <FormControl>
+                            <CountryDropdown
+                              disabled={isPlacingOrder}
+                              defaultValue={
+                                typeof field.value === "string"
+                                  ? field.value
+                                  : ""
+                              }
+                              placeholder="Select a country"
+                              onChange={(country) =>
+                                field.onChange(country.alpha2)
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={control}
+                      name="shipping.postcode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Postal code</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="10001"
+                              autoComplete="postal-code"
+                              disabled={isPlacingOrder}
+                              {...field}
+                              value={
+                                typeof field.value === "string"
+                                  ? field.value
+                                  : ""
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {formShipToDifferentAddress ? (
+                      <div className="md:col-span-2">
+                        <Separator className="my-2" />
+                        <div className="text-sm font-medium">
+                          Shipping address
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="ship-city">City</Label>
-                          <Input
-                            id="ship-city"
-                            placeholder="New York"
-                            autoComplete="address-level2"
-                            disabled={isPlacingOrder}
-                            {...register("delivery.city")}
-                          />
+                        <div className="text-muted-foreground mt-1 text-xs">
+                          We’ll ship physical items to this address.
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="ship-state">State/Province</Label>
-                          <Input
-                            id="ship-state"
-                            placeholder="NY"
-                            autoComplete="address-level1"
-                            disabled={isPlacingOrder}
-                            {...register("delivery.state")}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="ship-zip">Postal code</Label>
-                          <Input
-                            id="ship-zip"
-                            placeholder="10001"
-                            autoComplete="postal-code"
-                            disabled={isPlacingOrder}
-                            {...register("delivery.postcode")}
-                          />
+                        <div className="h-4" />
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2 md:col-span-2">
+                            <FormField
+                              control={control}
+                              name="delivery.address1"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Address</FormLabel>
+                                  <FormControl>
+                                    <AddressAutocompleteInput
+                                      value={
+                                        typeof field.value === "string"
+                                          ? field.value
+                                          : ""
+                                      }
+                                      disabled={isPlacingOrder}
+                                      placeholder="123 Main St"
+                                      countryCode={String(
+                                        getValues().delivery.country ?? "",
+                                      )}
+                                      onValueChange={(next) =>
+                                        field.onChange(next)
+                                      }
+                                      onSelectSuggestion={(s) =>
+                                        applyGeoapifySuggestion("delivery", s)
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <FormField
+                              control={control}
+                              name="delivery.address2"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>
+                                    Apartment, suite, etc. (optional)
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Apt 4B"
+                                      autoComplete="address-line2"
+                                      disabled={isPlacingOrder}
+                                      {...field}
+                                      value={
+                                        typeof field.value === "string"
+                                          ? field.value
+                                          : ""
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <FormField
+                              control={control}
+                              name="delivery.city"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>City</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="New York"
+                                      autoComplete="address-level2"
+                                      disabled={isPlacingOrder}
+                                      {...field}
+                                      value={
+                                        typeof field.value === "string"
+                                          ? field.value
+                                          : ""
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <FormField
+                              control={control}
+                              name="delivery.state"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>State/Province</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="NY"
+                                      autoComplete="address-level1"
+                                      disabled={isPlacingOrder}
+                                      {...field}
+                                      value={
+                                        typeof field.value === "string"
+                                          ? field.value
+                                          : ""
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <FormField
+                              control={control}
+                              name="delivery.postcode"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Postal code</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="10001"
+                                      autoComplete="postal-code"
+                                      disabled={isPlacingOrder}
+                                      {...field}
+                                      value={
+                                        typeof field.value === "string"
+                                          ? field.value
+                                          : ""
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <FormField
+                              control={control}
+                              name="delivery.country"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Country/region</FormLabel>
+                                  <FormControl>
+                                    <CountryDropdown
+                                      disabled={isPlacingOrder}
+                                      defaultValue={
+                                        typeof field.value === "string"
+                                          ? field.value
+                                          : ""
+                                      }
+                                      placeholder="Select a country"
+                                      onChange={(country) =>
+                                        field.onChange(country.alpha2)
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ) : null}
-                </CardContent>
-              </Card>
-
-              {isFreeOrder ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Payment</CardTitle>
-                    <CardDescription>
-                      No payment is required for this order.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="text-muted-foreground text-sm">
-                      Your total is {formatMoney(total)}.
-                    </div>
-
-                    <NoiseBackground
-                      containerClassName="w-full rounded-full p-1"
-                      gradientColors={[
-                        "rgb(255, 100, 150)",
-                        "rgb(100, 150, 255)",
-                        "rgb(255, 200, 100)",
-                      ]}
-                      noiseIntensity={0.18}
-                      speed={0.08}
-                      animating={canSubmit && !isPlacingOrder}
-                    >
-                      <Button
-                        type="button"
-                        onClick={handlePlaceOrder}
-                        disabled={!canSubmit}
-                        variant="default"
-                        size="lg"
-                        className="border-border/60 bg-background/70 text-foreground hover:bg-background h-12 w-full shrink-0 rounded-full border text-base font-semibold transition"
-                      >
-                        {isPlacingOrder ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing…
-                          </>
-                        ) : (
-                          <>Place order</>
-                        )}
-                      </Button>
-                    </NoiseBackground>
-                    <div className="text-muted-foreground text-xs">
-                      By placing your order, you agree to our terms and privacy
-                      policy.
-                    </div>
+                    ) : null}
                   </CardContent>
                 </Card>
-              ) : (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Payment</CardTitle>
-                    <CardDescription>
-                      {showPaymentMethodSelector
-                        ? "Select how you’d like to pay."
-                        : "Enter your payment details to complete checkout."}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {pluginActiveMap &&
-                    paymentEnabledMap &&
-                    configMap &&
-                    enabledPaymentMethods.length === 0 ? (
-                      <div className="space-y-2">
-                        <div className="text-muted-foreground text-sm">
-                          No payment methods are enabled. An admin can enable
-                          one in Ecommerce → Settings → Payment processors.
-                        </div>
-                        {process.env.NODE_ENV !== "production" ? (
-                          <div className="rounded-md border p-3 text-xs">
-                            <div className="font-semibold">Debug</div>
-                            <div className="text-muted-foreground">
-                              orgId: {organizationId ?? "(undefined)"}
-                            </div>
-                            <div className="mt-2 space-y-1">
-                              {paymentMethods.map((m) => {
-                                const pluginActive =
-                                  pluginActiveMap[
-                                    m.config.pluginActiveOptionKey
-                                  ] === true;
-                                const enabled =
-                                  paymentEnabledMap[
-                                    m.config.paymentEnabledOptionKey
-                                  ] === true;
-                                const configured = m.isConfigured(
-                                  configMap[m.config.configOptionKey],
-                                );
-                                return (
-                                  <div
-                                    key={m.id}
-                                    className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
-                                  >
-                                    <div className="font-medium">{m.id}</div>
-                                    <div className="text-muted-foreground">
-                                      active:{String(pluginActive)} enabled:
-                                      {String(enabled)} configured:
-                                      {String(configured)}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ) : null}
+
+                {isFreeOrder ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Payment</CardTitle>
+                      <CardDescription>
+                        No payment is required for this order.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="text-muted-foreground text-sm">
+                        Your total is {formatMoney(total)}.
                       </div>
-                    ) : showPaymentMethodSelector ? (
-                      <RadioGroup
-                        value={effectivePaymentMethodId}
-                        onValueChange={(value) =>
-                          setPaymentMethodId(orgKey, value)
-                        }
-                        className="gap-2"
+
+                      <NoiseBackground
+                        containerClassName="w-full rounded-full p-1"
+                        gradientColors={[
+                          "rgb(255, 100, 150)",
+                          "rgb(100, 150, 255)",
+                          "rgb(255, 200, 100)",
+                        ]}
+                        noiseIntensity={0.18}
+                        speed={0.08}
+                        animating={canSubmit && !isPlacingOrder}
                       >
-                        {enabledPaymentMethods.map((method) => (
-                          <label
-                            key={method.id}
-                            className="border-input hover:bg-muted/40 flex cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2"
-                          >
-                            <div className="flex items-center gap-3">
-                              <RadioGroupItem value={method.id} />
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-medium">
-                                  {method.label}
-                                </div>
-                                {method.description ? (
-                                  <div className="text-muted-foreground text-xs">
-                                    {method.description}
-                                  </div>
-                                ) : null}
+                        <Button
+                          type="button"
+                          onClick={handlePlaceOrder}
+                          disabled={!canSubmit}
+                          variant="default"
+                          size="lg"
+                          className="border-border/60 bg-background/70 text-foreground hover:bg-background h-12 w-full shrink-0 rounded-full border text-base font-semibold transition"
+                        >
+                          {isPlacingOrder ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Processing…
+                            </>
+                          ) : (
+                            <>Place order</>
+                          )}
+                        </Button>
+                      </NoiseBackground>
+                      <div className="text-muted-foreground text-xs">
+                        By placing your order, you agree to our terms and
+                        privacy policy.
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Payment</CardTitle>
+                      <CardDescription>
+                        {showPaymentMethodSelector
+                          ? "Select how you’d like to pay."
+                          : "Enter your payment details to complete checkout."}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {pluginActiveMap &&
+                      paymentEnabledMap &&
+                      configMap &&
+                      enabledPaymentMethods.length === 0 ? (
+                        <div className="space-y-2">
+                          <div className="text-muted-foreground text-sm">
+                            No payment methods are enabled. An admin can enable
+                            one in Ecommerce → Settings → Payment processors.
+                          </div>
+                          {process.env.NODE_ENV !== "production" ? (
+                            <div className="rounded-md border p-3 text-xs">
+                              <div className="font-semibold">Debug</div>
+                              <div className="text-muted-foreground">
+                                orgId: {organizationId ?? "(undefined)"}
+                              </div>
+                              <div className="mt-2 space-y-1">
+                                {paymentMethods.map((m) => {
+                                  const pluginActive =
+                                    pluginActiveMap[
+                                      m.config.pluginActiveOptionKey
+                                    ] === true;
+                                  const enabled =
+                                    paymentEnabledMap[
+                                      m.config.paymentEnabledOptionKey
+                                    ] === true;
+                                  const configured = m.isConfigured(
+                                    configMap[m.config.configOptionKey],
+                                  );
+                                  return (
+                                    <div
+                                      key={m.id}
+                                      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
+                                    >
+                                      <div className="font-medium">{m.id}</div>
+                                      <div className="text-muted-foreground">
+                                        active:{String(pluginActive)} enabled:
+                                        {String(enabled)} configured:
+                                        {String(configured)}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
-                          </label>
-                        ))}
-                      </RadioGroup>
-                    ) : null}
+                          ) : null}
+                        </div>
+                      ) : showPaymentMethodSelector ? (
+                        <RadioGroup
+                          value={effectivePaymentMethodId}
+                          onValueChange={(value) =>
+                            setValue("paymentMethodId", value, {
+                              shouldDirty: true,
+                            })
+                          }
+                          className="gap-2"
+                        >
+                          {enabledPaymentMethods.map((method) => (
+                            <label
+                              key={method.id}
+                              className="border-input hover:bg-muted/40 flex cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2"
+                            >
+                              <div className="flex items-center gap-3">
+                                <RadioGroupItem value={method.id} />
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm font-medium">
+                                    {method.label}
+                                  </div>
+                                  {method.description ? (
+                                    <div className="text-muted-foreground text-xs">
+                                      {method.description}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </label>
+                          ))}
+                        </RadioGroup>
+                      ) : null}
+                      {formState.errors.paymentMethodId?.message ? (
+                        <div className="text-destructive text-sm">
+                          {String(formState.errors.paymentMethodId.message)}
+                        </div>
+                      ) : null}
 
-                    {selectedPaymentMethod &&
-                    configMap &&
-                    typeof selectedPaymentMethod.renderCheckoutForm ===
-                      "function" ? (
-                      <div>
-                        {
-                          selectedPaymentMethod.renderCheckoutForm({
-                            organizationId,
-                            configValue:
-                              configMap[
-                                selectedPaymentMethod.config.configOptionKey
-                              ],
-                            onPaymentDataChange: setPaymentData,
-                            testMode,
-                            testPrefill,
-                          }) as any
-                        }
-                      </div>
-                    ) : null}
+                      {selectedPaymentMethod &&
+                      configMap &&
+                      typeof selectedPaymentMethod.renderCheckoutForm ===
+                        "function" ? (
+                        <div>
+                          {
+                            selectedPaymentMethod.renderCheckoutForm({
+                              organizationId,
+                              configValue:
+                                configMap[
+                                  selectedPaymentMethod.config.configOptionKey
+                                ],
+                              onPaymentDataChange: setPaymentData,
+                              testMode,
+                              testPrefill,
+                            }) as any
+                          }
+                        </div>
+                      ) : null}
 
-                    <NoiseBackground
-                      containerClassName="w-full rounded-full p-1"
-                      gradientColors={[
-                        "rgb(255, 100, 150)",
-                        "rgb(100, 150, 255)",
-                        "rgb(255, 200, 100)",
-                      ]}
-                      noiseIntensity={0.18}
-                      speed={0.08}
-                      animating={canSubmit && !isPlacingOrder}
-                    >
-                      <Button
-                        type="button"
-                        onClick={handlePlaceOrder}
-                        disabled={!canSubmit}
-                        variant="default"
-                        size="lg"
-                        className="border-border/60 bg-background/70 text-foreground hover:bg-background h-12 w-full shrink-0 rounded-full border text-base font-semibold transition"
+                      <NoiseBackground
+                        containerClassName="w-full rounded-full p-1"
+                        gradientColors={[
+                          "rgb(255, 100, 150)",
+                          "rgb(100, 150, 255)",
+                          "rgb(255, 200, 100)",
+                        ]}
+                        noiseIntensity={0.18}
+                        speed={0.08}
+                        animating={canSubmit && !isPlacingOrder}
                       >
-                        {isPlacingOrder ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing…
-                          </>
-                        ) : (
-                          <>Pay {formatMoney(total)}</>
-                        )}
-                      </Button>
-                    </NoiseBackground>
-                    <div className="text-muted-foreground text-xs">
-                      By placing your order, you agree to our terms and privacy
-                      policy.
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          )
-        }
-        rightSummary={rightSummary}
-      />
+                        <Button
+                          type="button"
+                          onClick={handlePlaceOrder}
+                          disabled={!canSubmit}
+                          variant="default"
+                          size="lg"
+                          className="border-border/60 bg-background/70 text-foreground hover:bg-background h-12 w-full shrink-0 rounded-full border text-base font-semibold transition"
+                        >
+                          {isPlacingOrder ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Processing…
+                            </>
+                          ) : (
+                            <>Pay {formatMoney(total)}</>
+                          )}
+                        </Button>
+                      </NoiseBackground>
+                      <div className="text-muted-foreground text-xs">
+                        By placing your order, you agree to our terms and
+                        privacy policy.
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )
+          }
+          rightSummary={rightSummary}
+        />
+      </Form>
     </CheckoutShell>
   );
 }
