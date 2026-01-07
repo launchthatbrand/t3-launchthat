@@ -4,7 +4,7 @@ import type { SignInResource } from "@clerk/types";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SignIn, useSignIn } from "@clerk/nextjs";
+import { SignIn, useAuth, useSignIn } from "@clerk/nextjs";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -238,6 +238,7 @@ export default function SignInClient(props: {
 }) {
   const router = useRouter();
   const { isLoaded, signIn, setActive } = useSignIn();
+  const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
   const [formError, setFormError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [oauthProviders, setOauthProviders] = React.useState<OAuthProvider[]>(
@@ -277,6 +278,14 @@ export default function SignInClient(props: {
     if (props.tenantSlug) params.set("tenant", props.tenantSlug);
     return `${window.location.origin}/api/auth/callback?${params.toString()}`;
   }, [props.returnTo, props.tenantSlug]);
+
+  // If the user already has an active Clerk session on the auth host,
+  // skip showing the sign-in UI and just mint the tenant session via our callback.
+  React.useEffect(() => {
+    if (!isAuthLoaded) return;
+    if (!isSignedIn) return;
+    router.replace(afterSignInUrl);
+  }, [afterSignInUrl, isAuthLoaded, isSignedIn, router]);
 
   React.useEffect(() => {
     if (!isLoaded) return;
@@ -352,7 +361,25 @@ export default function SignInClient(props: {
         redirectUrl: `${window.location.origin}/sso-callback`,
         redirectUrlComplete: afterSignInUrl,
       });
-    } catch {
+    } catch (err: unknown) {
+      const code = (() => {
+        if (!err || typeof err !== "object") return null;
+        const anyErr = err as { errors?: unknown };
+        const errorsUnknown = anyErr.errors;
+        if (!Array.isArray(errorsUnknown)) return null;
+        const first = errorsUnknown[0] as unknown;
+        if (!first || typeof first !== "object") return null;
+        const codeUnknown = (first as { code?: unknown }).code;
+        return typeof codeUnknown === "string" ? codeUnknown : null;
+      })();
+
+      // Clerk returns "session_exists" when a user clicks an OAuth provider
+      // while already signed in on this host. In that case, just bounce through
+      // our callback to mint the tenant session and redirect back.
+      if (code === "session_exists") {
+        router.replace(afterSignInUrl);
+        return;
+      }
       setFormError("Unable to start sign-in. Please try again.");
     }
   };
