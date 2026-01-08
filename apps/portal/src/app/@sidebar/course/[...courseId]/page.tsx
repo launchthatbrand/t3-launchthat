@@ -2,11 +2,11 @@
 
 import type { Id } from "@convex-config/_generated/dataModel";
 import { useCallback, useMemo, useState } from "react";
-import { useParams, usePathname } from "next/navigation";
+import { useParams } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
 import { useQuery } from "convex/react";
 import { CourseNav } from "launchthat-plugin-lms";
-import { ArrowLeft, LayoutDashboardIcon } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import type {
   TeamSwitcherOrganization} from "@acme/ui/general/team-switcher";
@@ -21,6 +21,7 @@ import {
 } from "@acme/ui/sidebar";
 
 import { useTenant } from "~/context/TenantContext";
+import { isLocalHost } from "~/lib/host";
 
 const convexIdRegex = /^[a-z0-9]{32}$/;
 
@@ -28,7 +29,6 @@ export default function CourseSidebar() {
   const params = useParams();
   const courseParam = params.courseId;
   const slugOrId = Array.isArray(courseParam) ? courseParam[0] : courseParam;
-  const pathname = usePathname();
   const tenant = useTenant();
 
   const handleGoToDashboard = useCallback(() => {
@@ -42,10 +42,10 @@ export default function CourseSidebar() {
     string | null
   >(null);
 
-  const organizationsResult = useQuery(
-    api.core.organizations.queries.myOrganizations,
-    {},
-  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+  const myOrganizationsQuery = (api as any).core.organizations.queries.myOrganizations;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const organizationsResult = useQuery(myOrganizationsQuery, {});
 
   const organizations = useMemo<TeamSwitcherOrganization[]>(() => {
     if (!organizationsResult || !Array.isArray(organizationsResult)) {
@@ -162,35 +162,31 @@ export default function CourseSidebar() {
 
       let host: string;
 
-      if (org.customDomain) {
+      const localHost = isLocalHost(window.location.host);
+
+      // Local dev: always use <tenant>.localhost:<port> style hosts even if the org
+      // has a production custom domain configured.
+      if (localHost && org.slug) {
+        const localSuffix = (() => {
+          if (hostname.includes(".localhost")) {
+            return hostname.substring(hostname.indexOf(".localhost"));
+          }
+          if (hostname.includes(".127.0.0.1")) {
+            return hostname.substring(hostname.indexOf(".127.0.0.1"));
+          }
+          if (hostname === "localhost") {
+            return ".localhost";
+          }
+          if (hostname === "127.0.0.1") {
+            return ".127.0.0.1";
+          }
+          return ".localhost";
+        })();
+        host = `${org.slug}${localSuffix}${portSegment}`;
+      } else if (org.customDomain) {
         host = org.customDomain;
       } else {
-        const isLocalHost =
-          hostname === "localhost" ||
-          hostname === "127.0.0.1" ||
-          hostname.endsWith(".localhost") ||
-          hostname.endsWith(".127.0.0.1");
-
-        if (isLocalHost) {
-          const localSuffix = (() => {
-            if (hostname.includes(".localhost")) {
-              return hostname.substring(hostname.indexOf(".localhost"));
-            }
-            if (hostname.includes(".127.0.0.1")) {
-              return hostname.substring(hostname.indexOf(".127.0.0.1"));
-            }
-            if (hostname === "localhost") {
-              return ".localhost";
-            }
-            if (hostname === "127.0.0.1") {
-              return ".127.0.0.1";
-            }
-            return ".localhost";
-          })();
-          host = `${org.slug}${localSuffix}${portSegment}`;
-        } else {
-          host = `${org.slug}.${rootDomain}`;
-        }
+        host = `${org.slug}.${rootDomain}`;
       }
 
       const targetProtocol =
@@ -198,7 +194,7 @@ export default function CourseSidebar() {
           ? "https"
           : normalizedProtocol;
 
-      const targetUrl = `${targetProtocol}://${host}/admin`;
+      const targetUrl = `${targetProtocol}://${host}/`;
       window.location.assign(targetUrl);
     },
     [switchingOrganizationId],

@@ -14,7 +14,7 @@ export const organizationsTable = defineTable({
   // Branding and customization
   logo: v.optional(v.union(v.string(), v.null())), // Logo URL
   primaryColor: v.optional(v.string()), // Hex color for branding
-  customDomain: v.optional(v.string()), // Custom domain if configured
+  customDomain: v.optional(v.union(v.string(), v.null())), // Custom domain if configured
   customDomainStatus: v.optional(
     v.union(
       v.literal("unconfigured"),
@@ -37,7 +37,7 @@ export const organizationsTable = defineTable({
   customDomainUpdatedAt: v.optional(v.number()),
 
   // Email sending domain (Resend) - derived from `customDomain` apex
-  emailDomain: v.optional(v.string()),
+  emailDomain: v.optional(v.union(v.string(), v.null())),
   emailDomainStatus: v.optional(
     v.union(
       v.literal("unconfigured"),

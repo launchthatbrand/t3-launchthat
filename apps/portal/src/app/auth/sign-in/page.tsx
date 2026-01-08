@@ -1,4 +1,8 @@
-import { getAuthHostForHost, getHostFromHeaders } from "~/lib/host";
+import {
+  getAuthHostForHost,
+  getHostFromHeaders,
+  getProtoForHostFromHeaders,
+} from "~/lib/host";
 
 import { env } from "~/env";
 import { headers } from "next/headers";
@@ -35,7 +39,7 @@ export default async function AuthSignInRedirectPage(props: {
 }) {
   const headerList = await headers();
   const host = getHostFromHeaders(headerList);
-  const proto = (headerList.get("x-forwarded-proto") ?? "https").trim() || "https";
+  const proto = getProtoForHostFromHeaders(host, headerList);
 
   const resolvedSearchParams = props.searchParams
     ? await props.searchParams

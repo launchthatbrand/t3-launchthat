@@ -6,7 +6,9 @@ import { auth } from "@clerk/nextjs/server";
 import { randomBytes, createHash } from "crypto";
 
 import { api as apiAny } from "@/convex/_generated/api.js";
+import { PORTAL_TENANT_SLUG } from "@/convex/constants";
 import { env } from "~/env";
+import { isLocalHost } from "~/lib/host";
 
 export const runtime = "nodejs";
 
@@ -31,7 +33,7 @@ const resolveTenantSlugFromReturnTo = (
 ): { hostname: string; slug: string } | null => {
   try {
     const url = new URL(returnTo);
-    const hostname = (url.hostname ?? "").toLowerCase();
+    const hostname = url.hostname.toLowerCase();
     const root = rootDomain.trim().toLowerCase().replace(/^https?:\/\//, "");
     const rootHost = (root.split("/")[0] ?? "").split(":")[0] ?? "";
     if (!hostname || !rootHost) return null;
@@ -67,7 +69,12 @@ export async function GET(req: NextRequest) {
   const derived = resolveTenantSlugFromReturnTo(returnTo, env.NEXT_PUBLIC_ROOT_DOMAIN);
   const derivedSlug = derived?.slug ?? "";
   const derivedHostname = derived?.hostname ?? "";
-  const slug = tenantSlugParam || derivedSlug;
+  const slug =
+    tenantSlugParam ||
+    derivedSlug ||
+    // Local dev convenience: if return_to is localhost and no tenant was provided,
+    // treat it as the portal tenant (so /admin redirects don't get stuck).
+    (derivedHostname && isLocalHost(derivedHostname) ? PORTAL_TENANT_SLUG : "");
 
   const org: unknown =
     slug && slug.length > 0

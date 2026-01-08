@@ -14,6 +14,7 @@ import { TeamSwitcher } from "@acme/ui/general/team-switcher";
 import { Sidebar, SidebarContent, SidebarHeader } from "@acme/ui/sidebar";
 
 import { useTenant } from "~/context/TenantContext";
+import { isLocalHost } from "~/lib/host";
 
 const MENU_LOCATION = "primary";
 
@@ -96,10 +97,10 @@ export default function DefaultSidebar() {
     | null
     | undefined;
 
-  const organizationsResult = useQuery(
-    api.core.organizations.queries.myOrganizations,
-    {},
-  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+  const myOrganizationsQuery = (api as any).core.organizations.queries.myOrganizations;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const organizationsResult = useQuery(myOrganizationsQuery, {});
 
   const organizations = useMemo<TeamSwitcherOrganization[]>(() => {
     if (!organizationsResult || !Array.isArray(organizationsResult)) {
@@ -216,35 +217,31 @@ export default function DefaultSidebar() {
 
       let host: string;
 
-      if (org.customDomain) {
+      const localHost = isLocalHost(window.location.host);
+
+      // Local dev: always use <tenant>.localhost:<port> style hosts even if the org
+      // has a production custom domain configured.
+      if (localHost && org.slug) {
+        const localSuffix = (() => {
+          if (hostname.includes(".localhost")) {
+            return hostname.substring(hostname.indexOf(".localhost"));
+          }
+          if (hostname.includes(".127.0.0.1")) {
+            return hostname.substring(hostname.indexOf(".127.0.0.1"));
+          }
+          if (hostname === "localhost") {
+            return ".localhost";
+          }
+          if (hostname === "127.0.0.1") {
+            return ".127.0.0.1";
+          }
+          return ".localhost";
+        })();
+        host = `${org.slug}${localSuffix}${portSegment}`;
+      } else if (org.customDomain) {
         host = org.customDomain;
       } else {
-        const isLocalHost =
-          hostname === "localhost" ||
-          hostname === "127.0.0.1" ||
-          hostname.endsWith(".localhost") ||
-          hostname.endsWith(".127.0.0.1");
-
-        if (isLocalHost) {
-          const localSuffix = (() => {
-            if (hostname.includes(".localhost")) {
-              return hostname.substring(hostname.indexOf(".localhost"));
-            }
-            if (hostname.includes(".127.0.0.1")) {
-              return hostname.substring(hostname.indexOf(".127.0.0.1"));
-            }
-            if (hostname === "localhost") {
-              return ".localhost";
-            }
-            if (hostname === "127.0.0.1") {
-              return ".127.0.0.1";
-            }
-            return ".localhost";
-          })();
-          host = `${org.slug}${localSuffix}${portSegment}`;
-        } else {
-          host = `${org.slug}.${rootDomain}`;
-        }
+        host = `${org.slug}.${rootDomain}`;
       }
 
       const targetProtocol =
@@ -252,7 +249,9 @@ export default function DefaultSidebar() {
           ? "https"
           : normalizedProtocol;
 
-      const targetUrl = `${targetProtocol}://${host}/admin`;
+      // When switching orgs from the portal sidebar, go to the tenant's root
+      // and let routing take over (this avoids surprising /admin bounces).
+      const targetUrl = `${targetProtocol}://${host}/`;
       window.location.assign(targetUrl);
     },
     [switchingOrganizationId],

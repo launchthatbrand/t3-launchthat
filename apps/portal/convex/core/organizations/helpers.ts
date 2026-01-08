@@ -19,6 +19,18 @@ export const verifyOrganizationAccessWithClerkContext = async (
   userId: Id<"users">,
   requiredRoles?: ("owner" | "admin" | "editor" | "viewer" | "student")[],
 ) => {
+  // Global admin bypass: allow portal admins to access any organization, even if they
+  // are not explicitly a member, and regardless of their active Clerk org selection.
+  const user = await ctx.db.get(userId);
+  if (user?.role === "admin") {
+    return {
+      userId,
+      organizationId,
+      role: "admin" as const,
+      isActive: true,
+    };
+  }
+
   const membership = await verifyOrganizationAccess(
     ctx,
     organizationId,
@@ -55,6 +67,17 @@ export const verifyOrganizationAccess = async (
   userId: Id<"users">,
   requiredRoles?: ("owner" | "admin" | "editor" | "viewer" | "student")[],
 ) => {
+  // Global admin bypass: allow portal admins to access any organization.
+  const user = await ctx.db.get(userId);
+  if (user?.role === "admin") {
+    return {
+      userId,
+      organizationId,
+      role: "admin" as const,
+      isActive: true,
+    };
+  }
+
   const membership = await ctx.db
     .query("userOrganizations")
     .withIndex("by_user_organization", (q) =>
@@ -168,10 +191,10 @@ export const getUserPlan = async (ctx: QueryCtx, userId: Id<"users">) => {
     return null;
   }
 
-  return (await ctx.runQuery(
+  return await ctx.runQuery(
     components.launchthat_ecommerce.plans.queries.getPlanById as any,
     { planId: String(user.planId) },
-  ));
+  );
 };
 
 /**

@@ -9,10 +9,13 @@ import type {
 } from "~/lib/access/contentAccessRegistry";
 import {
   ADMIN_CONTENT_ACCESS_SECTIONS_FILTER,
+  ADMIN_DASHBOARD_METABOXES_FILTER,
   ADMIN_ECOMMERCE_PRODUCT_DETAILS_SECTIONS_FILTER,
   ADMIN_USER_DETAILS_SECTIONS_FILTER,
   FRONTEND_CONTENT_ACCESS_PROVIDERS_FILTER,
 } from "./hookSlots";
+import type { AdminDashboardMetaBox } from "../adminDashboard/metaBoxes";
+import { CrmDashboardMetaBox } from "~/components/crm/admin/CrmDashboardMetaBox";
 
 const CrmMarketingTagsContentAccessSection = React.lazy(async () => {
   const mod = await import(
@@ -128,6 +131,29 @@ export const enhanceCrmPluginDefinition = (
       ...(base.hooks ?? {}),
       filters: [
         ...baseFilters,
+        {
+          hook: ADMIN_DASHBOARD_METABOXES_FILTER,
+          callback: (value: unknown, ctx: unknown) => {
+            const list: AdminDashboardMetaBox[] = Array.isArray(value)
+              ? (value as AdminDashboardMetaBox[])
+              : [];
+            const c = (ctx ?? {}) as { organizationId?: string };
+            const orgId = typeof c.organizationId === "string" ? c.organizationId : "";
+            if (!orgId) return list;
+
+            list.push({
+              id: "crm:dashboard",
+              title: "CRM",
+              description: "Contacts and marketing tags overview.",
+              location: "main",
+              priority: 20,
+              render: () => <CrmDashboardMetaBox organizationId={orgId} />,
+            });
+            return list;
+          },
+          priority: 10,
+          acceptedArgs: 2,
+        },
         {
           hook: FRONTEND_CONTENT_ACCESS_PROVIDERS_FILTER,
           callback: (value: unknown) => {

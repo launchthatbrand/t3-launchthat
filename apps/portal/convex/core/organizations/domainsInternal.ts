@@ -3,12 +3,6 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery } from "../../_generated/server";
 import { verifyOrganizationAccess } from "./helpers";
 
-interface DomainRecord {
-  type: string;
-  name: string;
-  value: string;
-}
-
 const domainRecordValidator = v.object({
   type: v.string(),
   name: v.string(),
@@ -90,7 +84,7 @@ export const internalFindOrgByCustomDomain = internalQuery({
 export const internalUpsertOrgDomainState = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    customDomain: v.optional(v.string()),
+    customDomain: v.optional(v.union(v.string(), v.null())),
     status: v.optional(
       v.union(
         v.literal("unconfigured"),
@@ -129,7 +123,7 @@ export const internalUpsertOrgDomainState = internalMutation({
 export const internalUpsertOrgEmailDomainState = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    emailDomain: v.optional(v.string()),
+    emailDomain: v.optional(v.union(v.string(), v.null())),
     status: v.optional(
       v.union(
         v.literal("unconfigured"),

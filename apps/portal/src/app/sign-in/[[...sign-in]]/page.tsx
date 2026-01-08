@@ -6,6 +6,7 @@ import { env } from "~/env";
 import {
   getAuthHostForHost,
   getHostFromHeaders,
+  getProtoForHostFromHeaders,
   isAuthHostForHost,
 } from "~/lib/host";
 import SignInClient from "./SignInClient";
@@ -35,7 +36,7 @@ export default async function Page({
   const email = Array.isArray(emailRaw) ? emailRaw[0] : emailRaw;
 
   if (!onAuthHost) {
-    const proto = headerList.get("x-forwarded-proto") ?? "https";
+    const proto = getProtoForHostFromHeaders(host, headerList);
     const url = new URL(
       `${proto}://${host}${headerList.get("x-pathname") ?? "/sign-in"}`,
     );

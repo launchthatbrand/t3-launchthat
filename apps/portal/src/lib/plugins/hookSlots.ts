@@ -73,3 +73,7 @@ export const ADMIN_ECOMMERCE_PRODUCT_DETAILS_SECTIONS_FILTER =
 // Admin (portal) user details extension point.
 // Plugins can contribute additional UI sections (e.g. CRM “linked contact + tags”) to the User page.
 export const ADMIN_USER_DETAILS_SECTIONS_FILTER = "admin.users.details.sections";
+
+// Admin dashboard metabox extension point.
+// Plugins can contribute metabox widgets to /admin (WordPress-like dashboard widgets).
+export const ADMIN_DASHBOARD_METABOXES_FILTER = "admin.dashboard.metaboxes";

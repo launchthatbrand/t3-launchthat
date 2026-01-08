@@ -12,6 +12,7 @@ interface DomainsInternalBag {
   requireOrgAdmin: unknown;
   internalFindOrgByCustomDomain: unknown;
   internalUpsertOrgDomainState: unknown;
+  internalUpsertOrgEmailDomainState: unknown;
 }
 
 const domainsInternal = (
@@ -22,6 +23,11 @@ const domainsInternal = (
 
 type InternalQueryRef = FunctionReference<"query", "internal">;
 type InternalMutationRef = FunctionReference<"mutation", "internal">;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
+const apiAny = api as any;
+// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+const syncEmailDomainFromCustomDomainAction = apiAny.core.organizations.emailDomains.syncEmailDomainFromCustomDomain;
 
 interface DomainRecord {
   type: string;
@@ -74,6 +80,18 @@ const getVercelConfig = () => {
     projectId,
     teamId: teamIdTrimmed.length > 0 ? teamIdTrimmed : undefined,
   };
+};
+
+const tryGetVercelConfig = (): {
+  token: string;
+  projectId: string;
+  teamId?: string;
+} | null => {
+  try {
+    return getVercelConfig();
+  } catch {
+    return null;
+  }
 };
 
 const parseVercelDomainRecords = (payload: unknown): DomainRecord[] => {
@@ -274,7 +292,7 @@ export const startCustomDomainSetup = action({
 
     // Best-effort: refresh email sending domain state in Resend (derived from customDomain apex).
     try {
-      await ctx.runAction(api.core.organizations.emailDomains.syncEmailDomainFromCustomDomain, {
+      await ctx.runAction(syncEmailDomainFromCustomDomainAction, {
         organizationId: args.organizationId,
       });
     } catch (err) {
@@ -362,7 +380,7 @@ export const verifyCustomDomain = action({
 
     // Best-effort: refresh email sending domain state in Resend (derived from customDomain apex).
     try {
-      await ctx.runAction(api.core.organizations.emailDomains.syncEmailDomainFromCustomDomain, {
+      await ctx.runAction(syncEmailDomainFromCustomDomainAction, {
         organizationId: args.organizationId,
       });
     } catch (err) {
@@ -373,5 +391,85 @@ export const verifyCustomDomain = action({
     }
 
     return { customDomain: domain, status, records };
+  },
+});
+
+export const removeCustomDomain = action({
+  args: {
+    organizationId: v.id("organizations"),
+  },
+  returns: v.object({
+    customDomain: v.union(v.string(), v.null()),
+    status: v.union(
+      v.literal("unconfigured"),
+      v.literal("pending"),
+      v.literal("verified"),
+      v.literal("error"),
+    ),
+    records: v.array(domainRecordValidator),
+  }),
+  handler: async (ctx, args) => {
+    const requireOrgAdminRef =
+      domainsInternal.requireOrgAdmin as InternalQueryRef;
+    const upsertDomainStateRef =
+      domainsInternal.internalUpsertOrgDomainState as InternalMutationRef;
+    const upsertEmailDomainStateRef =
+      domainsInternal.internalUpsertOrgEmailDomainState as InternalMutationRef;
+
+    const org = (await ctx.runQuery(requireOrgAdminRef, {
+      organizationId: args.organizationId,
+    })) as { customDomain?: string };
+    const domain = normalizeHostname(org.customDomain ?? "");
+
+    // Best-effort: detach the domain from Vercel (if configured).
+    const vercel = tryGetVercelConfig();
+    if (vercel && domain) {
+      try {
+        const url = new URL(
+          `https://api.vercel.com/v9/projects/${encodeURIComponent(vercel.projectId)}/domains/${encodeURIComponent(domain)}`,
+        );
+        if (vercel.teamId) url.searchParams.set("teamId", vercel.teamId);
+        const res = await fetch(url.toString(), {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${vercel.token}`,
+            Accept: "application/json",
+          },
+        });
+        // If the domain isn't present on the project anymore, that's fine.
+        if (!res.ok && res.status !== 404) {
+          const body = await readJsonResponse(res).catch(() => null);
+          console.warn(
+            "[domains.removeCustomDomain] Vercel delete-domain failed",
+            res.status,
+            body,
+          );
+        }
+      } catch (err) {
+        console.warn("[domains.removeCustomDomain] Vercel delete-domain error", err);
+      }
+    }
+
+    // Clear Convex org mapping/state.
+    await ctx.runMutation(upsertDomainStateRef, {
+      organizationId: args.organizationId,
+      customDomain: null,
+      status: "unconfigured",
+      records: [],
+      verifiedAt: undefined,
+      lastError: "",
+    });
+
+    // Clear email domain too (derived from customDomain).
+    await ctx.runMutation(upsertEmailDomainStateRef, {
+      organizationId: args.organizationId,
+      emailDomain: null,
+      status: "unconfigured",
+      records: [],
+      verifiedAt: undefined,
+      lastError: "",
+    });
+
+    return { customDomain: null, status: "unconfigured", records: [] };
   },
 });

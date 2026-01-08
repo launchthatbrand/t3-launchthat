@@ -20,9 +20,10 @@ import { renderProductSingle } from "~/components/commerce/ProductSingleRenderer
 import { adminMenuRegistry } from "~/lib/adminMenu";
 import { registerPluginPageTemplates } from "~/lib/pageTemplates/registerPluginPageTemplates";
 import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
+import { enhanceCrmPluginDefinition } from "./enhanceCrmPlugin";
+import { enhanceEcommercePluginDefinition } from "./enhanceEcommercePlugin";
 import { portalAccessControlPlugin } from "./portalAccessControlPlugin";
 import { portalNotificationsPlugin } from "./portalNotificationsPlugin";
-import { enhanceCrmPluginDefinition } from "./enhanceCrmPlugin";
 
 configureSocialFeedPlugin({
   providers: {
@@ -36,6 +37,14 @@ const crmPluginEnhanced = enhanceCrmPluginDefinition(
   crmPlugin as unknown as PluginDefinition,
 );
 
+const ecommercePluginEnhanced = enhanceEcommercePluginDefinition(
+  createEcommercePluginDefinition({
+    // `productsSingleRender` is intentionally loosely typed (accepts `any`) in the ecommerce plugin.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
+    frontend: { productsSingleRender: renderProductSingle as any },
+  }) as unknown as PluginDefinition,
+);
+
 export const pluginDefinitions: PluginDefinition[] = [
   portalAccessControlPlugin,
   crmPluginEnhanced,
@@ -47,11 +56,7 @@ export const pluginDefinitions: PluginDefinition[] = [
   vimeoPlugin as unknown as PluginDefinition,
   disclaimersPlugin as unknown as PluginDefinition,
   portalNotificationsPlugin,
-  createEcommercePluginDefinition({
-    // `productsSingleRender` is intentionally loosely typed (accepts `any`) in the ecommerce plugin.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
-    frontend: { productsSingleRender: renderProductSingle as any },
-  }) as unknown as PluginDefinition,
+  ecommercePluginEnhanced,
   ecommerceStripePlugin as unknown as PluginDefinition,
   ecommerceAuthorizenetPlugin as unknown as PluginDefinition,
 ];

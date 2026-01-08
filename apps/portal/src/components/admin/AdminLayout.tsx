@@ -224,6 +224,7 @@ interface AdminLayoutProps {
   baseUrl?: string;
   pathname?: string; // For auto-detection
   forceNavigationContext?: NavigationContext; // Override auto-detection
+  className?: string;
 }
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({
@@ -236,6 +237,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   baseUrl,
   pathname,
   forceNavigationContext,
+  className,
 }) => {
   // Auto-detect navigation context if not forced
   const detectedContext = React.useMemo(() => {
@@ -267,6 +269,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       detectedContext={detectedContext}
       _entityInfo={entityInfo}
       _currentSection={currentSection}
+      className={className}
     >
       {children}
     </AdminLayoutInner>

@@ -109,7 +109,11 @@ export default async function RootLayout(props: {
   // Auth routes should render as a full-screen canvas (no portal chrome).
   // This ensures Clerk paths like /sign-in/[[...sign-in]] and OAuth callbacks
   // don't show the portal header/sidebar.
-  if (firstSegment === "sign-in" || firstSegment === "sso-callback") {
+  if (
+    firstSegment === "sign-in" ||
+    firstSegment === "sso-callback" ||
+    firstSegment === "sign-out"
+  ) {
     showHeader = false;
     showSidebar = false;
     showFooter = false;

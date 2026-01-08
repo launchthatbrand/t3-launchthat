@@ -6,6 +6,7 @@ import {
 } from "@/lib/tenant-fetcher";
 import { rootDomain } from "@/lib/utils";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { isLocalHost } from "~/lib/host";
 
 const getAuthHostForMiddleware = (
   host: string,
@@ -126,7 +127,9 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
   const tenant =
     subdomain !== null
       ? await fetchTenantBySlug(subdomain)
-      : hostname &&
+      : isLocalHost(hostname)
+        ? await fetchTenantBySlug(null)
+        : hostname &&
           rootDomainFormatted &&
           hostname !== rootDomainFormatted &&
           hostname !== `www.${rootDomainFormatted}` &&
@@ -181,7 +184,18 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
       );
       if (!hasSessionCookie) {
         const redirectTo = req.nextUrl.clone();
-        const signInUrl = new URL(`https://${authHost}/sign-in`);
+        const forwardedProto = (req.headers.get("x-forwarded-proto") ?? "")
+          .split(",")[0]
+          ?.trim()
+          .toLowerCase();
+        const isLocalHost =
+          hostname === "localhost" ||
+          hostname === "127.0.0.1" ||
+          hostname.endsWith(".localhost") ||
+          hostname.endsWith(".127.0.0.1");
+        const proto =
+          forwardedProto === "http" || isLocalHost ? "http" : "https";
+        const signInUrl = new URL(`${proto}://${authHost}/sign-in`);
         signInUrl.searchParams.set("return_to", redirectTo.toString());
         if (tenant?.slug) signInUrl.searchParams.set("tenant", tenant.slug);
         return NextResponse.redirect(signInUrl);
@@ -249,7 +263,9 @@ async function buildTenantResponse(req: NextRequest): Promise<TenantContext> {
   const tenant =
     subdomain !== null
       ? await fetchTenantBySlug(subdomain)
-      : hostname &&
+      : isLocalHost(hostname)
+        ? await fetchTenantBySlug(null)
+        : hostname &&
           rootDomainFormatted &&
           hostname !== rootDomainFormatted &&
           hostname !== `www.${rootDomainFormatted}` &&

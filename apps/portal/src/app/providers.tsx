@@ -23,7 +23,7 @@ import { ContentProtectionProvider } from "~/components/access/ContentProtection
 import { HostProvider } from "~/context/HostContext";
 import { TenantProvider } from "~/context/TenantContext";
 import { env } from "~/env";
-import { isAuthHostForHost } from "~/lib/host";
+import { getAuthHostForHost, isAuthHostForHost } from "~/lib/host";
 import { PORTAL_TENANT_ID, PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
 import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
 
@@ -223,6 +223,7 @@ const TOKEN_UPDATED_EVENT = "convex-token-updated";
 function TenantConvexProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = React.useState<string | null>(null);
   const [isTokenLoading, setIsTokenLoading] = React.useState(true);
+  const hasAttemptedAutoRefreshRef = React.useRef(false);
 
   React.useEffect(() => {
     const read = () => {
@@ -249,11 +250,42 @@ function TenantConvexProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // If the user is logged in via the tenant session cookie but we don't have a Convex token
+  // (e.g. localStorage cleared), bounce them through the auth host to re-issue one.
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isTokenLoading) return;
+    if (token) return;
+    if (hasAttemptedAutoRefreshRef.current) return;
+    hasAttemptedAutoRefreshRef.current = true;
+
+    const run = async () => {
+      try {
+        const res = await fetch("/api/me", { cache: "no-store" });
+        if (!res.ok) return;
+      } catch {
+        return;
+      }
+
+      // We have a valid tenant session cookie, but no Convex token → re-auth.
+      const host = window.location.host;
+      const authHost = getAuthHostForHost(host, env.NEXT_PUBLIC_ROOT_DOMAIN);
+      const params = new URLSearchParams();
+      params.set("return_to", window.location.href);
+      window.location.assign(
+        `${window.location.protocol}//${authHost}/sign-in?${params.toString()}`,
+      );
+    };
+
+    void run();
+  }, [isTokenLoading, token]);
+
   const tenantAuth = React.useMemo(() => {
     return {
       isLoading: isTokenLoading,
       isAuthenticated: Boolean(token),
-      fetchAccessToken: async (_args: { forceRefreshToken: boolean }) => token,
+      fetchAccessToken: (_args: { forceRefreshToken: boolean }) =>
+        Promise.resolve(token),
     };
   }, [isTokenLoading, token]);
 

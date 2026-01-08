@@ -32,7 +32,19 @@ export const OrganizationDomainsCard = ({
 }: {
   organizationId: Id<"organizations">;
 }) => {
-  const organization = useQuery(api.core.organizations.queries.getById, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
+  const apiAny = api as any;
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+  const getByIdQuery = apiAny.core.organizations.queries.getById;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+  const startCustomDomainSetupAction = apiAny.core.organizations.domains.startCustomDomainSetup;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+  const verifyCustomDomainAction = apiAny.core.organizations.domains.verifyCustomDomain;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+  const removeCustomDomainAction = apiAny.core.organizations.domains.removeCustomDomain;
+
+  const organization = useQuery(getByIdQuery, {
     organizationId,
   }) as OrganizationDomainMeta | null | undefined;
 
@@ -53,12 +65,9 @@ export const OrganizationDomainsCard = ({
     setCustomDomainDraft(organization.customDomain ?? "");
   }, [organization]);
 
-  const startCustomDomainSetup = useAction(
-    api.core.organizations.domains.startCustomDomainSetup,
-  );
-  const verifyCustomDomain = useAction(
-    api.core.organizations.domains.verifyCustomDomain,
-  );
+  const startCustomDomainSetup = useAction(startCustomDomainSetupAction);
+  const verifyCustomDomain = useAction(verifyCustomDomainAction);
+  const removeCustomDomain = useAction(removeCustomDomainAction);
 
   const handleCopy = async (value: string) => {
     try {
@@ -133,6 +142,39 @@ export const OrganizationDomainsCard = ({
         error instanceof Error ? error.message : "Verification failed",
       );
     } finally {
+      setIsVerifyingDomain(false);
+    }
+  };
+
+  const handleRemoveDomain = async () => {
+    const current = customDomainDraft.trim();
+    if (!current) {
+      toast.error("No domain to remove.");
+      return;
+    }
+    const ok = window.confirm(
+      `Remove domain "${current}" from this organization? This will unmap it and reset domain verification state.`,
+    );
+    if (!ok) return;
+
+    try {
+      setIsStartingDomain(true);
+      setIsVerifyingDomain(true);
+      setDomainError(null);
+      setDomainMessage(null);
+      await removeCustomDomain({ organizationId });
+      setCustomDomainDraft("");
+      setDomainStatusOverride("unconfigured");
+      setDomainRecordsOverride([]);
+      setDomainMessage("Domain removed.");
+      toast.success("Domain removed");
+    } catch (error) {
+      console.error(error);
+      setDomainError(
+        error instanceof Error ? error.message : "Failed to remove domain",
+      );
+    } finally {
+      setIsStartingDomain(false);
       setIsVerifyingDomain(false);
     }
   };
@@ -216,6 +258,14 @@ export const OrganizationDomainsCard = ({
             disabled={isStartingDomain || isVerifyingDomain}
           >
             {isVerifyingDomain ? "Verifying…" : "Verify"}
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => void handleRemoveDomain()}
+            disabled={isStartingDomain || isVerifyingDomain || !customDomainDraft.trim()}
+          >
+            Remove
           </Button>
         </div>
 

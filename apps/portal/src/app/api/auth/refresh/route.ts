@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getAuthHostForHost, isAuthHostForHost } from "@/lib/host";
+import { getAuthHostForHost, getProtoForHostFromHeaders, isAuthHostForHost } from "@/lib/host";
 
 import { env } from "~/env";
 
@@ -18,7 +18,7 @@ export const runtime = "nodejs";
  * Clerk will reuse the existing session on the auth host and immediately run
  * our /api/auth/callback which re-issues a fresh Convex token and redirects back.
  */
-export async function GET(req: NextRequest) {
+export function GET(req: NextRequest) {
   const host = (
     req.headers.get("x-forwarded-host") ??
     req.headers.get("host") ??
@@ -26,11 +26,7 @@ export async function GET(req: NextRequest) {
   )
     .trim()
     .toLowerCase();
-  const proto =
-    (
-      req.headers.get("x-forwarded-proto") ??
-      req.nextUrl.protocol.replace(":", "")
-    ).trim() || "https";
+  const proto = getProtoForHostFromHeaders(host, req.headers);
 
   const authHost = getAuthHostForHost(host, env.NEXT_PUBLIC_ROOT_DOMAIN);
 

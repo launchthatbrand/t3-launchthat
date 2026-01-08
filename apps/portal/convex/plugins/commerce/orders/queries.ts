@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/array-type */
 import { v } from "convex/values";
 
 import { components } from "../../../_generated/api";
@@ -314,6 +314,90 @@ export const getMyOrder = query({
       currency: typeof currency === "string" && currency.trim() ? currency : "USD",
       items,
       email,
+    };
+  },
+});
+
+export const getDashboardSummary = query({
+  args: {
+    organizationId: v.string(),
+  },
+  returns: v.object({
+    revenue7d: v.number(),
+    orders7d: v.number(),
+    revenue30d: v.number(),
+    orders30d: v.number(),
+    latestOrders: v.array(
+      v.object({
+        id: v.string(),
+        createdTime: v.number(),
+        total: v.number(),
+        email: v.optional(v.string()),
+      }),
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const since7d = now - 7 * 24 * 60 * 60 * 1000;
+    const since30d = now - 30 * 24 * 60 * 60 * 1000;
+
+    // Pull a bounded set of recent orders and aggregate in-process.
+    const posts = (await ctx.runQuery(commercePostsQueries.getAllPosts as any, {
+      organizationId: args.organizationId,
+      filters: { postTypeSlug: "orders", limit: 200 },
+    })) as any[];
+
+    let revenue7d = 0;
+    let orders7d = 0;
+    let revenue30d = 0;
+    let orders30d = 0;
+
+    const latestOrders: Array<{
+      id: string;
+      createdTime: number;
+      total: number;
+      email?: string;
+    }> = [];
+
+    for (const post of posts) {
+      const createdTime =
+        typeof post?._creationTime === "number" ? post._creationTime : 0;
+      if (!createdTime) continue;
+
+      const meta = (await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
+        postId: post._id,
+        organizationId: args.organizationId,
+      })) as { key: string; value: unknown }[];
+
+      const total = getMetaValue(meta, ORDER_META_KEYS.total);
+      const email = getMetaValue(meta, ORDER_META_KEYS.email);
+      const totalNumber = typeof total === "number" ? total : 0;
+
+      if (createdTime >= since30d) {
+        revenue30d += totalNumber;
+        orders30d += 1;
+      }
+      if (createdTime >= since7d) {
+        revenue7d += totalNumber;
+        orders7d += 1;
+      }
+
+      latestOrders.push({
+        id: String(post._id),
+        createdTime,
+        total: totalNumber,
+        email: typeof email === "string" ? email : undefined,
+      });
+    }
+
+    latestOrders.sort((a, b) => b.createdTime - a.createdTime);
+
+    return {
+      revenue7d,
+      orders7d,
+      revenue30d,
+      orders30d,
+      latestOrders: latestOrders.slice(0, 10),
     };
   },
 });

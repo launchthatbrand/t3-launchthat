@@ -5,6 +5,7 @@ import * as React from "react";
 import { useClerk, useSession } from "@clerk/nextjs";
 import { NavUser } from "@acme/ui/general/nav-user";
 import { Skeleton } from "@acme/ui/skeleton";
+import { Settings } from "lucide-react";
 
 import { useHostContext } from "~/context/HostContext";
 import { useTenant } from "~/context/TenantContext";
@@ -26,23 +27,38 @@ function PortalNavUserClerk() {
         className="ml-auto!"
         isAuthenticated={false}
         onSignIn={() => {
-          if (openSignIn) {
-            void openSignIn({});
-          }
+          void openSignIn({});
         }}
       />
     );
   }
+
+  const isAdmin =
+    (session.user.publicMetadata as { role?: unknown } | null)?.role === "admin";
 
   return (
     <NavUser
       className="ml-auto!"
       isAuthenticated
       user={{
-        name: session.user.fullName ?? session.user.username ?? undefined,
-        email: session.user.emailAddresses[0]?.emailAddress ?? undefined,
-        avatar: session.user.imageUrl ?? undefined,
+        name: session.user.fullName ?? session.user.username ?? "User",
+        email: session.user.emailAddresses[0]?.emailAddress,
+        avatar: session.user.imageUrl,
       }}
+      menuItems={
+        isAdmin
+          ? [
+              {
+                label: "Go To Admin",
+                icon: Settings,
+                onClick: () => {
+                  if (typeof window === "undefined") return;
+                  window.location.assign("/admin");
+                },
+              },
+            ]
+          : undefined
+      }
       onSignOut={() => signOut()}
     />
   );
@@ -52,6 +68,7 @@ interface TenantSessionUser {
   name?: string;
   email?: string;
   avatar?: string;
+  role?: string;
 }
 
 interface TenantMeResponse {
@@ -186,12 +203,16 @@ function PortalNavUserTenant() {
         // ignore
       }
       if (typeof window !== "undefined") {
-        window.location.reload();
+        const returnTo = window.location.href;
+        window.location.assign(
+          `${window.location.protocol}//${authHost}/sign-out?return_to=${encodeURIComponent(returnTo)}`,
+        );
       }
     }
-  }, []);
+  }, [authHost]);
 
   const user = me?.user ?? null;
+  const isAdmin = user?.role === "admin";
 
   if (isMeLoading) {
     return (
@@ -217,6 +238,20 @@ function PortalNavUserTenant() {
       className="ml-auto!"
       isAuthenticated
       user={user}
+      menuItems={
+        isAdmin
+          ? [
+              {
+                label: "Go To Admin",
+                icon: Settings,
+                onClick: () => {
+                  if (typeof window === "undefined") return;
+                  window.location.assign("/admin");
+                },
+              },
+            ]
+          : undefined
+      }
       onSignOut={handleSignOut}
     />
   );

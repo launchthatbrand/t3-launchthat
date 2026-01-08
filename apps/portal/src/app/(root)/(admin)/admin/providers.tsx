@@ -1,6 +1,7 @@
 "use client";
 
 import "~/lib/plugins/registerPermalinkResolvers.client";
+import "~/lib/plugins/installHooks";
 
 import type { ReactNode } from "react";
 

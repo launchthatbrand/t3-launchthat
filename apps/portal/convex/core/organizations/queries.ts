@@ -59,16 +59,32 @@ export const myOrganizations = query({
       return []; // Return empty array if not authenticated
     }
 
-    // Find the user in the database
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
+    // Find the user in the database.
+    // Prefer tokenIdentifier, but fall back to Clerk subject for tenant-host flows
+    // where a "pending" user may exist with clerkId set but tokenIdentifier not yet backfilled.
+    let user =
+      (await ctx.db
+        .query("users")
+        .withIndex("by_token", (q) =>
+          q.eq("tokenIdentifier", identity.tokenIdentifier),
+        )
+        .unique()) ?? null;
+    if (!user && typeof identity.subject === "string" && identity.subject.trim()) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+        .unique();
+    }
 
     if (!user) {
       return []; // Return empty array if user not found
+    }
+
+    // Super-admin convenience: admins can see all orgs in the switcher / settings.
+    // (This matches the "portal admin can manage all tenants" UX.)
+    if (user.role === "admin") {
+      const orgs = await ctx.db.query("organizations").collect();
+      return orgs.map((org) => ({ ...org, userRole: "admin" }));
     }
 
     return await getUserOrganizations(ctx, user._id);
@@ -89,13 +105,22 @@ export const getById = query({
       return null; // Return null if not authenticated
     }
 
-    // Find the user in the database
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
+    // Find the user in the database.
+    // Prefer tokenIdentifier, but fall back to Clerk subject for tenant-host flows
+    // where tokenIdentifier may not be backfilled yet.
+    let user =
+      (await ctx.db
+        .query("users")
+        .withIndex("by_token", (q) =>
+          q.eq("tokenIdentifier", identity.tokenIdentifier),
+        )
+        .unique()) ?? null;
+    if (!user && typeof identity.subject === "string" && identity.subject.trim()) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+        .unique();
+    }
 
     if (!user) {
       return null; // Return null if user not found
@@ -365,13 +390,22 @@ export const getOrganizationMembers = query({
       return []; // Return empty array if not authenticated
     }
 
-    // Find the user in the database
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
+    // Find the user in the database.
+    // Prefer tokenIdentifier, but fall back to Clerk subject for tenant-host flows
+    // where tokenIdentifier may not be backfilled yet.
+    let user =
+      (await ctx.db
+        .query("users")
+        .withIndex("by_token", (q) =>
+          q.eq("tokenIdentifier", identity.tokenIdentifier),
+        )
+        .unique()) ?? null;
+    if (!user && typeof identity.subject === "string" && identity.subject.trim()) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+        .unique();
+    }
 
     if (!user) {
       return []; // Return empty array if user not found
@@ -396,15 +430,22 @@ export const getOrganizationMembers = query({
     // Get user details for each member
     const members = [];
     for (const membership of memberships) {
-      const user = await ctx.db.get(membership.userId);
-      if (user) {
+      const memberUser = await ctx.db.get(membership.userId);
+      if (memberUser) {
+        // Avoid returning extra fields that are not in the validator (e.g. customerData).
+        // (Some membership rows include customerData from purchase-based access.)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const membershipNoCustomerData = { ...(membership as any) } as typeof membership;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+        delete (membershipNoCustomerData as any).customerData;
+
         members.push({
-          ...membership,
+          ...membershipNoCustomerData,
           user: {
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            image: user.image,
+            _id: memberUser._id,
+            name: memberUser.name,
+            email: memberUser.email,
+            image: memberUser.image,
           },
         });
       }
