@@ -1,11 +1,12 @@
 "use client";
 
+import type { PluginSettingComponentProps } from "launchthat-plugin-core";
+import { useState } from "react";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 import { LmsGeneralSettings } from "./LmsGeneralSettings";
 import { LmsPermalinksSettings } from "./LmsPermalinksSettings";
-import type { PluginSettingComponentProps } from "launchthat-plugin-core";
-import { useState } from "react";
 
 export const LmsSettingsPage = (props: PluginSettingComponentProps) => {
   const [tabValue, setTabValue] = useState("general");
@@ -14,7 +15,7 @@ export const LmsSettingsPage = (props: PluginSettingComponentProps) => {
     <Tabs
       value={tabValue}
       onValueChange={setTabValue}
-      className="space-y-6"
+      className="container space-y-6"
       data-loading="false"
     >
       <TabsList>
@@ -24,7 +25,7 @@ export const LmsSettingsPage = (props: PluginSettingComponentProps) => {
       <TabsContent value="general" className="space-y-4">
         <div>
           <h2 className="text-xl font-semibold">General</h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Branding, descriptions and learner defaults.
           </p>
         </div>
@@ -33,7 +34,7 @@ export const LmsSettingsPage = (props: PluginSettingComponentProps) => {
       <TabsContent value="permalinks" className="space-y-4">
         <div>
           <h2 className="text-xl font-semibold">Permalinks</h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Control base paths and slug formats for courses and lessons.
           </p>
         </div>
@@ -42,4 +43,3 @@ export const LmsSettingsPage = (props: PluginSettingComponentProps) => {
     </Tabs>
   );
 };
-

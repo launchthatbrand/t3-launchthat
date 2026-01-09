@@ -343,6 +343,38 @@ export function GenericArchiveView({
     return actions;
   }, [handleDeleteRow]);
 
+  const bulkDeleteSelected = useCallback(
+    async (selectedItems: ArchiveDisplayRow[], clearSelection: () => void) => {
+      const realItems = selectedItems.filter((item) => !item.isPlaceholder);
+      if (realItems.length === 0) return;
+      const confirmed = window.confirm(
+        `Delete ${realItems.length} selected item(s)? This action cannot be undone.`,
+      );
+      if (!confirmed) return;
+      try {
+        await Promise.all(
+          realItems.map((item) =>
+            deletePost({
+              id: item.id as unknown as Id<"posts">,
+              postTypeSlug: slug,
+              organizationId: organizationId
+                ? String(organizationId)
+                : undefined,
+            }),
+          ),
+        );
+        clearSelection();
+        toast.success(`Deleted ${realItems.length} item(s).`);
+      } catch (error) {
+        toast.error("Failed to delete selected items.", {
+          description:
+            error instanceof Error ? error.message : "Unexpected error.",
+        });
+      }
+    },
+    [deletePost, organizationId, slug],
+  );
+
   const archiveHookContext = useMemo<{
     postType: string;
     postTypeDefinition: PostTypeDoc | null;
@@ -458,10 +490,40 @@ export function GenericArchiveView({
                   columns={columns}
                   entityActions={entityActions}
                   isLoading={tableLoading}
+                  enableRowSelection
                   enableFooter={false}
                   viewModes={["list", "grid"]}
                   defaultViewMode="list"
                   enableSearch
+                  getRowId={(row: ArchiveDisplayRow) => row.id}
+                  bulkActions={({
+                    selectedItems,
+                    clearSelection,
+                  }: {
+                    selectedItems: ArchiveDisplayRow[];
+                    clearSelection: () => void;
+                  }) => (
+                    <>
+                      <div className="text-muted-foreground text-sm">
+                        {
+                          selectedItems.filter((item) => !item.isPlaceholder)
+                            .length
+                        }{" "}
+                        selected
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() =>
+                          void bulkDeleteSelected(selectedItems, clearSelection)
+                        }
+                        className="ml-auto"
+                      >
+                        Delete selected
+                      </Button>
+                    </>
+                  )}
                   emptyState={
                     <div className="text-muted-foreground py-8 text-center">
                       No entries yet. Click “Add New” to get started.
@@ -513,10 +575,40 @@ export function GenericArchiveView({
                   columns={columns}
                   entityActions={entityActions}
                   isLoading={tableLoading}
+                  enableRowSelection
                   enableFooter={false}
                   viewModes={["list", "grid"]}
                   defaultViewMode="list"
                   enableSearch
+                  getRowId={(row: ArchiveDisplayRow) => row.id}
+                  bulkActions={({
+                    selectedItems,
+                    clearSelection,
+                  }: {
+                    selectedItems: ArchiveDisplayRow[];
+                    clearSelection: () => void;
+                  }) => (
+                    <>
+                      <div className="text-muted-foreground text-sm">
+                        {
+                          selectedItems.filter((item) => !item.isPlaceholder)
+                            .length
+                        }{" "}
+                        selected
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() =>
+                          void bulkDeleteSelected(selectedItems, clearSelection)
+                        }
+                        className="ml-auto"
+                      >
+                        Delete selected
+                      </Button>
+                    </>
+                  )}
                   emptyState={
                     <div className="text-muted-foreground py-8 text-center">
                       No entries yet. Click “Add New” to get started.

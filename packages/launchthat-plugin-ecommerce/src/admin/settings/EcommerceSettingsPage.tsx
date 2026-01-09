@@ -249,7 +249,7 @@ export const EcommerceSettingsPage = (props: PluginSettingComponentProps) => {
   }, [searchParams]);
 
   return (
-    <div className="space-y-4">
+    <div className="container space-y-4 py-4">
       <Tabs
         value={activeTab}
         onValueChange={(nextTab) => {

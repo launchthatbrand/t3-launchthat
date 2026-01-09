@@ -1,17 +1,17 @@
 "use client";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import React, { useMemo, useState } from "react";
-import { api } from "@portal/convexspec";
 import { useMutation, useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import { Switch } from "@acme/ui/switch";
+import { api } from "@portal/convexspec";
 import { toast } from "@acme/ui/toast";
 
 const apiAny = api as any;
@@ -107,7 +107,7 @@ export function EcommerceCouponsPage(props: {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 container">
       <Card>
         <CardHeader>
           <CardTitle>Coupons</CardTitle>

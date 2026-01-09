@@ -1,11 +1,18 @@
 "use client";
 
+import type { GenericId as Id } from "convex/values";
+import Link from "next/link";
+import { api } from "@portal/convexspec";
+import { useQuery } from "convex/react";
 import {
   Activity,
   ArrowRight,
   MessageSquareText,
   NotebookPen,
 } from "lucide-react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -14,13 +21,7 @@ import {
   CardTitle,
 } from "@acme/ui/card";
 
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import type { GenericId as Id } from "convex/values";
-import Link from "next/link";
 import { SUPPORT_COPY } from "../constants/supportCopy";
-import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
 
 interface ConversationSummary {
   threadId: string;
@@ -47,10 +48,13 @@ export function DashboardView({
 }: DashboardViewProps) {
   // TODO: replace with support-owned knowledge fetch; portal posts are not available here.
   const helpdeskArticles = [] as ArticleSummary[];
-  const conversations = useQuery(api.plugins.support.queries.listConversations, {
-    organizationId,
-    limit: 50,
-  }) as unknown as ConversationSummary[] | undefined;
+  const conversations = useQuery(
+    api.plugins.support.queries.listConversations,
+    {
+      organizationId,
+      limit: 50,
+    },
+  ) as unknown as ConversationSummary[] | undefined;
   const safeConversations = conversations ?? [];
 
   const totalArticles = helpdeskArticles.length;
@@ -60,7 +64,7 @@ export function DashboardView({
   ).length;
 
   return (
-    <div className="space-y-8 overflow-y-auto p-6">
+    <div className="container space-y-8 overflow-y-auto">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold">Support dashboard</h1>
         <p className="text-muted-foreground text-sm">

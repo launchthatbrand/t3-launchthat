@@ -1,6 +1,6 @@
 export const CrmSettingsPage = () => {
   return (
-    <div className="space-y-4">
+    <div className="container space-y-4">
       <div>
         <div className="text-lg font-semibold">CRM Settings</div>
         <div className="text-muted-foreground text-sm">

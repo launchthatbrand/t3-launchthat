@@ -126,6 +126,24 @@ export interface EntityListProps<T extends Record<string, unknown>> {
   /** Column configurations */
   columns: ColumnDefinition<T>[];
 
+  /** Whether list view should include a checkbox selection column */
+  enableRowSelection?: boolean;
+
+  /**
+   * Provide a stable row id for selection (defaults to `String(item.id)` if present).
+   * This should match the primary key used by your dataset.
+   */
+  getRowId?: (item: T) => string;
+
+  /**
+   * Optional bulk actions UI, shown when one or more rows are selected.
+   * Receives selected items and helpers to clear selection.
+   */
+  bulkActions?: (args: {
+    selectedItems: T[];
+    clearSelection: () => void;
+  }) => ReactNode;
+
   /** Filter configurations (optional) */
   filters?: FilterConfig<T>[];
 
@@ -335,6 +353,18 @@ export interface EntityListViewProps<T extends Record<string, unknown>> {
 
   /** Whether to show the footer */
   enableFooter?: boolean;
+
+  /** Whether list view should include a checkbox selection column */
+  enableRowSelection?: boolean;
+
+  /** Provide a stable row id for selection */
+  getRowId?: (item: T) => string;
+
+  /** Optional bulk actions UI, shown when one or more rows are selected */
+  bulkActions?: (args: {
+    selectedItems: T[];
+    clearSelection: () => void;
+  }) => ReactNode;
 }
 
 /**

@@ -201,10 +201,13 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
       key: supportAssistantBaseInstructionsKey,
     },
   );
-  const widgetKeyOption = useQuery(api.plugins.support.options.getSupportOption, {
-    organizationId,
-    key: "supportWidgetKey",
-  });
+  const widgetKeyOption = useQuery(
+    api.plugins.support.options.getSupportOption,
+    {
+      organizationId,
+      key: "supportWidgetKey",
+    },
+  );
   const saveSupportOption = useMutation(
     api.plugins.support.options.saveSupportOption,
   );
@@ -384,10 +387,13 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
     [],
   );
   const [isLoadingOpenAiModels, setIsLoadingOpenAiModels] = useState(false);
-  const openAiModelOption = useQuery(api.plugins.support.options.getSupportOption, {
-    organizationId,
-    key: supportAssistantModelIdKey,
-  });
+  const openAiModelOption = useQuery(
+    api.plugins.support.options.getSupportOption,
+    {
+      organizationId,
+      key: supportAssistantModelIdKey,
+    },
+  );
   const selectedOpenAiModelId =
     typeof openAiModelOption === "string" && openAiModelOption.trim().length > 0
       ? openAiModelOption.trim()
@@ -624,7 +630,9 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
     } catch (error) {
       console.error("[support-settings] load openai models", error);
       toast.error(
-        error instanceof Error ? error.message : "Unable to load OpenAI models.",
+        error instanceof Error
+          ? error.message
+          : "Unable to load OpenAI models.",
       );
     } finally {
       setIsLoadingOpenAiModels(false);
@@ -914,7 +922,7 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
   };
 
   return (
-    <div className="space-y-6 overflow-scroll p-6">
+    <div className="container space-y-6 overflow-scroll">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold">Support settings</h1>
         <p className="text-muted-foreground text-sm">
@@ -939,12 +947,14 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
             <CardHeader>
               <CardTitle>Public widget key</CardTitle>
               <CardDescription>
-                Required for the public support chat endpoints. Keep this secret.
+                Required for the public support chat endpoints. Keep this
+                secret.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground text-xs">
-                Organization ID: <span className="font-mono">{organizationId}</span>
+                Organization ID:{" "}
+                <span className="font-mono">{organizationId}</span>
               </p>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <div className="flex-1">
@@ -960,7 +970,9 @@ export function SettingsView({ organizationId }: SettingsViewProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => void handleCopyToClipboard(widgetKey ?? undefined)}
+                    onClick={() =>
+                      void handleCopyToClipboard(widgetKey ?? undefined)
+                    }
                     disabled={!widgetKey}
                   >
                     Copy

@@ -10,6 +10,7 @@ import type {
   VisibilityState,
 } from "@tanstack/react-table";
 import type { ColumnDefinition, EntityListViewProps } from "./types";
+import { Checkbox } from "@acme/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -78,6 +79,9 @@ export function EntityListView<T extends Record<string, unknown>>({
   sortConfig,
   onSortChange,
   itemRender,
+  enableRowSelection = false,
+  getRowId,
+  bulkActions,
 }: EntityListViewProps<T>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -112,6 +116,43 @@ export function EntityListView<T extends Record<string, unknown>>({
       return baseColumn;
     });
 
+    if (enableRowSelection) {
+      cols.unshift({
+        id: "select",
+        header: ({ table }) => (
+          <div
+            className="flex items-center justify-center"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Checkbox
+              checked={
+                table.getIsAllPageRowsSelected() ||
+                (table.getIsSomePageRowsSelected() && "indeterminate")
+              }
+              onCheckedChange={(value) =>
+                table.toggleAllPageRowsSelected(!!value)
+              }
+              aria-label="Select all"
+            />
+          </div>
+        ),
+        cell: ({ row }) => (
+          <div
+            className="flex items-center justify-center"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              aria-label="Select row"
+            />
+          </div>
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      });
+    }
+
     // Add actions column if entityActions exist
     if (entityActions && entityActions.length > 0) {
       cols.push({
@@ -141,7 +182,7 @@ export function EntityListView<T extends Record<string, unknown>>({
     }
 
     return cols;
-  }, [columns, entityActions]);
+  }, [columns, enableRowSelection, entityActions]);
 
   const table = useReactTable({
     data,
@@ -160,12 +201,24 @@ export function EntityListView<T extends Record<string, unknown>>({
       columnVisibility,
       rowSelection,
     },
+    getRowId: (row) =>
+      typeof getRowId === "function"
+        ? getRowId(row)
+        : "id" in row
+          ? String((row as unknown as { id: unknown }).id)
+          : JSON.stringify(row),
     initialState: {
       pagination: {
         pageSize: 20,
       },
     },
+    enableRowSelection,
   });
+
+  const selectedItems = React.useMemo(() => {
+    if (!enableRowSelection) return [];
+    return table.getSelectedRowModel().rows.map((row) => row.original);
+  }, [enableRowSelection, table, rowSelection]);
 
   if (isLoading) {
     return (
@@ -175,6 +228,11 @@ export function EntityListView<T extends Record<string, unknown>>({
             <Table>
               <TableHeader>
                 <TableRow>
+                  {enableRowSelection ? (
+                    <TableHead className="w-[44px]">
+                      <Skeleton className="h-4 w-4" />
+                    </TableHead>
+                  ) : null}
                   {columns.map((column, index) => (
                     <TableHead key={column.id ?? index}>
                       <Skeleton className="h-4 w-full" />
@@ -237,6 +295,14 @@ export function EntityListView<T extends Record<string, unknown>>({
   if (viewMode === "list") {
     return (
       <div className="w-full">
+        {enableRowSelection && selectedItems.length > 0 && bulkActions ? (
+          <div className="bg-muted/40 border-input mb-3 flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+            {bulkActions({
+              selectedItems,
+              clearSelection: () => table.resetRowSelection(),
+            })}
+          </div>
+        ) : null}
         <div className="overflow-hidden rounded-md border">
           <Table>
             <TableHeader>

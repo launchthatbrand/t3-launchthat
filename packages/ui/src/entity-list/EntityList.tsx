@@ -33,6 +33,9 @@ export function EntityList<T extends Record<string, unknown>>({
   gridColumns,
   data,
   columns,
+  enableRowSelection,
+  getRowId,
+  bulkActions,
   filters,
   filterType = "default",
   customFilterComponent,
@@ -332,6 +335,9 @@ export function EntityList<T extends Record<string, unknown>>({
         onSortChange={handleSortChange}
         selectedId={selectedId}
         itemRender={itemRender}
+        enableRowSelection={enableRowSelection}
+        getRowId={getRowId}
+        bulkActions={bulkActions}
       />
     );
   })();

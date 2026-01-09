@@ -1,5 +1,7 @@
 "use client";
 
+import type { GenericId as Id } from "convex/values";
+
 import {
   Card,
   CardContent,
@@ -8,15 +10,13 @@ import {
   CardTitle,
 } from "@acme/ui/card";
 
-import type { GenericId as Id } from "convex/values";
-
 interface AnalyticsViewProps {
   organizationId?: Id<"organizations">;
 }
 
 export function AnalyticsView({ organizationId }: AnalyticsViewProps) {
   return (
-    <div className="space-y-4 p-6">
+    <div className="container space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Support analytics</h1>
         <p className="text-muted-foreground text-sm">

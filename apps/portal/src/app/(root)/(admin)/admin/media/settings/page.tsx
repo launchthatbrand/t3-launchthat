@@ -112,7 +112,9 @@ export default function MediaSettingsPage() {
   const removeConnection = useAction(
     api.integrations.connections.actions.remove,
   );
-  const startVimeoSync = useMutation(api.plugins.vimeo.mutations.startVimeoSync);
+  const startVimeoSync = useMutation(
+    api.plugins.vimeo.mutations.startVimeoSync,
+  );
   const syncNewestForConnection = useAction(
     api.plugins.vimeo.actions.syncNewestForConnection,
   );
@@ -418,8 +420,8 @@ export default function MediaSettingsPage() {
       description="Configure how uploads, external providers, and thumbnails behave."
       pathname="/admin/media/settings"
     >
-      <AdminLayoutContent>
-        <AdminLayoutMain>
+      <AdminLayoutContent className="flex flex-1">
+        <AdminLayoutMain className="flex-1">
           <AdminLayoutHeader />
           <div className="container py-6">
             <Tabs value={activeTab} onValueChange={handleTabChange}>
